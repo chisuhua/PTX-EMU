@@ -1,5 +1,4 @@
 # PTX-EMU
-> under development
 
 PTX-EMU is a simple emulator for CUDA program.
 
