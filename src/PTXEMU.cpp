@@ -457,5 +457,13 @@ cudaError_t cudaGetDevice
     return cudaSuccess;
 }
 
+char __cudaInitModule(void **fatCubinHandle)
+{
+    #ifdef LOGEMU
+    printf("EMU: call %s\n",__my_func__);
+    #endif
+    return cudaSuccess;
+}
+
 } // end of extern "C"
 

@@ -19,7 +19,14 @@ You can use it to generate image by simulating rendering program.
 
 ```
 export CUDA_PATH=/your-path-to-cuda
-. setup
+. env.sh
+```
+
+## Configure and Build with CMake
+
+```
+cmake -S . -B build
+cmake --build build
 ```
 
 ## Run test
@@ -44,19 +51,19 @@ After setting up the env, just run it.
 ## release (default)
 Fast execution time
 ```
-make lib
+cmake --build build
 ```
 
 ## debug
 Used with gdb
 ```
-make Dlib
+cmake --build build --config Debug
 ```
 
 ## step
 Similar to gdb mode.
 ```
-make Slib
+cmake --build build --config RelWithDebInfo
 ```
 
 # 相关技术和架构
@@ -110,4 +117,3 @@ PTX-EMU的主要架构和之前的描述一致，其中PTX仿真部分采用的�
 - 目前关于PTX-EMU的文档并不详尽，可以考虑增加使用说明和开发说明文档
   
 - 目前CUDA程序测例并不是很多，可以考虑增加CUDA程序测例
-

@@ -4,7 +4,7 @@ INCLUDE_DIR = ${CUDA_PATH}/include \
 LINK_DIR = ${PTX_EMU_PATH}/antlr4/antlr4-cpp-runtime-4.11.1-source/run/usr/local/lib/
 ARCH = sm_80
 NVCC_FLARG = "-arch=$(ARCH) -lcudart"
-LIB_OUT = libcudart.so.11.0
+LIB_OUT = libcudart.so.12.0
 CPP_FLAG = -std=c++2a -pthread -fPIC -shared -Wl,--version-script=$(SRC)/linux-so-version.txt \
 	$(SRC)/PTXEMU.cpp $(SRC)/build/*.cpp $(addprefix -I,$(INCLUDE_DIR)) $(addprefix -L,$(LINK_DIR)) \
 	-lantlr4-runtime -o lib/$(LIB_OUT) 
