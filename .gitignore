@@ -1,8 +1,24 @@
-**/bin
-**/lib
-**/build
-**/.vscode
-**/.antlr
-**/log
-**/run
-**/*.ptx
+# 构建目录
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+Makefile
+
+# ANTLR生成的文件
+src/build/
+src/antlr4_generated_src/
+
+# VS Code
+#.vscode/
+.antlr/
+
+# 库文件
+lib/
+bin/
+
+# 其他临时文件
+*.so*
+*.ptx
