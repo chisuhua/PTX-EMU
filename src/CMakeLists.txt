@@ -86,3 +86,5 @@ add_custom_command(TARGET cudart POST_BUILD
         ${CMAKE_SOURCE_DIR}/lib/libcudart.so.12.0
     COMMENT "Creating symlinks to libcudart.so in project root lib directory"
 )
+
+# 添加test-ptx可执行文件目标

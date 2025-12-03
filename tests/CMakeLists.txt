@@ -32,6 +32,38 @@ function(add_catch_test TEST_NAME)
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
 endfunction()
 
+# 定义创建单个独立测试的函数（不使用Catch2）
+function(add_standalone_test TEST_NAME)
+    # 参数：测试名称，其余为该测试的源文件
+    set(SOURCES ${ARGN})
+
+    # 创建可执行文件
+    add_executable(${TEST_NAME} ${SOURCES})
+
+    # 包含目录
+    target_include_directories(${TEST_NAME} PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+        ${ANTLR4_INCLUDE_DIR}
+        ${ANTLR4_GENERATED_SRC_DIR}
+    )
+    
+    # 链接必要的库
+    target_link_libraries(${TEST_NAME} 
+        cudart
+        antlr4_shared
+        pthread
+    )
+    
+    # 设置运行时路径
+    set_target_properties(${TEST_NAME} PROPERTIES
+        INSTALL_RPATH "$ORIGIN/../lib;${CMAKE_SOURCE_DIR}/lib"
+        BUILD_WITH_INSTALL_RPATH TRUE
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+        
+    # 注册为 CTest 测试
+    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+endfunction()
+
 # ================================
 # 方案一：为每个 test_xxx.cpp 创建独立测试（推荐）
 # ================================
@@ -58,6 +90,13 @@ endforeach()
 #)
 
 # ================================
+# 添加独立测试（不使用Catch2）
+# ================================
+
+add_standalone_test(test-ptx test-ptx.cpp)
+add_standalone_test(test-wmma test_wmma.cpp)
+
+# ================================
 # 添加基于 CUDA 的测试（直接使用 CMake 编译）
 # ================================
 
@@ -66,12 +105,19 @@ set(PTX_MINI_TESTS
     dummy dummy-add dummy-float dummy-grid dummy-mul dummy-sub dummy-condition
     dummy-long dummy-sieve dummy-share)
 
-# 定义全部测试 (包含基础测试和其他复杂测试)
-set(PTX_ALL_TESTS 
-    ${PTX_MINI_TESTS} 
+set(PTX_BASIC_TESTS 
     simpleGEMM-int simpleGEMM-float simpleGEMM-double
     simpleCONV-int simpleCONV-float simpleCONV-double 2Dentropy
     aligned-types all-pairs-distance bitonic bfs backprop RAY cfd)
+
+set(PTX_BASIC_TESTS 
+    dummy-wmma)
+
+# 定义全部测试 (包含基础测试和其他复杂测试)
+set(PTX_ALL_TESTS 
+    ${PTX_MINI_TESTS} 
+    ${PTX_BASIC_TESTS} 
+    ${PTX_MMA_TESTS})
 
 
 # 创建方便的自定义目标来运行不同组的测试
@@ -153,9 +199,14 @@ foreach(TEST_NAME ${PTX_ALL_TESTS})
         if(NOT IS_MINI_TEST EQUAL -1)
             # 标记为基础测试
             set_tests_properties(${TEST_NAME} PROPERTIES LABELS "mini")
-        else()
-            # 标记为完整测试
-            set_tests_properties(${TEST_NAME} PROPERTIES LABELS "full")
+        endif()
+        list(FIND PTX_BASIC_TESTS ${TEST_NAME} IS_BASIC_TEST)
+        if(NOT IS_BASIC_TEST EQUAL -1)
+            set_tests_properties(${TEST_NAME} PROPERTIES LABELS "basic")
+        endif()
+        list(FIND PTX_MMA_TESTS ${TEST_NAME} IS_MMA_TEST)
+        if(NOT IS_MMA_TEST EQUAL -1)
+            set_tests_properties(${TEST_NAME} PROPERTIES LABELS "mma")
         endif()
     endif()
 endforeach()
