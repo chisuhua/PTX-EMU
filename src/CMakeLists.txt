@@ -35,10 +35,32 @@ set(SOURCES
 # 头文件目录
 include_directories(${CUDA_PATH}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_SOURCE_DIR}/include)
+
+add_library(ptx_ir SHARED
+    ptx_ir/ptx_types.cpp
+)
+target_include_directories(ptx_ir PUBLIC include)
+
+add_library(ptxsim SHARED
+    ptxsim/core/cta_context.cpp
+    ptxsim/core/interpreter.cpp
+    ptxsim/core/thread_context.cpp
+    ptxsim/utils/qualifier_utils.cpp
+)
+target_link_libraries(ptxsim ptx_ir)
+
+add_library(ptx_parser SHARED
+    ptx_parser/ptx_parser.cpp
+) 
+target_link_libraries(ptx_parser ptx_ir)
 
 # 创建共享库
 add_library(cudart SHARED ${SOURCES})
+target_link_libraries(cudart ptx_ir ptx_parser ptxsim)
 add_dependencies(cudart GenerateParser)
+add_dependencies(cudart ptx_parser)
+add_dependencies(cudart ptxsim)
 
 # 标记ANTLR生成的源文件为生成文件
 set_source_files_properties(${ANTLR4_GENERATED_SOURCES} PROPERTIES GENERATED TRUE)

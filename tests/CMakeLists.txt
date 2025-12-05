@@ -66,6 +66,7 @@ function(add_standalone_test TEST_NAME)
 
     # 包含目录
     target_include_directories(${TEST_NAME} PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/src
         ${ANTLR4_INCLUDE_DIR}
         ${ANTLR4_GENERATED_SRC_DIR}
@@ -73,6 +74,9 @@ function(add_standalone_test TEST_NAME)
     
     # 链接必要的库
     target_link_libraries(${TEST_NAME} 
+        ptx_ir
+        ptx_parser
+        ptxsim
         cudart
         antlr4_shared
         pthread

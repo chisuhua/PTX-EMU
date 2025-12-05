@@ -13,6 +13,10 @@
                 {
                     "name": "LD_LIBRARY_PATH",
                     "value": "${workspaceFolder}/lib:${env:LD_LIBRARY_PATH}"
+                },
+                {
+                    "name": "PTX_EMU_PATH",
+                    "value": "${workspaceFolder}"
                 }
             ],
             "externalConsole": false,
@@ -43,6 +47,10 @@
                 {
                     "name": "LD_LIBRARY_PATH",
                     "value": "${workspaceFolder}/lib:${env:LD_LIBRARY_PATH}"
+                },
+                {
+                    "name": "PTX_EMU_PATH",
+                    "value": "${workspaceFolder}"
                 }
             ],
             "preLaunchTask": "build",
@@ -55,7 +63,6 @@
                     "ignoreFailures": true
                 }
             ],
-            "preLaunchTask": "build",
             "miDebuggerPath": "/usr/bin/gdb"
         },
         {
@@ -70,6 +77,10 @@
                 {
                     "name": "LD_LIBRARY_PATH",
                     "value": "${workspaceFolder}/lib:${env:LD_LIBRARY_PATH}"
+                },
+                {
+                    "name": "PTX_EMU_PATH",
+                    "value": "${workspaceFolder}"
                 }
             ],
             "externalConsole": false,
@@ -81,7 +92,6 @@
                     "ignoreFailures": true
                 }
             ],
-            "preLaunchTask": "build",
             "miDebuggerPath": "/usr/bin/gdb"
         },
         {

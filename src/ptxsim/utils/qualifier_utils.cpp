@@ -1,0 +1,143 @@
+#include "qualifier_utils.h"
+
+int Q2bytes(Qualifier q) {
+    switch (q) {
+    case Qualifier::Q_U64:
+    case Qualifier::Q_S64:
+    case Qualifier::Q_B64:
+    case Qualifier::Q_F64:
+        return 8;
+    case Qualifier::Q_U32:
+    case Qualifier::Q_S32:
+    case Qualifier::Q_B32:
+    case Qualifier::Q_F32:
+        return 4;
+    case Qualifier::Q_U16:
+    case Qualifier::Q_S16:
+    case Qualifier::Q_B16:
+    case Qualifier::Q_F16:
+        return 2;
+    case Qualifier::Q_U8:
+    case Qualifier::Q_S8:
+    case Qualifier::Q_B8:
+    case Qualifier::Q_PRED:
+    case Qualifier::Q_F8:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
+bool Signed(Qualifier q) {
+    switch (q) {
+    case Qualifier::Q_S64:
+    case Qualifier::Q_S32:
+    case Qualifier::Q_S16:
+    case Qualifier::Q_S8:
+        return true;
+    default:
+        return false;
+    }
+}
+
+int getBytes(std::vector<Qualifier> &q) {
+    for (auto e : q) {
+        int bytes = Q2bytes(e);
+        if (bytes)
+            return bytes;
+    }
+    return 0;
+}
+
+DTYPE getDType(std::vector<Qualifier> &q) {
+    for (auto e : q) {
+        switch (e) {
+        case Qualifier::Q_F64:
+        case Qualifier::Q_F32:
+        case Qualifier::Q_F16:
+        case Qualifier::Q_F8:
+            return DFLOAT;
+        case Qualifier::Q_S64:
+        case Qualifier::Q_B64:
+        case Qualifier::Q_U64:
+        case Qualifier::Q_S32:
+        case Qualifier::Q_B32:
+        case Qualifier::Q_U32:
+        case Qualifier::Q_S16:
+        case Qualifier::Q_B16:
+        case Qualifier::Q_U16:
+        case Qualifier::Q_S8:
+        case Qualifier::Q_B8:
+        case Qualifier::Q_U8:
+        case Qualifier::Q_PRED:
+            return DINT;
+        case Qualifier::Q_V2:
+        case Qualifier::Q_V4:
+        case Qualifier::Q_CONST:
+        case Qualifier::Q_PARAM:
+        case Qualifier::Q_GLOBAL:
+        case Qualifier::Q_LOCAL:
+        case Qualifier::Q_SHARED:
+        case Qualifier::Q_GT:
+        case Qualifier::Q_GE:
+        case Qualifier::Q_EQ:
+        case Qualifier::Q_NE:
+        case Qualifier::Q_LT:
+        case Qualifier::Q_TO:
+        case Qualifier::Q_WIDE:
+        case Qualifier::Q_SYNC:
+        case Qualifier::Q_LO:
+        case Qualifier::Q_HI:
+        case Qualifier::Q_UNI:
+        case Qualifier::Q_RN:
+        case Qualifier::Q_A:
+        case Qualifier::Q_B:
+        case Qualifier::Q_D:
+        case Qualifier::Q_ROW:
+        case Qualifier::Q_ALIGNED:
+        case Qualifier::Q_M8N8K4:
+        case Qualifier::Q_M16N16K16:
+        case Qualifier::Q_NEU:
+        case Qualifier::Q_NC:
+        case Qualifier::Q_FTZ:
+        case Qualifier::Q_APPROX:
+        case Qualifier::Q_LTU:
+        case Qualifier::Q_LE:
+        case Qualifier::Q_GTU:
+        case Qualifier::Q_LEU:
+        case Qualifier::Q_DOTADD:
+        case Qualifier::Q_GEU:
+        case Qualifier::Q_RZI:
+        case Qualifier::Q_DOTOR:
+        case Qualifier::Q_SAT:
+        case Qualifier::S_UNKNOWN:
+            break;
+        }
+    }
+    return DNONE;
+}
+
+DTYPE getDType(Qualifier q) {
+    switch (q) {
+    case Qualifier::Q_F64:
+    case Qualifier::Q_F32:
+    case Qualifier::Q_F16:
+    case Qualifier::Q_F8:
+        return DFLOAT;
+    case Qualifier::Q_S64:
+    case Qualifier::Q_B64:
+    case Qualifier::Q_U64:
+    case Qualifier::Q_S32:
+    case Qualifier::Q_B32:
+    case Qualifier::Q_U32:
+    case Qualifier::Q_S16:
+    case Qualifier::Q_B16:
+    case Qualifier::Q_U16:
+    case Qualifier::Q_S8:
+    case Qualifier::Q_B8:
+    case Qualifier::Q_U8:
+        return DINT;
+    default:
+        return DNONE;
+    }
+}
