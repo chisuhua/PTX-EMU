@@ -1,7 +1,22 @@
 # tests/CMakeLists.txt
+set(CMAKE_CUDA_RUNTIME_LIBRARY Shared)
+set(CMAKE_CUDA_PTX_COMPILATION ON)       # 全局强制PTX模式
+set(CMAKE_CUDA_SEPARABLE_COMPILATION OFF) # 禁用分离编译
+
+set(CMAKE_CUDA_COMPILE_OPTIONS_PTX "")
+set(CMAKE_CUDA_COMPILE_OPTIONS_ARCH "")
+set(CMAKE_CUDA_COMPILE_OPTIONS_CODE "")
+set(CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES "")
+set(CMAKE_CUDA_IMPLICIT_LINK_LIBRARIES "")
+set(CMAKE_CUDA_HOST_IMPLICIT_LINK_DIRECTORIES "")
+set(CMAKE_CUDA_HOST_IMPLICIT_LINK_LIBRARIES "")
+
+
 
 # 启用测试支持
 enable_testing()
+# 启用 CUDA 语言支持
+enable_language(CUDA)
 
 # Catch2 单头文件路径
 set(CATCH_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -23,10 +38,19 @@ function(add_catch_test TEST_NAME)
         ${PROJECT_SOURCE_DIR}/include
     )
 
-    # 链接库（如果存在）
-    if(TARGET cpphdl)
-        target_link_libraries(${TEST_NAME} cpphdl)
-    endif()
+    # 链接我们自己构建的 cudart 库和 ANTLR 库
+    target_link_directories(${TEST_NAME} PRIVATE 
+        ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+        ${CMAKE_SOURCE_DIR}/lib
+        )
+
+    target_link_libraries(${TEST_NAME} PRIVATE
+        -Wl,--no-as-needed
+        cudart
+        antlr4_shared
+        -Wl,--as-needed  # 恢复默认行为
+        -ldl -lpthread
+        )
 
     # 注册为 CTest 测试
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
@@ -62,6 +86,11 @@ function(add_standalone_test TEST_NAME)
         
     # 注册为 CTest 测试
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+
+    set_tests_properties(${TEST_NAME} PROPERTIES
+        PASS_REGULAR_EXPRESSION "PASS"
+        FAIL_REGULAR_EXPRESSION "Error|Failed"
+    )
 endfunction()
 
 # ================================
@@ -84,10 +113,6 @@ endforeach()
 # 方案二：特殊测试（多文件组合）
 # ================================
 
-# test_bitvector 需要多个源文件
-#add_catch_test(test_bitvector
-# source cpp list
-#)
 
 # ================================
 # 添加独立测试（不使用Catch2）
@@ -131,8 +156,6 @@ add_custom_target(alltest
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Running all tests")
 
-# 启用 CUDA 语言支持
-enable_language(CUDA)
 
 # 设置 CMP0104 策略以避免警告
 cmake_policy(SET CMP0104 NEW)
@@ -143,53 +166,75 @@ if(NOT DEFAULT_CUDA_ARCH)
     set(DEFAULT_CUDA_ARCH "80")
 endif()
 
+set(CMAKE_CUDA_ARCHITECTURES "80")       # 仅虚拟架构
+
 
 # 为每个测试创建 CMake 编译目标
 foreach(TEST_NAME ${PTX_ALL_TESTS})
     # 检查测试源文件是否存在
     if(EXISTS ${CMAKE_SOURCE_DIR}/bench/${TEST_NAME}/${TEST_NAME}.cu)
+        set(CUDA_INCLUDE_DIRS ${CUDA_PATH}/include)
+
+        set(OBJECT_FILE "${CMAKE_CURRENT_BINARY_DIR}/${TEST_NAME}.cu.o")
+        add_custom_command(
+            OUTPUT ${OBJECT_FILE}
+            COMMAND ${CMAKE_CUDA_COMPILER}
+                -cudart=shared
+                -g -std=c++14
+                -arch=compute_80
+                -code=compute_80
+                -I${PROJECT_SOURCE_DIR}/include
+                -I${CUDA_INCLUDE_DIRS}
+                -x cu
+                -c ${CMAKE_SOURCE_DIR}/bench/${TEST_NAME}/${TEST_NAME}.cu
+                -o ${OBJECT_FILE}
+            DEPENDS ${CMAKE_SOURCE_DIR}/bench/${TEST_NAME}/${TEST_NAME}.cu
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            VERBATIM
+        )
         # 创建可执行文件
-        add_executable(${TEST_NAME} 
-            ${CMAKE_SOURCE_DIR}/bench/${TEST_NAME}/${TEST_NAME}.cu)
-        
-        # 关键修改1: 使用现代CMake CUDA架构设置
-        # 这会同时生成PTX (compute_XX)和二进制代码(sm_XX)
+        add_executable(${TEST_NAME} "")
+
+        target_sources(${TEST_NAME} PRIVATE ${OBJECT_FILE}) 
+
         set_target_properties(${TEST_NAME} PROPERTIES
-            CUDA_ARCHITECTURES "${DEFAULT_CUDA_ARCH}-real"
-            CUDA_STANDARD 14
-            CUDA_STANDARD_REQUIRED ON)
-
-        target_compile_options(${TEST_NAME} PRIVATE
-            $<$<COMPILE_LANGUAGE:CUDA>:
-                "-gencode=arch=compute_${DEFAULT_CUDA_ARCH},code=compute_${DEFAULT_CUDA_ARCH}"
-                "-gencode=arch=compute_${DEFAULT_CUDA_ARCH},code=sm_${DEFAULT_CUDA_ARCH}"
-            >)
-
-        # 关键修改2: 移除冲突的手动-arch设置和分离编译
-        # 只有在确实需要设备代码链接时才启用分离编译
-        # set_target_properties(${TEST_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-        
-        # 关键修改3: 移除冲突的-arch编译选项
-        # target_compile_options(${TEST_NAME} PRIVATE 
-        #     $<$<COMPILE_LANGUAGE:CUDA>: -arch=${REAL_CUDA_ARCH}>)
-        
+            LINKER_LANGUAGE CXX  # 必须显式指定!
+            SUFFIX ""            # 防止添加.a后缀
+            OUTPUT_NAME "${TEST_NAME}"
+            PREFIX ""  # 防止添加lib前缀
+        )
+       
         # 包含 CUDA 头文件
-        target_include_directories(${TEST_NAME} PRIVATE ${CUDA_PATH}/include)
-        
+        target_include_directories(${TEST_NAME} PRIVATE ${CUDA_INCLUDE_DIRS})
+
         # 链接我们自己构建的 cudart 库和 ANTLR 库
-        target_link_directories(${TEST_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/lib)
-        target_link_libraries(${TEST_NAME} 
+        target_link_directories(${TEST_NAME} PRIVATE 
+            ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+            ${CMAKE_SOURCE_DIR}/lib
+            )
+
+        target_link_libraries(${TEST_NAME} PRIVATE
+            -Wl,--no-as-needed
             cudart
-            antlr4_shared)
+            antlr4_shared
+            -Wl,--as-needed  # 恢复默认行为
+            -ldl -lpthread
+            )
             
         # 设置 RPATH，确保运行时能找到我们自己的库
         set_target_properties(${TEST_NAME} PROPERTIES
-            INSTALL_RPATH "$ORIGIN/../lib;${CMAKE_SOURCE_DIR}/lib"
-            BUILD_WITH_INSTALL_RPATH TRUE)
-        
-        # 设置输出目录与主项目一致
-        set_target_properties(${TEST_NAME} PROPERTIES 
-            RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+            INSTALL_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
+            BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
+            BUILD_WITH_INSTALL_RPATH TRUE
+            SKIP_BUILD_RPATH FALSE
+            INSTALL_RPATH_USE_LINK_PATH TRUE            
+            RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+        )
+
+        add_dependencies(${TEST_NAME} cudart antlr4_shared)  # 确保库先构建
+
+        add_custom_target(${TEST_NAME}_obj DEPENDS ${OBJECT_FILE})
+        add_dependencies(${TEST_NAME} ${TEST_NAME}_obj)
         
         # 添加测试
         add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})

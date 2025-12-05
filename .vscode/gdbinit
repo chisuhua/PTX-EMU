@@ -1,0 +1,21 @@
+#set architecture aarch64
+#set auto-fix-architecture on
+#set debuginfod enabled off
+# 设置库路径
+#set environment LD_LIBRARY_PATH ${workspaceFolder}/lib
+#set environment LD_LIBRARY_PATH /mnt/ubuntu/chisuhua/github/PTX-EMU/lib
+
+# 启用整齐打印
+set print pretty on
+
+#set stop-on-solib-events 1
+
+#set solib-search-path /mnt/ubuntu/chisuhua/github/PTX-EMU/lib:/usr/local/cuda/targets/sbsa-linux/lib:/lib/aarch64-linux-gnu
+#set solib-search-path /mnt/ubuntu/chisuhua/github/PTX-EMU/lib:/lib/aarch64-linux-gnu:/usr/lib/aarch64-linux-gnu
+#show architecture
+
+# 设置断点
+break main
+
+# 运行程序
+run 

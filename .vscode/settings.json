@@ -1,0 +1,40 @@
+{
+    "C_Cpp.default.includePath": [
+        "${workspaceFolder}/**",
+        "${workspaceFolder}/antlr4/antlr4-cpp-runtime-4.11.1-source/runtime/src",
+        "${env:CUDA_PATH}/include"
+    ],
+    "C_Cpp.default.defines": [],
+    "C_Cpp.default.compilerPath": "/usr/bin/g++",
+    "C_Cpp.default.cStandard": "c17",
+    "C_Cpp.default.cppStandard": "c++20",
+    "C_Cpp.default.intelliSenseMode": "linux-gcc-aarch64",
+    "C_Cpp.errorSquiggles": "Enabled",
+    "C_Cpp.formatting": "Default",
+    "C_Cpp.autocomplete": "Default",
+    "C_Cpp.suggestSnippets": true,
+    "cmake.cmakePath": "/usr/bin/cmake",
+    "cmake.configureOnOpen": true,
+    "cmake.configureOnEdit": true,
+    "cmake.autoSelectActiveFolder": true,
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "cmake.preferredGenerators": [
+        "Ninja",
+        "Unix Makefiles"
+    ],
+    "cmake.useCMakePresets": "always",
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "C_Cpp.errorSquiggles": "Enabled",
+    "C_Cpp.intelliSenseEngine": "Default",
+    "files.associations": {
+        "*.cu": "cuda-cpp",
+        "*.cuh": "cuda-cpp",
+        "cstdlib": "cpp",
+        "fstream": "cpp",
+        "map": "cpp",
+        "cstdint": "cpp",
+        "cassert": "cpp",
+        "iostream": "cpp",
+        "sstream": "cpp"
+    }
+}

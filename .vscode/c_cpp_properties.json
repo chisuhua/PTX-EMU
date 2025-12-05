@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/antlr4/antlr4-cpp-runtime-4.11.1-source/runtime/src",
+                "${workspaceFolder}/bench/**",
+                "${env:CUDA_PATH}/include"
+            ],
+            "defines": [
+                "__CUDACC__=1",
+                "__NVCC__=1"
+            ],
+            "compilerPath": "/usr/bin/g++",
+            "cStandard": "c17",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "linux-gcc-x64",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json"
+        }
+    ],
+    "version": 4
+}

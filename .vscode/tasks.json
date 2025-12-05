@@ -27,13 +27,10 @@
         {
             "label": "configure",
             "type": "shell",
-            "command": "cmake",
+            "command": "bash",
             "args": [
-                "-S",
-                ".",
-                "-B",
-                "build",
-                "-DCMAKE_BUILD_TYPE=Debug"
+                "-c",
+                "source \"${workspaceFolder}/env.sh\" && cmake -S \"${workspaceFolder}\" -B build -DCMAKE_BUILD_TYPE=Debug"
             ],
             "group": "build",
             "presentation": {

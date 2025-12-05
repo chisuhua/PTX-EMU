@@ -1,0 +1,15 @@
+[
+    {
+        "name": "GCC with CUDA",
+        "compilers": {
+            "C": "/usr/bin/gcc",
+            "CXX": "/usr/bin/g++"
+        },
+        "environmentVariables": {
+            "CUDA_PATH": "$penv{CUDA_PATH}"
+        },
+        "preferredGenerator": {
+            "name": "Unix Makefiles"
+        }
+    }
+]
