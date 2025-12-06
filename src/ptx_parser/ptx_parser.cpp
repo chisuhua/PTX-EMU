@@ -1593,7 +1593,7 @@ void PtxListener::enterReg(ptxParser::RegContext *ctx) {
 void PtxListener::exitReg(ptxParser::RegContext *ctx) {
     OperandContext *o = new OperandContext();
     OperandContext::REG *r = new OperandContext::REG();
-    extractREG(ctx->ID(0)->getText(), r->regIdx, r->regName);
+    extractREG(ctx->ID()->getText(), r->regIdx, r->regName);
     o->operand = r;
     o->operandType = O_REG;
     op.push(o);
@@ -1616,7 +1616,7 @@ void PtxListener::exitVector(ptxParser::VectorContext *ctx) {
         oc.operandType = O_REG;
         oc.operand = new OperandContext::REG();
         auto r = (OperandContext::REG *)oc.operand;
-        extractREG(ctx->regi(i)->ID(0)->getText(), r->regIdx, r->regName);
+        extractREG(ctx->regi(i)->ID()->getText(), r->regIdx, r->regName);
         v->vec.push_back(oc);
     }
     o->operand = v;
@@ -1644,7 +1644,7 @@ void PtxListener::exitFetchAddress(ptxParser::FetchAddressContext *ctx) {
         // assume base not require regMinorName
         fa->reg = new OperandContext();
         OperandContext::REG *r = new OperandContext::REG();
-        extractREG(ctx->regi()->ID(0)->getText(), r->regIdx, r->regName);
+        extractREG(ctx->regi()->ID()->getText(), r->regIdx, r->regName);
         fa->reg->operandType = O_REG;
         fa->reg->operand = r;
     } else

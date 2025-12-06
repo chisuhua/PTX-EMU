@@ -210,9 +210,11 @@ imm : DIGITS ;
 
 var : ID ;
 
-reg : PERCENT (ID | ID DOT ID) ;
+// reg : PERCENT (ID | ID DOT ID) ;
+//regi : PERCENT (ID | ID DOT ID) ; // reg in vector or fetchAddress
+reg : PERCENT (ID) ;
 
-regi : PERCENT (ID | ID DOT ID) ; // reg in vector or fetchAddress
+regi : PERCENT (ID) ; // reg in vector or fetchAddress
 
 vector : LeftBrace regi RightBrace 
        | LeftBrace regi COMMA regi RightBrace

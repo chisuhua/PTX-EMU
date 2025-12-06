@@ -489,74 +489,1846 @@ void ThreadContext::handle_bra(StatementContext::BRA *ss) {
          1; // -1 because pc will be incremented after this instruction
 }
 
+void ThreadContext::handle_setp(StatementContext::SETP *ss) {
+    // op0
+    void *to = getOperandAddr(ss->setpOp[0], ss->setpQualifier);
+
+    // op1
+    void *op1 = getOperandAddr(ss->setpOp[1], ss->setpQualifier);
+
+    // op2
+    void *op2 = getOperandAddr(ss->setpOp[2], ss->setpQualifier);
+
+    // get compare op
+    Qualifier cmpOp = getCMPOP(ss->setpQualifier);
+
+    // exe setp
+    setp(to, op1, op2, cmpOp, ss->setpQualifier);
+}
+
+void ThreadContext::handle_cvt(StatementContext::CVT *ss) {
+    // op0
+    void *to = getOperandAddr(ss->cvtOp[0], ss->cvtQualifier);
+
+    // op1
+    void *from = getOperandAddr(ss->cvtOp[1], ss->cvtQualifier);
+
+    // exe cvt
+    cvt(to, from, ss->cvtQualifier, ss->cvtQualifier);
+}
+
+void ThreadContext::handle_rcp(StatementContext::RCP *ss) {
+    // op0
+    void *to = getOperandAddr(ss->rcpOp[0], ss->rcpQualifier);
+
+    // op1
+    void *op = getOperandAddr(ss->rcpOp[1], ss->rcpQualifier);
+
+    // exe rcp
+    rcp(to, op, ss->rcpQualifier);
+}
+
+
+void ThreadContext::handle_atom(StatementContext::ATOM *ss) {
+    /* Not implemented yet */
+}
+
+void ThreadContext::handle_neg(StatementContext::NEG *ss) {
+    // op0
+    void *to = getOperandAddr(ss->negOp[0], ss->negQualifier);
+
+    // op1
+    void *op = getOperandAddr(ss->negOp[1], ss->negQualifier);
+
+    // exe neg
+    neg(to, op, ss->negQualifier);
+}
+
+void ThreadContext::handle_sqrt(StatementContext::SQRT *ss) {
+    // op0
+    void *to = getOperandAddr(ss->sqrtOp[0], ss->sqrtQualifier);
+
+    // op1
+    void *op = getOperandAddr(ss->sqrtOp[1], ss->sqrtQualifier);
+
+    // exe sqrt
+    sqrt(to, op, ss->sqrtQualifier);
+}
+
+void ThreadContext::handle_abs(StatementContext::ABS *ss) {
+    // op0
+    void *to = getOperandAddr(ss->absOp[0], ss->absQualifier);
+
+    // op1
+    void *op = getOperandAddr(ss->absOp[1], ss->absQualifier);
+
+    // exe abs
+    abs(to, op, ss->absQualifier);
+}
+
+void ThreadContext::handle_min(StatementContext::MIN *ss) {
+    // op0
+    void *to = getOperandAddr(ss->minOp[0], ss->minQualifier);
+
+    // op1
+    void *op1 = getOperandAddr(ss->minOp[1], ss->minQualifier);
+
+    // op2
+    void *op2 = getOperandAddr(ss->minOp[2], ss->minQualifier);
+
+    // exe min
+    min(to, op1, op2, ss->minQualifier);
+}
+
+void ThreadContext::handle_max(StatementContext::MAX *ss) {
+    // op0
+    void *to = getOperandAddr(ss->maxOp[0], ss->maxQualifier);
+
+    // op1
+    void *op1 = getOperandAddr(ss->maxOp[1], ss->maxQualifier);
+
+    // op2
+    void *op2 = getOperandAddr(ss->maxOp[2], ss->maxQualifier);
+
+    // exe max
+    max(to, op1, op2, ss->maxQualifier);
+}
+
+void ThreadContext::handle_mad(StatementContext::MAD *ss) {
+    // op0
+    void *to = getOperandAddr(ss->madOp[0], ss->madQualifier);
+
+    // op1
+    void *op1 = getOperandAddr(ss->madOp[1], ss->madQualifier);
+
+    // op2
+    void *op2 = getOperandAddr(ss->madOp[2], ss->madQualifier);
+
+    // op3
+    void *op3 = getOperandAddr(ss->madOp[3], ss->madQualifier);
+
+    // exe mad
+    mad(to, op1, op2, op3, ss->madQualifier);
+}
+
+void ThreadContext::handle_fma(StatementContext::FMA *ss) {
+    // op0
+    void *to = getOperandAddr(ss->fmaOp[0], ss->fmaQualifier);
+
+    // op1
+    void *op1 = getOperandAddr(ss->fmaOp[1], ss->fmaQualifier);
+
+    // op2
+    void *op2 = getOperandAddr(ss->fmaOp[2], ss->fmaQualifier);
+
+    // op3
+    void *op3 = getOperandAddr(ss->fmaOp[3], ss->fmaQualifier);
+
+    // exe fma
+    fma(to, op1, op2, op3, ss->fmaQualifier);
+}
+
 // Basic implementation for other handlers - they'll be fleshed out as needed
+
 void ThreadContext::handle_at(
     StatementContext::AT *ss) { /* Not implemented yet */ }
 void ThreadContext::handle_pragma(
     StatementContext::PRAGMA *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_rcp(
-    StatementContext::RCP *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_ld(
-    StatementContext::LD *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_mov(
-    StatementContext::MOV *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_setp(
-    StatementContext::SETP *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_cvta(
-    StatementContext::CVTA *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_cvt(
-    StatementContext::CVT *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_mul(
-    StatementContext::MUL *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_div(
-    StatementContext::DIV *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_sub(
-    StatementContext::SUB *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_add(
-    StatementContext::ADD *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_shl(
-    StatementContext::SHL *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_shr(
-    StatementContext::SHR *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_max(
-    StatementContext::MAX *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_min(
-    StatementContext::MIN *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_and(
-    StatementContext::AND *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_or(
-    StatementContext::OR *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_st(
-    StatementContext::ST *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_selp(
-    StatementContext::SELP *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_mad(
-    StatementContext::MAD *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_fma(
-    StatementContext::FMA *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_neg(
-    StatementContext::NEG *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_not(
-    StatementContext::NOT *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_sqrt(
-    StatementContext::SQRT *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_cos(
-    StatementContext::COS *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_lg2(
-    StatementContext::LG2 *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_ex2(
-    StatementContext::EX2 *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_atom(
-    StatementContext::ATOM *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_xor(
-    StatementContext::XOR *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_abs(
-    StatementContext::ABS *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_sin(
-    StatementContext::SIN *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_rem(
-    StatementContext::REM *ss) { /* Not implemented yet */ }
-void ThreadContext::handle_rsqrt(
-    StatementContext::RSQRT *ss) { /* Not implemented yet */ }
+void ThreadContext::handle_ld(StatementContext::LD *ss) {
+    // process op0
+    void *to = getOperandAddr(ss->ldOp[0], ss->ldQualifier);
+
+    // process op1
+    void *from = getOperandAddr(ss->ldOp[1], ss->ldQualifier);
+
+    // exe ld
+    if (QvecHasQ(ss->ldQualifier, Qualifier::Q_V2)) {
+        uint64_t step = getBytes(ss->ldQualifier);
+        auto vecAddr = vec.front()->vec;
+        vec.pop();
+        assert(vecAddr.size() == 2);
+        for (int i = 0; i < 2; i++) {
+            to = vecAddr[i];
+            mov((void *)((uint64_t)from + i * step), to, ss->ldQualifier);
+        }
+    } else if (QvecHasQ(ss->ldQualifier, Qualifier::Q_V4)) {
+        uint64_t step = getBytes(ss->ldQualifier);
+        auto vecAddr = vec.front()->vec;
+        vec.pop();
+        assert(vecAddr.size() == 4);
+        for (int i = 0; i < 4; i++) {
+            to = vecAddr[i];
+            mov((void *)((uint64_t)from + i * step), to, ss->ldQualifier);
+        }
+    } else {
+        mov(from, to, ss->ldQualifier);
+    }
+}
+
+void ThreadContext::handle_mov(StatementContext::MOV *ss) {
+    // op0
+    void *to = getOperandAddr(ss->movOp[0], ss->movQualifier);
+
+    // op1
+    void *from = getOperandAddr(ss->movOp[1], ss->movQualifier);
+
+    // exe mov
+    mov(from, to, ss->movQualifier);
+}
+
+void ThreadContext::handle_add(StatementContext::ADD *ss) {
+    // op0
+    void *to = getOperandAddr(ss->addOp[0], ss->addQualifier);
+
+    // op1
+    void *op1 = getOperandAddr(ss->addOp[1], ss->addQualifier);
+
+    // op2
+    void *op2 = getOperandAddr(ss->addOp[2], ss->addQualifier);
+
+    // exe add
+    add(to, op1, op2, ss->addQualifier);
+}
+
+void ThreadContext::handle_sub(StatementContext::SUB *ss) {
+    // op0
+    void *to = getOperandAddr(ss->subOp[0], ss->subQualifier);
+
+    // op1
+    void *op1 = getOperandAddr(ss->subOp[1], ss->subQualifier);
+
+    // op2
+    void *op2 = getOperandAddr(ss->subOp[2], ss->subQualifier);
+
+    // exe sub
+    sub(to, op1, op2, ss->subQualifier);
+}
+
+void ThreadContext::handle_mul(StatementContext::MUL *ss) {
+    // op0
+    void *to = getOperandAddr(ss->mulOp[0], ss->mulQualifier);
+
+    // op1
+    void *op1 = getOperandAddr(ss->mulOp[1], ss->mulQualifier);
+
+    // op2
+    void *op2 = getOperandAddr(ss->mulOp[2], ss->mulQualifier);
+
+    // exe mul
+    mul(to, op1, op2, ss->mulQualifier);
+}
+
+void ThreadContext::handle_div(StatementContext::DIV *ss) {
+    // op0
+    void *to = getOperandAddr(ss->divOp[0], ss->divQualifier);
+
+    // op1
+    void *op1 = getOperandAddr(ss->divOp[1], ss->divQualifier);
+
+    // op2
+    void *op2 = getOperandAddr(ss->divOp[2], ss->divQualifier);
+
+    // exe div
+    div(to, op1, op2, ss->divQualifier);
+}
+
+void ThreadContext::handle_and(StatementContext::AND *ss) {
+    // op0
+    void *to = getOperandAddr(ss->andOp[0], ss->andQualifier);
+
+    // op1
+    void *op1 = getOperandAddr(ss->andOp[1], ss->andQualifier);
+
+    // op2
+    void *op2 = getOperandAddr(ss->andOp[2], ss->andQualifier);
+
+    // exe and
+    And(to, op1, op2, ss->andQualifier);
+}
+
+void ThreadContext::handle_or(StatementContext::OR *ss) {
+    // op0
+    void *to = getOperandAddr(ss->orOp[0], ss->orQualifier);
+
+    // op1
+    void *op1 = getOperandAddr(ss->orOp[1], ss->orQualifier);
+
+    // op2
+    void *op2 = getOperandAddr(ss->orOp[2], ss->orQualifier);
+
+    // exe or
+    Or(to, op1, op2, ss->orQualifier);
+}
+
+void ThreadContext::handle_xor(StatementContext::XOR *ss) {
+    // op0
+    void *to = getOperandAddr(ss->xorOp[0], ss->xorQualifier);
+
+    // op1
+    void *op1 = getOperandAddr(ss->xorOp[1], ss->xorQualifier);
+
+    // op2
+    void *op2 = getOperandAddr(ss->xorOp[2], ss->xorQualifier);
+
+    // exe xor
+    Xor(to, op1, op2, ss->xorQualifier);
+}
+
+void ThreadContext::handle_shl(StatementContext::SHL *ss) {
+    // op0
+    void *to = getOperandAddr(ss->shlOp[0], ss->shlQualifier);
+
+    // op1
+    void *op1 = getOperandAddr(ss->shlOp[1], ss->shlQualifier);
+
+    // op2
+    std::vector<Qualifier> tq;
+    tq.push_back(Qualifier::Q_U32);
+    void *op2 = getOperandAddr(ss->shlOp[2], tq);
+
+    // exe shl
+    shl(to, op1, op2, ss->shlQualifier);
+}
+
+void ThreadContext::handle_shr(StatementContext::SHR *ss) {
+    // op0
+    void *to = getOperandAddr(ss->shrOp[0], ss->shrQualifier);
+
+    // op1
+    void *op1 = getOperandAddr(ss->shrOp[1], ss->shrQualifier);
+
+    // op2
+    std::vector<Qualifier> tq;
+    tq.push_back(Qualifier::Q_U32);
+    void *op2 = getOperandAddr(ss->shrOp[2], tq);
+
+    // exe shr
+    shr(to, op1, op2, ss->shrQualifier);
+}
+
+void ThreadContext::handle_st(StatementContext::ST *ss) {
+    // op0
+    void *to = getOperandAddr(ss->stOp[0], ss->stQualifier);
+
+    // op1
+    void *from = getOperandAddr(ss->stOp[1], ss->stQualifier);
+
+    // exe st
+    if (QvecHasQ(ss->stQualifier, Qualifier::Q_V4)) {
+        uint64_t step = getBytes(ss->stQualifier);
+        auto vecAddr = vec.front()->vec;
+        vec.pop();
+        assert(vecAddr.size() == 4);
+        for (int i = 0; i < 4; i++) {
+            from = vecAddr[i];
+            mov(from, (void *)((uint64_t)to + i * step), ss->stQualifier);
+        }
+    } else if (QvecHasQ(ss->stQualifier, Qualifier::Q_V2)) {
+        uint64_t step = getBytes(ss->stQualifier);
+        auto vecAddr = vec.front()->vec;
+        vec.pop();
+        assert(vecAddr.size() == 2);
+        for (int i = 0; i < 2; i++) {
+            from = vecAddr[i];
+            mov(from, (void *)((uint64_t)to + i * step), ss->stQualifier);
+        }
+    } else {
+        mov(from, to, ss->stQualifier);
+    }
+}
+
+void ThreadContext::handle_selp(StatementContext::SELP *ss) {
+    // op0
+    void *to = getOperandAddr(ss->selpOp[0], ss->selpQualifier);
+
+    // op1
+    void *op0 = getOperandAddr(ss->selpOp[1], ss->selpQualifier);
+
+    // op2
+    void *op1 = getOperandAddr(ss->selpOp[2], ss->selpQualifier);
+
+    // op3
+    void *pred = getOperandAddr(ss->selpOp[3], ss->selpQualifier);
+
+    // exe selp
+    this->selp(to, op0, op1, pred, ss->selpQualifier);
+}
+
+void ThreadContext::handle_sin(StatementContext::SIN *ss) {
+    // op0
+    void *to = getOperandAddr(ss->sinOp[0], ss->sinQualifier);
+
+    // op1
+    void *op = getOperandAddr(ss->sinOp[1], ss->sinQualifier);
+
+    // exe sin
+    this->m_sin(to, op, ss->sinQualifier);
+}
+
+void ThreadContext::handle_cos(StatementContext::COS *ss) {
+    // op0
+    void *to = getOperandAddr(ss->cosOp[0], ss->cosQualifier);
+
+    // op1
+    void *op = getOperandAddr(ss->cosOp[1], ss->cosQualifier);
+
+    // exe cos
+    this->m_cos(to, op, ss->cosQualifier);
+}
+
+void ThreadContext::handle_lg2(StatementContext::LG2 *ss) {
+    // op0
+    void *to = getOperandAddr(ss->lg2Op[0], ss->lg2Qualifier);
+
+    // op1
+    void *op = getOperandAddr(ss->lg2Op[1], ss->lg2Qualifier);
+
+    // exe lg2
+    this->m_lg2(to, op, ss->lg2Qualifier);
+}
+
+void ThreadContext::handle_ex2(StatementContext::EX2 *ss) {
+    // op0
+    void *to = getOperandAddr(ss->ex2Op[0], ss->ex2Qualifier);
+
+    // op1
+    void *op = getOperandAddr(ss->ex2Op[1], ss->ex2Qualifier);
+
+    // exe ex2
+    this->m_ex2(to, op, ss->ex2Qualifier);
+}
+
+void ThreadContext::handle_rem(StatementContext::REM *ss) {
+    // op0
+    void *to = getOperandAddr(ss->remOp[0], ss->remQualifier);
+
+    // op1
+    void *op1 = getOperandAddr(ss->remOp[1], ss->remQualifier);
+
+    // op2
+    void *op2 = getOperandAddr(ss->remOp[2], ss->remQualifier);
+
+    // exe rem
+    this->m_rem(to, op1, op2, ss->remQualifier);
+}
+
+void ThreadContext::handle_cvta(StatementContext::CVTA *ss) {
+    // op0
+    void *to = getOperandAddr(ss->cvtaOp[0], ss->cvtaQualifier);
+
+    // op1
+    void *op = getOperandAddr(ss->cvtaOp[1], ss->cvtaQualifier);
+
+    // exe cvta
+    mov(op, to, ss->cvtaQualifier);
+}
+
+void ThreadContext::handle_not(StatementContext::NOT *ss) {
+    /* Empty implementation to avoid linker error */
+}
+
+void ThreadContext::handle_rsqrt(StatementContext::RSQRT *ss) {
+    // op0
+    void *to = getOperandAddr(ss->rsqrtOp[0], ss->rsqrtQualifier);
+
+    // op1
+    void *op = getOperandAddr(ss->rsqrtOp[1], ss->rsqrtQualifier);
+
+    // exe rsqrt
+    this->m_rsqrt(to, op, ss->rsqrtQualifier);
+}
+
 void ThreadContext::handle_wmma(
     StatementContext::WMMA *ss) { /* Not implemented yet */ }
+
+// Comparison operator helper
+Qualifier ThreadContext::getCMPOP(std::vector<Qualifier> &q) {
+    for (auto e : q) {
+        switch (e) {
+        case Qualifier::Q_EQ:
+        case Qualifier::Q_NE:
+        case Qualifier::Q_LT:
+        case Qualifier::Q_LE:
+        case Qualifier::Q_GT:
+        case Qualifier::Q_GE:
+        case Qualifier::Q_LO:
+        case Qualifier::Q_HI:
+        case Qualifier::Q_LTU:
+        case Qualifier::Q_LEU:
+        case Qualifier::Q_GEU:
+        case Qualifier::Q_NEU:
+        case Qualifier::Q_GTU:
+            return e;
+        default:
+            continue;
+        }
+    }
+    return Qualifier::Q_EQ; // Default comparison operator
+}
+
+// Float vs Integer type detection
+ThreadContext::DTYPE ThreadContext::getDType(std::vector<Qualifier> &q) {
+    for (auto e : q) {
+        switch (e) {
+        case Qualifier::Q_F64:
+        case Qualifier::Q_F32:
+        case Qualifier::Q_F16:
+        case Qualifier::Q_F8:
+            return DTYPE::DFLOAT;
+        case Qualifier::Q_S64:
+        case Qualifier::Q_B64:
+        case Qualifier::Q_U64:
+        case Qualifier::Q_S32:
+        case Qualifier::Q_B32:
+        case Qualifier::Q_U32:
+        case Qualifier::Q_S16:
+        case Qualifier::Q_B16:
+        case Qualifier::Q_U16:
+        case Qualifier::Q_S8:
+        case Qualifier::Q_B8:
+        case Qualifier::Q_U8:
+        case Qualifier::Q_PRED:
+            return DTYPE::DINT;
+        default:
+            continue;
+        }
+    }
+    return DTYPE::DINT; // Default to integer
+}
+
+ThreadContext::DTYPE ThreadContext::getDType(Qualifier q) {
+    switch (q) {
+    case Qualifier::Q_F64:
+    case Qualifier::Q_F32:
+    case Qualifier::Q_F16:
+    case Qualifier::Q_F8:
+        return DTYPE::DFLOAT;
+    case Qualifier::Q_S64:
+    case Qualifier::Q_B64:
+    case Qualifier::Q_U64:
+    case Qualifier::Q_S32:
+    case Qualifier::Q_B32:
+    case Qualifier::Q_U32:
+    case Qualifier::Q_S16:
+    case Qualifier::Q_B16:
+    case Qualifier::Q_U16:
+    case Qualifier::Q_S8:
+    case Qualifier::Q_B8:
+    case Qualifier::Q_U8:
+        return DTYPE::DINT;
+    default:
+        return DTYPE::DNONE;
+    }
+}
+
+bool ThreadContext::Signed(Qualifier q) {
+    switch (q) {
+    case Qualifier::Q_S64:
+    case Qualifier::Q_S32:
+    case Qualifier::Q_S16:
+    case Qualifier::Q_S8:
+        return true;
+    default:
+        return false;
+    }
+}
+
+// Template implementations for various operations
+
+template <typename T> void _setp_eq(void *to, void *op1, void *op2) {
+    *(uint8_t *)to = *(T *)op1 == *(T *)op2;
+}
+
+template <typename T> void _setp_ne(void *to, void *op1, void *op2, bool mask) {
+    if (*(T *)op1 != *(T *)op1 || *(T *)op2 != *(T *)op2)
+        *(uint8_t *)to = mask;
+    else
+        *(uint8_t *)to = *(T *)op1 != *(T *)op2;
+}
+
+template <typename T> void _setp_lt(void *to, void *op1, void *op2, bool mask) {
+    if (*(T *)op1 != *(T *)op1 || *(T *)op2 != *(T *)op2)
+        *(uint8_t *)to = mask;
+    else
+        *(uint8_t *)to = *(T *)op1 < *(T *)op2;
+}
+
+template <typename T> void _setp_le(void *to, void *op1, void *op2, bool mask) {
+    if (*(T *)op1 != *(T *)op1 || *(T *)op2 != *(T *)op2)
+        *(uint8_t *)to = mask;
+    else
+        *(uint8_t *)to = *(T *)op1 <= *(T *)op2;
+}
+
+template <typename T> void _setp_ge(void *to, void *op1, void *op2, bool mask) {
+    if (*(T *)op1 != *(T *)op1 || *(T *)op2 != *(T *)op2)
+        *(uint8_t *)to = mask;
+    else
+        *(uint8_t *)to = *(T *)op1 >= *(T *)op2;
+}
+
+template <typename T> void _setp_gt(void *to, void *op1, void *op2, bool mask) {
+    if (*(T *)op1 != *(T *)op1 || *(T *)op2 != *(T *)op2)
+        *(uint8_t *)to = mask;
+    else
+        *(uint8_t *)to = *(T *)op1 > *(T *)op2;
+}
+
+
+template <typename T> void _setp(void *to, void *op1, void *op2, Qualifier cmpOp) {
+    bool res = false;
+
+    switch (cmpOp) {
+    case Qualifier::Q_EQ:
+        res = *(T *)op1 == *(T *)op2;
+        break;
+    case Qualifier::Q_NE:
+        res = *(T *)op1 != *(T *)op2;
+        break;
+    case Qualifier::Q_LT:
+        res = *(T *)op1 < *(T *)op2;
+        break;
+    case Qualifier::Q_LE:
+        res = *(T *)op1 <= *(T *)op2;
+        break;
+    case Qualifier::Q_GT:
+        res = *(T *)op1 > *(T *)op2;
+        break;
+    case Qualifier::Q_GE:
+        res = *(T *)op1 >= *(T *)op2;
+        break;
+    default:
+        assert(0);
+    }
+
+    *(bool *)to = res;
+}
+
+void ThreadContext::setp(void *to, void *op1, void *op2, Qualifier cmpOp,
+                         std::vector<Qualifier> &q) {
+    int len = getBytes(q);
+    DTYPE dtype = getDType(q);
+    switch (len) {
+    case 1: {
+        assert(dtype == DTYPE::DINT);
+        _setp<uint8_t>(to, op1, op2, cmpOp);
+        return;
+    }
+    case 2: {
+        assert(dtype == DTYPE::DINT);
+        _setp<uint16_t>(to, op1, op2, cmpOp);
+        return;
+    }
+    case 4: {
+        switch (dtype) {
+        case DTYPE::DINT:
+            _setp<uint32_t>(to, op1, op2, cmpOp);
+            return;
+        case DTYPE::DFLOAT:
+            _setp<float>(to, op1, op2, cmpOp);
+            return;
+        default:
+            assert(0);
+        }
+        return;
+    }
+    case 8: {
+        switch (dtype) {
+        case DTYPE::DINT:
+            _setp<uint64_t>(to, op1, op2, cmpOp);
+            return;
+        case DTYPE::DFLOAT:
+            _setp<double>(to, op1, op2, cmpOp);
+            return;
+        default:
+            assert(0);
+        }
+    }
+    default:
+        assert(0);
+    }
+}
+
+void ThreadContext::cvt(void *to, void *from, std::vector<Qualifier> &toQ,
+                        std::vector<Qualifier> &fromQ) {
+    int toLen = getBytes(toQ);
+    int fromLen = getBytes(fromQ);
+    DTYPE toDtype = getDType(toQ);
+    DTYPE fromDtype = getDType(fromQ);
+
+    // Same size and type conversion (just copy)
+    if (toLen == fromLen && toDtype == fromDtype) {
+        mov(from, to, toQ);
+        return;
+    }
+
+    // Integer to integer conversion
+    if (toDtype == DTYPE::DINT && fromDtype == DTYPE::DINT) {
+        switch (toLen) {
+        case 1:
+            switch (fromLen) {
+            case 1:
+                *(uint8_t *)to = *(uint8_t *)from;
+                break;
+            case 2:
+                *(uint8_t *)to = *(uint16_t *)from;
+                break;
+            case 4:
+                *(uint8_t *)to = *(uint32_t *)from;
+                break;
+            case 8:
+                *(uint8_t *)to = *(uint64_t *)from;
+                break;
+            default:
+                assert(0);
+            }
+            break;
+        case 2:
+            switch (fromLen) {
+            case 1:
+                *(uint16_t *)to = *(uint8_t *)from;
+                break;
+            case 2:
+                *(uint16_t *)to = *(uint16_t *)from;
+                break;
+            case 4:
+                *(uint16_t *)to = *(uint32_t *)from;
+                break;
+            case 8:
+                *(uint16_t *)to = *(uint64_t *)from;
+                break;
+            default:
+                assert(0);
+            }
+            break;
+        case 4:
+            switch (fromLen) {
+            case 1:
+                *(uint32_t *)to = *(uint8_t *)from;
+                break;
+            case 2:
+                *(uint32_t *)to = *(uint16_t *)from;
+                break;
+            case 4:
+                *(uint32_t *)to = *(uint32_t *)from;
+                break;
+            case 8:
+                *(uint32_t *)to = *(uint64_t *)from;
+                break;
+            default:
+                assert(0);
+            }
+            break;
+        case 8:
+            switch (fromLen) {
+            case 1:
+                *(uint64_t *)to = *(uint8_t *)from;
+                break;
+            case 2:
+                *(uint64_t *)to = *(uint16_t *)from;
+                break;
+            case 4:
+                *(uint64_t *)to = *(uint32_t *)from;
+                break;
+            case 8:
+                *(uint64_t *)to = *(uint64_t *)from;
+                break;
+            default:
+                assert(0);
+            }
+            break;
+        default:
+            assert(0);
+        }
+        return;
+    }
+
+    // Float to float conversion
+    if (toDtype == DTYPE::DFLOAT && fromDtype == DTYPE::DFLOAT) {
+        switch (toLen) {
+        case 4:
+            switch (fromLen) {
+            case 4:
+                *(float *)to = *(float *)from;
+                break;
+            case 8:
+                *(float *)to = *(double *)from;
+                break;
+            default:
+                assert(0);
+            }
+            break;
+        case 8:
+            switch (fromLen) {
+            case 4:
+                *(double *)to = *(float *)from;
+                break;
+            case 8:
+                *(double *)to = *(double *)from;
+                break;
+            default:
+                assert(0);
+            }
+            break;
+        default:
+            assert(0);
+        }
+        return;
+    }
+
+    // Int to float conversion
+    if (toDtype == DTYPE::DFLOAT && fromDtype == DTYPE::DINT) {
+        switch (toLen) {
+        case 4:
+            switch (fromLen) {
+            case 1:
+                *(float *)to = *(uint8_t *)from;
+                break;
+            case 2:
+                *(float *)to = *(uint16_t *)from;
+                break;
+            case 4:
+                *(float *)to = *(uint32_t *)from;
+                break;
+            case 8:
+                *(float *)to = *(uint64_t *)from;
+                break;
+            default:
+                assert(0);
+            }
+            break;
+        case 8:
+            switch (fromLen) {
+            case 1:
+                *(double *)to = *(uint8_t *)from;
+                break;
+            case 2:
+                *(double *)to = *(uint16_t *)from;
+                break;
+            case 4:
+                *(double *)to = *(uint32_t *)from;
+                break;
+            case 8:
+                *(double *)to = *(uint64_t *)from;
+                break;
+            default:
+                assert(0);
+            }
+            break;
+        default:
+            assert(0);
+        }
+        return;
+    }
+
+    // Float to int conversion
+    if (toDtype == DTYPE::DINT && fromDtype == DTYPE::DFLOAT) {
+        switch (toLen) {
+        case 1:
+            switch (fromLen) {
+            case 4:
+                *(uint8_t *)to = *(float *)from;
+                break;
+            case 8:
+                *(uint8_t *)to = *(double *)from;
+                break;
+            default:
+                assert(0);
+            }
+            break;
+        case 2:
+            switch (fromLen) {
+            case 4:
+                *(uint16_t *)to = *(float *)from;
+                break;
+            case 8:
+                *(uint16_t *)to = *(double *)from;
+                break;
+            default:
+                assert(0);
+            }
+            break;
+        case 4:
+            switch (fromLen) {
+            case 4:
+                *(uint32_t *)to = *(float *)from;
+                break;
+            case 8:
+                *(uint32_t *)to = *(double *)from;
+                break;
+            default:
+                assert(0);
+            }
+            break;
+        case 8:
+            switch (fromLen) {
+            case 4:
+                *(uint64_t *)to = *(float *)from;
+                break;
+            case 8:
+                *(uint64_t *)to = *(double *)from;
+                break;
+            default:
+                assert(0);
+            }
+            break;
+        default:
+            assert(0);
+        }
+        return;
+    }
+
+    assert(0);
+}
+
+template <typename T> void _max(void *to, void *op1, void *op2) {
+    *(T *)to = std::max(*(T *)op1, *(T *)op2);
+}
+
+void ThreadContext::max(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+    int len = getBytes(q);
+    DTYPE dtype = getDType(q);
+    switch (len) {
+    case 1: {
+        if (dtype == DTYPE::DINT)
+            _max<uint8_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 2: {
+        if (dtype == DTYPE::DINT)
+            _max<uint16_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 4: {
+        switch (dtype) {
+        case DTYPE::DINT:
+            _max<uint32_t>(to, op1, op2);
+            return;
+        case DTYPE::DFLOAT:
+            _max<float>(to, op1, op2);
+            return;
+        default:
+            assert(0);
+        }
+        return;
+    }
+    case 8: {
+        switch (dtype) {
+        case DTYPE::DINT:
+            _max<uint64_t>(to, op1, op2);
+            return;
+        case DTYPE::DFLOAT:
+            _max<double>(to, op1, op2);
+            return;
+        default:
+            assert(0);
+        }
+    }
+    default:
+        assert(0);
+    }
+}
+
+template <typename T> void _min(void *to, void *op1, void *op2) {
+    *(T *)to = std::min(*(T *)op1, *(T *)op2);
+}
+
+void ThreadContext::min(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+    int len = getBytes(q);
+    DTYPE dtype = getDType(q);
+    switch (len) {
+    case 1: {
+        if (dtype == DTYPE::DINT)
+            _min<uint8_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 2: {
+        if (dtype == DTYPE::DINT)
+            _min<uint16_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 4: {
+        switch (dtype) {
+        case DTYPE::DINT:
+            _min<uint32_t>(to, op1, op2);
+            return;
+        case DTYPE::DFLOAT:
+            _min<float>(to, op1, op2);
+            return;
+        default:
+            assert(0);
+        }
+        return;
+    }
+    case 8: {
+        switch (dtype) {
+        case DTYPE::DINT:
+            _min<uint64_t>(to, op1, op2);
+            return;
+        case DTYPE::DFLOAT:
+            _min<double>(to, op1, op2);
+            return;
+        default:
+            assert(0);
+        }
+    }
+    default:
+        assert(0);
+    }
+}
+
+template <typename T> void _mad(void *to, void *op1, void *op2, void *op3) {
+    *(T *)to = (*(T *)op1) * (*(T *)op2) + (*(T *)op3);
+}
+
+void ThreadContext::mad(void *to, void *op1, void *op2, void *op3,
+                        std::vector<Qualifier> &q) {
+    int len = getBytes(q);
+    DTYPE dtype = getDType(q);
+    switch (len) {
+    case 1: {
+        if (dtype == DTYPE::DINT)
+            _mad<uint8_t>(to, op1, op2, op3);
+        else
+            assert(0);
+        return;
+    }
+    case 2: {
+        if (dtype == DTYPE::DINT)
+            _mad<uint16_t>(to, op1, op2, op3);
+        else
+            assert(0);
+        return;
+    }
+    case 4: {
+        switch (dtype) {
+        case DTYPE::DINT:
+            _mad<uint32_t>(to, op1, op2, op3);
+            return;
+        case DTYPE::DFLOAT:
+            _mad<float>(to, op1, op2, op3);
+            return;
+        default:
+            assert(0);
+        }
+        return;
+    }
+    case 8: {
+        switch (dtype) {
+        case DTYPE::DINT:
+            _mad<uint64_t>(to, op1, op2, op3);
+            return;
+        case DTYPE::DFLOAT:
+            _mad<double>(to, op1, op2, op3);
+            return;
+        default:
+            assert(0);
+        }
+    }
+    default:
+        assert(0);
+    }
+}
+
+template <typename T> void _fma(void *to, void *op1, void *op2, void *op3) {
+    *(T *)to = std::fma(*(T *)op1, *(T *)op2, *(T *)op3);
+}
+
+void ThreadContext::fma(void *to, void *op1, void *op2, void *op3,
+                        std::vector<Qualifier> &q) {
+    int len = getBytes(q);
+    DTYPE dtype = getDType(q);
+    switch (len) {
+    case 4: {
+        if (dtype == DTYPE::DFLOAT)
+            _fma<float>(to, op1, op2, op3);
+        else
+            assert(0);
+        return;
+    }
+    case 8: {
+        if (dtype == DTYPE::DFLOAT)
+            _fma<double>(to, op1, op2, op3);
+        else
+            assert(0);
+        return;
+    }
+    default:
+        assert(0);
+    }
+}
+
+template <typename T> void _neg(void *to, void *op) {
+    *(T *)to = -(*(T *)op);
+}
+
+void ThreadContext::neg(void *to, void *op, std::vector<Qualifier> &q) {
+    int len = getBytes(q);
+    DTYPE dtype = getDType(q);
+    switch (len) {
+    case 1: {
+        if (dtype == DTYPE::DINT)
+            _neg<uint8_t>(to, op);
+        else
+            assert(0);
+        return;
+    }
+    case 2: {
+        if (dtype == DTYPE::DINT)
+            _neg<uint16_t>(to, op);
+        else
+            assert(0);
+        return;
+    }
+    case 4: {
+        switch (dtype) {
+        case DTYPE::DINT:
+            _neg<uint32_t>(to, op);
+            return;
+        case DTYPE::DFLOAT:
+            _neg<float>(to, op);
+            return;
+        default:
+            assert(0);
+        }
+        return;
+    }
+    case 8: {
+        switch (dtype) {
+        case DTYPE::DINT:
+            _neg<uint64_t>(to, op);
+            return;
+        case DTYPE::DFLOAT:
+            _neg<double>(to, op);
+            return;
+        default:
+            assert(0);
+        }
+    }
+    default:
+        assert(0);
+    }
+}
+
+template <typename T> void _sqrt(void *to, void *op) {
+    *(T *)to = std::sqrt(*(T *)op);
+}
+
+void ThreadContext::sqrt(void *to, void *op, std::vector<Qualifier> &q) {
+    int len = getBytes(q);
+    DTYPE dtype = getDType(q);
+    switch (len) {
+    case 4: {
+        if (dtype == DTYPE::DFLOAT)
+            _sqrt<float>(to, op);
+        else
+            assert(0);
+        return;
+    }
+    case 8: {
+        if (dtype == DTYPE::DFLOAT)
+            _sqrt<double>(to, op);
+        else
+            assert(0);
+        return;
+    }
+    default:
+        assert(0);
+    }
+}
+
+void ThreadContext::atom(void *to, void *op, std::vector<Qualifier> &q) {
+    // TODO: Implement atomic operations
+    /* Not implemented yet */
+}
+
+template <typename T> void _abs(void *to, void *op) {
+    if constexpr (std::is_unsigned_v<T>) {
+        *(T *)to = *(T *)op;
+    } else {
+        *(T *)to = std::abs(*(T *)op);
+    }
+}
+
+void ThreadContext::abs(void *to, void *op, std::vector<Qualifier> &q) {
+    int len = getBytes(q);
+    DTYPE dtype = getDType(q);
+    switch (len) {
+    case 1: {
+        if (dtype == DTYPE::DINT)
+            _abs<uint8_t>(to, op);
+        else
+            assert(0);
+        return;
+    }
+    case 2: {
+        if (dtype == DTYPE::DINT)
+            _abs<uint16_t>(to, op);
+        else
+            assert(0);
+        return;
+    }
+    case 4: {
+        switch (dtype) {
+        case DTYPE::DINT:
+            _abs<uint32_t>(to, op);
+            return;
+        case DTYPE::DFLOAT:
+            _abs<float>(to, op);
+            return;
+        default:
+            assert(0);
+        }
+        return;
+    }
+    case 8: {
+        switch (dtype) {
+        case DTYPE::DINT:
+            _abs<uint64_t>(to, op);
+            return;
+        case DTYPE::DFLOAT:
+            _abs<double>(to, op);
+            return;
+        default:
+            assert(0);
+        }
+    }
+    default:
+        assert(0);
+    }
+}
+
+template <typename T> void _rcp(void *to, void *from) {
+    *(T *)to = 1.0 / *(T *)from;
+}
+
+void ThreadContext::rcp(void *to, void *from, std::vector<Qualifier> &q) {
+    int len = getBytes(q);
+    DTYPE dtype = getDType(q);
+    
+    switch (len) {
+    case 4:
+        if (dtype == DTYPE::DFLOAT) {
+            *(float *)to = 1.0f / *(float *)from;
+        } else {
+            assert(0);
+        }
+        break;
+    case 8:
+        if (dtype == DTYPE::DFLOAT) {
+            *(double *)to = 1.0 / *(double *)from;
+        } else {
+            assert(0);
+        }
+        break;
+    default:
+        assert(0);
+    }
+}
+
+template <typename T> void _sin(void *to, void *op) {
+    *(T *)to = std::sin(*(T *)op);
+}
+
+void ThreadContext::m_sin(void *to, void *op, std::vector<Qualifier> &q) {
+    DTYPE dtype = getDType(q);
+    int len = getBytes(q);
+    
+    switch (len) {
+    case 4:
+        _sin<float>(to, op);
+        break;
+    case 8:
+        _sin<double>(to, op);
+        break;
+    default:
+        assert(0);
+    }
+}
+
+template <typename T> void _cos(void *to, void *op) {
+    *(T *)to = std::cos(*(T *)op);
+}
+
+void ThreadContext::m_cos(void *to, void *op, std::vector<Qualifier> &q) {
+    DTYPE dtype = getDType(q);
+    int len = getBytes(q);
+    
+    switch (len) {
+    case 4:
+        _cos<float>(to, op);
+        break;
+    case 8:
+        _cos<double>(to, op);
+        break;
+    default:
+        assert(0);
+    }
+}
+
+template <typename T> void _lg2(void *to, void *op) {
+    *(T *)to = std::log2(*(T *)op);
+}
+
+void ThreadContext::m_lg2(void *to, void *op, std::vector<Qualifier> &q) {
+    DTYPE dtype = getDType(q);
+    int len = getBytes(q);
+    
+    switch (len) {
+    case 4:
+        _lg2<float>(to, op);
+        break;
+    case 8:
+        _lg2<double>(to, op);
+        break;
+    default:
+        assert(0);
+    }
+}
+
+template <typename T> void _ex2(void *to, void *op) {
+    *(T *)to = std::exp2(*(T *)op);
+}
+
+void ThreadContext::m_ex2(void *to, void *op, std::vector<Qualifier> &q) {
+    DTYPE dtype = getDType(q);
+    int len = getBytes(q);
+    
+    switch (len) {
+    case 4:
+        _ex2<float>(to, op);
+        break;
+    case 8:
+        _ex2<double>(to, op);
+        break;
+    default:
+        assert(0);
+    }
+}
+
+template <typename T> void _rem(void *to, void *op1, void *op2) {
+    *(T *)to = *(T *)op1 % *(T *)op2;
+}
+
+void ThreadContext::m_rem(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+    int len = getBytes(q);
+    Qualifier datatype = getDataType(q);
+    switch (len) {
+    case 1: {
+        if (Signed(datatype))
+            _rem<int8_t>(to, op1, op2);
+        else
+            _rem<uint8_t>(to, op1, op2);
+        return;
+    }
+    case 2: {
+        if (Signed(datatype))
+            _rem<int16_t>(to, op1, op2);
+        else
+            _rem<uint16_t>(to, op1, op2);
+        return;
+    }
+    case 4: {
+        if (Signed(datatype))
+            _rem<int32_t>(to, op1, op2);
+        else
+            _rem<uint32_t>(to, op1, op2);
+        return;
+    }
+    case 8: {
+        if (Signed(datatype))
+            _rem<int64_t>(to, op1, op2);
+        else
+            _rem<uint64_t>(to, op1, op2);
+        return;
+    }
+    default:
+        assert(0);
+    }
+}
+
+template <typename T> void _rsqrt(void *to, void *op) {
+    *(T *)to = 1.0 / std::sqrt(*(T *)op);
+}
+
+void ThreadContext::m_rsqrt(void *to, void *op, std::vector<Qualifier> &q) {
+    DTYPE dtype = getDType(q);
+    int len = getBytes(q);
+    
+    switch (len) {
+    case 4:
+        _rsqrt<float>(to, op);
+        break;
+    case 8:
+        _rsqrt<double>(to, op);
+        break;
+    default:
+        assert(0);
+    }
+}
+
+template <typename T> void _add(void *to, void *op1, void *op2) {
+    *(T *)to = (*(T *)op1) + (*(T *)op2);
+}
+
+void ThreadContext::add(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+    int len = getBytes(q);
+    DTYPE dtype = getDType(q);
+    switch (len) {
+    case 1: {
+        if (dtype == DTYPE::DINT)
+            _add<uint8_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 2: {
+        if (dtype == DTYPE::DINT)
+            _add<uint16_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 4: {
+        switch (dtype) {
+        case DTYPE::DINT:
+            _add<uint32_t>(to, op1, op2);
+            return;
+        case DTYPE::DFLOAT:
+            _add<float>(to, op1, op2);
+            return;
+        default:
+            assert(0);
+        }
+        return;
+    }
+    case 8: {
+        switch (dtype) {
+        case DTYPE::DINT:
+            _add<uint64_t>(to, op1, op2);
+            return;
+        case DTYPE::DFLOAT:
+            _add<double>(to, op1, op2);
+            return;
+        default:
+            assert(0);
+        }
+    }
+    default:
+        assert(0);
+    }
+}
+
+template <typename T> void _sub(void *to, void *op1, void *op2) {
+    *(T *)to = (*(T *)op1) - (*(T *)op2);
+}
+
+void ThreadContext::sub(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+    int len = getBytes(q);
+    DTYPE dtype = getDType(q);
+    switch (len) {
+    case 1: {
+        if (dtype == DTYPE::DINT)
+            _sub<uint8_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 2: {
+        if (dtype == DTYPE::DINT)
+            _sub<uint16_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 4: {
+        switch (dtype) {
+        case DTYPE::DINT:
+            _sub<uint32_t>(to, op1, op2);
+            return;
+        case DTYPE::DFLOAT:
+            _sub<float>(to, op1, op2);
+            return;
+        default:
+            assert(0);
+        }
+        return;
+    }
+    case 8: {
+        switch (dtype) {
+        case DTYPE::DINT:
+            _sub<uint64_t>(to, op1, op2);
+            return;
+        case DTYPE::DFLOAT:
+            _sub<double>(to, op1, op2);
+            return;
+        default:
+            assert(0);
+        }
+    }
+    default:
+        assert(0);
+    }
+}
+
+template <typename T> void _mul(void *to, void *op1, void *op2) {
+    *(T *)to = (*(T *)op1) * (*(T *)op2);
+}
+
+void ThreadContext::mul(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+    int len = getBytes(q);
+    DTYPE dtype = getDType(q);
+    switch (len) {
+    case 1: {
+        if (dtype == DTYPE::DINT)
+            _mul<uint8_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 2: {
+        if (dtype == DTYPE::DINT)
+            _mul<uint16_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 4: {
+        switch (dtype) {
+        case DTYPE::DINT:
+            _mul<uint32_t>(to, op1, op2);
+            return;
+        case DTYPE::DFLOAT:
+            _mul<float>(to, op1, op2);
+            return;
+        default:
+            assert(0);
+        }
+        return;
+    }
+    case 8: {
+        switch (dtype) {
+        case DTYPE::DINT:
+            _mul<uint64_t>(to, op1, op2);
+            return;
+        case DTYPE::DFLOAT:
+            _mul<double>(to, op1, op2);
+            return;
+        default:
+            assert(0);
+        }
+    }
+    default:
+        assert(0);
+    }
+}
+
+template <typename T> void _div(void *to, void *op1, void *op2) {
+    *(T *)to = (*(T *)op1) / (*(T *)op2);
+}
+
+void ThreadContext::div(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+    int len = getBytes(q);
+    DTYPE dtype = getDType(q);
+    switch (len) {
+    case 1: {
+        if (dtype == DTYPE::DINT)
+            _div<uint8_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 2: {
+        if (dtype == DTYPE::DINT)
+            _div<uint16_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 4: {
+        switch (dtype) {
+        case DTYPE::DINT:
+            _div<uint32_t>(to, op1, op2);
+            return;
+        case DTYPE::DFLOAT:
+            _div<float>(to, op1, op2);
+            return;
+        default:
+            assert(0);
+        }
+        return;
+    }
+    case 8: {
+        switch (dtype) {
+        case DTYPE::DINT:
+            _div<uint64_t>(to, op1, op2);
+            return;
+        case DTYPE::DFLOAT:
+            _div<double>(to, op1, op2);
+            return;
+        default:
+            assert(0);
+        }
+    }
+    default:
+        assert(0);
+    }
+}
+
+template <typename T> void _and(void *to, void *op1, void *op2) {
+    *(T *)to = (*(T *)op1) & (*(T *)op2);
+}
+
+void ThreadContext::And(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+    int len = getBytes(q);
+    DTYPE dtype = getDType(q);
+    switch (len) {
+    case 1: {
+        if (dtype == DTYPE::DINT)
+            _and<uint8_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 2: {
+        if (dtype == DTYPE::DINT)
+            _and<uint16_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 4: {
+        if (dtype == DTYPE::DINT)
+            _and<uint32_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 8: {
+        if (dtype == DTYPE::DINT)
+            _and<uint64_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    default:
+        assert(0);
+    }
+}
+
+template <typename T> void _or(void *to, void *op1, void *op2) {
+    *(T *)to = (*(T *)op1) | (*(T *)op2);
+}
+
+void ThreadContext::Or(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+    int len = getBytes(q);
+    DTYPE dtype = getDType(q);
+    switch (len) {
+    case 1: {
+        if (dtype == DTYPE::DINT)
+            _or<uint8_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 2: {
+        if (dtype == DTYPE::DINT)
+            _or<uint16_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 4: {
+        if (dtype == DTYPE::DINT)
+            _or<uint32_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 8: {
+        if (dtype == DTYPE::DINT)
+            _or<uint64_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    default:
+        assert(0);
+    }
+}
+
+template <typename T> void _xor(void *to, void *op1, void *op2) {
+    *(T *)to = (*(T *)op1) ^ (*(T *)op2);
+}
+
+void ThreadContext::Xor(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+    int len = getBytes(q);
+    DTYPE dtype = getDType(q);
+    switch (len) {
+    case 1: {
+        if (dtype == DTYPE::DINT)
+            _xor<uint8_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 2: {
+        if (dtype == DTYPE::DINT)
+            _xor<uint16_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 4: {
+        if (dtype == DTYPE::DINT)
+            _xor<uint32_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 8: {
+        if (dtype == DTYPE::DINT)
+            _xor<uint64_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    default:
+        assert(0);
+    }
+}
+
+template <typename T> void _shl(void *to, void *op1, void *op2) {
+    *(T *)to = (*(T *)op1) << (*(T *)op2);
+}
+
+void ThreadContext::shl(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+    int len = getBytes(q);
+    DTYPE dtype = getDType(q);
+    switch (len) {
+    case 1: {
+        if (dtype == DTYPE::DINT)
+            _shl<uint8_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 2: {
+        if (dtype == DTYPE::DINT)
+            _shl<uint16_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 4: {
+        if (dtype == DTYPE::DINT)
+            _shl<uint32_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 8: {
+        if (dtype == DTYPE::DINT)
+            _shl<uint64_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    default:
+        assert(0);
+    }
+}
+
+template <typename T> void _shr(void *to, void *op1, void *op2) {
+    *(T *)to = (*(T *)op1) >> (*(T *)op2);
+}
+
+void ThreadContext::shr(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+    int len = getBytes(q);
+    DTYPE dtype = getDType(q);
+    switch (len) {
+    case 1: {
+        if (dtype == DTYPE::DINT)
+            _shr<uint8_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 2: {
+        if (dtype == DTYPE::DINT)
+            _shr<uint16_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 4: {
+        if (dtype == DTYPE::DINT)
+            _shr<uint32_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    case 8: {
+        if (dtype == DTYPE::DINT)
+            _shr<uint64_t>(to, op1, op2);
+        else
+            assert(0);
+        return;
+    }
+    default:
+        assert(0);
+    }
+}
+
+template <typename T> void _selp(void *to, void *op0, void *op1, void *pred) {
+    *(T *)to = *(bool *)pred ? *(T *)op0 : *(T *)op1;
+}
+
+void ThreadContext::selp(void *to, void *op0, void *op1, void *pred,
+                         std::vector<Qualifier> &q) {
+    int len = getBytes(q);
+    DTYPE dtype = getDType(q);
+    switch (len) {
+    case 1:
+        assert(dtype == DTYPE::DINT);
+        _selp<uint8_t>(to, op0, op1, pred);
+        return;
+    case 2:
+        assert(dtype == DTYPE::DINT);
+        _selp<uint16_t>(to, op0, op1, pred);
+        return;
+    case 4:
+        switch (dtype) {
+        case DTYPE::DINT:
+            _selp<uint32_t>(to, op0, op1, pred);
+            return;
+        case DTYPE::DFLOAT:
+            _selp<float>(to, op0, op1, pred);
+            return;
+        default:
+            assert(0);
+        }
+        return;
+    case 8:
+        switch (dtype) {
+        case DTYPE::DINT:
+            _selp<uint64_t>(to, op0, op1, pred);
+            return;
+        case DTYPE::DFLOAT:
+            _selp<double>(to, op0, op1, pred);
+            return;
+        default:
+            assert(0);
+        }
+    default:
+        assert(0);
+    }
+}

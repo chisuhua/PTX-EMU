@@ -13,8 +13,13 @@ void PtxInterpreter::launchPtxInterpreter(PtxContext &ptx, std::string &kernel,
     this->blockDim = blockDim;
     this->kernelArgs = args;
 
-    // TODO: 根据kernel名称获取kernelContext
-    // this->kernelContext = ...;
+    // 根据kernel名称获取kernelContext
+    for (auto &e : ptx.ptxKernels) {
+        if (e.kernelName == kernel) {
+            this->kernelContext = &e;
+            break;
+        }
+    }
 
     std::map<std::string, PtxInterpreter::Symtable *> name2Sym;
     std::map<std::string, int> label2pc;
