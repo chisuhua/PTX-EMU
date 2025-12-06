@@ -284,7 +284,24 @@ OperandContext::~OperandContext() {
         break;
     case O_FA:
         if (operand) {
-            delete static_cast<OperandContext::FA *>(operand);
+            auto fa = static_cast<OperandContext::FA *>(operand);
+            // 注意：需要先释放reg指针指向的对象
+            if (fa->reg) {
+                delete fa->reg;
+                fa->reg = nullptr;  // 防止悬空指针
+            }
+            delete fa;
+        }
+        break;
+    case O_PRED:
+        if (operand) {
+            auto pred = static_cast<OperandContext::PRED *>(operand);
+            // 注意：需要先释放pred指针指向的对象
+            if (pred->pred) {
+                delete pred->pred;
+                pred->pred = nullptr;  // 防止悬空指针
+            }
+            delete pred;
         }
         break;
     case O_IMM:
@@ -331,7 +348,31 @@ OperandContext::OperandContext(const OperandContext &other)
             fa->offsetType = other_fa->offsetType;
             fa->offsetVal = other_fa->offsetVal;
             fa->ID = other_fa->ID;
+            
+            // 深拷贝reg指针
+            if (other_fa->reg) {
+                fa->reg = new OperandContext(*(other_fa->reg));
+            } else {
+                fa->reg = nullptr;
+            }
+            
             operand = fa;
+        }
+        break;
+    case O_PRED:
+        if (other.operand) {
+            auto pred = new PRED();
+            auto other_pred = static_cast<const PRED *>(other.operand);
+            pred->isNot = other_pred->isNot;
+            
+            // 深拷贝pred指针
+            if (other_pred->pred) {
+                pred->pred = new OperandContext(*(other_pred->pred));
+            } else {
+                pred->pred = nullptr;
+            }
+            
+            operand = pred;
         }
         break;
     case O_IMM:
@@ -351,6 +392,146 @@ OperandContext::OperandContext(const OperandContext &other)
         }
         break;
     }
+}
+
+// 添加OperandContext赋值操作符的实现
+OperandContext &OperandContext::operator=(const OperandContext &other) {
+    // 自赋值检查
+    if (this == &other) {
+        return *this;
+    }
+    
+    // 先释放当前资源
+    switch (operandType) {
+    case O_REG:
+        if (operand) {
+            delete static_cast<REG *>(operand);
+        }
+        break;
+    case O_VEC:
+        if (operand) {
+            delete static_cast<VEC *>(operand);
+        }
+        break;
+    case O_FA:
+        if (operand) {
+            auto fa = static_cast<FA *>(operand);
+            if (fa->reg) {
+                delete fa->reg;
+            }
+            delete fa;
+        }
+        break;
+    case O_PRED:
+        if (operand) {
+            auto pred = static_cast<PRED *>(operand);
+            if (pred->pred) {
+                delete pred->pred;
+            }
+            delete pred;
+        }
+        break;
+    case O_IMM:
+        if (operand) {
+            delete static_cast<IMM *>(operand);
+        }
+        break;
+    case O_VAR:
+        if (operand) {
+            delete static_cast<VAR *>(operand);
+        }
+        break;
+    }
+    
+    // 更新类型
+    operandType = other.operandType;
+    
+    // 深拷贝新内容
+    switch (operandType) {
+    case O_REG:
+        if (other.operand) {
+            auto reg = new REG();
+            auto other_reg = static_cast<const REG *>(other.operand);
+            reg->regName = other_reg->regName;
+            reg->regIdx = other_reg->regIdx;
+            operand = reg;
+        } else {
+            operand = nullptr;
+        }
+        break;
+    case O_VEC:
+        if (other.operand) {
+            auto vec = new VEC();
+            auto other_vec = static_cast<const VEC *>(other.operand);
+            vec->vec = other_vec->vec;
+            operand = vec;
+        } else {
+            operand = nullptr;
+        }
+        break;
+    case O_FA:
+        if (other.operand) {
+            auto fa = new FA();
+            auto other_fa = static_cast<const FA *>(other.operand);
+            fa->baseType = other_fa->baseType;
+            fa->baseName = other_fa->baseName;
+            fa->offsetType = other_fa->offsetType;
+            fa->offsetVal = other_fa->offsetVal;
+            fa->ID = other_fa->ID;
+            
+            // 深拷贝reg指针
+            if (other_fa->reg) {
+                fa->reg = new OperandContext(*(other_fa->reg));
+            } else {
+                fa->reg = nullptr;
+            }
+            
+            operand = fa;
+        } else {
+            operand = nullptr;
+        }
+        break;
+    case O_PRED:
+        if (other.operand) {
+            auto pred = new PRED();
+            auto other_pred = static_cast<const PRED *>(other.operand);
+            pred->isNot = other_pred->isNot;
+            
+            // 深拷贝pred指针
+            if (other_pred->pred) {
+                pred->pred = new OperandContext(*(other_pred->pred));
+            } else {
+                pred->pred = nullptr;
+            }
+            
+            operand = pred;
+        } else {
+            operand = nullptr;
+        }
+        break;
+    case O_IMM:
+        if (other.operand) {
+            auto imm = new IMM();
+            auto other_imm = static_cast<const IMM *>(other.operand);
+            imm->immVal = other_imm->immVal;
+            operand = imm;
+        } else {
+            operand = nullptr;
+        }
+        break;
+    case O_VAR:
+        if (other.operand) {
+            auto var = new VAR();
+            auto other_var = static_cast<const VAR *>(other.operand);
+            var->varName = other_var->varName;
+            operand = var;
+        } else {
+            operand = nullptr;
+        }
+        break;
+    }
+    
+    return *this;
 }
 
 // 添加StatementContext析构函数的实现
@@ -645,7 +826,8 @@ StatementContext::StatementContext(const StatementContext &other)
         if (other.statement) {
             auto source = static_cast<const AT*>(other.statement);
             auto dest = new AT();
-            dest->atPred = source->atPred;  // 使用OperandContext的拷贝构造函数
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->atPred = OperandContext(source->atPred);
             dest->atLabelName = source->atLabelName;
             statement = dest;
         }
@@ -691,8 +873,9 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const RCP*>(other.statement);
             auto dest = new RCP();
             dest->rcpQualifier = source->rcpQualifier;
-            dest->rcpOp[0] = source->rcpOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->rcpOp[1] = source->rcpOp[1];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->rcpOp[0] = OperandContext(source->rcpOp[0]);
+            dest->rcpOp[1] = OperandContext(source->rcpOp[1]);
             statement = dest;
         }
         break;
@@ -702,8 +885,9 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const LD*>(other.statement);
             auto dest = new LD();
             dest->ldQualifier = source->ldQualifier;
-            dest->ldOp[0] = source->ldOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->ldOp[1] = source->ldOp[1];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->ldOp[0] = OperandContext(source->ldOp[0]);
+            dest->ldOp[1] = OperandContext(source->ldOp[1]);
             statement = dest;
         }
         break;
@@ -713,8 +897,9 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const MOV*>(other.statement);
             auto dest = new MOV();
             dest->movQualifier = source->movQualifier;
-            dest->movOp[0] = source->movOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->movOp[1] = source->movOp[1];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->movOp[0] = OperandContext(source->movOp[0]);
+            dest->movOp[1] = OperandContext(source->movOp[1]);
             statement = dest;
         }
         break;
@@ -724,9 +909,10 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const SETP*>(other.statement);
             auto dest = new SETP();
             dest->setpQualifier = source->setpQualifier;
-            dest->setpOp[0] = source->setpOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->setpOp[1] = source->setpOp[1];
-            dest->setpOp[2] = source->setpOp[2];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->setpOp[0] = OperandContext(source->setpOp[0]);
+            dest->setpOp[1] = OperandContext(source->setpOp[1]);
+            dest->setpOp[2] = OperandContext(source->setpOp[2]);
             statement = dest;
         }
         break;
@@ -736,8 +922,9 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const CVTA*>(other.statement);
             auto dest = new CVTA();
             dest->cvtaQualifier = source->cvtaQualifier;
-            dest->cvtaOp[0] = source->cvtaOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->cvtaOp[1] = source->cvtaOp[1];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->cvtaOp[0] = OperandContext(source->cvtaOp[0]);
+            dest->cvtaOp[1] = OperandContext(source->cvtaOp[1]);
             statement = dest;
         }
         break;
@@ -747,8 +934,9 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const CVT*>(other.statement);
             auto dest = new CVT();
             dest->cvtQualifier = source->cvtQualifier;
-            dest->cvtOp[0] = source->cvtOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->cvtOp[1] = source->cvtOp[1];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->cvtOp[0] = OperandContext(source->cvtOp[0]);
+            dest->cvtOp[1] = OperandContext(source->cvtOp[1]);
             statement = dest;
         }
         break;
@@ -758,9 +946,10 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const MUL*>(other.statement);
             auto dest = new MUL();
             dest->mulQualifier = source->mulQualifier;
-            dest->mulOp[0] = source->mulOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->mulOp[1] = source->mulOp[1];
-            dest->mulOp[2] = source->mulOp[2];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->mulOp[0] = OperandContext(source->mulOp[0]);
+            dest->mulOp[1] = OperandContext(source->mulOp[1]);
+            dest->mulOp[2] = OperandContext(source->mulOp[2]);
             statement = dest;
         }
         break;
@@ -770,9 +959,10 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const DIV*>(other.statement);
             auto dest = new DIV();
             dest->divQualifier = source->divQualifier;
-            dest->divOp[0] = source->divOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->divOp[1] = source->divOp[1];
-            dest->divOp[2] = source->divOp[2];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->divOp[0] = OperandContext(source->divOp[0]);
+            dest->divOp[1] = OperandContext(source->divOp[1]);
+            dest->divOp[2] = OperandContext(source->divOp[2]);
             statement = dest;
         }
         break;
@@ -782,9 +972,10 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const SUB*>(other.statement);
             auto dest = new SUB();
             dest->subQualifier = source->subQualifier;
-            dest->subOp[0] = source->subOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->subOp[1] = source->subOp[1];
-            dest->subOp[2] = source->subOp[2];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->subOp[0] = OperandContext(source->subOp[0]);
+            dest->subOp[1] = OperandContext(source->subOp[1]);
+            dest->subOp[2] = OperandContext(source->subOp[2]);
             statement = dest;
         }
         break;
@@ -794,9 +985,10 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const ADD*>(other.statement);
             auto dest = new ADD();
             dest->addQualifier = source->addQualifier;
-            dest->addOp[0] = source->addOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->addOp[1] = source->addOp[1];
-            dest->addOp[2] = source->addOp[2];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->addOp[0] = OperandContext(source->addOp[0]);
+            dest->addOp[1] = OperandContext(source->addOp[1]);
+            dest->addOp[2] = OperandContext(source->addOp[2]);
             statement = dest;
         }
         break;
@@ -806,9 +998,10 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const SHL*>(other.statement);
             auto dest = new SHL();
             dest->shlQualifier = source->shlQualifier;
-            dest->shlOp[0] = source->shlOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->shlOp[1] = source->shlOp[1];
-            dest->shlOp[2] = source->shlOp[2];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->shlOp[0] = OperandContext(source->shlOp[0]);
+            dest->shlOp[1] = OperandContext(source->shlOp[1]);
+            dest->shlOp[2] = OperandContext(source->shlOp[2]);
             statement = dest;
         }
         break;
@@ -818,9 +1011,10 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const SHR*>(other.statement);
             auto dest = new SHR();
             dest->shrQualifier = source->shrQualifier;
-            dest->shrOp[0] = source->shrOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->shrOp[1] = source->shrOp[1];
-            dest->shrOp[2] = source->shrOp[2];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->shrOp[0] = OperandContext(source->shrOp[0]);
+            dest->shrOp[1] = OperandContext(source->shrOp[1]);
+            dest->shrOp[2] = OperandContext(source->shrOp[2]);
             statement = dest;
         }
         break;
@@ -830,9 +1024,10 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const MAX*>(other.statement);
             auto dest = new MAX();
             dest->maxQualifier = source->maxQualifier;
-            dest->maxOp[0] = source->maxOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->maxOp[1] = source->maxOp[1];
-            dest->maxOp[2] = source->maxOp[2];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->maxOp[0] = OperandContext(source->maxOp[0]);
+            dest->maxOp[1] = OperandContext(source->maxOp[1]);
+            dest->maxOp[2] = OperandContext(source->maxOp[2]);
             statement = dest;
         }
         break;
@@ -842,9 +1037,10 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const MIN*>(other.statement);
             auto dest = new MIN();
             dest->minQualifier = source->minQualifier;
-            dest->minOp[0] = source->minOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->minOp[1] = source->minOp[1];
-            dest->minOp[2] = source->minOp[2];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->minOp[0] = OperandContext(source->minOp[0]);
+            dest->minOp[1] = OperandContext(source->minOp[1]);
+            dest->minOp[2] = OperandContext(source->minOp[2]);
             statement = dest;
         }
         break;
@@ -854,9 +1050,10 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const AND*>(other.statement);
             auto dest = new AND();
             dest->andQualifier = source->andQualifier;
-            dest->andOp[0] = source->andOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->andOp[1] = source->andOp[1];
-            dest->andOp[2] = source->andOp[2];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->andOp[0] = OperandContext(source->andOp[0]);
+            dest->andOp[1] = OperandContext(source->andOp[1]);
+            dest->andOp[2] = OperandContext(source->andOp[2]);
             statement = dest;
         }
         break;
@@ -866,9 +1063,10 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const OR*>(other.statement);
             auto dest = new OR();
             dest->orQualifier = source->orQualifier;
-            dest->orOp[0] = source->orOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->orOp[1] = source->orOp[1];
-            dest->orOp[2] = source->orOp[2];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->orOp[0] = OperandContext(source->orOp[0]);
+            dest->orOp[1] = OperandContext(source->orOp[1]);
+            dest->orOp[2] = OperandContext(source->orOp[2]);
             statement = dest;
         }
         break;
@@ -878,8 +1076,9 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const ST*>(other.statement);
             auto dest = new ST();
             dest->stQualifier = source->stQualifier;
-            dest->stOp[0] = source->stOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->stOp[1] = source->stOp[1];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->stOp[0] = OperandContext(source->stOp[0]);
+            dest->stOp[1] = OperandContext(source->stOp[1]);
             statement = dest;
         }
         break;
@@ -889,10 +1088,11 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const SELP*>(other.statement);
             auto dest = new SELP();
             dest->selpQualifier = source->selpQualifier;
-            dest->selpOp[0] = source->selpOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->selpOp[1] = source->selpOp[1];
-            dest->selpOp[2] = source->selpOp[2];
-            dest->selpOp[3] = source->selpOp[3];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->selpOp[0] = OperandContext(source->selpOp[0]);
+            dest->selpOp[1] = OperandContext(source->selpOp[1]);
+            dest->selpOp[2] = OperandContext(source->selpOp[2]);
+            dest->selpOp[3] = OperandContext(source->selpOp[3]);
             statement = dest;
         }
         break;
@@ -902,10 +1102,11 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const MAD*>(other.statement);
             auto dest = new MAD();
             dest->madQualifier = source->madQualifier;
-            dest->madOp[0] = source->madOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->madOp[1] = source->madOp[1];
-            dest->madOp[2] = source->madOp[2];
-            dest->madOp[3] = source->madOp[3];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->madOp[0] = OperandContext(source->madOp[0]);
+            dest->madOp[1] = OperandContext(source->madOp[1]);
+            dest->madOp[2] = OperandContext(source->madOp[2]);
+            dest->madOp[3] = OperandContext(source->madOp[3]);
             statement = dest;
         }
         break;
@@ -915,10 +1116,11 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const FMA*>(other.statement);
             auto dest = new FMA();
             dest->fmaQualifier = source->fmaQualifier;
-            dest->fmaOp[0] = source->fmaOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->fmaOp[1] = source->fmaOp[1];
-            dest->fmaOp[2] = source->fmaOp[2];
-            dest->fmaOp[3] = source->fmaOp[3];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->fmaOp[0] = OperandContext(source->fmaOp[0]);
+            dest->fmaOp[1] = OperandContext(source->fmaOp[1]);
+            dest->fmaOp[2] = OperandContext(source->fmaOp[2]);
+            dest->fmaOp[3] = OperandContext(source->fmaOp[3]);
             statement = dest;
         }
         break;
@@ -929,10 +1131,11 @@ StatementContext::StatementContext(const StatementContext &other)
             auto dest = new WMMA();
             dest->wmmaType = source->wmmaType;
             dest->wmmaQualifier = source->wmmaQualifier;
-            dest->wmmaOp[0] = source->wmmaOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->wmmaOp[1] = source->wmmaOp[1];
-            dest->wmmaOp[2] = source->wmmaOp[2];
-            dest->wmmaOp[3] = source->wmmaOp[3];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->wmmaOp[0] = OperandContext(source->wmmaOp[0]);
+            dest->wmmaOp[1] = OperandContext(source->wmmaOp[1]);
+            dest->wmmaOp[2] = OperandContext(source->wmmaOp[2]);
+            dest->wmmaOp[3] = OperandContext(source->wmmaOp[3]);
             statement = dest;
         }
         break;
@@ -942,8 +1145,9 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const NEG*>(other.statement);
             auto dest = new NEG();
             dest->negQualifier = source->negQualifier;
-            dest->negOp[0] = source->negOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->negOp[1] = source->negOp[1];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->negOp[0] = OperandContext(source->negOp[0]);
+            dest->negOp[1] = OperandContext(source->negOp[1]);
             statement = dest;
         }
         break;
@@ -953,8 +1157,9 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const NOT*>(other.statement);
             auto dest = new NOT();
             dest->notQualifier = source->notQualifier;
-            dest->notOp[0] = source->notOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->notOp[1] = source->notOp[1];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->notOp[0] = OperandContext(source->notOp[0]);
+            dest->notOp[1] = OperandContext(source->notOp[1]);
             statement = dest;
         }
         break;
@@ -964,8 +1169,9 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const SQRT*>(other.statement);
             auto dest = new SQRT();
             dest->sqrtQualifier = source->sqrtQualifier;
-            dest->sqrtOp[0] = source->sqrtOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->sqrtOp[1] = source->sqrtOp[1];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->sqrtOp[0] = OperandContext(source->sqrtOp[0]);
+            dest->sqrtOp[1] = OperandContext(source->sqrtOp[1]);
             statement = dest;
         }
         break;
@@ -975,8 +1181,9 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const COS*>(other.statement);
             auto dest = new COS();
             dest->cosQualifier = source->cosQualifier;
-            dest->cosOp[0] = source->cosOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->cosOp[1] = source->cosOp[1];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->cosOp[0] = OperandContext(source->cosOp[0]);
+            dest->cosOp[1] = OperandContext(source->cosOp[1]);
             statement = dest;
         }
         break;
@@ -986,8 +1193,9 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const LG2*>(other.statement);
             auto dest = new LG2();
             dest->lg2Qualifier = source->lg2Qualifier;
-            dest->lg2Op[0] = source->lg2Op[0];  // 使用OperandContext的拷贝构造函数
-            dest->lg2Op[1] = source->lg2Op[1];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->lg2Op[0] = OperandContext(source->lg2Op[0]);
+            dest->lg2Op[1] = OperandContext(source->lg2Op[1]);
             statement = dest;
         }
         break;
@@ -997,8 +1205,9 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const EX2*>(other.statement);
             auto dest = new EX2();
             dest->ex2Qualifier = source->ex2Qualifier;
-            dest->ex2Op[0] = source->ex2Op[0];  // 使用OperandContext的拷贝构造函数
-            dest->ex2Op[1] = source->ex2Op[1];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->ex2Op[0] = OperandContext(source->ex2Op[0]);
+            dest->ex2Op[1] = OperandContext(source->ex2Op[1]);
             statement = dest;
         }
         break;
@@ -1008,10 +1217,11 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const ATOM*>(other.statement);
             auto dest = new ATOM();
             dest->atomQualifier = source->atomQualifier;
-            dest->atomOp[0] = source->atomOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->atomOp[1] = source->atomOp[1];
-            dest->atomOp[2] = source->atomOp[2];
-            dest->atomOp[3] = source->atomOp[3];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->atomOp[0] = OperandContext(source->atomOp[0]);
+            dest->atomOp[1] = OperandContext(source->atomOp[1]);
+            dest->atomOp[2] = OperandContext(source->atomOp[2]);
+            dest->atomOp[3] = OperandContext(source->atomOp[3]);
             dest->operandNum = source->operandNum;
             statement = dest;
         }
@@ -1022,9 +1232,10 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const XOR*>(other.statement);
             auto dest = new XOR();
             dest->xorQualifier = source->xorQualifier;
-            dest->xorOp[0] = source->xorOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->xorOp[1] = source->xorOp[1];
-            dest->xorOp[2] = source->xorOp[2];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->xorOp[0] = OperandContext(source->xorOp[0]);
+            dest->xorOp[1] = OperandContext(source->xorOp[1]);
+            dest->xorOp[2] = OperandContext(source->xorOp[2]);
             statement = dest;
         }
         break;
@@ -1034,8 +1245,9 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const ABS*>(other.statement);
             auto dest = new ABS();
             dest->absQualifier = source->absQualifier;
-            dest->absOp[0] = source->absOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->absOp[1] = source->absOp[1];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->absOp[0] = OperandContext(source->absOp[0]);
+            dest->absOp[1] = OperandContext(source->absOp[1]);
             statement = dest;
         }
         break;
@@ -1045,8 +1257,9 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const SIN*>(other.statement);
             auto dest = new SIN();
             dest->sinQualifier = source->sinQualifier;
-            dest->sinOp[0] = source->sinOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->sinOp[1] = source->sinOp[1];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->sinOp[0] = OperandContext(source->sinOp[0]);
+            dest->sinOp[1] = OperandContext(source->sinOp[1]);
             statement = dest;
         }
         break;
@@ -1056,8 +1269,9 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const RSQRT*>(other.statement);
             auto dest = new RSQRT();
             dest->rsqrtQualifier = source->rsqrtQualifier;
-            dest->rsqrtOp[0] = source->rsqrtOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->rsqrtOp[1] = source->rsqrtOp[1];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->rsqrtOp[0] = OperandContext(source->rsqrtOp[0]);
+            dest->rsqrtOp[1] = OperandContext(source->rsqrtOp[1]);
             statement = dest;
         }
         break;
@@ -1067,13 +1281,15 @@ StatementContext::StatementContext(const StatementContext &other)
             auto source = static_cast<const REM*>(other.statement);
             auto dest = new REM();
             dest->remQualifier = source->remQualifier;
-            dest->remOp[0] = source->remOp[0];  // 使用OperandContext的拷贝构造函数
-            dest->remOp[1] = source->remOp[1];
-            dest->remOp[2] = source->remOp[2];
+            // 使用OperandContext的拷贝构造函数进行深拷贝
+            dest->remOp[0] = OperandContext(source->remOp[0]);
+            dest->remOp[1] = OperandContext(source->remOp[1]);
+            dest->remOp[2] = OperandContext(source->remOp[2]);
             statement = dest;
         }
         break;
     }
+
     case S_UNKNOWN: {
         // S_UNKNOWN不需要复制任何内容
         statement = nullptr;

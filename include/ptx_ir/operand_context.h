@@ -48,6 +48,7 @@ public:
 
     // 深拷贝方法
     OperandContext(const OperandContext &other);
+    OperandContext &operator=(const OperandContext &other);
 };
 
 #endif // OPERAND_CONTEXT_H
