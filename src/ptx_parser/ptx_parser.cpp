@@ -1593,7 +1593,17 @@ void PtxListener::enterReg(ptxParser::RegContext *ctx) {
 void PtxListener::exitReg(ptxParser::RegContext *ctx) {
     OperandContext *o = new OperandContext();
     OperandContext::REG *r = new OperandContext::REG();
-    extractREG(ctx->ID()->getText(), r->regIdx, r->regName);
+    // 获取完整的寄存器名称，包括可能的点号部分
+    std::string regName = "";
+    auto ids = ctx->ID();
+    if (!ids.empty()) {
+        regName = ids[0]->getText();
+        if (ids.size() > 1) {
+            // 添加DOT和第二个ID部分
+            regName += "." + ids[1]->getText();
+        }
+    }
+    extractREG(regName, r->regIdx, r->regName);
     o->operand = r;
     o->operandType = O_REG;
     op.push(o);
@@ -1616,7 +1626,18 @@ void PtxListener::exitVector(ptxParser::VectorContext *ctx) {
         oc.operandType = O_REG;
         oc.operand = new OperandContext::REG();
         auto r = (OperandContext::REG *)oc.operand;
-        extractREG(ctx->regi(i)->ID()->getText(), r->regIdx, r->regName);
+        
+        // 获取完整的寄存器名称，包括可能的点号部分
+        std::string regName = "";
+        auto ids = ctx->regi(i)->ID();
+        if (!ids.empty()) {
+            regName = ids[0]->getText();
+            if (ids.size() > 1) {
+                // 添加DOT和第二个ID部分
+                regName += "." + ids[1]->getText();
+            }
+        }
+        extractREG(regName, r->regIdx, r->regName);
         v->vec.push_back(oc);
     }
     o->operand = v;
@@ -1644,7 +1665,18 @@ void PtxListener::exitFetchAddress(ptxParser::FetchAddressContext *ctx) {
         // assume base not require regMinorName
         fa->reg = new OperandContext();
         OperandContext::REG *r = new OperandContext::REG();
-        extractREG(ctx->regi()->ID()->getText(), r->regIdx, r->regName);
+        
+        // 获取完整的寄存器名称，包括可能的点号部分
+        std::string regName = "";
+        auto ids = ctx->regi()->ID();
+        if (!ids.empty()) {
+            regName = ids[0]->getText();
+            if (ids.size() > 1) {
+                // 添加DOT和第二个ID部分
+                regName += "." + ids[1]->getText();
+            }
+        }
+        extractREG(regName, r->regIdx, r->regName);
         fa->reg->operandType = O_REG;
         fa->reg->operand = r;
     } else
@@ -1654,10 +1686,9 @@ void PtxListener::exitFetchAddress(ptxParser::FetchAddressContext *ctx) {
     if (ctx->DIGITS()) {
         fa->offsetVal = ctx->DIGITS()->getText();
     } else {
-        fa->offsetVal = "";
+        fa->offsetVal = "0";
     }
 
-    /* end */
     o->operand = fa;
     o->operandType = O_FA;
     op.push(o);

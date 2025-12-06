@@ -17,17 +17,18 @@ int main(int argc, const char *argv[]) {
     std::string filename;
     if (argc >= 2) {
         filename = argv[1];
-    }
+    } else {
 
-    // 检查环境变量 PTX_EMU_PATH
-    const char *ptx_emu_path = std::getenv("PTX_EMU_PATH");
-    if (ptx_emu_path == nullptr) {
-        std::cerr << "Error: PTX_EMU_PATH environment variable not set"
-                  << std::endl;
-        return 1;
-    }
+        // 检查环境变量 PTX_EMU_PATH
+        const char *ptx_emu_path = std::getenv("PTX_EMU_PATH");
+        if (ptx_emu_path == nullptr) {
+            std::cerr << "Error: PTX_EMU_PATH environment variable not set"
+                      << std::endl;
+            return 1;
+        }
 
-    filename = std::string(ptx_emu_path) + "/tests/test_ptx.ptx";
+        filename = std::string(ptx_emu_path) + "/tests/test_ptx.ptx";
+    }
 
     std::ifstream stream;
     stream.open(filename);
