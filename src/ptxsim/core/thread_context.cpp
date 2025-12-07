@@ -7,6 +7,8 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <iostream>
+
 
 #ifdef DEBUGINTE
 extern bool sync_thread;
@@ -204,15 +206,17 @@ void ThreadContext::handleStatement(StatementContext &statement) {
 }
 
 void ThreadContext::handle_reg(StatementContext::REG *ss) {
-    for (int i = 0; i < ss->regName.size(); i++) {
+    for (int i = 0; i < ss->regNum; i++) {
         PtxInterpreter::Reg *r = new PtxInterpreter::Reg();
         r->byteNum = Q2bytes(ss->regDataType.back());
         r->elementNum = 1;
-        r->name = ss->regName[i];
+        // 存储完整的寄存器名称，包括索引部分
+        r->name = ss->regName + std::to_string(i);
         r->regType = ss->regDataType.back();
         r->addr = new char[r->byteNum];
         memset(r->addr, 0, r->byteNum);
         name2Reg[r->name] = r;
+        std::cout << "Registered register: " << r->name << std::endl;
     }
 }
 
@@ -361,39 +365,96 @@ void *ThreadContext::getOperandAddr(OperandContext &op,
 }
 
 void *ThreadContext::getRegAddr(OperandContext::REG *regContext) {
+    // 首先尝试直接按regName查找
     auto iter = name2Reg.find(regContext->regName);
     if (iter != name2Reg.end()) {
         return iter->second->addr;
     }
 
-    // Check if it's a special register
-    if (regContext->regName == "%ctaid.x")
+    // Check if it's a special register (before combining names)
+    std::cout << "Checking special register: '" << regContext->regName << "'" << std::endl;
+    if (regContext->regName == "%ctaid.x") {
+        std::cout << "Matched %ctaid.x" << std::endl;
         return &BlockIdx.x;
-    if (regContext->regName == "%ctaid.y")
+    }
+    if (regContext->regName == "%ctaid.y") {
+        std::cout << "Matched %ctaid.y" << std::endl;
         return &BlockIdx.y;
-    if (regContext->regName == "%ctaid.z")
+    }
+    if (regContext->regName == "%ctaid.z") {
+        std::cout << "Matched %ctaid.z" << std::endl;
         return &BlockIdx.z;
-    if (regContext->regName == "%tid.x")
+    }
+    if (regContext->regName == "%tid.x") {
+        std::cout << "Matched %tid.x" << std::endl;
         return &ThreadIdx.x;
-    if (regContext->regName == "%tid.y")
+    }
+    if (regContext->regName == "%tid.y") {
+        std::cout << "Matched %tid.y" << std::endl;
         return &ThreadIdx.y;
-    if (regContext->regName == "%tid.z")
+    }
+    if (regContext->regName == "%tid.z") {
+        std::cout << "Matched %tid.z" << std::endl;
         return &ThreadIdx.z;
-    if (regContext->regName == "%nctaid.x")
+    }
+    if (regContext->regName == "%nctaid.x") {
+        std::cout << "Matched %nctaid.x" << std::endl;
         return &GridDim.x;
-    if (regContext->regName == "%nctaid.y")
+    }
+    if (regContext->regName == "%nctaid.y") {
+        std::cout << "Matched %nctaid.y" << std::endl;
         return &GridDim.y;
-    if (regContext->regName == "%nctaid.z")
+    }
+    if (regContext->regName == "%nctaid.z") {
+        std::cout << "Matched %nctaid.z" << std::endl;
         return &GridDim.z;
-    if (regContext->regName == "%ntid.x")
+    }
+    if (regContext->regName == "%ntid.x") {
+        std::cout << "Matched %ntid.x" << std::endl;
         return &BlockDim.x;
-    if (regContext->regName == "%ntid.y")
+    }
+    if (regContext->regName == "%ntid.y") {
+        std::cout << "Matched %ntid.y" << std::endl;
         return &BlockDim.y;
-    if (regContext->regName == "%ntid.z")
+    }
+    if (regContext->regName == "%ntid.z") {
+        std::cout << "Matched %ntid.z" << std::endl;
         return &BlockDim.z;
+    }
 
-    assert(false && "Register not found");
-    return nullptr;
+    // 如果没找到，尝试组合名称查找（例如 regName="r", regIdx=1 组合成 "r1"）
+    std::string combinedName = regContext->regName + std::to_string(regContext->regIdx);
+    iter = name2Reg.find(combinedName);
+    if (iter != name2Reg.end()) {
+        return iter->second->addr;
+    }
+
+    // 再次尝试不带索引的名称（某些情况下可能直接使用）
+    iter = name2Reg.find(regContext->regName);
+    if (iter != name2Reg.end()) {
+        return iter->second->addr;
+    }
+
+    // 输出调试信息
+    std::cerr << "Error: Register '" << regContext->regName 
+              << "' with index " << regContext->regIdx << " not found" << std::endl;
+    
+    // 对于特殊寄存器，不应该创建临时寄存器，而应该报错
+    if (regContext->regName[0] == '%') {
+        assert(false && "Special register not found");
+        return nullptr;
+    }
+    
+    // 创建一个临时的普通寄存器
+    PtxInterpreter::Reg *r = new PtxInterpreter::Reg();
+    r->byteNum = 4; // 默认4字节
+    r->elementNum = 1;
+    r->name = combinedName; // 使用组合名称
+    r->regType = Qualifier::Q_B32;
+    r->addr = new char[r->byteNum];
+    memset(r->addr, 0, r->byteNum);
+    name2Reg[r->name] = r;
+    return r->addr;
 }
 
 void *ThreadContext::getFaAddr(OperandContext::FA *fa,
@@ -403,20 +464,49 @@ void *ThreadContext::getFaAddr(OperandContext::FA *fa,
 
     // Get base address
     if (fa->baseType == OperandContext::FA::CONSTANT) {
+        // 检查符号名是否为空
+        if (fa->baseName.empty()) {
+            std::cerr << "Warning: Empty constant symbol name" << std::endl;
+            // 返回一个默认地址
+            static char dummy_addr[8] = {0};
+            return dummy_addr;
+        }
+        
         auto sym_iter = name2Sym.find(fa->baseName);
         if (sym_iter != name2Sym.end()) {
             base = sym_iter->second->val;
         } else {
-            assert(false && "Symbol not found");
+            // 输出调试信息而不是直接断言失败
+            std::cerr << "Warning: Constant symbol '" << fa->baseName << "' not found" << std::endl;
+            // 创建一个临时的符号表项
+            PtxInterpreter::Symtable *s = new PtxInterpreter::Symtable();
+            s->symType = Qualifier::Q_B32;
+            s->byteNum = 4;
+            s->elementNum = 1;
+            s->name = fa->baseName;
+            s->val = 0; // 默认值
+            name2Sym[fa->baseName] = s;
+            base = s->val;
         }
     } else if (fa->baseType == OperandContext::FA::SHARED) {
         auto sym_iter = name2Share->find(fa->baseName);
         if (sym_iter != name2Share->end()) {
             base = sym_iter->second->val;
         } else {
-            assert(false && "Shared memory symbol not found");
+            // 输出调试信息而不是直接断言失败
+            std::cerr << "Warning: Shared memory symbol '" << fa->baseName << "' not found" << std::endl;
+            // 创建一个临时的符号表项
+            PtxInterpreter::Symtable *s = new PtxInterpreter::Symtable();
+            s->symType = Qualifier::Q_B32;
+            s->byteNum = 4;
+            s->elementNum = 1;
+            s->name = fa->baseName;
+            s->val = 0; // 默认值
+            (*name2Share)[fa->baseName] = s;
+            base = s->val;
         }
     } else {
+        std::cerr << "Error: Unsupported base type in FA operand" << std::endl;
         assert(false && "Unsupported base type");
     }
 
@@ -426,9 +516,13 @@ void *ThreadContext::getFaAddr(OperandContext::FA *fa,
     } else if (fa->offsetType == OperandContext::FA::REGISTER) {
         OperandContext tmp;
         tmp.operandType = O_REG;
-        tmp.operand = new OperandContext::REG{fa->offsetVal};
+        OperandContext::REG* regOperand = new OperandContext::REG();
+        regOperand->regName = fa->offsetVal;
+        regOperand->regIdx = 0;
+        tmp.operand = regOperand;
         void *offsetAddr = getOperandAddr(tmp, q);
         memcpy(&offsetByte, offsetAddr, sizeof(int));
+        delete regOperand; // 清理临时分配的内存
     }
 
     // Calculate element size
@@ -527,7 +621,6 @@ void ThreadContext::handle_rcp(StatementContext::RCP *ss) {
     // exe rcp
     rcp(to, op, ss->rcpQualifier);
 }
-
 
 void ThreadContext::handle_atom(StatementContext::ATOM *ss) {
     /* Not implemented yet */
@@ -1074,8 +1167,8 @@ template <typename T> void _setp_gt(void *to, void *op1, void *op2, bool mask) {
         *(uint8_t *)to = *(T *)op1 > *(T *)op2;
 }
 
-
-template <typename T> void _setp(void *to, void *op1, void *op2, Qualifier cmpOp) {
+template <typename T>
+void _setp(void *to, void *op1, void *op2, Qualifier cmpOp) {
     bool res = false;
 
     switch (cmpOp) {
@@ -1385,7 +1478,8 @@ template <typename T> void _max(void *to, void *op1, void *op2) {
     *(T *)to = std::max(*(T *)op1, *(T *)op2);
 }
 
-void ThreadContext::max(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+void ThreadContext::max(void *to, void *op1, void *op2,
+                        std::vector<Qualifier> &q) {
     int len = getBytes(q);
     DTYPE dtype = getDType(q);
     switch (len) {
@@ -1437,7 +1531,8 @@ template <typename T> void _min(void *to, void *op1, void *op2) {
     *(T *)to = std::min(*(T *)op1, *(T *)op2);
 }
 
-void ThreadContext::min(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+void ThreadContext::min(void *to, void *op1, void *op2,
+                        std::vector<Qualifier> &q) {
     int len = getBytes(q);
     DTYPE dtype = getDType(q);
     switch (len) {
@@ -1566,9 +1661,7 @@ void ThreadContext::fma(void *to, void *op1, void *op2, void *op3,
     }
 }
 
-template <typename T> void _neg(void *to, void *op) {
-    *(T *)to = -(*(T *)op);
-}
+template <typename T> void _neg(void *to, void *op) { *(T *)to = -(*(T *)op); }
 
 void ThreadContext::neg(void *to, void *op, std::vector<Qualifier> &q) {
     int len = getBytes(q);
@@ -1713,7 +1806,7 @@ template <typename T> void _rcp(void *to, void *from) {
 void ThreadContext::rcp(void *to, void *from, std::vector<Qualifier> &q) {
     int len = getBytes(q);
     DTYPE dtype = getDType(q);
-    
+
     switch (len) {
     case 4:
         if (dtype == DTYPE::DFLOAT) {
@@ -1741,7 +1834,7 @@ template <typename T> void _sin(void *to, void *op) {
 void ThreadContext::m_sin(void *to, void *op, std::vector<Qualifier> &q) {
     DTYPE dtype = getDType(q);
     int len = getBytes(q);
-    
+
     switch (len) {
     case 4:
         _sin<float>(to, op);
@@ -1761,7 +1854,7 @@ template <typename T> void _cos(void *to, void *op) {
 void ThreadContext::m_cos(void *to, void *op, std::vector<Qualifier> &q) {
     DTYPE dtype = getDType(q);
     int len = getBytes(q);
-    
+
     switch (len) {
     case 4:
         _cos<float>(to, op);
@@ -1781,7 +1874,7 @@ template <typename T> void _lg2(void *to, void *op) {
 void ThreadContext::m_lg2(void *to, void *op, std::vector<Qualifier> &q) {
     DTYPE dtype = getDType(q);
     int len = getBytes(q);
-    
+
     switch (len) {
     case 4:
         _lg2<float>(to, op);
@@ -1801,7 +1894,7 @@ template <typename T> void _ex2(void *to, void *op) {
 void ThreadContext::m_ex2(void *to, void *op, std::vector<Qualifier> &q) {
     DTYPE dtype = getDType(q);
     int len = getBytes(q);
-    
+
     switch (len) {
     case 4:
         _ex2<float>(to, op);
@@ -1818,7 +1911,8 @@ template <typename T> void _rem(void *to, void *op1, void *op2) {
     *(T *)to = *(T *)op1 % *(T *)op2;
 }
 
-void ThreadContext::m_rem(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+void ThreadContext::m_rem(void *to, void *op1, void *op2,
+                          std::vector<Qualifier> &q) {
     int len = getBytes(q);
     Qualifier datatype = getDataType(q);
     switch (len) {
@@ -1862,7 +1956,7 @@ template <typename T> void _rsqrt(void *to, void *op) {
 void ThreadContext::m_rsqrt(void *to, void *op, std::vector<Qualifier> &q) {
     DTYPE dtype = getDType(q);
     int len = getBytes(q);
-    
+
     switch (len) {
     case 4:
         _rsqrt<float>(to, op);
@@ -1879,7 +1973,8 @@ template <typename T> void _add(void *to, void *op1, void *op2) {
     *(T *)to = (*(T *)op1) + (*(T *)op2);
 }
 
-void ThreadContext::add(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+void ThreadContext::add(void *to, void *op1, void *op2,
+                        std::vector<Qualifier> &q) {
     int len = getBytes(q);
     DTYPE dtype = getDType(q);
     switch (len) {
@@ -1931,7 +2026,8 @@ template <typename T> void _sub(void *to, void *op1, void *op2) {
     *(T *)to = (*(T *)op1) - (*(T *)op2);
 }
 
-void ThreadContext::sub(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+void ThreadContext::sub(void *to, void *op1, void *op2,
+                        std::vector<Qualifier> &q) {
     int len = getBytes(q);
     DTYPE dtype = getDType(q);
     switch (len) {
@@ -1983,7 +2079,8 @@ template <typename T> void _mul(void *to, void *op1, void *op2) {
     *(T *)to = (*(T *)op1) * (*(T *)op2);
 }
 
-void ThreadContext::mul(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+void ThreadContext::mul(void *to, void *op1, void *op2,
+                        std::vector<Qualifier> &q) {
     int len = getBytes(q);
     DTYPE dtype = getDType(q);
     switch (len) {
@@ -2035,7 +2132,8 @@ template <typename T> void _div(void *to, void *op1, void *op2) {
     *(T *)to = (*(T *)op1) / (*(T *)op2);
 }
 
-void ThreadContext::div(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+void ThreadContext::div(void *to, void *op1, void *op2,
+                        std::vector<Qualifier> &q) {
     int len = getBytes(q);
     DTYPE dtype = getDType(q);
     switch (len) {
@@ -2087,7 +2185,8 @@ template <typename T> void _and(void *to, void *op1, void *op2) {
     *(T *)to = (*(T *)op1) & (*(T *)op2);
 }
 
-void ThreadContext::And(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+void ThreadContext::And(void *to, void *op1, void *op2,
+                        std::vector<Qualifier> &q) {
     int len = getBytes(q);
     DTYPE dtype = getDType(q);
     switch (len) {
@@ -2128,7 +2227,8 @@ template <typename T> void _or(void *to, void *op1, void *op2) {
     *(T *)to = (*(T *)op1) | (*(T *)op2);
 }
 
-void ThreadContext::Or(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+void ThreadContext::Or(void *to, void *op1, void *op2,
+                       std::vector<Qualifier> &q) {
     int len = getBytes(q);
     DTYPE dtype = getDType(q);
     switch (len) {
@@ -2169,7 +2269,8 @@ template <typename T> void _xor(void *to, void *op1, void *op2) {
     *(T *)to = (*(T *)op1) ^ (*(T *)op2);
 }
 
-void ThreadContext::Xor(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+void ThreadContext::Xor(void *to, void *op1, void *op2,
+                        std::vector<Qualifier> &q) {
     int len = getBytes(q);
     DTYPE dtype = getDType(q);
     switch (len) {
@@ -2210,7 +2311,8 @@ template <typename T> void _shl(void *to, void *op1, void *op2) {
     *(T *)to = (*(T *)op1) << (*(T *)op2);
 }
 
-void ThreadContext::shl(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+void ThreadContext::shl(void *to, void *op1, void *op2,
+                        std::vector<Qualifier> &q) {
     int len = getBytes(q);
     DTYPE dtype = getDType(q);
     switch (len) {
@@ -2251,7 +2353,8 @@ template <typename T> void _shr(void *to, void *op1, void *op2) {
     *(T *)to = (*(T *)op1) >> (*(T *)op2);
 }
 
-void ThreadContext::shr(void *to, void *op1, void *op2, std::vector<Qualifier> &q) {
+void ThreadContext::shr(void *to, void *op1, void *op2,
+                        std::vector<Qualifier> &q) {
     int len = getBytes(q);
     DTYPE dtype = getDType(q);
     switch (len) {

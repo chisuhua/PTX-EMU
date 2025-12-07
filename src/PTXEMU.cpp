@@ -239,8 +239,8 @@ cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim, dim3 blockDim,
                              void **args, size_t sharedMem,
                              cudaStream_t stream // temporily ignore stream
 ) {
-    // ptxListener.test_semantic();
 #ifdef LOGEMU
+    ptxListener.test_semantic();
     printf("EMU: call %s\n", __my_func__);
     printf("EMU: deviceFunName %s\n", func2name[(uint64_t)func].c_str());
     printf("EMU: func %p\n", func);
