@@ -1,43 +1,50 @@
-#include<cstdio>
+#include <stdio.h>
+#include <stdlib.h>
+
 #define SIZE 1024
 
 template<typename T>
-__global__ void dummy_d(T *arr){
-    arr[threadIdx.x] = threadIdx.x;
+__global__ void dummy_d(T *a) {
+    int i = threadIdx.x;
+    a[i] = i;
 }
 
-template<typename T>
-bool dummy_h(){
-    bool ifPASS = 0;
-    T *a_h,*a_d;
-
-    a_h = (T *)malloc(SIZE*sizeof(T));
-
-    cudaMalloc(&a_d,SIZE*sizeof(T));
+int main(int argc, char* argv[]) {
+    int N = SIZE;
+    int *host_a = (int*)malloc(sizeof(int)*N);
     
-    printf("host ptr:%p device ptr:%p\n",a_h,a_d);
+    // 初始化数组
+    for (int i = 0; i < N; i++) {
+        host_a[i] = 0;
+    }
+    
+    int *device_a;
+    cudaMalloc((void**)&device_a, sizeof(int)*N);
 
-    dummy_d<T> <<<1,SIZE>>>(a_d);
+    cudaMemcpy(device_a, host_a, sizeof(int)*N, cudaMemcpyHostToDevice);
 
-    cudaMemcpy(a_h,a_d,SIZE*sizeof(T),cudaMemcpyDeviceToHost);
+    dim3 grid(1);
+    dim3 block(N);
 
-    for(int i=0;i<SIZE;i++){
-        if(a_h[i]!=i){
-            printf("at:%p expect:%d got:%d\n",&a_h[i],i,a_h[i]);
-            printf("FAIL\n");
-            ifPASS = 1;
-            goto End;
+    dummy_d<<<grid, block>>>(device_a);
+
+    cudaMemcpy(host_a, device_a, sizeof(int)*N, cudaMemcpyDeviceToHost);
+
+    bool success = true;
+    for (int i = 0; i < N; i++) {
+        if (host_a[i] != i) {
+            printf("at:%p expect:%d got:%d\n", &host_a[i], i, host_a[i]);
+            success = false;
+            break;
         }
     }
-    printf("PASS\n");
 
-    End:
-    cudaFree(a_d);
-    free(a_h);
+    if (success)
+        printf("PASS\n");
+    else
+        printf("FAIL\n");
 
-    return ifPASS;
+    cudaFree(device_a);
+    free(host_a);
+    return 0;
 }
-
-int main(){
-    return dummy_h<int>();
-}   

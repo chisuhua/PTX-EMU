@@ -365,82 +365,50 @@ void *ThreadContext::getOperandAddr(OperandContext &op,
 }
 
 void *ThreadContext::getRegAddr(OperandContext::REG *regContext) {
+    // Check if it's a special register (before combining names)
+    if (regContext->regName == "%ctaid.x")
+        return &BlockIdx.x;
+    if (regContext->regName == "%ctaid.y")
+        return &BlockIdx.y;
+    if (regContext->regName == "%ctaid.z")
+        return &BlockIdx.z;
+    if (regContext->regName == "%tid.x")
+        return &ThreadIdx.x;
+    if (regContext->regName == "%tid.y")
+        return &ThreadIdx.y;
+    if (regContext->regName == "%tid.z")
+        return &ThreadIdx.z;
+    if (regContext->regName == "%nctaid.x")
+        return &GridDim.x;
+    if (regContext->regName == "%nctaid.y")
+        return &GridDim.y;
+    if (regContext->regName == "%nctaid.z")
+        return &GridDim.z;
+    if (regContext->regName == "%ntid.x")
+        return &BlockDim.x;
+    if (regContext->regName == "%ntid.y")
+        return &BlockDim.y;
+    if (regContext->regName == "%ntid.z")
+        return &BlockDim.z;
+
     // 首先尝试直接按regName查找
     auto iter = name2Reg.find(regContext->regName);
     if (iter != name2Reg.end()) {
         return iter->second->addr;
     }
 
-    // Check if it's a special register (before combining names)
-    std::cout << "Checking special register: '" << regContext->regName << "'" << std::endl;
-    if (regContext->regName == "%ctaid.x") {
-        std::cout << "Matched %ctaid.x" << std::endl;
-        return &BlockIdx.x;
-    }
-    if (regContext->regName == "%ctaid.y") {
-        std::cout << "Matched %ctaid.y" << std::endl;
-        return &BlockIdx.y;
-    }
-    if (regContext->regName == "%ctaid.z") {
-        std::cout << "Matched %ctaid.z" << std::endl;
-        return &BlockIdx.z;
-    }
-    if (regContext->regName == "%tid.x") {
-        std::cout << "Matched %tid.x" << std::endl;
-        return &ThreadIdx.x;
-    }
-    if (regContext->regName == "%tid.y") {
-        std::cout << "Matched %tid.y" << std::endl;
-        return &ThreadIdx.y;
-    }
-    if (regContext->regName == "%tid.z") {
-        std::cout << "Matched %tid.z" << std::endl;
-        return &ThreadIdx.z;
-    }
-    if (regContext->regName == "%nctaid.x") {
-        std::cout << "Matched %nctaid.x" << std::endl;
-        return &GridDim.x;
-    }
-    if (regContext->regName == "%nctaid.y") {
-        std::cout << "Matched %nctaid.y" << std::endl;
-        return &GridDim.y;
-    }
-    if (regContext->regName == "%nctaid.z") {
-        std::cout << "Matched %nctaid.z" << std::endl;
-        return &GridDim.z;
-    }
-    if (regContext->regName == "%ntid.x") {
-        std::cout << "Matched %ntid.x" << std::endl;
-        return &BlockDim.x;
-    }
-    if (regContext->regName == "%ntid.y") {
-        std::cout << "Matched %ntid.y" << std::endl;
-        return &BlockDim.y;
-    }
-    if (regContext->regName == "%ntid.z") {
-        std::cout << "Matched %ntid.z" << std::endl;
-        return &BlockDim.z;
-    }
-
     // 如果没找到，尝试组合名称查找（例如 regName="r", regIdx=1 组合成 "r1"）
-    std::string combinedName = regContext->regName + std::to_string(regContext->regIdx);
+    std::string combinedName =
+        regContext->regName + std::to_string(regContext->regIdx);
     iter = name2Reg.find(combinedName);
     if (iter != name2Reg.end()) {
         return iter->second->addr;
     }
 
-    // 再次尝试不带索引的名称（某些情况下可能直接使用）
-    iter = name2Reg.find(regContext->regName);
-    if (iter != name2Reg.end()) {
-        return iter->second->addr;
-    }
-
-    // 输出调试信息
-    std::cerr << "Error: Register '" << regContext->regName 
-              << "' with index " << regContext->regIdx << " not found" << std::endl;
-    
     // 对于特殊寄存器，不应该创建临时寄存器，而应该报错
     if (regContext->regName[0] == '%') {
+        std::cerr << "Error: Special register '" << regContext->regName 
+                  << "' not found" << std::endl;
         assert(false && "Special register not found");
         return nullptr;
     }
