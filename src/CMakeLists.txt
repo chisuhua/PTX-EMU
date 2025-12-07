@@ -36,6 +36,7 @@ set(SOURCES
 include_directories(${CUDA_PATH}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(${ANTLR4_GENERATED_SRC_DIR})
 
 add_library(ptx_ir SHARED
     ptx_ir/ptx_types.cpp
@@ -46,7 +47,18 @@ add_library(ptxsim SHARED
     ptxsim/core/cta_context.cpp
     ptxsim/core/interpreter.cpp
     ptxsim/core/thread_context.cpp
+    ptxsim/instruction_factory.cpp
     ptxsim/utils/qualifier_utils.cpp
+    ptxsim/utils/type_utils.cpp
+    ptxsim/instruction_handlers/arithmetic_handler.cpp
+    ptxsim/instruction_handlers/bitwise_handler.cpp
+    ptxsim/instruction_handlers/memory_handler.cpp
+    ptxsim/instruction_handlers/control_handler.cpp
+    ptxsim/instruction_handlers/math_handler.cpp
+    ptxsim/instruction_handlers/special_handler.cpp
+    ptxsim/instruction_handlers/misc_handler.cpp
+    ptxsim/instruction_handlers/remaining_handler.cpp
+    ptxsim/instruction_handlers/structure_handler.cpp
 )
 target_link_libraries(ptxsim ptx_ir)
 
