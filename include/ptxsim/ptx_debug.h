@@ -39,67 +39,75 @@ public:
         return instance;
     }
 
+private:
+    // 使用函数局部静态变量来避免死锁问题
+    static std::mutex& get_mutex() {
+        static std::mutex mutex_instance;
+        return mutex_instance;
+    }
+
+public:
     // 启用/禁用特定类型的指令跟踪
     void enable_instruction_trace(InstructionType type, bool enable = true) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(get_mutex());
         instruction_tracing_[type] = enable;
     }
 
     // 检查是否启用特定类型的指令跟踪
     bool is_instruction_traced(InstructionType type) const {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(get_mutex());
         auto it = instruction_tracing_.find(type);
         return it != instruction_tracing_.end() && it->second;
     }
 
     // 启用/禁用内存访问跟踪
     void enable_memory_trace(bool enable = true) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(get_mutex());
         trace_memory_ = enable;
     }
 
     bool is_memory_traced() const {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(get_mutex());
         return trace_memory_;
     }
 
     // 启用/禁用寄存器访问跟踪
     void enable_register_trace(bool enable = true) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(get_mutex());
         trace_registers_ = enable;
     }
 
     bool is_register_traced() const {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(get_mutex());
         return trace_registers_;
     }
 
     // 设置断点
     void set_breakpoint(int pc) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(get_mutex());
         breakpoints_[pc] = nullptr; // 无条件断点
     }
 
     // 设置条件断点
     void set_conditional_breakpoint(int pc, BreakpointCondition condition) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(get_mutex());
         breakpoints_[pc] = condition;
     }
 
     void clear_breakpoint(int pc) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(get_mutex());
         breakpoints_.erase(pc);
     }
 
     void clear_all_breakpoints() {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(get_mutex());
         breakpoints_.clear();
     }
 
     bool has_breakpoint(
         int pc,
         const std::unordered_map<std::string, std::any> &context = {}) const {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(get_mutex());
         auto it = breakpoints_.find(pc);
         if (it == breakpoints_.end())
             return false;
@@ -113,40 +121,40 @@ public:
 
     // 设置观察点（寄存器）
     void set_watchpoint(const std::string &reg_name) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(get_mutex());
         watchpoints_.insert(reg_name);
     }
 
     void clear_watchpoint(const std::string &reg_name) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(get_mutex());
         watchpoints_.erase(reg_name);
     }
 
     void clear_all_watchpoints() {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(get_mutex());
         watchpoints_.clear();
     }
 
     bool has_watchpoint(const std::string &reg_name) const {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(get_mutex());
         return watchpoints_.find(reg_name) != watchpoints_.end();
     }
 
-    // 设置PC范围跟踪
+    // 设置PC范围
     void set_pc_range(int start, int end) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(get_mutex());
         pc_start_ = start;
         pc_end_ = end;
     }
 
     void clear_pc_range() {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(get_mutex());
         pc_start_ = -1;
         pc_end_ = -1;
     }
 
     bool is_pc_traced(int pc) const {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(get_mutex());
         if (pc_start_ == -1 || pc_end_ == -1)
             return true;
         return pc >= pc_start_ && pc <= pc_end_;
@@ -155,12 +163,12 @@ public:
     // 设置跟踪回调
     void set_instruction_callback(
         std::function<void(int, const std::string &)> callback) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(get_mutex());
         instruction_callback_ = callback;
     }
 
     void trigger_instruction_callback(int pc, const std::string &instruction) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(get_mutex());
         if (instruction_callback_) {
             instruction_callback_(pc, instruction);
         }
@@ -168,7 +176,7 @@ public:
 
     // 从配置文件加载
     bool load_from_file(const std::string &filename) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(get_mutex());
         try {
             std::ifstream config_file(filename);
             if (!config_file.is_open()) {
@@ -195,25 +203,37 @@ public:
                 value.erase(value.find_last_not_of(" \t") + 1);
 
                 // 处理配置项
-                if (key == "trace_memory") {
-                    enable_memory_trace(value == "true" || value == "1");
+                if (key == "trace_instruction") {
+                    // 启用所有类型的指令跟踪
+                    if (value == "true" || value == "1") {
+                        instruction_tracing_[InstructionType::MEMORY] = true;
+                        instruction_tracing_[InstructionType::ARITHMETIC] = true;
+                        instruction_tracing_[InstructionType::CONTROL] = true;
+                        instruction_tracing_[InstructionType::LOGIC] = true;
+                        instruction_tracing_[InstructionType::CONVERT] = true;
+                        instruction_tracing_[InstructionType::SPECIAL] = true;
+                        instruction_tracing_[InstructionType::OTHER] = true;
+                    }
+                } else if (key == "trace_memory") {
+                    trace_memory_ = (value == "true" || value == "1");
                 } else if (key == "trace_registers") {
-                    enable_register_trace(value == "true" || value == "1");
-                } else if (key == "pc_range") {
-                    size_t comma_pos = value.find(',');
-                    if (comma_pos != std::string::npos) {
-                        int start = std::stoi(value.substr(0, comma_pos));
-                        int end = std::stoi(value.substr(comma_pos + 1));
-                        set_pc_range(start, end);
+                    trace_registers_ = (value == "true" || value == "1");
+                } else if (key == "trace_pc_range" || key == "pc_range") {
+                    size_t dash_pos = value.find('-');
+                    if (dash_pos != std::string::npos) {
+                        int start = std::stoi(value.substr(0, dash_pos));
+                        int end = std::stoi(value.substr(dash_pos + 1));
+                        pc_start_ = start;
+                        pc_end_ = end;
                     }
                 } else if (key.find("breakpoint.") == 0) {
                     int pc = std::stoi(key.substr(11));
-                    set_breakpoint(pc);
+                    breakpoints_[pc] = nullptr; // 无条件断点
                 } else if (key.find("watchpoint.") == 0) {
                     std::string reg_name = value;
-                    set_watchpoint(reg_name);
+                    watchpoints_.insert(reg_name);
                 } else if (key.find("trace_instruction_type.") == 0) {
-                    std::string type_str = key.substr(22);
+                    std::string type_str = key.substr(24); // Fixed length
                     bool enable = (value == "true" || value == "1");
 
                     InstructionType type;
@@ -229,10 +249,12 @@ public:
                         type = InstructionType::CONVERT;
                     else if (type_str == "special")
                         type = InstructionType::SPECIAL;
+                    else if (type_str == "other")
+                        type = InstructionType::OTHER;
                     else
                         continue;
 
-                    enable_instruction_trace(type, enable);
+                    instruction_tracing_[type] = enable;
                 }
             }
             return true;
@@ -249,7 +271,6 @@ private:
         instruction_tracing_[InstructionType::CONTROL] = true;
     }
 
-    mutable std::mutex mutex_;
     std::unordered_map<InstructionType, bool> instruction_tracing_;
     bool trace_memory_;
     bool trace_registers_;
@@ -474,7 +495,7 @@ public:
                 value_str = debug_format::format_i64(u64, true) + " / " +
                             debug_format::format_f64(f64);
             } else {
-                value_str = debug_format::printf_format("0x%p", value);
+                value_str = ptxsim::detail::printf_format("0x%p", (void*)value);
             }
 
             PTX_TRACE_MEM("%s [%s] = %s (size=%zu)", access_type,
@@ -655,6 +676,15 @@ private:
 
 #define PTX_CHECK_BREAKPOINT(pc, context)                                      \
     (ptxsim::PTXDebugger::get().check_breakpoint(pc, context))
+
+#define PTX_INFO_EMU_SIMPLE(fmt, ...)                                          \
+    do {                                                                       \
+        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
+                                                   "emu_simple")) {            \
+            ptxsim::printf_to_logger_simple(                                   \
+                ptxsim::log_level::info, "emu_simple", fmt, ##__VA_ARGS__);    \
+        }                                                                      \
+    } while (0)
 
 #define PTX_DUMP_THREAD_STATE(name, state, blockIdx, threadIdx)                \
     do {                                                                       \

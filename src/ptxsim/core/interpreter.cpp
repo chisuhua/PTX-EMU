@@ -2,12 +2,16 @@
 #include "ptx_ir/kernel_context.h"
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/cta_context.h"
+#include "ptxsim/instruction_factory.h"
 #include <cassert>
 #include <map>
 
 void PtxInterpreter::launchPtxInterpreter(PtxContext &ptx, std::string &kernel,
                                           void **args, dim3 &gridDim,
                                           dim3 &blockDim) {
+    // 初始化指令工厂，注册所有指令处理器
+    InstructionFactory::initialize();
+    
     this->ptxContext = &ptx;
     this->gridDim = gridDim;
     this->blockDim = blockDim;

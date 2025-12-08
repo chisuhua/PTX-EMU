@@ -3,6 +3,7 @@
 
 #include "ptx_types.h"
 #include <vector>
+#include <string>
 
 class OperandContext {
 public:
@@ -49,6 +50,9 @@ public:
     // 深拷贝方法
     OperandContext(const OperandContext &other);
     OperandContext &operator=(const OperandContext &other);
+    
+    // 添加toString方法用于获取操作数的字符串表示
+    std::string toString() const;
 };
 
 #endif // OPERAND_CONTEXT_H

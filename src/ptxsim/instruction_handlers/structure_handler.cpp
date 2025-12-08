@@ -1,13 +1,13 @@
 #include "ptxsim/instruction_handlers/structure_handler.h"
-#include "ptxsim/utils/type_utils.h"
 #include "ptxsim/interpreter.h"
 #include "ptxsim/thread_context.h"
-#include <iostream>
-#include <cstring>
+#include "ptxsim/utils/type_utils.h"
 #include <cstdint>
+#include <cstring>
+#include <iostream>
 
-void RegHandler::execute(ThreadContext* context, StatementContext& stmt) {
-    auto ss = (StatementContext::REG*)stmt.statement;
+void RegHandler::execute(ThreadContext *context, StatementContext &stmt) {
+    auto ss = (StatementContext::REG *)stmt.statement;
     for (int i = 0; i < ss->regNum; i++) {
         PtxInterpreter::Reg *r = new PtxInterpreter::Reg();
         r->byteNum = TypeUtils::get_bytes(ss->regDataType);
@@ -22,8 +22,8 @@ void RegHandler::execute(ThreadContext* context, StatementContext& stmt) {
     }
 }
 
-void SharedHandler::execute(ThreadContext* context, StatementContext& stmt) {
-    auto ss = (StatementContext::SHARED*)stmt.statement;
+void SharedHandler::execute(ThreadContext *context, StatementContext &stmt) {
+    auto ss = (StatementContext::SHARED *)stmt.statement;
     PtxInterpreter::Symtable *s = new PtxInterpreter::Symtable();
     s->byteNum = TypeUtils::get_bytes(ss->sharedDataType) * ss->sharedSize;
     s->elementNum = ss->sharedSize;
@@ -35,8 +35,8 @@ void SharedHandler::execute(ThreadContext* context, StatementContext& stmt) {
     context->name2Sym[s->name] = s;
 }
 
-void LocalHandler::execute(ThreadContext* context, StatementContext& stmt) {
-    auto ss = (StatementContext::LOCAL*)stmt.statement;
+void LocalHandler::execute(ThreadContext *context, StatementContext &stmt) {
+    auto ss = (StatementContext::LOCAL *)stmt.statement;
     PtxInterpreter::Symtable *s = new PtxInterpreter::Symtable();
     s->byteNum = TypeUtils::get_bytes(ss->localDataType) * ss->localSize;
     s->elementNum = ss->localSize;
@@ -47,9 +47,9 @@ void LocalHandler::execute(ThreadContext* context, StatementContext& stmt) {
     context->name2Sym[s->name] = s;
 }
 
-void DollorHandler::execute(ThreadContext* context, StatementContext& stmt) {
+void DollorHandler::execute(ThreadContext *context, StatementContext &stmt) {
     // Labels are already set up before execution starts
     // Nothing to do here during execution
-    auto ss = (StatementContext::DOLLOR*)stmt.statement;
+    auto ss = (StatementContext::DOLLOR *)stmt.statement;
     // 可以添加一些调试输出或记录标签信息
 }

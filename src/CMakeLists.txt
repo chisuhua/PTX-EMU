@@ -40,8 +40,9 @@ include_directories(${ANTLR4_GENERATED_SRC_DIR})
 
 add_library(ptx_ir SHARED
     ptx_ir/ptx_types.cpp
+    ptx_ir/operand_context.cpp
 )
-target_include_directories(ptx_ir PUBLIC include)
+target_include_directories(ptx_ir PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
 add_library(ptxsim SHARED
     ptxsim/core/cta_context.cpp
@@ -122,3 +123,8 @@ add_custom_command(TARGET cudart POST_BUILD
 )
 
 # 添加test-ptx可执行文件目标
+
+# 添加examples目标
+add_executable(debug_example
+    ../examples/debug_example.cpp
+)

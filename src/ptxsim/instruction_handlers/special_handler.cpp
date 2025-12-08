@@ -1,25 +1,25 @@
 #include "ptxsim/instruction_handlers/special_handler.h"
-#include "ptxsim/thread_context.h"
 #include "ptx_ir/ptx_types.h"
+#include "ptxsim/thread_context.h"
 #include <iostream>
 
-void PragmaHandler::execute(ThreadContext* context, StatementContext& stmt) {
+void PragmaHandler::execute(ThreadContext *context, StatementContext &stmt) {
     // PRAGMA指令暂未实现
     // 根据原始实现，这里不做任何操作
-    auto ss = (StatementContext::PRAGMA*)stmt.statement;
+    auto ss = (StatementContext::PRAGMA *)stmt.statement;
     // 未实现的指令，暂时留空
 }
 
-void AtHandler::execute(ThreadContext* context, StatementContext& stmt) {
+void AtHandler::execute(ThreadContext *context, StatementContext &stmt) {
     // AT指令暂未实现
     // 根据原始实现，这里不做任何操作
-    auto ss = (StatementContext::AT*)stmt.statement;
+    auto ss = (StatementContext::AT *)stmt.statement;
     // 未实现的指令，暂时留空
 }
 
-void AtomHandler::execute(ThreadContext* context, StatementContext& stmt) {
+void AtomHandler::execute(ThreadContext *context, StatementContext &stmt) {
     // ATOM指令暂未实现
     // 根据原始实现，这里不做任何操作
-    auto ss = (StatementContext::ATOM*)stmt.statement;
+    auto ss = (StatementContext::ATOM *)stmt.statement;
     // 未实现的指令，暂时留空
 }

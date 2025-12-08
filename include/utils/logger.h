@@ -21,10 +21,9 @@
 #include <string>
 #include <sys/types.h>
 #include <thread>
-#include <type_traits>
-#include <unistd.h>
 #include <unordered_map>
 #include <vector>
+#include <cstring>
 
 namespace ptxsim {
 
@@ -69,13 +68,54 @@ struct LogFormatOptions {
 // ===========================================================================
 
 namespace detail {
-// 终端颜色代码
+// 日志级别到字符串的转换
+inline const char *log_level_str(log_level level) {
+    switch (level) {
+    case log_level::trace:
+        return "[TRACE]";
+    case log_level::debug:
+        return "[DEBUG]";
+    case log_level::info:
+        return "[INFO]";
+    case log_level::warning:
+        return "[WARN]";
+    case log_level::error:
+        return "[ERROR]";
+    case log_level::fatal:
+        return "[FATAL]";
+    default:
+        return "[UNKNOWN]";
+    }
+}
+
+// 获取当前时间戳
+inline std::string current_timestamp() {
+    auto now = std::chrono::system_clock::now();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                  now.time_since_epoch()) %
+              1000;
+    auto timer = std::chrono::system_clock::to_time_t(now);
+    std::tm bt = *std::localtime(&timer);
+    char buffer[32];
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &bt);
+    sprintf(buffer + strlen(buffer), ".%03ld", ms.count());
+    return std::string(buffer);
+}
+
+// 获取当前线程ID
+inline std::string current_thread_id() {
+    std::ostringstream oss;
+    oss << std::this_thread::get_id();
+    return oss.str();
+}
+
+// ANSI颜色代码
 inline const char *level_color(log_level level) {
     switch (level) {
     case log_level::trace:
-        return "\033[37m"; // 灰色
-    case log_level::debug:
         return "\033[36m"; // 青色
+    case log_level::debug:
+        return "\033[34m"; // 蓝色
     case log_level::info:
         return "\033[32m"; // 绿色
     case log_level::warning:
@@ -83,98 +123,33 @@ inline const char *level_color(log_level level) {
     case log_level::error:
         return "\033[31m"; // 红色
     case log_level::fatal:
-        return "\033[41;37m"; // 红底白字
+        return "\033[35m"; // 紫色
     default:
-        return "\033[0m";
+        return "";
     }
 }
 
-inline const char *reset_color() { return "\033[0m"; }
+// 重置颜色
+inline const char *reset_color() {
+    return "\033[0m";
+}
 
-// printf 风格的格式化函数
+// 输出日志的核心函数声明
+void output_log(log_level level, const std::string &component,
+                const std::string &msg, const std::source_location &loc);
+
+// 输出简单日志的核心函数声明
+void output_log_simple(log_level level, const std::string &component,
+                       const std::string &msg);
+
+// 格式化函数模板
 template <typename... Args>
 std::string printf_format(const char *fmt, Args &&...args) {
-    // 预估缓冲区大小
-    size_t size = std::snprintf(nullptr, 0, fmt, args...) + 1;
-    if (size <= 0) {
-        return std::string(fmt); // 格式化失败，返回原始格式字符串
-    }
-
-    // 分配缓冲区并格式化
-    auto buf = std::make_unique<char[]>(size);
-    std::snprintf(buf.get(), size, fmt, args...);
-    return std::string(buf.get());
+    size_t size = snprintf(nullptr, 0, fmt, args...) + 1;
+    std::unique_ptr<char[]> buf(new char[size]);
+    snprintf(buf.get(), size, fmt, args...);
+    return std::string(buf.get(), buf.get() + size - 1);
 }
-
-// 通用的变量到字符串转换
-template <typename T> std::string to_string(const T &value) {
-    if constexpr (std::is_arithmetic_v<T>) {
-        if constexpr (std::is_integral_v<T> && std::is_signed_v<T>) {
-            return printf_format("%lld", static_cast<long long>(value));
-        } else if constexpr (std::is_integral_v<T> && std::is_unsigned_v<T>) {
-            return printf_format("%llu",
-                                 static_cast<unsigned long long>(value));
-        } else if constexpr (std::is_floating_point_v<T>) {
-            return printf_format("%g", static_cast<double>(value));
-        } else {
-            return printf_format("%lld", static_cast<long long>(value));
-        }
-    } else {
-        std::ostringstream oss;
-        oss << value;
-        return oss.str();
-    }
-}
-
-// 提取简短的函数名
-inline std::string short_function_name(const char *full_name) {
-    std::string name(full_name);
-    // 查找最后一个 '::' 或者 '('
-    size_t pos = name.rfind("::");
-    if (pos != std::string::npos) {
-        pos += 2; // 跳过 "::"
-    } else {
-        pos = 0;
-    }
-    size_t end_pos = name.find('(', pos);
-    if (end_pos != std::string::npos) {
-        return name.substr(pos, end_pos - pos);
-    }
-    return name.substr(pos);
-}
-
-// Flag to indicate if we're in static destruction phase
-inline bool &in_static_destruction() {
-    static bool flag = false;
-    return flag;
-}
-
-// Function to set the static destruction flag
-inline void set_static_destruction() { in_static_destruction() = true; }
-
-// 获取当前时间戳（格式化为字符串）
-inline std::string current_timestamp() {
-    auto now = std::chrono::system_clock::now();
-    auto now_time_t = std::chrono::system_clock::to_time_t(now);
-    auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                      now.time_since_epoch()) %
-                  1000;
-
-    std::stringstream ss;
-    ss << std::put_time(std::localtime(&now_time_t), "%Y-%m-%d %H:%M:%S");
-    ss << '.' << std::setfill('0') << std::setw(3) << now_ms.count();
-    return ss.str();
-}
-
-// 获取当前线程ID（简化版）
-inline std::string current_thread_id() {
-    static thread_local std::string tid = std::to_string(
-        std::hash<std::thread::id>{}(std::this_thread::get_id()));
-    return tid;
-}
-
-// 获取当前进程ID
-inline pid_t current_process_id() { return getpid(); }
 } // namespace detail
 
 // ===========================================================================
@@ -253,10 +228,16 @@ private:
 
 class LoggerConfig {
 public:
+    // 获取单例实例
     static LoggerConfig &get() {
         static LoggerConfig instance;
         return instance;
     }
+
+    // 构造函数
+    LoggerConfig()
+        : global_level_(log_level::info), target_(log_target::console),
+          use_async_logging_(false) {}
 
     // 从配置文件加载设置
     bool load_from_file(const std::string &filename) {
@@ -273,6 +254,7 @@ public:
                 if (line.empty() || line[0] == '#')
                     continue;
 
+                // 解析 key=value 格式的配置行
                 size_t eq_pos = line.find('=');
                 if (eq_pos == std::string::npos)
                     continue;
@@ -280,33 +262,84 @@ public:
                 std::string key = line.substr(0, eq_pos);
                 std::string value = line.substr(eq_pos + 1);
 
-                // 去除前后空格
+                // 去除首尾空白字符
                 key.erase(0, key.find_first_not_of(" \t"));
                 key.erase(key.find_last_not_of(" \t") + 1);
                 value.erase(0, value.find_first_not_of(" \t"));
                 value.erase(value.find_last_not_of(" \t") + 1);
 
-                // 处理配置项
                 if (key == "global_level") {
                     set_global_level_from_string(value);
-                } else if (key == "log_target") {
+                } else if (key == "target") {
                     set_target_from_string(value);
-                } else if (key == "log_file") {
-                    set_logfile(value);
-                } else if (key.find("component_level.") == 0) {
-                    std::string component = key.substr(17);
-                    set_component_level_from_string(component, value);
-                } else if (key == "async_logging") {
-                    enable_async_logging(value == "true" || value == "1");
+                } else if (key == "logfile") {
+                    set_logfile_internal(value);
+                } else if (key == "async") {
+                    use_async_logging_ = (value == "true" || value == "1");
                 } else if (key == "colorize") {
                     format_options_.colorize =
                         (value == "true" || value == "1");
+                } else if (key.find("component.") == 0) {
+                    // 组件级别的配置
+                    std::string component = key.substr(10); // 去掉 "component." 前缀
+                    set_component_level_from_string(component, value);
                 }
             }
             return true;
         } catch (...) {
             return false;
         }
+    }
+
+    // 设置全局日志级别（字符串形式）
+    void set_global_level_from_string(const std::string &level_str) {
+        log_level level = global_level_;
+        if (level_str == "trace")
+            level = log_level::trace;
+        else if (level_str == "debug")
+            level = log_level::debug;
+        else if (level_str == "info")
+            level = log_level::info;
+        else if (level_str == "warning")
+            level = log_level::warning;
+        else if (level_str == "error")
+            level = log_level::error;
+        else if (level_str == "fatal")
+            level = log_level::fatal;
+        
+        // 注意：此处不再加锁，因为调用此函数的load_from_file已经持有锁
+        global_level_ = level;
+    }
+
+    // 设置特定组件的日志级别（字符串形式）
+    void set_component_level_from_string(const std::string &component,
+                                       const std::string &level_str) {
+        log_level level = log_level::info; // 默认级别
+        if (level_str == "trace")
+            level = log_level::trace;
+        else if (level_str == "debug")
+            level = log_level::debug;
+        else if (level_str == "info")
+            level = log_level::info;
+        else if (level_str == "warning")
+            level = log_level::warning;
+        else if (level_str == "error")
+            level = log_level::error;
+        else if (level_str == "fatal")
+            level = log_level::fatal;
+
+        // 注意：此处不再加锁，因为调用此函数的load_from_file已经持有锁
+        component_levels_[component] = level;
+    }
+
+    // 设置日志输出目标（字符串形式）
+    void set_target_from_string(const std::string &target_str) {
+        if (target_str == "console")
+            target_ = log_target::console;
+        else if (target_str == "file")
+            target_ = log_target::file;
+        else if (target_str == "both")
+            target_ = log_target::both;
     }
 
     // 设置全局日志级别
@@ -337,9 +370,14 @@ public:
         target_ = target;
     }
 
-    // 设置日志文件
+    // 设置日志文件 (外部调用接口，带锁保护)
     bool set_logfile(const std::string &filename) {
         std::lock_guard<std::mutex> lock(mutex_);
+        return set_logfile_internal(filename);
+    }
+    
+    // 设置日志文件 (内部使用，无锁)
+    bool set_logfile_internal(const std::string &filename) {
         try {
             logfile_.open(filename, std::ios::app);
             if (!logfile_.is_open()) {
@@ -353,14 +391,7 @@ public:
 
     // 检查是否启用了某个级别的日志
     bool is_enabled(log_level level, const std::string &component = "") const {
-        if (detail::in_static_destruction())
-            return false;
-
-        std::lock_guard<std::mutex> lock(mutex_);
-        log_level effective_level =
-            component.empty() ? global_level_ : get_effective_level(component);
-
-        return static_cast<int>(level) >= static_cast<int>(effective_level);
+        return level >= get_effective_level(component);
     }
 
     // 获取当前日志目标
@@ -371,9 +402,7 @@ public:
 
     // 禁用所有日志
     void disable_all() {
-        std::lock_guard<std::mutex> lock(mutex_);
-        global_level_ = log_level::fatal;
-        component_levels_.clear();
+        set_global_level(log_level::fatal);
     }
 
     // 启用/禁用异步日志记录
@@ -384,93 +413,22 @@ public:
 
     // 获取日志格式选项
     const LogFormatOptions &get_format_options() const {
-        std::lock_guard<std::mutex> lock(mutex_);
         return format_options_;
     }
 
     // 设置日志格式选项
     void set_format_options(const LogFormatOptions &options) {
-        std::lock_guard<std::mutex> lock(mutex_);
         format_options_ = options;
     }
 
     ~LoggerConfig() {
-        detail::set_static_destruction();
         if (logfile_.is_open()) {
             logfile_.close();
         }
     }
 
+    // 私有成员变量
 private:
-    LoggerConfig()
-        : global_level_(log_level::info), target_(log_target::console),
-          use_async_logging_(false) {
-        // 检查环境变量
-        char *env_level = std::getenv("PTXSIM_LOG_LEVEL");
-        if (env_level) {
-            set_global_level_from_string(env_level);
-        }
-
-        char *env_file = std::getenv("PTXSIM_LOG_FILE");
-        if (env_file) {
-            if (set_logfile(env_file)) {
-                target_ = log_target::both;
-            }
-        }
-
-        char *env_async = std::getenv("PTXSIM_ASYNC_LOG");
-        if (env_async) {
-            use_async_logging_ = (std::strcmp(env_async, "1") == 0 ||
-                                  std::strcmp(env_async, "true") == 0);
-        }
-
-        char *env_config = std::getenv("PTXSIM_LOG_CONFIG");
-        if (env_config) {
-            load_from_file(env_config);
-        }
-    }
-
-    void set_global_level_from_string(const std::string &level_str) {
-        if (level_str == "trace")
-            global_level_ = log_level::trace;
-        else if (level_str == "debug")
-            global_level_ = log_level::debug;
-        else if (level_str == "info")
-            global_level_ = log_level::info;
-        else if (level_str == "warning")
-            global_level_ = log_level::warning;
-        else if (level_str == "error")
-            global_level_ = log_level::error;
-        else if (level_str == "fatal")
-            global_level_ = log_level::fatal;
-    }
-
-    void set_component_level_from_string(const std::string &component,
-                                         const std::string &level_str) {
-        log_level level = log_level::info;
-        if (level_str == "trace")
-            level = log_level::trace;
-        else if (level_str == "debug")
-            level = log_level::debug;
-        else if (level_str == "warning")
-            level = log_level::warning;
-        else if (level_str == "error")
-            level = log_level::error;
-        else if (level_str == "fatal")
-            level = log_level::fatal;
-
-        component_levels_[component] = level;
-    }
-
-    void set_target_from_string(const std::string &target_str) {
-        if (target_str == "console")
-            target_ = log_target::console;
-        else if (target_str == "file")
-            target_ = log_target::file;
-        else if (target_str == "both")
-            target_ = log_target::both;
-    }
-
     mutable std::mutex mutex_;
     log_level global_level_;
     std::unordered_map<std::string, log_level> component_levels_;
@@ -480,8 +438,17 @@ private:
     LogFormatOptions format_options_;
     std::unique_ptr<AsyncLogQueue> async_queue_;
 
+    // 禁止拷贝构造和赋值
     LoggerConfig(const LoggerConfig &) = delete;
     LoggerConfig &operator=(const LoggerConfig &) = delete;
+    
+    // 友元声明，允许detail命名空间中的函数访问私有成员
+    friend void detail::output_log(log_level level, const std::string &component,
+                                  const std::string &msg,
+                                  const std::source_location &loc);
+    friend void detail::output_log_simple(log_level level,
+                                         const std::string &component,
+                                         const std::string &msg);
 };
 
 // ===========================================================================
@@ -489,30 +456,11 @@ private:
 // ===========================================================================
 
 namespace detail {
-// 日志级别到字符串的转换
-inline const char *log_level_str(log_level level) {
-    switch (level) {
-    case log_level::trace:
-        return "[TRACE]";
-    case log_level::debug:
-        return "[DEBUG]";
-    case log_level::info:
-        return "[INFO]";
-    case log_level::warning:
-        return "[WARN]";
-    case log_level::error:
-        return "[ERROR]";
-    case log_level::fatal:
-        return "[FATAL]";
-    default:
-        return "[UNKNOWN]";
-    }
-}
-
-// 线程安全的日志输出
+// 输出日志的核心函数
 inline void output_log(log_level level, const std::string &component,
                        const std::string &message,
                        const std::source_location &loc) {
+    // 函数实现保持不变
     auto &config = LoggerConfig::get();
     if (!config.is_enabled(level, component))
         return;
@@ -761,6 +709,8 @@ inline void output_log_simple(log_level level, const std::string &component,
     PTX_LOG_SIMPLE(ptxsim::log_level::trace, "emu", fmt, ##__VA_ARGS__)
 #define PTX_DEBUG_EMU_SIMPLE(fmt, ...)                                         \
     PTX_LOG_SIMPLE(ptxsim::log_level::debug, "emu", fmt, ##__VA_ARGS__)
+#define PTX_INFO_EMU_SIMPLE(fmt, ...)                                          \
+    PTX_LOG_SIMPLE(ptxsim::log_level::info, "emu_simple", fmt, ##__VA_ARGS__)
 
 // 变量跟踪宏
 #define PTX_DEBUG_VAR(component, var)                                          \
@@ -837,7 +787,7 @@ public:
     ScopeExit &operator=(ScopeExit &&) = default;
 
     ~ScopeExit() {
-        if (func_ && !detail::in_static_destruction()) {
+        if (func_) {
             func_();
         }
     }
@@ -855,6 +805,25 @@ private:
 template <typename... Args> void unused([[maybe_unused]] Args &&...args) {}
 
 #define PTX_UNUSED(...) ptxsim::unused(__VA_ARGS__)
+
+// 输出格式化日志的辅助函数
+template <typename... Args>
+void printf_to_logger(log_level level, const std::string &component,
+                      const char *fmt, Args &&...args) {
+    auto formatted_msg =
+        detail::printf_format(fmt, std::forward<Args>(args)...);
+    detail::output_log(level, component, formatted_msg,
+                       std::source_location::current());
+}
+
+// 输出简单格式化日志的辅助函数
+template <typename... Args>
+void printf_to_logger_simple(log_level level, const std::string &component,
+                             const char *fmt, Args &&...args) {
+    auto formatted_msg =
+        detail::printf_format(fmt, std::forward<Args>(args)...);
+    detail::output_log_simple(level, component, formatted_msg);
+}
 
 } // namespace ptxsim
 

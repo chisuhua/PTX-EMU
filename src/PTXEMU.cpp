@@ -20,6 +20,8 @@
 #include "ptxParserBaseListener.h"
 #include "ptx_parser/ptx_parser.h"
 #include "ptxsim/interpreter.h"
+#include "ptxsim/ptx_debug.h"
+#include "utils/logger.h"
 
 #define __my_func__ __func__
 
@@ -37,7 +39,27 @@ PtxInterpreter ptxInterpreter;
 
 std::map<uint64_t, bool> memAlloc;
 
+// 调试配置文件路径
+static const char* DEBUG_CONFIG_FILE = "ptx_debug.conf";
+
 #define LOGEMU 0
+
+// 初始化调试环境
+void initialize_debug_environment() {
+    auto& logger_config = ptxsim::LoggerConfig::get();
+    auto& debugger = ptxsim::DebugConfig::get();
+    
+    // 尝试加载调试配置文件
+    if (logger_config.load_from_file(DEBUG_CONFIG_FILE)) {
+        PTX_INFO_EMU("Debug configuration loaded from %s", DEBUG_CONFIG_FILE);
+        // 加载调试器配置
+        debugger.load_from_file(DEBUG_CONFIG_FILE);
+    } else {
+        PTX_INFO_EMU("No debug configuration file found, using default settings");
+        // 设置默认的日志级别
+        logger_config.set_global_level(ptxsim::log_level::info);
+    }
+}
 
 extern "C" {
 
@@ -45,6 +67,13 @@ void **__cudaRegisterFatBinary(void *fatCubin) {
 #ifdef LOGEMU
     printf("EMU: call %s\n", __my_func__);
 #endif
+
+    // 初始化调试环境
+    static bool debug_initialized = false;
+    if (!debug_initialized) {
+        initialize_debug_environment();
+        debug_initialized = true;
+    }
 
     static bool if_executed = 0;
 

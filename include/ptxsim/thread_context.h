@@ -7,11 +7,15 @@
 #include "ptxsim/interpreter.h"
 #include "ptxsim/utils/type_utils.h"
 #include "ptxsim/instruction_factory.h"
+#include "ptxsim/ptx_debug.h"
 #include <driver_types.h>
 #include <map>
 #include <queue>
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include <any>
+#include <ostream>
 
 class ThreadContext {
 public:
@@ -58,6 +62,12 @@ public:
     void mov(void *from, void *to, std::vector<Qualifier> &q);
     bool isIMMorVEC(OperandContext &op);
     Qualifier getCMPOP(std::vector<Qualifier> &q);
+
+    // 新增：为断点条件准备上下文
+    void prepare_breakpoint_context(std::unordered_map<std::string, std::any>& context);
+    
+    // 新增：转储线程状态
+    void dump_state(std::ostream& os) const;
 
 private:
     void _execute_once();
