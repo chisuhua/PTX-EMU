@@ -42,7 +42,7 @@
             "program": "${workspaceFolder}/build/bin/${fileBasenameNoExtension}",
             "args": [],
             "stopAtEntry": true,
-            "cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}/build",
             "environment": [
                 {
                     "name": "LD_LIBRARY_PATH",

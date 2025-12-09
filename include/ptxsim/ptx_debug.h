@@ -233,7 +233,7 @@ public:
                     std::string reg_name = value;
                     watchpoints_.insert(reg_name);
                 } else if (key.find("trace_instruction_type.") == 0) {
-                    std::string type_str = key.substr(24); // Fixed length
+                    std::string type_str = key.substr(23); // Fixed length
                     bool enable = (value == "true" || value == "1");
 
                     InstructionType type;

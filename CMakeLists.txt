@@ -12,6 +12,13 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
+# 是否使用详细日志的选项
+option(USE_DETAILED_LOGGING "Use detailed logging with file location info" OFF)
+
+if(USE_DETAILED_LOGGING)
+    add_compile_definitions(PTXSIM_USE_DETAILED_LOGGING)
+endif()
+
 # 检查CUDA_PATH环境变量
 if(NOT DEFINED ENV{CUDA_PATH})
     message(FATAL_ERROR "CUDA_PATH environment variable is not set. Please set it to your CUDA installation path.")

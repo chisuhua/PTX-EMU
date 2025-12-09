@@ -74,12 +74,8 @@ void ThreadContext::_execute_once() {
     // 使用DebugConfig获取完整的指令字符串（包含操作数）
     std::string operands = ptxsim::DebugConfig::get_full_instruction_string(statement);
     
-    // 使用带有线程和块索引的格式记录指令跟踪
-    std::string full_instruction = opcode + " " + operands;
-    PTX_TRACE_EXEC("[TID:(%d,%d,%d) BID:(%d,%d,%d) PC:%4d] %s", 
-                   ThreadIdx.x, ThreadIdx.y, ThreadIdx.z,
-                   BlockIdx.x, BlockIdx.y, BlockIdx.z,
-                   pc, full_instruction.c_str());
+    // 使用PTX_TRACE_INSTR宏跟踪指令执行
+    PTX_TRACE_INSTR(pc, opcode, operands, BlockIdx, ThreadIdx);
     
     // 记录性能统计
     ptxsim::PTXDebugger::get().get_perf_stats().record_instruction(opcode);

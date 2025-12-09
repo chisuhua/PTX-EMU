@@ -8,6 +8,7 @@
 #include <condition_variable>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -23,7 +24,6 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
-#include <cstring>
 
 namespace ptxsim {
 
@@ -32,12 +32,12 @@ namespace ptxsim {
 // ===========================================================================
 
 enum class log_level {
-    trace = 0, // 比debug更详细，用于指令级跟踪
-    debug = 1,
-    info = 2,
-    warning = 3,
-    error = 4,
-    fatal = 5
+    fatal = 0,
+    error = 1,
+    warning = 2,
+    info = 3,
+    trace = 4, // 比debug更详细，用于指令级跟踪
+    debug = 5
 };
 
 // ===========================================================================
@@ -130,9 +130,7 @@ inline const char *level_color(log_level level) {
 }
 
 // 重置颜色
-inline const char *reset_color() {
-    return "\033[0m";
-}
+inline const char *reset_color() { return "\033[0m"; }
 
 // 输出日志的核心函数声明
 void output_log(log_level level, const std::string &component,
@@ -281,7 +279,8 @@ public:
                         (value == "true" || value == "1");
                 } else if (key.find("component.") == 0) {
                     // 组件级别的配置
-                    std::string component = key.substr(10); // 去掉 "component." 前缀
+                    std::string component =
+                        key.substr(10); // 去掉 "component." 前缀
                     set_component_level_from_string(component, value);
                 }
             }
@@ -306,14 +305,14 @@ public:
             level = log_level::error;
         else if (level_str == "fatal")
             level = log_level::fatal;
-        
+
         // 注意：此处不再加锁，因为调用此函数的load_from_file已经持有锁
         global_level_ = level;
     }
 
     // 设置特定组件的日志级别（字符串形式）
     void set_component_level_from_string(const std::string &component,
-                                       const std::string &level_str) {
+                                         const std::string &level_str) {
         log_level level = log_level::info; // 默认级别
         if (level_str == "trace")
             level = log_level::trace;
@@ -375,7 +374,7 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         return set_logfile_internal(filename);
     }
-    
+
     // 设置日志文件 (内部使用，无锁)
     bool set_logfile_internal(const std::string &filename) {
         try {
@@ -401,9 +400,7 @@ public:
     }
 
     // 禁用所有日志
-    void disable_all() {
-        set_global_level(log_level::fatal);
-    }
+    void disable_all() { set_global_level(log_level::fatal); }
 
     // 启用/禁用异步日志记录
     void enable_async_logging(bool enable) {
@@ -441,14 +438,15 @@ private:
     // 禁止拷贝构造和赋值
     LoggerConfig(const LoggerConfig &) = delete;
     LoggerConfig &operator=(const LoggerConfig &) = delete;
-    
+
     // 友元声明，允许detail命名空间中的函数访问私有成员
-    friend void detail::output_log(log_level level, const std::string &component,
-                                  const std::string &msg,
-                                  const std::source_location &loc);
+    friend void detail::output_log(log_level level,
+                                   const std::string &component,
+                                   const std::string &msg,
+                                   const std::source_location &loc);
     friend void detail::output_log_simple(log_level level,
-                                         const std::string &component,
-                                         const std::string &msg);
+                                          const std::string &component,
+                                          const std::string &msg);
 };
 
 // ===========================================================================
@@ -638,7 +636,8 @@ inline void output_log_simple(log_level level, const std::string &component,
         }                                                                      \
     } while (0)
 
-// 常用组件日志宏
+// 可切换版本的日志宏，默认使用PTX_LOG_SIMPLE
+#ifdef PTXSIM_USE_DETAILED_LOGGING
 #define PTX_TRACE_EMU(fmt, ...)                                                \
     PTX_LOG(ptxsim::log_level::trace, "emu", fmt, ##__VA_ARGS__)
 #define PTX_DEBUG_EMU(fmt, ...)                                                \
@@ -674,11 +673,62 @@ inline void output_log_simple(log_level level, const std::string &component,
 #define PTX_DEBUG_THREAD(fmt, ...)                                             \
     PTX_LOG(ptxsim::log_level::debug, "thread", fmt, ##__VA_ARGS__)
 
+#define PTX_TRACE_EMU_SIMPLE(fmt, ...)                                         \
+    PTX_LOG(ptxsim::log_level::trace, "emu", fmt, ##__VA_ARGS__)
+#define PTX_DEBUG_EMU_SIMPLE(fmt, ...)                                         \
+    PTX_LOG(ptxsim::log_level::debug, "emu", fmt, ##__VA_ARGS__)
+#define PTX_INFO_EMU_SIMPLE(fmt, ...)                                          \
+    PTX_LOG(ptxsim::log_level::info, "emu_simple", fmt, ##__VA_ARGS__)
+#else
+#define PTX_TRACE_EMU(fmt, ...)                                                \
+    PTX_LOG_SIMPLE(ptxsim::log_level::trace, "emu", fmt, ##__VA_ARGS__)
+#define PTX_DEBUG_EMU(fmt, ...)                                                \
+    PTX_LOG_SIMPLE(ptxsim::log_level::debug, "emu", fmt, ##__VA_ARGS__)
+#define PTX_INFO_EMU(fmt, ...)                                                 \
+    PTX_LOG_SIMPLE(ptxsim::log_level::info, "emu", fmt, ##__VA_ARGS__)
+#define PTX_WARN_EMU(fmt, ...)                                                 \
+    PTX_LOG_SIMPLE(ptxsim::log_level::warning, "emu", fmt, ##__VA_ARGS__)
+#define PTX_ERROR_EMU(fmt, ...)                                                \
+    PTX_LOG_SIMPLE(ptxsim::log_level::error, "emu", fmt, ##__VA_ARGS__)
+#define PTX_FATAL_EMU(fmt, ...)                                                \
+    PTX_LOG_SIMPLE(ptxsim::log_level::fatal, "emu", fmt, ##__VA_ARGS__)
+
+#define PTX_TRACE_EXEC(fmt, ...)                                               \
+    PTX_LOG_SIMPLE(ptxsim::log_level::trace, "exec", fmt, ##__VA_ARGS__)
+#define PTX_DEBUG_EXEC(fmt, ...)                                               \
+    PTX_LOG_SIMPLE(ptxsim::log_level::debug, "exec", fmt, ##__VA_ARGS__)
+#define PTX_INFO_EXEC(fmt, ...)                                                \
+    PTX_LOG_SIMPLE(ptxsim::log_level::info, "exec", fmt, ##__VA_ARGS__)
+
+#define PTX_TRACE_REG(fmt, ...)                                                \
+    PTX_LOG_SIMPLE(ptxsim::log_level::trace, "reg", fmt, ##__VA_ARGS__)
+#define PTX_DEBUG_REG(fmt, ...)                                                \
+    PTX_LOG_SIMPLE(ptxsim::log_level::debug, "reg", fmt, ##__VA_ARGS__)
+
+#define PTX_TRACE_MEM(fmt, ...)                                                \
+    PTX_LOG_SIMPLE(ptxsim::log_level::trace, "mem", fmt, ##__VA_ARGS__)
+#define PTX_DEBUG_MEM(fmt, ...)                                                \
+    PTX_LOG_SIMPLE(ptxsim::log_level::debug, "mem", fmt, ##__VA_ARGS__)
+
+#define PTX_TRACE_THREAD(fmt, ...)                                             \
+    PTX_LOG_SIMPLE(ptxsim::log_level::trace, "thread", fmt, ##__VA_ARGS__)
+#define PTX_DEBUG_THREAD(fmt, ...)                                             \
+    PTX_LOG_SIMPLE(ptxsim::log_level::debug, "thread", fmt, ##__VA_ARGS__)
+
+#define PTX_TRACE_EMU_SIMPLE(fmt, ...)                                         \
+    PTX_LOG_SIMPLE(ptxsim::log_level::trace, "emu", fmt, ##__VA_ARGS__)
+#define PTX_DEBUG_EMU_SIMPLE(fmt, ...)                                         \
+    PTX_LOG_SIMPLE(ptxsim::log_level::debug, "emu", fmt, ##__VA_ARGS__)
+#define PTX_INFO_EMU_SIMPLE(fmt, ...)                                          \
+    PTX_LOG_SIMPLE(ptxsim::log_level::info, "emu_simple", fmt, ##__VA_ARGS__)
+#endif
+
 // 条件编译日志宏
 #ifdef PTXSIM_DISABLE_LOGGING
 #define PTX_TRACE_EMU_IF(cond, fmt, ...) ((void)0)
 #define PTX_DEBUG_EMU_IF(cond, fmt, ...) ((void)0)
 #else
+#ifdef PTXSIM_USE_DETAILED_LOGGING
 #define PTX_TRACE_EMU_IF(cond, fmt, ...)                                       \
     do {                                                                       \
         if ((cond) && ptxsim::LoggerConfig::get().is_enabled(                  \
@@ -702,15 +752,30 @@ inline void output_log_simple(log_level level, const std::string &component,
                                        loc);                                   \
         }                                                                      \
     } while (0)
-#endif
+#else
+#define PTX_TRACE_EMU_IF(cond, fmt, ...)                                       \
+    do {                                                                       \
+        if ((cond) && ptxsim::LoggerConfig::get().is_enabled(                  \
+                          ptxsim::log_level::trace, "emu")) {                  \
+            std::string msg =                                                  \
+                ptxsim::detail::printf_format(fmt, ##__VA_ARGS__);             \
+            ptxsim::detail::output_log_simple(ptxsim::log_level::trace, "emu", \
+                                              msg);                            \
+        }                                                                      \
+    } while (0)
 
-// 简洁版本（不包含位置信息，性能更好）
-#define PTX_TRACE_EMU_SIMPLE(fmt, ...)                                         \
-    PTX_LOG_SIMPLE(ptxsim::log_level::trace, "emu", fmt, ##__VA_ARGS__)
-#define PTX_DEBUG_EMU_SIMPLE(fmt, ...)                                         \
-    PTX_LOG_SIMPLE(ptxsim::log_level::debug, "emu", fmt, ##__VA_ARGS__)
-#define PTX_INFO_EMU_SIMPLE(fmt, ...)                                          \
-    PTX_LOG_SIMPLE(ptxsim::log_level::info, "emu_simple", fmt, ##__VA_ARGS__)
+#define PTX_DEBUG_EMU_IF(cond, fmt, ...)                                       \
+    do {                                                                       \
+        if ((cond) && ptxsim::LoggerConfig::get().is_enabled(                  \
+                          ptxsim::log_level::debug, "emu")) {                  \
+            std::string msg =                                                  \
+                ptxsim::detail::printf_format(fmt, ##__VA_ARGS__);             \
+            ptxsim::detail::output_log_simple(ptxsim::log_level::debug, "emu", \
+                                              msg);                            \
+        }                                                                      \
+    } while (0)
+#endif
+#endif
 
 // 变量跟踪宏
 #define PTX_DEBUG_VAR(component, var)                                          \
@@ -739,6 +804,21 @@ inline void output_log_simple(log_level level, const std::string &component,
     } while (0)
 
 // 函数入口跟踪
+#ifdef PTXSIM_USE_DETAILED_LOGGING
+#define PTX_TRACE_FUNC()                                                       \
+    do {                                                                       \
+        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::trace,   \
+                                                   "")) {                      \
+            auto loc = std::source_location::current();                        \
+            std::string short_name =                                           \
+                ptxsim::detail::short_function_name(loc.function_name());      \
+            ptxsim::detail::output_log(ptxsim::log_level::trace, "func",       \
+                                       ptxsim::detail::printf_format(          \
+                                           "[ENTER] %s", short_name.c_str()),  \
+                                       loc);                                   \
+        }                                                                      \
+    } while (0)
+#else
 #define PTX_TRACE_FUNC()                                                       \
     do {                                                                       \
         if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::trace,   \
@@ -752,6 +832,7 @@ inline void output_log_simple(log_level level, const std::string &component,
                                               short_name.c_str()));            \
         }                                                                      \
     } while (0)
+#endif
 
 // 条件检查宏
 #define PTX_CHECK(condition, component, fmt, ...)                              \
@@ -767,6 +848,7 @@ inline void output_log_simple(log_level level, const std::string &component,
     } while (0)
 
 // 致命错误宏
+#ifdef PTXSIM_USE_DETAILED_LOGGING
 #define PTX_FATAL(component, fmt, ...)                                         \
     do {                                                                       \
         auto loc = std::source_location::current();                            \
@@ -775,6 +857,16 @@ inline void output_log_simple(log_level level, const std::string &component,
         ptxsim::detail::output_log(ptxsim::log_level::fatal, component, msg,   \
                                    loc);                                       \
     } while (0)
+#else
+#define PTX_FATAL(component, fmt, ...)                                         \
+    do {                                                                       \
+        auto loc = std::source_location::current();                            \
+        std::string msg =                                                      \
+            ptxsim::detail::printf_format("FATAL: " fmt, ##__VA_ARGS__);       \
+        ptxsim::detail::output_log_simple(ptxsim::log_level::fatal, component, \
+                                          msg);                                \
+    } while (0)
+#endif
 
 // 作用域退出
 class ScopeExit {

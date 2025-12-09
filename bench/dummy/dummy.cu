@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define SIZE 1024
+//#define SIZE 1024
+#define SIZE 64
 
 template<typename T>
 __global__ void dummy_d(T *a) {
