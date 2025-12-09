@@ -1,4 +1,3 @@
-// debug/ptx_debug.h
 #ifndef PTX_DEBUG_H
 #define PTX_DEBUG_H
 
@@ -13,6 +12,10 @@
 #include <unordered_set>
 #include <variant>
 #include <vector>
+
+struct StatementContext;
+// 前向声明
+// enum class StatementType;
 
 namespace ptxsim {
 
@@ -39,14 +42,10 @@ public:
         return instance;
     }
 
-private:
-    // 使用函数局部静态变量来避免死锁问题
-    static std::mutex& get_mutex() {
-        static std::mutex mutex_instance;
-        return mutex_instance;
-    }
+    // 添加获取完整指令字符串的函数声明
+    static std::string
+    get_full_instruction_string(const StatementContext &statement);
 
-public:
     // 启用/禁用特定类型的指令跟踪
     void enable_instruction_trace(InstructionType type, bool enable = true) {
         std::lock_guard<std::mutex> lock(get_mutex());
@@ -207,7 +206,8 @@ public:
                     // 启用所有类型的指令跟踪
                     if (value == "true" || value == "1") {
                         instruction_tracing_[InstructionType::MEMORY] = true;
-                        instruction_tracing_[InstructionType::ARITHMETIC] = true;
+                        instruction_tracing_[InstructionType::ARITHMETIC] =
+                            true;
                         instruction_tracing_[InstructionType::CONTROL] = true;
                         instruction_tracing_[InstructionType::LOGIC] = true;
                         instruction_tracing_[InstructionType::CONVERT] = true;
@@ -264,6 +264,12 @@ public:
     }
 
 private:
+    // 使用函数局部静态变量来避免死锁问题
+    static std::mutex &get_mutex() {
+        static std::mutex mutex_instance;
+        return mutex_instance;
+    }
+
     DebugConfig()
         : trace_memory_(false), trace_registers_(false), pc_start_(-1),
           pc_end_(-1) {
@@ -282,81 +288,82 @@ private:
 
     DebugConfig(const DebugConfig &) = delete;
     DebugConfig &operator=(const DebugConfig &) = delete;
-};
 
-// 指令分类工具
-inline InstructionType classify_instruction(const std::string &opcode) {
-    static const std::unordered_map<std::string, InstructionType>
-        instruction_map = {
-            // 内存操作
-            {"ld", InstructionType::MEMORY},
-            {"st", InstructionType::MEMORY},
-            {"ldu", InstructionType::MEMORY},
-            {"cvt", InstructionType::MEMORY}, // 某些cvt指令处理地址转换
+public:
+    // 指令分类工具
+    inline InstructionType classify_instruction(const std::string &opcode) {
+        static const std::unordered_map<std::string, InstructionType>
+            instruction_map = {
+                // 内存操作
+                {"ld", InstructionType::MEMORY},
+                {"st", InstructionType::MEMORY},
+                {"ldu", InstructionType::MEMORY},
+                {"cvt", InstructionType::MEMORY}, // 某些cvt指令处理地址转换
 
-            // 算术操作
-            {"add", InstructionType::ARITHMETIC},
-            {"sub", InstructionType::ARITHMETIC},
-            {"mul", InstructionType::ARITHMETIC},
-            {"div", InstructionType::ARITHMETIC},
-            {"fma", InstructionType::ARITHMETIC},
-            {"rem", InstructionType::ARITHMETIC},
-            {"abs", InstructionType::ARITHMETIC},
-            {"neg", InstructionType::ARITHMETIC},
-            {"sqrt", InstructionType::ARITHMETIC},
-            {"rcp", InstructionType::ARITHMETIC},
-            {"rsqrt", InstructionType::ARITHMETIC},
-            {"mad", InstructionType::ARITHMETIC},
-            {"mad24", InstructionType::ARITHMETIC},
-            {"mad.lo", InstructionType::ARITHMETIC},
-            {"mad.hi", InstructionType::ARITHMETIC},
+                // 算术操作
+                {"add", InstructionType::ARITHMETIC},
+                {"sub", InstructionType::ARITHMETIC},
+                {"mul", InstructionType::ARITHMETIC},
+                {"div", InstructionType::ARITHMETIC},
+                {"fma", InstructionType::ARITHMETIC},
+                {"rem", InstructionType::ARITHMETIC},
+                {"abs", InstructionType::ARITHMETIC},
+                {"neg", InstructionType::ARITHMETIC},
+                {"sqrt", InstructionType::ARITHMETIC},
+                {"rcp", InstructionType::ARITHMETIC},
+                {"rsqrt", InstructionType::ARITHMETIC},
+                {"mad", InstructionType::ARITHMETIC},
+                {"mad24", InstructionType::ARITHMETIC},
+                {"mad.lo", InstructionType::ARITHMETIC},
+                {"mad.hi", InstructionType::ARITHMETIC},
 
-            // 控制流
-            {"bra", InstructionType::CONTROL},
-            {"call", InstructionType::CONTROL},
-            {"ret", InstructionType::CONTROL},
-            {"exit", InstructionType::CONTROL},
-            {"bar", InstructionType::CONTROL},
-            {"bra.uni", InstructionType::CONTROL},
-            {"break", InstructionType::CONTROL},
-            {"continue", InstructionType::CONTROL},
+                // 控制流
+                {"bra", InstructionType::CONTROL},
+                {"call", InstructionType::CONTROL},
+                {"ret", InstructionType::CONTROL},
+                {"exit", InstructionType::CONTROL},
+                {"bar", InstructionType::CONTROL},
+                {"bra.uni", InstructionType::CONTROL},
+                {"break", InstructionType::CONTROL},
+                {"continue", InstructionType::CONTROL},
 
-            // 逻辑操作
-            {"and", InstructionType::LOGIC},
-            {"or", InstructionType::LOGIC},
-            {"xor", InstructionType::LOGIC},
-            {"not", InstructionType::LOGIC},
-            {"shl", InstructionType::LOGIC},
-            {"shr", InstructionType::LOGIC},
-            {"setp", InstructionType::LOGIC},
-            {"selp", InstructionType::LOGIC},
-            {"slct", InstructionType::LOGIC},
+                // 逻辑操作
+                {"and", InstructionType::LOGIC},
+                {"or", InstructionType::LOGIC},
+                {"xor", InstructionType::LOGIC},
+                {"not", InstructionType::LOGIC},
+                {"shl", InstructionType::LOGIC},
+                {"shr", InstructionType::LOGIC},
+                {"setp", InstructionType::LOGIC},
+                {"selp", InstructionType::LOGIC},
+                {"slct", InstructionType::LOGIC},
 
-            // 类型转换
-            {"cvt", InstructionType::CONVERT},
-            {"mov", InstructionType::CONVERT},
+                // 类型转换
+                {"cvt", InstructionType::CONVERT},
+                {"mov", InstructionType::CONVERT},
 
-            // 特殊指令
-            {"tex", InstructionType::SPECIAL},
-            {"atom", InstructionType::SPECIAL},
-            {"vote", InstructionType::SPECIAL},
-            {"trap", InstructionType::SPECIAL},
-            {"brkpt", InstructionType::SPECIAL}};
+                // 特殊指令
+                {"tex", InstructionType::SPECIAL},
+                {"atom", InstructionType::SPECIAL},
+                {"vote", InstructionType::SPECIAL},
+                {"trap", InstructionType::SPECIAL},
+                {"brkpt", InstructionType::SPECIAL}};
 
-    auto it = instruction_map.find(opcode);
-    if (it != instruction_map.end()) {
-        return it->second;
-    }
-
-    // 尝试匹配前缀
-    for (const auto &pair : instruction_map) {
-        if (opcode.find(pair.first) == 0) {
-            return pair.second;
+        auto it = instruction_map.find(opcode);
+        if (it != instruction_map.end()) {
+            return it->second;
         }
-    }
 
-    return InstructionType::OTHER;
-}
+        // 尝试匹配前缀
+        for (const auto &pair : instruction_map) {
+            if (opcode.find(pair.first) == 0) {
+                return pair.second;
+            }
+        }
+
+        return InstructionType::OTHER;
+    }
+}; // 结束DebugConfig类定义
 
 // 格式化工具
 namespace debug_format {
@@ -451,35 +458,44 @@ public:
 
     // 记录指令执行
     void trace_instruction(int pc, const std::string &opcode,
-                           const std::string &operands = "") {
-        auto &config = DebugConfig::get();
+                           const std::string &operands, int block_x = 0,
+                           int block_y = 0, int block_z = 0, int thread_x = 0,
+                           int thread_y = 0, int thread_z = 0) {
+        auto &config = ptxsim::DebugConfig::get();
 
         // 检查PC范围
         if (!config.is_pc_traced(pc))
             return;
 
         // 检查指令类型
-        InstructionType type = classify_instruction(opcode);
+        ptxsim::InstructionType type = config.classify_instruction(opcode);
         if (!config.is_instruction_traced(type))
             return;
 
-        // 触发回调
-        config.trigger_instruction_callback(pc, opcode + " " + operands);
+        // 构建完整指令
+        std::string full_instruction = opcode;
+        if (!operands.empty()) {
+            full_instruction += " " + operands;
+        }
 
-        // 记录日志
-        std::string instruction = opcode + " " + operands;
-        PTX_TRACE_EXEC("[%4d] %s", pc, instruction.c_str());
+        // 触发回调
+        config.trigger_instruction_callback(pc, full_instruction);
+
+        // 记录日志，包含线程和块索引信息
+        PTX_TRACE_EXEC("[%4d] [%d,%d,%d][%d,%d,%d] %s", pc, block_x, block_y,
+                       block_z, thread_x, thread_y, thread_z,
+                       full_instruction.c_str());
     }
 
     // 记录内存访问
     void trace_memory_access(bool is_write, const std::string &addr_expr,
                              uint64_t addr, size_t size,
                              void *value = nullptr) {
-        if (!DebugConfig::get().is_memory_traced())
+        if (!ptxsim::DebugConfig::get().is_memory_traced())
             return;
 
         const char *access_type = is_write ? "WRITE" : "READ";
-        std::string addr_str = debug_format::format_address(addr);
+        std::string addr_str = ptxsim::debug_format::format_address(addr);
 
         if (value) {
             // 尝试根据大小解释值
@@ -487,15 +503,16 @@ public:
             if (size == 4) {
                 uint32_t u32 = *static_cast<uint32_t *>(value);
                 float f32 = *static_cast<float *>(value);
-                value_str = debug_format::format_u32(u32, true) + " / " +
-                            debug_format::format_f32(f32);
+                value_str = ptxsim::debug_format::format_u32(u32, true) +
+                            " / " + ptxsim::debug_format::format_f32(f32);
             } else if (size == 8) {
                 uint64_t u64 = *static_cast<uint64_t *>(value);
                 double f64 = *static_cast<double *>(value);
-                value_str = debug_format::format_i64(u64, true) + " / " +
-                            debug_format::format_f64(f64);
+                value_str = ptxsim::debug_format::format_i64(u64, true) +
+                            " / " + ptxsim::debug_format::format_f64(f64);
             } else {
-                value_str = ptxsim::detail::printf_format("0x%p", (void*)value);
+                value_str =
+                    ptxsim::detail::printf_format("0x%p", (void *)value);
             }
 
             PTX_TRACE_MEM("%s [%s] = %s (size=%zu)", access_type,
@@ -509,13 +526,14 @@ public:
     // 记录寄存器访问
     void trace_register_access(const std::string &reg_name,
                                const std::any &value, bool is_write) {
-        if (!DebugConfig::get().is_register_traced())
+        if (!ptxsim::DebugConfig::get().is_register_traced())
             return;
-        if (!DebugConfig::get().has_watchpoint(reg_name))
+        if (!ptxsim::DebugConfig::get().has_watchpoint(reg_name))
             return;
 
         const char *access_type = is_write ? "WRITE" : "READ";
-        std::string value_str = debug_format::format_register_value(value);
+        std::string value_str =
+            ptxsim::debug_format::format_register_value(value);
 
         PTX_TRACE_REG("%s %s = %s", access_type, reg_name.c_str(),
                       value_str.c_str());
@@ -529,10 +547,11 @@ public:
         std::stringstream ss;
         ss << "=== Thread State Dump ===" << std::endl;
         ss << "Thread: " << name << std::endl;
-        ss << "Block: " << debug_format::format_coord(block_x, block_y, block_z)
+        ss << "Block: "
+           << ptxsim::debug_format::format_coord(block_x, block_y, block_z)
            << std::endl;
         ss << "Thread: "
-           << debug_format::format_coord(thread_x, thread_y, thread_z)
+           << ptxsim::debug_format::format_coord(thread_x, thread_y, thread_z)
            << std::endl;
         ss << "PC: " << state.pc << " | State: "
            << (state.state == 0   ? "RUN"
@@ -552,7 +571,7 @@ public:
     // 检查断点
     bool check_breakpoint(
         int pc, const std::unordered_map<std::string, std::any> &context = {}) {
-        if (DebugConfig::get().has_breakpoint(pc, context)) {
+        if (ptxsim::DebugConfig::get().has_breakpoint(pc, context)) {
             PTX_INFO_EMU("Hit breakpoint at PC=%d", pc);
             return true;
         }
@@ -592,7 +611,7 @@ public:
                     (static_cast<double>(pair.second) / total_instructions) *
                     100.0;
                 os << "    " << pair.first << ": " << pair.second << " ("
-                   << detail::printf_format("%.2f%%", percentage) << ")"
+                   << ptxsim::detail::printf_format("%.2f%%", percentage) << ")"
                    << std::endl;
             }
         }
@@ -624,18 +643,27 @@ public:
 
     // 加载配置文件
     bool load_config(const std::string &filename) {
-        if (LoggerConfig::get().load_from_file(filename)) {
+        bool success = true;
+
+        if (ptxsim::LoggerConfig::get().load_from_file(filename)) {
             PTX_INFO_EMU("Loaded logger configuration from %s",
                          filename.c_str());
+        } else {
+            PTX_WARN_EMU("Failed to load logger configuration from %s",
+                         filename.c_str());
+            success = false;
         }
 
-        if (DebugConfig::get().load_from_file(filename)) {
+        if (ptxsim::DebugConfig::get().load_from_file(filename)) {
             PTX_INFO_EMU("Loaded debugger configuration from %s",
                          filename.c_str());
-            return true;
+        } else {
+            PTX_WARN_EMU("Failed to load debugger configuration from %s",
+                         filename.c_str());
+            success = false;
         }
 
-        return false;
+        return success;
     }
 
 private:
@@ -647,12 +675,13 @@ private:
 };
 
 // 调试宏
-#define PTX_TRACE_INSTR(pc, opcode, ...)                                       \
+#define PTX_TRACE_INSTR(pc, opcode, operands, blockIdx, threadIdx)             \
     do {                                                                       \
         if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::trace,   \
                                                    "exec")) {                  \
-            ptxsim::PTXDebugger::get().trace_instruction(pc, opcode,           \
-                                                         ##__VA_ARGS__);       \
+            ptxsim::PTXDebugger::get().trace_instruction(                      \
+                pc, opcode, operands, blockIdx.x, blockIdx.y, blockIdx.z,      \
+                threadIdx.x, threadIdx.y, threadIdx.z);                        \
         }                                                                      \
     } while (0)
 
@@ -676,15 +705,6 @@ private:
 
 #define PTX_CHECK_BREAKPOINT(pc, context)                                      \
     (ptxsim::PTXDebugger::get().check_breakpoint(pc, context))
-
-#define PTX_INFO_EMU_SIMPLE(fmt, ...)                                          \
-    do {                                                                       \
-        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
-                                                   "emu_simple")) {            \
-            ptxsim::printf_to_logger_simple(                                   \
-                ptxsim::log_level::info, "emu_simple", fmt, ##__VA_ARGS__);    \
-        }                                                                      \
-    } while (0)
 
 #define PTX_DUMP_THREAD_STATE(name, state, blockIdx, threadIdx)                \
     do {                                                                       \
@@ -714,7 +734,7 @@ public:
                                                                       start_);
 
             PTX_INFO_EMU_SIMPLE("PERF[%s]: %s took %lld μs",
-                                detail::current_thread_id().c_str(),
+                                ptxsim::detail::current_thread_id().c_str(),
                                 name_.c_str(),
                                 static_cast<long long>(duration.count()));
         }

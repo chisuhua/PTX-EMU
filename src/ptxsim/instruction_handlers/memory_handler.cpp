@@ -4,6 +4,7 @@
 #include "ptx_ir/ptx_types.h"
 #include <cassert>
 #include <vector>
+#include <iostream>
 
 void LdHandler::execute(ThreadContext* context, StatementContext& stmt) {
     auto ss = (StatementContext::LD*)stmt.statement;
@@ -11,6 +12,12 @@ void LdHandler::execute(ThreadContext* context, StatementContext& stmt) {
     // 获取操作数地址
     void *to = context->get_operand_addr(ss->ldOp[0], ss->ldQualifier);
     void *from = context->get_operand_addr(ss->ldOp[1], ss->ldQualifier);
+    
+    // 添加空指针检查，防止段错误
+    if (!to || !from) {
+        std::cerr << "Error: Null pointer dereference in LD instruction" << std::endl;
+        return;
+    }
     
     // 执行LD操作
     // 注意：这里需要通过公共接口访问ThreadContext的私有成员
@@ -43,6 +50,12 @@ void StHandler::execute(ThreadContext* context, StatementContext& stmt) {
     // 获取操作数地址
     void *to = context->get_operand_addr(ss->stOp[0], ss->stQualifier);
     void *from = context->get_operand_addr(ss->stOp[1], ss->stQualifier);
+    
+    // 添加空指针检查，防止段错误
+    if (!to || !from) {
+        std::cerr << "Error: Null pointer dereference in ST instruction" << std::endl;
+        return;
+    }
     
     // 执行ST操作
     // 注意：这里需要通过公共接口访问ThreadContext的私有成员

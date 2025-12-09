@@ -48,6 +48,7 @@ add_library(ptxsim SHARED
     ptxsim/core/cta_context.cpp
     ptxsim/core/interpreter.cpp
     ptxsim/core/thread_context.cpp
+    ptxsim/debug/ptx_debug.cpp
     ptxsim/instruction_factory.cpp
     ptxsim/utils/qualifier_utils.cpp
     ptxsim/utils/type_utils.cpp

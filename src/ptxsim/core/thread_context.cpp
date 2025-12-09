@@ -1,8 +1,9 @@
 #include "ptxsim/thread_context.h"
-#include "ptxsim/utils/qualifier_utils.h"
+#include "../utils/qualifier_utils.h"
 #include "ptx_ir/ptx_types.h"
 #include "ptxsim/interpreter.h"
 #include "ptxsim/instruction_factory.h"
+#include "ptxsim/ptx_debug.h"
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -36,13 +37,14 @@ void ThreadContext::init(
 }
 
 EXE_STATE ThreadContext::exe_once() {
-    if (state != RUN) return state;
-    
+    if (state != RUN)
+        return state;
+
     _execute_once();
-    
-    if (pc >= statements->size()) 
+
+    if (pc >= statements->size())
         state = EXIT;
-        
+
     clear_temporaries();
     return state;
 }
@@ -50,80 +52,34 @@ EXE_STATE ThreadContext::exe_once() {
 void ThreadContext::_execute_once() {
     assert(state == RUN);
     assert(pc >= 0 && pc < statements->size());
-    
+
     // 准备断点检查上下文
     std::unordered_map<std::string, std::any> context;
     prepare_breakpoint_context(context);
-    
+
     // 检查断点
     if (PTX_CHECK_BREAKPOINT(pc, context)) {
         state = (EXE_STATE)2; // BREAK状态
         PTX_DUMP_THREAD_STATE("Breakpoint hit", *this, BlockIdx, ThreadIdx);
         return; // 暂停执行
     }
-    
+
     // 开始性能计时
     PTX_PERF_TIMER("instruction_execution");
-    
+
     // 跟踪指令
     StatementContext &statement = (*statements)[pc];
     std::string opcode = S2s(statement.statementType);
+
+    // 使用DebugConfig获取完整的指令字符串（包含操作数）
+    std::string operands = ptxsim::DebugConfig::get_full_instruction_string(statement);
     
-    // 构建操作数字符串
-    std::string operands = "";
-    switch (statement.statementType) {
-        case StatementType::S_MOV: {
-            auto* mov_stmt = static_cast<StatementContext::MOV*>(statement.statement);
-            if (mov_stmt) {
-                operands = mov_stmt->movOp[0].toString() + ", " + mov_stmt->movOp[1].toString();
-            }
-            break;
-        }
-        case StatementType::S_ADD: {
-            auto* add_stmt = static_cast<StatementContext::ADD*>(statement.statement);
-            if (add_stmt) {
-                operands = add_stmt->addOp[0].toString() + ", " + add_stmt->addOp[1].toString() 
-                          + ", " + add_stmt->addOp[2].toString();
-            }
-            break;
-        }
-        case StatementType::S_ST: {
-            auto* st_stmt = static_cast<StatementContext::ST*>(statement.statement);
-            if (st_stmt) {
-                operands = st_stmt->stOp[0].toString() + ", " + st_stmt->stOp[1].toString();
-            }
-            break;
-        }
-        case StatementType::S_LD: {
-            auto* ld_stmt = static_cast<StatementContext::LD*>(statement.statement);
-            if (ld_stmt) {
-                operands = ld_stmt->ldOp[0].toString() + ", " + ld_stmt->ldOp[1].toString();
-            }
-            break;
-        }
-        case StatementType::S_SETP: {
-            auto* setp_stmt = static_cast<StatementContext::SETP*>(statement.statement);
-            if (setp_stmt) {
-                operands = setp_stmt->setpOp[0].toString() + ", " + setp_stmt->setpOp[1].toString() 
-                          + ", " + setp_stmt->setpOp[2].toString();
-            }
-            break;
-        }
-        case StatementType::S_MUL: {
-            auto* mul_stmt = static_cast<StatementContext::MUL*>(statement.statement);
-            if (mul_stmt) {
-                operands = mul_stmt->mulOp[0].toString() + ", " + mul_stmt->mulOp[1].toString() 
-                          + ", " + mul_stmt->mulOp[2].toString();
-            }
-            break;
-        }
-        default:
-            // 对于其他指令类型，暂时使用占位符
-            operands = "...";
-            break;
-    }
-    
-    PTX_TRACE_INSTR(pc, opcode.c_str(), operands.c_str());
+    // 使用带有线程和块索引的格式记录指令跟踪
+    std::string full_instruction = opcode + " " + operands;
+    PTX_TRACE_EXEC("[TID:(%d,%d,%d) BID:(%d,%d,%d) PC:%4d] %s", 
+                   ThreadIdx.x, ThreadIdx.y, ThreadIdx.z,
+                   BlockIdx.x, BlockIdx.y, BlockIdx.z,
+                   pc, full_instruction.c_str());
     
     // 记录性能统计
     ptxsim::PTXDebugger::get().get_perf_stats().record_instruction(opcode);
@@ -150,32 +106,33 @@ void ThreadContext::clear_temporaries() {
     }
 }
 
-void ThreadContext::prepare_breakpoint_context(std::unordered_map<std::string, std::any>& context) {
+void ThreadContext::prepare_breakpoint_context(
+    std::unordered_map<std::string, std::any> &context) {
     // 添加寄存器值
-    for (const auto& reg_pair : name2Reg) {
+    for (const auto &reg_pair : name2Reg) {
         auto reg = reg_pair.second;
         if (reg && reg->addr) {
             switch (reg->regType) {
-                case Qualifier::Q_U32:
-                case Qualifier::Q_S32:
-                    context[reg_pair.first] = *(int32_t*)reg->addr;
-                    break;
-                case Qualifier::Q_U64:
-                case Qualifier::Q_S64:
-                    context[reg_pair.first] = *(int64_t*)reg->addr;
-                    break;
-                case Qualifier::Q_F32:
-                    context[reg_pair.first] = *(float*)reg->addr;
-                    break;
-                case Qualifier::Q_F64:
-                    context[reg_pair.first] = *(double*)reg->addr;
-                    break;
-                default:
-                    break;
+            case Qualifier::Q_U32:
+            case Qualifier::Q_S32:
+                context[reg_pair.first] = *(int32_t *)reg->addr;
+                break;
+            case Qualifier::Q_U64:
+            case Qualifier::Q_S64:
+                context[reg_pair.first] = *(int64_t *)reg->addr;
+                break;
+            case Qualifier::Q_F32:
+                context[reg_pair.first] = *(float *)reg->addr;
+                break;
+            case Qualifier::Q_F64:
+                context[reg_pair.first] = *(double *)reg->addr;
+                break;
+            default:
+                break;
             }
         }
     }
-    
+
     // 添加特殊寄存器
     context["pc"] = pc;
     context["tid.x"] = (int)ThreadIdx.x;
@@ -186,40 +143,44 @@ void ThreadContext::prepare_breakpoint_context(std::unordered_map<std::string, s
     context["bid.z"] = (int)BlockIdx.z;
 }
 
-void ThreadContext::dump_state(std::ostream& os) const {
+void ThreadContext::dump_state(std::ostream &os) const {
     // 寄存器状态
     os << "Registers:" << std::endl;
-    for (const auto& reg_pair : name2Reg) {
+    for (const auto &reg_pair : name2Reg) {
         auto reg = reg_pair.second;
         if (reg && reg->addr) {
             os << "  " << reg_pair.first << " = ";
             switch (reg->regType) {
-                case Qualifier::Q_U32:
-                    os << ptxsim::debug_format::format_u32(*(uint32_t*)reg->addr, true);
-                    break;
-                case Qualifier::Q_S32:
-                    os << ptxsim::debug_format::format_i32(*(int32_t*)reg->addr, true);
-                    break;
-                case Qualifier::Q_U64:
-                    os << ptxsim::debug_format::format_i64(*(uint64_t*)reg->addr, true);
-                    break;
-                case Qualifier::Q_S64:
-                    os << ptxsim::debug_format::format_i64(*(int64_t*)reg->addr, true);
-                    break;
-                case Qualifier::Q_F32:
-                    os << ptxsim::debug_format::format_f32(*(float*)reg->addr);
-                    break;
-                case Qualifier::Q_F64:
-                    os << ptxsim::debug_format::format_f64(*(double*)reg->addr);
-                    break;
-                default:
-                    os << "[unsupported type]";
-                    break;
+            case Qualifier::Q_U32:
+                os << ptxsim::debug_format::format_u32(*(uint32_t *)reg->addr,
+                                                       true);
+                break;
+            case Qualifier::Q_S32:
+                os << ptxsim::debug_format::format_i32(*(int32_t *)reg->addr,
+                                                       true);
+                break;
+            case Qualifier::Q_U64:
+                os << ptxsim::debug_format::format_i64(*(uint64_t *)reg->addr,
+                                                       true);
+                break;
+            case Qualifier::Q_S64:
+                os << ptxsim::debug_format::format_i64(*(int64_t *)reg->addr,
+                                                       true);
+                break;
+            case Qualifier::Q_F32:
+                os << ptxsim::debug_format::format_f32(*(float *)reg->addr);
+                break;
+            case Qualifier::Q_F64:
+                os << ptxsim::debug_format::format_f64(*(double *)reg->addr);
+                break;
+            default:
+                os << "[unsupported type]";
+                break;
             }
             os << std::endl;
         }
     }
-    
+
     // 当前PC和指令
     if (pc >= 0 && pc < (int)statements->size()) {
         StatementContext &statement = (*statements)[pc];
@@ -228,7 +189,7 @@ void ThreadContext::dump_state(std::ostream& os) const {
     }
 }
 
-void* ThreadContext::get_operand_addr(OperandContext &op, std::vector<Qualifier> &qualifiers) {
+void *ThreadContext::get_operand_addr(OperandContext &op, std::vector<Qualifier> &qualifiers) {
     switch (op.operandType) {
         case O_REG:
             return get_register_addr((OperandContext::REG*)op.operand);
@@ -239,21 +200,52 @@ void* ThreadContext::get_operand_addr(OperandContext &op, std::vector<Qualifier>
         case O_IMM:
             {
                 auto immOp = (OperandContext::IMM*)op.operand;
-                // 创建一个新的IMM对象用于临时存储
-                PtxInterpreter::IMM* newImm = new PtxInterpreter::IMM();
-                // TODO: 需要根据类型正确设置IMM的值
-                imm.push(newImm);
-                return &(newImm->data);
+                // 使用setIMM函数设置立即数
+                int bytes = TypeUtils::get_bytes(qualifiers);
+                Qualifier q;
+                switch (bytes) {
+                    case 1: q = Qualifier::Q_U8; break;
+                    case 2: q = Qualifier::Q_U16; break;
+                    case 4: q = Qualifier::Q_U32; break;
+                    case 8: q = Qualifier::Q_U64; break;
+                    default: q = Qualifier::Q_U32; break;
+                }
+                setIMM(immOp->immVal, q);
+                void* ret = &(imm.front()->data);
+                imm.pop();
+                return ret;
             }
             
         case O_VEC:
             {
                 auto vecOp = (OperandContext::VEC*)op.operand;
-                // 创建一个新的VEC对象用于临时存储
+                // 创建一个新的VEC对象用于存储向量元素地址
                 PtxInterpreter::VEC* newVec = new PtxInterpreter::VEC();
-                // TODO: 需要正确设置VEC的值
+                // 递归处理向量中的每个元素
+                for (auto& elem : vecOp->vec) {
+                    newVec->vec.push_back(get_operand_addr(elem, qualifiers));
+                }
                 vec.push(newVec);
-                return &(newVec->vec);
+                return nullptr;
+            }
+            
+        case O_VAR:
+            {
+                auto varOp = (OperandContext::VAR*)op.operand;
+                // 查找共享内存中的变量
+                auto share_it = name2Share->find(varOp->varName);
+                if (share_it != name2Share->end()) {
+                    return &(share_it->second->val);
+                }
+                
+                // 查找符号表中的变量
+                auto sym_it = name2Sym.find(varOp->varName);
+                if (sym_it != name2Sym.end()) {
+                    return &(sym_it->second->val);
+                }
+                
+                // 如果都没找到，报错
+                assert(0);
             }
             
         default:
@@ -261,55 +253,117 @@ void* ThreadContext::get_operand_addr(OperandContext &op, std::vector<Qualifier>
     }
 }
 
-void* ThreadContext::get_register_addr(OperandContext::REG *reg) {
-    std::string regName = reg->regName;
-    
-    // 检查寄存器是否已存在
-    auto it = name2Reg.find(regName);
+void *ThreadContext::get_register_addr(OperandContext::REG *reg) {
+    // 首先尝试直接按regName查找（适用于特殊寄存器如%tid.x）
+    auto it = name2Reg.find(reg->regName);
     if (it != name2Reg.end()) {
         return it->second->addr;
     }
-    
-    // 如果不存在，创建新的寄存器
-    PtxInterpreter::Reg* newReg = new PtxInterpreter::Reg();
+
+    // 如果没找到，尝试组合名称查找（例如 regName="r", regIdx=1 组合成 "r1"）
+    std::string combinedName = reg->regName + std::to_string(reg->regIdx);
+    it = name2Reg.find(combinedName);
+    if (it != name2Reg.end()) {
+        return it->second->addr;
+    }
+
+    // 如果仍然找不到，创建新的寄存器
+    PtxInterpreter::Reg *newReg = new PtxInterpreter::Reg();
     // 注意：这里需要从其他地方获取寄存器类型，因为OperandContext::REG没有保存类型信息
     // 我们暂时使用默认类型，后续可以通过上下文获取正确的类型
     newReg->regType = Qualifier::Q_U32;
-    
+
     // 根据类型分配数据空间 (创建一个只有一个元素的vector)
     std::vector<Qualifier> typeVec = {newReg->regType};
     int bytes = TypeUtils::get_bytes(typeVec);
     newReg->addr = malloc(bytes);
     memset(newReg->addr, 0, bytes);
-    
-    name2Reg[regName] = newReg;
+
+    name2Reg[combinedName] = newReg;
     return newReg->addr;
 }
 
-void* ThreadContext::get_memory_addr(OperandContext::FA *fa, std::vector<Qualifier> &qualifiers) {
-    // 获取基础地址
-    void* baseAddr = get_operand_addr(*(fa->reg), qualifiers);
-    if (!baseAddr) return nullptr;
-    
-    // 计算偏移量 (注意：这里应该解析offsetVal，但我们暂时使用0)
-    int offset = 0;
-    
-    // 返回最终地址
-    return (char*)baseAddr + offset;
+void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
+                                     std::vector<Qualifier> &qualifiers) {
+    void *ret;
+    if (fa->reg) {
+        // 获取寄存器地址
+        void *regAddr = get_operand_addr(*(fa->reg), qualifiers);
+        if (!regAddr)
+            return nullptr;
+
+        // 根据数据类型决定如何解读寄存器内容
+        int regBytes = TypeUtils::get_bytes(qualifiers);
+        switch (regBytes) {
+        case 8:
+            ret = (void *)*(uint64_t *)regAddr;
+            break;
+        case 4:
+            ret = (void *)(uint64_t) * (uint32_t *)regAddr;
+            break;
+        default:
+            assert(0);
+        }
+    } else {
+        // 直接通过ID查找符号表或共享内存
+        auto sym_it = name2Sym.find(fa->ID);
+        if (sym_it != name2Sym.end()) {
+            ret = (void *)sym_it->second->val;
+        } else {
+            auto share_it = name2Share->find(fa->ID);
+            if (share_it != name2Share->end()) {
+                ret = (void *)share_it->second->val;
+            } else {
+                assert(0);
+            }
+        }
+    }
+
+    // 处理偏移量
+    if (!fa->offsetVal.empty()) {
+        // 创建一个临时立即数操作数来处理偏移量
+        OperandContext offsetOp;
+        offsetOp.operandType = O_IMM;
+
+        // 解析偏移量字符串为整数值
+        OperandContext::IMM *immOffset = new OperandContext::IMM();
+        try {
+            immOffset->immVal = std::to_string(std::stoll(fa->offsetVal));
+        } catch (...) {
+            immOffset->immVal = "0"; // 默认偏移量为0
+        }
+
+        offsetOp.operand = immOffset;
+        std::vector<Qualifier> offsetQualifiers = {Qualifier::Q_S64};
+        void *offsetAddr = get_operand_addr(offsetOp, offsetQualifiers);
+
+        if (offsetAddr) {
+            int64_t offset = *(int64_t *)offsetAddr;
+            ret = (void *)((uint64_t)ret + offset);
+        }
+
+        // 注意：这里不应该手动删除immOffset，因为offsetOp析构时会自动删除
+        // delete immOffset;
+    }
+
+    return ret;
 }
 
-void ThreadContext::mov_data(void *src, void *dst, std::vector<Qualifier> &qualifiers) {
+void ThreadContext::mov_data(void *src, void *dst,
+                             std::vector<Qualifier> &qualifiers) {
     int bytes = TypeUtils::get_bytes(qualifiers);
     memcpy(dst, src, bytes);
 }
 
 void ThreadContext::handle_statement(StatementContext &statement) {
     // 使用工厂创建对应的处理器并执行
-    InstructionHandler* handler = InstructionFactory::create_handler(statement.statementType);
+    InstructionHandler *handler =
+        InstructionFactory::create_handler(statement.statementType);
     if (handler) {
         handler->execute(this, statement);
     } else {
-        std::cerr << "No handler found for statement type: " << static_cast<int>(statement.statementType) << std::endl;
+        std::cerr << "No handler found for statement type: "
+                  << static_cast<int>(statement.statementType) << std::endl;
     }
 }
 
@@ -340,30 +394,30 @@ bool ThreadContext::is_immediate_or_vector(OperandContext &op) {
 
 void ThreadContext::set_immediate_value(std::string value, Qualifier type) {
     // 创建一个新的IMM对象
-    PtxInterpreter::IMM* immObj = new PtxInterpreter::IMM();
-    
+    PtxInterpreter::IMM *immObj = new PtxInterpreter::IMM();
+
     // 根据类型设置值
     switch (type) {
-        case Qualifier::Q_U32:
-        case Qualifier::Q_S32:
-            immObj->data.u32 = std::stoi(value);
-            break;
-        case Qualifier::Q_U64:
-        case Qualifier::Q_S64:
-            immObj->data.u64 = std::stoll(value);
-            break;
-        case Qualifier::Q_F32:
-            immObj->data.f32 = std::stof(value);
-            break;
-        case Qualifier::Q_F64:
-            immObj->data.f64 = std::stod(value);
-            break;
-        default:
-            // 默认情况下，尝试作为整数处理
-            immObj->data.u32 = std::stoi(value);
-            break;
+    case Qualifier::Q_U32:
+    case Qualifier::Q_S32:
+        immObj->data.u32 = std::stoi(value);
+        break;
+    case Qualifier::Q_U64:
+    case Qualifier::Q_S64:
+        immObj->data.u64 = std::stoll(value);
+        break;
+    case Qualifier::Q_F32:
+        immObj->data.f32 = std::stof(value);
+        break;
+    case Qualifier::Q_F64:
+        immObj->data.f64 = std::stod(value);
+        break;
+    default:
+        // 默认情况下，尝试作为整数处理
+        immObj->data.u32 = std::stoi(value);
+        break;
     }
-    
+
     // 将IMM对象加入队列
     imm.push(immObj);
 }
@@ -383,30 +437,55 @@ int ThreadContext::getBytes(Qualifier q) {
 
 void ThreadContext::setIMM(std::string s, Qualifier q) {
     // 创建一个新的IMM对象
-    PtxInterpreter::IMM* immObj = new PtxInterpreter::IMM();
-    
-    // 根据限定符类型设置值
+    PtxInterpreter::IMM *immObj = new PtxInterpreter::IMM();
+    immObj->type = q;
+
+    // 根据限定符类型设置值，与原始实现保持一致
     switch (q) {
-        case Qualifier::Q_U32:
-        case Qualifier::Q_S32:
-            immObj->data.u32 = std::stoi(s);
-            break;
-        case Qualifier::Q_U64:
-        case Qualifier::Q_S64:
-            immObj->data.u64 = std::stoll(s);
-            break;
-        case Qualifier::Q_F32:
-            immObj->data.f32 = std::stof(s);
-            break;
-        case Qualifier::Q_F64:
+    case Qualifier::Q_S64:
+    case Qualifier::Q_U64:
+    case Qualifier::Q_B64:
+        immObj->data.u64 = std::stoll(s, 0, 0);
+        break;
+    case Qualifier::Q_S32:
+    case Qualifier::Q_U32:
+    case Qualifier::Q_B32:
+        immObj->data.u32 = std::stoi(s, 0, 0);
+        break;
+    case Qualifier::Q_S16:
+    case Qualifier::Q_U16:
+    case Qualifier::Q_B16:
+        immObj->data.u16 = (uint16_t)std::stoi(s, 0, 0);
+        break;
+    case Qualifier::Q_S8:
+    case Qualifier::Q_U8:
+    case Qualifier::Q_B8:
+    case Qualifier::Q_PRED:
+        immObj->data.u8 = (uint8_t)std::stoi(s, 0, 0);
+        break;
+    case Qualifier::Q_F64:
+        // 处理双精度浮点数
+        if (s.size() == 18 && (s[1] == 'd' || s[1] == 'D')) {
+            s[1] = 'x';
+            *(uint64_t*)&(immObj->data.f64) = std::stoull(s, 0, 0);
+        } else {
             immObj->data.f64 = std::stod(s);
-            break;
-        default:
-            // 默认情况下，尝试作为整数处理
-            immObj->data.u32 = std::stoi(s);
-            break;
+        }
+        break;
+    case Qualifier::Q_F32:
+        // 处理单精度浮点数
+        if (s.size() == 10 && (s[1] == 'f' || s[1] == 'F')) {
+            s[1] = 'x';
+            // 当使用stoi处理输入0xBF000000时会抛出std::out_of_range异常
+            *(uint32_t*)&(immObj->data.f32) = (uint32_t)std::stol(s, 0, 0);
+        } else {
+            immObj->data.f32 = std::stof(s);
+        }
+        break;
+    default:
+        assert(0);
     }
-    
+
     // 将IMM对象加入队列
     imm.push(immObj);
 }
@@ -417,7 +496,7 @@ void ThreadContext::clearIMM_VEC() {
         delete imm.front();
         imm.pop();
     }
-    
+
     // 清理VEC队列
     while (!vec.empty()) {
         delete vec.front();
@@ -426,7 +505,8 @@ void ThreadContext::clearIMM_VEC() {
 }
 
 ThreadContext::DTYPE ThreadContext::getDType(std::vector<Qualifier> &q) {
-    if (q.empty()) return DNONE;
+    if (q.empty())
+        return DNONE;
     return getDType(q[0]);
 }
 
@@ -443,12 +523,12 @@ ThreadContext::DTYPE ThreadContext::getDType(Qualifier q) {
 bool ThreadContext::Signed(Qualifier q) {
     // 判断是否是有符号类型
     switch (q) {
-        case Qualifier::Q_S8:
-        case Qualifier::Q_S16:
-        case Qualifier::Q_S32:
-        case Qualifier::Q_S64:
-            return true;
-        default:
-            return false;
+    case Qualifier::Q_S8:
+    case Qualifier::Q_S16:
+    case Qualifier::Q_S32:
+    case Qualifier::Q_S64:
+        return true;
+    default:
+        return false;
     }
 }
