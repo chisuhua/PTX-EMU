@@ -397,6 +397,15 @@ inline std::string format_i64(int64_t value, bool hex = false) {
     return detail::printf_format("%lld", value);
 }
 
+inline std::string format_u64(uint64_t value, bool hex = false) {
+    if (hex) {
+        std::stringstream ss;
+        ss << "0x" << std::hex << std::setw(16) << std::setfill('0') << value;
+        return ss.str();
+    }
+    return detail::printf_format("%lld", value);
+}
+
 // 格式化32位浮点数
 inline std::string format_f32(float value) {
     return detail::printf_format("%f", value);
@@ -431,6 +440,8 @@ inline std::string format_register_value(const std::any &value) {
             return format_u32(std::any_cast<uint32_t>(value));
         } else if (value.type() == typeid(int64_t)) {
             return format_i64(std::any_cast<int64_t>(value));
+        } else if (value.type() == typeid(uint64_t)) {
+            return format_u64(std::any_cast<uint64_t>(value));
         } else if (value.type() == typeid(float)) {
             return format_f32(std::any_cast<float>(value));
         } else if (value.type() == typeid(double)) {
@@ -526,9 +537,8 @@ public:
     // 记录寄存器访问
     void trace_register_access(const std::string &reg_name,
                                const std::any &value, bool is_write) {
-        if (!ptxsim::DebugConfig::get().is_register_traced())
-            return;
-        if (!ptxsim::DebugConfig::get().has_watchpoint(reg_name))
+        if (!ptxsim::DebugConfig::get().is_register_traced() &&
+            !ptxsim::DebugConfig::get().has_watchpoint(reg_name))
             return;
 
         const char *access_type = is_write ? "WRITE" : "READ";
