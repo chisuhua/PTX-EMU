@@ -1,8 +1,8 @@
 #include "ptxsim/thread_context.h"
 #include "../utils/qualifier_utils.h"
 #include "ptx_ir/ptx_types.h"
-#include "ptxsim/interpreter.h"
 #include "ptxsim/instruction_factory.h"
+#include "ptxsim/interpreter.h"
 #include "ptxsim/ptx_debug.h"
 #include <algorithm>
 #include <cassert>
@@ -72,21 +72,24 @@ void ThreadContext::_execute_once() {
     std::string opcode = S2s(statement.statementType);
 
     // 使用DebugConfig获取完整的指令字符串（包含操作数）
-    std::string operands = ptxsim::DebugConfig::get_full_instruction_string(statement);
-    
+    std::string operands =
+        ptxsim::DebugConfig::get_full_instruction_string(statement);
+
     // 使用PTX_TRACE_INSTR宏跟踪指令执行
     PTX_TRACE_INSTR(pc, opcode, operands, BlockIdx, ThreadIdx);
-    
+
     // 记录性能统计
     ptxsim::PTXDebugger::get().get_perf_stats().record_instruction(opcode);
-    
+
     // 使用工厂创建对应的处理器并执行
-    InstructionHandler* handler = InstructionFactory::create_handler(statement.statementType);
+    InstructionHandler *handler =
+        InstructionFactory::create_handler(statement.statementType);
     if (handler) {
         handler->execute(this, statement);
         pc++;
     } else {
-        std::cerr << "No handler found for statement type: " << static_cast<int>(statement.statementType) << std::endl;
+        std::cerr << "No handler found for statement type: "
+                  << static_cast<int>(statement.statementType) << std::endl;
         state = EXIT;
     }
 }
@@ -185,67 +188,75 @@ void ThreadContext::dump_state(std::ostream &os) const {
     }
 }
 
-void *ThreadContext::get_operand_addr(OperandContext &op, std::vector<Qualifier> &qualifiers) {
+void *ThreadContext::get_operand_addr(OperandContext &op,
+                                      std::vector<Qualifier> &qualifiers) {
     switch (op.operandType) {
-        case O_REG:
-            return get_register_addr((OperandContext::REG*)op.operand);
-            
-        case O_FA:
-            return get_memory_addr((OperandContext::FA*)op.operand, qualifiers);
-            
-        case O_IMM:
-            {
-                auto immOp = (OperandContext::IMM*)op.operand;
-                // 使用setIMM函数设置立即数
-                int bytes = TypeUtils::get_bytes(qualifiers);
-                Qualifier q;
-                switch (bytes) {
-                    case 1: q = Qualifier::Q_U8; break;
-                    case 2: q = Qualifier::Q_U16; break;
-                    case 4: q = Qualifier::Q_U32; break;
-                    case 8: q = Qualifier::Q_U64; break;
-                    default: q = Qualifier::Q_U32; break;
-                }
-                setIMM(immOp->immVal, q);
-                void* ret = &(imm.front()->data);
-                imm.pop();
-                return ret;
-            }
-            
-        case O_VEC:
-            {
-                auto vecOp = (OperandContext::VEC*)op.operand;
-                // 创建一个新的VEC对象用于存储向量元素地址
-                PtxInterpreter::VEC* newVec = new PtxInterpreter::VEC();
-                // 递归处理向量中的每个元素
-                for (auto& elem : vecOp->vec) {
-                    newVec->vec.push_back(get_operand_addr(elem, qualifiers));
-                }
-                vec.push(newVec);
-                return nullptr;
-            }
-            
-        case O_VAR:
-            {
-                auto varOp = (OperandContext::VAR*)op.operand;
-                // 查找共享内存中的变量
-                auto share_it = name2Share->find(varOp->varName);
-                if (share_it != name2Share->end()) {
-                    return &(share_it->second->val);
-                }
-                
-                // 查找符号表中的变量
-                auto sym_it = name2Sym.find(varOp->varName);
-                if (sym_it != name2Sym.end()) {
-                    return &(sym_it->second->val);
-                }
-                
-                // 如果都没找到，报错
-                assert(0);
-            }
-            
+    case O_REG:
+        return get_register_addr((OperandContext::REG *)op.operand);
+
+    case O_FA:
+        return get_memory_addr((OperandContext::FA *)op.operand, qualifiers);
+
+    case O_IMM: {
+        auto immOp = (OperandContext::IMM *)op.operand;
+        // 使用setIMM函数设置立即数
+        int bytes = TypeUtils::get_bytes(qualifiers);
+        Qualifier q;
+        switch (bytes) {
+        case 1:
+            q = Qualifier::Q_U8;
+            break;
+        case 2:
+            q = Qualifier::Q_U16;
+            break;
+        case 4:
+            q = Qualifier::Q_U32;
+            break;
+        case 8:
+            q = Qualifier::Q_U64;
+            break;
         default:
-            return nullptr;
+            q = Qualifier::Q_U32;
+            break;
+        }
+        setIMM(immOp->immVal, q);
+        void *ret = &(imm.front()->data);
+        imm.pop();
+        return ret;
+    }
+
+    case O_VEC: {
+        auto vecOp = (OperandContext::VEC *)op.operand;
+        // 创建一个新的VEC对象用于存储向量元素地址
+        PtxInterpreter::VEC *newVec = new PtxInterpreter::VEC();
+        // 递归处理向量中的每个元素
+        for (auto &elem : vecOp->vec) {
+            newVec->vec.push_back(get_operand_addr(elem, qualifiers));
+        }
+        vec.push(newVec);
+        return nullptr;
+    }
+
+    case O_VAR: {
+        auto varOp = (OperandContext::VAR *)op.operand;
+        // 查找共享内存中的变量
+        auto share_it = name2Share->find(varOp->varName);
+        if (share_it != name2Share->end()) {
+            return &(share_it->second->val);
+        }
+
+        // 查找符号表中的变量
+        auto sym_it = name2Sym.find(varOp->varName);
+        if (sym_it != name2Sym.end()) {
+            return &(sym_it->second->val);
+        }
+
+        // 如果都没找到，报错
+        assert(0);
+    }
+
+    default:
+        return nullptr;
     }
 }
 
@@ -376,6 +387,43 @@ void ThreadContext::mov(void *from, void *to, std::vector<Qualifier> &q) {
     memcpy(to, from, bytes);
 }
 
+void ThreadContext::update_register(OperandContext::REG *reg, void *value,
+                                    std::vector<Qualifier> &qualifiers) {
+    // 检查操作数是否为寄存器类型
+    // 注意：由于我们在调用处已经知道操作数是寄存器类型，所以这里的检查主要是为了安全
+    // 在实际使用中，这个函数应该只被寄存器操作数调用
+
+    std::string regName = reg->regName + std::to_string(reg->regIdx);
+
+    // 获取更新后的值用于跟踪（从传入的value参数中）
+    int bytes = TypeUtils::get_bytes(qualifiers);
+    std::any reg_value;
+    switch (bytes) {
+    case 1:
+        reg_value = *(uint8_t *)value;
+        break;
+    case 2:
+        reg_value = *(uint16_t *)value;
+        break;
+    case 4:
+        if (TypeUtils::is_float_type(qualifiers)) {
+            reg_value = *(float *)value;
+        } else {
+            reg_value = *(uint32_t *)value;
+        }
+        break;
+    case 8:
+        if (TypeUtils::is_float_type(qualifiers)) {
+            reg_value = *(double *)value;
+        } else {
+            reg_value = *(uint64_t *)value;
+        }
+        break;
+    }
+
+    PTX_TRACE_REG_ACCESS(regName, reg_value, true); // true表示写操作
+}
+
 bool ThreadContext::isIMMorVEC(OperandContext &op) {
     return (op.operandType == O_IMM || op.operandType == O_VEC);
 }
@@ -463,7 +511,7 @@ void ThreadContext::setIMM(std::string s, Qualifier q) {
         // 处理双精度浮点数
         if (s.size() == 18 && (s[1] == 'd' || s[1] == 'D')) {
             s[1] = 'x';
-            *(uint64_t*)&(immObj->data.f64) = std::stoull(s, 0, 0);
+            *(uint64_t *)&(immObj->data.f64) = std::stoull(s, 0, 0);
         } else {
             immObj->data.f64 = std::stod(s);
         }
@@ -473,7 +521,7 @@ void ThreadContext::setIMM(std::string s, Qualifier q) {
         if (s.size() == 10 && (s[1] == 'f' || s[1] == 'F')) {
             s[1] = 'x';
             // 当使用stoi处理输入0xBF000000时会抛出std::out_of_range异常
-            *(uint32_t*)&(immObj->data.f32) = (uint32_t)std::stol(s, 0, 0);
+            *(uint32_t *)&(immObj->data.f32) = (uint32_t)std::stol(s, 0, 0);
         } else {
             immObj->data.f32 = std::stof(s);
         }

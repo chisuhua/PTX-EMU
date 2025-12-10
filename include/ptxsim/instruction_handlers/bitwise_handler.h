@@ -3,6 +3,8 @@
 
 #include "ptxsim/instruction_factory.h"
 #include "ptxsim/thread_context.h"
+#include "ptxsim/ptx_debug.h"
+#include "ptxsim/instruction_processor_utils.h"
 #include "ptx_ir/ptx_types.h"
 #include <vector>
 

@@ -2,59 +2,94 @@
 #define ARITHMETIC_HANDLER_H
 
 #include "ptxsim/instruction_factory.h"
-#include "ptxsim/utils/type_utils.h"
+#include "ptxsim/ptx_debug.h"
 #include "ptxsim/thread_context.h"
+#include "ptxsim/utils/type_utils.h"
 #include <vector>
 
 class ArithmeticHandler : public InstructionHandler {
 public:
-    virtual void execute(ThreadContext* context, StatementContext& stmt) = 0;
-    
+    virtual void execute(ThreadContext *context, StatementContext &stmt) = 0;
+
 protected:
-    virtual void process_operation(ThreadContext* context, 
-                                  void* dst, void* src1, void* src2,
-                                  std::vector<Qualifier>& qualifiers) = 0;
+    virtual void process_operation(ThreadContext *context, void *dst,
+                                   void *src1, void *src2,
+                                   std::vector<Qualifier> &qualifiers) = 0;
+
+    // 为需要4个操作数的指令（如MAD/FMA）提供额外的虚函数
+    virtual void process_operation(ThreadContext *context, void *dst,
+                                   void *src1, void *src2, void *src3,
+                                   std::vector<Qualifier> &qualifiers) {
+        // 默认实现为空，具体的MAD/FMA处理器会重写此函数
+    }
 };
 
-// 具体指令处理器
 class AddHandler : public ArithmeticHandler {
 public:
-    void execute(ThreadContext* context, StatementContext& stmt) override;
-    
+    void execute(ThreadContext *context, StatementContext &stmt) override;
+
 protected:
-    void process_operation(ThreadContext* context, 
-                          void* dst, void* src1, void* src2,
-                          std::vector<Qualifier>& qualifiers) override;
+    void process_operation(ThreadContext *context, void *dst, void *src1,
+                           void *src2,
+                           std::vector<Qualifier> &qualifiers) override;
 };
 
 class SubHandler : public ArithmeticHandler {
 public:
-    void execute(ThreadContext* context, StatementContext& stmt) override;
-    
+    void execute(ThreadContext *context, StatementContext &stmt) override;
+
 protected:
-    void process_operation(ThreadContext* context, 
-                          void* dst, void* src1, void* src2,
-                          std::vector<Qualifier>& qualifiers) override;
+    void process_operation(ThreadContext *context, void *dst, void *src1,
+                           void *src2,
+                           std::vector<Qualifier> &qualifiers) override;
 };
 
 class MulHandler : public ArithmeticHandler {
 public:
-    void execute(ThreadContext* context, StatementContext& stmt) override;
-    
+    void execute(ThreadContext *context, StatementContext &stmt) override;
+
 protected:
-    void process_operation(ThreadContext* context, 
-                          void* dst, void* src1, void* src2,
-                          std::vector<Qualifier>& qualifiers) override;
+    void process_operation(ThreadContext *context, void *dst, void *src1,
+                           void *src2,
+                           std::vector<Qualifier> &qualifiers) override;
 };
 
 class DivHandler : public ArithmeticHandler {
 public:
-    void execute(ThreadContext* context, StatementContext& stmt) override;
-    
+    void execute(ThreadContext *context, StatementContext &stmt) override;
+
 protected:
-    void process_operation(ThreadContext* context, 
-                          void* dst, void* src1, void* src2,
-                          std::vector<Qualifier>& qualifiers) override;
+    void process_operation(ThreadContext *context, void *dst, void *src1,
+                           void *src2,
+                           std::vector<Qualifier> &qualifiers) override;
+};
+
+// FMA和MAD指令处理器
+class MadHandler : public ArithmeticHandler {
+public:
+    void execute(ThreadContext *context, StatementContext &stmt) override;
+
+protected:
+    virtual void process_operation(ThreadContext *context, void *dst,
+                                   void *src1, void *src2,
+                                   std::vector<Qualifier> &qualifiers) {};
+
+    void process_operation(ThreadContext *context, void *dst, void *src1,
+                           void *src2, void *src3,
+                           std::vector<Qualifier> &qualifiers) override;
+};
+
+class FmaHandler : public ArithmeticHandler {
+public:
+    void execute(ThreadContext *context, StatementContext &stmt) override;
+
+protected:
+    virtual void process_operation(ThreadContext *context, void *dst,
+                                   void *src1, void *src2,
+                                   std::vector<Qualifier> &qualifiers) {};
+    void process_operation(ThreadContext *context, void *dst, void *src1,
+                           void *src2, void *src3,
+                           std::vector<Qualifier> &qualifiers) override;
 };
 
 #endif // ARITHMETIC_HANDLER_H

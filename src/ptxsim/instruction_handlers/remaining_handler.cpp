@@ -1,7 +1,318 @@
 #include "ptxsim/instruction_handlers/remaining_handler.h"
+#include "ptxsim/utils/type_utils.h"
+#include "ptxsim/instruction_processor_utils.h"
+#include <cmath>
+
+void CvtHandler::execute(ThreadContext *context, StatementContext &stmt) {
+    auto ss = (StatementContext::CVT *)stmt.statement;
+
+    // 获取操作数地址
+    void *to = context->get_operand_addr(ss->cvtOp[0], ss->cvtQualifier);
+    void *from = context->get_operand_addr(ss->cvtOp[1], ss->cvtQualifier);
+
+    // 执行CVT操作并根据日志级别决定是否跟踪寄存器更新
+    PROCESS_OPERATION_2(context, to, from, ss->cvtQualifier,
+                        (OperandContext::REG *)ss->cvtOp[0].operand);
+}
+
+void CvtHandler::process_operation(ThreadContext *context, void *dst, void *src,
+                                  std::vector<Qualifier> &qualifiers) {
+    // 获取目标和源的数据类型信息
+    int dst_bytes = TypeUtils::get_bytes(qualifiers);
+    int src_bytes = context->getBytes(qualifiers);
+    bool dst_is_float = TypeUtils::is_float_type(qualifiers);
+    bool src_is_float = TypeUtils::is_float_type(qualifiers);
+    bool has_sat = context->QvecHasQ(qualifiers, Qualifier::Q_SAT);
+
+    // 根据目标数据大小执行转换
+    switch (dst_bytes) {
+    case 1: { // 8-bit
+        if (dst_is_float) {
+            // 目标是浮点型
+            float temp;
+            if (src_is_float) {
+                if (src_bytes == 4) {
+                    temp = *(float *)src;
+                } else {
+                    temp = (float)*(double *)src;
+                }
+            } else {
+                // 源是整型
+                if (src_bytes == 1) {
+                    temp = (float)*(uint8_t *)src;
+                } else if (src_bytes == 2) {
+                    temp = (float)*(uint16_t *)src;
+                } else if (src_bytes == 4) {
+                    temp = (float)*(uint32_t *)src;
+                } else {
+                    temp = (float)*(uint64_t *)src;
+                }
+            }
+
+            if (has_sat) {
+                if (std::isnan(temp)) {
+                    *(uint8_t *)dst = 0;
+                } else if (temp < 0.0f) {
+                    *(uint8_t *)dst = 0;
+                } else if (temp > 255.0f) {
+                    *(uint8_t *)dst = 255;
+                } else {
+                    *(uint8_t *)dst = (uint8_t)temp;
+                }
+            } else {
+                *(uint8_t *)dst = (uint8_t)temp;
+            }
+        } else {
+            // 目标是整型
+            if (src_is_float) {
+                float temp;
+                if (src_bytes == 4) {
+                    temp = *(float *)src;
+                } else {
+                    temp = (float)*(double *)src;
+                }
+
+                if (has_sat) {
+                    if (std::isnan(temp)) {
+                        *(uint8_t *)dst = 0;
+                    } else if (temp < 0.0f) {
+                        *(uint8_t *)dst = 0;
+                    } else if (temp > 255.0f) {
+                        *(uint8_t *)dst = 255;
+                    } else {
+                        *(uint8_t *)dst = (uint8_t)temp;
+                    }
+                } else {
+                    *(uint8_t *)dst = (uint8_t)temp;
+                }
+            } else {
+                // 整数到整数转换
+                if (src_bytes == 1) {
+                    *(uint8_t *)dst = *(uint8_t *)src;
+                } else if (src_bytes == 2) {
+                    *(uint8_t *)dst = (uint8_t) * (uint16_t *)src;
+                } else if (src_bytes == 4) {
+                    *(uint8_t *)dst = (uint8_t) * (uint32_t *)src;
+                } else {
+                    *(uint8_t *)dst = (uint8_t) * (uint64_t *)src;
+                }
+            }
+        }
+        break;
+    }
+    case 2: { // 16-bit
+        if (dst_is_float) {
+            // 目标是浮点型
+            float temp;
+            if (src_is_float) {
+                if (src_bytes == 4) {
+                    temp = *(float *)src;
+                } else {
+                    temp = (float)*(double *)src;
+                }
+            } else {
+                // 源是整型
+                if (src_bytes == 1) {
+                    temp = (float)*(uint8_t *)src;
+                } else if (src_bytes == 2) {
+                    temp = (float)*(uint16_t *)src;
+                } else if (src_bytes == 4) {
+                    temp = (float)*(uint32_t *)src;
+                } else {
+                    temp = (float)*(uint64_t *)src;
+                }
+            }
+
+            if (has_sat) {
+                if (std::isnan(temp)) {
+                    *(uint16_t *)dst = 0;
+                } else if (temp < 0.0f) {
+                    *(uint16_t *)dst = 0;
+                } else if (temp > 65535.0f) {
+                    *(uint16_t *)dst = 65535;
+                } else {
+                    *(uint16_t *)dst = (uint16_t)temp;
+                }
+            } else {
+                *(uint16_t *)dst = (uint16_t)temp;
+            }
+        } else {
+            // 目标是整型
+            if (src_is_float) {
+                float temp;
+                if (src_bytes == 4) {
+                    temp = *(float *)src;
+                } else {
+                    temp = (float)*(double *)src;
+                }
+
+                if (has_sat) {
+                    if (std::isnan(temp)) {
+                        *(uint16_t *)dst = 0;
+                    } else if (temp < 0.0f) {
+                        *(uint16_t *)dst = 0;
+                    } else if (temp > 65535.0f) {
+                        *(uint16_t *)dst = 65535;
+                    } else {
+                        *(uint16_t *)dst = (uint16_t)temp;
+                    }
+                } else {
+                    *(uint16_t *)dst = (uint16_t)temp;
+                }
+            } else {
+                // 整数到整数转换
+                if (src_bytes == 1) {
+                    *(uint16_t *)dst = (uint16_t) * (uint8_t *)src;
+                } else if (src_bytes == 2) {
+                    *(uint16_t *)dst = *(uint16_t *)src;
+                } else if (src_bytes == 4) {
+                    *(uint16_t *)dst = (uint16_t) * (uint32_t *)src;
+                } else {
+                    *(uint16_t *)dst = (uint16_t) * (uint64_t *)src;
+                }
+            }
+        }
+        break;
+    }
+    case 4: { // 32-bit
+        if (dst_is_float) {
+            // 目标是浮点型 (float)
+            if (src_is_float) {
+                if (src_bytes == 4) {
+                    *(float *)dst = *(float *)src;
+                } else {
+                    *(float *)dst = (float)*(double *)src;
+                }
+            } else {
+                // 源是整型
+                if (src_bytes == 1) {
+                    *(float *)dst = (float)*(uint8_t *)src;
+                } else if (src_bytes == 2) {
+                    *(float *)dst = (float)*(uint16_t *)src;
+                } else if (src_bytes == 4) {
+                    *(float *)dst = (float)*(uint32_t *)src;
+                } else {
+                    *(float *)dst = (float)*(uint64_t *)src;
+                }
+            }
+        } else {
+            // 目标是整型
+            if (src_is_float) {
+                float temp;
+                if (src_bytes == 4) {
+                    temp = *(float *)src;
+                } else {
+                    temp = (float)*(double *)src;
+                }
+
+                if (has_sat) {
+                    if (std::isnan(temp)) {
+                        *(uint32_t *)dst = 0;
+                    } else if (temp < 0.0f) {
+                        *(uint32_t *)dst = 0;
+                    } else if (temp > 4294967295.0f) {
+                        *(uint32_t *)dst = 4294967295U;
+                    } else {
+                        *(uint32_t *)dst = (uint32_t)temp;
+                    }
+                } else {
+                    *(uint32_t *)dst = (uint32_t)temp;
+                }
+            } else {
+                // 整数到整数转换
+                if (src_bytes == 1) {
+                    *(uint32_t *)dst = (uint32_t) * (uint8_t *)src;
+                } else if (src_bytes == 2) {
+                    *(uint32_t *)dst = (uint32_t) * (uint16_t *)src;
+                } else if (src_bytes == 4) {
+                    *(uint32_t *)dst = *(uint32_t *)src;
+                } else {
+                    *(uint32_t *)dst = (uint32_t) * (uint64_t *)src;
+                }
+            }
+        }
+        break;
+    }
+    case 8: { // 64-bit
+        if (dst_is_float) {
+            // 目标是双精度浮点型 (double)
+            if (src_is_float) {
+                if (src_bytes == 4) {
+                    *(double *)dst = (double)*(float *)src;
+                } else {
+                    *(double *)dst = *(double *)src;
+                }
+            } else {
+                // 源是整型
+                if (src_bytes == 1) {
+                    *(double *)dst = (double)*(uint8_t *)src;
+                } else if (src_bytes == 2) {
+                    *(double *)dst = (double)*(uint16_t *)src;
+                } else if (src_bytes == 4) {
+                    *(double *)dst = (double)*(uint32_t *)src;
+                } else {
+                    *(double *)dst = (double)*(uint64_t *)src;
+                }
+            }
+        } else {
+            // 目标是整型
+            if (src_is_float) {
+                double temp;
+                if (src_bytes == 4) {
+                    temp = (double)*(float *)src;
+                } else {
+                    temp = *(double *)src;
+                }
+
+                if (has_sat) {
+                    if (std::isnan(temp)) {
+                        *(uint64_t *)dst = 0;
+                    } else if (temp < 0.0) {
+                        *(uint64_t *)dst = 0;
+                    } else if (temp > 18446744073709551615.0) {
+                        *(uint64_t *)dst = 18446744073709551615ULL;
+                    } else {
+                        *(uint64_t *)dst = (uint64_t)temp;
+                    }
+                } else {
+                    *(uint64_t *)dst = (uint64_t)temp;
+                }
+            } else {
+                // 整数到整数转换
+                if (src_bytes == 1) {
+                    *(uint64_t *)dst = (uint64_t) * (uint8_t *)src;
+                } else if (src_bytes == 2) {
+                    *(uint64_t *)dst = (uint64_t) * (uint16_t *)src;
+                } else if (src_bytes == 4) {
+                    *(uint64_t *)dst = (uint64_t) * (uint32_t *)src;
+                } else {
+                    *(uint64_t *)dst = *(uint64_t *)src;
+                }
+            }
+        }
+        break;
+    }
+    default:
+        assert(0 && "Unsupported destination size for CVT instruction");
+    }
+}
 
 void CvtaHandler::execute(ThreadContext *context, StatementContext &stmt) {
-    // TODO: 实现CVTA指令
+    auto ss = (StatementContext::CVTA *)stmt.statement;
+
+    // 获取操作数地址
+    void *to = context->get_operand_addr(ss->cvtaOp[0], ss->cvtaQualifier);
+    void *from = context->get_operand_addr(ss->cvtaOp[1], ss->cvtaQualifier);
+
+    // 执行CVTA操作，本质上是地址复制
+    context->mov(from, to, ss->cvtaQualifier);
+    
+    // 如果启用了寄存器跟踪，则更新寄存器信息
+    if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info, "reg")) {
+        if (ss->cvtaOp[0].operandType == OperandType::O_REG) {
+            context->update_register((OperandContext::REG *)ss->cvtaOp[0].operand, to, ss->cvtaQualifier);
+        }
+    }
 }
 
 void SelpHandler::execute(ThreadContext *context, StatementContext &stmt) {
