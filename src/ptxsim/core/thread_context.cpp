@@ -388,7 +388,7 @@ void ThreadContext::mov(void *from, void *to, std::vector<Qualifier> &q) {
 }
 
 void ThreadContext::update_register(OperandContext::REG *reg, void *value,
-                                    std::vector<Qualifier> &qualifiers) {
+                                   std::vector<Qualifier> &qualifiers) {
     // 检查操作数是否为寄存器类型
     // 注意：由于我们在调用处已经知道操作数是寄存器类型，所以这里的检查主要是为了安全
     // 在实际使用中，这个函数应该只被寄存器操作数调用
@@ -422,6 +422,34 @@ void ThreadContext::update_register(OperandContext::REG *reg, void *value,
     }
 
     PTX_TRACE_REG_ACCESS(regName, reg_value, true); // true表示写操作
+}
+
+void ThreadContext::memory_access(bool is_write, const std::string& addr_expr,
+                                 void* addr, size_t size, void* value,
+                                 std::vector<Qualifier>& qualifiers, void* target) {
+    // 只有在启用了内存跟踪时才进行跟踪
+    if (ptxsim::DebugConfig::get().is_memory_traced()) {
+        // 获取数据值用于跟踪
+        void* track_value = nullptr;
+        
+        // 如果是写操作或者提供了value，则使用提供的value
+        // 如果是读操作且未提供value，则从地址中读取
+        if (is_write || value != nullptr) {
+            track_value = value;
+        } else if (!is_write && addr != nullptr) {
+            // 对于读操作，从内存地址中获取值
+            track_value = addr;
+        }
+        
+        PTX_TRACE_MEM_ACCESS(is_write, addr_expr, (uint64_t)addr, size, track_value);
+    }
+    
+    // 执行实际的内存操作
+    if (is_write) {
+        mov(value, addr, qualifiers);
+    } else {
+        mov(addr, target, qualifiers);
+    }
 }
 
 bool ThreadContext::isIMMorVEC(OperandContext &op) {

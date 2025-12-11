@@ -19,8 +19,14 @@ void LdHandler::execute(ThreadContext* context, StatementContext& stmt) {
         return;
     }
     
-    // 执行LD操作
-    // 注意：这里需要通过公共接口访问ThreadContext的私有成员
+    // 获取数据大小
+    size_t data_size = TypeUtils::get_bytes(ss->ldQualifier);
+    
+    // 执行LD操作，包括内存读取跟踪和实际数据移动
+    std::string addr_expr = ss->ldOp[1].toString();
+    context->memory_access(false, addr_expr, from, data_size, nullptr, ss->ldQualifier, to);
+    
+    // 处理向量操作
     if (context->QvecHasQ(ss->ldQualifier, Qualifier::Q_V2)) {
         uint64_t step = context->getBytes(ss->ldQualifier);
         auto vecAddr = context->vec.front()->vec;
@@ -28,7 +34,10 @@ void LdHandler::execute(ThreadContext* context, StatementContext& stmt) {
         assert(vecAddr.size() == 2);
         for (int i = 0; i < 2; i++) {
             to = vecAddr[i];
-            context->mov((void *)((uint64_t)from + i * step), to, ss->ldQualifier);
+            void* src_addr = (void *)((uint64_t)from + i * step);
+            // 为每个向量元素添加内存读取跟踪和实际数据移动
+            context->memory_access(false, addr_expr + "[" + std::to_string(i) + "]", 
+                                 src_addr, step, nullptr, ss->ldQualifier, to);
         }
     } else if (context->QvecHasQ(ss->ldQualifier, Qualifier::Q_V4)) {
         uint64_t step = context->getBytes(ss->ldQualifier);
@@ -37,10 +46,11 @@ void LdHandler::execute(ThreadContext* context, StatementContext& stmt) {
         assert(vecAddr.size() == 4);
         for (int i = 0; i < 4; i++) {
             to = vecAddr[i];
-            context->mov((void *)((uint64_t)from + i * step), to, ss->ldQualifier);
+            void* src_addr = (void *)((uint64_t)from + i * step);
+            // 为每个向量元素添加内存读取跟踪和实际数据移动
+            context->memory_access(false, addr_expr + "[" + std::to_string(i) + "]", 
+                                 src_addr, step, nullptr, ss->ldQualifier, to);
         }
-    } else {
-        context->mov(from, to, ss->ldQualifier);
     }
 }
 
@@ -57,8 +67,14 @@ void StHandler::execute(ThreadContext* context, StatementContext& stmt) {
         return;
     }
     
-    // 执行ST操作
-    // 注意：这里需要通过公共接口访问ThreadContext的私有成员
+    // 获取数据大小
+    size_t data_size = TypeUtils::get_bytes(ss->stQualifier);
+    
+    // 执行ST操作，包括内存写入跟踪和实际数据移动
+    std::string addr_expr = ss->stOp[0].toString();
+    context->memory_access(true, addr_expr, to, data_size, from, ss->stQualifier);
+    
+    // 处理向量操作
     if (context->QvecHasQ(ss->stQualifier, Qualifier::Q_V4)) {
         uint64_t step = context->getBytes(ss->stQualifier);
         auto vecAddr = context->vec.front()->vec;
@@ -66,7 +82,10 @@ void StHandler::execute(ThreadContext* context, StatementContext& stmt) {
         assert(vecAddr.size() == 4);
         for (int i = 0; i < 4; i++) {
             from = vecAddr[i];
-            context->mov(from, (void *)((uint64_t)to + i * step), ss->stQualifier);
+            void* dst_addr = (void *)((uint64_t)to + i * step);
+            // 为每个向量元素添加内存写入跟踪和实际数据移动
+            context->memory_access(true, addr_expr + "[" + std::to_string(i) + "]", 
+                                 dst_addr, step, from, ss->stQualifier);
         }
     } else if (context->QvecHasQ(ss->stQualifier, Qualifier::Q_V2)) {
         uint64_t step = context->getBytes(ss->stQualifier);
@@ -75,9 +94,10 @@ void StHandler::execute(ThreadContext* context, StatementContext& stmt) {
         assert(vecAddr.size() == 2);
         for (int i = 0; i < 2; i++) {
             from = vecAddr[i];
-            context->mov(from, (void *)((uint64_t)to + i * step), ss->stQualifier);
+            void* dst_addr = (void *)((uint64_t)to + i * step);
+            // 为每个向量元素添加内存写入跟踪和实际数据移动
+            context->memory_access(true, addr_expr + "[" + std::to_string(i) + "]", 
+                                 dst_addr, step, from, ss->stQualifier);
         }
-    } else {
-        context->mov(from, to, ss->stQualifier);
     }
 }

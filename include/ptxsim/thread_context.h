@@ -62,6 +62,11 @@ public:
     void update_register(OperandContext::REG *reg, void *value,
                          std::vector<Qualifier> &qualifiers);
 
+    // 内存访问跟踪接口
+    void memory_access(bool is_write, const std::string& addr_expr, 
+                       void* addr, size_t size, void* value,
+                       std::vector<Qualifier>& qualifiers, void* target = nullptr);
+
     // 辅助函数接口（供指令处理器使用）
     bool QvecHasQ(std::vector<Qualifier> &qvec, Qualifier q);
     int getBytes(std::vector<Qualifier> &q);
