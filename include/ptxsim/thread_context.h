@@ -2,6 +2,7 @@
 #define THREAD_CONTEXT_H
 
 #include "ptx_ir/operand_context.h"
+#include "ptx_ir/ptx_types.h"
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/instruction_factory.h"
@@ -50,9 +51,13 @@ public:
     // 通用访问接口
     void *get_operand_addr(OperandContext &op,
                            std::vector<Qualifier> &qualifiers);
-    void *get_register_addr(OperandContext::REG *reg);
+    void *get_register_addr(OperandContext::REG *reg,
+                            Qualifier qualifier = Qualifier::Q_U32);
     void *get_memory_addr(OperandContext::FA *fa,
                           std::vector<Qualifier> &qualifiers);
+
+    // Shared memory初始化
+    void initialize_shared_memory(const std::string &name, uint64_t address);
 
     // 通用操作
     void mov_data(void *src, void *dst, std::vector<Qualifier> &qualifiers);

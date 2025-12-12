@@ -433,16 +433,16 @@ inline std::string format_coord(int x, int y, int z) {
 }
 
 // 格式化寄存器值
-inline std::string format_register_value(const std::any &value) {
+inline std::string format_register_value(const std::any &value, bool hex) {
     try {
         if (value.type() == typeid(int32_t)) {
-            return format_i32(std::any_cast<int32_t>(value));
+            return format_i32(std::any_cast<int32_t>(value), hex);
         } else if (value.type() == typeid(uint32_t)) {
-            return format_u32(std::any_cast<uint32_t>(value));
+            return format_u32(std::any_cast<uint32_t>(value), hex);
         } else if (value.type() == typeid(int64_t)) {
-            return format_i64(std::any_cast<int64_t>(value));
+            return format_i64(std::any_cast<int64_t>(value), hex);
         } else if (value.type() == typeid(uint64_t)) {
-            return format_u64(std::any_cast<uint64_t>(value));
+            return format_u64(std::any_cast<uint64_t>(value), hex);
         } else if (value.type() == typeid(float)) {
             return format_f32(std::any_cast<float>(value));
         } else if (value.type() == typeid(double)) {
@@ -520,7 +520,7 @@ public:
             } else if (size == 8) {
                 uint64_t u64 = *static_cast<uint64_t *>(value);
                 double f64 = *static_cast<double *>(value);
-                value_str = ptxsim::debug_format::format_i64(u64, true) +
+                value_str = ptxsim::debug_format::format_u64(u64, true) +
                             " / " + ptxsim::debug_format::format_f64(f64);
             } else {
                 value_str =
@@ -549,7 +549,7 @@ public:
 
         const char *access_type = is_write ? "W" : "R";
         std::string value_str =
-            ptxsim::debug_format::format_register_value(value);
+            ptxsim::debug_format::format_register_value(value, true);
 
         PTX_TRACE_REG("%s %s        %s: %s = %s", block.to_string().c_str(),
                       thread.to_string().c_str(), access_type, reg_name.c_str(),

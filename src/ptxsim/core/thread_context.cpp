@@ -5,11 +5,15 @@
 #include "ptxsim/interpreter.h"
 #include "ptxsim/ptx_debug.h"
 #include <algorithm>
+#include <any>
 #include <cassert>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <iostream>
+
+// 添加SHMEMADDR变量定义，用于处理shared memory地址
+static uint64_t SHMEMADDR = 0;
 
 #ifdef DEBUGINTE
 extern bool sync_thread;
@@ -260,7 +264,8 @@ void *ThreadContext::get_operand_addr(OperandContext &op,
     }
 }
 
-void *ThreadContext::get_register_addr(OperandContext::REG *reg) {
+void *ThreadContext::get_register_addr(OperandContext::REG *reg,
+                                       Qualifier qualifier) {
     // 首先尝试直接按regName查找（适用于特殊寄存器如%tid.x）
     auto it = name2Reg.find(reg->regName);
     if (it != name2Reg.end()) {
@@ -278,7 +283,7 @@ void *ThreadContext::get_register_addr(OperandContext::REG *reg) {
     PtxInterpreter::Reg *newReg = new PtxInterpreter::Reg();
     // 注意：这里需要从其他地方获取寄存器类型，因为OperandContext::REG没有保存类型信息
     // 我们暂时使用默认类型，后续可以通过上下文获取正确的类型
-    newReg->regType = Qualifier::Q_U32;
+    newReg->regType = qualifier; // 默认使用Q_U64类型
 
     // 根据类型分配数据空间 (创建一个只有一个元素的vector)
     std::vector<Qualifier> typeVec = {newReg->regType};
@@ -294,23 +299,28 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
                                      std::vector<Qualifier> &qualifiers) {
     void *ret;
     if (fa->reg) {
-        // 获取寄存器地址
-        void *regAddr = get_operand_addr(*(fa->reg), qualifiers);
+        // 1. 执行到get_memory_addr时，传入的qualifiers含有Q_GLOBAL, Q_SHARED,
+        // Q_PARAM如何处理地址信息，
+        // 把qualifiers里的地址信息设定到mem_qualifiers，而不是假定哟个Q_U64.
+        Qualifier mem_qualifier;
+        for (const auto &q : qualifiers) {
+            // 将地址空间信息添加到mem_qualifiers中
+            if (q == Qualifier::Q_GLOBAL || q == Qualifier::Q_SHARED ||
+                q == Qualifier::Q_PARAM) {
+                mem_qualifier = Qualifier::Q_U64;
+            }
+        }
+
+        assert(fa->reg->operandType == O_REG);
+
+        void *regAddr = get_register_addr(
+            (OperandContext::REG *)(fa->reg)->operand, mem_qualifier);
         if (!regAddr)
             return nullptr;
 
-        // 根据数据类型决定如何解读寄存器内容
-        int regBytes = TypeUtils::get_bytes(qualifiers);
-        switch (regBytes) {
-        case 8:
-            ret = (void *)*(uint64_t *)regAddr;
-            break;
-        case 4:
-            ret = (void *)(uint64_t) * (uint32_t *)regAddr;
-            break;
-        default:
-            assert(0);
-        }
+        // 根据地址类型决定如何解读寄存器内容
+        // 地址通常应该是64位的
+        ret = (void *)*(uint64_t *)regAddr;
     } else {
         // 直接通过ID查找符号表或共享内存
         auto sym_it = name2Sym.find(fa->ID);
@@ -319,11 +329,20 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
         } else {
             auto share_it = name2Share->find(fa->ID);
             if (share_it != name2Share->end()) {
-                ret = (void *)share_it->second->val;
+                // 处理shared memory地址
+                extern uint64_t SHMEMADDR;
+                ret = (void *)(share_it->second->val + (SHMEMADDR << 32));
             } else {
                 assert(0);
             }
         }
+    }
+
+    // 如果是shared memory访问，需要特殊处理高32位地址
+    // 这适用于通过寄存器访问shared memory的情况
+    if (QvecHasQ(qualifiers, Qualifier::Q_SHARED)) {
+        extern uint64_t SHMEMADDR;
+        ret = (void *)((uint64_t)ret + (SHMEMADDR << 32));
     }
 
     // 处理偏移量
@@ -371,6 +390,17 @@ void ThreadContext::handle_statement(StatementContext &statement) {
     } else {
         std::cerr << "No handler found for statement type: "
                   << static_cast<int>(statement.statementType) << std::endl;
+    }
+}
+
+// 添加shared memory初始化函数
+void ThreadContext::initialize_shared_memory(const std::string &name,
+                                             uint64_t address) {
+    extern uint64_t SHMEMADDR;
+    if (SHMEMADDR) {
+        assert(address >> 32 == SHMEMADDR);
+    } else {
+        SHMEMADDR = address >> 32; // 只保存高32位
     }
 }
 
@@ -441,11 +471,20 @@ void ThreadContext::memory_access(bool is_write, const std::string &addr_expr,
             track_value = value;
         } else {
             // 读操作：追踪即将从内存中读取的数据
-            track_value = addr; 
+            track_value = addr;
         }
 
         PTX_TRACE_MEM_ACCESS(is_write, addr_expr, (uint64_t)addr, size,
                              track_value, BlockIdx, ThreadIdx);
+    }
+
+    // 执行实际的内存操作
+    if (is_write) {
+        // 将源数据 'value' 复制到内存地址 'addr'
+        mov(value, addr, qualifiers);
+    } else {
+        // 将内存地址 'addr' 中的数据复制到目标 'target'
+        mov(addr, target, qualifiers);
     }
 
     // 根据操作类型跟踪寄存器访问
@@ -457,15 +496,6 @@ void ThreadContext::memory_access(bool is_write, const std::string &addr_expr,
             // 内存读操作：目标寄存器（将接收数据）被写入
             trace_register(reg_operand, target, qualifiers, true);
         }
-    }
-
-    // 执行实际的内存操作
-    if (is_write) {
-        // 将源数据 'value' 复制到内存地址 'addr'
-        mov(value, addr, qualifiers);
-    } else {
-        // 将内存地址 'addr' 中的数据复制到目标 'target'
-        mov(addr, target, qualifiers);
     }
 }
 
