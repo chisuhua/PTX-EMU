@@ -56,12 +56,12 @@ public:
     PtxContext *ptxContext;
     KernelContext *kernelContext;
     void **kernelArgs;
-    dim3 gridDim, blockDim;
+    Dim3 gridDim, blockDim;
 
     std::map<std::string, uint64_t> constName2addr;
 
     void launchPtxInterpreter(PtxContext &ptx, std::string &kernel, void **args,
-                              dim3 &gridDim, dim3 &blockDim);
+                              Dim3 &gridDim, Dim3 &blockDim);
 
     void funcInterpreter(std::map<std::string, Symtable *> &name2Sym,
                          std::map<std::string, int> &label2pc);

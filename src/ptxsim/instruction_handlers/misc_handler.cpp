@@ -15,16 +15,16 @@ void MovHandler::execute(ThreadContext *context, StatementContext &stmt) {
     void *to = context->get_operand_addr(ss->movOp[0], ss->movQualifier);
     void *from = context->get_operand_addr(ss->movOp[1], ss->movQualifier);
 
-    // 执行MOV操作
-    context->mov(from, to, ss->movQualifier);
+    // 使用 PROCESS_OPERATION_2 宏执行 MOV
+    // 操作并根据日志级别决定是否跟踪寄存器更新
+    PROCESS_OPERATION_2(context, to, from, ss->movQualifier,
+                        (OperandContext::REG *)ss->movOp[0].operand);
+}
 
-// 如果目标操作数是寄存器，使用统一接口更新寄存器
-#ifdef DEBUGINTE
-    if (ss->movOp[0].operandType == O_REG) {
-        context->update_register((OperandContext::REG *)ss->movOp[0].operand,
-                                 to, ss->movQualifier);
-    }
-#endif
+void MovHandler::process_operation(ThreadContext *context, void *dst, void *src,
+                                   std::vector<Qualifier> &qualifiers) {
+    // 执行MOV操作
+    context->mov(src, dst, qualifiers);
 }
 
 void SetpHandler::execute(ThreadContext *context, StatementContext &stmt) {
@@ -48,264 +48,133 @@ void SetpHandler::process_operation(ThreadContext *context, void *dst,
 
     // 获取数据类型相关信息
     int bytes = TypeUtils::get_bytes(qualifiers);
-    bool is_float = TypeUtils::is_float_type(qualifiers);
+    bool isFloat = TypeUtils::is_float_type(qualifiers);
+    bool isSigned = TypeUtils::is_signed_type(qualifiers);
 
-    // 根据比较操作符执行相应的比较操作
-    switch (cmpOp) {
-    case Qualifier::Q_EQ: {
-        switch (bytes) {
-        case 1: {
-            *(uint8_t *)dst = (*(uint8_t *)src1) == (*(uint8_t *)src2);
-            break;
-        }
-        case 2: {
-            *(uint16_t *)dst = (*(uint16_t *)src1) == (*(uint16_t *)src2);
-            break;
-        }
-        case 4: {
-            if (is_float) {
-                *(uint8_t *)dst = (*(float *)src1) == (*(float *)src2);
-            } else {
-                *(uint8_t *)dst = (*(uint32_t *)src1) == (*(uint32_t *)src2);
-            }
-            break;
-        }
-        case 8: {
-            if (is_float) {
-                *(uint8_t *)dst = (*(double *)src1) == (*(double *)src2);
-            } else {
-                *(uint8_t *)dst = (*(uint64_t *)src1) == (*(uint64_t *)src2);
-            }
-            break;
-        }
-        default:
-            assert(0 && "Unsupported data size for EQ comparison");
+    // 根据数据类型和比较操作符执行比较操作
+    bool result = false;
+    switch (bytes) {
+    case 1: {
+        if (isSigned) {
+            int8_t val1 = *(int8_t *)src1;
+            int8_t val2 = *(int8_t *)src2;
+            result = TypeUtils::apply_comparison(val1, val2, cmpOp);
+        } else {
+            uint8_t val1 = *(uint8_t *)src1;
+            uint8_t val2 = *(uint8_t *)src2;
+            result = TypeUtils::apply_comparison(val1, val2, cmpOp);
         }
         break;
     }
-    case Qualifier::Q_NE:
-    case Qualifier::Q_NEU: {
-        switch (bytes) {
-        case 1: {
-            *(uint8_t *)dst = (*(uint8_t *)src1) != (*(uint8_t *)src2);
-            break;
-        }
-        case 2: {
-            *(uint8_t *)dst = (*(uint16_t *)src1) != (*(uint16_t *)src2);
-            break;
-        }
-        case 4: {
-            if (is_float) {
-                bool isnan_src1 = (*(float *)src1) != (*(float *)src1);
-                bool isnan_src2 = (*(float *)src2) != (*(float *)src2);
-                if (isnan_src1 || isnan_src2) {
-                    *(uint8_t *)dst = (cmpOp == Qualifier::Q_NEU);
-                } else {
-                    *(uint8_t *)dst = (*(float *)src1) != (*(float *)src2);
-                }
-            } else {
-                *(uint8_t *)dst = (*(uint32_t *)src1) != (*(uint32_t *)src2);
-            }
-            break;
-        }
-        case 8: {
-            if (is_float) {
-                bool isnan_src1 = (*(double *)src1) != (*(double *)src1);
-                bool isnan_src2 = (*(double *)src2) != (*(double *)src2);
-                if (isnan_src1 || isnan_src2) {
-                    *(uint8_t *)dst = (cmpOp == Qualifier::Q_NEU);
-                } else {
-                    *(uint8_t *)dst = (*(double *)src1) != (*(double *)src2);
-                }
-            } else {
-                *(uint8_t *)dst = (*(uint64_t *)src1) != (*(uint64_t *)src2);
-            }
-            break;
-        }
-        default:
-            assert(0 && "Unsupported data size for NE/NEU comparison");
+    case 2: {
+        if (isSigned) {
+            int16_t val1 = *(int16_t *)src1;
+            int16_t val2 = *(int16_t *)src2;
+            result = TypeUtils::apply_comparison(val1, val2, cmpOp);
+        } else {
+            uint16_t val1 = *(uint16_t *)src1;
+            uint16_t val2 = *(uint16_t *)src2;
+            result = TypeUtils::apply_comparison(val1, val2, cmpOp);
         }
         break;
     }
-    case Qualifier::Q_LT:
-    case Qualifier::Q_LTU: {
-        switch (bytes) {
-        case 1: {
-            *(uint8_t *)dst = (*(uint8_t *)src1) < (*(uint8_t *)src2);
-            break;
-        }
-        case 2: {
-            *(uint8_t *)dst = (*(uint16_t *)src1) < (*(uint16_t *)src2);
-            break;
-        }
-        case 4: {
-            if (is_float) {
-                bool isnan_src1 = (*(float *)src1) != (*(float *)src1);
-                bool isnan_src2 = (*(float *)src2) != (*(float *)src2);
-                if (isnan_src1 || isnan_src2) {
-                    *(uint8_t *)dst = (cmpOp == Qualifier::Q_LTU);
-                } else {
-                    *(uint8_t *)dst = (*(float *)src1) < (*(float *)src2);
+    case 4: {
+        if (isFloat) {
+            float val1 = *(float *)src1;
+            float val2 = *(float *)src2;
+            // 处理NaN值的情况
+            if (val1 != val1 || val2 != val2) {
+                switch (cmpOp) {
+                case Qualifier::Q_EQ:
+                case Qualifier::Q_LE:
+                case Qualifier::Q_LT:
+                case Qualifier::Q_GE:
+                case Qualifier::Q_GT:
+                    result = false;
+                    break;
+                case Qualifier::Q_NE:
+                    result = true;
+                    break;
+                default:
+                    assert(0);
                 }
             } else {
-                *(uint8_t *)dst = (*(uint32_t *)src1) < (*(uint32_t *)src2);
-            }
-            break;
-        }
-        case 8: {
-            if (is_float) {
-                bool isnan_src1 = (*(double *)src1) != (*(double *)src1);
-                bool isnan_src2 = (*(double *)src2) != (*(double *)src2);
-                if (isnan_src1 || isnan_src2) {
-                    *(uint8_t *)dst = (cmpOp == Qualifier::Q_LTU);
-                } else {
-                    *(uint8_t *)dst = (*(double *)src1) < (*(double *)src2);
+                // 手动实现比较操作替代TypeUtils::apply_comparison
+                switch (cmpOp) {
+                case Qualifier::Q_EQ:
+                    result = val1 == val2;
+                    break;
+                case Qualifier::Q_NE:
+                    result = val1 != val2;
+                    break;
+                case Qualifier::Q_LT:
+                    result = val1 < val2;
+                    break;
+                case Qualifier::Q_LE:
+                    result = val1 <= val2;
+                    break;
+                case Qualifier::Q_GT:
+                    result = val1 > val2;
+                    break;
+                case Qualifier::Q_GE:
+                    result = val1 >= val2;
+                    break;
+                default:
+                    assert(0);
                 }
-            } else {
-                *(uint8_t *)dst = (*(uint64_t *)src1) < (*(uint64_t *)src2);
             }
-            break;
-        }
-        default:
-            assert(0 && "Unsupported data size for LT/LTU comparison");
+        } else if (isSigned) {
+            int32_t val1 = *(int32_t *)src1;
+            int32_t val2 = *(int32_t *)src2;
+            result = TypeUtils::apply_comparison(val1, val2, cmpOp);
+        } else {
+            uint32_t val1 = *(uint32_t *)src1;
+            uint32_t val2 = *(uint32_t *)src2;
+            result = TypeUtils::apply_comparison(val1, val2, cmpOp);
         }
         break;
     }
-    case Qualifier::Q_LE:
-    case Qualifier::Q_LEU: {
-        switch (bytes) {
-        case 1: {
-            *(uint8_t *)dst = (*(uint8_t *)src1) <= (*(uint8_t *)src2);
-            break;
-        }
-        case 2: {
-            *(uint8_t *)dst = (*(uint16_t *)src1) <= (*(uint16_t *)src2);
-            break;
-        }
-        case 4: {
-            if (is_float) {
-                bool isnan_src1 = (*(float *)src1) != (*(float *)src1);
-                bool isnan_src2 = (*(float *)src2) != (*(float *)src2);
-                if (isnan_src1 || isnan_src2) {
-                    *(uint8_t *)dst = (cmpOp == Qualifier::Q_LEU);
-                } else {
-                    *(uint8_t *)dst = (*(float *)src1) <= (*(float *)src2);
+    case 8: {
+        if (isFloat) {
+            double val1 = *(double *)src1;
+            double val2 = *(double *)src2;
+            // 处理NaN值的情况
+            if (val1 != val1 || val2 != val2) {
+                switch (cmpOp) {
+                case Qualifier::Q_EQ:
+                case Qualifier::Q_LE:
+                case Qualifier::Q_LT:
+                case Qualifier::Q_GE:
+                case Qualifier::Q_GT:
+                    result = false;
+                    break;
+                case Qualifier::Q_NE:
+                    result = true;
+                    break;
+                default:
+                    result = false;
+                    break;
                 }
             } else {
-                *(uint8_t *)dst = (*(uint32_t *)src1) <= (*(uint32_t *)src2);
+                result = TypeUtils::apply_comparison(val1, val2, cmpOp);
             }
-            break;
-        }
-        case 8: {
-            if (is_float) {
-                bool isnan_src1 = (*(double *)src1) != (*(double *)src1);
-                bool isnan_src2 = (*(double *)src2) != (*(double *)src2);
-                if (isnan_src1 || isnan_src2) {
-                    *(uint8_t *)dst = (cmpOp == Qualifier::Q_LEU);
-                } else {
-                    *(uint8_t *)dst = (*(double *)src1) <= (*(double *)src2);
-                }
-            } else {
-                *(uint8_t *)dst = (*(uint64_t *)src1) <= (*(uint64_t *)src2);
-            }
-            break;
-        }
-        default:
-            assert(0 && "Unsupported data size for LE/LEU comparison");
-        }
-        break;
-    }
-    case Qualifier::Q_GT:
-    case Qualifier::Q_GTU: {
-        switch (bytes) {
-        case 1: {
-            *(uint8_t *)dst = (*(uint8_t *)src1) > (*(uint8_t *)src2);
-            break;
-        }
-        case 2: {
-            *(uint8_t *)dst = (*(uint16_t *)src1) > (*(uint16_t *)src2);
-            break;
-        }
-        case 4: {
-            if (is_float) {
-                bool isnan_src1 = (*(float *)src1) != (*(float *)src1);
-                bool isnan_src2 = (*(float *)src2) != (*(float *)src2);
-                if (isnan_src1 || isnan_src2) {
-                    *(uint8_t *)dst = (cmpOp == Qualifier::Q_GTU);
-                } else {
-                    *(uint8_t *)dst = (*(float *)src1) > (*(float *)src2);
-                }
-            } else {
-                *(uint8_t *)dst = (*(uint32_t *)src1) > (*(uint32_t *)src2);
-            }
-            break;
-        }
-        case 8: {
-            if (is_float) {
-                bool isnan_src1 = (*(double *)src1) != (*(double *)src1);
-                bool isnan_src2 = (*(double *)src2) != (*(double *)src2);
-                if (isnan_src1 || isnan_src2) {
-                    *(uint8_t *)dst = (cmpOp == Qualifier::Q_GTU);
-                } else {
-                    *(uint8_t *)dst = (*(double *)src1) > (*(double *)src2);
-                }
-            } else {
-                *(uint8_t *)dst = (*(uint64_t *)src1) > (*(uint64_t *)src2);
-            }
-            break;
-        }
-        default:
-            assert(0 && "Unsupported data size for GT/GTU comparison");
-        }
-        break;
-    }
-    case Qualifier::Q_GE:
-    case Qualifier::Q_GEU: {
-        switch (bytes) {
-        case 1: {
-            *(uint8_t *)dst = (*(uint8_t *)src1) >= (*(uint8_t *)src2);
-            break;
-        }
-        case 2: {
-            *(uint8_t *)dst = (*(uint16_t *)src1) >= (*(uint16_t *)src2);
-            break;
-        }
-        case 4: {
-            if (is_float) {
-                bool isnan_src1 = (*(float *)src1) != (*(float *)src1);
-                bool isnan_src2 = (*(float *)src2) != (*(float *)src2);
-                if (isnan_src1 || isnan_src2) {
-                    *(uint8_t *)dst = (cmpOp == Qualifier::Q_GEU);
-                } else {
-                    *(uint8_t *)dst = (*(float *)src1) >= (*(float *)src2);
-                }
-            } else {
-                *(uint8_t *)dst = (*(uint32_t *)src1) >= (*(uint32_t *)src2);
-            }
-            break;
-        }
-        case 8: {
-            if (is_float) {
-                bool isnan_src1 = (*(double *)src1) != (*(double *)src1);
-                bool isnan_src2 = (*(double *)src2) != (*(double *)src2);
-                if (isnan_src1 || isnan_src2) {
-                    *(uint8_t *)dst = (cmpOp == Qualifier::Q_GEU);
-                } else {
-                    *(uint8_t *)dst = (*(double *)src1) >= (*(double *)src2);
-                }
-            } else {
-                *(uint8_t *)dst = (*(uint64_t *)src1) >= (*(uint64_t *)src2);
-            }
-            break;
-        }
-        default:
-            assert(0 && "Unsupported data size for GE/GEU comparison");
+        } else if (isSigned) {
+            int64_t val1 = *(int64_t *)src1;
+            int64_t val2 = *(int64_t *)src2;
+            result = TypeUtils::apply_comparison(val1, val2, cmpOp);
+        } else {
+            uint64_t val1 = *(uint64_t *)src1;
+            uint64_t val2 = *(uint64_t *)src2;
+            result = TypeUtils::apply_comparison(val1, val2, cmpOp);
         }
         break;
     }
     default:
-        assert(0 && "Unsupported comparison operator");
+        assert(0);
     }
+
+    // 设置结果
+    *(bool *)dst = result;
 }
 
 void AbsHandler::execute(ThreadContext *context, StatementContext &stmt) {

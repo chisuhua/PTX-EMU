@@ -14,6 +14,11 @@
 class MovHandler : public InstructionHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
+
+protected:
+    virtual void process_operation(ThreadContext *context, 
+                                  void* dst, void* src,
+                                  std::vector<Qualifier>& qualifiers);
 };
 
 // SETP指令处理器

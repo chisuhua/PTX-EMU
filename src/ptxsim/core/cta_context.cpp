@@ -11,7 +11,7 @@ extern bool IFLOG();
 #endif
 
 void CTAContext::init(
-    dim3 &GridDim, dim3 &BlockDim, dim3 &blockIdx,
+    Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
     std::vector<StatementContext> &statements,
     std::map<std::string, PtxInterpreter::Symtable *> &name2Sym,
     std::map<std::string, int> &label2pc) {
@@ -35,7 +35,7 @@ void CTAContext::init(
         barThread = new bool[threadNum];
     memset(exitThread, 0, sizeof(bool) * threadNum);
     memset(barThread, 0, sizeof(bool) * threadNum);
-    dim3 threadIdx;
+    Dim3 threadIdx;
     for (int i = 0; i < threadNum; i++) {
         threadIdx.z = i / (BlockDim.x * BlockDim.y);
         threadIdx.y = i % (BlockDim.x * BlockDim.y) / (BlockDim.x);

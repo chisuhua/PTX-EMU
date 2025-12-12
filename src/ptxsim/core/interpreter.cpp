@@ -7,11 +7,11 @@
 #include <map>
 
 void PtxInterpreter::launchPtxInterpreter(PtxContext &ptx, std::string &kernel,
-                                          void **args, dim3 &gridDim,
-                                          dim3 &blockDim) {
+                                          void **args, Dim3 &gridDim,
+                                          Dim3 &blockDim) {
     // 初始化指令工厂，注册所有指令处理器
     InstructionFactory::initialize();
-    
+
     this->ptxContext = &ptx;
     this->gridDim = gridDim;
     this->blockDim = blockDim;
@@ -41,7 +41,7 @@ void PtxInterpreter::funcInterpreter(
 
     int ctaNum = gridDim.x * gridDim.y * gridDim.z;
     CTAContext cta;
-    dim3 blockIdx;
+    Dim3 blockIdx;
     for (int i = 0; i < ctaNum; i++) {
         blockIdx.z = i / (gridDim.x * gridDim.y);
         blockIdx.y = i % (gridDim.x * gridDim.y) / (gridDim.x);

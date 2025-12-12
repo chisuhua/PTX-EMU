@@ -2,6 +2,7 @@
 #define PTX_DEBUG_H
 
 #include "../utils/logger.h"
+#include "execution_types.h"
 #include <any>
 #include <functional>
 #include <iomanip>
@@ -469,9 +470,8 @@ public:
 
     // 记录指令执行
     void trace_instruction(int pc, const std::string &opcode,
-                           const std::string &operands, int block_x = 0,
-                           int block_y = 0, int block_z = 0, int thread_x = 0,
-                           int thread_y = 0, int thread_z = 0) {
+                           const std::string &operands, const Dim3 &block,
+                           const Dim3 &thread) {
         auto &config = ptxsim::DebugConfig::get();
 
         // 检查PC范围
@@ -493,19 +493,20 @@ public:
         config.trigger_instruction_callback(pc, full_instruction);
 
         // 记录日志，包含线程和块索引信息
-        PTX_TRACE_EXEC("[%4d] [%d,%d,%d][%d,%d,%d] %s", pc, block_x, block_y,
-                       block_z, thread_x, thread_y, thread_z,
+        PTX_TRACE_EXEC("%s %s pc=%4d: %s", block.to_string().c_str(),
+                       thread.to_string().c_str(), pc,
                        full_instruction.c_str());
     }
 
     // 记录内存访问
     void trace_memory_access(bool is_write, const std::string &addr_expr,
-                             uint64_t addr, size_t size,
-                             void *value = nullptr) {
+                             uint64_t addr, size_t size, void *value = nullptr,
+                             const Dim3 &block = Dim3(0, 0, 0),
+                             const Dim3 &thread = Dim3(0, 0, 0)) {
         if (!ptxsim::DebugConfig::get().is_memory_traced())
             return;
 
-        const char *access_type = is_write ? "WRITE" : "READ";
+        const char *access_type = is_write ? "W" : "R";
         std::string addr_str = ptxsim::debug_format::format_address(addr);
 
         if (value) {
@@ -526,26 +527,32 @@ public:
                     ptxsim::detail::printf_format("0x%p", (void *)value);
             }
 
-            PTX_TRACE_MEM("%s [%s] = %s (size=%zu)", access_type,
-                          addr_str.c_str(), value_str.c_str(), size);
-        } else {
-            PTX_TRACE_MEM("%s [%s] (size=%zu)", access_type, addr_str.c_str(),
+            PTX_TRACE_MEM("%s %s        %s: [%s] = %s (size=%zu)",
+                          block.to_string().c_str(), thread.to_string().c_str(),
+                          access_type, addr_str.c_str(), value_str.c_str(),
                           size);
+        } else {
+            PTX_TRACE_MEM("%s %s         %s: [%s] (size=%zu)",
+                          block.to_string().c_str(), thread.to_string().c_str(),
+                          access_type, addr_str.c_str(), size);
         }
     }
 
     // 记录寄存器访问
     void trace_register_access(const std::string &reg_name,
-                               const std::any &value, bool is_write) {
+                               const std::any &value, bool is_write,
+                               const Dim3 &block = Dim3(0, 0, 0),
+                               const Dim3 &thread = Dim3(0, 0, 0)) {
         if (!ptxsim::DebugConfig::get().is_register_traced() &&
             !ptxsim::DebugConfig::get().has_watchpoint(reg_name))
             return;
 
-        const char *access_type = is_write ? "WRITE" : "READ";
+        const char *access_type = is_write ? "W" : "R";
         std::string value_str =
             ptxsim::debug_format::format_register_value(value);
 
-        PTX_TRACE_REG("%s %s = %s", access_type, reg_name.c_str(),
+        PTX_TRACE_REG("%s %s        %s: %s = %s", block.to_string().c_str(),
+                      thread.to_string().c_str(), access_type, reg_name.c_str(),
                       value_str.c_str());
     }
 
@@ -689,32 +696,40 @@ private:
     do {                                                                       \
         if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::trace,   \
                                                    "exec")) {                  \
-            ptxsim::PTXDebugger::get().trace_instruction(                      \
-                pc, opcode, operands, blockIdx.x, blockIdx.y, blockIdx.z,      \
-                threadIdx.x, threadIdx.y, threadIdx.z);                        \
+            ptxsim::PTXDebugger::get().trace_instruction(pc, opcode, operands, \
+                                                         blockIdx, threadIdx); \
         }                                                                      \
     } while (0)
 
-#define PTX_TRACE_MEM_ACCESS(is_write, addr_expr, addr, size, value)           \
+#define PTX_TRACE_MEM_ACCESS(is_write, addr_expr, addr, size, value, blockIdx, \
+                             threadIdx)                                        \
     do {                                                                       \
         if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::trace,   \
                                                    "mem")) {                   \
             ptxsim::PTXDebugger::get().trace_memory_access(                    \
-                is_write, addr_expr, addr, size, value);                       \
+                is_write, addr_expr, addr, size, value, blockIdx, threadIdx);  \
         }                                                                      \
     } while (0)
 
-#define PTX_TRACE_REG_ACCESS(reg_name, value, is_write)                        \
+#define PTX_TRACE_REG_ACCESS(reg_name, value, is_write, blockIdx, threadIdx)   \
     do {                                                                       \
         if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::trace,   \
                                                    "reg")) {                   \
-            ptxsim::PTXDebugger::get().trace_register_access(reg_name, value,  \
-                                                             is_write);        \
+            ptxsim::PTXDebugger::get().trace_register_access(                  \
+                reg_name, value, is_write, blockIdx, threadIdx);               \
         }                                                                      \
     } while (0)
 
 #define PTX_CHECK_BREAKPOINT(pc, context)                                      \
     (ptxsim::PTXDebugger::get().check_breakpoint(pc, context))
+
+#define PTX_TRACE_EXEC(...)                                                    \
+    do {                                                                       \
+        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
+                                                   "exec")) {                  \
+            ptxsim::Logger::log(ptxsim::log_level::info, "exec", __VA_ARGS__); \
+        }                                                                      \
+    } while (0)
 
 #define PTX_DUMP_THREAD_STATE(name, state, blockIdx, threadIdx)                \
     do {                                                                       \

@@ -40,22 +40,23 @@ PtxInterpreter ptxInterpreter;
 std::map<uint64_t, bool> memAlloc;
 
 // 调试配置文件路径
-static const char* DEBUG_CONFIG_FILE = "ptx_debug.conf";
+static const char *DEBUG_CONFIG_FILE = "ptx_debug.conf";
 
 #define LOGEMU 0
 
 // 初始化调试环境
 void initialize_debug_environment() {
-    auto& logger_config = ptxsim::LoggerConfig::get();
-    auto& debugger = ptxsim::DebugConfig::get();
-    
+    auto &logger_config = ptxsim::LoggerConfig::get();
+    auto &debugger = ptxsim::DebugConfig::get();
+
     // 尝试加载调试配置文件
     if (logger_config.load_from_file(DEBUG_CONFIG_FILE)) {
         PTX_INFO_EMU("Debug configuration loaded from %s", DEBUG_CONFIG_FILE);
         // 加载调试器配置
         debugger.load_from_file(DEBUG_CONFIG_FILE);
     } else {
-        PTX_INFO_EMU("No debug configuration file found, using default settings");
+        PTX_INFO_EMU(
+            "No debug configuration file found, using default settings");
         // 设置默认的日志级别
         logger_config.set_global_level(ptxsim::log_level::info);
     }
@@ -276,9 +277,12 @@ cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim, dim3 blockDim,
     printf("EMU: arg %p\n", args);
 #endif
 
+    Dim3 gridDim3(gridDim.x, gridDim.y, gridDim.z);
+    Dim3 blockDim3(blockDim.x, blockDim.y, blockDim.z);
     ptxInterpreter.launchPtxInterpreter(ptxListener.ptxContext,
                                         func2name[(uint64_t)func], args,
-                                        gridDim, blockDim);
+                                        gridDim3,
+                                        blockDim3);
 
     return cudaSuccess;
 }

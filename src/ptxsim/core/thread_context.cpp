@@ -19,7 +19,7 @@ extern bool IFLOG();
 #endif
 
 void ThreadContext::init(
-    dim3 &blockIdx, dim3 &threadIdx, dim3 GridDim, dim3 BlockDim,
+    Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim, Dim3 BlockDim,
     std::vector<StatementContext> &statements,
     std::map<std::string, PtxInterpreter::Symtable *> &name2Share,
     std::map<std::string, PtxInterpreter::Symtable *> &name2Sym,
@@ -387,13 +387,15 @@ void ThreadContext::mov(void *from, void *to, std::vector<Qualifier> &q) {
     memcpy(to, from, bytes);
 }
 
-void ThreadContext::update_register(OperandContext::REG *reg, void *value,
-                                   std::vector<Qualifier> &qualifiers) {
-    // 检查操作数是否为寄存器类型
-    // 注意：由于我们在调用处已经知道操作数是寄存器类型，所以这里的检查主要是为了安全
-    // 在实际使用中，这个函数应该只被寄存器操作数调用
+void ThreadContext::trace_register(OperandContext::REG *reg, void *value,
+                                   std::vector<Qualifier> &qualifiers,
+                                   bool is_write) {
+    // 检查寄存器是否有效
+    if (!reg)
+        return;
 
-    std::string regName = reg->regName + std::to_string(reg->regIdx);
+    // 获取完整的寄存器名称
+    std::string reg_name = reg->getFullName();
 
     // 获取更新后的值用于跟踪（从传入的value参数中）
     int bytes = TypeUtils::get_bytes(qualifiers);
@@ -421,33 +423,48 @@ void ThreadContext::update_register(OperandContext::REG *reg, void *value,
         break;
     }
 
-    PTX_TRACE_REG_ACCESS(regName, reg_value, true); // true表示写操作
+    PTX_TRACE_REG_ACCESS(reg_name, reg_value, is_write, BlockIdx, ThreadIdx);
 }
 
-void ThreadContext::memory_access(bool is_write, const std::string& addr_expr,
-                                 void* addr, size_t size, void* value,
-                                 std::vector<Qualifier>& qualifiers, void* target) {
+void ThreadContext::memory_access(bool is_write, const std::string &addr_expr,
+                                  void *addr, size_t size, void *value,
+                                  std::vector<Qualifier> &qualifiers,
+                                  void *target,
+                                  OperandContext::REG *reg_operand) {
     // 只有在启用了内存跟踪时才进行跟踪
     if (ptxsim::DebugConfig::get().is_memory_traced()) {
         // 获取数据值用于跟踪
-        void* track_value = nullptr;
-        
-        // 如果是写操作或者提供了value，则使用提供的value
-        // 如果是读操作且未提供value，则从地址中读取
-        if (is_write || value != nullptr) {
+        void *track_value = nullptr;
+
+        if (is_write) {
+            // 写操作：追踪要被写入内存的源数据
             track_value = value;
-        } else if (!is_write && addr != nullptr) {
-            // 对于读操作，从内存地址中获取值
-            track_value = addr;
+        } else {
+            // 读操作：追踪即将从内存中读取的数据
+            track_value = addr; 
         }
-        
-        PTX_TRACE_MEM_ACCESS(is_write, addr_expr, (uint64_t)addr, size, track_value);
+
+        PTX_TRACE_MEM_ACCESS(is_write, addr_expr, (uint64_t)addr, size,
+                             track_value, BlockIdx, ThreadIdx);
     }
-    
+
+    // 根据操作类型跟踪寄存器访问
+    if (reg_operand) {
+        if (is_write) {
+            // 内存写操作：源寄存器（包含要写的数据）被读取
+            trace_register(reg_operand, value, qualifiers, false);
+        } else {
+            // 内存读操作：目标寄存器（将接收数据）被写入
+            trace_register(reg_operand, target, qualifiers, true);
+        }
+    }
+
     // 执行实际的内存操作
     if (is_write) {
+        // 将源数据 'value' 复制到内存地址 'addr'
         mov(value, addr, qualifiers);
     } else {
+        // 将内存地址 'addr' 中的数据复制到目标 'target'
         mov(addr, target, qualifiers);
     }
 }

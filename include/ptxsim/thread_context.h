@@ -30,7 +30,7 @@ public:
     std::map<std::string, int> label2pc;
 
     // 线程状态
-    dim3 BlockIdx, ThreadIdx, GridDim, BlockDim;
+    Dim3 BlockIdx, ThreadIdx, GridDim, BlockDim;
     int pc;
     EXE_STATE state;
 
@@ -38,7 +38,7 @@ public:
     std::queue<PtxInterpreter::IMM *> imm;
     std::queue<PtxInterpreter::VEC *> vec;
 
-    void init(dim3 &blockIdx, dim3 &threadIdx, dim3 GridDim, dim3 BlockDim,
+    void init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim, Dim3 BlockDim,
               std::vector<StatementContext> &statements,
               std::map<std::string, PtxInterpreter::Symtable *> &name2Share,
               std::map<std::string, PtxInterpreter::Symtable *> &name2Sym,
@@ -58,14 +58,16 @@ public:
     void mov_data(void *src, void *dst, std::vector<Qualifier> &qualifiers);
     void handle_statement(StatementContext &statement);
 
-    // 统一的寄存器更新接口
-    void update_register(OperandContext::REG *reg, void *value,
-                         std::vector<Qualifier> &qualifiers);
+    // 统一的寄存器跟踪接口
+    void trace_register(OperandContext::REG *reg, void *value,
+                        std::vector<Qualifier> &qualifiers, bool is_write);
 
     // 内存访问跟踪接口
-    void memory_access(bool is_write, const std::string& addr_expr, 
-                       void* addr, size_t size, void* value,
-                       std::vector<Qualifier>& qualifiers, void* target = nullptr);
+    void memory_access(bool is_write, const std::string &addr_expr, void *addr,
+                       size_t size, void *value,
+                       std::vector<Qualifier> &qualifiers,
+                       void *target = nullptr,
+                       OperandContext::REG *reg_operand = nullptr);
 
     // 辅助函数接口（供指令处理器使用）
     bool QvecHasQ(std::vector<Qualifier> &qvec, Qualifier q);

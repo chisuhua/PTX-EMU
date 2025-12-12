@@ -10,7 +10,7 @@
         process_operation(context, dst, src, qualifiers);                      \
         if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
                                                    "reg")) {                   \
-            context->update_register(reg_operand, dst, qualifiers);            \
+            context->trace_register(reg_operand, dst, qualifiers, true);            \
         }                                                                      \
     } while (0)
 
@@ -21,7 +21,7 @@
         process_operation(context, dst, src1, src2, qualifiers);               \
         if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
                                                    "reg")) {                   \
-            context->update_register(reg_operand, dst, qualifiers);            \
+            context->trace_register(reg_operand, dst, qualifiers, true);            \
         }                                                                      \
     } while (0)
 
@@ -33,7 +33,7 @@
         process_operation(context, dst, src1, src2, src3, qualifiers);         \
         if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
                                                    "reg")) {                   \
-            context->update_register(reg_operand, dst, qualifiers);            \
+            context->trace_register(reg_operand, dst, qualifiers, true);            \
         }                                                                      \
     } while (0)
 

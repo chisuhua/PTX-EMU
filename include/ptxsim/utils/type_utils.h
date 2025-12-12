@@ -11,6 +11,10 @@ namespace TypeUtils {
     int get_bytes(std::vector<Qualifier>& qualifiers);
     bool is_float_type(std::vector<Qualifier>& qualifiers);
     Qualifier get_comparison_op(std::vector<Qualifier>& qualifiers);
+    bool is_signed_type(std::vector<Qualifier>& qualifiers);
+    
+    template<typename T>
+    bool apply_comparison(T val1, T val2, Qualifier cmpOp);
     
     template<typename T>
     void apply_binary_op(void* dst, void* src1, void* src2, 

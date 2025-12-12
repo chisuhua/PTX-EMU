@@ -1,6 +1,6 @@
 #include "ptxsim/instruction_handlers/remaining_handler.h"
-#include "ptxsim/utils/type_utils.h"
 #include "ptxsim/instruction_processor_utils.h"
+#include "ptxsim/utils/type_utils.h"
 #include <cmath>
 
 void CvtHandler::execute(ThreadContext *context, StatementContext &stmt) {
@@ -16,7 +16,7 @@ void CvtHandler::execute(ThreadContext *context, StatementContext &stmt) {
 }
 
 void CvtHandler::process_operation(ThreadContext *context, void *dst, void *src,
-                                  std::vector<Qualifier> &qualifiers) {
+                                   std::vector<Qualifier> &qualifiers) {
     // 获取目标和源的数据类型信息
     int dst_bytes = TypeUtils::get_bytes(qualifiers);
     int src_bytes = context->getBytes(qualifiers);
@@ -306,11 +306,14 @@ void CvtaHandler::execute(ThreadContext *context, StatementContext &stmt) {
 
     // 执行CVTA操作，本质上是地址复制
     context->mov(from, to, ss->cvtaQualifier);
-    
+
     // 如果启用了寄存器跟踪，则更新寄存器信息
-    if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info, "reg")) {
+    if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,
+                                               "reg")) {
         if (ss->cvtaOp[0].operandType == OperandType::O_REG) {
-            context->update_register((OperandContext::REG *)ss->cvtaOp[0].operand, to, ss->cvtaQualifier);
+            context->trace_register(
+                (OperandContext::REG *)ss->cvtaOp[0].operand, to,
+                ss->cvtaQualifier, true);
         }
     }
 }

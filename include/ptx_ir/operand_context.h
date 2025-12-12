@@ -13,6 +13,11 @@ public:
     struct REG {
         std::string regName;
         int regIdx;
+        
+        // 添加获取完整寄存器名称的方法
+        std::string getFullName() const {
+            return regName + std::to_string(regIdx);
+        }
     };
 
     struct VAR {

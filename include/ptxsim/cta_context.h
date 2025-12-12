@@ -21,10 +21,10 @@ public:
     bool *exitThread = nullptr;
     bool *barThread = nullptr;
     int threadNum, curExeThreadId, exitThreadNum, barThreadNum;
-    dim3 blockIdx, GridDim, BlockDim;
+    Dim3 blockIdx, GridDim, BlockDim;
     std::map<std::string, PtxInterpreter::Symtable *> name2Share;
 
-    void init(dim3 &GridDim, dim3 &BlockDim, dim3 &blockIdx,
+    void init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
               std::vector<StatementContext> &statements,
               std::map<std::string, PtxInterpreter::Symtable *> &name2Sym,
               std::map<std::string, int> &label2pc);

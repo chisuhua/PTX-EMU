@@ -2,8 +2,24 @@
 #define EXECUTION_TYPES_H
 
 #include <cstdint>
+#include <sstream>
+#include <string>
 
 enum EXE_STATE { RUN, EXIT, BAR };
+
+enum DTYPE { DNONE, DINT, DFLOAT };
+
+struct Dim3 {
+    uint32_t x, y, z;
+    Dim3(uint32_t x = 1, uint32_t y = 1, uint32_t z = 1) : x(x), y(y), z(z) {}
+
+    std::string to_string() const {
+        std::ostringstream oss;
+        oss << "[" << x << "," << y << "," << z << "]";
+        return oss.str();
+    }
+};
+
 /*
 enum StatementType {
     S_REG,
@@ -50,8 +66,6 @@ enum StatementType {
     S_WMMA,
     S_CONST
 };
-*/
-/*
 enum class Qualifier {
     Q_S64,
     Q_U64,
@@ -94,14 +108,6 @@ enum class Qualifier {
     Q_NEU,
     Q_GTU,
     Q_DOTADD
-};
-*/
-
-enum DTYPE { DNONE, DINT, DFLOAT };
-/*
-struct dim3 {
-    uint32_t x, y, z;
-    dim3(uint32_t x = 1, uint32_t y = 1, uint32_t z = 1) : x(x), y(y), z(z) {}
 };
 */
 
