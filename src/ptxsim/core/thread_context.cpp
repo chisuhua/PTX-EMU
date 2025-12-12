@@ -266,7 +266,33 @@ void *ThreadContext::get_operand_addr(OperandContext &op,
 
 void *ThreadContext::get_register_addr(OperandContext::REG *reg,
                                        Qualifier qualifier) {
-    // 首先尝试直接按regName查找（适用于特殊寄存器如%tid.x）
+    // 首先检查是否为特殊寄存器（如%tid.x）
+    if (reg->regName == "tid.x")
+        return &ThreadIdx.x;
+    if (reg->regName == "tid.y")
+        return &ThreadIdx.y;
+    if (reg->regName == "tid.z")
+        return &ThreadIdx.z;
+    if (reg->regName == "ctaid.x")
+        return &BlockIdx.x;
+    if (reg->regName == "ctaid.y")
+        return &BlockIdx.y;
+    if (reg->regName == "ctaid.z")
+        return &BlockIdx.z;
+    if (reg->regName == "nctaid.x")
+        return &GridDim.x;
+    if (reg->regName == "nctaid.y")
+        return &GridDim.y;
+    if (reg->regName == "nctaid.z")
+        return &GridDim.z;
+    if (reg->regName == "ntid.x")
+        return &BlockDim.x;
+    if (reg->regName == "ntid.y")
+        return &BlockDim.y;
+    if (reg->regName == "ntid.z")
+        return &BlockDim.z;
+
+    // 然后尝试直接按regName查找（适用于普通寄存器）
     auto it = name2Reg.find(reg->regName);
     if (it != name2Reg.end()) {
         return it->second->addr;
@@ -282,8 +308,8 @@ void *ThreadContext::get_register_addr(OperandContext::REG *reg,
     // 如果仍然找不到，创建新的寄存器
     PtxInterpreter::Reg *newReg = new PtxInterpreter::Reg();
     // 注意：这里需要从其他地方获取寄存器类型，因为OperandContext::REG没有保存类型信息
-    // 我们暂时使用默认类型，后续可以通过上下文获取正确的类型
-    newReg->regType = qualifier; // 默认使用Q_U64类型
+    // 我们暂时使用传入的qualifier参数或者默认类型
+    newReg->regType = qualifier;
 
     // 根据类型分配数据空间 (创建一个只有一个元素的vector)
     std::vector<Qualifier> typeVec = {newReg->regType};
