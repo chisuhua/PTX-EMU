@@ -21,7 +21,9 @@ endif()
 
 # 检查CUDA_PATH环境变量
 if(NOT DEFINED ENV{CUDA_PATH})
-    message(FATAL_ERROR "CUDA_PATH environment variable is not set. Please set it to your CUDA installation path.")
+    # message(FATAL_ERROR "CUDA_PATH environment variable is not set. Please set it to your CUDA installation path.")
+    message(ERROR "CUDA_PATH environment variable is not set. Please set it to your CUDA installation path.")
+    set(CUDA_PATH /user/local/cuda)
 endif()
 
 set(CUDA_PATH $ENV{CUDA_PATH})
