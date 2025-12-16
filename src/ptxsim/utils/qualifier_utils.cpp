@@ -1,4 +1,5 @@
 #include "qualifier_utils.h"
+#include "ptx_ir/ptx_types.h"
 
 int Q2bytes(Qualifier q) {
     switch (q) {
@@ -139,5 +140,51 @@ DTYPE getDType(Qualifier q) {
         return DINT;
     default:
         return DNONE;
+    }
+}
+
+Qualifier getDataQualifier(const std::vector<Qualifier> &qualifiers) {
+    for (const auto &q : qualifiers) {
+        if (Q2bytes(q))
+            return q;
+    }
+    assert(0);
+}
+
+void splitDstSrcQualifiers(const std::vector<Qualifier> &qualifiers,
+                           std::vector<Qualifier> &dst_qualifiers,
+                           std::vector<Qualifier> &src_qualifiers) {
+    dst_qualifiers.clear();
+    src_qualifiers.clear();
+
+    bool found_dst = false;
+    bool found_src = false;
+
+    // 遍历限定符，分离目标和源限定符
+    for (const auto &q : qualifiers) {
+        int bytes = Q2bytes(q);
+
+        // 如果这个限定符代表一种数据类型
+        if (bytes > 0) {
+            // 第一个遇到的数据类型通常是目标类型
+            if (!found_dst) {
+                dst_qualifiers.push_back(q);
+                found_dst = true;
+            }
+            // 第二个遇到的数据类型通常是源类型
+            else if (!found_src) {
+                src_qualifiers.push_back(q);
+                found_src = true;
+
+                // 找到了两个类型，可以退出循环
+                if (found_dst && found_src) {
+                    break;
+                }
+            }
+        } else {
+            // 其他限定符（如舍入模式）添加到两个向量中
+            dst_qualifiers.push_back(q);
+            src_qualifiers.push_back(q);
+        }
     }
 }

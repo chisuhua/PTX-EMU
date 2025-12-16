@@ -86,6 +86,21 @@ std::string ptxsim::DebugConfig::get_full_instruction_string(const StatementCont
         HANDLE_OP_CASE_1_STR(BRA, braTarget)  // BRA只需要一个标签操作数
         HANDLE_OP_CASE_0(RET)                 // RET没有操作数
         HANDLE_OP_CASE_1_STR(BAR, barType)    // BAR只需要类型操作数
+        HANDLE_OP_CASE_2(RCP, rcpOp)
+        HANDLE_OP_CASE_2(CVTA, cvtaOp)
+        HANDLE_OP_CASE_2(CVT, cvtOp)
+        HANDLE_OP_CASE_4(SELP, selpOp)
+        HANDLE_OP_CASE_4(MAD, madOp)
+        HANDLE_OP_CASE_4(FMA, fmaOp)
+        HANDLE_OP_CASE_4(WMMA, wmmaOp)
+        HANDLE_OP_CASE_2(SQRT, sqrtOp)
+        HANDLE_OP_CASE_2(COS, cosOp)
+        HANDLE_OP_CASE_2(LG2, lg2Op)
+        HANDLE_OP_CASE_2(EX2, ex2Op)
+        HANDLE_OP_CASE_4(ATOM, atomOp)
+        HANDLE_OP_CASE_2(SIN, sinOp)
+        HANDLE_OP_CASE_2(RSQRT, rsqrtOp)
+        HANDLE_OP_CASE_3(REM, remOp)
         default:
             // 对于其他未处理的指令类型，暂时使用占位符
             operands = "...";

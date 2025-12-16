@@ -7,8 +7,6 @@
 
 enum EXE_STATE { RUN, EXIT, BAR };
 
-enum DTYPE { DNONE, DINT, DFLOAT };
-
 struct Dim3 {
     uint32_t x, y, z;
     Dim3(uint32_t x = 1, uint32_t y = 1, uint32_t z = 1) : x(x), y(y), z(z) {}

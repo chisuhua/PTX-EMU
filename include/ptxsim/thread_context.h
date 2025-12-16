@@ -20,9 +20,6 @@
 
 class ThreadContext {
 public:
-    // 添加DTYPE枚举定义
-    enum DTYPE { DFLOAT, DINT, DNONE };
-
     // 资源管理
     std::vector<StatementContext> *statements;
     std::map<std::string, PtxInterpreter::Symtable *> *name2Share;
@@ -94,15 +91,9 @@ private:
     void set_immediate_value(std::string value, Qualifier type);
 
     // 保留原有的辅助函数声明
-    Qualifier getDataType(std::vector<Qualifier> &q);
     int getBytes(Qualifier q);
     void setIMM(std::string s, Qualifier q);
     void clearIMM_VEC();
-
-    // 添加类型判断辅助函数声明
-    DTYPE getDType(std::vector<Qualifier> &q);
-    DTYPE getDType(Qualifier q);
-    bool Signed(Qualifier q);
 };
 
 #endif // THREAD_CONTEXT_H

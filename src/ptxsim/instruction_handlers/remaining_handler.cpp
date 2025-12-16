@@ -1,5 +1,6 @@
 #include "ptxsim/instruction_handlers/remaining_handler.h"
 #include "ptxsim/instruction_processor_utils.h"
+#include "ptxsim/utils/qualifier_utils.h"
 #include "ptxsim/utils/type_utils.h"
 #include <cmath>
 
@@ -17,11 +18,25 @@ void CvtHandler::execute(ThreadContext *context, StatementContext &stmt) {
 
 void CvtHandler::process_operation(ThreadContext *context, void *dst, void *src,
                                    std::vector<Qualifier> &qualifiers) {
-    // 获取目标和源的数据类型信息
-    int dst_bytes = TypeUtils::get_bytes(qualifiers);
-    int src_bytes = context->getBytes(qualifiers);
-    bool dst_is_float = TypeUtils::is_float_type(qualifiers);
-    bool src_is_float = TypeUtils::is_float_type(qualifiers);
+    // 分离目标和源限定符
+    std::vector<Qualifier> dst_qualifiers, src_qualifiers;
+    splitDstSrcQualifiers(qualifiers, dst_qualifiers, src_qualifiers);
+
+    // 使用TypeUtils函数获取目标和源的字节大小以及是否为浮点类型
+    int dst_bytes = TypeUtils::get_bytes(dst_qualifiers);
+    int src_bytes = TypeUtils::get_bytes(src_qualifiers);
+    bool dst_is_float = TypeUtils::is_float_type(dst_qualifiers);
+    bool src_is_float = TypeUtils::is_float_type(src_qualifiers);
+
+    // 如果没有正确识别出类型，使用默认方法
+    if (dst_bytes == 0) {
+        dst_bytes = TypeUtils::get_bytes(qualifiers);
+    }
+
+    if (src_bytes == 0) {
+        src_bytes = context->getBytes(qualifiers);
+    }
+
     bool has_sat = context->QvecHasQ(qualifiers, Qualifier::Q_SAT);
 
     // 根据目标数据大小执行转换

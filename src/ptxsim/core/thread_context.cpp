@@ -204,26 +204,7 @@ void *ThreadContext::get_operand_addr(OperandContext &op,
     case O_IMM: {
         auto immOp = (OperandContext::IMM *)op.operand;
         // 使用setIMM函数设置立即数
-        int bytes = TypeUtils::get_bytes(qualifiers);
-        Qualifier q;
-        switch (bytes) {
-        case 1:
-            q = Qualifier::Q_U8;
-            break;
-        case 2:
-            q = Qualifier::Q_U16;
-            break;
-        case 4:
-            q = Qualifier::Q_U32;
-            break;
-        case 8:
-            q = Qualifier::Q_U64;
-            break;
-        default:
-            q = Qualifier::Q_U32;
-            break;
-        }
-        setIMM(immOp->immVal, q);
+        setIMM(immOp->immVal, getDataQualifier(qualifiers));
         void *ret = &(imm.front()->data);
         imm.pop();
         return ret;
@@ -567,14 +548,6 @@ void ThreadContext::set_immediate_value(std::string value, Qualifier type) {
     imm.push(immObj);
 }
 
-Qualifier ThreadContext::getDataType(std::vector<Qualifier> &q) {
-    // 返回向量中的第一个限定符作为数据类型
-    if (!q.empty()) {
-        return q[0];
-    }
-    return Qualifier::S_UNKNOWN;
-}
-
 int ThreadContext::getBytes(Qualifier q) {
     std::vector<Qualifier> typeVec = {q};
     return TypeUtils::get_bytes(typeVec);
@@ -646,34 +619,5 @@ void ThreadContext::clearIMM_VEC() {
     while (!vec.empty()) {
         delete vec.front();
         vec.pop();
-    }
-}
-
-ThreadContext::DTYPE ThreadContext::getDType(std::vector<Qualifier> &q) {
-    if (q.empty())
-        return DNONE;
-    return getDType(q[0]);
-}
-
-ThreadContext::DTYPE ThreadContext::getDType(Qualifier q) {
-    std::vector<Qualifier> typeVec = {q};
-    if (TypeUtils::is_float_type(typeVec)) {
-        return DFLOAT;
-    } else if (q != Qualifier::S_UNKNOWN) {
-        return DINT;
-    }
-    return DNONE;
-}
-
-bool ThreadContext::Signed(Qualifier q) {
-    // 判断是否是有符号类型
-    switch (q) {
-    case Qualifier::Q_S8:
-    case Qualifier::Q_S16:
-    case Qualifier::Q_S32:
-    case Qualifier::Q_S64:
-        return true;
-    default:
-        return false;
     }
 }
