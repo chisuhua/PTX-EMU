@@ -1,40 +1,43 @@
 #ifndef INSTRUCTION_PROCESSOR_UTILS_H
 #define INSTRUCTION_PROCESSOR_UTILS_H
 
-#include "ptxsim/ptx_debug.h"
+#include "ptxsim/thread_context.h"
+#include "ptx_ir/ptx_types.h"
 
-// 定义宏，用于包装process_operation调用并在满足条件时更新寄存器跟踪
-// 适用于1个目标和1个源操作数的指令 (dst, src)
-#define PROCESS_OPERATION_2(context, dst, src, qualifiers, reg_operand)        \
-    do {                                                                       \
-        process_operation(context, dst, src, qualifiers);                      \
-        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
-                                                   "reg")) {                   \
-            context->trace_register(reg_operand, dst, qualifiers, true);            \
-        }                                                                      \
+// 定义处理单操作数指令的宏
+#define PROCESS_OPERATION_1(context, dst, qualifiers, reg) \
+    do { \
+        process_operation(context, dst, qualifiers); \
+        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info, "reg")) { \
+            if (reg) context->trace_register(reg, dst, qualifiers, true); \
+        } \
     } while (0)
 
-// 定义宏，用于包装process_operation调用并在满足条件时更新寄存器跟踪
-// 适用于1个目标和2个源操作数的指令 (dst, src1, src2)
-#define PROCESS_OPERATION_3(context, dst, src1, src2, qualifiers, reg_operand) \
-    do {                                                                       \
-        process_operation(context, dst, src1, src2, qualifiers);               \
-        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
-                                                   "reg")) {                   \
-            context->trace_register(reg_operand, dst, qualifiers, true);            \
-        }                                                                      \
+// 定义处理双操作数指令的宏
+#define PROCESS_OPERATION_2(context, dst, src, qualifiers, reg) \
+    do { \
+        process_operation(context, dst, src, qualifiers); \
+        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info, "reg")) { \
+            if (reg) context->trace_register(reg, dst, qualifiers, true); \
+        } \
     } while (0)
 
-// 定义宏，用于包装process_operation调用并在满足条件时更新寄存器跟踪
-// 适用于1个目标和3个源操作数的指令 (dst, src1, src2, src3)
-#define PROCESS_OPERATION_4(context, dst, src1, src2, src3, qualifiers,        \
-                            reg_operand)                                       \
-    do {                                                                       \
-        process_operation(context, dst, src1, src2, src3, qualifiers);         \
-        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
-                                                   "reg")) {                   \
-            context->trace_register(reg_operand, dst, qualifiers, true);            \
-        }                                                                      \
+// 定义处理三操作数指令的宏
+#define PROCESS_OPERATION_3(context, dst, src1, src2, qualifiers, reg) \
+    do { \
+        process_operation(context, dst, src1, src2, qualifiers); \
+        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info, "reg")) { \
+            if (reg) context->trace_register(reg, dst, qualifiers, true); \
+        } \
+    } while (0)
+
+// 定义处理四操作数指令的宏
+#define PROCESS_OPERATION_4(context, dst, src1, src2, src3, qualifiers, reg) \
+    do { \
+        process_operation(context, dst, src1, src2, src3, qualifiers); \
+        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info, "reg")) { \
+            if (reg) context->trace_register(reg, dst, qualifiers, true); \
+        } \
     } while (0)
 
 #endif // INSTRUCTION_PROCESSOR_UTILS_H

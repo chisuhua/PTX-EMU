@@ -1,9 +1,9 @@
 #include "ptxsim/thread_context.h"
-#include "../utils/qualifier_utils.h"
 #include "ptx_ir/ptx_types.h"
 #include "ptxsim/instruction_factory.h"
 #include "ptxsim/interpreter.h"
 #include "ptxsim/ptx_debug.h"
+#include "ptxsim/utils/qualifier_utils.h"
 #include <algorithm>
 #include <any>
 #include <cassert>

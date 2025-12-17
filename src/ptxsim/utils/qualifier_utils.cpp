@@ -1,4 +1,4 @@
-#include "qualifier_utils.h"
+#include "ptxsim/utils/qualifier_utils.h"
 #include "ptx_ir/ptx_types.h"
 
 int Q2bytes(Qualifier q) {
@@ -151,9 +151,9 @@ Qualifier getDataQualifier(const std::vector<Qualifier> &qualifiers) {
     assert(0);
 }
 
-void splitDstSrcQualifiers(const std::vector<Qualifier> &qualifiers,
-                           std::vector<Qualifier> &dst_qualifiers,
-                           std::vector<Qualifier> &src_qualifiers) {
+void splitCvtQualifiers(const std::vector<Qualifier> &qualifiers,
+                        std::vector<Qualifier> &dst_qualifiers,
+                        std::vector<Qualifier> &src_qualifiers) {
     dst_qualifiers.clear();
     src_qualifiers.clear();
 
@@ -185,6 +185,74 @@ void splitDstSrcQualifiers(const std::vector<Qualifier> &qualifiers,
             // 其他限定符（如舍入模式）添加到两个向量中
             dst_qualifiers.push_back(q);
             src_qualifiers.push_back(q);
+        }
+    }
+}
+
+void splitDstSrcQualifiers(const std::vector<Qualifier> &qualifiers,
+                           std::vector<Qualifier> &dst_qualifiers,
+                           std::vector<Qualifier> &src1_qualifiers,
+                           std::vector<Qualifier> &src2_qualifiers) {
+    dst_qualifiers.clear();
+    src1_qualifiers.clear();
+    src2_qualifiers.clear();
+
+    int data_types_found = 0;
+
+    // 遍历限定符，分离目标和源限定符
+    for (const auto &q : qualifiers) {
+        int bytes = Q2bytes(q);
+
+        // 如果这个限定符代表一种数据类型
+        if (bytes > 0) {
+            data_types_found++;
+            switch (data_types_found) {
+            case 1: // 目标操作数类型
+                dst_qualifiers.push_back(q);
+                break;
+            case 2: // 第一个源操作数类型
+                src1_qualifiers.push_back(q);
+                break;
+            case 3: // 第二个源操作数类型
+                src2_qualifiers.push_back(q);
+                break;
+            }
+        } else {
+            // 其他限定符添加到所有向量中
+            dst_qualifiers.push_back(q);
+            src1_qualifiers.push_back(q);
+            src2_qualifiers.push_back(q);
+        }
+    }
+}
+
+void splitDstSrcQualifiers(const std::vector<Qualifier> &qualifiers,
+                           std::vector<Qualifier> &dst_qualifiers,
+                           std::vector<Qualifier> &src2_qualifiers) {
+    dst_qualifiers.clear();
+    src2_qualifiers.clear();
+
+    int data_types_found = 0;
+
+    // 遍历限定符，分离目标和源限定符
+    for (const auto &q : qualifiers) {
+        int bytes = Q2bytes(q);
+
+        // 如果这个限定符代表一种数据类型
+        if (bytes > 0) {
+            data_types_found++;
+            switch (data_types_found) {
+            case 1: // 目标操作数类型
+                dst_qualifiers.push_back(q);
+                break;
+            case 2: // 第二个源操作数类型
+                src2_qualifiers.push_back(q);
+                break;
+            }
+        } else {
+            // 其他限定符添加到所有向量中
+            dst_qualifiers.push_back(q);
+            src2_qualifiers.push_back(q);
         }
     }
 }
