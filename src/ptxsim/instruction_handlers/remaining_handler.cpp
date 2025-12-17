@@ -3,17 +3,7 @@
 #include "ptxsim/utils/qualifier_utils.h"
 #include "ptxsim/utils/type_utils.h"
 #include <cmath>
-
-// 定义四个操作数的处理宏
-#define PROCESS_OPERATION_4(context, dst, src1, src2, pred, qualifiers, reg)   \
-    do {                                                                       \
-        process_operation(context, dst, src1, src2, pred, qualifiers);         \
-        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
-                                                   "reg")) {                   \
-            if (reg)                                                           \
-                context->trace_register(reg, dst, qualifiers, true);           \
-        }                                                                      \
-    } while (0)
+#include <cstring>
 
 void CvtHandler::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::CVT *)stmt.statement;
@@ -349,70 +339,23 @@ void SelpHandler::execute(ThreadContext *context, StatementContext &stmt) {
 
     // 获取操作数地址
     void *to = context->get_operand_addr(ss->selpOp[0], ss->selpQualifier);
-    void *op0 = context->get_operand_addr(ss->selpOp[1], ss->selpQualifier);
-    void *op1 = context->get_operand_addr(ss->selpOp[2], ss->selpQualifier);
+    void *src1 = context->get_operand_addr(ss->selpOp[1], ss->selpQualifier);
+    void *src2 = context->get_operand_addr(ss->selpOp[2], ss->selpQualifier);
     void *pred = context->get_operand_addr(ss->selpOp[3], ss->selpQualifier);
 
-    // 执行SELP操作
-    process_operation(context, to, op0, op1, pred, ss->selpQualifier);
-
-    // 如果启用了寄存器跟踪，则更新寄存器信息
-    if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,
-                                               "reg")) {
-        if (ss->selpOp[0].operandType == OperandType::O_REG) {
-            context->trace_register(
-                (OperandContext::REG *)ss->selpOp[0].operand, to,
-                ss->selpQualifier, true);
-        }
-    }
+    // 执行SELP操作并根据日志级别决定是否跟踪寄存器更新
+    PROCESS_OPERATION_4(context, to, src1, src2, pred, ss->selpQualifier,
+                        (OperandContext::REG *)ss->selpOp[0].operand);
 }
 
 void SelpHandler::process_operation(ThreadContext *context, void *dst,
                                     void *src1, void *src2, void *pred,
                                     std::vector<Qualifier> &qualifiers) {
-    int len = TypeUtils::get_bytes(qualifiers);
-    DTYPE dtype = getDType(qualifiers);
+    int bytes = TypeUtils::get_bytes(qualifiers);
 
-    switch (len) {
-    case 1:
-        assert(dtype == DINT);
-        _selp<uint8_t>(dst, src1, src2, pred);
-        return;
-    case 2:
-        assert(dtype == DINT);
-        _selp<uint16_t>(dst, src1, src2, pred);
-        return;
-    case 4:
-        switch (dtype) {
-        case DINT:
-            _selp<uint32_t>(dst, src1, src2, pred);
-            return;
-        case DFLOAT:
-            _selp<float>(dst, src1, src2, pred);
-            return;
-        default:
-            assert(0);
-        }
-        return;
-    case 8:
-        switch (dtype) {
-        case DINT:
-            _selp<uint64_t>(dst, src1, src2, pred);
-            return;
-        case DFLOAT:
-            _selp<double>(dst, src1, src2, pred);
-            return;
-        default:
-            assert(0);
-        }
-    default:
-        assert(0);
-    }
-}
-
-template <typename T>
-void SelpHandler::_selp(void *to, void *op0, void *op1, void *pred) {
-    *(T *)to = *(uint8_t *)pred ? *(T *)op0 : *(T *)op1;
+    // 根据用户建议的实现方式
+    const void *selected = *(uint8_t *)pred ? src1 : src2;
+    std::memcpy(dst, selected, bytes);
 }
 
 void NotHandler::execute(ThreadContext *context, StatementContext &stmt) {

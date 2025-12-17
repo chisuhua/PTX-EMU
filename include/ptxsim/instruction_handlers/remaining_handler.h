@@ -29,15 +29,11 @@ public:
 class SelpHandler : public InstructionHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
-    using TernaryPredicateOp = void (SelpHandler::*)(void *, void *, void *,
-                                                     void *);
+
+protected:
     virtual void process_operation(ThreadContext *context, void *dst,
                                    void *src1, void *src2, void *pred,
                                    std::vector<Qualifier> &qualifiers);
-
-private:
-    template <typename T>
-    void _selp(void *to, void *op0, void *op1, void *pred);
 };
 
 // NOT指令处理器

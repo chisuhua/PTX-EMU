@@ -510,10 +510,6 @@ bool ThreadContext::isIMMorVEC(OperandContext &op) {
     return (op.operandType == O_IMM || op.operandType == O_VEC);
 }
 
-Qualifier ThreadContext::getCMPOP(std::vector<Qualifier> &q) {
-    return TypeUtils::get_comparison_op(q);
-}
-
 bool ThreadContext::is_immediate_or_vector(OperandContext &op) {
     return (op.operandType == O_IMM || op.operandType == O_VEC);
 }

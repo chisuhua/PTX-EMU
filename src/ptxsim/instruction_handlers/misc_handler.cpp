@@ -3,6 +3,7 @@
 #include "ptxsim/instruction_handlers/arithmetic_handler.h"
 #include "ptxsim/ptx_debug.h"
 #include "ptxsim/thread_context.h"
+#include "ptxsim/utils/qualifier_utils.h"
 #include "ptxsim/utils/type_utils.h"
 #include <algorithm>
 #include <cassert>
@@ -44,137 +45,13 @@ void SetpHandler::process_operation(ThreadContext *context, void *dst,
                                     void *src1, void *src2,
                                     std::vector<Qualifier> &qualifiers) {
     // 获取比较操作符
-    Qualifier cmpOp = TypeUtils::get_comparison_op(qualifiers);
+    Qualifier cmpOp = getCmpOpQualifier(qualifiers);
+    Qualifier dtype = getDataQualifier(qualifiers);
+    uint8_t result;
 
-    // 获取数据类型相关信息
-    int bytes = TypeUtils::get_bytes(qualifiers);
-    bool isFloat = TypeUtils::is_float_type(qualifiers);
-    bool isSigned = TypeUtils::is_signed_type(qualifiers);
+    SET_P_COMPARE(cmpOp, dtype, &result, src1, src2);
 
-    // 根据数据类型和比较操作符执行比较操作
-    bool result = false;
-    switch (bytes) {
-    case 1: {
-        if (isSigned) {
-            int8_t val1 = *(int8_t *)src1;
-            int8_t val2 = *(int8_t *)src2;
-            result = TypeUtils::apply_comparison(val1, val2, cmpOp);
-        } else {
-            uint8_t val1 = *(uint8_t *)src1;
-            uint8_t val2 = *(uint8_t *)src2;
-            result = TypeUtils::apply_comparison(val1, val2, cmpOp);
-        }
-        break;
-    }
-    case 2: {
-        if (isSigned) {
-            int16_t val1 = *(int16_t *)src1;
-            int16_t val2 = *(int16_t *)src2;
-            result = TypeUtils::apply_comparison(val1, val2, cmpOp);
-        } else {
-            uint16_t val1 = *(uint16_t *)src1;
-            uint16_t val2 = *(uint16_t *)src2;
-            result = TypeUtils::apply_comparison(val1, val2, cmpOp);
-        }
-        break;
-    }
-    case 4: {
-        if (isFloat) {
-            float val1 = *(float *)src1;
-            float val2 = *(float *)src2;
-            // 处理NaN值的情况
-            if (val1 != val1 || val2 != val2) {
-                switch (cmpOp) {
-                case Qualifier::Q_EQ:
-                case Qualifier::Q_LE:
-                case Qualifier::Q_LT:
-                case Qualifier::Q_GE:
-                case Qualifier::Q_GT:
-                    result = false;
-                    break;
-                case Qualifier::Q_NE:
-                    result = true;
-                    break;
-                default:
-                    assert(0);
-                }
-            } else {
-                // 手动实现比较操作替代TypeUtils::apply_comparison
-                switch (cmpOp) {
-                case Qualifier::Q_EQ:
-                    result = val1 == val2;
-                    break;
-                case Qualifier::Q_NE:
-                    result = val1 != val2;
-                    break;
-                case Qualifier::Q_LT:
-                    result = val1 < val2;
-                    break;
-                case Qualifier::Q_LE:
-                    result = val1 <= val2;
-                    break;
-                case Qualifier::Q_GT:
-                    result = val1 > val2;
-                    break;
-                case Qualifier::Q_GE:
-                    result = val1 >= val2;
-                    break;
-                default:
-                    assert(0);
-                }
-            }
-        } else if (isSigned) {
-            int32_t val1 = *(int32_t *)src1;
-            int32_t val2 = *(int32_t *)src2;
-            result = TypeUtils::apply_comparison(val1, val2, cmpOp);
-        } else {
-            uint32_t val1 = *(uint32_t *)src1;
-            uint32_t val2 = *(uint32_t *)src2;
-            result = TypeUtils::apply_comparison(val1, val2, cmpOp);
-        }
-        break;
-    }
-    case 8: {
-        if (isFloat) {
-            double val1 = *(double *)src1;
-            double val2 = *(double *)src2;
-            // 处理NaN值的情况
-            if (val1 != val1 || val2 != val2) {
-                switch (cmpOp) {
-                case Qualifier::Q_EQ:
-                case Qualifier::Q_LE:
-                case Qualifier::Q_LT:
-                case Qualifier::Q_GE:
-                case Qualifier::Q_GT:
-                    result = false;
-                    break;
-                case Qualifier::Q_NE:
-                    result = true;
-                    break;
-                default:
-                    result = false;
-                    break;
-                }
-            } else {
-                result = TypeUtils::apply_comparison(val1, val2, cmpOp);
-            }
-        } else if (isSigned) {
-            int64_t val1 = *(int64_t *)src1;
-            int64_t val2 = *(int64_t *)src2;
-            result = TypeUtils::apply_comparison(val1, val2, cmpOp);
-        } else {
-            uint64_t val1 = *(uint64_t *)src1;
-            uint64_t val2 = *(uint64_t *)src2;
-            result = TypeUtils::apply_comparison(val1, val2, cmpOp);
-        }
-        break;
-    }
-    default:
-        assert(0);
-    }
-
-    // 设置结果
-    *(bool *)dst = result;
+    *static_cast<uint8_t *>(dst) = result;
 }
 
 void AbsHandler::execute(ThreadContext *context, StatementContext &stmt) {

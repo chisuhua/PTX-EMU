@@ -76,7 +76,6 @@ public:
     int getBytes(std::vector<Qualifier> &q);
     void mov(void *from, void *to, std::vector<Qualifier> &q);
     bool isIMMorVEC(OperandContext &op);
-    Qualifier getCMPOP(std::vector<Qualifier> &q);
 
     // 新增：为断点条件准备上下文
     void prepare_breakpoint_context(
