@@ -4,7 +4,7 @@
 #include "ptx_ir/ptx_types.h"
 #include "ptxsim/execution_types.h"
 #include <cstdint>
-#include <driver_types.h>
+// nclude <driver_types.h>
 #include <map>
 #include <string>
 #include <vector>

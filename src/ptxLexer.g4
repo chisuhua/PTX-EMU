@@ -123,6 +123,8 @@ CVTA: 'cvta' ;
 
 MUL: 'mul' ;
 
+MUL24: 'mul24' ;
+
 ADD: 'add' ;
 
 SHL: 'shl' ;
@@ -132,6 +134,8 @@ ST: 'st' ;
 BAR: 'bar' ;
 
 MAD: 'mad' ;
+
+MAD24: 'mad24' ;
 
 DIV: 'div' ;
 
@@ -180,6 +184,10 @@ ABS: 'abs' ;
 SIN: 'sin' ;
 
 REM: 'rem' ;
+
+POPC: 'popc' ;
+
+CLZ: 'clz' ;
 
 RSQRT: 'rsqrt';
 

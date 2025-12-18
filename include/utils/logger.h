@@ -614,6 +614,11 @@ inline void output_log_simple(log_level level, const std::string &component,
 // ===========================================================================
 // 宏定义
 // ===========================================================================
+#ifdef LOG
+#define LOG_FUNC() std::cout << __func__ << std::endl
+#else
+#define LOG_FUNC() ((void)0)
+#endif
 
 // 基础日志宏
 #define PTX_LOG(level, component, fmt, ...)                                    \

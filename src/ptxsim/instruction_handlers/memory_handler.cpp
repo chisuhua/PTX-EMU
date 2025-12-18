@@ -6,7 +6,7 @@
 #include <iostream>
 #include <vector>
 
-void LdHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void LD::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::LD *)stmt.statement;
 
     // 获取操作数地址
@@ -64,7 +64,7 @@ void LdHandler::execute(ThreadContext *context, StatementContext &stmt) {
     }
 }
 
-void StHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void ST::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::ST *)stmt.statement;
 
     // 获取操作数地址

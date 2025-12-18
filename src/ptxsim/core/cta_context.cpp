@@ -68,7 +68,7 @@ EXE_STATE CTAContext::exe_once() {
         if (state == EXIT && !exitThread[curExeThreadId]) {
             exitThreadNum++;
             exitThread[curExeThreadId] = 1;
-        } else if (state == BAR && !barThread[curExeThreadId]) {
+        } else if (state == BAR_SYNC && !barThread[curExeThreadId]) {
             barThreadNum++;
             barThread[curExeThreadId] = 1;
         }

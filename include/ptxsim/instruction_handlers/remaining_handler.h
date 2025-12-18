@@ -10,7 +10,7 @@
 #include <vector>
 
 // CVT指令处理器
-class CvtHandler : public InstructionHandler {
+class CVT : public InstructionHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
 
@@ -20,13 +20,13 @@ protected:
 };
 
 // CVTA指令处理器
-class CvtaHandler : public InstructionHandler {
+class CVTA : public InstructionHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
 };
 
 // SELP指令处理器
-class SelpHandler : public InstructionHandler {
+class SELP : public InstructionHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
 
@@ -37,37 +37,37 @@ protected:
 };
 
 // NOT指令处理器
-class NotHandler : public InstructionHandler {
+class NOT : public InstructionHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
 };
 
 // REM指令处理器
-class RemHandler : public InstructionHandler {
+class REM : public InstructionHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
 };
 
 // RSQRT指令处理器
-class RsqrtHandler : public InstructionHandler {
+class RSQRT : public InstructionHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
 };
 
 // LG2指令处理器
-class Lg2Handler : public InstructionHandler {
+class LG2 : public InstructionHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
 };
 
 // EX2指令处理器
-class Ex2Handler : public InstructionHandler {
+class EX2 : public InstructionHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
 };
 
 // WMMA指令处理器
-class WmmaHandler : public InstructionHandler {
+class WMMA : public InstructionHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
 };

@@ -5,7 +5,7 @@
 #include <cassert>
 #include <cmath>
 
-void SqrtHandler::execute(ThreadContext* context, StatementContext& stmt) {
+void SQRT::execute(ThreadContext* context, StatementContext& stmt) {
     auto ss = (StatementContext::SQRT*)stmt.statement;
     
     // 获取操作数地址
@@ -43,7 +43,7 @@ void SqrtHandler::execute(ThreadContext* context, StatementContext& stmt) {
     }
 }
 
-void SinHandler::execute(ThreadContext* context, StatementContext& stmt) {
+void SIN::execute(ThreadContext* context, StatementContext& stmt) {
     auto ss = (StatementContext::SIN*)stmt.statement;
     
     // 获取操作数地址
@@ -81,7 +81,7 @@ void SinHandler::execute(ThreadContext* context, StatementContext& stmt) {
     }
 }
 
-void CosHandler::execute(ThreadContext* context, StatementContext& stmt) {
+void COS::execute(ThreadContext* context, StatementContext& stmt) {
     auto ss = (StatementContext::COS*)stmt.statement;
     
     // 获取操作数地址

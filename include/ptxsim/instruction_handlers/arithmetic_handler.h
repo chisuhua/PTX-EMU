@@ -24,7 +24,7 @@ protected:
     }
 };
 
-class AddHandler : public ArithmeticHandler {
+class ADD : public ArithmeticHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
 
@@ -34,7 +34,7 @@ protected:
                            std::vector<Qualifier> &qualifiers) override;
 };
 
-class SubHandler : public ArithmeticHandler {
+class SUB : public ArithmeticHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
 
@@ -44,7 +44,7 @@ protected:
                            std::vector<Qualifier> &qualifiers) override;
 };
 
-class MulHandler : public ArithmeticHandler {
+class MUL : public ArithmeticHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
 
@@ -54,7 +54,17 @@ protected:
                            std::vector<Qualifier> &qualifiers) override;
 };
 
-class DivHandler : public ArithmeticHandler {
+class MUL24 : public ArithmeticHandler {
+public:
+    void execute(ThreadContext *context, StatementContext &stmt) override;
+
+protected:
+    void process_operation(ThreadContext *context, void *dst, void *src1,
+                           void *src2,
+                           std::vector<Qualifier> &qualifiers) override;
+};
+
+class DIV : public ArithmeticHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
 
@@ -65,7 +75,7 @@ protected:
 };
 
 // FMA和MAD指令处理器
-class MadHandler : public ArithmeticHandler {
+class MAD : public ArithmeticHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
 
@@ -79,7 +89,7 @@ protected:
                            std::vector<Qualifier> &qualifiers) override;
 };
 
-class FmaHandler : public ArithmeticHandler {
+class FMA : public ArithmeticHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
 

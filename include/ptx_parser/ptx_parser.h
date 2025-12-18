@@ -115,6 +115,12 @@ public:
     virtual void
     enterMulStatement(ptxParser::MulStatementContext *ctx) override;
     virtual void exitMulStatement(ptxParser::MulStatementContext *ctx) override;
+
+    virtual void
+    enterMul24Statement(ptxParser::Mul24StatementContext *ctx) override;
+    virtual void
+    exitMul24Statement(ptxParser::Mul24StatementContext *ctx) override;
+
     virtual void
     enterDivStatement(ptxParser::DivStatementContext *ctx) override;
     virtual void exitDivStatement(ptxParser::DivStatementContext *ctx) override;
@@ -150,6 +156,10 @@ public:
     virtual void
     enterMadStatement(ptxParser::MadStatementContext *ctx) override;
     virtual void exitMadStatement(ptxParser::MadStatementContext *ctx) override;
+    virtual void
+    enterMad24Statement(ptxParser::Mad24StatementContext *ctx) override;
+    virtual void
+    exitMad24Statement(ptxParser::Mad24StatementContext *ctx) override;
     virtual void
     enterFmaStatement(ptxParser::FmaStatementContext *ctx) override;
     virtual void exitFmaStatement(ptxParser::FmaStatementContext *ctx) override;
@@ -193,6 +203,15 @@ public:
     enterRsqrtStatement(ptxParser::RsqrtStatementContext *ctx) override;
     virtual void
     exitRsqrtStatement(ptxParser::RsqrtStatementContext *ctx) override;
+    virtual void
+    enterPopcStatement(ptxParser::PopcStatementContext *ctx) override;
+    virtual void
+    exitPopcStatement(ptxParser::PopcStatementContext *ctx) override;
+
+    virtual void
+    enterClzStatement(ptxParser::ClzStatementContext *ctx) override;
+    virtual void exitClzStatement(ptxParser::ClzStatementContext *ctx) override;
+
     virtual void
     enterRemStatement(ptxParser::RemStatementContext *ctx) override;
     virtual void exitRemStatement(ptxParser::RemStatementContext *ctx) override;

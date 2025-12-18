@@ -6,7 +6,7 @@
 #include <cstring>
 #include <iostream>
 
-void RegHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void REG::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::REG *)stmt.statement;
     for (int i = 0; i < ss->regNum; i++) {
         PtxInterpreter::Reg *r = new PtxInterpreter::Reg();
@@ -22,7 +22,7 @@ void RegHandler::execute(ThreadContext *context, StatementContext &stmt) {
     }
 }
 
-void SharedHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void SHARED::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::SHARED *)stmt.statement;
     PtxInterpreter::Symtable *s = new PtxInterpreter::Symtable();
     s->byteNum = TypeUtils::get_bytes(ss->sharedDataType) * ss->sharedSize;
@@ -35,7 +35,7 @@ void SharedHandler::execute(ThreadContext *context, StatementContext &stmt) {
     context->name2Sym[s->name] = s;
 }
 
-void LocalHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void LOCAL::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::LOCAL *)stmt.statement;
     PtxInterpreter::Symtable *s = new PtxInterpreter::Symtable();
     s->byteNum = TypeUtils::get_bytes(ss->localDataType) * ss->localSize;
@@ -47,7 +47,7 @@ void LocalHandler::execute(ThreadContext *context, StatementContext &stmt) {
     context->name2Sym[s->name] = s;
 }
 
-void DollorHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void DOLLOR::execute(ThreadContext *context, StatementContext &stmt) {
     // Labels are already set up before execution starts
     // Nothing to do here during execution
     auto ss = (StatementContext::DOLLOR *)stmt.statement;

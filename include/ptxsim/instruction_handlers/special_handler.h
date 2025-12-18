@@ -7,19 +7,19 @@
 #include <vector>
 
 // PRAGMA指令处理器
-class PragmaHandler : public InstructionHandler {
+class PRAGMA : public InstructionHandler {
 public:
     void execute(ThreadContext* context, StatementContext& stmt) override;
 };
 
 // AT指令处理器
-class AtHandler : public InstructionHandler {
+class AT : public InstructionHandler {
 public:
     void execute(ThreadContext* context, StatementContext& stmt) override;
 };
 
 // ATOM指令处理器
-class AtomHandler : public InstructionHandler {
+class ATOM : public InstructionHandler {
 public:
     void execute(ThreadContext* context, StatementContext& stmt) override;
 };

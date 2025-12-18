@@ -7,13 +7,13 @@
 #include <vector>
 
 // LD指令处理器
-class LdHandler : public InstructionHandler {
+class LD : public InstructionHandler {
 public:
     void execute(ThreadContext* context, StatementContext& stmt) override;
 };
 
 // ST指令处理器
-class StHandler : public InstructionHandler {
+class ST : public InstructionHandler {
 public:
     void execute(ThreadContext* context, StatementContext& stmt) override;
 };

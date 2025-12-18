@@ -35,6 +35,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # 查找所需的包
 find_package(Java COMPONENTS Runtime REQUIRED)
+find_package(CUDAToolkit REQUIRED)
 
 # 设置CUDA架构
 set(DEFAULT_CUDA_ARCH "80" CACHE STRING "Default CUDA architecture")

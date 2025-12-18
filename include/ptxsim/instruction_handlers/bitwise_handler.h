@@ -19,7 +19,7 @@ protected:
 };
 
 // AND指令处理器
-class AndHandler : public BitwiseHandler {
+class AND : public BitwiseHandler {
 public:
     void execute(ThreadContext* context, StatementContext& stmt) override;
     
@@ -30,7 +30,7 @@ protected:
 };
 
 // OR指令处理器
-class OrHandler : public BitwiseHandler {
+class OR : public BitwiseHandler {
 public:
     void execute(ThreadContext* context, StatementContext& stmt) override;
     
@@ -41,7 +41,7 @@ protected:
 };
 
 // XOR指令处理器
-class XorHandler : public BitwiseHandler {
+class XOR : public BitwiseHandler {
 public:
     void execute(ThreadContext* context, StatementContext& stmt) override;
     
@@ -52,7 +52,7 @@ protected:
 };
 
 // SHL指令处理器
-class ShlHandler : public BitwiseHandler {
+class SHL : public BitwiseHandler {
 public:
     void execute(ThreadContext* context, StatementContext& stmt) override;
     
@@ -63,7 +63,7 @@ protected:
 };
 
 // SHR指令处理器
-class ShrHandler : public BitwiseHandler {
+class SHR : public BitwiseHandler {
 public:
     void execute(ThreadContext* context, StatementContext& stmt) override;
     

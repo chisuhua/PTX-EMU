@@ -9,11 +9,11 @@ void extractREG(std::string s, int &idx, std::string &name) {
     // Handle special registers like %tid.x, %ctaid.x, etc.
     size_t dotPos = s.find('.');
     if (dotPos != std::string::npos) {
-        name = s;  // Keep the full name including the dot part
+        name = s; // Keep the full name including the dot part
         idx = 0;
         return;
     }
-    
+
     // Handle regular registers like %r1, %rd2, etc.
     int ret = 0;
     for (char c : s) {
@@ -183,92 +183,11 @@ int Q2bytes(Qualifier q) {
 
 std::string S2s(StatementType s) {
     switch (s) {
-    case S_REG:
-        return "reg";
-    case S_CONST:
-        return "const";
-    case S_SHARED:
-        return "shared";
-    case S_LOCAL:
-        return "local";
-    case S_DOLLOR:
-        return "$";
-    case S_AT:
-        return "@";
-    case S_PRAGMA:
-        return "pragma";
-    case S_RET:
-        return "ret";
-    case S_BAR:
-        return "bar";
-    case S_BRA:
-        return "bra";
-    case S_RCP:
-        return "rcp";
-    case S_LD:
-        return "ld";
-    case S_MOV:
-        return "mov";
-    case S_SETP:
-        return "setp";
-    case S_CVTA:
-        return "cvta";
-    case S_CVT:
-        return "cvt";
-    case S_MUL:
-        return "mul";
-    case S_DIV:
-        return "div";
-    case S_SUB:
-        return "sub";
-    case S_ADD:
-        return "add";
-    case S_SHL:
-        return "shl";
-    case S_SHR:
-        return "shr";
-    case S_MAX:
-        return "max";
-    case S_MIN:
-        return "min";
-    case S_AND:
-        return "and";
-    case S_OR:
-        return "or";
-    case S_ST:
-        return "st";
-    case S_SELP:
-        return "selp";
-    case S_MAD:
-        return "mad";
-    case S_FMA:
-        return "fma";
-    case S_WMMA:
-        return "wmma";
-    case S_NEG:
-        return "neg";
-    case S_NOT:
-        return "not";
-    case S_SQRT:
-        return "sqrt";
-    case S_COS:
-        return "cos";
-    case S_LG2:
-        return "lg2";
-    case S_EX2:
-        return "ex2";
-    case S_ATOM:
-        return "atom";
-    case S_XOR:
-        return "xor";
-    case S_ABS:
-        return "abs";
-    case S_SIN:
-        return "sin";
-    case S_REM:
-        return "rem";
-    case S_RSQRT:
-        return "rsqrt";
+#define X(enum_val, struct_name, str)                                          \
+    case enum_val:                                                             \
+        return str;
+#include "ptx_ir/ptx_op.def"
+#undef X
     case S_UNKNOWN:
         return "unknown";
     default:
@@ -297,7 +216,7 @@ OperandContext::~OperandContext() {
             // Note: Need to free the object pointed to by reg first
             if (fa->reg) {
                 delete fa->reg;
-                fa->reg = nullptr;  // Prevent dangling pointer
+                fa->reg = nullptr; // Prevent dangling pointer
             }
             delete fa;
         }
@@ -308,7 +227,7 @@ OperandContext::~OperandContext() {
             // Note: Need to free the object pointed to by pred first
             if (pred->pred) {
                 delete pred->pred;
-                pred->pred = nullptr;  // Prevent dangling pointer
+                pred->pred = nullptr; // Prevent dangling pointer
             }
             delete pred;
         }
@@ -357,14 +276,14 @@ OperandContext::OperandContext(const OperandContext &other)
             fa->offsetType = other_fa->offsetType;
             fa->offsetVal = other_fa->offsetVal;
             fa->ID = other_fa->ID;
-            
+
             // Deep copy reg pointer
             if (other_fa->reg) {
                 fa->reg = new OperandContext(*(other_fa->reg));
             } else {
                 fa->reg = nullptr;
             }
-            
+
             operand = fa;
         }
         break;
@@ -373,14 +292,14 @@ OperandContext::OperandContext(const OperandContext &other)
             auto pred = new PRED();
             auto other_pred = static_cast<const PRED *>(other.operand);
             pred->isNot = other_pred->isNot;
-            
+
             // Deep copy pred pointer
             if (other_pred->pred) {
                 pred->pred = new OperandContext(*(other_pred->pred));
             } else {
                 pred->pred = nullptr;
             }
-            
+
             operand = pred;
         }
         break;
@@ -409,7 +328,7 @@ OperandContext &OperandContext::operator=(const OperandContext &other) {
     if (this == &other) {
         return *this;
     }
-    
+
     // Free current resources first
     switch (operandType) {
     case O_REG:
@@ -451,10 +370,10 @@ OperandContext &OperandContext::operator=(const OperandContext &other) {
         }
         break;
     }
-    
+
     // Update type
     operandType = other.operandType;
-    
+
     // Deep copy new content
     switch (operandType) {
     case O_REG:
@@ -487,14 +406,14 @@ OperandContext &OperandContext::operator=(const OperandContext &other) {
             fa->offsetType = other_fa->offsetType;
             fa->offsetVal = other_fa->offsetVal;
             fa->ID = other_fa->ID;
-            
+
             // Deep copy reg pointer
             if (other_fa->reg) {
                 fa->reg = new OperandContext(*(other_fa->reg));
             } else {
                 fa->reg = nullptr;
             }
-            
+
             operand = fa;
         } else {
             operand = nullptr;
@@ -505,14 +424,14 @@ OperandContext &OperandContext::operator=(const OperandContext &other) {
             auto pred = new PRED();
             auto other_pred = static_cast<const PRED *>(other.operand);
             pred->isNot = other_pred->isNot;
-            
+
             // Deep copy pred pointer
             if (other_pred->pred) {
                 pred->pred = new OperandContext(*(other_pred->pred));
             } else {
                 pred->pred = nullptr;
             }
-            
+
             operand = pred;
         } else {
             operand = nullptr;
@@ -539,245 +458,55 @@ OperandContext &OperandContext::operator=(const OperandContext &other) {
         }
         break;
     }
-    
+
     return *this;
 }
 
-// Adding StatementContext destructor implementation
+// 析构函数
 StatementContext::~StatementContext() {
-    // Free memory for the statement based on statementType
-    switch (statementType) {
-    case S_REG:
-        if (statement) {
-            delete static_cast<StatementContext::REG*>(statement);
-        }
-        break;
-    case S_CONST:
-        if (statement) {
-            delete static_cast<StatementContext::CONST*>(statement);
-        }
-        break;
-    case S_SHARED:
-        if (statement) {
-            delete static_cast<StatementContext::SHARED*>(statement);
-        }
-        break;
-    case S_LOCAL:
-        if (statement) {
-            delete static_cast<StatementContext::LOCAL*>(statement);
-        }
-        break;
-    case S_DOLLOR:
-        if (statement) {
-            delete static_cast<StatementContext::DOLLOR*>(statement);
-        }
-        break;
-    case S_AT:
-        if (statement) {
-            delete static_cast<StatementContext::AT*>(statement);
-        }
-        break;
-    case S_PRAGMA:
-        if (statement) {
-            delete static_cast<StatementContext::PRAGMA*>(statement);
-        }
-        break;
-    case S_RET:
-        if (statement) {
-            delete static_cast<StatementContext::RET*>(statement);
-        }
-        break;
-    case S_BAR:
-        if (statement) {
-            delete static_cast<StatementContext::BAR*>(statement);
-        }
-        break;
-    case S_BRA:
-        if (statement) {
-            delete static_cast<StatementContext::BRA*>(statement);
-        }
-        break;
-    case S_RCP:
-        if (statement) {
-            delete static_cast<StatementContext::RCP*>(statement);
-        }
-        break;
-    case S_LD:
-        if (statement) {
-            delete static_cast<StatementContext::LD*>(statement);
-        }
-        break;
-    case S_MOV:
-        if (statement) {
-            delete static_cast<StatementContext::MOV*>(statement);
-        }
-        break;
-    case S_SETP:
-        if (statement) {
-            delete static_cast<StatementContext::SETP*>(statement);
-        }
-        break;
-    case S_CVTA:
-        if (statement) {
-            delete static_cast<StatementContext::CVTA*>(statement);
-        }
-        break;
-    case S_CVT:
-        if (statement) {
-            delete static_cast<StatementContext::CVT*>(statement);
-        }
-        break;
-    case S_MUL:
-        if (statement) {
-            delete static_cast<StatementContext::MUL*>(statement);
-        }
-        break;
-    case S_DIV:
-        if (statement) {
-            delete static_cast<StatementContext::DIV*>(statement);
-        }
-        break;
-    case S_SUB:
-        if (statement) {
-            delete static_cast<StatementContext::SUB*>(statement);
-        }
-        break;
-    case S_ADD:
-        if (statement) {
-            delete static_cast<StatementContext::ADD*>(statement);
-        }
-        break;
-    case S_SHL:
-        if (statement) {
-            delete static_cast<StatementContext::SHL*>(statement);
-        }
-        break;
-    case S_SHR:
-        if (statement) {
-            delete static_cast<StatementContext::SHR*>(statement);
-        }
-        break;
-    case S_MAX:
-        if (statement) {
-            delete static_cast<StatementContext::MAX*>(statement);
-        }
-        break;
-    case S_MIN:
-        if (statement) {
-            delete static_cast<StatementContext::MIN*>(statement);
-        }
-        break;
-    case S_AND:
-        if (statement) {
-            delete static_cast<StatementContext::AND*>(statement);
-        }
-        break;
-    case S_OR:
-        if (statement) {
-            delete static_cast<StatementContext::OR*>(statement);
-        }
-        break;
-    case S_ST:
-        if (statement) {
-            delete static_cast<StatementContext::ST*>(statement);
-        }
-        break;
-    case S_SELP:
-        if (statement) {
-            delete static_cast<StatementContext::SELP*>(statement);
-        }
-        break;
-    case S_MAD:
-        if (statement) {
-            delete static_cast<StatementContext::MAD*>(statement);
-        }
-        break;
-    case S_FMA:
-        if (statement) {
-            delete static_cast<StatementContext::FMA*>(statement);
-        }
-        break;
-    case S_WMMA:
-        if (statement) {
-            delete static_cast<StatementContext::WMMA*>(statement);
-        }
-        break;
-    case S_NEG:
-        if (statement) {
-            delete static_cast<StatementContext::NEG*>(statement);
-        }
-        break;
-    case S_NOT:
-        if (statement) {
-            delete static_cast<StatementContext::NOT*>(statement);
-        }
-        break;
-    case S_SQRT:
-        if (statement) {
-            delete static_cast<StatementContext::SQRT*>(statement);
-        }
-        break;
-    case S_COS:
-        if (statement) {
-            delete static_cast<StatementContext::COS*>(statement);
-        }
-        break;
-    case S_LG2:
-        if (statement) {
-            delete static_cast<StatementContext::LG2*>(statement);
-        }
-        break;
-    case S_EX2:
-        if (statement) {
-            delete static_cast<StatementContext::EX2*>(statement);
-        }
-        break;
-    case S_ATOM:
-        if (statement) {
-            delete static_cast<StatementContext::ATOM*>(statement);
-        }
-        break;
-    case S_XOR:
-        if (statement) {
-            delete static_cast<StatementContext::XOR*>(statement);
-        }
-        break;
-    case S_ABS:
-        if (statement) {
-            delete static_cast<StatementContext::ABS*>(statement);
-        }
-        break;
-    case S_SIN:
-        if (statement) {
-            delete static_cast<StatementContext::SIN*>(statement);
-        }
-        break;
-    case S_RSQRT:
-        if (statement) {
-            delete static_cast<StatementContext::RSQRT*>(statement);
-        }
-        break;
-    case S_REM:
-        if (statement) {
-            delete static_cast<StatementContext::REM*>(statement);
-        }
-        break;
-    case S_UNKNOWN:
-        // S_UNKNOWN does not need to delete anything
-        break;
+    if (!statement) {
+        return;
     }
+
+#define X(enum_val, struct_name, str)                                          \
+    case enum_val: {                                                           \
+        delete static_cast<StatementContext::struct_name *>(statement);        \
+        break;                                                                 \
+    }
+
+    switch (statementType) {
+#include "ptx_ir/ptx_op.def"
+    }
+
+#undef X
+
+    // S_UNKNOWN: do nothing (statement should be null, but no harm in check)
     statement = nullptr;
 }
+
+#define DEFINE_STATEMENT_COPY_CASE(EnumTag, StructName)                        \
+    case EnumTag: {                                                            \
+        if (other.statement) {                                                 \
+            auto source = static_cast<const StructName *>(other.statement);    \
+            auto dest = new StructName();                                      \
+            dest->qualifier = source->qualifier;                               \
+            for (int i = 0; i < StructName::op_count; ++i) {                   \
+                dest->op[i] = OperandContext(source->op[i]);                   \
+            }                                                                  \
+            statement = dest;                                                  \
+        }                                                                      \
+        break;                                                                 \
+    }
 
 // Adding StatementContext copy constructor implementation
 StatementContext::StatementContext(const StatementContext &other)
     : statementType(other.statementType), statement(nullptr) {
-    
+
     // Deep copy based on statementType
     switch (statementType) {
     case S_REG: {
         if (other.statement) {
-            auto source = static_cast<const REG*>(other.statement);
+            auto source = static_cast<const REG *>(other.statement);
             auto dest = new REG();
             dest->regNum = source->regNum;
             dest->regDataType = source->regDataType;
@@ -788,7 +517,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_CONST: {
         if (other.statement) {
-            auto source = static_cast<const CONST*>(other.statement);
+            auto source = static_cast<const CONST *>(other.statement);
             auto dest = new CONST();
             dest->constAlign = source->constAlign;
             dest->constSize = source->constSize;
@@ -800,7 +529,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_SHARED: {
         if (other.statement) {
-            auto source = static_cast<const SHARED*>(other.statement);
+            auto source = static_cast<const SHARED *>(other.statement);
             auto dest = new SHARED();
             dest->sharedAlign = source->sharedAlign;
             dest->sharedSize = source->sharedSize;
@@ -812,7 +541,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_LOCAL: {
         if (other.statement) {
-            auto source = static_cast<const LOCAL*>(other.statement);
+            auto source = static_cast<const LOCAL *>(other.statement);
             auto dest = new LOCAL();
             dest->localAlign = source->localAlign;
             dest->localSize = source->localSize;
@@ -824,7 +553,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_DOLLOR: {
         if (other.statement) {
-            auto source = static_cast<const DOLLOR*>(other.statement);
+            auto source = static_cast<const DOLLOR *>(other.statement);
             auto dest = new DOLLOR();
             dest->dollorName = source->dollorName;
             statement = dest;
@@ -833,7 +562,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_AT: {
         if (other.statement) {
-            auto source = static_cast<const AT*>(other.statement);
+            auto source = static_cast<const AT *>(other.statement);
             auto dest = new AT();
             // Use OperandContext's copy constructor for deep copy
             dest->atPred = OperandContext(source->atPred);
@@ -844,7 +573,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_PRAGMA: {
         if (other.statement) {
-            auto source = static_cast<const PRAGMA*>(other.statement);
+            auto source = static_cast<const PRAGMA *>(other.statement);
             auto dest = new PRAGMA();
             dest->pragmaString = source->pragmaString;
             statement = dest;
@@ -858,7 +587,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_BAR: {
         if (other.statement) {
-            auto source = static_cast<const BAR*>(other.statement);
+            auto source = static_cast<const BAR *>(other.statement);
             auto dest = new BAR();
             dest->braQualifier = source->braQualifier;
             dest->barType = source->barType;
@@ -869,7 +598,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_BRA: {
         if (other.statement) {
-            auto source = static_cast<const BRA*>(other.statement);
+            auto source = static_cast<const BRA *>(other.statement);
             auto dest = new BRA();
             dest->braQualifier = source->braQualifier;
             dest->braTarget = source->braTarget;
@@ -879,7 +608,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_RCP: {
         if (other.statement) {
-            auto source = static_cast<const RCP*>(other.statement);
+            auto source = static_cast<const RCP *>(other.statement);
             auto dest = new RCP();
             dest->rcpQualifier = source->rcpQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -891,7 +620,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_LD: {
         if (other.statement) {
-            auto source = static_cast<const LD*>(other.statement);
+            auto source = static_cast<const LD *>(other.statement);
             auto dest = new LD();
             dest->ldQualifier = source->ldQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -903,7 +632,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_MOV: {
         if (other.statement) {
-            auto source = static_cast<const MOV*>(other.statement);
+            auto source = static_cast<const MOV *>(other.statement);
             auto dest = new MOV();
             dest->movQualifier = source->movQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -915,7 +644,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_SETP: {
         if (other.statement) {
-            auto source = static_cast<const SETP*>(other.statement);
+            auto source = static_cast<const SETP *>(other.statement);
             auto dest = new SETP();
             dest->setpQualifier = source->setpQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -928,7 +657,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_CVTA: {
         if (other.statement) {
-            auto source = static_cast<const CVTA*>(other.statement);
+            auto source = static_cast<const CVTA *>(other.statement);
             auto dest = new CVTA();
             dest->cvtaQualifier = source->cvtaQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -940,7 +669,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_CVT: {
         if (other.statement) {
-            auto source = static_cast<const CVT*>(other.statement);
+            auto source = static_cast<const CVT *>(other.statement);
             auto dest = new CVT();
             dest->cvtQualifier = source->cvtQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -952,7 +681,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_MUL: {
         if (other.statement) {
-            auto source = static_cast<const MUL*>(other.statement);
+            auto source = static_cast<const MUL *>(other.statement);
             auto dest = new MUL();
             dest->mulQualifier = source->mulQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -963,9 +692,23 @@ StatementContext::StatementContext(const StatementContext &other)
         }
         break;
     }
+    case S_MUL24: {
+        if (other.statement) {
+            auto source = static_cast<const MUL24 *>(other.statement);
+            auto dest = new MUL24();
+            dest->mul24Qualifier = source->mul24Qualifier;
+            // Use OperandContext's copy constructor for deep copy
+            dest->mul24Op[0] = OperandContext(source->mul24Op[0]);
+            dest->mul24Op[1] = OperandContext(source->mul24Op[1]);
+            dest->mul24Op[2] = OperandContext(source->mul24Op[2]);
+            statement = dest;
+        }
+        break;
+    }
+
     case S_DIV: {
         if (other.statement) {
-            auto source = static_cast<const DIV*>(other.statement);
+            auto source = static_cast<const DIV *>(other.statement);
             auto dest = new DIV();
             dest->divQualifier = source->divQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -978,7 +721,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_SUB: {
         if (other.statement) {
-            auto source = static_cast<const SUB*>(other.statement);
+            auto source = static_cast<const SUB *>(other.statement);
             auto dest = new SUB();
             dest->subQualifier = source->subQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -991,7 +734,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_ADD: {
         if (other.statement) {
-            auto source = static_cast<const ADD*>(other.statement);
+            auto source = static_cast<const ADD *>(other.statement);
             auto dest = new ADD();
             dest->addQualifier = source->addQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1004,7 +747,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_SHL: {
         if (other.statement) {
-            auto source = static_cast<const SHL*>(other.statement);
+            auto source = static_cast<const SHL *>(other.statement);
             auto dest = new SHL();
             dest->shlQualifier = source->shlQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1017,7 +760,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_SHR: {
         if (other.statement) {
-            auto source = static_cast<const SHR*>(other.statement);
+            auto source = static_cast<const SHR *>(other.statement);
             auto dest = new SHR();
             dest->shrQualifier = source->shrQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1030,7 +773,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_MAX: {
         if (other.statement) {
-            auto source = static_cast<const MAX*>(other.statement);
+            auto source = static_cast<const MAX *>(other.statement);
             auto dest = new MAX();
             dest->maxQualifier = source->maxQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1043,7 +786,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_MIN: {
         if (other.statement) {
-            auto source = static_cast<const MIN*>(other.statement);
+            auto source = static_cast<const MIN *>(other.statement);
             auto dest = new MIN();
             dest->minQualifier = source->minQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1056,7 +799,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_AND: {
         if (other.statement) {
-            auto source = static_cast<const AND*>(other.statement);
+            auto source = static_cast<const AND *>(other.statement);
             auto dest = new AND();
             dest->andQualifier = source->andQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1069,7 +812,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_OR: {
         if (other.statement) {
-            auto source = static_cast<const OR*>(other.statement);
+            auto source = static_cast<const OR *>(other.statement);
             auto dest = new OR();
             dest->orQualifier = source->orQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1082,7 +825,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_ST: {
         if (other.statement) {
-            auto source = static_cast<const ST*>(other.statement);
+            auto source = static_cast<const ST *>(other.statement);
             auto dest = new ST();
             dest->stQualifier = source->stQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1094,7 +837,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_SELP: {
         if (other.statement) {
-            auto source = static_cast<const SELP*>(other.statement);
+            auto source = static_cast<const SELP *>(other.statement);
             auto dest = new SELP();
             dest->selpQualifier = source->selpQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1108,7 +851,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_MAD: {
         if (other.statement) {
-            auto source = static_cast<const MAD*>(other.statement);
+            auto source = static_cast<const MAD *>(other.statement);
             auto dest = new MAD();
             dest->madQualifier = source->madQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1120,9 +863,23 @@ StatementContext::StatementContext(const StatementContext &other)
         }
         break;
     }
+    case S_MAD24: {
+        if (other.statement) {
+            auto source = static_cast<const MAD24 *>(other.statement);
+            auto dest = new MAD24();
+            dest->mad24Qualifier = source->mad24Qualifier;
+            // Use OperandContext's copy constructor for deep copy
+            dest->mad24Op[0] = OperandContext(source->mad24Op[0]);
+            dest->mad24Op[1] = OperandContext(source->mad24Op[1]);
+            dest->mad24Op[2] = OperandContext(source->mad24Op[2]);
+            dest->mad24Op[3] = OperandContext(source->mad24Op[3]);
+            statement = dest;
+        }
+        break;
+    }
     case S_FMA: {
         if (other.statement) {
-            auto source = static_cast<const FMA*>(other.statement);
+            auto source = static_cast<const FMA *>(other.statement);
             auto dest = new FMA();
             dest->fmaQualifier = source->fmaQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1136,7 +893,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_WMMA: {
         if (other.statement) {
-            auto source = static_cast<const WMMA*>(other.statement);
+            auto source = static_cast<const WMMA *>(other.statement);
             auto dest = new WMMA();
             dest->wmmaType = source->wmmaType;
             dest->wmmaQualifier = source->wmmaQualifier;
@@ -1151,7 +908,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_NEG: {
         if (other.statement) {
-            auto source = static_cast<const NEG*>(other.statement);
+            auto source = static_cast<const NEG *>(other.statement);
             auto dest = new NEG();
             dest->negQualifier = source->negQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1163,7 +920,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_NOT: {
         if (other.statement) {
-            auto source = static_cast<const NOT*>(other.statement);
+            auto source = static_cast<const NOT *>(other.statement);
             auto dest = new NOT();
             dest->notQualifier = source->notQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1175,7 +932,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_SQRT: {
         if (other.statement) {
-            auto source = static_cast<const SQRT*>(other.statement);
+            auto source = static_cast<const SQRT *>(other.statement);
             auto dest = new SQRT();
             dest->sqrtQualifier = source->sqrtQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1187,7 +944,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_COS: {
         if (other.statement) {
-            auto source = static_cast<const COS*>(other.statement);
+            auto source = static_cast<const COS *>(other.statement);
             auto dest = new COS();
             dest->cosQualifier = source->cosQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1199,7 +956,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_LG2: {
         if (other.statement) {
-            auto source = static_cast<const LG2*>(other.statement);
+            auto source = static_cast<const LG2 *>(other.statement);
             auto dest = new LG2();
             dest->lg2Qualifier = source->lg2Qualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1211,7 +968,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_EX2: {
         if (other.statement) {
-            auto source = static_cast<const EX2*>(other.statement);
+            auto source = static_cast<const EX2 *>(other.statement);
             auto dest = new EX2();
             dest->ex2Qualifier = source->ex2Qualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1223,7 +980,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_ATOM: {
         if (other.statement) {
-            auto source = static_cast<const ATOM*>(other.statement);
+            auto source = static_cast<const ATOM *>(other.statement);
             auto dest = new ATOM();
             dest->atomQualifier = source->atomQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1238,7 +995,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_XOR: {
         if (other.statement) {
-            auto source = static_cast<const XOR*>(other.statement);
+            auto source = static_cast<const XOR *>(other.statement);
             auto dest = new XOR();
             dest->xorQualifier = source->xorQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1251,7 +1008,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_ABS: {
         if (other.statement) {
-            auto source = static_cast<const ABS*>(other.statement);
+            auto source = static_cast<const ABS *>(other.statement);
             auto dest = new ABS();
             dest->absQualifier = source->absQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1263,7 +1020,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_SIN: {
         if (other.statement) {
-            auto source = static_cast<const SIN*>(other.statement);
+            auto source = static_cast<const SIN *>(other.statement);
             auto dest = new SIN();
             dest->sinQualifier = source->sinQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1275,7 +1032,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_RSQRT: {
         if (other.statement) {
-            auto source = static_cast<const RSQRT*>(other.statement);
+            auto source = static_cast<const RSQRT *>(other.statement);
             auto dest = new RSQRT();
             dest->rsqrtQualifier = source->rsqrtQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1287,7 +1044,7 @@ StatementContext::StatementContext(const StatementContext &other)
     }
     case S_REM: {
         if (other.statement) {
-            auto source = static_cast<const REM*>(other.statement);
+            auto source = static_cast<const REM *>(other.statement);
             auto dest = new REM();
             dest->remQualifier = source->remQualifier;
             // Use OperandContext's copy constructor for deep copy
@@ -1298,6 +1055,9 @@ StatementContext::StatementContext(const StatementContext &other)
         }
         break;
     }
+
+        DEFINE_STATEMENT_COPY_CASE(S_POPC, POPC)
+        DEFINE_STATEMENT_COPY_CASE(S_CLZ, CLZ)
 
     case S_UNKNOWN: {
         // S_UNKNOWN does not need to copy anything

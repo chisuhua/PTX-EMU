@@ -8,7 +8,7 @@ void BitwiseHandler::execute(ThreadContext* context, StatementContext& stmt) {
     assert(0 && "BitwiseHandler::execute should not be called directly");
 }
 
-void AndHandler::execute(ThreadContext* context, StatementContext& stmt) {
+void AND::execute(ThreadContext* context, StatementContext& stmt) {
     auto ss = (StatementContext::AND*)stmt.statement;
     
     // 获取操作数地址
@@ -21,7 +21,7 @@ void AndHandler::execute(ThreadContext* context, StatementContext& stmt) {
                         (OperandContext::REG*)ss->andOp[0].operand);
 }
 
-void OrHandler::execute(ThreadContext* context, StatementContext& stmt) {
+void OR::execute(ThreadContext* context, StatementContext& stmt) {
     auto ss = (StatementContext::OR*)stmt.statement;
     
     // 获取操作数地址
@@ -34,7 +34,7 @@ void OrHandler::execute(ThreadContext* context, StatementContext& stmt) {
                         (OperandContext::REG*)ss->orOp[0].operand);
 }
 
-void XorHandler::execute(ThreadContext* context, StatementContext& stmt) {
+void XOR::execute(ThreadContext* context, StatementContext& stmt) {
     auto ss = (StatementContext::XOR*)stmt.statement;
     
     // 获取操作数地址
@@ -47,7 +47,7 @@ void XorHandler::execute(ThreadContext* context, StatementContext& stmt) {
                         (OperandContext::REG*)ss->xorOp[0].operand);
 }
 
-void ShlHandler::execute(ThreadContext* context, StatementContext& stmt) {
+void SHL::execute(ThreadContext* context, StatementContext& stmt) {
     auto ss = (StatementContext::SHL*)stmt.statement;
     
     // 获取操作数地址
@@ -62,7 +62,7 @@ void ShlHandler::execute(ThreadContext* context, StatementContext& stmt) {
                         (OperandContext::REG*)ss->shlOp[0].operand);
 }
 
-void ShrHandler::execute(ThreadContext* context, StatementContext& stmt) {
+void SHR::execute(ThreadContext* context, StatementContext& stmt) {
     auto ss = (StatementContext::SHR*)stmt.statement;
     
     // 获取操作数地址
@@ -77,7 +77,7 @@ void ShrHandler::execute(ThreadContext* context, StatementContext& stmt) {
                         (OperandContext::REG*)ss->shrOp[0].operand);
 }
 
-void AndHandler::process_operation(ThreadContext* context, 
+void AND::process_operation(ThreadContext* context, 
                                  void* dst, void* src1, void* src2,
                                  std::vector<Qualifier>& qualifiers) {
     // 实现AND指令的具体逻辑
@@ -101,7 +101,7 @@ void AndHandler::process_operation(ThreadContext* context,
     }
 }
 
-void OrHandler::process_operation(ThreadContext* context, 
+void OR::process_operation(ThreadContext* context, 
                                 void* dst, void* src1, void* src2,
                                 std::vector<Qualifier>& qualifiers) {
     // 实现OR指令的具体逻辑
@@ -125,7 +125,7 @@ void OrHandler::process_operation(ThreadContext* context,
     }
 }
 
-void XorHandler::process_operation(ThreadContext* context, 
+void XOR::process_operation(ThreadContext* context, 
                                  void* dst, void* src1, void* src2,
                                  std::vector<Qualifier>& qualifiers) {
     // 实现XOR指令的具体逻辑
@@ -149,7 +149,7 @@ void XorHandler::process_operation(ThreadContext* context,
     }
 }
 
-void ShlHandler::process_operation(ThreadContext* context, 
+void SHL::process_operation(ThreadContext* context, 
                                  void* dst, void* src1, void* src2,
                                  std::vector<Qualifier>& qualifiers) {
     // 获取数据类型信息
@@ -179,7 +179,7 @@ void ShlHandler::process_operation(ThreadContext* context,
     }
 }
 
-void ShrHandler::process_operation(ThreadContext* context, 
+void SHR::process_operation(ThreadContext* context, 
                                  void* dst, void* src1, void* src2,
                                  std::vector<Qualifier>& qualifiers) {
     // 获取数据类型信息

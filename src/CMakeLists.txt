@@ -24,7 +24,7 @@ add_custom_command(
     VERBATIM
 )
 
-add_custom_target(GenerateParser DEPENDS ${ANTLR4_GENERATED_SOURCES})
+add_custom_target(GenerateParser DEPENDS ${ANTLR4_GENERATED_SOURCES} ptxLexer.g4 ptxParser.g4)
 
 # 设置源文件（包含ANTLR生成的源文件）
 set(SOURCES
@@ -90,7 +90,7 @@ set_target_properties(cudart PROPERTIES
 target_link_libraries(cudart ${ANTLR4_LIBRARY} pthread)
 
 # 确保CUDA包含目录正确设置
-target_include_directories(cudart PRIVATE ${CUDA_PATH}/include)
+target_include_directories(cudart PRIVATE ${CUDA_PATH}/include ${CUDAToolkit_INCLUDE_DIRS})
 
 # 创建版本脚本
 configure_file(

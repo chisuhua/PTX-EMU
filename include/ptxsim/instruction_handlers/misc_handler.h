@@ -11,7 +11,7 @@
 #include <vector>
 
 // MOV指令处理器
-class MovHandler : public InstructionHandler {
+class MOV : public InstructionHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
 
@@ -22,7 +22,7 @@ protected:
 };
 
 // SETP指令处理器
-class SetpHandler : public InstructionHandler {
+class SETP : public InstructionHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
 
@@ -33,7 +33,7 @@ protected:
 };
 
 // ABS指令处理器
-class AbsHandler : public InstructionHandler {
+class ABS : public InstructionHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
 
@@ -43,7 +43,7 @@ protected:
 };
 
 // MIN指令处理器
-class MinHandler : public InstructionHandler {
+class MIN : public InstructionHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
 
@@ -54,7 +54,7 @@ protected:
 };
 
 // MAX指令处理器
-class MaxHandler : public InstructionHandler {
+class MAX : public InstructionHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
 
@@ -65,7 +65,7 @@ protected:
 };
 
 // RCP指令处理器
-class RcpHandler : public InstructionHandler {
+class RCP : public InstructionHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
 
@@ -75,7 +75,7 @@ protected:
 };
 
 // NEG指令处理器
-class NegHandler : public InstructionHandler {
+class NEG : public InstructionHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
 

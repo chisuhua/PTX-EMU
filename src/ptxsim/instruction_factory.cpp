@@ -33,60 +33,64 @@ void InstructionFactory::register_handler(
 
 void InstructionFactory::initialize() {
     // 注册算术运算指令处理器
-    REGISTER_HANDLER(StatementType::S_ADD, AddHandler);
-    REGISTER_HANDLER(StatementType::S_SUB, SubHandler);
-    REGISTER_HANDLER(StatementType::S_MUL, MulHandler);
-    REGISTER_HANDLER(StatementType::S_DIV, DivHandler);
-    REGISTER_HANDLER(StatementType::S_REM, RemHandler);
-    REGISTER_HANDLER(StatementType::S_MIN, MinHandler);
-    REGISTER_HANDLER(StatementType::S_MAX, MaxHandler);
-    REGISTER_HANDLER(StatementType::S_NEG, NegHandler);
-    REGISTER_HANDLER(StatementType::S_ABS, AbsHandler);
-    REGISTER_HANDLER(StatementType::S_MAD, MadHandler);
-    REGISTER_HANDLER(StatementType::S_FMA, FmaHandler);
+    REGISTER_HANDLER(StatementType::S_ADD, ADD);
+    REGISTER_HANDLER(StatementType::S_SUB, SUB);
+    REGISTER_HANDLER(StatementType::S_MUL, MUL);
+    REGISTER_HANDLER(StatementType::S_MUL24, MUL24);
+    REGISTER_HANDLER(StatementType::S_DIV, DIV);
+    REGISTER_HANDLER(StatementType::S_REM, REM);
+    REGISTER_HANDLER(StatementType::S_MIN, MIN);
+    REGISTER_HANDLER(StatementType::S_MAX, MAX);
+    REGISTER_HANDLER(StatementType::S_NEG, NEG);
+    REGISTER_HANDLER(StatementType::S_ABS, ABS);
+    REGISTER_HANDLER(StatementType::S_MAD, MAD);
+    REGISTER_HANDLER(StatementType::S_FMA, FMA);
 
     // 注册位运算指令处理器
-    REGISTER_HANDLER(StatementType::S_AND, AndHandler);
-    REGISTER_HANDLER(StatementType::S_OR, OrHandler);
-    REGISTER_HANDLER(StatementType::S_XOR, XorHandler);
-    REGISTER_HANDLER(StatementType::S_NOT, NotHandler);
-    REGISTER_HANDLER(StatementType::S_SHL, ShlHandler);
-    REGISTER_HANDLER(StatementType::S_SHR, ShrHandler);
+    REGISTER_HANDLER(StatementType::S_AND, AND);
+    REGISTER_HANDLER(StatementType::S_OR, OR);
+    REGISTER_HANDLER(StatementType::S_XOR, XOR);
+    REGISTER_HANDLER(StatementType::S_NOT, NOT);
+    REGISTER_HANDLER(StatementType::S_SHL, SHL);
+    REGISTER_HANDLER(StatementType::S_SHR, SHR);
 
     // 注册内存操作指令处理器
-    REGISTER_HANDLER(StatementType::S_LD, LdHandler);
-    REGISTER_HANDLER(StatementType::S_ST, StHandler);
-    REGISTER_HANDLER(StatementType::S_MOV, MovHandler);
-    REGISTER_HANDLER(StatementType::S_CVT, CvtHandler);
-    REGISTER_HANDLER(StatementType::S_CVTA, CvtaHandler);
+    REGISTER_HANDLER(StatementType::S_LD, LD);
+    REGISTER_HANDLER(StatementType::S_ST, ST);
+    REGISTER_HANDLER(StatementType::S_MOV, MOV);
+    REGISTER_HANDLER(StatementType::S_CVT, CVT);
+    REGISTER_HANDLER(StatementType::S_CVTA, CVTA);
 
     // 注册控制流指令处理器
-    REGISTER_HANDLER(StatementType::S_BRA, BraHandler);
-    REGISTER_HANDLER(StatementType::S_RET, RetHandler);
-    REGISTER_HANDLER(StatementType::S_BAR, BarHandler);
-    REGISTER_HANDLER(StatementType::S_SETP, SetpHandler);
-    REGISTER_HANDLER(StatementType::S_SELP, SelpHandler);
+    REGISTER_HANDLER(StatementType::S_BRA, BRA);
+    REGISTER_HANDLER(StatementType::S_RET, RET);
+
+    // 注册同步指令处理器
+    REGISTER_HANDLER(StatementType::S_BAR, BAR);
+
+    REGISTER_HANDLER(StatementType::S_SETP, SETP);
+    REGISTER_HANDLER(StatementType::S_SELP, SELP);
 
     // 注册数学函数指令处理器
-    REGISTER_HANDLER(StatementType::S_SIN, SinHandler);
-    REGISTER_HANDLER(StatementType::S_COS, CosHandler);
-    REGISTER_HANDLER(StatementType::S_LG2, Lg2Handler);
-    REGISTER_HANDLER(StatementType::S_EX2, Ex2Handler);
-    REGISTER_HANDLER(StatementType::S_RCP, RcpHandler);
-    REGISTER_HANDLER(StatementType::S_RSQRT, RsqrtHandler);
-    REGISTER_HANDLER(StatementType::S_SQRT, SqrtHandler);
+    REGISTER_HANDLER(StatementType::S_SIN, SIN);
+    REGISTER_HANDLER(StatementType::S_COS, COS);
+    REGISTER_HANDLER(StatementType::S_LG2, LG2);
+    REGISTER_HANDLER(StatementType::S_EX2, EX2);
+    REGISTER_HANDLER(StatementType::S_RCP, RCP);
+    REGISTER_HANDLER(StatementType::S_RSQRT, RSQRT);
+    REGISTER_HANDLER(StatementType::S_SQRT, SQRT);
 
     // 注册特殊指令处理器
-    REGISTER_HANDLER(StatementType::S_ATOM, AtomHandler);
-    REGISTER_HANDLER(StatementType::S_PRAGMA, PragmaHandler);
-    REGISTER_HANDLER(StatementType::S_AT, AtHandler);
+    REGISTER_HANDLER(StatementType::S_ATOM, ATOM);
+    REGISTER_HANDLER(StatementType::S_PRAGMA, PRAGMA);
+    REGISTER_HANDLER(StatementType::S_AT, AT);
 
     // 注册其他指令处理器
-    REGISTER_HANDLER(StatementType::S_WMMA, WmmaHandler);
+    REGISTER_HANDLER(StatementType::S_WMMA, WMMA);
 
     // 注册基础结构指令处理器
-    REGISTER_HANDLER(StatementType::S_REG, RegHandler);
-    REGISTER_HANDLER(StatementType::S_SHARED, SharedHandler);
-    REGISTER_HANDLER(StatementType::S_LOCAL, LocalHandler);
-    REGISTER_HANDLER(StatementType::S_DOLLOR, DollorHandler);
+    REGISTER_HANDLER(StatementType::S_REG, REG);
+    REGISTER_HANDLER(StatementType::S_SHARED, SHARED);
+    REGISTER_HANDLER(StatementType::S_LOCAL, LOCAL);
+    REGISTER_HANDLER(StatementType::S_DOLLOR, DOLLOR);
 }

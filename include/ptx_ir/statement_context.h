@@ -97,6 +97,11 @@ public:
         OperandContext mulOp[3];
     };
 
+    struct MUL24 {
+        std::vector<Qualifier> mul24Qualifier;
+        OperandContext mul24Op[3];
+    };
+
     struct DIV {
         std::vector<Qualifier> divQualifier;
         OperandContext divOp[3];
@@ -155,6 +160,11 @@ public:
     struct MAD {
         std::vector<Qualifier> madQualifier;
         OperandContext madOp[4];
+    };
+
+    struct MAD24 {
+        std::vector<Qualifier> mad24Qualifier;
+        OperandContext mad24Op[4];
     };
 
     struct FMA {
@@ -223,6 +233,16 @@ public:
         std::vector<Qualifier> rsqrtQualifier;
         OperandContext rsqrtOp[2];
     };
+
+#define DEFINE_STATEMENT_STRUCT(Name, OpCount)                                 \
+    struct Name {                                                              \
+        static constexpr int op_count = OpCount;                               \
+        std::vector<Qualifier> qualifier;                                      \
+        OperandContext op[OpCount];                                            \
+    }
+
+    DEFINE_STATEMENT_STRUCT(POPC, 2);
+    DEFINE_STATEMENT_STRUCT(CLZ, 2);
 
     struct REM {
         std::vector<Qualifier> remQualifier;

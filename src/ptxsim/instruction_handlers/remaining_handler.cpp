@@ -5,7 +5,7 @@
 #include <cmath>
 #include <cstring>
 
-void CvtHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void CVT::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::CVT *)stmt.statement;
 
     // 获取操作数地址
@@ -17,7 +17,7 @@ void CvtHandler::execute(ThreadContext *context, StatementContext &stmt) {
                         (OperandContext::REG *)ss->cvtOp[0].operand);
 }
 
-void CvtHandler::process_operation(ThreadContext *context, void *dst, void *src,
+void CVT::process_operation(ThreadContext *context, void *dst, void *src,
                                    std::vector<Qualifier> &qualifiers) {
     // 分离目标和源限定符
     std::vector<Qualifier> dst_qualifiers, src_qualifiers;
@@ -313,7 +313,7 @@ void CvtHandler::process_operation(ThreadContext *context, void *dst, void *src,
     }
 }
 
-void CvtaHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void CVTA::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::CVTA *)stmt.statement;
 
     // 获取操作数地址
@@ -334,7 +334,7 @@ void CvtaHandler::execute(ThreadContext *context, StatementContext &stmt) {
     }
 }
 
-void SelpHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void SELP::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::SELP *)stmt.statement;
 
     // 获取操作数地址
@@ -348,7 +348,7 @@ void SelpHandler::execute(ThreadContext *context, StatementContext &stmt) {
                         (OperandContext::REG *)ss->selpOp[0].operand);
 }
 
-void SelpHandler::process_operation(ThreadContext *context, void *dst,
+void SELP::process_operation(ThreadContext *context, void *dst,
                                     void *src1, void *src2, void *pred,
                                     std::vector<Qualifier> &qualifiers) {
     int bytes = TypeUtils::get_bytes(qualifiers);
@@ -358,26 +358,26 @@ void SelpHandler::process_operation(ThreadContext *context, void *dst,
     std::memcpy(dst, selected, bytes);
 }
 
-void NotHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void NOT::execute(ThreadContext *context, StatementContext &stmt) {
     // TODO: 实现NOT指令
 }
 
-void RemHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void REM::execute(ThreadContext *context, StatementContext &stmt) {
     // TODO: 实现REM指令
 }
 
-void RsqrtHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void RSQRT::execute(ThreadContext *context, StatementContext &stmt) {
     // TODO: 实现RSQRT指令
 }
 
-void Lg2Handler::execute(ThreadContext *context, StatementContext &stmt) {
+void LG2::execute(ThreadContext *context, StatementContext &stmt) {
     // TODO: 实现LG2指令
 }
 
-void Ex2Handler::execute(ThreadContext *context, StatementContext &stmt) {
+void EX2::execute(ThreadContext *context, StatementContext &stmt) {
     // TODO: 实现EX2指令
 }
 
-void WmmaHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void WMMA::execute(ThreadContext *context, StatementContext &stmt) {
     // TODO: 实现WMMA指令
 }

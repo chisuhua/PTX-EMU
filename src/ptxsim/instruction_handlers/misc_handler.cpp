@@ -9,7 +9,7 @@
 #include <cassert>
 #include <cmath>
 
-void MovHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void MOV::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::MOV *)stmt.statement;
 
     // 获取操作数地址
@@ -22,13 +22,13 @@ void MovHandler::execute(ThreadContext *context, StatementContext &stmt) {
                         (OperandContext::REG *)ss->movOp[0].operand);
 }
 
-void MovHandler::process_operation(ThreadContext *context, void *dst, void *src,
+void MOV::process_operation(ThreadContext *context, void *dst, void *src,
                                    std::vector<Qualifier> &qualifiers) {
     // 执行MOV操作
     context->mov(src, dst, qualifiers);
 }
 
-void SetpHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void SETP::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::SETP *)stmt.statement;
 
     // 获取操作数地址
@@ -41,7 +41,7 @@ void SetpHandler::execute(ThreadContext *context, StatementContext &stmt) {
                         (OperandContext::REG *)ss->setpOp[0].operand);
 }
 
-void SetpHandler::process_operation(ThreadContext *context, void *dst,
+void SETP::process_operation(ThreadContext *context, void *dst,
                                     void *src1, void *src2,
                                     std::vector<Qualifier> &qualifiers) {
     // 获取比较操作符
@@ -54,7 +54,7 @@ void SetpHandler::process_operation(ThreadContext *context, void *dst,
     *static_cast<uint8_t *>(dst) = result;
 }
 
-void AbsHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void ABS::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::ABS *)stmt.statement;
 
     // 获取操作数地址
@@ -66,7 +66,7 @@ void AbsHandler::execute(ThreadContext *context, StatementContext &stmt) {
                         (OperandContext::REG *)ss->absOp[0].operand);
 }
 
-void AbsHandler::process_operation(ThreadContext *context, void *dst, void *src,
+void ABS::process_operation(ThreadContext *context, void *dst, void *src,
                                    std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = TypeUtils::get_bytes(qualifiers);
@@ -117,7 +117,7 @@ void AbsHandler::process_operation(ThreadContext *context, void *dst, void *src,
     }
 }
 
-void MinHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void MIN::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::MIN *)stmt.statement;
 
     // 获取操作数地址
@@ -130,7 +130,7 @@ void MinHandler::execute(ThreadContext *context, StatementContext &stmt) {
                         (OperandContext::REG *)ss->minOp[0].operand);
 }
 
-void MinHandler::process_operation(ThreadContext *context, void *dst,
+void MIN::process_operation(ThreadContext *context, void *dst,
                                    void *src1, void *src2,
                                    std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
@@ -176,7 +176,7 @@ void MinHandler::process_operation(ThreadContext *context, void *dst,
     }
 }
 
-void MaxHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void MAX::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::MAX *)stmt.statement;
 
     // 获取操作数地址
@@ -189,7 +189,7 @@ void MaxHandler::execute(ThreadContext *context, StatementContext &stmt) {
                         (OperandContext::REG *)ss->maxOp[0].operand);
 }
 
-void MaxHandler::process_operation(ThreadContext *context, void *dst,
+void MAX::process_operation(ThreadContext *context, void *dst,
                                    void *src1, void *src2,
                                    std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
@@ -235,7 +235,7 @@ void MaxHandler::process_operation(ThreadContext *context, void *dst,
     }
 }
 
-void RcpHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void RCP::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::RCP *)stmt.statement;
 
     // 获取操作数地址
@@ -247,7 +247,7 @@ void RcpHandler::execute(ThreadContext *context, StatementContext &stmt) {
                         (OperandContext::REG *)ss->rcpOp[0].operand);
 }
 
-void RcpHandler::process_operation(ThreadContext *context, void *dst, void *src,
+void RCP::process_operation(ThreadContext *context, void *dst, void *src,
                                    std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = TypeUtils::get_bytes(qualifiers);
@@ -273,7 +273,7 @@ void RcpHandler::process_operation(ThreadContext *context, void *dst, void *src,
     }
 }
 
-void NegHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void NEG::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::NEG *)stmt.statement;
 
     // 获取操作数地址
@@ -285,7 +285,7 @@ void NegHandler::execute(ThreadContext *context, StatementContext &stmt) {
                         (OperandContext::REG *)ss->negOp[0].operand);
 }
 
-void NegHandler::process_operation(ThreadContext *context, void *dst, void *src,
+void NEG::process_operation(ThreadContext *context, void *dst, void *src,
                                    std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = TypeUtils::get_bytes(qualifiers);

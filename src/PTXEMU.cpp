@@ -42,7 +42,7 @@ std::map<uint64_t, bool> memAlloc;
 // 调试配置文件路径
 static const char *DEBUG_CONFIG_FILE = "ptx_debug.conf";
 
-#define LOGEMU 0
+// #define LOGEMU 0
 
 // 初始化调试环境
 void initialize_debug_environment() {
@@ -137,6 +137,10 @@ void **__cudaRegisterFatBinary(void *fatCubin) {
         parser.addParseListener(&ptxListener);
         tree::ParseTree *tree = parser.ast();
     }
+#ifdef LOGEMU
+    printf("EMU: call_end %s\n", __my_func__);
+    ptxListener.test_semantic();
+#endif
     return nullptr;
 }
 
@@ -158,6 +162,7 @@ void __cudaRegisterFunction(void **fatCubinHandle, const char *hostFun,
 void __cudaRegisterFatBinaryEnd(void **fatCubinHandle) {
 #ifdef LOGEMU
     printf("EMU: call %s\n", __my_func__);
+    ptxListener.test_semantic();
 #endif
 }
 
@@ -269,19 +274,19 @@ cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim, dim3 blockDim,
                              cudaStream_t stream // temporily ignore stream
 ) {
 #ifdef LOGEMU
-    ptxListener.test_semantic();
     printf("EMU: call %s\n", __my_func__);
-    printf("EMU: deviceFunName %s\n", func2name[(uint64_t)func].c_str());
     printf("EMU: func %p\n", func);
     printf("EMU: arg %p\n", args);
 #endif
+    printf("EMU: deviceFunName %s\n", func2name[(uint64_t)func].c_str());
+    printf("EMU: gridDim(%d,%d,%d)\n", gridDim.x, gridDim.y, gridDim.z);
+    printf("EMU: blockDim(%d,%d,%d)\n", blockDim.x, blockDim.y, blockDim.z);
 
     Dim3 gridDim3(gridDim.x, gridDim.y, gridDim.z);
     Dim3 blockDim3(blockDim.x, blockDim.y, blockDim.z);
     ptxInterpreter.launchPtxInterpreter(ptxListener.ptxContext,
                                         func2name[(uint64_t)func], args,
-                                        gridDim3,
-                                        blockDim3);
+                                        gridDim3, blockDim3);
 
     return cudaSuccess;
 }

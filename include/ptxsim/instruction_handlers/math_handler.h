@@ -8,19 +8,19 @@
 #include <cmath>
 
 // SQRT指令处理器
-class SqrtHandler : public InstructionHandler {
+class SQRT : public InstructionHandler {
 public:
     void execute(ThreadContext* context, StatementContext& stmt) override;
 };
 
 // SIN指令处理器
-class SinHandler : public InstructionHandler {
+class SIN : public InstructionHandler {
 public:
     void execute(ThreadContext* context, StatementContext& stmt) override;
 };
 
 // COS指令处理器
-class CosHandler : public InstructionHandler {
+class COS : public InstructionHandler {
 public:
     void execute(ThreadContext* context, StatementContext& stmt) override;
 };

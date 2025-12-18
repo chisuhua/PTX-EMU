@@ -1,5 +1,6 @@
 #include "ptx_parser/ptx_parser.h"
 #include "ptx_ir/ptx_types.h"
+#include "utils/logger.h"
 #include <cassert>
 #include <cstdio>
 #include <queue>
@@ -859,6 +860,33 @@ void PtxListener::exitMulStatement(ptxParser::MulStatementContext *ctx) {
 #endif
 }
 
+void PtxListener::enterMul24Statement(ptxParser::Mul24StatementContext *ctx) {
+    statement = new StatementContext::MUL24();
+#ifdef LOG
+    std::cout << __func__ << std::endl;
+#endif
+}
+void PtxListener::exitMul24Statement(ptxParser::Mul24StatementContext *ctx) {
+    auto st = (StatementContext::MUL24 *)statement;
+
+    /* qualifier */
+    while (qualifier.size()) {
+        st->mul24Qualifier.push_back(qualifier.front());
+        qualifier.pop();
+    }
+
+    /* op3 */
+    for (int i = 0; i < 3; i++) {
+        fetchOperand(st->mul24Op[i]);
+    }
+
+    /* end */
+    statementType = S_MUL24;
+#ifdef LOG
+    std::cout << __func__ << std::endl;
+#endif
+}
+
 void PtxListener::enterDivStatement(ptxParser::DivStatementContext *ctx) {
     statement = new StatementContext::DIV();
 #ifdef LOG
@@ -1178,6 +1206,33 @@ void PtxListener::exitMadStatement(ptxParser::MadStatementContext *ctx) {
 
     /* end */
     statementType = S_MAD;
+#ifdef LOG
+    std::cout << __func__ << std::endl;
+#endif
+}
+
+void PtxListener::enterMad24Statement(ptxParser::Mad24StatementContext *ctx) {
+    statement = new StatementContext::MAD24();
+#ifdef LOG
+    std::cout << __func__ << std::endl;
+#endif
+}
+void PtxListener::exitMad24Statement(ptxParser::Mad24StatementContext *ctx) {
+    auto st = (StatementContext::MAD24 *)statement;
+
+    /* qualifier */
+    while (qualifier.size()) {
+        st->mad24Qualifier.push_back(qualifier.front());
+        qualifier.pop();
+    }
+
+    /* op4 */
+    for (int i = 0; i < 4; i++) {
+        fetchOperand(st->mad24Op[i]);
+    }
+
+    /* end */
+    statementType = S_MAD24;
 #ifdef LOG
     std::cout << __func__ << std::endl;
 #endif
@@ -1626,7 +1681,7 @@ void PtxListener::exitVector(ptxParser::VectorContext *ctx) {
         oc.operandType = O_REG;
         oc.operand = new OperandContext::REG();
         auto r = (OperandContext::REG *)oc.operand;
-        
+
         // 获取完整的寄存器名称，包括可能的点号部分
         std::string regName = "";
         auto ids = ctx->regi(i)->ID();
@@ -1665,7 +1720,7 @@ void PtxListener::exitFetchAddress(ptxParser::FetchAddressContext *ctx) {
         // assume base not require regMinorName
         fa->reg = new OperandContext();
         OperandContext::REG *r = new OperandContext::REG();
-        
+
         // 获取完整的寄存器名称，包括可能的点号部分
         std::string regName = "";
         auto ids = ctx->regi()->ID();
@@ -1732,3 +1787,32 @@ void PtxListener::exitVar(ptxParser::VarContext *ctx) {
     std::cout << __func__ << std::endl;
 #endif
 }
+#define DEFINE_PTX_STATEMENT_HANDLER(StmtName, EnumName)                       \
+    void PtxListener::enter##StmtName##Statement(                              \
+        ptxParser::StmtName##StatementContext *ctx) {                          \
+        statement = new StatementContext::EnumName();                          \
+        LOG_FUNC();                                                            \
+    }                                                                          \
+                                                                               \
+    void PtxListener::exit##StmtName##Statement(                               \
+        ptxParser::StmtName##StatementContext *ctx) {                          \
+        auto st = static_cast<StatementContext::EnumName *>(statement);        \
+                                                                               \
+        /* qualifier */                                                        \
+        while (!qualifier.empty()) {                                           \
+            st->qualifier.push_back(qualifier.front());                        \
+            qualifier.pop();                                                   \
+        }                                                                      \
+                                                                               \
+        /* op2 */                                                              \
+        for (int i = 0; i < st->op_count; ++i) {                               \
+            fetchOperand(st->op[i]);                                           \
+        }                                                                      \
+                                                                               \
+        /* end */                                                              \
+        statementType = S_##EnumName;                                          \
+        LOG_FUNC();                                                            \
+    }
+
+DEFINE_PTX_STATEMENT_HANDLER(Popc, POPC)
+DEFINE_PTX_STATEMENT_HANDLER(Clz, CLZ)

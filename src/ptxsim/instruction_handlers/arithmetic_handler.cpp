@@ -4,7 +4,7 @@
 #include "ptxsim/utils/type_utils.h"
 #include <cmath>
 
-void AddHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void ADD::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::ADD *)stmt.statement;
 
     // 获取操作数地址
@@ -17,9 +17,8 @@ void AddHandler::execute(ThreadContext *context, StatementContext &stmt) {
                         (OperandContext::REG *)ss->addOp[0].operand);
 }
 
-void AddHandler::process_operation(ThreadContext *context, void *dst,
-                                   void *src1, void *src2,
-                                   std::vector<Qualifier> &qualifiers) {
+void ADD::process_operation(ThreadContext *context, void *dst, void *src1,
+                            void *src2, std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = TypeUtils::get_bytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
@@ -64,7 +63,7 @@ void AddHandler::process_operation(ThreadContext *context, void *dst,
     }
 }
 
-void SubHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void SUB::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::SUB *)stmt.statement;
 
     // 获取操作数地址
@@ -77,9 +76,8 @@ void SubHandler::execute(ThreadContext *context, StatementContext &stmt) {
                         (OperandContext::REG *)ss->subOp[0].operand);
 }
 
-void SubHandler::process_operation(ThreadContext *context, void *dst,
-                                   void *src1, void *src2,
-                                   std::vector<Qualifier> &qualifiers) {
+void SUB::process_operation(ThreadContext *context, void *dst, void *src1,
+                            void *src2, std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = TypeUtils::get_bytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
@@ -124,7 +122,7 @@ void SubHandler::process_operation(ThreadContext *context, void *dst,
     }
 }
 
-void MulHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void MUL::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::MUL *)stmt.statement;
 
     // 获取操作数地址
@@ -143,14 +141,14 @@ inline float f16_to_f32(uint16_t h) {
     uint32_t exp = (static_cast<uint32_t>(h) >> 10) & 0x1F;
     uint32_t mant = h & 0x3FF;
     uint32_t f32;
-    
+
     if (exp == 0x1F) {
         // Infinity or NaN
         f32 = (sign << 31) | (0xFFU << 23) | (mant << 13);
     } else {
         f32 = (sign << 31) | ((exp + 112) << 23) | (mant << 13);
     }
-    
+
     float res;
     std::memcpy(&res, &f32, 4);
     return res;
@@ -160,11 +158,11 @@ inline float f16_to_f32(uint16_t h) {
 inline uint16_t f32_to_f16(float f) {
     uint32_t f32;
     std::memcpy(&f32, &f, 4);
-    
+
     uint32_t sign = (f32 >> 31) & 1;
     uint32_t exp = (f32 >> 23) & 0xFF;
     uint32_t mant = f32 & 0x7FFFFF;
-    
+
     uint16_t h;
     if (exp == 0xFF) {
         // Infinity or NaN
@@ -181,18 +179,17 @@ inline uint16_t f32_to_f16(float f) {
             h = (sign << 15) | (new_exp << 10) | (mant >> 13);
         }
     }
-    
+
     return h;
 }
 
-void MulHandler::process_operation(ThreadContext *context, void *dst,
-                                   void *src1, void *src2,
-                                   std::vector<Qualifier> &qualifiers) {
+void MUL::process_operation(ThreadContext *context, void *dst, void *src1,
+                            void *src2, std::vector<Qualifier> &qualifiers) {
     // === 解析类型和修饰符 ===
     int bytes = TypeUtils::get_bytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
-    
+
     // 检查修饰符
     bool has_wide = context->QvecHasQ(qualifiers, Qualifier::Q_WIDE);
     bool has_hi = context->QvecHasQ(qualifiers, Qualifier::Q_HI);
@@ -232,71 +229,78 @@ void MulHandler::process_operation(ThreadContext *context, void *dst,
     int64_t s1 = 0, s2 = 0;
 
     switch (bytes) {
-        case 1: {
-            if (is_signed) {
-                int8_t a, b;
-                std::memcpy(&a, src1, 1);
-                std::memcpy(&b, src2, 1);
-                s1 = a; s2 = b;
-            } else {
-                uint8_t a, b;
-                std::memcpy(&a, src1, 1);
-                std::memcpy(&b, src2, 1);
-                u1 = a; u2 = b;
-            }
-            break;
+    case 1: {
+        if (is_signed) {
+            int8_t a, b;
+            std::memcpy(&a, src1, 1);
+            std::memcpy(&b, src2, 1);
+            s1 = a;
+            s2 = b;
+        } else {
+            uint8_t a, b;
+            std::memcpy(&a, src1, 1);
+            std::memcpy(&b, src2, 1);
+            u1 = a;
+            u2 = b;
         }
-        case 2: {
-            if (is_signed) {
-                int16_t a, b;
-                std::memcpy(&a, src1, 2);
-                std::memcpy(&b, src2, 2);
-                s1 = a; s2 = b;
-            } else {
-                uint16_t a, b;
-                std::memcpy(&a, src1, 2);
-                std::memcpy(&b, src2, 2);
-                u1 = a; u2 = b;
-            }
-            break;
+        break;
+    }
+    case 2: {
+        if (is_signed) {
+            int16_t a, b;
+            std::memcpy(&a, src1, 2);
+            std::memcpy(&b, src2, 2);
+            s1 = a;
+            s2 = b;
+        } else {
+            uint16_t a, b;
+            std::memcpy(&a, src1, 2);
+            std::memcpy(&b, src2, 2);
+            u1 = a;
+            u2 = b;
         }
-        case 4: {
-            if (is_signed) {
-                int32_t a, b;
-                std::memcpy(&a, src1, 4);
-                std::memcpy(&b, src2, 4);
-                s1 = a; s2 = b;
-            } else {
-                uint32_t a, b;
-                std::memcpy(&a, src1, 4);
-                std::memcpy(&b, src2, 4);
-                u1 = a; u2 = b;
-            }
-            break;
+        break;
+    }
+    case 4: {
+        if (is_signed) {
+            int32_t a, b;
+            std::memcpy(&a, src1, 4);
+            std::memcpy(&b, src2, 4);
+            s1 = a;
+            s2 = b;
+        } else {
+            uint32_t a, b;
+            std::memcpy(&a, src1, 4);
+            std::memcpy(&b, src2, 4);
+            u1 = a;
+            u2 = b;
         }
-        case 8: {
-            if (is_signed) {
-                int64_t a, b;
-                std::memcpy(&a, src1, 8);
-                std::memcpy(&b, src2, 8);
-                s1 = a; s2 = b;
-            } else {
-                uint64_t a, b;
-                std::memcpy(&a, src1, 8);
-                std::memcpy(&b, src2, 8);
-                u1 = a; u2 = b;
-            }
-            break;
+        break;
+    }
+    case 8: {
+        if (is_signed) {
+            int64_t a, b;
+            std::memcpy(&a, src1, 8);
+            std::memcpy(&b, src2, 8);
+            s1 = a;
+            s2 = b;
+        } else {
+            uint64_t a, b;
+            std::memcpy(&a, src1, 8);
+            std::memcpy(&b, src2, 8);
+            u1 = a;
+            u2 = b;
         }
+        break;
+    }
     }
 
     // === 执行乘法 ===
     if (has_wide) {
         // wide: 结果宽度 = 2 * src_width
-        uint64_t result = (is_signed) 
-            ? static_cast<uint64_t>(s1 * s2) 
-            : (u1 * u2);
-        
+        uint64_t result =
+            (is_signed) ? static_cast<uint64_t>(s1 * s2) : (u1 * u2);
+
         size_t dst_size = 2 * bytes;
         std::memcpy(dst, &result, dst_size);
 
@@ -310,23 +314,77 @@ void MulHandler::process_operation(ThreadContext *context, void *dst,
             full = u1 * u2;
         }
 
-        uint64_t hi = (bytes == 4) ? (full >> 32) : 
-                      (bytes == 2) ? (full >> 16) :
-                      (bytes == 1) ? (full >> 8)  : 0;
-        
+        uint64_t hi = (bytes == 4)   ? (full >> 32)
+                      : (bytes == 2) ? (full >> 16)
+                      : (bytes == 1) ? (full >> 8)
+                                     : 0;
+
         std::memcpy(dst, &hi, bytes);
 
     } else { // Q_LO or Q_NONE
         // lo: 取低半部分（普通乘法）
-        uint64_t full = (is_signed) 
-            ? static_cast<uint64_t>(s1 * s2) 
-            : (u1 * u2);
-        
+        uint64_t full =
+            (is_signed) ? static_cast<uint64_t>(s1 * s2) : (u1 * u2);
+
         std::memcpy(dst, &full, bytes);
     }
 }
 
-void DivHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void MUL24::execute(ThreadContext *context, StatementContext &stmt) {
+    auto ss = (StatementContext::MUL24 *)stmt.statement;
+
+    // 获取操作数地址
+    void *to = context->get_operand_addr(ss->mul24Op[0], ss->mul24Qualifier);
+    void *op1 = context->get_operand_addr(ss->mul24Op[1], ss->mul24Qualifier);
+    void *op2 = context->get_operand_addr(ss->mul24Op[2], ss->mul24Qualifier);
+
+    // 执行MUL24操作
+    PROCESS_OPERATION_3(context, to, op1, op2, ss->mul24Qualifier,
+                        (OperandContext::REG *)ss->mul24Op[0].operand);
+}
+
+void MUL24::process_operation(ThreadContext *context, void *dst, void *src1,
+                              void *src2, std::vector<Qualifier> &qualifiers) {
+    // 获取数据类型信息
+    int bytes = TypeUtils::get_bytes(qualifiers);
+    bool is_signed = TypeUtils::is_signed_type(qualifiers);
+
+    // 检查修饰符
+    bool has_hi = context->QvecHasQ(qualifiers, Qualifier::Q_HI);
+    bool has_lo = context->QvecHasQ(qualifiers, Qualifier::Q_LO);
+
+    // MUL24指令处理32位操作数，但只使用其中的24位（最低有效位）
+    // 结果是48位，根据修饰符选择高32位或低32位
+    if (bytes == 4) { // 仅支持32位操作数 (.u32 或 .s32)
+        uint32_t a, b;
+        std::memcpy(&a, src1, 4);
+        std::memcpy(&b, src2, 4);
+
+        // 只保留操作数的低24位
+        uint32_t a24 = a & 0xFFFFFF;
+        uint32_t b24 = b & 0xFFFFFF;
+
+        // 执行24位乘法，得到48位结果
+        uint64_t result =
+            static_cast<uint64_t>(a24) * static_cast<uint64_t>(b24);
+
+        // 根据修饰符选择结果的哪一部分
+        if (has_hi) {
+            // 取高32位 (47..16)
+            uint32_t hi_part = (result >> 16) & 0xFFFFFFFF;
+            std::memcpy(dst, &hi_part, 4);
+        } else {
+            // 默认或LO模式：取低32位 (31..0)
+            uint32_t lo_part = result & 0xFFFFFFFF;
+            std::memcpy(dst, &lo_part, 4);
+        }
+    } else {
+        // 不支持的数据大小
+        assert(0 && "MUL24 only supports 32-bit operands (.u32 or .s32)");
+    }
+}
+
+void DIV::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::DIV *)stmt.statement;
 
     // 获取操作数地址
@@ -339,9 +397,8 @@ void DivHandler::execute(ThreadContext *context, StatementContext &stmt) {
                         (OperandContext::REG *)ss->divOp[0].operand);
 }
 
-void DivHandler::process_operation(ThreadContext *context, void *dst,
-                                   void *src1, void *src2,
-                                   std::vector<Qualifier> &qualifiers) {
+void DIV::process_operation(ThreadContext *context, void *dst, void *src1,
+                            void *src2, std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = TypeUtils::get_bytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
@@ -386,7 +443,7 @@ void DivHandler::process_operation(ThreadContext *context, void *dst,
     }
 }
 
-void MadHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void MAD::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::MAD *)stmt.statement;
 
     // 获取操作数地址
@@ -400,14 +457,14 @@ void MadHandler::execute(ThreadContext *context, StatementContext &stmt) {
                         (OperandContext::REG *)ss->madOp[0].operand);
 }
 
-void MadHandler::process_operation(ThreadContext *context, void *dst,
-                                   void *src1, void *src2, void *src3,
-                                   std::vector<Qualifier> &qualifiers) {
+void MAD::process_operation(ThreadContext *context, void *dst, void *src1,
+                            void *src2, void *src3,
+                            std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = TypeUtils::get_bytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
-    
+
     // 检查修饰符
     bool has_wide = context->QvecHasQ(qualifiers, Qualifier::Q_WIDE);
     bool has_hi = context->QvecHasQ(qualifiers, Qualifier::Q_HI);
@@ -452,90 +509,107 @@ void MadHandler::process_operation(ThreadContext *context, void *dst,
     int64_t s1 = 0, s2 = 0, s3 = 0;
 
     switch (bytes) {
-        case 1: {
-            if (is_signed) {
-                int8_t a, b, c;
-                std::memcpy(&a, src1, 1);
-                std::memcpy(&b, src2, 1);
-                std::memcpy(&c, src3, 1);
-                s1 = a; s2 = b; s3 = c;
-            } else {
-                uint8_t a, b, c;
-                std::memcpy(&a, src1, 1);
-                std::memcpy(&b, src2, 1);
-                std::memcpy(&c, src3, 1);
-                u1 = a; u2 = b; u3 = c;
-            }
-            break;
+    case 1: {
+        if (is_signed) {
+            int8_t a, b, c;
+            std::memcpy(&a, src1, 1);
+            std::memcpy(&b, src2, 1);
+            std::memcpy(&c, src3, 1);
+            s1 = a;
+            s2 = b;
+            s3 = c;
+        } else {
+            uint8_t a, b, c;
+            std::memcpy(&a, src1, 1);
+            std::memcpy(&b, src2, 1);
+            std::memcpy(&c, src3, 1);
+            u1 = a;
+            u2 = b;
+            u3 = c;
         }
-        case 2: {
-            if (is_signed) {
-                int16_t a, b, c;
-                std::memcpy(&a, src1, 2);
-                std::memcpy(&b, src2, 2);
-                std::memcpy(&c, src3, 2);
-                s1 = a; s2 = b; s3 = c;
-            } else {
-                uint16_t a, b, c;
-                std::memcpy(&a, src1, 2);
-                std::memcpy(&b, src2, 2);
-                std::memcpy(&c, src3, 2);
-                u1 = a; u2 = b; u3 = c;
-            }
-            break;
+        break;
+    }
+    case 2: {
+        if (is_signed) {
+            int16_t a, b, c;
+            std::memcpy(&a, src1, 2);
+            std::memcpy(&b, src2, 2);
+            std::memcpy(&c, src3, 2);
+            s1 = a;
+            s2 = b;
+            s3 = c;
+        } else {
+            uint16_t a, b, c;
+            std::memcpy(&a, src1, 2);
+            std::memcpy(&b, src2, 2);
+            std::memcpy(&c, src3, 2);
+            u1 = a;
+            u2 = b;
+            u3 = c;
         }
-        case 4: {
-            if (is_signed) {
-                int32_t a, b, c;
-                std::memcpy(&a, src1, 4);
-                std::memcpy(&b, src2, 4);
-                std::memcpy(&c, src3, 4);
-                s1 = a; s2 = b; s3 = c;
-            } else {
-                uint32_t a, b, c;
-                std::memcpy(&a, src1, 4);
-                std::memcpy(&b, src2, 4);
-                std::memcpy(&c, src3, 4);
-                u1 = a; u2 = b; u3 = c;
-            }
-            break;
+        break;
+    }
+    case 4: {
+        if (is_signed) {
+            int32_t a, b, c;
+            std::memcpy(&a, src1, 4);
+            std::memcpy(&b, src2, 4);
+            std::memcpy(&c, src3, 4);
+            s1 = a;
+            s2 = b;
+            s3 = c;
+        } else {
+            uint32_t a, b, c;
+            std::memcpy(&a, src1, 4);
+            std::memcpy(&b, src2, 4);
+            std::memcpy(&c, src3, 4);
+            u1 = a;
+            u2 = b;
+            u3 = c;
         }
-        case 8: {
-            if (is_signed) {
-                int64_t a, b, c;
-                std::memcpy(&a, src1, 8);
-                std::memcpy(&b, src2, 8);
-                std::memcpy(&c, src3, 8);
-                s1 = a; s2 = b; s3 = c;
-            } else {
-                uint64_t a, b, c;
-                std::memcpy(&a, src1, 8);
-                std::memcpy(&b, src2, 8);
-                std::memcpy(&c, src3, 8);
-                u1 = a; u2 = b; u3 = c;
-            }
-            break;
+        break;
+    }
+    case 8: {
+        if (is_signed) {
+            int64_t a, b, c;
+            std::memcpy(&a, src1, 8);
+            std::memcpy(&b, src2, 8);
+            std::memcpy(&c, src3, 8);
+            s1 = a;
+            s2 = b;
+            s3 = c;
+        } else {
+            uint64_t a, b, c;
+            std::memcpy(&a, src1, 8);
+            std::memcpy(&b, src2, 8);
+            std::memcpy(&c, src3, 8);
+            u1 = a;
+            u2 = b;
+            u3 = c;
         }
+        break;
+    }
     }
 
     // === 执行乘加操作 ===
     if (has_wide) {
         // wide: 结果宽度 = 2 * src_width
-        uint64_t mul_result = (is_signed) 
-            ? static_cast<uint64_t>(s1 * s2) 
-            : (u1 * u2);
-            
+        uint64_t mul_result =
+            (is_signed) ? static_cast<uint64_t>(s1 * s2) : (u1 * u2);
+
         uint64_t add_operand = (is_signed) ? static_cast<uint64_t>(s3) : u3;
-        
+
         // 对于wide模式，我们需要一个更宽的结果类型
         if (bytes == 2) { // 16-bit -> 32-bit
-            uint32_t result = static_cast<uint32_t>(mul_result) + static_cast<uint32_t>(add_operand);
+            uint32_t result = static_cast<uint32_t>(mul_result) +
+                              static_cast<uint32_t>(add_operand);
             std::memcpy(dst, &result, 4);
         } else if (bytes == 4) { // 32-bit -> 64-bit
             uint64_t result = mul_result + add_operand;
             std::memcpy(dst, &result, 8);
         } else {
-            assert(0 && "WIDE mode only supported for 16-bit and 32-bit integers");
+            assert(0 &&
+                   "WIDE mode only supported for 16-bit and 32-bit integers");
         }
 
     } else if (has_hi) {
@@ -549,13 +623,13 @@ void MadHandler::process_operation(ThreadContext *context, void *dst,
 
         uint64_t add_operand = (is_signed) ? static_cast<uint64_t>(s3) : u3;
         uint64_t result = mul_full + add_operand;
-        
+
         // SAT模式只适用于.s32类型和HI模式
         if (has_sat && bytes == 4 && is_signed) {
             // 限制结果在32位有符号整数范围内
             const int32_t MAX_INT32 = 0x7FFFFFFF;
             const int32_t MIN_INT32 = 0x80000000;
-            
+
             if (static_cast<int64_t>(result) > MAX_INT32) {
                 result = MAX_INT32;
             } else if (static_cast<int64_t>(result) < MIN_INT32) {
@@ -563,26 +637,26 @@ void MadHandler::process_operation(ThreadContext *context, void *dst,
             }
         }
 
-        uint64_t hi = (bytes == 4) ? (result >> 32) : 
-                      (bytes == 2) ? (result >> 16) :
-                      (bytes == 1) ? (result >> 8)  : 0;
-        
+        uint64_t hi = (bytes == 4)   ? (result >> 32)
+                      : (bytes == 2) ? (result >> 16)
+                      : (bytes == 1) ? (result >> 8)
+                                     : 0;
+
         std::memcpy(dst, &hi, bytes);
 
     } else { // Q_LO or Q_NONE
         // lo: 取低半部分（普通乘加）
-        uint64_t mul_full = (is_signed) 
-            ? static_cast<uint64_t>(s1 * s2) 
-            : (u1 * u2);
-            
+        uint64_t mul_full =
+            (is_signed) ? static_cast<uint64_t>(s1 * s2) : (u1 * u2);
+
         uint64_t add_operand = (is_signed) ? static_cast<uint64_t>(s3) : u3;
         uint64_t result = mul_full + add_operand;
-        
+
         std::memcpy(dst, &result, bytes);
     }
 }
 
-void FmaHandler::execute(ThreadContext *context, StatementContext &stmt) {
+void FMA::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::FMA *)stmt.statement;
 
     // 获取操作数地址
@@ -596,14 +670,14 @@ void FmaHandler::execute(ThreadContext *context, StatementContext &stmt) {
                         (OperandContext::REG *)ss->fmaOp[0].operand);
 }
 
-void FmaHandler::process_operation(ThreadContext *context, void *dst,
-                                   void *src1, void *src2, void *src3,
-                                   std::vector<Qualifier> &qualifiers) {
+void FMA::process_operation(ThreadContext *context, void *dst, void *src1,
+                            void *src2, void *src3,
+                            std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = TypeUtils::get_bytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
-    
+
     // 检查修饰符
     bool has_wide = context->QvecHasQ(qualifiers, Qualifier::Q_WIDE);
     bool has_hi = context->QvecHasQ(qualifiers, Qualifier::Q_HI);
@@ -651,90 +725,107 @@ void FmaHandler::process_operation(ThreadContext *context, void *dst,
     int64_t s1 = 0, s2 = 0, s3 = 0;
 
     switch (bytes) {
-        case 1: {
-            if (is_signed) {
-                int8_t a, b, c;
-                std::memcpy(&a, src1, 1);
-                std::memcpy(&b, src2, 1);
-                std::memcpy(&c, src3, 1);
-                s1 = a; s2 = b; s3 = c;
-            } else {
-                uint8_t a, b, c;
-                std::memcpy(&a, src1, 1);
-                std::memcpy(&b, src2, 1);
-                std::memcpy(&c, src3, 1);
-                u1 = a; u2 = b; u3 = c;
-            }
-            break;
+    case 1: {
+        if (is_signed) {
+            int8_t a, b, c;
+            std::memcpy(&a, src1, 1);
+            std::memcpy(&b, src2, 1);
+            std::memcpy(&c, src3, 1);
+            s1 = a;
+            s2 = b;
+            s3 = c;
+        } else {
+            uint8_t a, b, c;
+            std::memcpy(&a, src1, 1);
+            std::memcpy(&b, src2, 1);
+            std::memcpy(&c, src3, 1);
+            u1 = a;
+            u2 = b;
+            u3 = c;
         }
-        case 2: {
-            if (is_signed) {
-                int16_t a, b, c;
-                std::memcpy(&a, src1, 2);
-                std::memcpy(&b, src2, 2);
-                std::memcpy(&c, src3, 2);
-                s1 = a; s2 = b; s3 = c;
-            } else {
-                uint16_t a, b, c;
-                std::memcpy(&a, src1, 2);
-                std::memcpy(&b, src2, 2);
-                std::memcpy(&c, src3, 2);
-                u1 = a; u2 = b; u3 = c;
-            }
-            break;
+        break;
+    }
+    case 2: {
+        if (is_signed) {
+            int16_t a, b, c;
+            std::memcpy(&a, src1, 2);
+            std::memcpy(&b, src2, 2);
+            std::memcpy(&c, src3, 2);
+            s1 = a;
+            s2 = b;
+            s3 = c;
+        } else {
+            uint16_t a, b, c;
+            std::memcpy(&a, src1, 2);
+            std::memcpy(&b, src2, 2);
+            std::memcpy(&c, src3, 2);
+            u1 = a;
+            u2 = b;
+            u3 = c;
         }
-        case 4: {
-            if (is_signed) {
-                int32_t a, b, c;
-                std::memcpy(&a, src1, 4);
-                std::memcpy(&b, src2, 4);
-                std::memcpy(&c, src3, 4);
-                s1 = a; s2 = b; s3 = c;
-            } else {
-                uint32_t a, b, c;
-                std::memcpy(&a, src1, 4);
-                std::memcpy(&b, src2, 4);
-                std::memcpy(&c, src3, 4);
-                u1 = a; u2 = b; u3 = c;
-            }
-            break;
+        break;
+    }
+    case 4: {
+        if (is_signed) {
+            int32_t a, b, c;
+            std::memcpy(&a, src1, 4);
+            std::memcpy(&b, src2, 4);
+            std::memcpy(&c, src3, 4);
+            s1 = a;
+            s2 = b;
+            s3 = c;
+        } else {
+            uint32_t a, b, c;
+            std::memcpy(&a, src1, 4);
+            std::memcpy(&b, src2, 4);
+            std::memcpy(&c, src3, 4);
+            u1 = a;
+            u2 = b;
+            u3 = c;
         }
-        case 8: {
-            if (is_signed) {
-                int64_t a, b, c;
-                std::memcpy(&a, src1, 8);
-                std::memcpy(&b, src2, 8);
-                std::memcpy(&c, src3, 8);
-                s1 = a; s2 = b; s3 = c;
-            } else {
-                uint64_t a, b, c;
-                std::memcpy(&a, src1, 8);
-                std::memcpy(&b, src2, 8);
-                std::memcpy(&c, src3, 8);
-                u1 = a; u2 = b; u3 = c;
-            }
-            break;
+        break;
+    }
+    case 8: {
+        if (is_signed) {
+            int64_t a, b, c;
+            std::memcpy(&a, src1, 8);
+            std::memcpy(&b, src2, 8);
+            std::memcpy(&c, src3, 8);
+            s1 = a;
+            s2 = b;
+            s3 = c;
+        } else {
+            uint64_t a, b, c;
+            std::memcpy(&a, src1, 8);
+            std::memcpy(&b, src2, 8);
+            std::memcpy(&c, src3, 8);
+            u1 = a;
+            u2 = b;
+            u3 = c;
         }
+        break;
+    }
     }
 
     // === 执行融合乘加操作 ===
     if (has_wide) {
         // wide: 结果宽度 = 2 * src_width
-        uint64_t mul_result = (is_signed) 
-            ? static_cast<uint64_t>(s1 * s2) 
-            : (u1 * u2);
-            
+        uint64_t mul_result =
+            (is_signed) ? static_cast<uint64_t>(s1 * s2) : (u1 * u2);
+
         uint64_t add_operand = (is_signed) ? static_cast<uint64_t>(s3) : u3;
-        
+
         // 对于wide模式，我们需要一个更宽的结果类型
         if (bytes == 2) { // 16-bit -> 32-bit
-            uint32_t result = static_cast<uint32_t>(mul_result) + static_cast<uint32_t>(add_operand);
+            uint32_t result = static_cast<uint32_t>(mul_result) +
+                              static_cast<uint32_t>(add_operand);
             std::memcpy(dst, &result, 4);
         } else if (bytes == 4) { // 32-bit -> 64-bit
             uint64_t result = mul_result + add_operand;
             std::memcpy(dst, &result, 8);
         } else {
-            assert(0 && "WIDE mode only supported for 16-bit and 32-bit integers");
+            assert(0 &&
+                   "WIDE mode only supported for 16-bit and 32-bit integers");
         }
 
     } else if (has_hi) {
@@ -748,13 +839,13 @@ void FmaHandler::process_operation(ThreadContext *context, void *dst,
 
         uint64_t add_operand = (is_signed) ? static_cast<uint64_t>(s3) : u3;
         uint64_t result = mul_full + add_operand;
-        
+
         // SAT模式只适用于.s32类型和HI模式
         if (has_sat && bytes == 4 && is_signed) {
             // 限制结果在32位有符号整数范围内
             const int32_t MAX_INT32 = 0x7FFFFFFF;
             const int32_t MIN_INT32 = 0x80000000;
-            
+
             if (static_cast<int64_t>(result) > MAX_INT32) {
                 result = MAX_INT32;
             } else if (static_cast<int64_t>(result) < MIN_INT32) {
@@ -762,21 +853,21 @@ void FmaHandler::process_operation(ThreadContext *context, void *dst,
             }
         }
 
-        uint64_t hi = (bytes == 4) ? (result >> 32) : 
-                      (bytes == 2) ? (result >> 16) :
-                      (bytes == 1) ? (result >> 8)  : 0;
-        
+        uint64_t hi = (bytes == 4)   ? (result >> 32)
+                      : (bytes == 2) ? (result >> 16)
+                      : (bytes == 1) ? (result >> 8)
+                                     : 0;
+
         std::memcpy(dst, &hi, bytes);
 
     } else { // Q_LO or Q_NONE
         // lo: 取低半部分（普通乘加）
-        uint64_t mul_full = (is_signed) 
-            ? static_cast<uint64_t>(s1 * s2) 
-            : (u1 * u2);
-            
+        uint64_t mul_full =
+            (is_signed) ? static_cast<uint64_t>(s1 * s2) : (u1 * u2);
+
         uint64_t add_operand = (is_signed) ? static_cast<uint64_t>(s3) : u3;
         uint64_t result = mul_full + add_operand;
-        
+
         std::memcpy(dst, &result, bytes);
     }
 }

@@ -120,6 +120,7 @@ statement : compoundStatement
           | cvtaStatement
           | cvtStatement
           | mulStatement
+          | mul24Statement
           | divStatement
           | subStatement
           | addStatement
@@ -132,6 +133,7 @@ statement : compoundStatement
           | stStatement
           | selpStatement
           | madStatement
+          | mad24Statement
           | fmaStatement
           | wmmaStatement
           | negStatement
@@ -146,6 +148,8 @@ statement : compoundStatement
           | sinStatement
           | remStatement
           | rsqrtStatement
+          | popcStatement
+          | clzStatement
           ;
 
 regStatement : REG qualifier reg (LESS DIGITS GREATER)? SEMI ;
@@ -165,6 +169,7 @@ setpStatement : SETP qualifier* operandThree SEMI ;
 cvtaStatement : CVTA qualifier* operandTwo SEMI ;
 cvtStatement : CVT qualifier* operandTwo SEMI ;
 mulStatement : MUL qualifier* operandThree SEMI ;
+mul24Statement : MUL24 qualifier* operandThree SEMI ;
 divStatement : DIV qualifier* operandThree SEMI ;
 subStatement : SUB qualifier* operandThree SEMI ;
 addStatement : ADD qualifier* operandThree SEMI ;
@@ -177,6 +182,7 @@ orStatement : OR qualifier* operandThree SEMI ;
 stStatement : ST qualifier* operandTwo SEMI ;
 selpStatement : SELP qualifier* operandFour SEMI ;
 madStatement : MAD qualifier* operandFour SEMI ;
+mad24Statement : MAD24 qualifier* operandFour SEMI ;
 fmaStatement : FMA qualifier* operandFour SEMI ;
 wmmaStatement : WMMA LOAD qualifier* operandThree SEMI 
               | WMMA STORE qualifier* operandThree SEMI 
@@ -194,6 +200,8 @@ absStatement : ABS qualifier* operandTwo SEMI ;
 sinStatement : SIN qualifier* operandTwo SEMI ;
 remStatement : REM qualifier* operandThree SEMI ;
 rsqrtStatement : RSQRT qualifier* operandTwo SEMI ;
+popcStatement : POPC qualifier* operandTwo SEMI ;
+clzStatement : CLZ qualifier* operandTwo SEMI ;
 
 operandTwo : operand COMMA operand ;
 operandThree : operand COMMA operand COMMA operand;

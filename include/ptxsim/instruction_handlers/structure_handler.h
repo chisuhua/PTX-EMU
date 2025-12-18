@@ -9,25 +9,25 @@
 #include <vector>
 
 // REG指令处理器
-class RegHandler : public InstructionHandler {
+class REG : public InstructionHandler {
 public:
     void execute(ThreadContext* context, StatementContext& stmt) override;
 };
 
 // SHARED指令处理器
-class SharedHandler : public InstructionHandler {
+class SHARED : public InstructionHandler {
 public:
     void execute(ThreadContext* context, StatementContext& stmt) override;
 };
 
 // LOCAL指令处理器
-class LocalHandler : public InstructionHandler {
+class LOCAL : public InstructionHandler {
 public:
     void execute(ThreadContext* context, StatementContext& stmt) override;
 };
 
 // DOLLOR指令处理器
-class DollorHandler : public InstructionHandler {
+class DOLLOR : public InstructionHandler {
 public:
     void execute(ThreadContext* context, StatementContext& stmt) override;
 };

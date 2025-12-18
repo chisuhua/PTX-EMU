@@ -10,7 +10,7 @@
 #include "ptxsim/ptx_debug.h"
 #include "ptxsim/utils/type_utils.h"
 #include <any>
-#include <driver_types.h>
+// include <driver_types.h>
 #include <map>
 #include <ostream>
 #include <queue>
