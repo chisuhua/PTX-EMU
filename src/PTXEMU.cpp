@@ -122,7 +122,6 @@ void **__cudaRegisterFatBinary(void *fatCubin) {
             while (of_ptx && if_ptx.get(ch))
                 of_ptx.put(ch);
             ptx_buffer = of_ptx.str();
-            break;
         }
 
         // clean intermediate file

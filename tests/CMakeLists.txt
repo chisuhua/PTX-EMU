@@ -98,24 +98,36 @@ function(add_standalone_test TEST_NAME)
 endfunction()
 
 # ================================
-# 方案一：为每个 test_xxx.cpp 创建独立测试（推荐）
+# Catch2 PTX 指令测试套件（按类别拆分）
 # ================================
 
-# 列出所有独立的测试源文件（每个文件一个测试）
-set(SINGLE_TEST_SOURCES
-#TODO add files
+# 整数算术测试
+add_catch_test(test_ptx_integer
+    test_ptx_integer.cu
+    ptx_integer_arith.cu
 )
+set_tests_properties(test_ptx_integer PROPERTIES LABELS "ptx;integer")
 
-# 为每个源文件创建一个独立的测试
-foreach(TEST_SRC ${SINGLE_TEST_SOURCES})
-    # 提取测试名，如 test_reg.cpp -> test_reg
-    get_filename_component(TEST_NAME ${TEST_SRC} NAME_WE)
-    add_catch_test(${TEST_NAME} ${TEST_SRC})
-endforeach()
+# # 浮点算术测试
+# add_catch_test(test_ptx_float
+#     test_ptx_float.cu
+#     ptx_float_arith.cu
+# )
 
-# ================================
-# 方案二：特殊测试（多文件组合）
-# ================================
+# # 扩展精度整数测试
+# add_catch_test(test_ptx_extended
+#     test_ptx_extended.cu
+#     ptx_extended_prec.cu
+# )
+
+# # 逻辑与移位测试
+# add_catch_test(test_ptx_logic
+#     test_ptx_logic.cu
+#     ptx_logic_shift.cu
+# )
+
+# （保留其他非 PTX 的 catch 测试，如将来有）
+# add_catch_test(test_another test_another.cpp)
 
 
 # ================================
