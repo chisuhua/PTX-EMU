@@ -61,6 +61,7 @@ add_library(ptxsim SHARED
     ptxsim/instruction_handlers/misc_handler.cpp
     ptxsim/instruction_handlers/remaining_handler.cpp
     ptxsim/instruction_handlers/structure_handler.cpp
+    ptxsim/instruction_handlers/bit_manipulate.cpp
 )
 target_link_libraries(ptxsim ptx_ir)
 

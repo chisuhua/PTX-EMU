@@ -53,3 +53,11 @@ void DOLLOR::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::DOLLOR *)stmt.statement;
     // 可以添加一些调试输出或记录标签信息
 }
+
+void CONST::execute(ThreadContext *context, StatementContext &stmt) {
+    // Labels are already set up before execution starts
+    // Nothing to do here during execution
+    // auto ss = (StatementContext::DOLLOR *)stmt.statement;
+    // 可以添加一些调试输出或记录标签信息
+    assert(false);
+}

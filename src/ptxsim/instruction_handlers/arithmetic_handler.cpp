@@ -656,6 +656,66 @@ void MAD::process_operation(ThreadContext *context, void *dst, void *src1,
     }
 }
 
+void MAD24::execute(ThreadContext *context, StatementContext &stmt) {
+    auto ss = (StatementContext::MAD24 *)stmt.statement;
+
+    // 获取操作数地址
+    void *to = context->get_operand_addr(ss->mad24Op[0], ss->mad24Qualifier);
+    void *op1 = context->get_operand_addr(ss->mad24Op[1], ss->mad24Qualifier);
+    void *op2 = context->get_operand_addr(ss->mad24Op[2], ss->mad24Qualifier);
+    void *op3 = context->get_operand_addr(ss->mad24Op[3], ss->mad24Qualifier);
+
+    // 执行MAD24操作
+    PROCESS_OPERATION_4(context, to, op1, op2, op3, ss->mad24Qualifier,
+                        (OperandContext::REG *)ss->mad24Op[0].operand);
+}
+
+void MAD24::process_operation(ThreadContext *context, void *dst, void *src1,
+                              void *src2, void *src3,
+                              std::vector<Qualifier> &qualifiers) {
+    // 获取数据类型信息
+    int bytes = TypeUtils::get_bytes(qualifiers);
+    bool is_signed = TypeUtils::is_signed_type(qualifiers);
+
+    // 检查修饰符
+    bool has_hi = context->QvecHasQ(qualifiers, Qualifier::Q_HI);
+    bool has_lo = context->QvecHasQ(qualifiers, Qualifier::Q_LO);
+
+    // MAD24指令处理32位操作数，但只使用其中的24位（最低有效位）
+    // 结果是48位加上第三个操作数，根据修饰符选择高32位或低32位
+    if (bytes == 4) { // 仅支持32位操作数 (.u32 或 .s32)
+        uint32_t a, b, c;
+        std::memcpy(&a, src1, 4);
+        std::memcpy(&b, src2, 4);
+        std::memcpy(&c, src3, 4);
+
+        // 只保留操作数的低24位
+        uint32_t a24 = a & 0xFFFFFF;
+        uint32_t b24 = b & 0xFFFFFF;
+
+        // 执行24位乘法，得到48位结果
+        uint64_t mul_result =
+            static_cast<uint64_t>(a24) * static_cast<uint64_t>(b24);
+
+        // 加上第三个操作数
+        uint64_t result = mul_result + static_cast<uint64_t>(c);
+
+        // 根据修饰符选择结果的哪一部分
+        if (has_hi) {
+            // 取高32位 (63..32)
+            uint32_t hi_part = (result >> 32) & 0xFFFFFFFF;
+            std::memcpy(dst, &hi_part, 4);
+        } else {
+            // 默认或LO模式：取低32位 (31..0)
+            uint32_t lo_part = result & 0xFFFFFFFF;
+            std::memcpy(dst, &lo_part, 4);
+        }
+    } else {
+        // 不支持的数据大小
+        assert(0 && "MAD24 only supports 32-bit operands (.u32 or .s32)");
+    }
+}
+
 void FMA::execute(ThreadContext *context, StatementContext &stmt) {
     auto ss = (StatementContext::FMA *)stmt.statement;
 

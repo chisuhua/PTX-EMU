@@ -89,6 +89,20 @@ protected:
                            std::vector<Qualifier> &qualifiers) override;
 };
 
+class MAD24 : public ArithmeticHandler {
+public:
+    void execute(ThreadContext *context, StatementContext &stmt) override;
+
+protected:
+    virtual void process_operation(ThreadContext *context, void *dst,
+                                   void *src1, void *src2,
+                                   std::vector<Qualifier> &qualifiers) {};
+
+    void process_operation(ThreadContext *context, void *dst, void *src1,
+                           void *src2, void *src3,
+                           std::vector<Qualifier> &qualifiers) override;
+};
+
 class FMA : public ArithmeticHandler {
 public:
     void execute(ThreadContext *context, StatementContext &stmt) override;
