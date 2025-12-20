@@ -41,6 +41,7 @@ include_directories(${ANTLR4_GENERATED_SRC_DIR})
 add_library(ptx_ir SHARED
     ptx_ir/ptx_types.cpp
     ptx_ir/operand_context.cpp
+    ptx_ir/statement_context.cpp
 )
 target_include_directories(ptx_ir PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
@@ -52,16 +53,16 @@ add_library(ptxsim SHARED
     ptxsim/instruction_factory.cpp
     ptxsim/utils/qualifier_utils.cpp
     ptxsim/utils/type_utils.cpp
-    ptxsim/instruction_handlers/arithmetic_handler.cpp
-    ptxsim/instruction_handlers/bitwise_handler.cpp
-    ptxsim/instruction_handlers/memory_handler.cpp
-    ptxsim/instruction_handlers/control_handler.cpp
-    ptxsim/instruction_handlers/math_handler.cpp
-    ptxsim/instruction_handlers/special_handler.cpp
-    ptxsim/instruction_handlers/misc_handler.cpp
-    ptxsim/instruction_handlers/remaining_handler.cpp
-    ptxsim/instruction_handlers/structure_handler.cpp
-    ptxsim/instruction_handlers/bit_manipulate.cpp
+    # ptxsim/instruction_handlers/arithmetic_handler.cpp
+    # ptxsim/instruction_handlers/bitwise_handler.cpp
+    # ptxsim/instruction_handlers/memory_handler.cpp
+    # ptxsim/instruction_handlers/control_handler.cpp
+    # ptxsim/instruction_handlers/math_handler.cpp
+    # ptxsim/instruction_handlers/special_handler.cpp
+    # ptxsim/instruction_handlers/misc_handler.cpp
+    # ptxsim/instruction_handlers/remaining_handler.cpp
+    # ptxsim/instruction_handlers/structure_handler.cpp
+    # ptxsim/instruction_handlers/bit_manipulate.cpp
 )
 target_link_libraries(ptxsim ptx_ir)
 

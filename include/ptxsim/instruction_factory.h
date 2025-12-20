@@ -1,6 +1,7 @@
 #ifndef INSTRUCTION_FACTORY_H
 #define INSTRUCTION_FACTORY_H
 
+#include "instruction_handler.h"
 #include "ptx_ir/statement_context.h"
 #include <functional>
 #include <iostream>
@@ -8,12 +9,6 @@
 
 // Forward declaration
 class ThreadContext;
-
-class InstructionHandler {
-public:
-    virtual ~InstructionHandler() = default;
-    virtual void execute(ThreadContext *context, StatementContext &stmt) = 0;
-};
 
 // 定义注册宏，方便注册指令处理器
 #define REGISTER_HANDLER(type, handler_class)                                  \

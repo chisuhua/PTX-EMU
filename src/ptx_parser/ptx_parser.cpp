@@ -452,22 +452,22 @@ void PtxListener::exitSharedStatement(ptxParser::SharedStatementContext *ctx) {
     auto st = (StatementContext::SHARED *)statement;
 
     /* align */
-    st->sharedAlign = stoi(ctx->DIGITS(0)->getText());
+    st->align = stoi(ctx->DIGITS(0)->getText());
 
     /* qualifier */
     while (qualifier.size()) {
-        st->sharedDataType.push_back(qualifier.front());
+        st->dataType.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* ID */
-    st->sharedName = ctx->ID()->getText();
+    st->name = ctx->ID()->getText();
 
     /* size */
     if (ctx->DIGITS(1)) {
-        st->sharedSize = stoi(ctx->DIGITS(1)->getText());
+        st->size = stoi(ctx->DIGITS(1)->getText());
     } else {
-        st->sharedSize = 1;
+        st->size = 1;
     }
 
     /* end */
@@ -522,22 +522,22 @@ void PtxListener::exitLocalStatement(ptxParser::LocalStatementContext *ctx) {
     auto st = (StatementContext::LOCAL *)statement;
 
     /* align */
-    st->localAlign = stoi(ctx->DIGITS(0)->getText());
+    st->align = stoi(ctx->DIGITS(0)->getText());
 
     /* qualifier */
     while (qualifier.size()) {
-        st->localDataType.push_back(qualifier.front());
+        st->dataType.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* ID */
-    st->localName = ctx->ID()->getText();
+    st->name = ctx->ID()->getText();
 
     /* size */
     if (ctx->DIGITS(1))
-        st->localSize = stoi(ctx->DIGITS(1)->getText());
+        st->size = stoi(ctx->DIGITS(1)->getText());
     else
-        st->localSize = 1;
+        st->size = 1;
 
     /* end */
     statementType = S_LOCAL;
@@ -682,13 +682,13 @@ void PtxListener::exitRcpStatement(ptxParser::RcpStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->rcpQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op */
     for (int i = 0; i < 2; i++) {
-        fetchOperand(st->rcpOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -709,13 +709,13 @@ void PtxListener::exitLdStatement(ptxParser::LdStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->ldQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op2 */
     for (int i = 0; i < 2; i++) {
-        fetchOperand(st->ldOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -736,13 +736,13 @@ void PtxListener::exitMovStatement(ptxParser::MovStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->movQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op2 */
     for (int i = 0; i < 2; i++) {
-        fetchOperand(st->movOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -763,13 +763,13 @@ void PtxListener::exitSetpStatement(ptxParser::SetpStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->setpQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op3 */
     for (int i = 0; i < 3; i++) {
-        fetchOperand(st->setpOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -790,13 +790,13 @@ void PtxListener::exitCvtaStatement(ptxParser::CvtaStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->cvtaQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op2 */
     for (int i = 0; i < 2; i++) {
-        fetchOperand(st->cvtaOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -817,13 +817,13 @@ void PtxListener::exitCvtStatement(ptxParser::CvtStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->cvtQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op2 */
     for (int i = 0; i < 2; i++) {
-        fetchOperand(st->cvtOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -844,13 +844,13 @@ void PtxListener::exitMulStatement(ptxParser::MulStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->mulQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op3 */
     for (int i = 0; i < 3; i++) {
-        fetchOperand(st->mulOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -871,13 +871,13 @@ void PtxListener::exitMul24Statement(ptxParser::Mul24StatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->mul24Qualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op3 */
     for (int i = 0; i < 3; i++) {
-        fetchOperand(st->mul24Op[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -898,13 +898,13 @@ void PtxListener::exitDivStatement(ptxParser::DivStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->divQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op3 */
     for (int i = 0; i < 3; i++) {
-        fetchOperand(st->divOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -925,13 +925,13 @@ void PtxListener::exitSubStatement(ptxParser::SubStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->subQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op3 */
     for (int i = 0; i < 3; i++) {
-        fetchOperand(st->subOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -952,13 +952,13 @@ void PtxListener::exitAddStatement(ptxParser::AddStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->addQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op3 */
     for (int i = 0; i < 3; i++) {
-        fetchOperand(st->addOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -979,13 +979,13 @@ void PtxListener::exitShlStatement(ptxParser::ShlStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->shlQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op3 */
     for (int i = 0; i < 3; i++) {
-        fetchOperand(st->shlOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -1006,13 +1006,13 @@ void PtxListener::exitShrStatement(ptxParser::ShrStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->shrQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op3 */
     for (int i = 0; i < 3; i++) {
-        fetchOperand(st->shrOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -1033,13 +1033,13 @@ void PtxListener::exitMaxStatement(ptxParser::MaxStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->maxQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op3 */
     for (int i = 0; i < 3; i++) {
-        fetchOperand(st->maxOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -1060,13 +1060,13 @@ void PtxListener::exitMinStatement(ptxParser::MinStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->minQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op3 */
     for (int i = 0; i < 3; i++) {
-        fetchOperand(st->minOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -1087,13 +1087,13 @@ void PtxListener::exitAndStatement(ptxParser::AndStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->andQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op3 */
     for (int i = 0; i < 3; i++) {
-        fetchOperand(st->andOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -1114,13 +1114,13 @@ void PtxListener::exitOrStatement(ptxParser::OrStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->orQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op3 */
     for (int i = 0; i < 3; i++) {
-        fetchOperand(st->orOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -1141,13 +1141,13 @@ void PtxListener::exitStStatement(ptxParser::StStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->stQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op2 */
     for (int i = 0; i < 2; i++) {
-        fetchOperand(st->stOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -1168,13 +1168,13 @@ void PtxListener::exitSelpStatement(ptxParser::SelpStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->selpQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op4 */
     for (int i = 0; i < 4; i++) {
-        fetchOperand(st->selpOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -1195,13 +1195,13 @@ void PtxListener::exitMadStatement(ptxParser::MadStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->madQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op4 */
     for (int i = 0; i < 4; i++) {
-        fetchOperand(st->madOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -1222,13 +1222,13 @@ void PtxListener::exitMad24Statement(ptxParser::Mad24StatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->mad24Qualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op4 */
     for (int i = 0; i < 4; i++) {
-        fetchOperand(st->mad24Op[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -1249,13 +1249,13 @@ void PtxListener::exitFmaStatement(ptxParser::FmaStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->fmaQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op4 */
     for (int i = 0; i < 4; i++) {
-        fetchOperand(st->fmaOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -1278,23 +1278,23 @@ void PtxListener::exitWmmaStatement(ptxParser::WmmaStatementContext *ctx) {
     if (ctx->LOAD()) {
         st->wmmaType = WMMA_LOAD;
         for (int i = 0; i < 3; i++) {
-            fetchOperand(st->wmmaOp[i]);
+            fetchOperand(st->op[i]);
         }
     } else if (ctx->STORE()) {
         st->wmmaType = WMMA_STORE;
         for (int i = 0; i < 3; i++) {
-            fetchOperand(st->wmmaOp[i]);
+            fetchOperand(st->op[i]);
         }
     } else if (ctx->WMMA()) {
         st->wmmaType = WMMA_MMA;
         for (int i = 0; i < 4; i++) {
-            fetchOperand(st->wmmaOp[i]);
+            fetchOperand(st->op[i]);
         }
     }
 
     /* qualifier */
     while (qualifier.size()) {
-        st->wmmaQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
@@ -1316,13 +1316,13 @@ void PtxListener::exitNegStatement(ptxParser::NegStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->negQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op2 */
     for (int i = 0; i < 2; i++) {
-        fetchOperand(st->negOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -1343,13 +1343,13 @@ void PtxListener::exitNotStatement(ptxParser::NotStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->notQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op2 */
     for (int i = 0; i < 2; i++) {
-        fetchOperand(st->notOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -1370,13 +1370,13 @@ void PtxListener::exitSqrtStatement(ptxParser::SqrtStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->sqrtQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op2 */
     for (int i = 0; i < 2; i++) {
-        fetchOperand(st->sqrtOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -1397,13 +1397,13 @@ void PtxListener::exitCosStatement(ptxParser::CosStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->cosQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op2 */
     for (int i = 0; i < 2; i++) {
-        fetchOperand(st->cosOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -1424,13 +1424,13 @@ void PtxListener::exitLg2Statement(ptxParser::Lg2StatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->lg2Qualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op2 */
     for (int i = 0; i < 2; i++) {
-        fetchOperand(st->lg2Op[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -1451,13 +1451,13 @@ void PtxListener::exitEx2Statement(ptxParser::Ex2StatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->ex2Qualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op2 */
     for (int i = 0; i < 2; i++) {
-        fetchOperand(st->ex2Op[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -1478,19 +1478,19 @@ void PtxListener::exitAtomStatement(ptxParser::AtomStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->atomQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op3 or op4 */
     if (ctx->operandFour()) {
         for (int i = 0; i < 4; i++) {
-            fetchOperand(st->atomOp[i]);
+            fetchOperand(st->op[i]);
         }
         st->operandNum = 4;
     } else if (ctx->operandThree()) {
         for (int i = 0; i < 3; i++) {
-            fetchOperand(st->atomOp[i]);
+            fetchOperand(st->op[i]);
         }
         st->operandNum = 3;
     } else
@@ -1514,13 +1514,13 @@ void PtxListener::exitXorStatement(ptxParser::XorStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->xorQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op3 */
     for (int i = 0; i < 3; i++) {
-        fetchOperand(st->xorOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -1541,13 +1541,13 @@ void PtxListener::exitAbsStatement(ptxParser::AbsStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->absQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op2 */
     for (int i = 0; i < 2; i++) {
-        fetchOperand(st->absOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -1568,13 +1568,13 @@ void PtxListener::exitSinStatement(ptxParser::SinStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->sinQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op2 */
     for (int i = 0; i < 2; i++) {
-        fetchOperand(st->sinOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -1596,13 +1596,13 @@ void PtxListener::exitRsqrtStatement(ptxParser::RsqrtStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->rsqrtQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op2 */
     for (int i = 0; i < 2; i++) {
-        fetchOperand(st->rsqrtOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */
@@ -1624,13 +1624,13 @@ void PtxListener::exitRemStatement(ptxParser::RemStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->remQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
     /* op2 */
     for (int i = 0; i < 3; i++) {
-        fetchOperand(st->remOp[i]);
+        fetchOperand(st->op[i]);
     }
 
     /* end */

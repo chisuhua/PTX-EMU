@@ -1,7 +1,9 @@
+// statement_context.h
 #ifndef STATEMENT_CONTEXT_H
 #define STATEMENT_CONTEXT_H
 
 #include "operand_context.h"
+#include "ptx_types.h"
 #include <vector>
 
 class StatementContext {
@@ -9,245 +11,127 @@ public:
     StatementType statementType;
     void *statement;
 
-    struct REG {
-        int regNum = 1;
-        std::vector<Qualifier> regDataType;
-        std::string regName;
+// =============================================================================
+// 1. 操作数描述结构体
+// =============================================================================
+#define DEFINE_OPERAND_REG(Name)                                               \
+    struct Name {                                                              \
+        int regNum = 1;                                                        \
+        std::vector<Qualifier> regDataType;                                    \
+        std::string regName;                                                   \
     };
 
-    struct CONST {
-        int constAlign = 0;
-        int constSize = 1;
-        std::vector<Qualifier> constDataType;
-        std::string constName;
+#define DEFINE_OPERAND_CONST(Name)                                             \
+    struct Name {                                                              \
+        int constAlign = 0;                                                    \
+        int constSize = 1;                                                     \
+        std::vector<Qualifier> constDataType;                                  \
+        std::string constName;                                                 \
     };
 
-    struct SHARED {
-        int sharedAlign = 0;
-        int sharedSize = 1;
-        std::vector<Qualifier> sharedDataType;
-        std::string sharedName;
+#define DEFINE_OPERAND_MEMORY(Name)                                            \
+    struct Name {                                                              \
+        int align = 0;                                                         \
+        int size = 1;                                                          \
+        std::vector<Qualifier> dataType;                                       \
+        std::string name;                                                      \
     };
 
-    struct LOCAL {
-        int localAlign = 0;
-        int localSize = 1;
-        std::vector<Qualifier> localDataType;
-        std::string localName;
+    // =============================================================================
+    // 2. 简单结构体
+    // =============================================================================
+
+#define DEFINE_SIMPLE_NAME(Name)                                               \
+    struct Name {                                                              \
+        std::string dollorName;                                                \
     };
 
-    struct DOLLOR {
-        std::string dollorName;
+#define DEFINE_SIMPLE_STRING(Name)                                             \
+    struct Name {                                                              \
+        std::string pragmaString;                                              \
     };
 
-    struct AT {
-        OperandContext atPred;
-        std::string atLabelName;
+#define DEFINE_VOID_INSTR(Name)                                                \
+    struct Name {};
+
+    // =============================================================================
+    // 3. 控制流结构体
+    // =============================================================================
+
+#define DEFINE_BRANCH(Name)                                                    \
+    struct Name {                                                              \
+        std::vector<Qualifier> braQualifier;                                   \
+        std::string braTarget;                                                 \
     };
 
-    struct PRAGMA {
-        std::string pragmaString;
+#define DEFINE_BARRIER(Name)                                                   \
+    struct Name {                                                              \
+        std::vector<Qualifier> braQualifier;                                   \
+        std::string barType;                                                   \
+        int barId;                                                             \
     };
 
-    struct RET {};
-
-    struct BAR {
-        std::vector<Qualifier> braQualifier;
-        std::string barType;
-        int barId;
+#define DEFINE_PREDICATE_PREFIX(Name)                                          \
+    struct Name {                                                              \
+        OperandContext atPred;                                                 \
+        std::string atLabelName;                                               \
     };
 
-    struct BRA {
-        std::vector<Qualifier> braQualifier;
-        std::string braTarget;
-    };
+    // =============================================================================
+    // 4. 通用指令结构体
+    // =============================================================================
 
-    struct RCP {
-        std::vector<Qualifier> rcpQualifier;
-        OperandContext rcpOp[2];
-    };
-
-    struct LD {
-        std::vector<Qualifier> ldQualifier;
-        OperandContext ldOp[2];
-    };
-
-    struct MOV {
-        std::vector<Qualifier> movQualifier;
-        OperandContext movOp[2];
-    };
-
-    struct SETP {
-        std::vector<Qualifier> setpQualifier;
-        OperandContext setpOp[3];
-    };
-
-    struct CVTA {
-        std::vector<Qualifier> cvtaQualifier;
-        OperandContext cvtaOp[2];
-    };
-
-    struct CVT {
-        std::vector<Qualifier> cvtQualifier;
-        OperandContext cvtOp[2];
-    };
-
-    struct MUL {
-        std::vector<Qualifier> mulQualifier;
-        OperandContext mulOp[3];
-    };
-
-    struct MUL24 {
-        std::vector<Qualifier> mul24Qualifier;
-        OperandContext mul24Op[3];
-    };
-
-    struct DIV {
-        std::vector<Qualifier> divQualifier;
-        OperandContext divOp[3];
-    };
-
-    struct SUB {
-        std::vector<Qualifier> subQualifier;
-        OperandContext subOp[3];
-    };
-
-    struct ADD {
-        std::vector<Qualifier> addQualifier;
-        OperandContext addOp[3];
-    };
-
-    struct SHL {
-        std::vector<Qualifier> shlQualifier;
-        OperandContext shlOp[3];
-    };
-
-    struct SHR {
-        std::vector<Qualifier> shrQualifier;
-        OperandContext shrOp[3];
-    };
-
-    struct MAX {
-        std::vector<Qualifier> maxQualifier;
-        OperandContext maxOp[3];
-    };
-
-    struct MIN {
-        std::vector<Qualifier> minQualifier;
-        OperandContext minOp[3];
-    };
-
-    struct AND {
-        std::vector<Qualifier> andQualifier;
-        OperandContext andOp[3];
-    };
-
-    struct OR {
-        std::vector<Qualifier> orQualifier;
-        OperandContext orOp[3];
-    };
-
-    struct ST {
-        std::vector<Qualifier> stQualifier;
-        OperandContext stOp[2];
-    };
-
-    struct SELP {
-        std::vector<Qualifier> selpQualifier;
-        OperandContext selpOp[4];
-    };
-
-    struct MAD {
-        std::vector<Qualifier> madQualifier;
-        OperandContext madOp[4];
-    };
-
-    struct MAD24 {
-        std::vector<Qualifier> mad24Qualifier;
-        OperandContext mad24Op[4];
-    };
-
-    struct FMA {
-        std::vector<Qualifier> fmaQualifier;
-        OperandContext fmaOp[4];
-    };
-
-    struct WMMA {
-        WmmaType wmmaType;
-        std::vector<Qualifier> wmmaQualifier;
-        OperandContext wmmaOp[4];
-    };
-
-    struct NEG {
-        std::vector<Qualifier> negQualifier;
-        OperandContext negOp[2];
-    };
-
-    struct NOT {
-        std::vector<Qualifier> notQualifier;
-        OperandContext notOp[2];
-    };
-
-    struct SQRT {
-        std::vector<Qualifier> sqrtQualifier;
-        OperandContext sqrtOp[2];
-    };
-
-    struct COS {
-        std::vector<Qualifier> cosQualifier;
-        OperandContext cosOp[2];
-    };
-
-    struct LG2 {
-        std::vector<Qualifier> lg2Qualifier;
-        OperandContext lg2Op[2];
-    };
-
-    struct EX2 {
-        std::vector<Qualifier> ex2Qualifier;
-        OperandContext ex2Op[2];
-    };
-
-    struct ATOM {
-        std::vector<Qualifier> atomQualifier;
-        OperandContext atomOp[4];
-        int operandNum = 0;
-    };
-
-    struct XOR {
-        std::vector<Qualifier> xorQualifier;
-        OperandContext xorOp[3];
-    };
-
-    struct ABS {
-        std::vector<Qualifier> absQualifier;
-        OperandContext absOp[2];
-    };
-
-    struct SIN {
-        std::vector<Qualifier> sinQualifier;
-        OperandContext sinOp[2];
-    };
-
-    struct RSQRT {
-        std::vector<Qualifier> rsqrtQualifier;
-        OperandContext rsqrtOp[2];
-    };
-
-#define DEFINE_STATEMENT_STRUCT(Name, OpCount)                                 \
+#define DEFINE_GENERIC_INSTR(Name, OpCount)                                    \
     struct Name {                                                              \
         static constexpr int op_count = OpCount;                               \
         std::vector<Qualifier> qualifier;                                      \
         OperandContext op[OpCount];                                            \
-    }
-
-    DEFINE_STATEMENT_STRUCT(POPC, 2);
-    DEFINE_STATEMENT_STRUCT(CLZ, 2);
-
-    struct REM {
-        std::vector<Qualifier> remQualifier;
-        OperandContext remOp[3];
     };
+
+#define DEFINE_WMMA_INSTR(Name, OpCount)                                       \
+    struct Name {                                                              \
+        static constexpr int op_count = OpCount;                               \
+        WmmaType wmmaType;                                                     \
+        std::vector<Qualifier> qualifier;                                      \
+        OperandContext op[OpCount];                                            \
+    };
+
+#define DEFINE_ATOM_INSTR(Name, OpCount)                                       \
+    struct Name {                                                              \
+        static constexpr int op_count = OpCount;                               \
+        std::vector<Qualifier> qualifier;                                      \
+        OperandContext op[OpCount];                                            \
+        int operandNum = 0;                                                    \
+    };
+
+    // =============================================================================
+    // 5. 主分发宏
+    // =============================================================================
+// Overloads for kinds that don't use OpCount
+#define DISPATCH_OPERAND_REG(Name, _) DEFINE_OPERAND_REG(Name)
+#define DISPATCH_OPERAND_CONST(Name, _) DEFINE_OPERAND_CONST(Name)
+#define DISPATCH_OPERAND_MEMORY(Name, _) DEFINE_OPERAND_MEMORY(Name)
+#define DISPATCH_SIMPLE_NAME(Name, _) DEFINE_SIMPLE_NAME(Name)
+#define DISPATCH_SIMPLE_STRING(Name, _) DEFINE_SIMPLE_STRING(Name)
+#define DISPATCH_VOID_INSTR(Name, _) DEFINE_VOID_INSTR(Name)
+#define DISPATCH_BRANCH(Name, _) DEFINE_BRANCH(Name)
+#define DISPATCH_BARRIER(Name, _) DEFINE_BARRIER(Name)
+#define DISPATCH_PREDICATE_PREFIX(Name, _) DEFINE_PREDICATE_PREFIX(Name)
+#define DISPATCH_GENERIC_INSTR(Name, cnt) DEFINE_GENERIC_INSTR(Name, cnt)
+#define DISPATCH_WMMA_INSTR(Name, cnt) DEFINE_WMMA_INSTR(Name, cnt)
+#define DISPATCH_ATOM_INSTR(Name, cnt) DEFINE_ATOM_INSTR(Name, cnt)
+
+    // =============================================================================
+    // 6. 生成所有结构体
+    // =============================================================================
+
+#define DISPATCH_STRUCT(struct_kind, Name, OpCount)                            \
+    DISPATCH_##struct_kind(Name, OpCount)
+
+#define X(enum_val, type_name, str, op_count, struct_kind)                     \
+    DISPATCH_STRUCT(struct_kind, type_name, op_count)
+#include "ptx_op.def"
+#undef X
 
     StatementContext() : statementType(S_REG), statement(nullptr) {}
     ~StatementContext();
@@ -255,5 +139,142 @@ public:
     // 深拷贝方法
     StatementContext(const StatementContext &other);
 };
+
+// =============================================================================
+// 内部辅助：深拷贝 OperandContext 数组
+// =============================================================================
+template <std::size_t N>
+inline void deepCopyOperandArray(OperandContext (&dst)[N],
+                                 const OperandContext (&src)[N]) {
+    for (std::size_t i = 0; i < N; ++i) {
+        dst[i] = OperandContext(
+            src[i]); // 调用 OperandContext 的拷贝构造函数（深拷贝）
+    }
+}
+
+// =============================================================================
+// 1. 操作数描述符（Operand Kinds）
+// =============================================================================
+#define COPY_IMPL_OPERAND_REG_IMPL(Name)                                       \
+    do {                                                                       \
+        auto source = static_cast<const Name *>(other.statement);              \
+        auto dest = new Name();                                                \
+        dest->regNum = source->regNum;                                         \
+        dest->regDataType = source->regDataType;                               \
+        dest->regName = source->regName;                                       \
+        statement = dest;                                                      \
+    } while (0)
+
+#define COPY_IMPL_OPERAND_CONST_IMPL(Name)                                     \
+    do {                                                                       \
+        auto source = static_cast<const Name *>(other.statement);              \
+        auto dest = new Name();                                                \
+        dest->constAlign = source->constAlign;                                 \
+        dest->constSize = source->constSize;                                   \
+        dest->constDataType = source->constDataType;                           \
+        dest->constName = source->constName;                                   \
+        statement = dest;                                                      \
+    } while (0)
+
+#define COPY_IMPL_OPERAND_MEMORY_IMPL(Name)                                    \
+    do {                                                                       \
+        auto source = static_cast<const Name *>(other.statement);              \
+        auto dest = new Name();                                                \
+        dest->align = source->align;                                           \
+        dest->size = source->size;                                             \
+        dest->dataType = source->dataType;                                     \
+        dest->name = source->name;                                             \
+        statement = dest;                                                      \
+    } while (0)
+
+// =============================================================================
+// 2. 简单标识符
+// =============================================================================
+#define COPY_IMPL_SIMPLE_NAME_IMPL(Name)                                       \
+    do {                                                                       \
+        auto source = static_cast<const Name *>(other.statement);              \
+        auto dest = new Name();                                                \
+        dest->dollorName = source->dollorName;                                 \
+        statement = dest;                                                      \
+    } while (0)
+
+#define COPY_IMPL_SIMPLE_STRING_IMPL(Name)                                     \
+    do {                                                                       \
+        auto source = static_cast<const Name *>(other.statement);              \
+        auto dest = new Name();                                                \
+        dest->pragmaString = source->pragmaString;                             \
+        statement = dest;                                                      \
+    } while (0)
+
+#define COPY_IMPL_VOID_INSTR_IMPL(Name)                                        \
+    do {                                                                       \
+        statement = new Name();                                                \
+    } while (0)
+
+// =============================================================================
+// 3. 控制流指令
+// =============================================================================
+#define COPY_IMPL_BRANCH_IMPL(Name)                                            \
+    do {                                                                       \
+        auto source = static_cast<const Name *>(other.statement);              \
+        auto dest = new Name();                                                \
+        dest->braQualifier = source->braQualifier;                             \
+        dest->braTarget = source->braTarget;                                   \
+        statement = dest;                                                      \
+    } while (0)
+
+#define COPY_IMPL_BARRIER_IMPL(Name)                                           \
+    do {                                                                       \
+        auto source = static_cast<const Name *>(other.statement);              \
+        auto dest = new Name();                                                \
+        dest->braQualifier = source->braQualifier;                             \
+        dest->barType = source->barType;                                       \
+        dest->barId = source->barId;                                           \
+        statement = dest;                                                      \
+    } while (0)
+
+#define COPY_IMPL_PREDICATE_PREFIX_IMPL(Name)                                  \
+    do {                                                                       \
+        auto source = static_cast<const Name *>(other.statement);              \
+        auto dest = new Name();                                                \
+        dest->atPred = OperandContext(source->atPred);                         \
+        dest->atLabelName = source->atLabelName;                               \
+        statement = dest;                                                      \
+    } while (0)
+
+// =============================================================================
+// 4. 通用指令（GENERIC_INSTR）
+// =============================================================================
+#define COPY_IMPL_GENERIC_INSTR_IMPL(Name, OpCount)                            \
+    do {                                                                       \
+        auto source = static_cast<const Name *>(other.statement);              \
+        auto dest = new Name();                                                \
+        dest->qualifier = source->qualifier;                                   \
+        deepCopyOperandArray(dest->op, source->op);                            \
+        statement = dest;                                                      \
+    } while (0)
+
+// =============================================================================
+// 5. 特殊指令
+// =============================================================================
+#define COPY_IMPL_WMMA_INSTR_IMPL(Name)                                        \
+    do {                                                                       \
+        auto source = static_cast<const Name *>(other.statement);              \
+        auto dest = new Name();                                                \
+        dest->wmmaType = source->wmmaType;                                     \
+        dest->qualifier = source->qualifier;                                   \
+        deepCopyOperandArray(dest->op, source->op);                            \
+        statement = dest;                                                      \
+    } while (0)
+
+#define COPY_IMPL_ATOM_INSTR_IMPL(Name)                                        \
+    do {                                                                       \
+        auto source = static_cast<const Name *>(other.statement);              \
+        auto dest = new Name();                                                \
+        dest->qualifier = source->qualifier;                                   \
+        deepCopyOperandArray(dest->op, source->op);                            \
+        dest->operandNum = source->operandNum;                                 \
+        statement = dest;                                                      \
+    } while (0)
 
 #endif // STATEMENT_CONTEXT_H

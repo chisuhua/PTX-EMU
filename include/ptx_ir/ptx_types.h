@@ -70,7 +70,7 @@ std::string Q2s(Qualifier q);
 int Q2bytes(Qualifier q);
 
 enum StatementType {
-#define X(enum_val, struct_name, str) enum_val,
+#define X(enum_val, struct_name, str, opcount, _) enum_val,
 #include "ptx_op.def"
 #undef X
     S_UNKNOWN

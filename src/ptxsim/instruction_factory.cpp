@@ -1,15 +1,16 @@
 #include "ptxsim/instruction_factory.h"
+#include "ptxsim/instruction_handler_decl.h"
 // 包含所有指令处理器的头文件
-#include "ptxsim/instruction_handlers/arithmetic_handler.h"
-#include "ptxsim/instruction_handlers/bit_manipulate.h"
-#include "ptxsim/instruction_handlers/bitwise_handler.h"
-#include "ptxsim/instruction_handlers/control_handler.h"
-#include "ptxsim/instruction_handlers/math_handler.h"
-#include "ptxsim/instruction_handlers/memory_handler.h"
-#include "ptxsim/instruction_handlers/misc_handler.h"
-#include "ptxsim/instruction_handlers/remaining_handler.h"
-#include "ptxsim/instruction_handlers/special_handler.h"
-#include "ptxsim/instruction_handlers/structure_handler.h"
+// #include "ptxsim/instruction_handlers/arithmetic_handler.h"
+// #include "ptxsim/instruction_handlers/bit_manipulate.h"
+// #include "ptxsim/instruction_handlers/bitwise_handler.h"
+// #include "ptxsim/instruction_handlers/control_handler.h"
+// #include "ptxsim/instruction_handlers/math_handler.h"
+// #include "ptxsim/instruction_handlers/memory_handler.h"
+// #include "ptxsim/instruction_handlers/misc_handler.h"
+// #include "ptxsim/instruction_handlers/remaining_handler.h"
+// #include "ptxsim/instruction_handlers/special_handler.h"
+// #include "ptxsim/instruction_handlers/structure_handler.h"
 #include <functional>
 #include <iostream>
 #include <unordered_map>
@@ -33,7 +34,7 @@ void InstructionFactory::register_handler(
 }
 
 void InstructionFactory::initialize() {
-#define X(enum_val, type_name, str)                                            \
+#define X(enum_val, type_name, str, opcount, struct_kind)                      \
     REGISTER_HANDLER(StatementType::enum_val, type_name);
 #include "ptx_ir/ptx_op.def"
 #undef X
