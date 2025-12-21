@@ -1,5 +1,5 @@
 #include "ptxsim/instruction_factory.h"
-#include "ptxsim/instruction_handler_decl.h"
+#include "ptxsim/instruction_handlers_decl.h"
 // 包含所有指令处理器的头文件
 // #include "ptxsim/instruction_handlers/arithmetic_handler.h"
 // #include "ptxsim/instruction_handlers/bit_manipulate.h"

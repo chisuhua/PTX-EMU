@@ -29,6 +29,7 @@ add_custom_target(GenerateParser DEPENDS ${ANTLR4_GENERATED_SOURCES} ptxLexer.g4
 # 设置源文件（包含ANTLR生成的源文件）
 set(SOURCES
     PTXEMU.cpp
+    #utils/logger.cpp
     ${ANTLR4_GENERATED_SOURCES}
 )
 
@@ -51,8 +52,17 @@ add_library(ptxsim SHARED
     ptxsim/core/thread_context.cpp
     ptxsim/debug/ptx_debug.cpp
     ptxsim/instruction_factory.cpp
+    ptxsim/instruction_handlers.cpp
     ptxsim/utils/qualifier_utils.cpp
     ptxsim/utils/type_utils.cpp
+    ptxsim/instructions/arithmetic.cpp
+    ptxsim/instructions/bitwise.cpp
+    ptxsim/instructions/math.cpp
+    #ptxsim/instructions/memory.cpp
+    #ptxsim/instructions/control.cpp
+    #ptxsim/instructions/comparison.cpp
+    #ptxsim/instructions/atomic.cpp
+    #ptxsim/instructions/tensor.cpp
     # ptxsim/instruction_handlers/arithmetic_handler.cpp
     # ptxsim/instruction_handlers/bitwise_handler.cpp
     # ptxsim/instruction_handlers/memory_handler.cpp

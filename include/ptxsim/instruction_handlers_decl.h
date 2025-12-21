@@ -3,17 +3,16 @@
 #define INSTRUCTION_HANDLE_DECL_H
 
 #include "instruction_handler.h"
+#include <variant>
 #include <vector>
+
+using ArgType = std::variant<std::monostate, int, std::string>;
 
 // Helper macro: generate class declaration based on op_count
 #define DEFINE_HANDLER_0OP(Name)                                               \
     class Name : public InstructionHandler {                                   \
     public:                                                                    \
         void execute(ThreadContext *context, StatementContext &stmt) override; \
-                                                                               \
-    protected:                                                                 \
-        virtual void process_operation(ThreadContext *context,                 \
-                                       std::vector<Qualifier> &qualifiers);    \
     };
 
 #define DEFINE_HANDLER_1OP(Name)                                               \
@@ -22,7 +21,7 @@
         void execute(ThreadContext *context, StatementContext &stmt) override; \
                                                                                \
     protected:                                                                 \
-        virtual void process_operation(ThreadContext *context, void *op0,      \
+        virtual void process_operation(ThreadContext *context, void *op[1],    \
                                        std::vector<Qualifier> &qualifiers);    \
     };
 
@@ -32,8 +31,7 @@
         void execute(ThreadContext *context, StatementContext &stmt) override; \
                                                                                \
     protected:                                                                 \
-        virtual void process_operation(ThreadContext *context, void *op0,      \
-                                       void *op1,                              \
+        virtual void process_operation(ThreadContext *context, void *op[2],    \
                                        std::vector<Qualifier> &qualifiers);    \
     };
 
@@ -43,8 +41,7 @@
         void execute(ThreadContext *context, StatementContext &stmt) override; \
                                                                                \
     protected:                                                                 \
-        virtual void process_operation(ThreadContext *context, void *op0,      \
-                                       void *op1, void *op2,                   \
+        virtual void process_operation(ThreadContext *context, void *op[3],    \
                                        std::vector<Qualifier> &qualifiers);    \
     };
 
@@ -54,8 +51,7 @@
         void execute(ThreadContext *context, StatementContext &stmt) override; \
                                                                                \
     protected:                                                                 \
-        virtual void process_operation(ThreadContext *context, void *op0,      \
-                                       void *op1, void *op2, void *op3,        \
+        virtual void process_operation(ThreadContext *context, void *op[4],    \
                                        std::vector<Qualifier> &qualifiers);    \
     };
 

@@ -6,6 +6,7 @@
 #include <string>
 
 enum EXE_STATE { RUN, EXIT, BAR_SYNC };
+enum BAR_TYPE { SYNC };
 
 struct Dim3 {
     uint32_t x, y, z;

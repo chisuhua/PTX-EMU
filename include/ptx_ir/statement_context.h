@@ -60,13 +60,13 @@ public:
 
 #define DEFINE_BRANCH(Name)                                                    \
     struct Name {                                                              \
-        std::vector<Qualifier> braQualifier;                                   \
+        std::vector<Qualifier> qualifier;                                      \
         std::string braTarget;                                                 \
     };
 
 #define DEFINE_BARRIER(Name)                                                   \
     struct Name {                                                              \
-        std::vector<Qualifier> braQualifier;                                   \
+        std::vector<Qualifier> qualifier;                                      \
         std::string barType;                                                   \
         int barId;                                                             \
     };
@@ -218,7 +218,7 @@ inline void deepCopyOperandArray(OperandContext (&dst)[N],
     do {                                                                       \
         auto source = static_cast<const Name *>(other.statement);              \
         auto dest = new Name();                                                \
-        dest->braQualifier = source->braQualifier;                             \
+        dest->qualifier = source->qualifier;                                   \
         dest->braTarget = source->braTarget;                                   \
         statement = dest;                                                      \
     } while (0)
@@ -227,7 +227,7 @@ inline void deepCopyOperandArray(OperandContext (&dst)[N],
     do {                                                                       \
         auto source = static_cast<const Name *>(other.statement);              \
         auto dest = new Name();                                                \
-        dest->braQualifier = source->braQualifier;                             \
+        dest->qualifier = source->qualifier;                                   \
         dest->barType = source->barType;                                       \
         dest->barId = source->barId;                                           \
         statement = dest;                                                      \

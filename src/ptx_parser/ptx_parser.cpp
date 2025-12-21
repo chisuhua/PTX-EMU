@@ -632,7 +632,7 @@ void PtxListener::exitBarStatement(ptxParser::BarStatementContext *ctx) {
 
     /* qualifier */
     while (qualifier.size()) {
-        st->braQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
@@ -657,7 +657,7 @@ void PtxListener::exitBraStatement(ptxParser::BraStatementContext *ctx) {
 
     /* qualifier */
     if (qualifier.size()) {
-        st->braQualifier.push_back(qualifier.front());
+        st->qualifier.push_back(qualifier.front());
         qualifier.pop();
     }
 
