@@ -15,6 +15,8 @@
 #include <unistd.h>
 
 #include "antlr4-runtime.h"
+#include "memory/memory_manager.h"
+#include "memory/simple_memory.h"
 #include "ptxLexer.h"
 #include "ptxParser.h"
 #include "ptxParserBaseListener.h"
@@ -37,7 +39,35 @@ size_t _sharedMem;
 PtxListener ptxListener;
 PtxInterpreter ptxInterpreter;
 
-std::map<uint64_t, bool> memAlloc;
+// std::map<uint64_t, bool> memAlloc;
+// 全局初始化（在 main 或首次调用时）
+static std::unique_ptr<SimpleMemory>
+    g_simple_memory; // 使用 unique_ptr 延迟构造
+
+static void ensure_memory_manager_initialized() {
+    static bool initialized = false;
+    if (!initialized) {
+        // 1. 获取 MemoryManager 单例
+        MemoryManager &mgr = MemoryManager::instance();
+
+        // 2. 构造 SimpleMemory（复用 MemoryManager 的内存池）
+        g_simple_memory = std::make_unique<SimpleMemory>(
+            mgr.get_global_pool(), MemoryManager::GLOBAL_SIZE,
+            mgr.get_shared_pool(), MemoryManager::SHARED_SIZE);
+
+        // 3. 注入 MemoryInterface
+        mgr.set_memory_interface(g_simple_memory.get());
+
+        // =============================================================================
+        // Gem5 接入占位（未来只需取消注释以下代码，并注释 SimpleMemory 部分）
+        // =============================================================================
+        // static std::unique_ptr<Gem5MemoryService> g_gem5_memory;
+        // g_gem5_memory = std::make_unique<Gem5MemoryService>();
+        // mgr.set_memory_interface(g_gem5_memory.get());
+        // =============================================================================
+        initialized = true;
+    }
+}
 
 // 调试配置文件路径
 static const char *DEBUG_CONFIG_FILE = "ptx_debug.conf";
@@ -167,13 +197,15 @@ void __cudaRegisterFatBinaryEnd(void **fatCubinHandle) {
 }
 
 cudaError_t cudaMalloc(void **p, size_t s) {
-    *p = malloc(s);
-    memAlloc[(uint64_t)p] = 1;
+    // *p = malloc(s);
+    // memAlloc[(uint64_t)p] = 1;
+    ensure_memory_manager_initialized();
+    *p = MemoryManager::instance().malloc(s);
 #ifdef LOGEMU
     printf("EMU: call %s\n", __my_func__);
     printf("EMU: malloc %lx\n", *p);
 #endif
-    return cudaSuccess;
+    return (*p) ? cudaSuccess : cudaErrorMemoryAllocation;
 }
 
 cudaError_t cudaMemcpy(void *dst, const void *src, size_t count,
@@ -231,15 +263,17 @@ cudaError_t cudaEventElapsedTime(float *ms, cudaEvent_t start,
 }
 
 cudaError_t cudaFree(void *devPtr) {
-    // avoid double free
-    if (memAlloc[(uint64_t)devPtr]) {
-        free(devPtr);
-        memAlloc[(uint64_t)devPtr] = 0;
-    }
 #ifdef LOGEMU
     printf("EMU: call %s\n", __my_func__);
 #endif
-    return cudaSuccess;
+    ensure_memory_manager_initialized();
+    auto ret = MemoryManager::instance().free(devPtr);
+    if (ret == Success)
+        return cudaSuccess;
+    else if (ret == ErrorMemoryAllocation)
+        return cudaErrorMemoryAllocation;
+    else if (ret == ErrorInvalidValue)
+        return cudaErrorInvalidValue;
 }
 
 void __cudaUnregisterFatBinary(void **fatCubinHandle) {
@@ -312,12 +346,14 @@ void __cudaRegisterVar(void **fatCubinHandle, char *hostVar,
 
 cudaError_t cudaMallocManaged(void **devPtr, size_t size,
                               unsigned int flags = cudaMemAttachGlobal) {
-    *devPtr = malloc(size);
-    memAlloc[(uint64_t)devPtr] = 1;
+    // *devPtr = malloc(size);
+    // memAlloc[(uint64_t)devPtr] = 1;
 #ifdef LOGEMU
     printf("EMU: call %s\n", __my_func__);
 #endif
-    return cudaSuccess;
+    ensure_memory_manager_initialized();
+    *devPtr = MemoryManager::instance().malloc_managed(size);
+    return (*devPtr) ? cudaSuccess : cudaErrorMemoryAllocation;
 }
 
 cudaError_t cudaDeviceSynchronize(void) {

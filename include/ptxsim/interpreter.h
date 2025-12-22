@@ -56,7 +56,7 @@ public:
     PtxContext *ptxContext;
     KernelContext *kernelContext;
     void **kernelArgs;
-    Dim3 gridDim, blockDim;
+    Dim3 gridDim{1, 1, 1}, blockDim{1, 1, 1};
 
     std::map<std::string, uint64_t> constName2addr;
 

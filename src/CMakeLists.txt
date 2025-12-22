@@ -50,6 +50,8 @@ add_library(ptxsim SHARED
     ptxsim/core/cta_context.cpp
     ptxsim/core/interpreter.cpp
     ptxsim/core/thread_context.cpp
+    memory/memory_manager.cpp
+    memory/simple_memory.cpp
     ptxsim/debug/ptx_debug.cpp
     ptxsim/instruction_factory.cpp
     ptxsim/instruction_handlers.cpp
@@ -58,11 +60,11 @@ add_library(ptxsim SHARED
     ptxsim/instructions/arithmetic.cpp
     ptxsim/instructions/bitwise.cpp
     ptxsim/instructions/math.cpp
-    #ptxsim/instructions/memory.cpp
-    #ptxsim/instructions/control.cpp
-    #ptxsim/instructions/comparison.cpp
-    #ptxsim/instructions/atomic.cpp
-    #ptxsim/instructions/tensor.cpp
+    ptxsim/instructions/memory.cpp
+    ptxsim/instructions/control.cpp
+    ptxsim/instructions/comparison.cpp
+    ptxsim/instructions/atomic.cpp
+    ptxsim/instructions/tensor.cpp
     # ptxsim/instruction_handlers/arithmetic_handler.cpp
     # ptxsim/instruction_handlers/bitwise_handler.cpp
     # ptxsim/instruction_handlers/memory_handler.cpp

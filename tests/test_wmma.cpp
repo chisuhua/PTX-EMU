@@ -75,7 +75,7 @@ int main() {
 
             // Print qualifiers
             std::cout << "Qualifiers: ";
-            for (const auto &qual : wmmaStmt->wmmaQualifier) {
+            for (const auto &qual : wmmaStmt->qualifier) {
                 std::cout << Q2s(qual) << " ";
             }
             std::cout << std::endl;
