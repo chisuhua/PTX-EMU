@@ -1,6 +1,17 @@
 #include "ptxsim/utils/qualifier_utils.h"
 #include "memory/memory_interface.h"
 #include "ptx_ir/ptx_types.h"
+#include "utils/logger.h"
+#include "ptxsim/utils/type_utils.h"
+#include <algorithm>
+#include <any>
+#include <cassert>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
+#include <iostream>
+#include <stdexcept>
+#include <vector>
 
 int Q2bytes(Qualifier q) {
     switch (q) {
@@ -110,6 +121,7 @@ Qualifier getDataQualifier(const std::vector<Qualifier> &qualifiers) {
             return q;
     }
     assert(0);
+    return Qualifier::S_UNKNOWN;  // 添加默认返回值
 }
 
 Qualifier getCmpOpQualifier(const std::vector<Qualifier> &qualifiers) {
@@ -192,4 +204,119 @@ MemorySpace getAddressSpace(std::vector<Qualifier> &qualifiers) {
     }
     // 默认返回GLOBAL空间
     return MemorySpace::GLOBAL;
+}
+
+// 解析立即数到缓冲区
+void parseImmediate(const std::string& s, Qualifier q, void* out) {
+    if (!out) return;
+
+    // 清理字符串（移除空格）
+    std::string clean = s;
+    clean.erase(std::remove_if(clean.begin(), clean.end(), ::isspace), clean.end());
+    if (clean.empty()) {
+        std::vector<Qualifier> q_vec = {q};
+        memset(out, 0, TypeUtils::get_bytes(q_vec));
+        return;
+    }
+
+    try {
+        switch (q) {
+        case Qualifier::Q_F32: {
+            float* dst = static_cast<float*>(out);
+            if (clean.find("0x") == 0 || clean.find("0X") == 0) {
+                // 检查是否为标准十六进制浮点数格式（如 0x1.0p0）
+                if (clean.find('.') != std::string::npos || clean.find('p') != std::string::npos) {
+                    // 使用标准库函数处理十六进制浮点数
+                    *dst = static_cast<float>(std::strtof(clean.c_str(), nullptr));
+                } else {
+                    // 处理标准十六进制格式，如 0x1234abcd
+                    uint32_t bits = static_cast<uint32_t>(std::stoul(clean, nullptr, 16));
+                    *dst = *reinterpret_cast<float*>(&bits);
+                }
+            } 
+            else if (clean.size() >= 2 && (clean[1] == 'f' || clean[1] == 'F')) {
+                // 处理PTX特有格式 0f1234，转换为十六进制浮点
+                uint32_t bits = static_cast<uint32_t>(std::stoul("0x" + clean.substr(2), nullptr, 16));
+                *dst = *reinterpret_cast<float*>(&bits);
+            }
+            else {
+                *dst = std::stof(clean);
+            }
+            break;
+        }
+        case Qualifier::Q_F64: {
+            double* dst = static_cast<double*>(out);
+            if (clean.find("0x") == 0 || clean.find("0X") == 0) {
+                // 检查是否为标准十六进制浮点数格式（如 0x1.0p0）
+                if (clean.find('.') != std::string::npos || clean.find('p') != std::string::npos) {
+                    // 使用标准库函数处理十六进制浮点数
+                    *dst = std::strtod(clean.c_str(), nullptr);
+                } else {
+                    // 处理标准十六进制格式
+                    uint64_t bits = std::stoull(clean, nullptr, 16);
+                    *dst = *reinterpret_cast<double*>(&bits);
+                }
+            }
+            else if (clean.size() >= 2 && (clean[1] == 'd' || clean[1] == 'D')) {
+                // 处理PTX特有格式 0d1234
+                uint64_t bits = std::stoull("0x" + clean.substr(2), nullptr, 16);
+                *dst = *reinterpret_cast<double*>(&bits);
+            }
+            else {
+                *dst = std::stod(clean);
+            }
+            break;
+        }
+        // 整型统一用 stoll + 截断
+        case Qualifier::Q_S64:
+        case Qualifier::Q_U64:
+        case Qualifier::Q_B64: {
+            int64_t val = std::stoll(clean, nullptr, 0);
+            *static_cast<uint64_t*>(out) = static_cast<uint64_t>(val);
+            break;
+        }
+        case Qualifier::Q_S32:
+        case Qualifier::Q_U32:
+        case Qualifier::Q_B32: {
+            int64_t val = std::stoll(clean, nullptr, 0);  // 使用stoll防止溢出
+            *static_cast<uint32_t*>(out) = static_cast<uint32_t>(val);
+            break;
+        }
+        case Qualifier::Q_S16:
+        case Qualifier::Q_U16:
+        case Qualifier::Q_B16: {
+            int64_t val = std::stoll(clean, nullptr, 0);
+            *static_cast<uint16_t*>(out) = static_cast<uint16_t>(val);
+            break;
+        }
+        case Qualifier::Q_S8:
+        case Qualifier::Q_U8:
+        case Qualifier::Q_B8: {
+            int64_t val = std::stoll(clean, nullptr, 0);
+            *static_cast<uint8_t*>(out) = static_cast<uint8_t>(val);
+            break;
+        }
+        case Qualifier::Q_PRED: {
+            // 谓词类型应为1-bit，但存储为uint8_t
+            bool val = (std::stoll(clean, nullptr, 0) != 0);
+            *static_cast<uint8_t*>(out) = static_cast<uint8_t>(val);
+            break;
+        }
+        default:
+            // 未知类型，清零
+            PTX_WARN_EMU("Unsupported immediate qualifier: %s, zeroing value", Q2s(q).c_str());
+            {
+                std::vector<Qualifier> q_vec = {q};
+                memset(out, 0, TypeUtils::get_bytes(q_vec));
+            }
+            return;
+        }
+    } catch (const std::exception& e) {
+        PTX_ERROR_EMU("Failed to parse immediate value '%s' as %s: %s", 
+                  clean.c_str(), Q2s(q).c_str(), e.what());
+        {
+            std::vector<Qualifier> q_vec = {q};
+            memset(out, 0, TypeUtils::get_bytes(q_vec));
+        }
+    }
 }

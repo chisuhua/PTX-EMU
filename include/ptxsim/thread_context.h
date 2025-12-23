@@ -32,8 +32,7 @@ public:
     int pc;
     EXE_STATE state;
 
-    // 临时数据存储
-    std::queue<PtxInterpreter::IMM *> imm;
+    // 临时数据存储（仅保留VEC，移除IMM）
     std::queue<PtxInterpreter::VEC *> vec;
 
     void init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim, Dim3 BlockDim,
@@ -91,8 +90,6 @@ private:
 
     // 保留原有的辅助函数声明
     int getBytes(Qualifier q);
-    void setIMM(std::string s, Qualifier q);
-    void clearIMM_VEC();
 };
 
 #endif // THREAD_CONTEXT_H

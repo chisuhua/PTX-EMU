@@ -105,6 +105,7 @@ endfunction()
 add_catch_test(test_ptx_integer
     test_ptx_integer.cu
     ptx_integer_arith.cu
+    test_parse_immediate.cpp
 )
 set_tests_properties(test_ptx_integer PROPERTIES LABELS "ptx;integer")
 
@@ -136,6 +137,7 @@ set_tests_properties(test_ptx_integer PROPERTIES LABELS "ptx;integer")
 
 add_standalone_test(test-ptx test-ptx.cpp)
 add_standalone_test(test-wmma test_wmma.cpp)
+# add_standalone_test(test-parse-immediate test_parse_immediate.cpp)
 
 # ================================
 # 添加基于 CUDA 的测试（直接使用 CMake 编译）

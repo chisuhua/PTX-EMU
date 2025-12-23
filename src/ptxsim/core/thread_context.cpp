@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <cstring>
 #include <iostream>
+#include <queue>
 
 // 添加SHMEMADDR变量定义，用于处理shared memory地址
 static uint64_t SHMEMADDR = 0;
@@ -100,10 +101,6 @@ void ThreadContext::_execute_once() {
 }
 
 void ThreadContext::clear_temporaries() {
-    while (!imm.empty()) {
-        delete imm.front();
-        imm.pop();
-    }
     while (!vec.empty()) {
         delete vec.front();
         vec.pop();
@@ -227,11 +224,19 @@ void *ThreadContext::get_operand_addr(OperandContext &operand,
 
     case O_IMM: {
         auto immOp = (OperandContext::IMM *)operand.operand;
-        // 使用setIMM函数设置立即数
-        setIMM(immOp->immVal, getDataQualifier(qualifiers));
-        void *ret = &(imm.front()->data);
-        imm.pop();
-        return ret;
+        Qualifier q = getDataQualifier(qualifiers);
+
+        // 使用栈上缓冲区（每个 IMM 使用独立空间，支持多 IMM 指令）
+        // 注意：此指针仅在当前指令执行期间有效！
+        alignas(8) static thread_local char imm_buffer_pool[64][8]; // 支持最多 64 个 IMM/指令
+        static thread_local int buffer_index = 0;
+
+        // 使用模运算维护索引，避免溢出
+        char* buffer = imm_buffer_pool[buffer_index];
+        buffer_index = (buffer_index + 1) % 64;
+
+        parseImmediate(immOp->immVal, q, buffer);
+        return buffer;
     }
 
     case O_VEC: {
@@ -247,8 +252,10 @@ void *ThreadContext::get_operand_addr(OperandContext &operand,
     }
 
     default:
-        return nullptr;
+        break;
     }
+    
+    return nullptr;
 }
 
 void *ThreadContext::get_register_addr(OperandContext::REG *reg,
@@ -364,29 +371,16 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
 
     // 处理偏移量
     if (!fa->offsetVal.empty()) {
-        // 创建一个临时立即数操作数来处理偏移量
-        OperandContext offsetOp;
-        offsetOp.operandType = O_IMM;
-
-        // 解析偏移量字符串为整数值
-        OperandContext::IMM *immOffset = new OperandContext::IMM();
+        // 直接解析偏移量字符串，避免创建临时立即数操作数
+        int64_t offset = 0;
         try {
-            immOffset->immVal = std::to_string(std::stoll(fa->offsetVal));
+            // 解析偏移量字符串为整数值
+            offset = std::stoll(fa->offsetVal);
         } catch (...) {
-            immOffset->immVal = "0"; // 默认偏移量为0
+            offset = 0; // 默认偏移量为0
         }
-
-        offsetOp.operand = immOffset;
-        std::vector<Qualifier> offsetQualifiers = {Qualifier::Q_S64};
-        void *offsetAddr = get_operand_addr(offsetOp, offsetQualifiers);
-
-        if (offsetAddr) {
-            int64_t offset = *(int64_t *)offsetAddr;
-            ret = (void *)((uint64_t)ret + offset);
-        }
-
-        // 注意：这里不应该手动删除immOffset，因为offsetOp析构时会自动删除
-        // delete immOffset;
+        
+        ret = (void *)((uint64_t)ret + offset);
     }
 
     return ret;
@@ -525,33 +519,7 @@ bool ThreadContext::is_immediate_or_vector(OperandContext &op) {
 }
 
 void ThreadContext::set_immediate_value(std::string value, Qualifier type) {
-    // 创建一个新的IMM对象
-    PtxInterpreter::IMM *immObj = new PtxInterpreter::IMM();
-
-    // 根据类型设置值
-    switch (type) {
-    case Qualifier::Q_U32:
-    case Qualifier::Q_S32:
-        immObj->data.u32 = std::stoi(value);
-        break;
-    case Qualifier::Q_U64:
-    case Qualifier::Q_S64:
-        immObj->data.u64 = std::stoll(value);
-        break;
-    case Qualifier::Q_F32:
-        immObj->data.f32 = std::stof(value);
-        break;
-    case Qualifier::Q_F64:
-        immObj->data.f64 = std::stod(value);
-        break;
-    default:
-        // 默认情况下，尝试作为整数处理
-        immObj->data.u32 = std::stoi(value);
-        break;
-    }
-
-    // 将IMM对象加入队列
-    imm.push(immObj);
+    // 此函数已废弃，使用新的parseImmediate函数替代
 }
 
 int ThreadContext::getBytes(Qualifier q) {
@@ -559,71 +527,3 @@ int ThreadContext::getBytes(Qualifier q) {
     return TypeUtils::get_bytes(typeVec);
 }
 
-void ThreadContext::setIMM(std::string s, Qualifier q) {
-    // 创建一个新的IMM对象
-    PtxInterpreter::IMM *immObj = new PtxInterpreter::IMM();
-    immObj->type = q;
-
-    // 根据限定符类型设置值，与原始实现保持一致
-    switch (q) {
-    case Qualifier::Q_S64:
-    case Qualifier::Q_U64:
-    case Qualifier::Q_B64:
-        immObj->data.u64 = std::stoll(s, 0, 0);
-        break;
-    case Qualifier::Q_S32:
-    case Qualifier::Q_U32:
-    case Qualifier::Q_B32:
-        immObj->data.u32 = std::stoi(s, 0, 0);
-        break;
-    case Qualifier::Q_S16:
-    case Qualifier::Q_U16:
-    case Qualifier::Q_B16:
-        immObj->data.u16 = (uint16_t)std::stoi(s, 0, 0);
-        break;
-    case Qualifier::Q_S8:
-    case Qualifier::Q_U8:
-    case Qualifier::Q_B8:
-    case Qualifier::Q_PRED:
-        immObj->data.u8 = (uint8_t)std::stoi(s, 0, 0);
-        break;
-    case Qualifier::Q_F64:
-        // 处理双精度浮点数
-        if (s.size() == 18 && (s[1] == 'd' || s[1] == 'D')) {
-            s[1] = 'x';
-            *(uint64_t *)&(immObj->data.f64) = std::stoull(s, 0, 0);
-        } else {
-            immObj->data.f64 = std::stod(s);
-        }
-        break;
-    case Qualifier::Q_F32:
-        // 处理单精度浮点数
-        if (s.size() == 10 && (s[1] == 'f' || s[1] == 'F')) {
-            s[1] = 'x';
-            // 当使用stoi处理输入0xBF000000时会抛出std::out_of_range异常
-            *(uint32_t *)&(immObj->data.f32) = (uint32_t)std::stol(s, 0, 0);
-        } else {
-            immObj->data.f32 = std::stof(s);
-        }
-        break;
-    default:
-        assert(0);
-    }
-
-    // 将IMM对象加入队列
-    imm.push(immObj);
-}
-
-void ThreadContext::clearIMM_VEC() {
-    // 清理IMM队列
-    while (!imm.empty()) {
-        delete imm.front();
-        imm.pop();
-    }
-
-    // 清理VEC队列
-    while (!vec.empty()) {
-        delete vec.front();
-        vec.pop();
-    }
-}

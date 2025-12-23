@@ -31,4 +31,7 @@ void splitDstSrcQualifiers(const std::vector<Qualifier> &qualifiers,
 // 添加获取地址空间的辅助函数
 MemorySpace getAddressSpace(std::vector<Qualifier> &qualifiers);
 
+// 解析立即数到缓冲区
+void parseImmediate(const std::string& s, Qualifier q, void* out);
+
 #endif // QUALIFIER_UTILS_H
