@@ -143,7 +143,7 @@ add_standalone_test(test-wmma test_wmma.cpp)
 
 # 定义 mini tests (基础测试集)
 set(PTX_MINI_TESTS 
-    dummy dummy-add dummy-float dummy-grid dummy-mul dummy-sub dummy-condition
+    dummy dummy-args dummy-add dummy-float dummy-grid dummy-mul dummy-sub dummy-condition
     dummy-long dummy-sieve dummy-share)
 
 set(PTX_BASIC_TESTS 

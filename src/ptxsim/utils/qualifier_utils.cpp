@@ -1,4 +1,5 @@
-#include "qualifier_utils.h"
+#include "ptxsim/utils/qualifier_utils.h"
+#include "memory/memory_interface.h"
 #include "ptx_ir/ptx_types.h"
 
 int Q2bytes(Qualifier q) {
@@ -50,6 +51,34 @@ int getBytes(std::vector<Qualifier> &q) {
     return 0;
 }
 
+DTYPE getDType(std::vector<Qualifier> &q) {
+    if (q.size() == 0)
+        return DNONE;
+    Qualifier e = q.back();
+    switch (e) {
+    case Qualifier::Q_F64:
+    case Qualifier::Q_F32:
+    case Qualifier::Q_F16:
+    case Qualifier::Q_F8:
+        return DFLOAT;
+    case Qualifier::Q_U64:
+    case Qualifier::Q_U32:
+    case Qualifier::Q_U16:
+    case Qualifier::Q_U8:
+    case Qualifier::Q_S64:
+    case Qualifier::Q_S32:
+    case Qualifier::Q_S16:
+    case Qualifier::Q_S8:
+    case Qualifier::Q_B64:
+    case Qualifier::Q_B32:
+    case Qualifier::Q_B16:
+    case Qualifier::Q_B8:
+        return DINT;
+    default:
+        return DNONE;
+    }
+}
+
 DTYPE getDType(Qualifier q) {
     switch (q) {
     case Qualifier::Q_F64:
@@ -57,19 +86,18 @@ DTYPE getDType(Qualifier q) {
     case Qualifier::Q_F16:
     case Qualifier::Q_F8:
         return DFLOAT;
-    case Qualifier::Q_S64:
-    case Qualifier::Q_B64:
     case Qualifier::Q_U64:
-    case Qualifier::Q_S32:
-    case Qualifier::Q_B32:
     case Qualifier::Q_U32:
-    case Qualifier::Q_S16:
-    case Qualifier::Q_B16:
     case Qualifier::Q_U16:
-    case Qualifier::Q_S8:
-    case Qualifier::Q_B8:
     case Qualifier::Q_U8:
-    case Qualifier::Q_PRED:
+    case Qualifier::Q_S64:
+    case Qualifier::Q_S32:
+    case Qualifier::Q_S16:
+    case Qualifier::Q_S8:
+    case Qualifier::Q_B64:
+    case Qualifier::Q_B32:
+    case Qualifier::Q_B16:
+    case Qualifier::Q_B8:
         return DINT;
     default:
         return DNONE;
@@ -85,8 +113,8 @@ Qualifier getDataQualifier(const std::vector<Qualifier> &qualifiers) {
 }
 
 Qualifier getCmpOpQualifier(const std::vector<Qualifier> &qualifiers) {
-    for (const auto &q : qualifiers) {
-        switch (q) {
+    for (auto e : qualifiers) {
+        switch (e) {
         case Qualifier::Q_EQ:
         case Qualifier::Q_NE:
         case Qualifier::Q_LT:
@@ -100,7 +128,7 @@ Qualifier getCmpOpQualifier(const std::vector<Qualifier> &qualifiers) {
         case Qualifier::Q_GEU:
         case Qualifier::Q_NEU:
         case Qualifier::Q_GTU:
-            return q;
+            return e;
         }
     }
     return Qualifier::S_UNKNOWN;
@@ -142,4 +170,26 @@ void splitDstSrcQualifiers(const std::vector<Qualifier> &qualifiers,
             src_qualifiers.push_back(q);
         }
     }
+}
+
+// 实现获取地址空间的辅助函数
+MemorySpace getAddressSpace(std::vector<Qualifier> &qualifiers) {
+    for (const auto &qual : qualifiers) {
+        switch (qual) {
+        case Qualifier::Q_GLOBAL:
+            return MemorySpace::GLOBAL;
+        case Qualifier::Q_SHARED:
+            return MemorySpace::SHARED;
+        case Qualifier::Q_LOCAL:
+            return MemorySpace::LOCAL;
+        case Qualifier::Q_CONST:
+            return MemorySpace::CONST;
+        case Qualifier::Q_PARAM:
+            return MemorySpace::PARAM;
+        default:
+            continue;
+        }
+    }
+    // 默认返回GLOBAL空间
+    return MemorySpace::GLOBAL;
 }

@@ -345,7 +345,8 @@ void LD::process_operation(ThreadContext *context, void *op[2],
         return;
     }
 
-    // 获取单个元素大小
+    // 获取地址空间和数据大小
+    MemorySpace space = getAddressSpace(qualifier);
     size_t data_size = TypeUtils::get_bytes(qualifier);
 
     // ========================
@@ -355,7 +356,7 @@ void LD::process_operation(ThreadContext *context, void *op[2],
         !context->QvecHasQ(qualifier, Qualifier::Q_V4)) {
         // 单次内存读取
         MemoryManager::instance().access(host_ptr, dst, data_size,
-                                         /*is_write=*/false);
+                                         /*is_write=*/false, space);
         return;
     }
 
@@ -383,7 +384,7 @@ void LD::process_operation(ThreadContext *context, void *op[2],
 
         MemoryManager::instance().access(
             reinterpret_cast<void *>(element_host_ptr), element_dst, data_size,
-            /*is_write=*/false);
+            /*is_write=*/false, space);
     }
 }
 
@@ -398,7 +399,8 @@ void ST::process_operation(ThreadContext *context, void *op[2],
         return;
     }
 
-    // 获取单个元素大小
+    // 获取地址空间和数据大小
+    MemorySpace space = getAddressSpace(qualifiers);
     size_t data_size = TypeUtils::get_bytes(qualifiers);
 
     // ========================
@@ -408,7 +410,7 @@ void ST::process_operation(ThreadContext *context, void *op[2],
         !context->QvecHasQ(qualifiers, Qualifier::Q_V4)) {
         // 单次内存写入
         MemoryManager::instance().access(host_ptr, src, data_size,
-                                         /*is_write=*/true);
+                                         /*is_write=*/true, space);
         return;
     }
 
@@ -436,6 +438,6 @@ void ST::process_operation(ThreadContext *context, void *op[2],
 
         MemoryManager::instance().access(
             reinterpret_cast<void *>(element_host_ptr), element_src, data_size,
-            /*is_write=*/true);
+            /*is_write=*/true, space);
     }
 }

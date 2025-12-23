@@ -59,6 +59,9 @@ public:
     Dim3 gridDim{1, 1, 1}, blockDim{1, 1, 1};
 
     std::map<std::string, uint64_t> constName2addr;
+    
+    // PARAM空间管理
+    void *param_space;
 
     void launchPtxInterpreter(PtxContext &ptx, std::string &kernel, void **args,
                               Dim3 &gridDim, Dim3 &blockDim);

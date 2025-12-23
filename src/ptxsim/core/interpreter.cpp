@@ -3,8 +3,11 @@
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/cta_context.h"
 #include "ptxsim/instruction_factory.h"
+#include "utils/logger.h"
+#include "memory/memory_manager.h"  // 添加 MemoryManager 头文件
 #include <cassert>
 #include <map>
+#include <cstring>
 
 void PtxInterpreter::launchPtxInterpreter(PtxContext &ptx, std::string &kernel,
                                           void **args, Dim3 &gridDim,
@@ -16,6 +19,7 @@ void PtxInterpreter::launchPtxInterpreter(PtxContext &ptx, std::string &kernel,
     this->gridDim = gridDim;
     this->blockDim = blockDim;
     this->kernelArgs = args;
+    this->param_space = nullptr; // 初始化param_space
 
     // 根据kernel名称获取kernelContext
     for (auto &e : ptx.ptxKernels) {
@@ -29,6 +33,18 @@ void PtxInterpreter::launchPtxInterpreter(PtxContext &ptx, std::string &kernel,
     std::map<std::string, int> label2pc;
 
     funcInterpreter(name2Sym, label2pc);
+    
+    // 内核执行结束后，释放PARAM空间，使用 MemoryManager 提供的 free_param 函数
+    if (this->param_space) {
+        PTX_DEBUG_EMU("Freeing PARAM space at %p", this->param_space);
+        MemoryManager::instance().free_param(this->param_space);
+        this->param_space = nullptr;
+    }
+    
+    // 清理符号表
+    for (auto &pair : name2Sym) {
+        delete pair.second;
+    }
 }
 
 void PtxInterpreter::funcInterpreter(
@@ -72,16 +88,61 @@ void PtxInterpreter::setupConstantSymbols(
 
 void PtxInterpreter::setupKernelArguments(
     std::map<std::string, Symtable *> &name2Sym) {
+    PTX_DEBUG_EMU("Setting up %zu kernel arguments",
+                  kernelContext->kernelParams.size());
+    
+    // 计算参数总大小
+    size_t total_param_size = 0;
     for (int i = 0; i < kernelContext->kernelParams.size(); i++) {
-        // temporily ignore align
+        auto e = kernelContext->kernelParams[i];
+        total_param_size += Q2bytes(e.paramType) * (e.paramNum ? e.paramNum : 1);
+    }
+    
+    // 申请PARAM空间，使用 MemoryManager 提供的 malloc_param 函数
+    if (total_param_size > 0) {
+        this->param_space = MemoryManager::instance().malloc_param(total_param_size);
+        if (this->param_space == nullptr) {
+            PTX_DEBUG_EMU("Failed to allocate PARAM space of size %zu", total_param_size);
+            return; // 或者抛出异常
+        }
+        memset(this->param_space, 0, total_param_size);
+        PTX_DEBUG_EMU("Allocated PARAM space of size %zu at %p", total_param_size, this->param_space);
+    } else {
+        this->param_space = nullptr;
+        PTX_DEBUG_EMU("No PARAM space needed, total_param_size is 0");
+    }
+    
+    // 遍历参数，将值填入PARAM空间，并在符号表中记录地址
+    size_t offset = 0;
+    for (int i = 0; i < kernelContext->kernelParams.size(); i++) {
         auto e = kernelContext->kernelParams[i];
         Symtable *s = new Symtable();
         s->name = e.paramName;
         s->elementNum = e.paramNum;
         s->symType = e.paramType;
         s->byteNum = Q2bytes(e.paramType);
-        s->val = (uint64_t)kernelArgs[i];
+        
+        // 计算当前参数大小
+        size_t param_size = s->byteNum * (e.paramNum ? e.paramNum : 1);
+        
+        // 检查是否需要分配空间
+        if (this->param_space != nullptr) {
+            // 将参数值拷贝到PARAM空间
+            memcpy((char*)this->param_space + offset, kernelArgs[i], param_size);
+        }
+        
+        // 在符号表中存储PARAM空间中该参数的地址
+        s->val = (uint64_t)((char*)this->param_space + offset);
+        
+        PTX_DEBUG_EMU(
+            "Kernel argument[%d]: name=%s, elementNum=%d, byteNum=%d, "
+            "param_size=%zu, param_space_offset=%zu, stored_addr=%p, "
+            "first_8_bytes_of_data=0x%lx",
+            i, s->name.c_str(), s->elementNum, s->byteNum, param_size, offset,
+            (void*)s->val, *(uint64_t*)kernelArgs[i]);
+
         name2Sym[s->name] = s;
+        offset += param_size;
     }
 }
 

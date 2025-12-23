@@ -30,8 +30,13 @@ public:
     void *malloc_managed(size_t size);
     mycudaError_t free(void *dev_ptr);
 
+    // PARAM空间内存分配和释放
+    void *malloc_param(size_t size);
+    void free_param(void *param_ptr);
+
     // PTX 指令内存访问
     void access(void *host_ptr, void *data, size_t size, bool is_write);
+    void access(void *host_ptr, void *data, size_t size, bool is_write, MemorySpace space);
 
     // 获取内存池指针（供 SimpleMemory 使用）
     uint8_t *get_global_pool() const { return global_pool_; }
@@ -49,6 +54,7 @@ private:
     uint8_t *shared_pool_ = nullptr;
 
     size_t global_offset_ = 0;
+    size_t param_offset_ = 0;  // 为PARAM空间添加偏移量
     mutable std::mutex mutex_;
 
     // 主机指针 → {偏移, 大小}
@@ -57,6 +63,9 @@ private:
         size_t size;
     };
     std::unordered_map<uint64_t, Allocation> allocations_;
+    
+    // PARAM空间管理
+    std::unordered_map<uint64_t, Allocation> param_allocations_;
 
     MemoryInterface *memory_interface_ = nullptr;
 };

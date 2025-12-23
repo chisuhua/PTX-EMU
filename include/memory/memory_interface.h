@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 
-enum class MemorySpace { SHARED, GLOBAL, LOCAL, CONST };
+enum class MemorySpace { SHARED, GLOBAL, LOCAL, CONST, PARAM };
 
 struct MemoryAccess {
     MemorySpace space;

@@ -72,7 +72,7 @@ static void ensure_memory_manager_initialized() {
 // 调试配置文件路径
 static const char *DEBUG_CONFIG_FILE = "ptx_debug.conf";
 
-// #define LOGEMU 0
+#define LOGEMU 1
 
 // 初始化调试环境
 void initialize_debug_environment() {
@@ -312,6 +312,17 @@ cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim, dim3 blockDim,
     printf("EMU: func %p\n", func);
     printf("EMU: arg %p\n", args);
 #endif
+
+    // 添加参数内容打印的日志，增强安全性
+    if (args) {
+        // 打印参数数组地址
+        PTX_DEBUG_EMU("cudaLaunchKernel args array address: %p", args);
+
+        int i = 0;
+        PTX_DEBUG_EMU("cudaLaunchKernel argument[%d]: address=%p, value=0x%lx",
+                      i, args[i], *(uint64_t *)args[i]);
+    }
+
     printf("EMU: deviceFunName %s\n", func2name[(uint64_t)func].c_str());
     printf("EMU: gridDim(%d,%d,%d)\n", gridDim.x, gridDim.y, gridDim.z);
     printf("EMU: blockDim(%d,%d,%d)\n", blockDim.x, blockDim.y, blockDim.z);

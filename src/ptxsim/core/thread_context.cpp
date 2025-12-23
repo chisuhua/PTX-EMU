@@ -4,6 +4,7 @@
 #include "ptxsim/interpreter.h"
 #include "ptxsim/ptx_debug.h"
 #include "ptxsim/utils/qualifier_utils.h"
+#include "utils/logger.h"
 #include <algorithm>
 #include <any>
 #include <cassert>
@@ -192,17 +193,40 @@ void ThreadContext::dump_state(std::ostream &os) const {
     }
 }
 
-void *ThreadContext::get_operand_addr(OperandContext &op,
+void *ThreadContext::get_operand_addr(OperandContext &operand,
                                       std::vector<Qualifier> &qualifiers) {
-    switch (op.operandType) {
+    switch (operand.operandType) {
+    case O_VAR: {
+        OperandContext::VAR *varOp = (OperandContext::VAR *)operand.operand;
+        // 查找共享内存中的变量
+        auto share_it = name2Share->find(varOp->varName);
+        if (share_it != name2Share->end()) {
+            return &(share_it->second->val);
+        }
+
+        auto sym_it = name2Sym.find(varOp->varName);
+        if (sym_it != name2Sym.end()) {
+            PTX_DEBUG_EMU("Reading kernel argument from name2Sym: name=%s, "
+                          "symbol_table_entry=%p, stored_value=0x%lx, "
+                          "dereferenced_value=0x%lx",
+                          varOp->varName.c_str(), sym_it->second,
+                          sym_it->second->val,
+                          *(uint64_t *)(sym_it->second->val));
+            return &(sym_it->second->val);
+        }
+        break;
+    }
+
     case O_REG:
-        return get_register_addr((OperandContext::REG *)op.operand);
+        return get_register_addr((OperandContext::REG *)operand.operand,
+                                 getDataQualifier(qualifiers));
 
     case O_FA:
-        return get_memory_addr((OperandContext::FA *)op.operand, qualifiers);
+        return get_memory_addr((OperandContext::FA *)operand.operand,
+                               qualifiers);
 
     case O_IMM: {
-        auto immOp = (OperandContext::IMM *)op.operand;
+        auto immOp = (OperandContext::IMM *)operand.operand;
         // 使用setIMM函数设置立即数
         setIMM(immOp->immVal, getDataQualifier(qualifiers));
         void *ret = &(imm.front()->data);
@@ -211,7 +235,7 @@ void *ThreadContext::get_operand_addr(OperandContext &op,
     }
 
     case O_VEC: {
-        auto vecOp = (OperandContext::VEC *)op.operand;
+        auto vecOp = (OperandContext::VEC *)operand.operand;
         // 创建一个新的VEC对象用于存储向量元素地址
         PtxInterpreter::VEC *newVec = new PtxInterpreter::VEC();
         // 递归处理向量中的每个元素
@@ -220,24 +244,6 @@ void *ThreadContext::get_operand_addr(OperandContext &op,
         }
         vec.push(newVec);
         return nullptr;
-    }
-
-    case O_VAR: {
-        auto varOp = (OperandContext::VAR *)op.operand;
-        // 查找共享内存中的变量
-        auto share_it = name2Share->find(varOp->varName);
-        if (share_it != name2Share->end()) {
-            return &(share_it->second->val);
-        }
-
-        // 查找符号表中的变量
-        auto sym_it = name2Sym.find(varOp->varName);
-        if (sym_it != name2Sym.end()) {
-            return &(sym_it->second->val);
-        }
-
-        // 如果都没找到，报错
-        assert(0);
     }
 
     default:
@@ -332,6 +338,10 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
         // 直接通过ID查找符号表或共享内存
         auto sym_it = name2Sym.find(fa->ID);
         if (sym_it != name2Sym.end()) {
+            PTX_DEBUG_EMU("Reading kernel argument from name2Sym in "
+                          "get_memory_addr: name=%s, "
+                          "symbol_table_entry=%p, stored_value=0x%lx, ",
+                          fa->ID.c_str(), sym_it->second, sym_it->second->val);
             ret = (void *)sym_it->second->val;
         } else {
             auto share_it = name2Share->find(fa->ID);
