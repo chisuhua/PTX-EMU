@@ -5,7 +5,7 @@
 #include <cmath>
 
 void SETP::process_operation(ThreadContext *context, void *op[3],
-                             std::vector<Qualifier> &qualifiers) {
+                             const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src1 = op[1];
     void *src2 = op[2];
@@ -19,12 +19,12 @@ void SETP::process_operation(ThreadContext *context, void *op[3],
 }
 
 void SELP::process_operation(ThreadContext *context, void *op[4],
-                             std::vector<Qualifier> &qualifiers) {
+                             const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src1 = op[1];
     void *src2 = op[2];
     void *pred = op[3];
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
 
     // 根据用户建议的实现方式
     const void *selected = *(uint8_t *)pred ? src1 : src2;

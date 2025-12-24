@@ -40,11 +40,18 @@ void ThreadContext::init(
     this->label2pc = label2pc;
     this->pc = 0;
     this->state = RUN;
+    this->instruction_state = InstructionExecutionState::READY;
+
+    // 重新初始化RegisterManager（清空所有寄存器）
+    register_manager = RegisterManager();
 }
 
 EXE_STATE ThreadContext::exe_once() {
     if (state != RUN)
         return state;
+
+    // 推进寄存器状态
+    register_manager.tick();
 
     _execute_once();
 
@@ -87,17 +94,20 @@ void ThreadContext::_execute_once() {
     // 记录性能统计
     ptxsim::PTXDebugger::get().get_perf_stats().record_instruction(opcode);
 
-    // 使用工厂创建对应的处理器并执行
+    // 使用工厂创建对应的处理器
     InstructionHandler *handler =
         InstructionFactory::create_handler(statement.statementType);
     if (handler) {
-        handler->execute(this, statement);
-        pc++;
+        // 直接调用execute_full方法执行整个指令
+        handler->execute_full(this, statement);
     } else {
         std::cerr << "No handler found for statement type: "
                   << static_cast<int>(statement.statementType) << std::endl;
         state = EXIT;
     }
+
+    // 指令执行完成后，直接推进PC
+    pc++;
 }
 
 void ThreadContext::clear_temporaries() {
@@ -107,29 +117,25 @@ void ThreadContext::clear_temporaries() {
     }
 }
 
+// can_proceed_with_instruction 已被弃用，因为不再使用分阶段执行模型
+
 void ThreadContext::prepare_breakpoint_context(
     std::unordered_map<std::string, std::any> &context) {
-    // 添加寄存器值
-    for (const auto &reg_pair : name2Reg) {
-        auto reg = reg_pair.second;
-        if (reg && reg->addr) {
-            switch (reg->regType) {
-            case Qualifier::Q_U32:
-            case Qualifier::Q_S32:
-                context[reg_pair.first] = *(int32_t *)reg->addr;
-                break;
-            case Qualifier::Q_U64:
-            case Qualifier::Q_S64:
-                context[reg_pair.first] = *(int64_t *)reg->addr;
-                break;
-            case Qualifier::Q_F32:
-                context[reg_pair.first] = *(float *)reg->addr;
-                break;
-            case Qualifier::Q_F64:
-                context[reg_pair.first] = *(double *)reg->addr;
-                break;
-            default:
-                break;
+    // 添加寄存器值 - 现在从RegisterManager获取
+    for (const auto &reg_pair : register_manager.get_all_registers()) {
+        std::string reg_name = reg_pair.first;
+        RegisterInterface *reg_interface = reg_pair.second;
+        if (reg_interface && reg_interface->get_physical_address()) {
+            // 根据寄存器大小推测类型
+            size_t reg_size = reg_interface->get_size();
+            void *addr = reg_interface->get_physical_address();
+
+            if (reg_size == 4) {
+                context[reg_name] = *(int32_t *)addr;
+            } else if (reg_size == 8) {
+                context[reg_name] = *(int64_t *)addr;
+            } else {
+                // 其他大小的寄存器暂时跳过
             }
         }
     }
@@ -145,38 +151,24 @@ void ThreadContext::prepare_breakpoint_context(
 }
 
 void ThreadContext::dump_state(std::ostream &os) const {
-    // 寄存器状态
+    // 寄存器状态 - 现在从RegisterManager获取
     os << "Registers:" << std::endl;
-    for (const auto &reg_pair : name2Reg) {
-        auto reg = reg_pair.second;
-        if (reg && reg->addr) {
-            os << "  " << reg_pair.first << " = ";
-            switch (reg->regType) {
-            case Qualifier::Q_U32:
-                os << ptxsim::debug_format::format_u32(*(uint32_t *)reg->addr,
-                                                       true);
-                break;
-            case Qualifier::Q_S32:
-                os << ptxsim::debug_format::format_i32(*(int32_t *)reg->addr,
-                                                       true);
-                break;
-            case Qualifier::Q_U64:
-                os << ptxsim::debug_format::format_i64(*(uint64_t *)reg->addr,
-                                                       true);
-                break;
-            case Qualifier::Q_S64:
-                os << ptxsim::debug_format::format_i64(*(int64_t *)reg->addr,
-                                                       true);
-                break;
-            case Qualifier::Q_F32:
-                os << ptxsim::debug_format::format_f32(*(float *)reg->addr);
-                break;
-            case Qualifier::Q_F64:
-                os << ptxsim::debug_format::format_f64(*(double *)reg->addr);
-                break;
-            default:
-                os << "[unsupported type]";
-                break;
+    for (const auto &reg_pair : register_manager.get_all_registers()) {
+        std::string reg_name = reg_pair.first;
+        RegisterInterface *reg_interface = reg_pair.second;
+        if (reg_interface && reg_interface->get_physical_address()) {
+            os << "  " << reg_name << " = ";
+            size_t reg_size = reg_interface->get_size();
+
+            // 由于我们不知道寄存器的确切类型，需要基于大小进行推测
+            if (reg_size == 4) {
+                os << ptxsim::debug_format::format_i32(
+                    *(int32_t *)reg_interface->get_physical_address(), true);
+            } else if (reg_size == 8) {
+                os << ptxsim::debug_format::format_i64(
+                    *(int64_t *)reg_interface->get_physical_address(), true);
+            } else {
+                os << "[unknown size: " << reg_size << "]";
             }
             os << std::endl;
         }
@@ -228,11 +220,12 @@ void *ThreadContext::get_operand_addr(OperandContext &operand,
 
         // 使用栈上缓冲区（每个 IMM 使用独立空间，支持多 IMM 指令）
         // 注意：此指针仅在当前指令执行期间有效！
-        alignas(8) static thread_local char imm_buffer_pool[64][8]; // 支持最多 64 个 IMM/指令
+        alignas(8) static thread_local char
+            imm_buffer_pool[64][8]; // 支持最多 64 个 IMM/指令
         static thread_local int buffer_index = 0;
 
         // 使用模运算维护索引，避免溢出
-        char* buffer = imm_buffer_pool[buffer_index];
+        char *buffer = imm_buffer_pool[buffer_index];
         buffer_index = (buffer_index + 1) % 64;
 
         parseImmediate(immOp->immVal, q, buffer);
@@ -254,7 +247,7 @@ void *ThreadContext::get_operand_addr(OperandContext &operand,
     default:
         break;
     }
-    
+
     return nullptr;
 }
 
@@ -287,32 +280,33 @@ void *ThreadContext::get_register_addr(OperandContext::REG *reg,
         return &BlockDim.z;
 
     // 然后尝试直接按regName查找（适用于普通寄存器）
-    auto it = name2Reg.find(reg->regName);
-    if (it != name2Reg.end()) {
-        return it->second->addr;
-    }
-
-    // 如果没找到，尝试组合名称查找（例如 regName="r", regIdx=1 组合成 "r1"）
     std::string combinedName = reg->regName + std::to_string(reg->regIdx);
-    it = name2Reg.find(combinedName);
-    if (it != name2Reg.end()) {
-        return it->second->addr;
+
+    // 检查寄存器是否已存在于RegisterManager中
+    RegisterInterface *reg_interface =
+        register_manager.get_register(combinedName);
+    if (reg_interface) {
+        return reg_interface->get_physical_address();
     }
 
     // 如果仍然找不到，创建新的寄存器
-    PtxInterpreter::Reg *newReg = new PtxInterpreter::Reg();
-    // 注意：这里需要从其他地方获取寄存器类型，因为OperandContext::REG没有保存类型信息
-    // 我们暂时使用传入的qualifier参数或者默认类型
-    newReg->regType = qualifier;
+    // 根据类型分配数据空间
+    std::vector<Qualifier> typeVec = {qualifier};
+    int bytes = getBytes(typeVec);
 
-    // 根据类型分配数据空间 (创建一个只有一个元素的vector)
-    std::vector<Qualifier> typeVec = {newReg->regType};
-    int bytes = TypeUtils::get_bytes(typeVec);
-    newReg->addr = malloc(bytes);
-    memset(newReg->addr, 0, bytes);
+    // 使用RegisterManager创建寄存器
+    if (register_manager.create_register(combinedName, bytes)) {
+        RegisterInterface *new_reg_interface =
+            register_manager.get_register(combinedName);
+        if (new_reg_interface) {
+            // 初始化寄存器内容为0
+            memset(new_reg_interface->get_physical_address(), 0, bytes);
+            return new_reg_interface->get_physical_address();
+        }
+    }
 
-    name2Reg[combinedName] = newReg;
-    return newReg->addr;
+    // 如果创建失败，返回nullptr
+    return nullptr;
 }
 
 void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
@@ -379,7 +373,7 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
         } catch (...) {
             offset = 0; // 默认偏移量为0
         }
-        
+
         ret = (void *)((uint64_t)ret + offset);
     }
 
@@ -388,7 +382,7 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
 
 void ThreadContext::mov_data(void *src, void *dst,
                              std::vector<Qualifier> &qualifiers) {
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
     memcpy(dst, src, bytes);
 }
 
@@ -415,99 +409,9 @@ void ThreadContext::initialize_shared_memory(const std::string &name,
     }
 }
 
-bool ThreadContext::QvecHasQ(std::vector<Qualifier> &qvec, Qualifier q) {
-    return std::find(qvec.begin(), qvec.end(), q) != qvec.end();
-}
-
-int ThreadContext::getBytes(std::vector<Qualifier> &q) {
-    return TypeUtils::get_bytes(q);
-}
-
-void ThreadContext::mov(void *from, void *to, std::vector<Qualifier> &q) {
-    int bytes = TypeUtils::get_bytes(q);
+void ThreadContext::mov(void *from, void *to, const std::vector<Qualifier> &q) {
+    int bytes = getBytes(q);
     memcpy(to, from, bytes);
-}
-
-void ThreadContext::trace_register(OperandContext::REG *reg, void *value,
-                                   std::vector<Qualifier> &qualifiers,
-                                   bool is_write) {
-    // 检查寄存器是否有效
-    if (!reg)
-        return;
-
-    // 获取完整的寄存器名称
-    std::string reg_name = reg->getFullName();
-
-    // 获取更新后的值用于跟踪（从传入的value参数中）
-    int bytes = TypeUtils::get_bytes(qualifiers);
-    std::any reg_value;
-    switch (bytes) {
-    case 1:
-        reg_value = *(uint8_t *)value;
-        break;
-    case 2:
-        reg_value = *(uint16_t *)value;
-        break;
-    case 4:
-        if (TypeUtils::is_float_type(qualifiers)) {
-            reg_value = *(float *)value;
-        } else {
-            reg_value = *(uint32_t *)value;
-        }
-        break;
-    case 8:
-        if (TypeUtils::is_float_type(qualifiers)) {
-            reg_value = *(double *)value;
-        } else {
-            reg_value = *(uint64_t *)value;
-        }
-        break;
-    }
-
-    PTX_TRACE_REG_ACCESS(reg_name, reg_value, is_write, BlockIdx, ThreadIdx);
-}
-
-void ThreadContext::memory_access(bool is_write, const std::string &addr_expr,
-                                  void *addr, size_t size, void *value,
-                                  std::vector<Qualifier> &qualifiers,
-                                  void *target,
-                                  OperandContext::REG *reg_operand) {
-    // 只有在启用了内存跟踪时才进行跟踪
-    if (ptxsim::DebugConfig::get().is_memory_traced()) {
-        // 获取数据值用于跟踪
-        void *track_value = nullptr;
-
-        if (is_write) {
-            // 写操作：追踪要被写入内存的源数据
-            track_value = value;
-        } else {
-            // 读操作：追踪即将从内存中读取的数据
-            track_value = addr;
-        }
-
-        PTX_TRACE_MEM_ACCESS(is_write, addr_expr, (uint64_t)addr, size,
-                             track_value, BlockIdx, ThreadIdx);
-    }
-
-    // 执行实际的内存操作
-    if (is_write) {
-        // 将源数据 'value' 复制到内存地址 'addr'
-        mov(value, addr, qualifiers);
-    } else {
-        // 将内存地址 'addr' 中的数据复制到目标 'target'
-        mov(addr, target, qualifiers);
-    }
-
-    // 根据操作类型跟踪寄存器访问
-    if (reg_operand) {
-        if (is_write) {
-            // 内存写操作：源寄存器（包含要写的数据）被读取
-            trace_register(reg_operand, value, qualifiers, false);
-        } else {
-            // 内存读操作：目标寄存器（将接收数据）被写入
-            trace_register(reg_operand, target, qualifiers, true);
-        }
-    }
 }
 
 bool ThreadContext::isIMMorVEC(OperandContext &op) {
@@ -517,13 +421,3 @@ bool ThreadContext::isIMMorVEC(OperandContext &op) {
 bool ThreadContext::is_immediate_or_vector(OperandContext &op) {
     return (op.operandType == O_IMM || op.operandType == O_VEC);
 }
-
-void ThreadContext::set_immediate_value(std::string value, Qualifier type) {
-    // 此函数已废弃，使用新的parseImmediate函数替代
-}
-
-int ThreadContext::getBytes(Qualifier q) {
-    std::vector<Qualifier> typeVec = {q};
-    return TypeUtils::get_bytes(typeVec);
-}
-

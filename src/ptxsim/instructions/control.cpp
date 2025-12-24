@@ -4,7 +4,7 @@
 #include <cmath>
 
 void BRA::process_operation(ThreadContext *context, void *op[1],
-                            std::vector<Qualifier> &qualifier) {
+                            const std::vector<Qualifier> &qualifier) {
     int target_pc = *(int *)(op[0]);
     context->pc = target_pc - 1;
 }

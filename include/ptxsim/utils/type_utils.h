@@ -13,10 +13,9 @@ class ThreadContext;
 enum DTYPE { DNONE, DINT, DFLOAT };
 namespace TypeUtils {
 
-int get_bytes(std::vector<Qualifier> &qualifiers);
-bool is_float_type(std::vector<Qualifier> &qualifiers);
-Qualifier get_comparison_op(std::vector<Qualifier> &qualifiers);
-bool is_signed_type(std::vector<Qualifier> &qualifiers);
+bool is_float_type(const std::vector<Qualifier> &qualifiers);
+Qualifier get_comparison_op(const std::vector<Qualifier> &qualifiers);
+bool is_signed_type(const std::vector<Qualifier> &qualifiers);
 
 // 浮点 NaN 检查
 inline bool is_nan(float x) { return x != x; }

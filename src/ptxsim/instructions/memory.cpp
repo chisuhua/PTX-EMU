@@ -6,7 +6,7 @@
 #include <cmath>
 
 void MOV::process_operation(ThreadContext *context, void *op[2],
-                            std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src = op[1];
 
@@ -14,7 +14,7 @@ void MOV::process_operation(ThreadContext *context, void *op[2],
 }
 
 void CVTA::process_operation(ThreadContext *context, void *op[2],
-                             std::vector<Qualifier> &qualifiers) {
+                             const std::vector<Qualifier> &qualifiers) {
     void *to = op[0];
     void *from = op[1];
 
@@ -31,28 +31,28 @@ void CVTA::process_operation(ThreadContext *context, void *op[2],
 }
 
 void CVT::process_operation(ThreadContext *context, void *op[2],
-                            std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src = op[1];
     std::vector<Qualifier> dst_qualifiers, src_qualifiers;
     splitDstSrcQualifiers(qualifiers, dst_qualifiers, src_qualifiers);
 
     // 使用TypeUtils函数获取目标和源的字节大小以及是否为浮点类型
-    int dst_bytes = TypeUtils::get_bytes(dst_qualifiers);
-    int src_bytes = TypeUtils::get_bytes(src_qualifiers);
+    int dst_bytes = getBytes(dst_qualifiers);
+    int src_bytes = getBytes(src_qualifiers);
     bool dst_is_float = TypeUtils::is_float_type(dst_qualifiers);
     bool src_is_float = TypeUtils::is_float_type(src_qualifiers);
 
     // 如果没有正确识别出类型，使用默认方法
     if (dst_bytes == 0) {
-        dst_bytes = TypeUtils::get_bytes(qualifiers);
+        dst_bytes = getBytes(qualifiers);
     }
 
     if (src_bytes == 0) {
-        src_bytes = context->getBytes(qualifiers);
+        src_bytes = getBytes(qualifiers);
     }
 
-    bool has_sat = context->QvecHasQ(qualifiers, Qualifier::Q_SAT);
+    bool has_sat = QvecHasQ(qualifiers, Qualifier::Q_SAT);
 
     // 根据目标数据大小执行转换
     switch (dst_bytes) {
@@ -335,7 +335,7 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
 // MemoryManager->access(space, addr, dst, size, false);
 
 void LD::process_operation(ThreadContext *context, void *op[2],
-                           std::vector<Qualifier> &qualifier) {
+                           const std::vector<Qualifier> &qualifier) {
     void *dst = op[0];
     void *host_ptr = op[1]; // ← 这是 cudaMalloc 返回的主机指针
 
@@ -347,13 +347,13 @@ void LD::process_operation(ThreadContext *context, void *op[2],
 
     // 获取地址空间和数据大小
     MemorySpace space = getAddressSpace(qualifier);
-    size_t data_size = TypeUtils::get_bytes(qualifier);
+    size_t data_size = getBytes(qualifier);
 
     // ========================
     // 1. 标量 LD（无向量）
     // ========================
-    if (!context->QvecHasQ(qualifier, Qualifier::Q_V2) &&
-        !context->QvecHasQ(qualifier, Qualifier::Q_V4)) {
+    if (!QvecHasQ(qualifier, Qualifier::Q_V2) &&
+        !QvecHasQ(qualifier, Qualifier::Q_V4)) {
         // 单次内存读取
         MemoryManager::instance().access(host_ptr, dst, data_size,
                                          /*is_write=*/false, space);
@@ -363,15 +363,15 @@ void LD::process_operation(ThreadContext *context, void *op[2],
     // ========================
     // 2. 向量 LD（V2/V4）
     // ========================
-    size_t step = context->getBytes(qualifier); // 元素步长
+    size_t step = getBytes(qualifier); // 元素步长
     auto vecAddr = context->vec.front()->vec;
     context->vec.pop();
 
     size_t vec_size = 0;
-    if (context->QvecHasQ(qualifier, Qualifier::Q_V2)) {
+    if (QvecHasQ(qualifier, Qualifier::Q_V2)) {
         vec_size = 2;
         assert(vecAddr.size() == 2);
-    } else if (context->QvecHasQ(qualifier, Qualifier::Q_V4)) {
+    } else if (QvecHasQ(qualifier, Qualifier::Q_V4)) {
         vec_size = 4;
         assert(vecAddr.size() == 4);
     }
@@ -389,7 +389,7 @@ void LD::process_operation(ThreadContext *context, void *op[2],
 }
 
 void ST::process_operation(ThreadContext *context, void *op[2],
-                           std::vector<Qualifier> &qualifiers) {
+                           const std::vector<Qualifier> &qualifiers) {
     void *host_ptr = op[0]; // ← 目标地址：cudaMalloc 返回的主机指针
     void *src = op[1];      // ← 源数据：寄存器或立即数地址
 
@@ -401,13 +401,13 @@ void ST::process_operation(ThreadContext *context, void *op[2],
 
     // 获取地址空间和数据大小
     MemorySpace space = getAddressSpace(qualifiers);
-    size_t data_size = TypeUtils::get_bytes(qualifiers);
+    size_t data_size = getBytes(qualifiers);
 
     // ========================
     // 1. 标量 ST（无向量）
     // ========================
-    if (!context->QvecHasQ(qualifiers, Qualifier::Q_V2) &&
-        !context->QvecHasQ(qualifiers, Qualifier::Q_V4)) {
+    if (!QvecHasQ(qualifiers, Qualifier::Q_V2) &&
+        !QvecHasQ(qualifiers, Qualifier::Q_V4)) {
         // 单次内存写入
         MemoryManager::instance().access(host_ptr, src, data_size,
                                          /*is_write=*/true, space);
@@ -417,15 +417,15 @@ void ST::process_operation(ThreadContext *context, void *op[2],
     // ========================
     // 2. 向量 ST（V2/V4）
     // ========================
-    size_t step = context->getBytes(qualifiers); // 元素步长
+    size_t step = getBytes(qualifiers); // 元素步长
     auto vecAddr = context->vec.front()->vec;
     context->vec.pop();
 
     size_t vec_size = 0;
-    if (context->QvecHasQ(qualifiers, Qualifier::Q_V2)) {
+    if (QvecHasQ(qualifiers, Qualifier::Q_V2)) {
         vec_size = 2;
         assert(vecAddr.size() == 2);
-    } else if (context->QvecHasQ(qualifiers, Qualifier::Q_V4)) {
+    } else if (QvecHasQ(qualifiers, Qualifier::Q_V4)) {
         vec_size = 4;
         assert(vecAddr.size() == 4);
     }

@@ -9,8 +9,8 @@
 #include "ptxsim/interpreter.h"
 #include "ptxsim/ptx_debug.h"
 #include "ptxsim/utils/type_utils.h"
+#include "register/register_manager.h"
 #include <any>
-// include <driver_types.h>
 #include <map>
 #include <ostream>
 #include <queue>
@@ -24,7 +24,7 @@ public:
     std::vector<StatementContext> *statements;
     std::map<std::string, PtxInterpreter::Symtable *> *name2Share;
     std::map<std::string, PtxInterpreter::Symtable *> name2Sym;
-    std::map<std::string, PtxInterpreter::Reg *> name2Reg;
+    RegisterManager register_manager;
     std::map<std::string, int> label2pc;
 
     // 线程状态
@@ -32,7 +32,15 @@ public:
     int pc;
     EXE_STATE state;
 
-    // 临时数据存储（仅保留VEC，移除IMM）
+    // 当前指令执行状态
+    enum class InstructionExecutionState {
+        READY,   // 准备执行新指令
+        PREPARE, // 准备阶段
+        EXECUTE, // 执行阶段
+        COMMIT   // 提交阶段
+    } instruction_state = InstructionExecutionState::READY;
+
+    // 临时数据存储
     std::queue<PtxInterpreter::VEC *> vec;
 
     void init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim, Dim3 BlockDim,
@@ -59,21 +67,8 @@ public:
     void mov_data(void *src, void *dst, std::vector<Qualifier> &qualifiers);
     void handle_statement(StatementContext &statement);
 
-    // 统一的寄存器跟踪接口
-    void trace_register(OperandContext::REG *reg, void *value,
-                        std::vector<Qualifier> &qualifiers, bool is_write);
-
-    // 内存访问跟踪接口
-    void memory_access(bool is_write, const std::string &addr_expr, void *addr,
-                       size_t size, void *value,
-                       std::vector<Qualifier> &qualifiers,
-                       void *target = nullptr,
-                       OperandContext::REG *reg_operand = nullptr);
-
     // 辅助函数接口（供指令处理器使用）
-    bool QvecHasQ(std::vector<Qualifier> &qvec, Qualifier q);
-    int getBytes(std::vector<Qualifier> &q);
-    void mov(void *from, void *to, std::vector<Qualifier> &q);
+    void mov(void *from, void *to, const std::vector<Qualifier> &q);
     bool isIMMorVEC(OperandContext &op);
 
     // 新增：为断点条件准备上下文
@@ -87,9 +82,6 @@ private:
     void _execute_once();
     bool is_immediate_or_vector(OperandContext &op);
     void set_immediate_value(std::string value, Qualifier type);
-
-    // 保留原有的辅助函数声明
-    int getBytes(Qualifier q);
 };
 
 #endif // THREAD_CONTEXT_H

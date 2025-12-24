@@ -9,7 +9,9 @@
 
 int Q2bytes(Qualifier q);
 bool Signed(Qualifier q);
-int getBytes(std::vector<Qualifier> &q);
+
+int getBytes(const std::vector<Qualifier> &q);
+
 DTYPE getDType(std::vector<Qualifier> &q);
 DTYPE getDType(Qualifier q);
 void splitCvtQualifiers(const std::vector<Qualifier> &qualifiers,
@@ -29,9 +31,11 @@ void splitDstSrcQualifiers(const std::vector<Qualifier> &qualifiers,
                            std::vector<Qualifier> &src2_qualifiers);
 
 // 添加获取地址空间的辅助函数
-MemorySpace getAddressSpace(std::vector<Qualifier> &qualifiers);
+MemorySpace getAddressSpace(const std::vector<Qualifier> &qualifiers);
 
 // 解析立即数到缓冲区
-void parseImmediate(const std::string& s, Qualifier q, void* out);
+void parseImmediate(const std::string &s, Qualifier q, void *out);
+
+bool QvecHasQ(const std::vector<Qualifier> &qvec, Qualifier q);
 
 #endif // QUALIFIER_UTILS_H

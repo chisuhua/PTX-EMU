@@ -723,6 +723,7 @@ private:
 #define PTX_CHECK_BREAKPOINT(pc, context)                                      \
     (ptxsim::PTXDebugger::get().check_breakpoint(pc, context))
 
+#ifndef PTX_TRACE_EXEC
 #define PTX_TRACE_EXEC(...)                                                    \
     do {                                                                       \
         if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
@@ -730,6 +731,7 @@ private:
             ptxsim::Logger::log(ptxsim::log_level::info, "exec", __VA_ARGS__); \
         }                                                                      \
     } while (0)
+#endif
 
 #define PTX_DUMP_THREAD_STATE(name, state, blockIdx, threadIdx)                \
     do {                                                                       \

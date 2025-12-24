@@ -1,12 +1,13 @@
 #include "ptxsim/instruction_handlers_decl.h"
 #include "ptxsim/thread_context.h"
+#include "ptxsim/utils/qualifier_utils.h"
 #include "ptxsim/utils/type_utils.h"
 #include <cmath>
 
 void ADD::process_operation(ThreadContext *context, void *op[3],
-                            std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
     void *dst = op[0];
     void *src1 = op[1];
@@ -53,9 +54,9 @@ void ADD::process_operation(ThreadContext *context, void *op[3],
 }
 
 void SUB::process_operation(ThreadContext *context, void *op[3],
-                            std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
     void *dst = op[0];
     void *src1 = op[1];
@@ -150,9 +151,9 @@ inline uint16_t f32_to_f16(float f) {
 }
 
 void MUL::process_operation(ThreadContext *context, void *op[3],
-                            std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers) {
     // === 解析类型和修饰符 ===
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
     void *dst = op[0];
@@ -160,9 +161,9 @@ void MUL::process_operation(ThreadContext *context, void *op[3],
     void *src2 = op[2];
 
     // 检查修饰符
-    bool has_wide = context->QvecHasQ(qualifiers, Qualifier::Q_WIDE);
-    bool has_hi = context->QvecHasQ(qualifiers, Qualifier::Q_HI);
-    bool has_lo = context->QvecHasQ(qualifiers, Qualifier::Q_LO);
+    bool has_wide = QvecHasQ(qualifiers, Qualifier::Q_WIDE);
+    bool has_hi = QvecHasQ(qualifiers, Qualifier::Q_HI);
+    bool has_lo = QvecHasQ(qualifiers, Qualifier::Q_LO);
 
     // === 浮点类型：直接相乘（忽略修饰符）===
     if (is_float) {
@@ -300,17 +301,17 @@ void MUL::process_operation(ThreadContext *context, void *op[3],
 }
 
 void MUL24::process_operation(ThreadContext *context, void *op[3],
-                              std::vector<Qualifier> &qualifiers) {
+                              const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
     void *dst = op[0];
     void *src1 = op[1];
     void *src2 = op[2];
 
     // 检查修饰符
-    bool has_hi = context->QvecHasQ(qualifiers, Qualifier::Q_HI);
-    bool has_lo = context->QvecHasQ(qualifiers, Qualifier::Q_LO);
+    bool has_hi = QvecHasQ(qualifiers, Qualifier::Q_HI);
+    bool has_lo = QvecHasQ(qualifiers, Qualifier::Q_LO);
 
     // MUL24指令处理32位操作数，但只使用其中的24位（最低有效位）
     // 结果是48位，根据修饰符选择高32位或低32位
@@ -344,9 +345,9 @@ void MUL24::process_operation(ThreadContext *context, void *op[3],
 }
 
 void DIV::process_operation(ThreadContext *context, void *op[3],
-                            std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
     void *dst = op[0];
     void *src1 = op[1];
@@ -393,9 +394,9 @@ void DIV::process_operation(ThreadContext *context, void *op[3],
 }
 
 void MAD::process_operation(ThreadContext *context, void *op[4],
-                            std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
     void *dst = op[0];
@@ -404,10 +405,10 @@ void MAD::process_operation(ThreadContext *context, void *op[4],
     void *src3 = op[3];
 
     // 检查修饰符
-    bool has_wide = context->QvecHasQ(qualifiers, Qualifier::Q_WIDE);
-    bool has_hi = context->QvecHasQ(qualifiers, Qualifier::Q_HI);
-    bool has_lo = context->QvecHasQ(qualifiers, Qualifier::Q_LO);
-    bool has_sat = context->QvecHasQ(qualifiers, Qualifier::Q_SAT);
+    bool has_wide = QvecHasQ(qualifiers, Qualifier::Q_WIDE);
+    bool has_hi = QvecHasQ(qualifiers, Qualifier::Q_HI);
+    bool has_lo = QvecHasQ(qualifiers, Qualifier::Q_LO);
+    bool has_sat = QvecHasQ(qualifiers, Qualifier::Q_SAT);
 
     // === 浮点类型：直接执行乘加（忽略修饰符）===
     if (is_float) {
@@ -595,9 +596,9 @@ void MAD::process_operation(ThreadContext *context, void *op[4],
 }
 
 void MAD24::process_operation(ThreadContext *context, void *op[4],
-                              std::vector<Qualifier> &qualifiers) {
+                              const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
     void *dst = op[0];
     void *src1 = op[1];
@@ -605,8 +606,8 @@ void MAD24::process_operation(ThreadContext *context, void *op[4],
     void *src3 = op[3];
 
     // 检查修饰符
-    bool has_hi = context->QvecHasQ(qualifiers, Qualifier::Q_HI);
-    bool has_lo = context->QvecHasQ(qualifiers, Qualifier::Q_LO);
+    bool has_hi = QvecHasQ(qualifiers, Qualifier::Q_HI);
+    bool has_lo = QvecHasQ(qualifiers, Qualifier::Q_LO);
 
     // MAD24指令处理32位操作数，但只使用其中的24位（最低有效位）
     // 结果是48位加上第三个操作数，根据修饰符选择高32位或低32位
@@ -644,9 +645,9 @@ void MAD24::process_operation(ThreadContext *context, void *op[4],
 }
 
 void FMA::process_operation(ThreadContext *context, void *op[4],
-                            std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
     void *dst = op[0];
@@ -655,10 +656,10 @@ void FMA::process_operation(ThreadContext *context, void *op[4],
     void *src3 = op[3];
 
     // 检查修饰符
-    bool has_wide = context->QvecHasQ(qualifiers, Qualifier::Q_WIDE);
-    bool has_hi = context->QvecHasQ(qualifiers, Qualifier::Q_HI);
-    bool has_lo = context->QvecHasQ(qualifiers, Qualifier::Q_LO);
-    bool has_sat = context->QvecHasQ(qualifiers, Qualifier::Q_SAT);
+    bool has_wide = QvecHasQ(qualifiers, Qualifier::Q_WIDE);
+    bool has_hi = QvecHasQ(qualifiers, Qualifier::Q_HI);
+    bool has_lo = QvecHasQ(qualifiers, Qualifier::Q_LO);
+    bool has_sat = QvecHasQ(qualifiers, Qualifier::Q_SAT);
 
     // === 浮点类型：执行融合乘加（忽略修饰符，因为FMA本身就是融合操作）===
     if (is_float) {
@@ -849,11 +850,11 @@ void FMA::process_operation(ThreadContext *context, void *op[4],
 }
 
 void NEG::process_operation(ThreadContext *context, void *op[2],
-                            std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src = op[1];
     // 获取数据类型信息
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
 
     // 根据数据类型执行取负操作
@@ -890,10 +891,10 @@ void NEG::process_operation(ThreadContext *context, void *op[2],
 }
 
 void ABS::process_operation(ThreadContext *context, void *op[2],
-                            std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src = op[1];
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
 
     // 根据数据类型执行绝对值操作
@@ -942,11 +943,11 @@ void ABS::process_operation(ThreadContext *context, void *op[2],
 }
 
 void MIN::process_operation(ThreadContext *context, void *op[3],
-                            std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src1 = op[1];
     void *src2 = op[2];
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
 
     // 根据数据类型执行最小值操作
@@ -989,11 +990,11 @@ void MIN::process_operation(ThreadContext *context, void *op[3],
 }
 
 void MAX::process_operation(ThreadContext *context, void *op[3],
-                            std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src1 = op[1];
     void *src2 = op[2];
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
 
     // 根据数据类型执行最大值操作
@@ -1036,4 +1037,4 @@ void MAX::process_operation(ThreadContext *context, void *op[3],
 }
 
 void REM::process_operation(ThreadContext *context, void *op[3],
-                            std::vector<Qualifier> &qualifiers) {}
+                            const std::vector<Qualifier> &qualifiers) {}

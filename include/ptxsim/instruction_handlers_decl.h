@@ -1,64 +1,32 @@
-// InstructionHandlers_decl.h
-#ifndef INSTRUCTION_HANDLE_DECL_H
-#define INSTRUCTION_HANDLE_DECL_H
+// instruction_handlers_decl.h
+#ifndef PTXSIM_INSTRUCTION_HANDLERS_DECL_H
+#define PTXSIM_INSTRUCTION_HANDLERS_DECL_H
 
 #include "instruction_handler.h"
-#include <variant>
-#include <vector>
 
-using ArgType = std::variant<std::monostate, int, std::string>;
+class ThreadContext;
+class StatementContext;
 
-// Helper macro: generate class declaration based on op_count
-#define DEFINE_HANDLER_0OP(Name)                                               \
-    class Name : public InstructionHandler {                                   \
+// 为每种指令类型定义处理器类
+// 这些类将实现InstructionHandler接口
+
+// 通用宏定义
+#define DECLARE_INSTRUCTION_HANDLER(name)                                      \
+    class name : public InstructionHandler {                                   \
     public:                                                                    \
-        void execute(ThreadContext *context, StatementContext &stmt) override; \
+        bool prepare(ThreadContext *context, StatementContext &stmt) override; \
+        bool execute(ThreadContext *context, StatementContext &stmt) override; \
+        bool commit(ThreadContext *context, StatementContext &stmt) override;  \
+        void execute_full(ThreadContext *context,                              \
+                          StatementContext &stmt) override;                    \
+        void process_operation(ThreadContext *context, void **operands,        \
+                               const std::vector<Qualifier> &qualifiers) override; \
     };
 
-#define DEFINE_HANDLER_1OP(Name)                                               \
-    class Name : public InstructionHandler {                                   \
-    public:                                                                    \
-        void execute(ThreadContext *context, StatementContext &stmt) override; \
-                                                                               \
-    protected:                                                                 \
-        virtual void process_operation(ThreadContext *context, void *op[1],    \
-                                       std::vector<Qualifier> &qualifiers);    \
-    };
-
-#define DEFINE_HANDLER_2OP(Name)                                               \
-    class Name : public InstructionHandler {                                   \
-    public:                                                                    \
-        void execute(ThreadContext *context, StatementContext &stmt) override; \
-                                                                               \
-    protected:                                                                 \
-        virtual void process_operation(ThreadContext *context, void *op[2],    \
-                                       std::vector<Qualifier> &qualifiers);    \
-    };
-
-#define DEFINE_HANDLER_3OP(Name)                                               \
-    class Name : public InstructionHandler {                                   \
-    public:                                                                    \
-        void execute(ThreadContext *context, StatementContext &stmt) override; \
-                                                                               \
-    protected:                                                                 \
-        virtual void process_operation(ThreadContext *context, void *op[3],    \
-                                       std::vector<Qualifier> &qualifiers);    \
-    };
-
-#define DEFINE_HANDLER_4OP(Name)                                               \
-    class Name : public InstructionHandler {                                   \
-    public:                                                                    \
-        void execute(ThreadContext *context, StatementContext &stmt) override; \
-                                                                               \
-    protected:                                                                 \
-        virtual void process_operation(ThreadContext *context, void *op[4],    \
-                                       std::vector<Qualifier> &qualifiers);    \
-    };
-
-// Generate all handler class declarations
+// 包含所有指令处理器的声明
 #define X(enum_val, type_name, str, op_count, struct_kind)                     \
-    DEFINE_HANDLER_##op_count##OP(type_name)
-#include "ptx_ir/ptx_op.def"
+    DECLARE_INSTRUCTION_HANDLER(type_name)
+#include "../ptx_ir/ptx_op.def"
 #undef X
 
-#endif
+#endif // PTXSIM_INSTRUCTION_HANDLERS_DECL_H

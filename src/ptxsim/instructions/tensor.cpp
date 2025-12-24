@@ -6,7 +6,7 @@
 #include <cmath>
 
 void WMMA::process_operation(ThreadContext *context, void *op[4],
-                             std::vector<Qualifier> &qualifiers) {
+                             const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src1 = op[1];
     void *src2 = op[2];

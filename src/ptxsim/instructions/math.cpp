@@ -1,14 +1,15 @@
 #include "ptxsim/instruction_handlers_decl.h"
 #include "ptxsim/thread_context.h"
+#include "ptxsim/utils/qualifier_utils.h"
 #include "ptxsim/utils/type_utils.h"
 #include <cmath>
 
 void SQRT::process_operation(ThreadContext *context, void *op[2],
-                             std::vector<Qualifier> &qualifiers) {
+                             const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src = op[1];
     // 执行SQRT操作
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
 
     if (is_float) {
@@ -39,10 +40,10 @@ void SQRT::process_operation(ThreadContext *context, void *op[2],
 }
 
 void SIN::process_operation(ThreadContext *context, void *op[2],
-                            std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src = op[1];
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
 
     if (is_float) {
@@ -73,10 +74,10 @@ void SIN::process_operation(ThreadContext *context, void *op[2],
 }
 
 void COS::process_operation(ThreadContext *context, void *op[2],
-                            std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src = op[1];
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
 
     if (is_float) {
@@ -107,11 +108,11 @@ void COS::process_operation(ThreadContext *context, void *op[2],
 }
 
 void RCP::process_operation(ThreadContext *context, void *op[2],
-                            std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src = op[1];
     // 获取数据类型信息
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
 
     // RCP指令只支持浮点类型
@@ -136,10 +137,10 @@ void RCP::process_operation(ThreadContext *context, void *op[2],
 
 // TODO
 void LG2::process_operation(ThreadContext *context, void *op[2],
-                            std::vector<Qualifier> &qualifiers) {}
+                            const std::vector<Qualifier> &qualifiers) {}
 
 void EX2::process_operation(ThreadContext *context, void *op[2],
-                            std::vector<Qualifier> &qualifiers) {}
+                            const std::vector<Qualifier> &qualifiers) {}
 
 void RSQRT::process_operation(ThreadContext *context, void *op[2],
-                              std::vector<Qualifier> &qualifiers) {}
+                              const std::vector<Qualifier> &qualifiers) {}

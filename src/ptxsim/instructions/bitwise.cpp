@@ -1,11 +1,12 @@
 #include "ptxsim/instruction_handlers_decl.h"
 #include "ptxsim/thread_context.h"
+#include "ptxsim/utils/qualifier_utils.h"
 #include "ptxsim/utils/type_utils.h"
 #include <cmath>
 
 void AND::process_operation(ThreadContext *context, void *op[3],
-                            std::vector<Qualifier> &qualifiers) {
-    int bytes = TypeUtils::get_bytes(qualifiers);
+                            const std::vector<Qualifier> &qualifiers) {
+    int bytes = getBytes(qualifiers);
     void *dst = op[0];
     void *src1 = op[1];
     void *src2 = op[2];
@@ -29,11 +30,11 @@ void AND::process_operation(ThreadContext *context, void *op[3],
 }
 
 void OR::process_operation(ThreadContext *context, void *op[3],
-                           std::vector<Qualifier> &qualifiers) {
+                           const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src1 = op[1];
     void *src2 = op[2];
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
 
     switch (bytes) {
     case 1:
@@ -54,11 +55,11 @@ void OR::process_operation(ThreadContext *context, void *op[3],
 }
 
 void XOR::process_operation(ThreadContext *context, void *op[3],
-                            std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src1 = op[1];
     void *src2 = op[2];
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
 
     switch (bytes) {
     case 1:
@@ -79,11 +80,11 @@ void XOR::process_operation(ThreadContext *context, void *op[3],
 }
 
 void SHL::process_operation(ThreadContext *context, void *op[3],
-                            std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src1 = op[1];
     void *src2 = op[2];
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
 
     // 根据数据类型执行左移操作
     switch (bytes) {
@@ -110,11 +111,11 @@ void SHL::process_operation(ThreadContext *context, void *op[3],
 }
 
 void SHR::process_operation(ThreadContext *context, void *op[3],
-                            std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src1 = op[1];
     void *src2 = op[2];
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
 
     // 根据数据类型执行逻辑右移操作（使用无符号类型）
     switch (bytes) {
@@ -170,10 +171,10 @@ inline uint32_t popcount_u64(uint64_t x) {
 }
 
 void POPC::process_operation(ThreadContext *context, void *op[2],
-                             std::vector<Qualifier> &qualifiers) {
+                             const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src1 = op[1];
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
 
     // PTX popc 仅定义于整数/位类型（B* / U* / S*）
     // 浮点类型（F*）为非法，但为健壮性，按位解释
@@ -225,10 +226,10 @@ inline uint32_t clz_u64(uint64_t x, size_t width) {
 }
 
 void CLZ::process_operation(ThreadContext *context, void *op[2],
-                            std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src1 = op[1];
-    int bytes = TypeUtils::get_bytes(qualifiers);
+    int bytes = getBytes(qualifiers);
     if (bytes == 0 || bytes > 8) {
         std::memset(dst, 0, 8); // 安全清零
         return;
@@ -246,7 +247,7 @@ void CLZ::process_operation(ThreadContext *context, void *op[2],
 }
 
 void NOT::process_operation(ThreadContext *context, void *op[2],
-                            std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src1 = op[1];
     // TODO
