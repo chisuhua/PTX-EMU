@@ -3,6 +3,7 @@
 // Format: X(enum_value, type_name, lowercase_string, op_count)
 // Note: op_count = number of operands in the statement (dst + src1 + src2 + ...)
 // =============================================================================
+// X macro field: statement_type, op_kind, op_name , op_count, struct_kind
 
 // -----------------------------------------------------------------------------
 // 0. 基础结果指令（通常不作为完整指令，而是操作数）

@@ -6,7 +6,7 @@
 #include "ptxsim/utils/type_utils.h"
 
 #define IMPLEMENT_OPERAND_REG(Name)                                            \
-    bool Name::prepare(ThreadContext *context, StatementContext &stmt) {       \
+    bool Name::execute(ThreadContext *context, StatementContext &stmt) {       \
         auto ss = static_cast<StatementContext::Name *>(stmt.statement);       \
         for (int i = 0; i < ss->regNum; i++) {                                 \
             std::string reg_name = ss->regName + std::to_string(i);            \
@@ -22,36 +22,15 @@
                           reg_name.c_str(), reg_size);                         \
         }                                                                      \
         return true;                                                           \
-    }                                                                          \
-    bool Name::execute(ThreadContext *context, StatementContext &stmt) {       \
-        return true; /* Nothing to do in execute for register declaration */   \
-    }                                                                          \
-    bool Name::commit(ThreadContext *context, StatementContext &stmt) {        \
-        return true; /* Nothing to do in commit for register declaration */    \
-    }                                                                          \
-    void Name::process_operation(ThreadContext *context, void **operands,      \
-                                 const std::vector<Qualifier> &qualifiers) {}
+    }
 
 #define IMPLEMENT_OPERAND_CONST(Name)                                          \
-    bool Name::prepare(ThreadContext *context, StatementContext &stmt) {       \
-        return true;                                                           \
-    }                                                                          \
     bool Name::execute(ThreadContext *context, StatementContext &stmt) {       \
         assert(false);                                                         \
         return true; /* Return true to satisfy bool return type */             \
-    }                                                                          \
-    bool Name::commit(ThreadContext *context, StatementContext &stmt) {        \
-        return true;                                                           \
-    }                                                                          \
-    void Name::process_operation(ThreadContext *context, void **operands,      \
-                                 const std::vector<Qualifier> &qualifiers) {   \
-        /* CONST operands are handled during parsing, no runtime operation */  \
     }
 
 #define IMPLEMENT_OPERAND_MEMORY(Name)                                         \
-    bool Name::prepare(ThreadContext *context, StatementContext &stmt) {       \
-        return true;                                                           \
-    }                                                                          \
     bool Name::execute(ThreadContext *context, StatementContext &stmt) {       \
         auto ss = (StatementContext::Name *)stmt.statement;                    \
         PtxInterpreter::Symtable *s = new PtxInterpreter::Symtable();          \
@@ -64,68 +43,36 @@
         (*context->name2Share)[s->name] = s;                                   \
         context->name2Sym[s->name] = s;                                        \
         return true;                                                           \
-    }                                                                          \
-    bool Name::commit(ThreadContext *context, StatementContext &stmt) {        \
-        return true;                                                           \
-    }                                                                          \
-    void Name::process_operation(ThreadContext *context, void **operands,      \
-                                 const std::vector<Qualifier> &qualifiers) {   \
-        /* Memory operand setup is handled in execute, no runtime operation */ \
     }
 
 // dollar TODO
 #define IMPLEMENT_SIMPLE_NAME(Name)                                            \
-    bool Name::prepare(ThreadContext *context, StatementContext &stmt) {       \
-        return true;                                                           \
-    }                                                                          \
     bool Name::execute(ThreadContext *context, StatementContext &stmt) {       \
         return true;                                                           \
-    }                                                                          \
-    bool Name::commit(ThreadContext *context, StatementContext &stmt) {        \
-        return true;                                                           \
-    }                                                                          \
-    void Name::process_operation(ThreadContext *context, void **operands,      \
-                                 const std::vector<Qualifier> &qualifiers) {   \
-        /* Simple name operand requires no runtime operation */                \
     }
 
 // PRAGMA TODO
 #define IMPLEMENT_SIMPLE_STRING(Name)                                          \
-    bool Name::prepare(ThreadContext *context, StatementContext &stmt) {       \
-        return true;                                                           \
-    }                                                                          \
     bool Name::execute(ThreadContext *context, StatementContext &stmt) {       \
         return true;                                                           \
-    }                                                                          \
-    bool Name::commit(ThreadContext *context, StatementContext &stmt) {        \
-        return true;                                                           \
-    }                                                                          \
-    void Name::process_operation(ThreadContext *context, void **operands,      \
-                                 const std::vector<Qualifier> &qualifiers) {   \
-        /* String operand requires no runtime operation */                     \
     }
 
 // RET TODO
 #define IMPLEMENT_VOID_INSTR(Name)                                             \
-    bool Name::prepare(ThreadContext *context, StatementContext &stmt) {       \
-        return true;                                                           \
-    }                                                                          \
     bool Name::execute(ThreadContext *context, StatementContext &stmt) {       \
         return true;                                                           \
-    }                                                                          \
-    bool Name::commit(ThreadContext *context, StatementContext &stmt) {        \
+    }
+
+#define IMPLEMENT_PREDICATE_PREFIX(Name)                                       \
+    bool Name::execute(ThreadContext *context, StatementContext &stmt) {       \
         return true;                                                           \
-    }                                                                          \
-    void Name::process_operation(ThreadContext *context, void **operands,      \
-                                 const std::vector<Qualifier> &qualifiers) {   \
-        /* Void instruction requires no runtime operation */                   \
     }
 
 // BRA
 // -1 because pc will be incremented after this instruction
 #define IMPLEMENT_BRANCH(Name)                                                 \
     bool Name::prepare(ThreadContext *context, StatementContext &stmt) {       \
-        return true;                                                           \
+        return true; /* Typically no commit work needed */                     \
     }                                                                          \
     bool Name::execute(ThreadContext *context, StatementContext &stmt) {       \
         auto ss = (StatementContext::Name *)stmt.statement;                    \
@@ -137,22 +84,7 @@
         return true;                                                           \
     }                                                                          \
     bool Name::commit(ThreadContext *context, StatementContext &stmt) {        \
-        return true;                                                           \
-    }
-
-#define IMPLEMENT_PREDICATE_PREFIX(Name)                                       \
-    bool Name::prepare(ThreadContext *context, StatementContext &stmt) {       \
-        return true;                                                           \
-    }                                                                          \
-    bool Name::execute(ThreadContext *context, StatementContext &stmt) {       \
-        return true;                                                           \
-    }                                                                          \
-    bool Name::commit(ThreadContext *context, StatementContext &stmt) {        \
-        return true;                                                           \
-    }                                                                          \
-    void Name::process_operation(ThreadContext *context, void **operands,      \
-                                 const std::vector<Qualifier> &qualifiers) {   \
-        /* Predicate prefix requires no runtime operation */                   \
+        return true; /* Typically no commit work needed */                     \
     }
 
 #define IMPLEMENT_GENERIC_INSTR(Name)                                          \

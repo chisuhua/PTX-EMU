@@ -37,61 +37,96 @@ public:
 // OPERAND_REG 类型的基类处理器
 class OPERAND_REG : public InstructionHandler {
 public:
-    virtual bool prepare(ThreadContext *context, StatementContext &stmt) = 0;
-    virtual bool execute(ThreadContext *context, StatementContext &stmt) = 0;
-    virtual bool commit(ThreadContext *context, StatementContext &stmt) = 0;
+    virtual bool prepare(ThreadContext *context, StatementContext &stmt) {
+        return true;
+    };
+    virtual bool commit(ThreadContext *context, StatementContext &stmt) {
+        return true;
+    };
+    virtual void process_operation(ThreadContext *context, void **operands,
+                                   const std::vector<Qualifier> &qualifiers) {};
 };
 
 // OPERAND_CONST 类型的基类处理器
 class OPERAND_CONST : public InstructionHandler {
 public:
-    virtual bool prepare(ThreadContext *context, StatementContext &stmt) = 0;
-    virtual bool execute(ThreadContext *context, StatementContext &stmt) = 0;
-    virtual bool commit(ThreadContext *context, StatementContext &stmt) = 0;
+    virtual bool prepare(ThreadContext *context, StatementContext &stmt) {
+        return true;
+    };
+    virtual bool commit(ThreadContext *context, StatementContext &stmt) {
+        return true;
+    };
+    virtual void process_operation(ThreadContext *context, void **operands,
+                                   const std::vector<Qualifier> &qualifiers) {};
 };
 
 // OPERAND_MEMORY 类型的基类处理器
 class OPERAND_MEMORY : public InstructionHandler {
 public:
-    virtual bool prepare(ThreadContext *context, StatementContext &stmt) = 0;
-    virtual bool execute(ThreadContext *context, StatementContext &stmt) = 0;
-    virtual bool commit(ThreadContext *context, StatementContext &stmt) = 0;
+    virtual bool prepare(ThreadContext *context, StatementContext &stmt) {
+        return true;
+    };
+    virtual bool commit(ThreadContext *context, StatementContext &stmt) {
+        return true;
+    };
+    virtual void process_operation(ThreadContext *context, void **operands,
+                                   const std::vector<Qualifier> &qualifiers) {};
 };
 
 // SIMPLE_NAME 类型的基类处理器
 class SIMPLE_NAME : public InstructionHandler {
 public:
-    virtual bool prepare(ThreadContext *context, StatementContext &stmt) = 0;
-    virtual bool execute(ThreadContext *context, StatementContext &stmt) = 0;
-    virtual bool commit(ThreadContext *context, StatementContext &stmt) = 0;
+    virtual bool prepare(ThreadContext *context, StatementContext &stmt) {
+        return true;
+    };
+    virtual bool commit(ThreadContext *context, StatementContext &stmt) {
+        return true;
+    };
+    virtual void process_operation(ThreadContext *context, void **operands,
+                                   const std::vector<Qualifier> &qualifiers) {};
 };
 
 // SIMPLE_STRING 类型的基类处理器
 class SIMPLE_STRING : public InstructionHandler {
 public:
-    virtual bool prepare(ThreadContext *context, StatementContext &stmt) = 0;
-    virtual bool execute(ThreadContext *context, StatementContext &stmt) = 0;
-    virtual bool commit(ThreadContext *context, StatementContext &stmt) = 0;
+    virtual bool prepare(ThreadContext *context, StatementContext &stmt) {
+        return true;
+    };
+    virtual bool commit(ThreadContext *context, StatementContext &stmt) {
+        return true;
+    };
+    virtual void process_operation(ThreadContext *context, void **operands,
+                                   const std::vector<Qualifier> &qualifiers) {};
 };
 
 // VOID_INSTR 类型的基类处理器
 class VOID_INSTR : public InstructionHandler {
 public:
-    virtual bool prepare(ThreadContext *context, StatementContext &stmt) = 0;
-    virtual bool execute(ThreadContext *context, StatementContext &stmt) = 0;
-    virtual bool commit(ThreadContext *context, StatementContext &stmt) = 0;
-};
-
-// BRANCH 类型的基类处理器
-class BRANCH : public InstructionHandler {
-public:
-    virtual bool prepare(ThreadContext *context, StatementContext &stmt) = 0;
-    virtual bool execute(ThreadContext *context, StatementContext &stmt) = 0;
-    virtual bool commit(ThreadContext *context, StatementContext &stmt) = 0;
+    virtual bool prepare(ThreadContext *context, StatementContext &stmt) {
+        return true;
+    };
+    virtual bool commit(ThreadContext *context, StatementContext &stmt) {
+        return true;
+    };
+    virtual void process_operation(ThreadContext *context, void **operands,
+                                   const std::vector<Qualifier> &qualifiers) {};
 };
 
 // PREDICATE_PREFIX 类型的基类处理器
 class PREDICATE_PREFIX : public InstructionHandler {
+public:
+    virtual bool prepare(ThreadContext *context, StatementContext &stmt) {
+        return true;
+    };
+    virtual bool commit(ThreadContext *context, StatementContext &stmt) {
+        return true;
+    };
+    virtual void process_operation(ThreadContext *context, void **operands,
+                                   const std::vector<Qualifier> &qualifiers) {};
+};
+
+// BRANCH 类型的基类处理器
+class BRANCH : public InstructionHandler {
 public:
     virtual bool prepare(ThreadContext *context, StatementContext &stmt) = 0;
     virtual bool execute(ThreadContext *context, StatementContext &stmt) = 0;

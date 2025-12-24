@@ -17,7 +17,7 @@ class ThreadContext;
 
 class InstructionFactory {
 public:
-    static InstructionHandler *create_handler(StatementType type);
+    static InstructionHandler *get_handler(StatementType type);
 
     // 注册指令处理器
     // static void register_handler(StatementType type,

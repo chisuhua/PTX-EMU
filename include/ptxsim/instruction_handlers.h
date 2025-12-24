@@ -10,67 +10,37 @@ class StatementContext;
 #define DECLARE_OPERAND_REG(Name, _)                                           \
     class Name : public OPERAND_REG {                                          \
     public:                                                                    \
-        bool prepare(ThreadContext *context, StatementContext &stmt) override; \
         bool execute(ThreadContext *context, StatementContext &stmt) override; \
-        bool commit(ThreadContext *context, StatementContext &stmt) override;  \
-        void                                                                   \
-        process_operation(ThreadContext *context, void **operands,             \
-                          const std::vector<Qualifier> &qualifiers) override;  \
     };
 
 #define DECLARE_OPERAND_CONST(Name, _)                                         \
     class Name : public OPERAND_CONST {                                        \
     public:                                                                    \
-        bool prepare(ThreadContext *context, StatementContext &stmt) override; \
         bool execute(ThreadContext *context, StatementContext &stmt) override; \
-        bool commit(ThreadContext *context, StatementContext &stmt) override;  \
-        void                                                                   \
-        process_operation(ThreadContext *context, void **operands,             \
-                          const std::vector<Qualifier> &qualifiers) override;  \
     };
 
 #define DECLARE_OPERAND_MEMORY(Name, _)                                        \
     class Name : public OPERAND_MEMORY {                                       \
     public:                                                                    \
-        bool prepare(ThreadContext *context, StatementContext &stmt) override; \
         bool execute(ThreadContext *context, StatementContext &stmt) override; \
-        bool commit(ThreadContext *context, StatementContext &stmt) override;  \
-        void                                                                   \
-        process_operation(ThreadContext *context, void **operands,             \
-                          const std::vector<Qualifier> &qualifiers) override;  \
     };
 
 #define DECLARE_SIMPLE_NAME(Name, _)                                           \
     class Name : public SIMPLE_NAME {                                          \
     public:                                                                    \
-        bool prepare(ThreadContext *context, StatementContext &stmt) override; \
         bool execute(ThreadContext *context, StatementContext &stmt) override; \
-        bool commit(ThreadContext *context, StatementContext &stmt) override;  \
-        void                                                                   \
-        process_operation(ThreadContext *context, void **operands,             \
-                          const std::vector<Qualifier> &qualifiers) override;  \
     };
 
 #define DECLARE_SIMPLE_STRING(Name, _)                                         \
     class Name : public SIMPLE_STRING {                                        \
     public:                                                                    \
-        bool prepare(ThreadContext *context, StatementContext &stmt) override; \
         bool execute(ThreadContext *context, StatementContext &stmt) override; \
-        bool commit(ThreadContext *context, StatementContext &stmt) override;  \
-        void                                                                   \
-        process_operation(ThreadContext *context, void **operands,             \
-                          const std::vector<Qualifier> &qualifiers) override;  \
     };
 
 #define DECLARE_VOID_INSTR(Name, _)                                            \
     class Name : public VOID_INSTR {                                           \
     public:                                                                    \
-        bool prepare(ThreadContext *context, StatementContext &stmt) override; \
         bool execute(ThreadContext *context, StatementContext &stmt) override; \
-        bool commit(ThreadContext *context, StatementContext &stmt) override;  \
-        void                                                                   \
-        process_operation(ThreadContext *context, void **operands,             \
-                          const std::vector<Qualifier> &qualifiers) override;  \
     };
 
 #define DECLARE_BRANCH(Name, _)                                                \
@@ -98,12 +68,7 @@ class StatementContext;
 #define DECLARE_PREDICATE_PREFIX(Name, _)                                      \
     class Name : public PREDICATE_PREFIX {                                     \
     public:                                                                    \
-        bool prepare(ThreadContext *context, StatementContext &stmt) override; \
         bool execute(ThreadContext *context, StatementContext &stmt) override; \
-        bool commit(ThreadContext *context, StatementContext &stmt) override;  \
-        void                                                                   \
-        process_operation(ThreadContext *context, void **operands,             \
-                          const std::vector<Qualifier> &qualifiers) override;  \
     };
 
 #define DECLARE_GENERIC_INSTR(Name, OpCount)                                   \

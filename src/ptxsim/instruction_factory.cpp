@@ -18,7 +18,7 @@ void InstructionFactory::initialize() {
     initialized = true;
 }
 
-InstructionHandler *InstructionFactory::create_handler(StatementType type) {
+InstructionHandler *InstructionFactory::get_handler(StatementType type) {
     auto it = handler_map.find(type);
     if (it != handler_map.end()) {
         return it->second;

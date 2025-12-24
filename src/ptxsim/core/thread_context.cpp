@@ -96,7 +96,7 @@ void ThreadContext::_execute_once() {
 
     // 使用工厂创建对应的处理器
     InstructionHandler *handler =
-        InstructionFactory::create_handler(statement.statementType);
+        InstructionFactory::get_handler(statement.statementType);
     if (handler) {
         // 直接调用execute_full方法执行整个指令
         handler->execute_full(this, statement);
@@ -387,7 +387,7 @@ void ThreadContext::mov_data(void *src, void *dst,
 void ThreadContext::handle_statement(StatementContext &statement) {
     // 使用工厂创建对应的处理器并执行
     InstructionHandler *handler =
-        InstructionFactory::create_handler(statement.statementType);
+        InstructionFactory::get_handler(statement.statementType);
     if (handler) {
         handler->execute(this, statement);
     } else {

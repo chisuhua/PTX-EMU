@@ -55,6 +55,7 @@ add_library(ptxsim SHARED
     ptxsim/debug/ptx_debug.cpp
     ptxsim/instruction_factory.cpp
     ptxsim/instruction_handlers.cpp
+    ptxsim/instruction_base.cpp
     ptxsim/utils/qualifier_utils.cpp
     ptxsim/utils/type_utils.cpp
     ptxsim/instructions/arithmetic.cpp

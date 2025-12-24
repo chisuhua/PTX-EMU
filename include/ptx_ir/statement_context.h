@@ -14,14 +14,14 @@ public:
 // =============================================================================
 // 1. 操作数描述结构体
 // =============================================================================
-#define DEFINE_OPERAND_REG(Name)                                               \
+#define DEFINE_OPERAND_REG(Name, _)                                            \
     struct Name {                                                              \
         int regNum = 1;                                                        \
         std::vector<Qualifier> regDataType;                                    \
         std::string regName;                                                   \
     };
 
-#define DEFINE_OPERAND_CONST(Name)                                             \
+#define DEFINE_OPERAND_CONST(Name, _)                                          \
     struct Name {                                                              \
         int constAlign = 0;                                                    \
         int constSize = 1;                                                     \
@@ -29,7 +29,7 @@ public:
         std::string constName;                                                 \
     };
 
-#define DEFINE_OPERAND_MEMORY(Name)                                            \
+#define DEFINE_OPERAND_MEMORY(Name, _)                                         \
     struct Name {                                                              \
         int align = 0;                                                         \
         int size = 1;                                                          \
@@ -41,37 +41,37 @@ public:
     // 2. 简单结构体
     // =============================================================================
 
-#define DEFINE_SIMPLE_NAME(Name)                                               \
+#define DEFINE_SIMPLE_NAME(Name, _)                                            \
     struct Name {                                                              \
         std::string dollorName;                                                \
     };
 
-#define DEFINE_SIMPLE_STRING(Name)                                             \
+#define DEFINE_SIMPLE_STRING(Name, _)                                          \
     struct Name {                                                              \
         std::string pragmaString;                                              \
     };
 
-#define DEFINE_VOID_INSTR(Name)                                                \
+#define DEFINE_VOID_INSTR(Name, _)                                             \
     struct Name {};
 
     // =============================================================================
     // 3. 控制流结构体
     // =============================================================================
 
-#define DEFINE_BRANCH(Name)                                                    \
+#define DEFINE_BRANCH(Name, _)                                                 \
     struct Name {                                                              \
         std::vector<Qualifier> qualifier;                                      \
         std::string braTarget;                                                 \
     };
 
-#define DEFINE_BARRIER(Name)                                                   \
+#define DEFINE_BARRIER(Name, _)                                                \
     struct Name {                                                              \
         std::vector<Qualifier> qualifier;                                      \
         std::string barType;                                                   \
         int barId;                                                             \
     };
 
-#define DEFINE_PREDICATE_PREFIX(Name)                                          \
+#define DEFINE_PREDICATE_PREFIX(Name, _)                                       \
     struct Name {                                                              \
         OperandContext atPred;                                                 \
         std::string atLabelName;                                               \
@@ -107,29 +107,29 @@ public:
     // =============================================================================
     // 5. 主分发宏
     // =============================================================================
-// Overloads for kinds that don't use OpCount
-#define DISPATCH_OPERAND_REG(Name, _) DEFINE_OPERAND_REG(Name)
-#define DISPATCH_OPERAND_CONST(Name, _) DEFINE_OPERAND_CONST(Name)
-#define DISPATCH_OPERAND_MEMORY(Name, _) DEFINE_OPERAND_MEMORY(Name)
-#define DISPATCH_SIMPLE_NAME(Name, _) DEFINE_SIMPLE_NAME(Name)
-#define DISPATCH_SIMPLE_STRING(Name, _) DEFINE_SIMPLE_STRING(Name)
-#define DISPATCH_VOID_INSTR(Name, _) DEFINE_VOID_INSTR(Name)
-#define DISPATCH_BRANCH(Name, _) DEFINE_BRANCH(Name)
-#define DISPATCH_BARRIER(Name, _) DEFINE_BARRIER(Name)
-#define DISPATCH_PREDICATE_PREFIX(Name, _) DEFINE_PREDICATE_PREFIX(Name)
-#define DISPATCH_GENERIC_INSTR(Name, cnt) DEFINE_GENERIC_INSTR(Name, cnt)
-#define DISPATCH_WMMA_INSTR(Name, cnt) DEFINE_WMMA_INSTR(Name, cnt)
-#define DISPATCH_ATOM_INSTR(Name, cnt) DEFINE_ATOM_INSTR(Name, cnt)
+    // Overloads for kinds that don't use OpCount
+    // #define DISPATCH_OPERAND_REG(Name, _) DEFINE_OPERAND_REG(Name)
+    // #define DISPATCH_OPERAND_CONST(Name, _) DEFINE_OPERAND_CONST(Name)
+    // #define DISPATCH_OPERAND_MEMORY(Name, _) DEFINE_OPERAND_MEMORY(Name)
+    // #define DISPATCH_SIMPLE_NAME(Name, _) DEFINE_SIMPLE_NAME(Name)
+    // #define DISPATCH_SIMPLE_STRING(Name, _) DEFINE_SIMPLE_STRING(Name)
+    // #define DISPATCH_VOID_INSTR(Name, _) DEFINE_VOID_INSTR(Name)
+    // #define DISPATCH_BRANCH(Name, _) DEFINE_BRANCH(Name)
+    // #define DISPATCH_BARRIER(Name, _) DEFINE_BARRIER(Name)
+    // #define DISPATCH_PREDICATE_PREFIX(Name, _) DEFINE_PREDICATE_PREFIX(Name)
+    // #define DISPATCH_GENERIC_INSTR(Name, cnt) DEFINE_GENERIC_INSTR(Name, cnt)
+    // #define DISPATCH_WMMA_INSTR(Name, cnt) DEFINE_WMMA_INSTR(Name, cnt)
+    // #define DISPATCH_ATOM_INSTR(Name, cnt) DEFINE_ATOM_INSTR(Name, cnt)
 
     // =============================================================================
     // 6. 生成所有结构体
     // =============================================================================
 
-#define DISPATCH_STRUCT(struct_kind, Name, OpCount)                            \
-    DISPATCH_##struct_kind(Name, OpCount)
+    // #define DISPATCH_STRUCT(struct_kind, Name, OpCount)                            \
+//     DISPATCH_##struct_kind(Name, OpCount)
 
 #define X(enum_val, type_name, str, op_count, struct_kind)                     \
-    DISPATCH_STRUCT(struct_kind, type_name, op_count)
+    DEFINE_##struct_kind(type_name, op_count)
 #include "ptx_op.def"
 #undef X
 
