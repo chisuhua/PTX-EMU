@@ -117,8 +117,6 @@ void ThreadContext::clear_temporaries() {
     }
 }
 
-// can_proceed_with_instruction 已被弃用，因为不再使用分阶段执行模型
-
 void ThreadContext::prepare_breakpoint_context(
     std::unordered_map<std::string, std::any> &context) {
     // 添加寄存器值 - 现在从RegisterManager获取

@@ -1,7 +1,7 @@
 #ifndef INSTRUCTION_FACTORY_H
 #define INSTRUCTION_FACTORY_H
 
-#include "instruction_handler.h"
+#include "instruction_base.h"
 #include "ptx_ir/statement_context.h"
 #include <functional>
 #include <iostream>

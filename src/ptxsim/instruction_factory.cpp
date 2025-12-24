@@ -1,5 +1,5 @@
 #include "ptxsim/instruction_factory.h"
-#include "ptxsim/instruction_handlers_decl.h"
+#include "ptxsim/instruction_handlers.h"
 
 std::unordered_map<StatementType, InstructionHandler *>
     InstructionFactory::handler_map;

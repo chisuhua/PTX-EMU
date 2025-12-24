@@ -1,4 +1,4 @@
-#include "ptxsim/instruction_handlers_decl.h"
+#include "ptxsim/instruction_handlers.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/utils/type_utils.h"
 #include <cmath>
