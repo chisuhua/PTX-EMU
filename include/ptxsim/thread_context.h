@@ -58,7 +58,7 @@ public:
 
     // 通用操作
     void mov_data(void *src, void *dst, std::vector<Qualifier> &qualifiers);
-    void handle_statement(StatementContext &statement);
+    void trace_instruction(StatementContext &statement);
 
     // 辅助函数接口（供指令处理器使用）
     void mov(void *from, void *to, const std::vector<Qualifier> &q);

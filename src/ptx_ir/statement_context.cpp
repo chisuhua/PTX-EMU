@@ -7,7 +7,7 @@ std::string S2s(StatementType s) {
     switch (s) {
 #define X(enum_val, struct_name, str, opcount, _)                              \
     case enum_val:                                                             \
-        return str;
+        return #str;
 #include "ptx_ir/ptx_op.def"
 #undef X
     case S_UNKNOWN:

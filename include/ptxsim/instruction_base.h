@@ -16,22 +16,8 @@ public:
     virtual bool prepare(ThreadContext *context, StatementContext &stmt) = 0;
     virtual bool execute(ThreadContext *context, StatementContext &stmt) = 0;
     virtual bool commit(ThreadContext *context, StatementContext &stmt) = 0;
-
     // 保持向后兼容的execute接口 - 使用不同名称避免重载冲突
-    virtual void execute_full(ThreadContext *context, StatementContext &stmt) {
-        if (!prepare(context, stmt)) {
-            return;
-        }
-        if (!execute(context, stmt)) {
-            return;
-        }
-        commit(context, stmt);
-    }
-
-    // 处理指令操作的通用函数 - 根据实际使用调整参数
-    virtual void
-    process_operation(ThreadContext *context, void **operands,
-                      const std::vector<Qualifier> &qualifiers) = 0;
+    virtual void execute_full(ThreadContext *context, StatementContext &stmt);
 };
 
 // OPERAND_REG 类型的基类处理器
@@ -43,8 +29,6 @@ public:
     virtual bool commit(ThreadContext *context, StatementContext &stmt) {
         return true;
     };
-    virtual void process_operation(ThreadContext *context, void **operands,
-                                   const std::vector<Qualifier> &qualifiers) {};
 };
 
 // OPERAND_CONST 类型的基类处理器
@@ -56,8 +40,6 @@ public:
     virtual bool commit(ThreadContext *context, StatementContext &stmt) {
         return true;
     };
-    virtual void process_operation(ThreadContext *context, void **operands,
-                                   const std::vector<Qualifier> &qualifiers) {};
 };
 
 // OPERAND_MEMORY 类型的基类处理器
@@ -69,8 +51,6 @@ public:
     virtual bool commit(ThreadContext *context, StatementContext &stmt) {
         return true;
     };
-    virtual void process_operation(ThreadContext *context, void **operands,
-                                   const std::vector<Qualifier> &qualifiers) {};
 };
 
 // SIMPLE_NAME 类型的基类处理器
@@ -82,8 +62,6 @@ public:
     virtual bool commit(ThreadContext *context, StatementContext &stmt) {
         return true;
     };
-    virtual void process_operation(ThreadContext *context, void **operands,
-                                   const std::vector<Qualifier> &qualifiers) {};
 };
 
 // SIMPLE_STRING 类型的基类处理器
@@ -95,8 +73,6 @@ public:
     virtual bool commit(ThreadContext *context, StatementContext &stmt) {
         return true;
     };
-    virtual void process_operation(ThreadContext *context, void **operands,
-                                   const std::vector<Qualifier> &qualifiers) {};
 };
 
 // VOID_INSTR 类型的基类处理器
@@ -108,8 +84,6 @@ public:
     virtual bool commit(ThreadContext *context, StatementContext &stmt) {
         return true;
     };
-    virtual void process_operation(ThreadContext *context, void **operands,
-                                   const std::vector<Qualifier> &qualifiers) {};
 };
 
 // PREDICATE_PREFIX 类型的基类处理器
@@ -121,8 +95,6 @@ public:
     virtual bool commit(ThreadContext *context, StatementContext &stmt) {
         return true;
     };
-    virtual void process_operation(ThreadContext *context, void **operands,
-                                   const std::vector<Qualifier> &qualifiers) {};
 };
 
 // BRANCH 类型的基类处理器
@@ -131,6 +103,9 @@ public:
     virtual bool prepare(ThreadContext *context, StatementContext &stmt) = 0;
     virtual bool execute(ThreadContext *context, StatementContext &stmt) = 0;
     virtual bool commit(ThreadContext *context, StatementContext &stmt) = 0;
+    virtual void
+    process_operation(ThreadContext *context, void **operands,
+                      const std::vector<Qualifier> &qualifiers) = 0;
 };
 
 // GENERIC_INSTR 类型的基类处理器
@@ -139,6 +114,9 @@ public:
     virtual bool prepare(ThreadContext *context, StatementContext &stmt) = 0;
     virtual bool execute(ThreadContext *context, StatementContext &stmt) = 0;
     virtual bool commit(ThreadContext *context, StatementContext &stmt) = 0;
+    virtual void
+    process_operation(ThreadContext *context, void **operands,
+                      const std::vector<Qualifier> &qualifiers) = 0;
 };
 
 // ATOM_INSTR 类型的基类处理器
@@ -147,6 +125,9 @@ public:
     virtual bool prepare(ThreadContext *context, StatementContext &stmt) = 0;
     virtual bool execute(ThreadContext *context, StatementContext &stmt) = 0;
     virtual bool commit(ThreadContext *context, StatementContext &stmt) = 0;
+    virtual void
+    process_operation(ThreadContext *context, void **operands,
+                      const std::vector<Qualifier> &qualifiers) = 0;
 };
 
 // WMMA_INSTR 类型的基类处理器
@@ -155,6 +136,9 @@ public:
     virtual bool prepare(ThreadContext *context, StatementContext &stmt) = 0;
     virtual bool execute(ThreadContext *context, StatementContext &stmt) = 0;
     virtual bool commit(ThreadContext *context, StatementContext &stmt) = 0;
+    virtual void
+    process_operation(ThreadContext *context, void **operands,
+                      const std::vector<Qualifier> &qualifiers) = 0;
 };
 
 // BARRIER 类型的基类处理器
@@ -163,6 +147,9 @@ public:
     virtual bool prepare(ThreadContext *context, StatementContext &stmt) = 0;
     virtual bool execute(ThreadContext *context, StatementContext &stmt) = 0;
     virtual bool commit(ThreadContext *context, StatementContext &stmt) = 0;
+    virtual void
+    process_operation(ThreadContext *context, void **operands,
+                      const std::vector<Qualifier> &qualifiers) = 0;
 };
 
 #endif

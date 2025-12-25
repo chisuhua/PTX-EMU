@@ -13,93 +13,93 @@
 // But to keep consistency, we assign minimal op_count=1 (just for structure).
 // In practice, they should NOT be registered as InstructionHandler.
 // -----------------------------------------------------------------------------
-X(S_REG,     REG,     "reg",     0, OPERAND_REG)      // Register reference
-X(S_CONST,   CONST,   "const",   0, OPERAND_CONST)      // Constant value
-X(S_SHARED,  SHARED,  "shared",  0, OPERAND_MEMORY)      // Shared memory address
-X(S_LOCAL,   LOCAL,   "local",   0, OPERAND_MEMORY)      // Local memory address
-X(S_DOLLOR,  DOLLOR,  "dollar",  0, SIMPLE_NAME)      // Inline register ($r1)
+X(S_REG,     REG,     reg,     0, OPERAND_REG)      // Register reference
+X(S_CONST,   CONST,   const,   0, OPERAND_CONST)      // Constant value
+X(S_SHARED,  SHARED,  shared,  0, OPERAND_MEMORY)      // Shared memory address
+X(S_LOCAL,   LOCAL,   local,   0, OPERAND_MEMORY)      // Local memory address
+X(S_DOLLOR,  DOLLOR,  dollar,  0, SIMPLE_NAME)      // Inline register ($r1)
 
 // -----------------------------------------------------------------------------
 // 1. 特殊指令
 // -----------------------------------------------------------------------------
-X(S_AT,      AT,      "at",      0, PREDICATE_PREFIX)      // Predicate prefix (not a full instruction)
-X(S_PRAGMA,  PRAGMA,  "pragma",  0, SIMPLE_STRING)      // Pragma: no operands in PTX sense
+X(S_AT,      AT,      at,      0, PREDICATE_PREFIX)      // Predicate prefix (not a full instruction)
+X(S_PRAGMA,  PRAGMA,  pragma,  0, SIMPLE_STRING)      // Pragma: no operands in PTX sense
 
 // -----------------------------------------------------------------------------
 // 2. 控制指令（Control Flow）
 // -----------------------------------------------------------------------------
-X(S_RET,     RET,     "ret",     0, VOID_INSTR)      // Return: no operands
-X(S_BRA,     BRA,     "bra",     1, BRANCH)      // Branch: target label
+X(S_RET,     RET,     ret,     0, VOID_INSTR)      // Return: no operands
+X(S_BRA,     BRA,     bra,     1, BRANCH)      // Branch: target label
 
 // -----------------------------------------------------------------------------
 // 3. 同步指令
 // -----------------------------------------------------------------------------
-X(S_BAR,     BAR,     "bar",     0, BARRIER)      // barrier: no operands (simplified)
+X(S_BAR,     BAR,     bar,     0, BARRIER)      // barrier: no operands (simplified)
 
 // -----------------------------------------------------------------------------
 // 3. 数据移动与转换（Data Movement & Conversion）
 // -----------------------------------------------------------------------------
-X(S_LD,      LD,      "ld",      2, GENERIC_INSTR)      // ld: dst, src_addr
-X(S_ST,      ST,      "st",      2, GENERIC_INSTR)      // st: dst_addr, src
-X(S_MOV,     MOV,     "mov",     2, GENERIC_INSTR)      // mov: dst, src
-X(S_CVT,     CVT,     "cvt",     2, GENERIC_INSTR)      // cvt: dst, src
-X(S_CVTA,    CVTA,    "cvta",    2, GENERIC_INSTR)      // cvta: dst, src
+X(S_LD,      LD,      Ld,      2, GENERIC_INSTR)      // ld: dst, src_addr
+X(S_ST,      ST,      St,      2, GENERIC_INSTR)      // st: dst_addr, src
+X(S_MOV,     MOV,     Mov,     2, GENERIC_INSTR)      // mov: dst, src
+X(S_CVT,     CVT,     Cvt,     2, GENERIC_INSTR)      // cvt: dst, src
+X(S_CVTA,    CVTA,    Cvta,    2, GENERIC_INSTR)      // cvta: dst, src
 
 // -----------------------------------------------------------------------------
 // 4. 算术运算（Arithmetic Instructions）
 // -----------------------------------------------------------------------------
-X(S_ADD,     ADD,     "add",     3, GENERIC_INSTR)      // add: dst, src1, src2
-X(S_SUB,     SUB,     "sub",     3, GENERIC_INSTR)      // sub: dst, src1, src2
-X(S_MUL,     MUL,     "mul",     3, GENERIC_INSTR)      // mul: dst, src1, src2
-X(S_MUL24,   MUL24,   "mul24",   3, GENERIC_INSTR)      // mul24: dst, src1, src2
-X(S_DIV,     DIV,     "div",     3, GENERIC_INSTR)      // div: dst, src1, src2
-X(S_REM,     REM,     "rem",     3, GENERIC_INSTR)      // rem: dst, src1, src2
-X(S_MIN,     MIN,     "min",     3, GENERIC_INSTR)      // min: dst, src1, src2
-X(S_MAX,     MAX,     "max",     3, GENERIC_INSTR)      // max: dst, src1, src2
-X(S_NEG,     NEG,     "neg",     2, GENERIC_INSTR)      // neg: dst, src
-X(S_ABS,     ABS,     "abs",     2, GENERIC_INSTR)      // abs: dst, src
-X(S_MAD,     MAD,     "mad",     4, GENERIC_INSTR)      // mad: dst, src1, src2, src3 (a*b + c)
-X(S_MAD24,   MAD24,   "mad24",   4, GENERIC_INSTR)      // mad24: dst, src1, src2, src3
-X(S_FMA,     FMA,     "fma",     4, GENERIC_INSTR)      // fma: dst, src1, src2, src3
+X(S_ADD,     ADD,     Add,     3, GENERIC_INSTR)      // add: dst, src1, src2
+X(S_SUB,     SUB,     Sub,     3, GENERIC_INSTR)      // sub: dst, src1, src2
+X(S_MUL,     MUL,     Mul,     3, GENERIC_INSTR)      // mul: dst, src1, src2
+X(S_MUL24,   MUL24,   Mul24,   3, GENERIC_INSTR)      // mul24: dst, src1, src2
+X(S_DIV,     DIV,     Div,     3, GENERIC_INSTR)      // div: dst, src1, src2
+X(S_REM,     REM,     Rem,     3, GENERIC_INSTR)      // rem: dst, src1, src2
+X(S_MIN,     MIN,     Min,     3, GENERIC_INSTR)      // min: dst, src1, src2
+X(S_MAX,     MAX,     Max,     3, GENERIC_INSTR)      // max: dst, src1, src2
+X(S_NEG,     NEG,     Neg,     2, GENERIC_INSTR)      // neg: dst, src
+X(S_ABS,     ABS,     Abs,     2, GENERIC_INSTR)      // abs: dst, src
+X(S_MAD,     MAD,     Mad,     4, GENERIC_INSTR)      // mad: dst, src1, src2, src3 (a*b + c)
+X(S_MAD24,   MAD24,   Mad24,   4, GENERIC_INSTR)      // mad24: dst, src1, src2, src3
+X(S_FMA,     FMA,     Fma,     4, GENERIC_INSTR)      // fma: dst, src1, src2, src3
 
 // -----------------------------------------------------------------------------
 // 5. 位运算（Bitwise Instructions）
 // -----------------------------------------------------------------------------
-X(S_AND,     AND,     "and",     3, GENERIC_INSTR)      // and: dst, src1, src2
-X(S_OR,      OR,      "or",      3, GENERIC_INSTR)      // or: dst, src1, src2
-X(S_XOR,     XOR,     "xor",     3, GENERIC_INSTR)      // xor: dst, src1, src2
-X(S_NOT,     NOT,     "not",     2, GENERIC_INSTR)      // not: dst, src
-X(S_SHL,     SHL,     "shl",     3, GENERIC_INSTR)      // shl: dst, src, shift_amount
-X(S_SHR,     SHR,     "shr",     3, GENERIC_INSTR)      // shr: dst, src, shift_amount
+X(S_AND,     AND,     And,     3, GENERIC_INSTR)      // and: dst, src1, src2
+X(S_OR,      OR,      Or,      3, GENERIC_INSTR)      // or: dst, src1, src2
+X(S_XOR,     XOR,     Xor,     3, GENERIC_INSTR)      // xor: dst, src1, src2
+X(S_NOT,     NOT,     Not,     2, GENERIC_INSTR)      // not: dst, src
+X(S_SHL,     SHL,     Shl,     3, GENERIC_INSTR)      // shl: dst, src, shift_amount
+X(S_SHR,     SHR,     Shr,     3, GENERIC_INSTR)      // shr: dst, src, shift_amount
 
 // -----------------------------------------------------------------------------
 // 6. 比较与选择（Comparison & Selection）
 // -----------------------------------------------------------------------------
-X(S_SETP,    SETP,    "setp",    3, GENERIC_INSTR)      // setp: pred, src1, src2
-X(S_SELP,    SELP,    "selp",    4, GENERIC_INSTR)      // selp: dst, src1, src2, pred
+X(S_SETP,    SETP,    Setp,    3, GENERIC_INSTR)      // setp: pred, src1, src2
+X(S_SELP,    SELP,    Selp,    4, GENERIC_INSTR)      // selp: dst, src1, src2, pred
 
 // -----------------------------------------------------------------------------
 // 7. 数学函数（Mathematical Functions）
 // -----------------------------------------------------------------------------
-X(S_SIN,     SIN,     "sin",     2, GENERIC_INSTR)      // sin: dst, src
-X(S_COS,     COS,     "cos",     2, GENERIC_INSTR)      // cos: dst, src
-X(S_LG2,     LG2,     "lg2",     2, GENERIC_INSTR)      // lg2: dst, src
-X(S_EX2,     EX2,     "ex2",     2, GENERIC_INSTR)      // ex2: dst, src
-X(S_RCP,     RCP,     "rcp",     2, GENERIC_INSTR)      // rcp: dst, src
-X(S_RSQRT,   RSQRT,   "rsqrt",   2, GENERIC_INSTR)      // rsqrt: dst, src
-X(S_SQRT,    SQRT,    "sqrt",    2, GENERIC_INSTR)      // sqrt: dst, src
+X(S_SIN,     SIN,     Sin,     2, GENERIC_INSTR)      // sin: dst, src
+X(S_COS,     COS,     Cos,     2, GENERIC_INSTR)      // cos: dst, src
+X(S_LG2,     LG2,     Lg2,     2, GENERIC_INSTR)      // lg2: dst, src
+X(S_EX2,     EX2,     Ex2,     2, GENERIC_INSTR)      // ex2: dst, src
+X(S_RCP,     RCP,     Rcp,     2, GENERIC_INSTR)      // rcp: dst, src
+X(S_RSQRT,   RSQRT,   Rsqrt,   2, GENERIC_INSTR)      // rsqrt: dst, src
+X(S_SQRT,    SQRT,    Sqrt,    2, GENERIC_INSTR)      // sqrt: dst, src
 
 // -----------------------------------------------------------------------------
 // 8. 原子操作与特殊指令（Atomic & Special Operations）
 // -----------------------------------------------------------------------------
-X(S_ATOM,    ATOM,    "atom",    3, ATOM_INSTR)      // atom: dst_addr, src, [optional op] → simplified as 3
-X(S_WMMA,    WMMA,    "wmma",    4, WMMA_INSTR)      // wmma: dst, src_a, src_b, src_c (or more, simplified)
+X(S_ATOM,    ATOM,    Atom,    3, ATOM_INSTR)      // atom: dst_addr, src, [optional op] → simplified as 3
+X(S_WMMA,    WMMA,    Wmma,    4, WMMA_INSTR)      // wmma: dst, src_a, src_b, src_c (or more, simplified)
 
 // -----------------------------------------------------------------------------
 // 9. 位计数与前导零（Bit Manipulation Utilities）
 // -----------------------------------------------------------------------------
-X(S_POPC,    POPC,    "popc",    2, GENERIC_INSTR)      // popc: dst, src
-X(S_CLZ,     CLZ,     "clz",     2, GENERIC_INSTR)      // clz: dst, src
+X(S_POPC,    POPC,    Popc,    2, GENERIC_INSTR)      // popc: dst, src
+X(S_CLZ,     CLZ,     Clz,     2, GENERIC_INSTR)      // clz: dst, src
 
 
 // =============================================================================

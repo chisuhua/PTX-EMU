@@ -1,5 +1,7 @@
 #include "ptxsim/thread_context.h"
 #include "ptx_ir/ptx_types.h"
+#include "ptx_ir/statement_context.h"
+#include "ptxsim/execution_types.h"
 #include "ptxsim/instruction_factory.h"
 #include "ptxsim/interpreter.h"
 #include "ptxsim/ptx_debug.h"
@@ -81,17 +83,10 @@ void ThreadContext::_execute_once() {
 
     // 跟踪指令
     StatementContext &statement = (*statements)[pc];
-    std::string opcode = S2s(statement.statementType);
 
-    // 使用DebugConfig获取完整的指令字符串（包含操作数）
-    std::string operands =
-        ptxsim::DebugConfig::get_full_instruction_string(statement);
-
-    // 使用PTX_TRACE_INSTR宏跟踪指令执行
-    PTX_TRACE_INSTR(pc, opcode, operands, BlockIdx, ThreadIdx);
-
-    // 记录性能统计
-    ptxsim::PTXDebugger::get().get_perf_stats().record_instruction(opcode);
+    if (statement.state == InstructionState::READY) {
+        trace_instruction(statement);
+    }
 
     // 使用工厂创建对应的处理器
     InstructionHandler *handler =
@@ -104,9 +99,20 @@ void ThreadContext::_execute_once() {
                   << static_cast<int>(statement.statementType) << std::endl;
         state = EXIT;
     }
+}
 
-    // 指令执行完成后，直接推进PC
-    pc++;
+void ThreadContext::trace_instruction(StatementContext &statement) {
+    std::string opcode = S2s(statement.statementType);
+
+    // 使用DebugConfig获取完整的指令字符串（包含操作数）
+    std::string operands =
+        ptxsim::DebugConfig::get_full_instruction_string(statement);
+
+    // 使用PTX_TRACE_INSTR宏跟踪指令执行
+    PTX_TRACE_INSTR(pc, opcode, operands, BlockIdx, ThreadIdx);
+
+    // 记录性能统计
+    ptxsim::PTXDebugger::get().get_perf_stats().record_instruction(opcode);
 }
 
 void ThreadContext::clear_temporaries() {

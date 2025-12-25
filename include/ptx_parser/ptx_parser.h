@@ -27,6 +27,7 @@ public:
     /* helper function */
     void test_semantic();
     void fetchOperand(OperandContext &oc);
+    void fetchOperand(std::vector<OperandContext> &oc);
 
     /* listener function */
     virtual void enterAst(ptxParser::AstContext *ctx) override;

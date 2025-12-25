@@ -82,12 +82,14 @@ public:
     // =============================================================================
     // 4. 通用指令结构体
     // =============================================================================
+    struct BASE_INSTR {
+        std::vector<Qualifier> qualifier;
+        std::vector<OperandContext> operands;
+    };
 
 #define DEFINE_GENERIC_INSTR(Name, OpCount)                                    \
-    struct Name {                                                              \
+    struct Name : BASE_INSTR {                                                 \
         static constexpr int op_count = OpCount;                               \
-        std::vector<Qualifier> qualifier;                                      \
-        OperandContext op[OpCount];                                            \
     };
 
 #define DEFINE_WMMA_INSTR(Name, OpCount)                                       \
@@ -127,6 +129,14 @@ template <std::size_t N>
 inline void deepCopyOperandArray(OperandContext (&dst)[N],
                                  const OperandContext (&src)[N]) {
     for (std::size_t i = 0; i < N; ++i) {
+        dst[i] = OperandContext(
+            src[i]); // 调用 OperandContext 的拷贝构造函数（深拷贝）
+    }
+}
+
+inline void deepCopyOperandArray(std::vector<OperandContext> &dst,
+                                 const std::vector<OperandContext> &src) {
+    for (std::size_t i = 0; i < src.size(); ++i) {
         dst[i] = OperandContext(
             src[i]); // 调用 OperandContext 的拷贝构造函数（深拷贝）
     }
@@ -230,7 +240,7 @@ inline void deepCopyOperandArray(OperandContext (&dst)[N],
         auto source = static_cast<const Name *>(other.statement);              \
         auto dest = new Name();                                                \
         dest->qualifier = source->qualifier;                                   \
-        deepCopyOperandArray(dest->op, source->op);                            \
+        deepCopyOperandArray(dest->operands, source->operands);                \
         statement = dest;                                                      \
     } while (0)
 

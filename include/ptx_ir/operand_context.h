@@ -2,8 +2,8 @@
 #define OPERAND_CONTEXT_H
 
 #include "ptx_types.h"
-#include <vector>
 #include <string>
+#include <vector>
 
 class OperandContext {
 public:
@@ -13,7 +13,7 @@ public:
     struct REG {
         std::string regName;
         int regIdx;
-        
+
         // 添加获取完整寄存器名称的方法
         std::string getFullName() const {
             return regName + std::to_string(regIdx);
@@ -49,13 +49,15 @@ public:
         OperandContext *pred;
     };
 
+    explicit OperandContext(OperandType operand_type, void *operand)
+        : operandType(operand_type), operand(operand) {}
     OperandContext() : operandType(O_REG), operand(nullptr) {}
     ~OperandContext();
 
     // 深拷贝方法
     OperandContext(const OperandContext &other);
     OperandContext &operator=(const OperandContext &other);
-    
+
     // 添加toString方法用于获取操作数的字符串表示
     std::string toString() const;
 };

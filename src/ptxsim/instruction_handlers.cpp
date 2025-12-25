@@ -91,9 +91,10 @@
     bool Name::prepare(ThreadContext *context, StatementContext &stmt) {       \
         auto ss = (StatementContext::Name *)stmt.statement;                    \
         /* Pre-validate operand addresses */                                   \
+        void *op[op_count];                                                    \
         for (int i = 0; i < op_count; i++) {                                   \
             void *op_addr =                                                    \
-                context->get_operand_addr(ss->op[i], ss->qualifier);           \
+                context->get_operand_addr(ss->operands[i], ss->qualifier);     \
             if (!op_addr) {                                                    \
                 PTX_DEBUG_EMU("Failed to get operand address for op[%d]", i);  \
                 return false;                                                  \
@@ -105,7 +106,7 @@
         auto ss = (StatementContext::Name *)stmt.statement;                    \
         void *op[op_count];                                                    \
         for (int i = 0; i < op_count; i++) {                                   \
-            op[i] = context->get_operand_addr(ss->op[i], ss->qualifier);       \
+            op[i] = context->get_operand_addr(ss->operands[i], ss->qualifier); \
         }                                                                      \
         process_operation(context, op, ss->qualifier);                         \
         return true;                                                           \
@@ -114,8 +115,9 @@
         return true; /* Typically no commit work needed */                     \
     }                                                                          \
     void Name::execute_full(ThreadContext *context, StatementContext &stmt) {  \
-        if (!prepare(context, stmt))                                           \
-            return;                                                            \
+        if (stmt.state == InstructionState::READY)                             \
+            if (!prepare(context, stmt))                                       \
+                return;                                                        \
         if (!execute(context, stmt))                                           \
             return;                                                            \
         commit(context, stmt);                                                 \
