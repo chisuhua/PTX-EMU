@@ -1,6 +1,7 @@
 // statement_context.cpp
 #include "ptx_ir/statement_context.h"
 #include "ptx_ir/ptx_types.h"
+#include "ptxsim/execution_types.h"
 
 std::string S2s(StatementType s) {
     switch (s) {
@@ -39,10 +40,12 @@ StatementContext::~StatementContext() {
 }
 
 StatementContext::StatementContext(const StatementContext &other)
-    : statement(nullptr), statementType(S_UNKNOWN) {
+    : statement(nullptr), statementType(S_UNKNOWN),
+      state(InstructionState::READY) {
     if (!other.statement)
         return;
     statementType = other.statementType;
+    state = other.state;
 
 // 宏重载：统一接口为 (Name, OpCount)
 #define COPY_IMPL_OPERAND_REG(Name, OpCount) COPY_IMPL_OPERAND_REG_IMPL(Name)

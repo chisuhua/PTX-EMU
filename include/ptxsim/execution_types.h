@@ -19,6 +19,13 @@ struct Dim3 {
     }
 };
 
+enum class InstructionState {
+    READY,   // 准备执行新指令
+    PREPARE, // 准备阶段
+    EXECUTE, // 执行阶段
+    COMMIT   // 提交阶段
+};
+
 // 定义 CTA 唯一标识符（可扩展为多 GPU）
 struct CTAId {
     uint32_t grid_id;

@@ -4,6 +4,7 @@
 #include "../utils/logger.h"
 #include "execution_types.h"
 #include <any>
+#include <fstream>
 #include <functional>
 #include <iomanip>
 #include <iostream>
@@ -34,6 +35,25 @@ enum class InstructionType {
 // 断点条件类型
 using BreakpointCondition = std::function<bool(
     int pc, const std::unordered_map<std::string, std::any> &context)>;
+
+// 用于表示要trace的block和thread索引
+struct ThreadFilter {
+    int block_x = -1; // -1 表示所有值
+    int block_y = -1;
+    int block_z = -1;
+    int thread_x = -1;
+    int thread_y = -1;
+    int thread_z = -1;
+
+    bool matches(const Dim3 &block_idx, const Dim3 &thread_idx) const {
+        return (block_x == -1 || block_idx.x == block_x) &&
+               (block_y == -1 || block_idx.y == block_y) &&
+               (block_z == -1 || block_idx.z == block_z) &&
+               (thread_x == -1 || thread_idx.x == thread_x) &&
+               (thread_y == -1 || thread_idx.y == thread_y) &&
+               (thread_z == -1 || thread_idx.z == thread_z);
+    }
+};
 
 // 调试配置
 class DebugConfig {
@@ -80,6 +100,25 @@ public:
     bool is_register_traced() const {
         std::lock_guard<std::mutex> lock(get_mutex());
         return trace_registers_;
+    }
+
+    // 设置线程过滤器 - 仅对指定的blockIdx和threadIdx进行trace
+    void set_thread_filter(int block_x, int block_y, int block_z, int thread_x,
+                           int thread_y, int thread_z) {
+        std::lock_guard<std::mutex> lock(get_mutex());
+        thread_filter_ = ThreadFilter{block_x,  block_y,  block_z,
+                                      thread_x, thread_y, thread_z};
+        has_thread_filter_ = true;
+    }
+
+    // 检查是否应该对指定的block_idx和thread_idx进行trace
+    bool should_trace_thread(const Dim3 &block_idx,
+                             const Dim3 &thread_idx) const {
+        std::lock_guard<std::mutex> lock(get_mutex());
+        if (!has_thread_filter_) {
+            return true; // 没有设置过滤器，trace所有线程
+        }
+        return thread_filter_.matches(block_idx, thread_idx);
     }
 
     // 设置断点
@@ -219,6 +258,22 @@ public:
                     trace_memory_ = (value == "true" || value == "1");
                 } else if (key == "trace_registers") {
                     trace_registers_ = (value == "true" || value == "1");
+                } else if (key == "trace_thread") {
+                    // 格式: "bx,by,bz,tx,ty,tz" 其中-1表示所有值
+                    std::istringstream iss(value);
+                    std::string token;
+                    std::vector<int> indices;
+
+                    while (std::getline(iss, token, ',')) {
+                        indices.push_back(std::stoi(token));
+                    }
+
+                    if (indices.size() == 6) {
+                        thread_filter_ =
+                            ThreadFilter{indices[0], indices[1], indices[2],
+                                         indices[3], indices[4], indices[5]};
+                        has_thread_filter_ = true;
+                    }
                 } else if (key == "trace_pc_range" || key == "pc_range") {
                     size_t dash_pos = value.find('-');
                     if (dash_pos != std::string::npos) {
@@ -273,7 +328,7 @@ private:
 
     DebugConfig()
         : trace_memory_(false), trace_registers_(false), pc_start_(-1),
-          pc_end_(-1) {
+          pc_end_(-1), has_thread_filter_(false) {
         // 默认启用控制流指令跟踪
         instruction_tracing_[InstructionType::CONTROL] = true;
     }
@@ -286,6 +341,10 @@ private:
     int pc_start_;
     int pc_end_;
     std::function<void(int, const std::string &)> instruction_callback_;
+
+    // 线程过滤器
+    ThreadFilter thread_filter_;
+    bool has_thread_filter_;
 
     DebugConfig(const DebugConfig &) = delete;
     DebugConfig &operator=(const DebugConfig &) = delete;
@@ -449,6 +508,8 @@ inline std::string format_register_value(const std::any &value, bool hex) {
             return format_f64(std::any_cast<double>(value));
         } else if (value.type() == typeid(bool)) {
             return format_pred(std::any_cast<bool>(value));
+        } else if (value.type() == typeid(std::string)) {
+            return std::any_cast<std::string>(value);
         } else {
             return "[unknown type]";
         }
@@ -489,6 +550,10 @@ public:
             full_instruction += " " + operands;
         }
 
+        // 检查线程过滤器
+        if (!config.should_trace_thread(block, thread))
+            return;
+
         // 触发回调
         config.trigger_instruction_callback(pc, full_instruction);
 
@@ -504,6 +569,10 @@ public:
                              const Dim3 &block = Dim3(0, 0, 0),
                              const Dim3 &thread = Dim3(0, 0, 0)) {
         if (!ptxsim::DebugConfig::get().is_memory_traced())
+            return;
+
+        // 检查线程过滤器
+        if (!ptxsim::DebugConfig::get().should_trace_thread(block, thread))
             return;
 
         const char *access_type = is_write ? "W" : "R";
@@ -545,6 +614,10 @@ public:
                                const Dim3 &thread = Dim3(0, 0, 0)) {
         if (!ptxsim::DebugConfig::get().is_register_traced() &&
             !ptxsim::DebugConfig::get().has_watchpoint(reg_name))
+            return;
+
+        // 检查线程过滤器
+        if (!ptxsim::DebugConfig::get().should_trace_thread(block, thread))
             return;
 
         const char *access_type = is_write ? "W" : "R";

@@ -4,12 +4,14 @@
 
 #include "operand_context.h"
 #include "ptx_types.h"
+#include "ptxsim/execution_types.h"
 #include <vector>
 
 class StatementContext {
 public:
     StatementType statementType;
     void *statement;
+    InstructionState state;
 
 // =============================================================================
 // 1. 操作数描述结构体
@@ -104,36 +106,14 @@ public:
         int operandNum = 0;                                                    \
     };
 
-    // =============================================================================
-    // 5. 主分发宏
-    // =============================================================================
-    // Overloads for kinds that don't use OpCount
-    // #define DISPATCH_OPERAND_REG(Name, _) DEFINE_OPERAND_REG(Name)
-    // #define DISPATCH_OPERAND_CONST(Name, _) DEFINE_OPERAND_CONST(Name)
-    // #define DISPATCH_OPERAND_MEMORY(Name, _) DEFINE_OPERAND_MEMORY(Name)
-    // #define DISPATCH_SIMPLE_NAME(Name, _) DEFINE_SIMPLE_NAME(Name)
-    // #define DISPATCH_SIMPLE_STRING(Name, _) DEFINE_SIMPLE_STRING(Name)
-    // #define DISPATCH_VOID_INSTR(Name, _) DEFINE_VOID_INSTR(Name)
-    // #define DISPATCH_BRANCH(Name, _) DEFINE_BRANCH(Name)
-    // #define DISPATCH_BARRIER(Name, _) DEFINE_BARRIER(Name)
-    // #define DISPATCH_PREDICATE_PREFIX(Name, _) DEFINE_PREDICATE_PREFIX(Name)
-    // #define DISPATCH_GENERIC_INSTR(Name, cnt) DEFINE_GENERIC_INSTR(Name, cnt)
-    // #define DISPATCH_WMMA_INSTR(Name, cnt) DEFINE_WMMA_INSTR(Name, cnt)
-    // #define DISPATCH_ATOM_INSTR(Name, cnt) DEFINE_ATOM_INSTR(Name, cnt)
-
-    // =============================================================================
-    // 6. 生成所有结构体
-    // =============================================================================
-
-    // #define DISPATCH_STRUCT(struct_kind, Name, OpCount)                            \
-//     DISPATCH_##struct_kind(Name, OpCount)
-
 #define X(enum_val, type_name, str, op_count, struct_kind)                     \
     DEFINE_##struct_kind(type_name, op_count)
 #include "ptx_op.def"
 #undef X
 
-    StatementContext() : statementType(S_REG), statement(nullptr) {}
+    StatementContext()
+        : statementType(S_REG), statement(nullptr),
+          state{InstructionState::READY} {}
     ~StatementContext();
 
     // 深拷贝方法

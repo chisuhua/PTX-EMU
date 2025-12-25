@@ -33,13 +33,6 @@ public:
     EXE_STATE state;
 
     // 当前指令执行状态
-    enum class InstructionExecutionState {
-        READY,   // 准备执行新指令
-        PREPARE, // 准备阶段
-        EXECUTE, // 执行阶段
-        COMMIT   // 提交阶段
-    } instruction_state = InstructionExecutionState::READY;
-
     // 临时数据存储
     std::queue<PtxInterpreter::VEC *> vec;
 

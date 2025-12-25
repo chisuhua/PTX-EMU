@@ -40,7 +40,6 @@ void ThreadContext::init(
     this->label2pc = label2pc;
     this->pc = 0;
     this->state = RUN;
-    this->instruction_state = InstructionExecutionState::READY;
 
     // 重新初始化RegisterManager（清空所有寄存器）
     register_manager = RegisterManager();
@@ -292,14 +291,12 @@ void *ThreadContext::get_register_addr(OperandContext::REG *reg,
     std::vector<Qualifier> typeVec = {qualifier};
     int bytes = getBytes(typeVec);
 
-    // 使用RegisterManager创建寄存器
+    // 使用RegisterManager创建寄存器，并传入初始化数据
     if (register_manager.create_register(combinedName, bytes)) {
-        RegisterInterface *new_reg_interface =
+        RegisterInterface *reg_interface =
             register_manager.get_register(combinedName);
-        if (new_reg_interface) {
-            // 初始化寄存器内容为0
-            memset(new_reg_interface->get_physical_address(), 0, bytes);
-            return new_reg_interface->get_physical_address();
+        if (reg_interface) {
+            return reg_interface->get_physical_address();
         }
     }
 
@@ -382,18 +379,6 @@ void ThreadContext::mov_data(void *src, void *dst,
                              std::vector<Qualifier> &qualifiers) {
     int bytes = getBytes(qualifiers);
     memcpy(dst, src, bytes);
-}
-
-void ThreadContext::handle_statement(StatementContext &statement) {
-    // 使用工厂创建对应的处理器并执行
-    InstructionHandler *handler =
-        InstructionFactory::get_handler(statement.statementType);
-    if (handler) {
-        handler->execute(this, statement);
-    } else {
-        std::cerr << "No handler found for statement type: "
-                  << static_cast<int>(statement.statementType) << std::endl;
-    }
 }
 
 // 添加shared memory初始化函数
