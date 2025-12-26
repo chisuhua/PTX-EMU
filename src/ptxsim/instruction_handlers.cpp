@@ -21,12 +21,14 @@
             PTX_DEBUG_EMU("Registered register: %s with size %zu",             \
                           reg_name.c_str(), reg_size);                         \
         }                                                                      \
+        context->pc++;                                                         \
         return;                                                                \
     }
 
 #define IMPLEMENT_OPERAND_CONST(Name)                                          \
     void Name::execute(ThreadContext *context, StatementContext &stmt) {       \
         assert(false);                                                         \
+        context->pc++;                                                         \
         return; /* Return true to satisfy bool return type */                  \
     }
 
@@ -42,29 +44,34 @@
         memset((void *)s->val, 0, s->byteNum);                                 \
         (*context->name2Share)[s->name] = s;                                   \
         context->name2Sym[s->name] = s;                                        \
+        context->pc++;                                                         \
         return;                                                                \
     }
 
 // dollar TODO
 #define IMPLEMENT_SIMPLE_NAME(Name)                                            \
     void Name::execute(ThreadContext *context, StatementContext &stmt) {       \
+        context->pc++;                                                         \
         return;                                                                \
     }
 
 // PRAGMA TODO
 #define IMPLEMENT_SIMPLE_STRING(Name)                                          \
     void Name::execute(ThreadContext *context, StatementContext &stmt) {       \
+        context->pc++;                                                         \
         return;                                                                \
     }
 
 // RET TODO
 #define IMPLEMENT_VOID_INSTR(Name)                                             \
     void Name::execute(ThreadContext *context, StatementContext &stmt) {       \
+        context->pc++;                                                         \
         return;                                                                \
     }
 
 #define IMPLEMENT_PREDICATE_PREFIX(Name)                                       \
     void Name::execute(ThreadContext *context, StatementContext &stmt) {       \
+        context->pc++;                                                         \
         return;                                                                \
     }
 
@@ -99,10 +106,11 @@
 
 #define IMPLEMENT_GENERIC_INSTR(Name)                                          \
     bool Name::prepare(ThreadContext *context, StatementContext &stmt) {       \
+        PTX_DEBUG_EMU("run to prepare" #Name);                                 \
         auto ss = (StatementContext::Name *)stmt.statement;                    \
         /* Pre-validate operand addresses */                                   \
         for (int i = 0; i < op_count; i++) {                                   \
-            if (!ss->operands[i].operand_addr) {                               \
+            if (!ss->operands[i].operand_phy_addr) {                           \
                 void *result =                                                 \
                     context->acquire_operand(ss->operands[i], ss->qualifier);  \
                 if (!result) {                                                 \
@@ -110,19 +118,11 @@
                                   i);                                          \
                     return false;                                              \
                 } else {                                                       \
-                    ss->operands[i].operand_addr = result;                     \
+                    ss->operands[i].operand_phy_addr = result;                 \
                 }                                                              \
             }                                                                  \
         }                                                                      \
-        return true;                                                           \
-    }                                                                          \
-    bool Name::operate(ThreadContext *context, StatementContext &stmt) {       \
-        auto ss = (StatementContext::Name *)stmt.statement;                    \
-        void *op_phy_addr[op_count];                                           \
-        for (int i = 0; i < op_count; i++) {                                   \
-            op_phy_addr[i] = ss->operands[i].operand_addr;                     \
-        }                                                                      \
-        process_operation(context, op_phy_addr, ss->qualifier);                \
+        context->collect_operands(stmt, ss->operands, &(ss->qualifier));       \
         return true;                                                           \
     }                                                                          \
     bool Name::commit(ThreadContext *context, StatementContext &stmt) {        \
@@ -161,3 +161,13 @@
     IMPLEMENT_##struct_kind(type_name)
 #include "ptx_ir/ptx_op.def"
 #undef X
+
+// bool Name::operate(ThreadContext *context, StatementContext &stmt) {       \
+    //     auto ss = (StatementContext::Name *)stmt.statement;                    \
+    //     void *op_phy_addr[op_count];                                           \
+    //     for (int i = 0; i < op_count; i++) {                                   \
+    //         op_phy_addr[i] = ss->operands[i].operand_addr;                     \
+    //     }                                                                      \
+    //     process_operation(context, op_phy_addr, ss->qualifier);                \
+    //     return true;                                                           \
+    // }                                                                          \

@@ -76,6 +76,7 @@ public:
 // GENERIC_INSTR 类型的基类处理器
 class GENERIC_INSTR : public INSTR_BASE {
 public:
+    virtual bool operate(ThreadContext *context, StatementContext &stmt);
 };
 
 // ATOM_INSTR 类型的基类处理器

@@ -12,6 +12,8 @@ public:
     StatementType statementType;
     void *statement;
     InstructionState state;
+    std::vector<void *> oc; // collect operand addr  from BASE_INSTR operands
+    std::vector<Qualifier> *qualifier; // qualifer for collect operand
 
 // =============================================================================
 // 1. 操作数描述结构体

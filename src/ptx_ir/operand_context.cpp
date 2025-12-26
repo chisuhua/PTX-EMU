@@ -127,7 +127,8 @@ OperandContext::~OperandContext() {
 
 // Adding OperandContext copy constructor implementation
 OperandContext::OperandContext(const OperandContext &other)
-    : operandType(other.operandType), operand(nullptr), valid(false) {
+    : operandType(other.operandType), operand(nullptr),
+      operand_phy_addr(nullptr) {
     switch (operandType) {
     case O_REG:
         if (other.operand) {

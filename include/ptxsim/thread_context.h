@@ -48,8 +48,9 @@ public:
     // 通用访问接口
     void *acquire_operand(OperandContext &op,
                           std::vector<Qualifier> &qualifiers);
-    // void *get_register_addr(OperandContext::REG *reg,
-    //                         Qualifier qualifier = Qualifier::Q_U32);
+    void collect_operands(StatementContext &stmt,
+                          std::vector<OperandContext> &operands,
+                          std::vector<Qualifier> *qualifier);
     void *get_memory_addr(OperandContext::FA *fa,
                           std::vector<Qualifier> &qualifiers);
 

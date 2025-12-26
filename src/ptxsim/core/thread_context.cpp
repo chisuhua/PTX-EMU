@@ -322,6 +322,14 @@ void *ThreadContext::acquire_operand(OperandContext &operand,
     return nullptr;
 }
 
+void ThreadContext::collect_operands(StatementContext &stmt,
+                                     std::vector<OperandContext> &operands,
+                                     std::vector<Qualifier> *qualifier) {
+    for (int i = 0; i < operands.size(); i++) {
+        stmt.oc.push_back(operands[i].operand_phy_addr);
+    }
+    stmt.qualifier = qualifier;
+};
 // void *ThreadContext::get_register_addr(OperandContext::REG *reg,
 //                                        Qualifier qualifier) {
 //     // 首先检查是否为特殊寄存器（如%tid.x）

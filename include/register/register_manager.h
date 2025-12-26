@@ -103,7 +103,8 @@ public:
             return false; // 寄存器已存在
         }
         registers_[name] = std::make_unique<SimpleRegister>(size);
-        PTX_DEBUG_EMU("Created register %s with size %zu", name.c_str(), size);
+        PTX_DEBUG_EMU("Created register %s with size %zu, phy_addr %p",
+                      name.c_str(), size, registers_[name].get());
         return true;
     }
 
@@ -113,8 +114,8 @@ public:
         if (it == registers_.end()) {
             assert(bytes == 0);
             registers_[name] = std::make_unique<SimpleRegister>(bytes);
-            PTX_DEBUG_EMU("Created register %s with size %zu", name.c_str(),
-                          bytes);
+            PTX_DEBUG_EMU("Created register %s with size %zu, phy_addr %p",
+                          name.c_str(), bytes, registers_[name].get());
             return registers_[name].get();
         } else {
             return it->second.get();

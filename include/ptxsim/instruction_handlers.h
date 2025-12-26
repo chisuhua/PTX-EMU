@@ -72,7 +72,6 @@ class StatementContext;
     public:                                                                    \
         static constexpr int op_count = OpCount;                               \
         bool prepare(ThreadContext *context, StatementContext &stmt) override; \
-        bool operate(ThreadContext *context, StatementContext &stmt) override; \
         bool commit(ThreadContext *context, StatementContext &stmt) override;  \
         void                                                                   \
         process_operation(ThreadContext *context, void **operands,             \
