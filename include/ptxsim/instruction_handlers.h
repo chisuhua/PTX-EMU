@@ -10,45 +10,49 @@ class StatementContext;
 #define DECLARE_OPERAND_REG(Name, _)                                           \
     class Name : public OPERAND_REG {                                          \
     public:                                                                    \
-        bool execute(ThreadContext *context, StatementContext &stmt) override; \
+        void execute(ThreadContext *context, StatementContext &stmt) override; \
     };
 
 #define DECLARE_OPERAND_CONST(Name, _)                                         \
     class Name : public OPERAND_CONST {                                        \
     public:                                                                    \
-        bool execute(ThreadContext *context, StatementContext &stmt) override; \
+        void execute(ThreadContext *context, StatementContext &stmt) override; \
     };
 
 #define DECLARE_OPERAND_MEMORY(Name, _)                                        \
     class Name : public OPERAND_MEMORY {                                       \
     public:                                                                    \
-        bool execute(ThreadContext *context, StatementContext &stmt) override; \
+        void execute(ThreadContext *context, StatementContext &stmt) override; \
     };
 
 #define DECLARE_SIMPLE_NAME(Name, _)                                           \
     class Name : public SIMPLE_NAME {                                          \
     public:                                                                    \
-        bool execute(ThreadContext *context, StatementContext &stmt) override; \
+        void execute(ThreadContext *context, StatementContext &stmt) override; \
     };
 
 #define DECLARE_SIMPLE_STRING(Name, _)                                         \
     class Name : public SIMPLE_STRING {                                        \
     public:                                                                    \
-        bool execute(ThreadContext *context, StatementContext &stmt) override; \
+        void execute(ThreadContext *context, StatementContext &stmt) override; \
+    };
+
+#define DECLARE_PREDICATE_PREFIX(Name, _)                                      \
+    class Name : public PREDICATE_PREFIX {                                     \
+    public:                                                                    \
+        void execute(ThreadContext *context, StatementContext &stmt) override; \
     };
 
 #define DECLARE_VOID_INSTR(Name, _)                                            \
     class Name : public VOID_INSTR {                                           \
     public:                                                                    \
-        bool execute(ThreadContext *context, StatementContext &stmt) override; \
+        void execute(ThreadContext *context, StatementContext &stmt) override; \
     };
 
 #define DECLARE_BRANCH(Name, _)                                                \
     class Name : public BRANCH {                                               \
     public:                                                                    \
-        bool prepare(ThreadContext *context, StatementContext &stmt) override; \
-        bool execute(ThreadContext *context, StatementContext &stmt) override; \
-        bool commit(ThreadContext *context, StatementContext &stmt) override;  \
+        bool operate(ThreadContext *context, StatementContext &stmt) override; \
         void                                                                   \
         process_operation(ThreadContext *context, void **operands,             \
                           const std::vector<Qualifier> &qualifiers) override;  \
@@ -57,18 +61,10 @@ class StatementContext;
 #define DECLARE_BARRIER(Name, _)                                               \
     class Name : public BARRIER {                                              \
     public:                                                                    \
-        bool prepare(ThreadContext *context, StatementContext &stmt) override; \
-        bool execute(ThreadContext *context, StatementContext &stmt) override; \
-        bool commit(ThreadContext *context, StatementContext &stmt) override;  \
+        bool operate(ThreadContext *context, StatementContext &stmt) override; \
         void                                                                   \
         process_operation(ThreadContext *context, void **operands,             \
                           const std::vector<Qualifier> &qualifiers) override;  \
-    };
-
-#define DECLARE_PREDICATE_PREFIX(Name, _)                                      \
-    class Name : public PREDICATE_PREFIX {                                     \
-    public:                                                                    \
-        bool execute(ThreadContext *context, StatementContext &stmt) override; \
     };
 
 #define DECLARE_GENERIC_INSTR(Name, OpCount)                                   \
@@ -76,21 +72,7 @@ class StatementContext;
     public:                                                                    \
         static constexpr int op_count = OpCount;                               \
         bool prepare(ThreadContext *context, StatementContext &stmt) override; \
-        bool execute(ThreadContext *context, StatementContext &stmt) override; \
-        bool commit(ThreadContext *context, StatementContext &stmt) override;  \
-        void execute_full(ThreadContext *context,                              \
-                          StatementContext &stmt) override;                    \
-        void                                                                   \
-        process_operation(ThreadContext *context, void **operands,             \
-                          const std::vector<Qualifier> &qualifiers) override;  \
-    };
-
-#define DECLARE_WMMA_INSTR(Name, OpCount)                                      \
-    class Name : public WMMA_INSTR {                                           \
-    public:                                                                    \
-        static constexpr int op_count = OpCount;                               \
-        bool prepare(ThreadContext *context, StatementContext &stmt) override; \
-        bool execute(ThreadContext *context, StatementContext &stmt) override; \
+        bool operate(ThreadContext *context, StatementContext &stmt) override; \
         bool commit(ThreadContext *context, StatementContext &stmt) override;  \
         void                                                                   \
         process_operation(ThreadContext *context, void **operands,             \
@@ -102,7 +84,19 @@ class StatementContext;
     public:                                                                    \
         static constexpr int op_count = OpCount;                               \
         bool prepare(ThreadContext *context, StatementContext &stmt) override; \
-        bool execute(ThreadContext *context, StatementContext &stmt) override; \
+        bool operate(ThreadContext *context, StatementContext &stmt) override; \
+        bool commit(ThreadContext *context, StatementContext &stmt) override;  \
+        void                                                                   \
+        process_operation(ThreadContext *context, void **operands,             \
+                          const std::vector<Qualifier> &qualifiers) override;  \
+    };
+
+#define DECLARE_WMMA_INSTR(Name, OpCount)                                      \
+    class Name : public WMMA_INSTR {                                           \
+    public:                                                                    \
+        static constexpr int op_count = OpCount;                               \
+        bool prepare(ThreadContext *context, StatementContext &stmt) override; \
+        bool operate(ThreadContext *context, StatementContext &stmt) override; \
         bool commit(ThreadContext *context, StatementContext &stmt) override;  \
         void                                                                   \
         process_operation(ThreadContext *context, void **operands,             \

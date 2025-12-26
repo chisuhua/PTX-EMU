@@ -46,12 +46,16 @@ public:
     void clear_temporaries();
 
     // 通用访问接口
-    void *get_operand_addr(OperandContext &op,
-                           std::vector<Qualifier> &qualifiers);
-    void *get_register_addr(OperandContext::REG *reg,
-                            Qualifier qualifier = Qualifier::Q_U32);
+    void *acquire_operand(OperandContext &op,
+                          std::vector<Qualifier> &qualifiers);
+    // void *get_register_addr(OperandContext::REG *reg,
+    //                         Qualifier qualifier = Qualifier::Q_U32);
     void *get_memory_addr(OperandContext::FA *fa,
                           std::vector<Qualifier> &qualifiers);
+
+    // 寄存器访问接口
+    void *acquire_register(OperandContext::REG *reg,
+                           std::vector<Qualifier> qualifier);
 
     // Shared memory初始化
     void initialize_shared_memory(const std::string &name, uint64_t address);

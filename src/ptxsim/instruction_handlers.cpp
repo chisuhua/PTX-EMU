@@ -6,7 +6,7 @@
 #include "ptxsim/utils/type_utils.h"
 
 #define IMPLEMENT_OPERAND_REG(Name)                                            \
-    bool Name::execute(ThreadContext *context, StatementContext &stmt) {       \
+    void Name::execute(ThreadContext *context, StatementContext &stmt) {       \
         auto ss = static_cast<StatementContext::Name *>(stmt.statement);       \
         for (int i = 0; i < ss->regNum; i++) {                                 \
             std::string reg_name = ss->regName + std::to_string(i);            \
@@ -16,22 +16,22 @@
                                                            reg_size)) {        \
                 PTX_DEBUG_EMU("Failed to create register: %s with size %zu",   \
                               reg_name.c_str(), reg_size);                     \
-                return false;                                                  \
+                return;                                                        \
             }                                                                  \
             PTX_DEBUG_EMU("Registered register: %s with size %zu",             \
                           reg_name.c_str(), reg_size);                         \
         }                                                                      \
-        return true;                                                           \
+        return;                                                                \
     }
 
 #define IMPLEMENT_OPERAND_CONST(Name)                                          \
-    bool Name::execute(ThreadContext *context, StatementContext &stmt) {       \
+    void Name::execute(ThreadContext *context, StatementContext &stmt) {       \
         assert(false);                                                         \
-        return true; /* Return true to satisfy bool return type */             \
+        return; /* Return true to satisfy bool return type */                  \
     }
 
 #define IMPLEMENT_OPERAND_MEMORY(Name)                                         \
-    bool Name::execute(ThreadContext *context, StatementContext &stmt) {       \
+    void Name::execute(ThreadContext *context, StatementContext &stmt) {       \
         auto ss = (StatementContext::Name *)stmt.statement;                    \
         PtxInterpreter::Symtable *s = new PtxInterpreter::Symtable();          \
         s->byteNum = getBytes(ss->dataType) * ss->size;                        \
@@ -42,39 +42,36 @@
         memset((void *)s->val, 0, s->byteNum);                                 \
         (*context->name2Share)[s->name] = s;                                   \
         context->name2Sym[s->name] = s;                                        \
-        return true;                                                           \
+        return;                                                                \
     }
 
 // dollar TODO
 #define IMPLEMENT_SIMPLE_NAME(Name)                                            \
-    bool Name::execute(ThreadContext *context, StatementContext &stmt) {       \
-        return true;                                                           \
+    void Name::execute(ThreadContext *context, StatementContext &stmt) {       \
+        return;                                                                \
     }
 
 // PRAGMA TODO
 #define IMPLEMENT_SIMPLE_STRING(Name)                                          \
-    bool Name::execute(ThreadContext *context, StatementContext &stmt) {       \
-        return true;                                                           \
+    void Name::execute(ThreadContext *context, StatementContext &stmt) {       \
+        return;                                                                \
     }
 
 // RET TODO
 #define IMPLEMENT_VOID_INSTR(Name)                                             \
-    bool Name::execute(ThreadContext *context, StatementContext &stmt) {       \
-        return true;                                                           \
+    void Name::execute(ThreadContext *context, StatementContext &stmt) {       \
+        return;                                                                \
     }
 
 #define IMPLEMENT_PREDICATE_PREFIX(Name)                                       \
-    bool Name::execute(ThreadContext *context, StatementContext &stmt) {       \
-        return true;                                                           \
+    void Name::execute(ThreadContext *context, StatementContext &stmt) {       \
+        return;                                                                \
     }
 
 // BRA
 // -1 because pc will be incremented after this instruction
 #define IMPLEMENT_BRANCH(Name)                                                 \
-    bool Name::prepare(ThreadContext *context, StatementContext &stmt) {       \
-        return true; /* Typically no commit work needed */                     \
-    }                                                                          \
-    bool Name::execute(ThreadContext *context, StatementContext &stmt) {       \
+    bool Name::operate(ThreadContext *context, StatementContext &stmt) {       \
         auto ss = (StatementContext::Name *)stmt.statement;                    \
         auto iter = context->label2pc.find(ss->braTarget);                     \
         assert(iter != context->label2pc.end());                               \
@@ -82,57 +79,65 @@
         op[0] = &(iter->second);                                               \
         process_operation(context, op, ss->qualifier);                         \
         return true;                                                           \
+    }
+
+#define IMPLEMENT_BARRIER(Name)                                                \
+    bool Name::operate(ThreadContext *context, StatementContext &stmt) {       \
+        auto ss = (StatementContext::Name *)stmt.statement;                    \
+                                                                               \
+        if (ss->barType == "sync") {                                           \
+            context->state = BAR_SYNC;                                         \
+        } else {                                                               \
+            assert(false && "Unsupported barrier type");                       \
+        }                                                                      \
+        return true;                                                           \
     }                                                                          \
-    bool Name::commit(ThreadContext *context, StatementContext &stmt) {        \
-        return true; /* Typically no commit work needed */                     \
+    void Name::process_operation(ThreadContext *context, void **operands,      \
+                                 const std::vector<Qualifier> &qualifiers) {   \
+        /* Barrier operation handled in execute method */                      \
     }
 
 #define IMPLEMENT_GENERIC_INSTR(Name)                                          \
     bool Name::prepare(ThreadContext *context, StatementContext &stmt) {       \
         auto ss = (StatementContext::Name *)stmt.statement;                    \
         /* Pre-validate operand addresses */                                   \
-        void *op[op_count];                                                    \
         for (int i = 0; i < op_count; i++) {                                   \
-            void *op_addr =                                                    \
-                context->get_operand_addr(ss->operands[i], ss->qualifier);     \
-            if (!op_addr) {                                                    \
-                PTX_DEBUG_EMU("Failed to get operand address for op[%d]", i);  \
-                return false;                                                  \
+            if (!ss->operands[i].operand_addr) {                               \
+                void *result =                                                 \
+                    context->acquire_operand(ss->operands[i], ss->qualifier);  \
+                if (!result) {                                                 \
+                    PTX_DEBUG_EMU("Failed to get operand address for op[%d]",  \
+                                  i);                                          \
+                    return false;                                              \
+                } else {                                                       \
+                    ss->operands[i].operand_addr = result;                     \
+                }                                                              \
             }                                                                  \
         }                                                                      \
         return true;                                                           \
     }                                                                          \
-    bool Name::execute(ThreadContext *context, StatementContext &stmt) {       \
+    bool Name::operate(ThreadContext *context, StatementContext &stmt) {       \
         auto ss = (StatementContext::Name *)stmt.statement;                    \
-        void *op[op_count];                                                    \
+        void *op_phy_addr[op_count];                                           \
         for (int i = 0; i < op_count; i++) {                                   \
-            op[i] = context->get_operand_addr(ss->operands[i], ss->qualifier); \
+            op_phy_addr[i] = ss->operands[i].operand_addr;                     \
         }                                                                      \
-        process_operation(context, op, ss->qualifier);                         \
+        process_operation(context, op_phy_addr, ss->qualifier);                \
         return true;                                                           \
     }                                                                          \
     bool Name::commit(ThreadContext *context, StatementContext &stmt) {        \
         return true; /* Typically no commit work needed */                     \
-    }                                                                          \
-    void Name::execute_full(ThreadContext *context, StatementContext &stmt) {  \
-        if (stmt.state == InstructionState::READY)                             \
-            if (!prepare(context, stmt))                                       \
-                return;                                                        \
-        if (!execute(context, stmt))                                           \
-            return;                                                            \
-        commit(context, stmt);                                                 \
-        context->pc++; /* Increment PC after successful execution */           \
     }
 
 #define IMPLEMENT_ATOM_INSTR(Name)                                             \
     bool Name::prepare(ThreadContext *context, StatementContext &stmt) {       \
         return true;                                                           \
     }                                                                          \
-    bool Name::execute(ThreadContext *context, StatementContext &stmt) {       \
+    bool Name::operate(ThreadContext *context, StatementContext &stmt) {       \
         auto ss = (StatementContext::Name *)stmt.statement;                    \
         void *op[op_count];                                                    \
         for (int i = 0; i < op_count; i++) {                                   \
-            op[i] = context->get_operand_addr(ss->op[i], ss->qualifier);       \
+            op[i] = context->acquire_operand(ss->operands[i], ss->qualifier);  \
         }                                                                      \
         process_operation(context, op, ss->qualifier);                         \
         return true;                                                           \
@@ -145,33 +150,11 @@
     bool Name::prepare(ThreadContext *context, StatementContext &stmt) {       \
         return true;                                                           \
     }                                                                          \
-    bool Name::execute(ThreadContext *context, StatementContext &stmt) {       \
+    bool Name::operate(ThreadContext *context, StatementContext &stmt) {       \
         return true;                                                           \
     }                                                                          \
     bool Name::commit(ThreadContext *context, StatementContext &stmt) {        \
         return true;                                                           \
-    }
-
-#define IMPLEMENT_BARRIER(Name)                                                \
-    bool Name::prepare(ThreadContext *context, StatementContext &stmt) {       \
-        return true;                                                           \
-    }                                                                          \
-    bool Name::execute(ThreadContext *context, StatementContext &stmt) {       \
-        auto ss = (StatementContext::Name *)stmt.statement;                    \
-                                                                               \
-        if (ss->barType == "sync") {                                           \
-            context->state = BAR_SYNC;                                         \
-        } else {                                                               \
-            assert(false && "Unsupported barrier type");                       \
-        }                                                                      \
-        return true;                                                           \
-    }                                                                          \
-    bool Name::commit(ThreadContext *context, StatementContext &stmt) {        \
-        return true;                                                           \
-    }                                                                          \
-    void Name::process_operation(ThreadContext *context, void **operands,      \
-                                 const std::vector<Qualifier> &qualifiers) {   \
-        /* Barrier operation handled in execute method */                      \
     }
 
 #define X(enum_val, type_name, str, op_count, struct_kind)                     \

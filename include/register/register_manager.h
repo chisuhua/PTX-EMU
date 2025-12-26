@@ -40,6 +40,9 @@ public:
 
     // 前进一个周期（用于模拟多周期操作）
     virtual void tick() = 0;
+
+    // 申请获取寄存器访问权限
+    virtual void *acquire() = 0;
 };
 
 // 简单寄存器实现，操作立即完成
@@ -82,6 +85,10 @@ public:
         // 简单寄存器不需要tick
     }
 
+    void *acquire() override {
+        return data_.get(); // 简单寄存器总是可以获取
+    }
+
 private:
     std::unique_ptr<char[]> data_;
     size_t size_;
@@ -90,7 +97,6 @@ private:
 // 寄存器管理器，负责创建、管理和访问寄存器
 class RegisterManager {
 public:
-    // 创建寄存器
     bool create_register(const std::string &name, size_t size) {
         if (registers_.find(name) != registers_.end()) {
             PTX_DEBUG_EMU("Register %s already exists", name.c_str());
@@ -102,13 +108,17 @@ public:
     }
 
     // 获取寄存器
-    RegisterInterface *get_register(const std::string &name) {
+    RegisterInterface *get_register(const std::string &name, int bytes = 4) {
         auto it = registers_.find(name);
         if (it == registers_.end()) {
-            PTX_DEBUG_EMU("Register %s not found", name.c_str());
-            return nullptr;
+            assert(bytes == 0);
+            registers_[name] = std::make_unique<SimpleRegister>(bytes);
+            PTX_DEBUG_EMU("Created register %s with size %zu", name.c_str(),
+                          bytes);
+            return registers_[name].get();
+        } else {
+            return it->second.get();
         }
-        return it->second.get();
     }
 
     // 读取寄存器值（立即返回，但数据可能尚未就绪）

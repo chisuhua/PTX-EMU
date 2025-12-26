@@ -93,18 +93,14 @@ public:
     };
 
 #define DEFINE_WMMA_INSTR(Name, OpCount)                                       \
-    struct Name {                                                              \
+    struct Name : BASE_INSTR {                                                 \
         static constexpr int op_count = OpCount;                               \
         WmmaType wmmaType;                                                     \
-        std::vector<Qualifier> qualifier;                                      \
-        OperandContext op[OpCount];                                            \
     };
 
 #define DEFINE_ATOM_INSTR(Name, OpCount)                                       \
-    struct Name {                                                              \
+    struct Name : BASE_INSTR {                                                 \
         static constexpr int op_count = OpCount;                               \
-        std::vector<Qualifier> qualifier;                                      \
-        OperandContext op[OpCount];                                            \
         int operandNum = 0;                                                    \
     };
 
@@ -136,9 +132,10 @@ inline void deepCopyOperandArray(OperandContext (&dst)[N],
 
 inline void deepCopyOperandArray(std::vector<OperandContext> &dst,
                                  const std::vector<OperandContext> &src) {
-    for (std::size_t i = 0; i < src.size(); ++i) {
-        dst[i] = OperandContext(
-            src[i]); // 调用 OperandContext 的拷贝构造函数（深拷贝）
+    uint32_t op_count = src.size();
+    dst.resize(op_count);
+    for (std::size_t i = 0; i < op_count; ++i) {
+        dst[i] = src[i]; // 调用 OperandContext 的拷贝构造函数（深拷贝）
     }
 }
 
@@ -253,7 +250,7 @@ inline void deepCopyOperandArray(std::vector<OperandContext> &dst,
         auto dest = new Name();                                                \
         dest->wmmaType = source->wmmaType;                                     \
         dest->qualifier = source->qualifier;                                   \
-        deepCopyOperandArray(dest->op, source->op);                            \
+        deepCopyOperandArray(dest->operands, source->operands);                \
         statement = dest;                                                      \
     } while (0)
 
@@ -262,7 +259,7 @@ inline void deepCopyOperandArray(std::vector<OperandContext> &dst,
         auto source = static_cast<const Name *>(other.statement);              \
         auto dest = new Name();                                                \
         dest->qualifier = source->qualifier;                                   \
-        deepCopyOperandArray(dest->op, source->op);                            \
+        deepCopyOperandArray(dest->operands, source->operands);                \
         dest->operandNum = source->operandNum;                                 \
         statement = dest;                                                      \
     } while (0)

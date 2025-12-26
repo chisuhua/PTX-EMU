@@ -9,6 +9,8 @@ class OperandContext {
 public:
     OperandType operandType;
     void *operand = nullptr;
+    void *operand_addr; // use exeute state to fetech real operand
+    bool valid = false; // operand is read and ready to execute
 
     struct REG {
         std::string regName;
@@ -51,7 +53,7 @@ public:
 
     explicit OperandContext(OperandType operand_type, void *operand)
         : operandType(operand_type), operand(operand) {}
-    OperandContext() : operandType(O_REG), operand(nullptr) {}
+    OperandContext() : operandType(O_REG), operand(nullptr), valid(false) {}
     ~OperandContext();
 
     // 深拷贝方法
