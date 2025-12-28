@@ -61,7 +61,7 @@ public:
     OperandContext &operator=(const OperandContext &other);
 
     // 添加toString方法用于获取操作数的字符串表示
-    std::string toString() const;
+    std::string toString(int bytes = 0) const;
 };
 
 #endif // OPERAND_CONTEXT_H

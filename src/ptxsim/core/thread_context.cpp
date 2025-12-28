@@ -128,10 +128,10 @@ void ThreadContext::prepare_breakpoint_context(
     for (const auto &reg_pair : register_manager.get_all_registers()) {
         std::string reg_name = reg_pair.first;
         RegisterInterface *reg_interface = reg_pair.second;
-        if (reg_interface && reg_interface->get_physical_address()) {
+        if (reg_interface && reg_interface->get_phy_address()) {
             // 根据寄存器大小推测类型
             size_t reg_size = reg_interface->get_size();
-            void *addr = reg_interface->get_physical_address();
+            void *addr = reg_interface->get_phy_address();
 
             if (reg_size == 4) {
                 context[reg_name] = *(int32_t *)addr;
@@ -159,17 +159,17 @@ void ThreadContext::dump_state(std::ostream &os) const {
     for (const auto &reg_pair : register_manager.get_all_registers()) {
         std::string reg_name = reg_pair.first;
         RegisterInterface *reg_interface = reg_pair.second;
-        if (reg_interface && reg_interface->get_physical_address()) {
+        if (reg_interface && reg_interface->get_phy_address()) {
             os << "  " << reg_name << " = ";
             size_t reg_size = reg_interface->get_size();
 
             // 由于我们不知道寄存器的确切类型，需要基于大小进行推测
             if (reg_size == 4) {
                 os << ptxsim::debug_format::format_i32(
-                    *(int32_t *)reg_interface->get_physical_address(), true);
+                    *(int32_t *)reg_interface->get_phy_address(), true);
             } else if (reg_size == 8) {
                 os << ptxsim::debug_format::format_i64(
-                    *(int64_t *)reg_interface->get_physical_address(), true);
+                    *(int64_t *)reg_interface->get_phy_address(), true);
             } else {
                 os << "[unknown size: " << reg_size << "]";
             }
@@ -185,74 +185,6 @@ void ThreadContext::dump_state(std::ostream &os) const {
     }
 }
 
-// void *ThreadContext::get_operand_addr(OperandContext &operand,
-//                                       std::vector<Qualifier> &qualifiers) {
-// switch (operand.operandType) {
-// case O_VAR: {
-//     OperandContext::VAR *varOp = (OperandContext::VAR *)operand.operand;
-//     // 查找共享内存中的变量
-//     auto share_it = name2Share->find(varOp->varName);
-//     if (share_it != name2Share->end()) {
-//         return &(share_it->second->val);
-//     }
-
-//     auto sym_it = name2Sym.find(varOp->varName);
-//     if (sym_it != name2Sym.end()) {
-//         PTX_DEBUG_EMU("Reading kernel argument from name2Sym: name=%s, "
-//                       "symbol_table_entry=%p, stored_value=0x%lx, "
-//                       "dereferenced_value=0x%lx",
-//                       varOp->varName.c_str(), sym_it->second,
-//                       sym_it->second->val,
-//                       *(uint64_t *)(sym_it->second->val));
-//         return &(sym_it->second->val);
-//     }
-//     break;
-// }
-
-// case O_REG:
-//     return acquire_register((OperandContext::REG *)operand.operand,
-//                             qualifiers);
-
-// case O_FA:
-//     return get_memory_addr((OperandContext::FA *)operand.operand,
-//                            qualifiers);
-
-// case O_IMM: {
-//     auto immOp = (OperandContext::IMM *)operand.operand;
-//     Qualifier q = getDataQualifier(qualifiers);
-
-//     // 使用栈上缓冲区（每个 IMM 使用独立空间，支持多 IMM 指令）
-//     // 注意：此指针仅在当前指令执行期间有效！
-//     alignas(8) static thread_local char
-//         imm_buffer_pool[64][8]; // 支持最多 64 个 IMM/指令
-//     static thread_local int buffer_index = 0;
-
-//     // 使用模运算维护索引，避免溢出
-//     char *buffer = imm_buffer_pool[buffer_index];
-//     buffer_index = (buffer_index + 1) % 64;
-
-//     parseImmediate(immOp->immVal, q, buffer);
-//     return buffer;
-// }
-
-// case O_VEC: {
-//     auto vecOp = (OperandContext::VEC *)operand.operand;
-//     // 创建一个新的VEC对象用于存储向量元素地址
-//     PtxInterpreter::VEC *newVec = new PtxInterpreter::VEC();
-//     // 递归处理向量中的每个元素
-//     for (auto &elem : vecOp->vec) {
-//         newVec->vec.push_back(get_operand_addr(elem, qualifiers));
-//     }
-//     vec.push(newVec);
-//     return nullptr;
-// }
-
-// default:
-//     break;
-// }
-
-//     return nullptr;
-// }
 void *ThreadContext::acquire_operand(OperandContext &operand,
                                      std::vector<Qualifier> &qualifiers) {
     switch (operand.operandType) {
@@ -325,66 +257,20 @@ void *ThreadContext::acquire_operand(OperandContext &operand,
 void ThreadContext::collect_operands(StatementContext &stmt,
                                      std::vector<OperandContext> &operands,
                                      std::vector<Qualifier> *qualifier) {
+    int bytes = getBytes(*qualifier);
     for (int i = 0; i < operands.size(); i++) {
+        PTX_DEBUG_EMU("Collect: %s ", operands[i].toString(bytes).c_str());
         stmt.oc.push_back(operands[i].operand_phy_addr);
     }
     stmt.qualifier = qualifier;
 };
-// void *ThreadContext::get_register_addr(OperandContext::REG *reg,
-//                                        Qualifier qualifier) {
-//     // 首先检查是否为特殊寄存器（如%tid.x）
-//     if (reg->regName == "tid.x")
-//         return &ThreadIdx.x;
-//     if (reg->regName == "tid.y")
-//         return &ThreadIdx.y;
-//     if (reg->regName == "tid.z")
-//         return &ThreadIdx.z;
-//     if (reg->regName == "ctaid.x")
-//         return &BlockIdx.x;
-//     if (reg->regName == "ctaid.y")
-//         return &BlockIdx.y;
-//     if (reg->regName == "ctaid.z")
-//         return &BlockIdx.z;
-//     if (reg->regName == "nctaid.x")
-//         return &GridDim.x;
-//     if (reg->regName == "nctaid.y")
-//         return &GridDim.y;
-//     if (reg->regName == "nctaid.z")
-//         return &GridDim.z;
-//     if (reg->regName == "ntid.x")
-//         return &BlockDim.x;
-//     if (reg->regName == "ntid.y")
-//         return &BlockDim.y;
-//     if (reg->regName == "ntid.z")
-//         return &BlockDim.z;
 
-//     // 然后尝试直接按regName查找（适用于普通寄存器）
-//     std::string combinedName = reg->regName + std::to_string(reg->regIdx);
-
-//     // 检查寄存器是否已存在于RegisterManager中
-//     RegisterInterface *reg_interface =
-//         register_manager.get_register(combinedName);
-//     if (reg_interface) {
-//         return reg_interface->get_physical_address();
-//     }
-
-//     // 如果仍然找不到，创建新的寄存器
-//     // 根据类型分配数据空间
-//     std::vector<Qualifier> typeVec = {qualifier};
-//     int bytes = getBytes(typeVec);
-
-//     // 使用RegisterManager创建寄存器，并传入初始化数据
-//     if (register_manager.create_register(combinedName, bytes)) {
-//         RegisterInterface *reg_interface =
-//             register_manager.get_register(combinedName);
-//         if (reg_interface) {
-//             return reg_interface->get_physical_address();
-//         }
-//     }
-
-//     // 如果创建失败，返回nullptr
-//     return nullptr;
-// }
+void ThreadContext::commit_operand(StatementContext &stmt,
+                                   OperandContext &operand,
+                                   std::vector<Qualifier> &qualifier) {
+    int bytes = getBytes(qualifier);
+    PTX_DEBUG_EMU("Commit:  %s ", operand.toString(bytes).c_str());
+};
 
 void *ThreadContext::acquire_register(OperandContext::REG *reg,
                                       std::vector<Qualifier> qualifier) {
@@ -468,7 +354,7 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
         if (sym_it != name2Sym.end()) {
             PTX_DEBUG_EMU("Reading kernel argument from name2Sym in "
                           "get_memory_addr: name=%s, "
-                          "symbol_table_entry=%p, stored_value=0x%lx, ",
+                          "symbol_table_entry=%p, stored_value=0x%lx",
                           fa->ID.c_str(), sym_it->second, sym_it->second->val);
             ret = (void *)sym_it->second->val;
         } else {

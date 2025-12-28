@@ -34,9 +34,6 @@ bool INSTR_BASE::commit(ThreadContext *context, StatementContext &stmt) {
 }
 
 bool GENERIC_INSTR::operate(ThreadContext *context, StatementContext &stmt) {
-    void *op_phy_addr[10];
-    for (int i = 0; i < stmt.oc.size(); i++) {
-        op_phy_addr[i] = stmt.oc[i];
-    }
-    process_operation(context, op_phy_addr, *stmt.qualifier);
+    process_operation(context, &stmt.oc[0], *stmt.qualifier);
+    return true;
 }

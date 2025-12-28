@@ -51,6 +51,9 @@ public:
     void collect_operands(StatementContext &stmt,
                           std::vector<OperandContext> &operands,
                           std::vector<Qualifier> *qualifier);
+
+    void commit_operand(StatementContext &stmt, OperandContext &operand,
+                        std::vector<Qualifier> &qualifier);
     void *get_memory_addr(OperandContext::FA *fa,
                           std::vector<Qualifier> &qualifiers);
 

@@ -19,7 +19,7 @@ public:
     virtual ~RegisterInterface() = default;
 
     // 获取寄存器的物理地址（用于兼容现有代码）
-    virtual void *get_physical_address() = 0;
+    virtual void *get_phy_address() = 0;
 
     // 获取寄存器大小（字节）
     virtual size_t get_size() const = 0;
@@ -52,7 +52,7 @@ public:
         memset(data_.get(), 0, size_);
     }
 
-    void *get_physical_address() override { return data_.get(); }
+    void *get_phy_address() override { return data_.get(); }
 
     size_t get_size() const override { return size_; }
 
@@ -104,7 +104,7 @@ public:
         }
         registers_[name] = std::make_unique<SimpleRegister>(size);
         PTX_DEBUG_EMU("Created register %s with size %zu, phy_addr %p",
-                      name.c_str(), size, registers_[name].get());
+                      name.c_str(), size, registers_[name]->get_phy_address());
         return true;
     }
 
@@ -115,7 +115,8 @@ public:
             assert(bytes == 0);
             registers_[name] = std::make_unique<SimpleRegister>(bytes);
             PTX_DEBUG_EMU("Created register %s with size %zu, phy_addr %p",
-                          name.c_str(), bytes, registers_[name].get());
+                          name.c_str(), bytes,
+                          registers_[name]->get_phy_address());
             return registers_[name].get();
         } else {
             return it->second.get();
@@ -134,8 +135,7 @@ public:
         reg->start_read();
         // 注意：这里返回的是可能未完成的读取
         // 调用者需要检查is_read_complete()
-        memcpy(buffer, reg->get_physical_address(),
-               std::min(size, reg->get_size()));
+        memcpy(buffer, reg->get_phy_address(), std::min(size, reg->get_size()));
 
         // 如果启用trace，记录寄存器读取
         if (enable_trace &&

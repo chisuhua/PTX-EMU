@@ -126,6 +126,8 @@
         return true;                                                           \
     }                                                                          \
     bool Name::commit(ThreadContext *context, StatementContext &stmt) {        \
+        auto ss = (StatementContext::Name *)stmt.statement;                    \
+        context->commit_operand(stmt, ss->operands[0], ss->qualifier);         \
         return true; /* Typically no commit work needed */                     \
     }
 

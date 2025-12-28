@@ -1,7 +1,8 @@
 #include "ptx_ir/operand_context.h"
+#include <cstdint>
 #include <sstream>
 
-std::string OperandContext::toString() const {
+std::string OperandContext::toString(int bytes) const {
     std::ostringstream oss;
 
     switch (operandType) {
@@ -70,6 +71,16 @@ std::string OperandContext::toString() const {
     default:
         oss << "<unknown>";
         break;
+    }
+    oss << " phy_addr:" << std::hex << operand_phy_addr;
+    if (bytes == 1) {
+        oss << " value:" << *(uint8_t *)operand_phy_addr;
+    } else if (bytes == 2) {
+        oss << " value:" << *(uint16_t *)operand_phy_addr;
+    } else if (bytes == 4) {
+        oss << " value:" << *(uint32_t *)operand_phy_addr;
+    } else if (bytes == 8) {
+        oss << " value:" << *(uint64_t *)operand_phy_addr;
     }
 
     return oss.str();
