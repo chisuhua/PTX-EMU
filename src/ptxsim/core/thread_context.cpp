@@ -68,15 +68,15 @@ void ThreadContext::_execute_once() {
     assert(pc >= 0 && pc < statements->size());
 
     // 准备断点检查上下文
-    std::unordered_map<std::string, std::any> context;
-    prepare_breakpoint_context(context);
+    // std::unordered_map<std::string, std::any> context;
+    // prepare_breakpoint_context(context);
 
-    // 检查断点
-    if (PTX_CHECK_BREAKPOINT(pc, context)) {
-        state = (EXE_STATE)2; // BREAK状态
-        PTX_DUMP_THREAD_STATE("Breakpoint hit", *this, BlockIdx, ThreadIdx);
-        return; // 暂停执行
-    }
+    // // 检查断点
+    // if (PTX_CHECK_BREAKPOINT(pc, context)) {
+    //     state = (EXE_STATE)2; // BREAK状态
+    //     PTX_DUMP_THREAD_STATE("Breakpoint hit", *this, BlockIdx, ThreadIdx);
+    //     return; // 暂停执行
+    // }
 
     // 开始性能计时
     PTX_PERF_TIMER("instruction_execution");
@@ -269,6 +269,7 @@ void ThreadContext::commit_operand(StatementContext &stmt,
                                    OperandContext &operand,
                                    std::vector<Qualifier> &qualifier) {
     int bytes = getBytes(qualifier);
+    stmt.state = InstructionState::COMMIT;
     PTX_DEBUG_EMU("Commit:  %s ", operand.toString(bytes).c_str());
 };
 

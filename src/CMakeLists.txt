@@ -52,6 +52,7 @@ add_library(ptxsim SHARED
     ptxsim/core/thread_context.cpp
     memory/memory_manager.cpp
     memory/simple_memory.cpp
+    memory/simple_memory_allocator.cpp
     ptxsim/debug/ptx_debug.cpp
     ptxsim/instruction_factory.cpp
     ptxsim/instruction_handlers.cpp
@@ -66,16 +67,6 @@ add_library(ptxsim SHARED
     ptxsim/instructions/comparison.cpp
     ptxsim/instructions/atomic.cpp
     ptxsim/instructions/tensor.cpp
-    # ptxsim/instruction_handlers/arithmetic_handler.cpp
-    # ptxsim/instruction_handlers/bitwise_handler.cpp
-    # ptxsim/instruction_handlers/memory_handler.cpp
-    # ptxsim/instruction_handlers/control_handler.cpp
-    # ptxsim/instruction_handlers/math_handler.cpp
-    # ptxsim/instruction_handlers/special_handler.cpp
-    # ptxsim/instruction_handlers/misc_handler.cpp
-    # ptxsim/instruction_handlers/remaining_handler.cpp
-    # ptxsim/instruction_handlers/structure_handler.cpp
-    # ptxsim/instruction_handlers/bit_manipulate.cpp
 )
 target_link_libraries(ptxsim ptx_ir)
 
@@ -139,8 +130,3 @@ add_custom_command(TARGET cudart POST_BUILD
 )
 
 # 添加test-ptx可执行文件目标
-
-# 添加examples目标
-add_executable(debug_example
-    ../examples/debug_example.cpp
-)

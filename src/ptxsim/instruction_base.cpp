@@ -21,8 +21,10 @@ void INSTR_BASE::execute(ThreadContext *context, StatementContext &stmt) {
         if (!commit(context, stmt)) {
             return;
         }
-        stmt.state = InstructionState::COMMIT;
-        context->pc++;
+        if (stmt.state == InstructionState::COMMIT) {
+            context->pc++;
+            stmt.state = InstructionState::READY;
+        }
     }
 }
 

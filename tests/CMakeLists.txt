@@ -23,37 +23,45 @@ set(CATCH_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 # 定义创建单个 Catch2 测试的函数
 function(add_catch_test TEST_NAME)
-    # 参数：测试名称，其余为该测试的源文件（不含 catch_amalgamated.cpp）
+    # 参数：测试名称（不含后缀），其余为该测试的源文件（不含 catch_amalgamated.cpp）
     set(SOURCES ${ARGN})
+    
+    # 如果 TEST_NAME 是文件路径，提取不带扩展名的基本文件名作为目标名称
+    get_filename_component(TEST_TARGET_NAME ${TEST_NAME} NAME_WE)
 
     # 自动包含 catch_amalgamated.cpp
     list(APPEND SOURCES ${CATCH_INCLUDE_DIR}/catch_amalgamated.cpp)
 
-    # 创建可执行文件
-    add_executable(${TEST_NAME} ${SOURCES})
+    # 创建可执行文件，使用处理后的目标名称
+    add_executable(${TEST_TARGET_NAME} ${SOURCES})
 
     # 包含目录
-    target_include_directories(${TEST_NAME} PRIVATE
+    target_include_directories(${TEST_TARGET_NAME} PRIVATE
         ${CATCH_INCLUDE_DIR}
         ${PROJECT_SOURCE_DIR}/include
     )
 
     # 链接我们自己构建的 cudart 库和 ANTLR 库
-    target_link_directories(${TEST_NAME} PRIVATE 
+    target_link_directories(${TEST_TARGET_NAME} PRIVATE 
         ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
         ${CMAKE_SOURCE_DIR}/lib
         )
 
-    target_link_libraries(${TEST_NAME} PRIVATE
-        -Wl,--no-as-needed
-        cudart
+    # 链接库
+    target_link_libraries(${TEST_TARGET_NAME} PRIVATE 
+        cudart 
         antlr4_shared
         -Wl,--as-needed  # 恢复默认行为
         -ldl -lpthread
-        )
+    )
 
-    # 注册为 CTest 测试
-    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+    # 设置测试目标
+    set_target_properties(${TEST_TARGET_NAME} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/tests
+    )
+
+    # 添加测试
+    add_test(NAME ${TEST_TARGET_NAME} COMMAND ${TEST_TARGET_NAME})
 endfunction()
 
 # 定义创建单个独立测试的函数（不使用Catch2）
@@ -97,6 +105,11 @@ function(add_standalone_test TEST_NAME)
     )
 endfunction()
 
+add_catch_test(
+    test_memory_manager.cpp
+    test_parse_immediate.cpp
+)
+
 # ================================
 # Catch2 PTX 指令测试套件（按类别拆分）
 # ================================
@@ -105,7 +118,6 @@ endfunction()
 add_catch_test(test_ptx_integer
     test_ptx_integer.cu
     ptx_integer_arith.cu
-    test_parse_immediate.cpp
 )
 set_tests_properties(test_ptx_integer PROPERTIES LABELS "ptx;integer")
 
@@ -137,7 +149,6 @@ set_tests_properties(test_ptx_integer PROPERTIES LABELS "ptx;integer")
 
 add_standalone_test(test-ptx test-ptx.cpp)
 add_standalone_test(test-wmma test_wmma.cpp)
-# add_standalone_test(test-parse-immediate test_parse_immediate.cpp)
 
 # ================================
 # 添加基于 CUDA 的测试（直接使用 CMake 编译）

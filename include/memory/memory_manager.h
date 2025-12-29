@@ -3,6 +3,7 @@
 #define MEMORY_MANAGER_H
 
 #include "memory_interface.h"
+#include "simple_memory_allocator.h"  // 添加对 SimpleMemoryAllocator 定义的包含
 #include <cstdint>
 #include <mutex>
 #include <sys/mman.h>
@@ -39,7 +40,10 @@ public:
     void access(void *host_ptr, void *data, size_t size, bool is_write, MemorySpace space);
 
     // 获取内存池指针（供 SimpleMemory 使用）
-    uint8_t *get_global_pool() const { return global_pool_; }
+    uint8_t *get_global_pool() const { 
+        if (allocator_) return allocator_->get_pool(); 
+        return nullptr; 
+    }
     uint8_t *get_shared_pool() const { return shared_pool_; }
 
     static constexpr size_t GLOBAL_SIZE = 4ULL << 30; // 4GB
@@ -49,12 +53,12 @@ private:
     MemoryManager();
     ~MemoryManager();
 
-    // 唯一内存池（mmap 虚拟内存）
-    uint8_t *global_pool_ = nullptr;
+    // 使用统一的内存分配器
+    SimpleMemoryAllocator *allocator_ = nullptr;
+    
+    // SHARED 内存池（小，直接 malloc）
     uint8_t *shared_pool_ = nullptr;
 
-    size_t global_offset_ = 0;
-    size_t param_offset_ = 0;  // 为PARAM空间添加偏移量
     mutable std::mutex mutex_;
 
     // 主机指针 → {偏移, 大小}

@@ -143,6 +143,8 @@ void output_log_simple(log_level level, const std::string &component,
 // 格式化函数模板
 template <typename... Args>
 std::string printf_format(const char *fmt, Args &&...args) {
+    // 添加检查以确保 fmt 是有效的格式字符串
+    if (!fmt) return std::string();
     size_t size = snprintf(nullptr, 0, fmt, args...) + 1;
     std::unique_ptr<char[]> buf(new char[size]);
     snprintf(buf.get(), size, fmt, args...);

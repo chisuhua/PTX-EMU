@@ -1,8 +1,17 @@
 // memory/memory_manager.cpp
 #include "memory/memory_manager.h"
+#include "memory/simple_memory_allocator.h"
 #include <cstring>
 #include <stdexcept>
 #include <unistd.h>
+#include "utils/logger.h"
+
+namespace {
+    SimpleMemoryAllocator* get_global_allocator() {
+        static SimpleMemoryAllocator allocator;
+        return &allocator;
+    }
+}
 
 MemoryManager &MemoryManager::instance() {
     static MemoryManager inst;
@@ -10,24 +19,12 @@ MemoryManager &MemoryManager::instance() {
 }
 
 MemoryManager::MemoryManager() {
-    // 分配 GLOBAL 内存池（mmap 虚拟内存）
-    global_pool_ = static_cast<uint8_t *>(
-        mmap(nullptr, GLOBAL_SIZE, PROT_READ | PROT_WRITE,
-             MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
-    if (global_pool_ == MAP_FAILED) {
-        throw std::runtime_error("Failed to mmap global memory pool");
-    }
-
-    // 分配 SHARED 内存池（小，直接 malloc）
-    shared_pool_ = new uint8_t[SHARED_SIZE];
-    std::memset(shared_pool_, 0, SHARED_SIZE);
+    // 使用全局内存分配器
+    allocator_ = get_global_allocator();
 }
 
 MemoryManager::~MemoryManager() {
-    if (global_pool_ && global_pool_ != MAP_FAILED) {
-        munmap(global_pool_, GLOBAL_SIZE);
-    }
-    delete[] shared_pool_;
+    // 不需要释放allocator_，因为它是一个全局单例
 }
 
 void MemoryManager::set_memory_interface(MemoryInterface *mem_if) {
@@ -42,13 +39,17 @@ void *MemoryManager::malloc_managed(size_t size) {
         return nullptr;
 
     std::lock_guard<std::mutex> lock(mutex_);
-    if (global_offset_ + size > GLOBAL_SIZE) {
+    
+    size_t offset = allocator_->allocate(size);
+    if (offset == static_cast<size_t>(-1)) {
         return nullptr;
     }
 
-    void *host_ptr = global_pool_ + global_offset_;
-    allocations_[reinterpret_cast<uint64_t>(host_ptr)] = {global_offset_, size};
-    global_offset_ += size;
+    void *host_ptr = allocator_->get_pool() + offset;
+    allocations_[reinterpret_cast<uint64_t>(host_ptr)] = {offset, size};
+    
+    PTX_DEBUG_MEM("GLOBAL memory allocated: ptr=%p, offset=%zu, size=%zu", 
+        host_ptr, offset, size);
     return host_ptr;
 }
 
@@ -59,6 +60,7 @@ mycudaError_t MemoryManager::free(void *dev_ptr) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = allocations_.find(reinterpret_cast<uint64_t>(dev_ptr));
     if (it != allocations_.end()) {
+        allocator_->deallocate(it->second.offset);
         allocations_.erase(it);
         return Success;
     }
@@ -71,14 +73,16 @@ void *MemoryManager::malloc_param(size_t size) {
 
     std::lock_guard<std::mutex> lock(mutex_);
     
-    // 为PARAM空间分配内存，从global_pool_中分配
-    if (param_offset_ + size > GLOBAL_SIZE) {
-        return nullptr;  // 检查是否有足够的空间
+    size_t offset = allocator_->allocate(size);
+    if (offset == static_cast<size_t>(-1)) {
+        return nullptr;
     }
 
-    void *param_ptr = global_pool_ + param_offset_;
-    param_allocations_[reinterpret_cast<uint64_t>(param_ptr)] = {param_offset_, size};
-    param_offset_ += size;
+    void *param_ptr = allocator_->get_pool() + offset;
+    param_allocations_[reinterpret_cast<uint64_t>(param_ptr)] = {offset, size};
+    
+    PTX_DEBUG_MEM("PARAM memory allocated: ptr=%p, offset=%zu, size=%zu", 
+        param_ptr, offset, size);
     return param_ptr;
 }
 
@@ -89,11 +93,8 @@ void MemoryManager::free_param(void *param_ptr) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = param_allocations_.find(reinterpret_cast<uint64_t>(param_ptr));
     if (it != param_allocations_.end()) {
-        // 简单地从映射中删除记录
+        allocator_->deallocate(it->second.offset);
         param_allocations_.erase(it);
-        
-        // 注意：这里我们没有真正"释放"内存，因为使用的是连续分配
-        // 如果需要更复杂的内存管理，可以考虑实现内存池或垃圾回收机制
     }
 }
 
@@ -118,13 +119,19 @@ void MemoryManager::access(void *host_ptr, void *data, size_t size,
     case MemorySpace::GLOBAL: {
         auto it = allocations_.find(reinterpret_cast<uint64_t>(host_ptr));
         if (it == allocations_.end()) {
+            PTX_DEBUG_MEM("Accessing unallocated GLOBAL memory: ptr=%p, size=%zu", host_ptr, size);
             throw std::runtime_error("Accessing unallocated GLOBAL memory");
         }
 
         const auto &alloc = it->second;
         if (size > alloc.size) {
+            PTX_DEBUG_MEM("Buffer overflow in GLOBAL memory access: ptr=%p, requested_size=%zu, allocated_size=%zu", 
+                host_ptr, size, alloc.size);
             throw std::runtime_error("Buffer overflow in GLOBAL memory access");
         }
+
+        PTX_DEBUG_MEM("GLOBAL memory %s: ptr=%p, host_offset=%zu, size=%zu", 
+            is_write ? "WRITE" : "READ", host_ptr, alloc.offset, size);
 
         MemoryAccess req{.space = space,
                          .address = alloc.offset,
@@ -139,30 +146,38 @@ void MemoryManager::access(void *host_ptr, void *data, size_t size,
         // 对于PARAM空间，需要检查host_ptr是否在已分配的范围内
         // 而不是精确匹配起始地址
         bool found = false;
-        Allocation *alloc = nullptr;
+        SimpleMemoryAllocator::Allocation *alloc = nullptr;
         
         // 遍历param_allocations_查找包含host_ptr的区间
         for (auto& pair : param_allocations_) {
-            Allocation& allocation = pair.second;
-            uint8_t* start_addr = global_pool_ + allocation.offset;
-            uint8_t* end_addr = start_addr + allocation.size;
+            auto allocation = allocator_->get_allocation(pair.second.offset);
+            if (!allocation) continue;
+            
+            uint8_t* start_addr = allocator_->get_pool() + allocation->offset;
+            uint8_t* end_addr = start_addr + allocation->size;
             uint8_t* access_addr = static_cast<uint8_t*>(host_ptr);
             
             if (access_addr >= start_addr && access_addr < end_addr) {
                 // 确保访问的范围没有超出分配的范围
                 if (access_addr + size <= end_addr) {
-                    alloc = &allocation;
+                    alloc = allocation;
                     found = true;
                     break;
                 } else {
+                    PTX_DEBUG_MEM("Buffer overflow in PARAM memory access: ptr=%p, size=%zu, access range=[%p, %p], allocated range=[%p, %p]", 
+                        host_ptr, size, access_addr, access_addr + size, start_addr, end_addr);
                     throw std::runtime_error("Buffer overflow in PARAM memory access");
                 }
             }
         }
         
         if (!found) {
+            PTX_DEBUG_MEM("Accessing unallocated PARAM memory: ptr=%p, size=%zu", host_ptr, size);
             throw std::runtime_error("Accessing unallocated PARAM memory");
         }
+
+        PTX_DEBUG_MEM("PARAM memory %s: ptr=%p, size=%zu", 
+            is_write ? "WRITE" : "READ", host_ptr, size);
 
         // 对于PARAM空间，直接进行内存拷贝，不需要通过MemoryInterface
         if (is_write) {
@@ -177,13 +192,19 @@ void MemoryManager::access(void *host_ptr, void *data, size_t size,
         // 其他地址空间暂时沿用原来的处理方式
         auto it = allocations_.find(reinterpret_cast<uint64_t>(host_ptr));
         if (it == allocations_.end()) {
+            PTX_DEBUG_MEM("Accessing unallocated memory: ptr=%p, size=%zu", host_ptr, size);
             throw std::runtime_error("Accessing unallocated memory");
         }
 
         const auto &alloc = it->second;
         if (size > alloc.size) {
+            PTX_DEBUG_MEM("Buffer overflow in memory access: ptr=%p, requested_size=%zu, allocated_size=%zu", 
+                host_ptr, size, alloc.size);
             throw std::runtime_error("Buffer overflow in memory access");
         }
+
+        PTX_DEBUG_MEM("MEMORY %s: ptr=%p, host_offset=%zu, size=%zu", 
+            is_write ? "WRITE" : "READ", host_ptr, alloc.offset, size);
 
         MemoryAccess req{.space = space,
                          .address = alloc.offset,
