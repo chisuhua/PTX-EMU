@@ -146,10 +146,10 @@ void MemoryManager::access(void *host_ptr, void *data, size_t size,
         }
 
         PTX_DEBUG_MEM("GLOBAL memory %s: ptr=%p, host_offset=%zu, size=%zu", 
-            is_write ? "WRITE" : "READ", host_ptr, alloc->offset, size);
+            is_write ? "WRITE" : "READ", host_ptr, static_cast<uint8_t*>(host_ptr) - allocator_->get_pool(), size);
 
         MemoryAccess req{.space = space,
-                         .address = alloc->offset,
+                         .address = static_cast<uint8_t*>(host_ptr) - allocator_->get_pool(),
                          .size = size,
                          .is_write = is_write,
                          .data = data};
@@ -219,10 +219,10 @@ void MemoryManager::access(void *host_ptr, void *data, size_t size,
         }
 
         PTX_DEBUG_MEM("MEMORY %s: ptr=%p, host_offset=%zu, size=%zu", 
-            is_write ? "WRITE" : "READ", host_ptr, alloc.offset, size);
+            is_write ? "WRITE" : "READ", host_ptr, static_cast<uint8_t*>(host_ptr) - allocator_->get_pool(), size);
 
         MemoryAccess req{.space = space,
-                         .address = alloc.offset,
+                         .address = static_cast<uint8_t*>(host_ptr) - allocator_->get_pool(),
                          .size = size,
                          .is_write = is_write,
                          .data = data};
