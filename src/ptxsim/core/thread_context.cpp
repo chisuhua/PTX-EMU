@@ -42,6 +42,7 @@ void ThreadContext::init(
     this->label2pc = label2pc;
     this->pc = 0;
     this->state = RUN;
+    operand_collected.resize(4); // max operands perf instruction reserved is 4
 
     // 重新初始化RegisterManager（清空所有寄存器）
     register_manager = RegisterManager();
@@ -260,7 +261,7 @@ void ThreadContext::collect_operands(StatementContext &stmt,
     int bytes = getBytes(*qualifier);
     for (int i = 0; i < operands.size(); i++) {
         PTX_DEBUG_EMU("Collect: %s ", operands[i].toString(bytes).c_str());
-        stmt.oc.push_back(operands[i].operand_phy_addr);
+        operand_collected[i] = operands[i].operand_phy_addr;
     }
     stmt.qualifier = qualifier;
 };

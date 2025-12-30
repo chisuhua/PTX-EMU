@@ -36,6 +36,7 @@ bool INSTR_BASE::commit(ThreadContext *context, StatementContext &stmt) {
 }
 
 bool GENERIC_INSTR::operate(ThreadContext *context, StatementContext &stmt) {
-    process_operation(context, &stmt.oc[0], *stmt.qualifier);
+    process_operation(context, &(context->operand_collected[0]),
+                      *stmt.qualifier);
     return true;
 }

@@ -896,12 +896,17 @@ void ABS::process_operation(ThreadContext *context, void *op[2],
     void *src = op[1];
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
+    bool is_signed = TypeUtils::is_signed_type(qualifiers);
 
     // 根据数据类型执行绝对值操作
     switch (bytes) {
     case 1: {
         if (is_float) {
-            *(uint8_t *)dst = std::abs(*(int8_t *)src);
+            *(float *)dst = std::abs(*(float *)src);
+        } else if (is_signed) {
+            // 有符号类型取绝对值
+            int8_t val = *(int8_t *)src;
+            *(int8_t *)dst = (val < 0) ? -val : val;
         } else {
             // 对于无符号类型，绝对值就是本身
             *(uint8_t *)dst = *(uint8_t *)src;
@@ -910,7 +915,11 @@ void ABS::process_operation(ThreadContext *context, void *op[2],
     }
     case 2: {
         if (is_float) {
-            *(int16_t *)dst = std::abs(*(int16_t *)src);
+            *(float *)dst = std::abs(*(float *)src);
+        } else if (is_signed) {
+            // 有符号类型取绝对值
+            int16_t val = *(int16_t *)src;
+            *(int16_t *)dst = (val < 0) ? -val : val;
         } else {
             // 对于无符号类型，绝对值就是本身
             *(uint16_t *)dst = *(uint16_t *)src;
@@ -921,6 +930,10 @@ void ABS::process_operation(ThreadContext *context, void *op[2],
         if (is_float) {
             float val = *(float *)src;
             *(float *)dst = std::abs(val);
+        } else if (is_signed) {
+            // 有符号类型取绝对值
+            int32_t val = *(int32_t *)src;
+            *(int32_t *)dst = (val < 0) ? -val : val;
         } else {
             // 对于无符号类型，绝对值就是本身
             *(uint32_t *)dst = *(uint32_t *)src;
@@ -931,6 +944,10 @@ void ABS::process_operation(ThreadContext *context, void *op[2],
         if (is_float) {
             double val = *(double *)src;
             *(double *)dst = std::abs(val);
+        } else if (is_signed) {
+            // 有符号类型取绝对值
+            int64_t val = *(int64_t *)src;
+            *(int64_t *)dst = (val < 0) ? -val : val;
         } else {
             // 对于无符号类型，绝对值就是本身
             *(uint64_t *)dst = *(uint64_t *)src;
@@ -949,12 +966,15 @@ void MIN::process_operation(ThreadContext *context, void *op[3],
     void *src2 = op[2];
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
+    bool is_signed = TypeUtils::is_signed_type(qualifiers);
 
     // 根据数据类型执行最小值操作
     switch (bytes) {
     case 1: {
         if (is_float) {
-            *(uint8_t *)dst = std::min(*(uint8_t *)src1, *(uint8_t *)src2);
+            *(float *)dst = std::min(*(float *)src1, *(float *)src2);
+        } else if (is_signed) {
+            *(int8_t *)dst = std::min(*(int8_t *)src1, *(int8_t *)src2);
         } else {
             *(uint8_t *)dst = std::min(*(uint8_t *)src1, *(uint8_t *)src2);
         }
@@ -962,7 +982,9 @@ void MIN::process_operation(ThreadContext *context, void *op[3],
     }
     case 2: {
         if (is_float) {
-            *(uint16_t *)dst = std::min(*(uint16_t *)src1, *(uint16_t *)src2);
+            *(float *)dst = std::min(*(float *)src1, *(float *)src2);
+        } else if (is_signed) {
+            *(int16_t *)dst = std::min(*(int16_t *)src1, *(int16_t *)src2);
         } else {
             *(uint16_t *)dst = std::min(*(uint16_t *)src1, *(uint16_t *)src2);
         }
@@ -971,6 +993,8 @@ void MIN::process_operation(ThreadContext *context, void *op[3],
     case 4: {
         if (is_float) {
             *(float *)dst = std::min(*(float *)src1, *(float *)src2);
+        } else if (is_signed) {
+            *(int32_t *)dst = std::min(*(int32_t *)src1, *(int32_t *)src2);
         } else {
             *(uint32_t *)dst = std::min(*(uint32_t *)src1, *(uint32_t *)src2);
         }
@@ -979,6 +1003,8 @@ void MIN::process_operation(ThreadContext *context, void *op[3],
     case 8: {
         if (is_float) {
             *(double *)dst = std::min(*(double *)src1, *(double *)src2);
+        } else if (is_signed) {
+            *(int64_t *)dst = std::min(*(int64_t *)src1, *(int64_t *)src2);
         } else {
             *(uint64_t *)dst = std::min(*(uint64_t *)src1, *(uint64_t *)src2);
         }
@@ -989,19 +1015,22 @@ void MIN::process_operation(ThreadContext *context, void *op[3],
     }
 }
 
-void MAX::process_operation(ThreadContext *context, void *op[3],
+void MAX::process_operation(ThreadContext *context, void **op,
                             const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src1 = op[1];
     void *src2 = op[2];
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
+    bool is_signed = TypeUtils::is_signed_type(qualifiers);
 
     // 根据数据类型执行最大值操作
     switch (bytes) {
     case 1: {
         if (is_float) {
-            *(uint8_t *)dst = std::max(*(uint8_t *)src1, *(uint8_t *)src2);
+            *(float *)dst = std::max(*(float *)src1, *(float *)src2);
+        } else if (is_signed) {
+            *(int8_t *)dst = std::max(*(int8_t *)src1, *(int8_t *)src2);
         } else {
             *(uint8_t *)dst = std::max(*(uint8_t *)src1, *(uint8_t *)src2);
         }
@@ -1009,7 +1038,9 @@ void MAX::process_operation(ThreadContext *context, void *op[3],
     }
     case 2: {
         if (is_float) {
-            *(uint16_t *)dst = std::max(*(uint16_t *)src1, *(uint16_t *)src2);
+            *(float *)dst = std::max(*(float *)src1, *(float *)src2);
+        } else if (is_signed) {
+            *(int16_t *)dst = std::max(*(int16_t *)src1, *(int16_t *)src2);
         } else {
             *(uint16_t *)dst = std::max(*(uint16_t *)src1, *(uint16_t *)src2);
         }
@@ -1018,6 +1049,8 @@ void MAX::process_operation(ThreadContext *context, void *op[3],
     case 4: {
         if (is_float) {
             *(float *)dst = std::max(*(float *)src1, *(float *)src2);
+        } else if (is_signed) {
+            *(int32_t *)dst = std::max(*(int32_t *)src1, *(int32_t *)src2);
         } else {
             *(uint32_t *)dst = std::max(*(uint32_t *)src1, *(uint32_t *)src2);
         }
@@ -1026,6 +1059,8 @@ void MAX::process_operation(ThreadContext *context, void *op[3],
     case 8: {
         if (is_float) {
             *(double *)dst = std::max(*(double *)src1, *(double *)src2);
+        } else if (is_signed) {
+            *(int64_t *)dst = std::max(*(int64_t *)src1, *(int64_t *)src2);
         } else {
             *(uint64_t *)dst = std::max(*(uint64_t *)src1, *(uint64_t *)src2);
         }
@@ -1036,5 +1071,50 @@ void MAX::process_operation(ThreadContext *context, void *op[3],
     }
 }
 
-void REM::process_operation(ThreadContext *context, void *op[3],
-                            const std::vector<Qualifier> &qualifiers) {}
+void REM::process_operation(ThreadContext *context, void **op,
+                            const std::vector<Qualifier> &qualifiers) {
+    void *dst = op[0];
+    void *src1 = op[1];
+    void *src2 = op[2];
+    int bytes = getBytes(qualifiers);
+    bool is_float = TypeUtils::is_float_type(qualifiers);
+    bool is_signed = TypeUtils::is_signed_type(qualifiers);
+
+    // 根据数据类型执行取余操作
+    switch (bytes) {
+    case 1: {
+        if (is_signed) {
+            *(int8_t *)dst = (*(int8_t *)src1) % (*(int8_t *)src2);
+        } else {
+            *(uint8_t *)dst = (*(uint8_t *)src1) % (*(uint8_t *)src2);
+        }
+        break;
+    }
+    case 2: {
+        if (is_signed) {
+            *(int16_t *)dst = (*(int16_t *)src1) % (*(int16_t *)src2);
+        } else {
+            *(uint16_t *)dst = (*(uint16_t *)src1) % (*(uint16_t *)src2);
+        }
+        break;
+    }
+    case 4: {
+        if (is_signed) {
+            *(int32_t *)dst = (*(int32_t *)src1) % (*(int32_t *)src2);
+        } else {
+            *(uint32_t *)dst = (*(uint32_t *)src1) % (*(uint32_t *)src2);
+        }
+        break;
+    }
+    case 8: {
+        if (is_signed) {
+            *(int64_t *)dst = (*(int64_t *)src1) % (*(int64_t *)src2);
+        } else {
+            *(uint64_t *)dst = (*(uint64_t *)src1) % (*(uint64_t *)src2);
+        }
+        break;
+    }
+    default:
+        assert(0 && "Unsupported data size for REM instruction");
+    }
+}

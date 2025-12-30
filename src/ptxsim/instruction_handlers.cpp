@@ -128,6 +128,9 @@
     bool Name::commit(ThreadContext *context, StatementContext &stmt) {        \
         auto ss = (StatementContext::Name *)stmt.statement;                    \
         context->commit_operand(stmt, ss->operands[0], ss->qualifier);         \
+        for (int i = 0; i < op_count; i++) {                                   \
+            ss->operands[i].operand_phy_addr = nullptr;                        \
+        }                                                                      \
         return true; /* Typically no commit work needed */                     \
     }
 

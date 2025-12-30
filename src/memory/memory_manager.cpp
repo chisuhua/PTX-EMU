@@ -117,24 +117,39 @@ void MemoryManager::access(void *host_ptr, void *data, size_t size,
     // 根据地址空间类型处理访问
     switch (space) {
     case MemorySpace::GLOBAL: {
-        auto it = allocations_.find(reinterpret_cast<uint64_t>(host_ptr));
-        if (it == allocations_.end()) {
+        // 检查host_ptr是否在任何已分配的区间内
+        bool found = false;
+        MemoryManager::Allocation* alloc = nullptr;
+        
+        for (auto& pair : allocations_) {
+            uint8_t* start_addr = allocator_->get_pool() + pair.second.offset;
+            uint8_t* end_addr = start_addr + pair.second.size;
+            uint8_t* access_addr = static_cast<uint8_t*>(host_ptr);
+            
+            if (access_addr >= start_addr && access_addr < end_addr) {
+                // 确保访问的范围没有超出分配的范围
+                if (access_addr + size <= end_addr) {
+                    alloc = &pair.second;
+                    found = true;
+                    break;
+                } else {
+                    PTX_DEBUG_MEM("Buffer overflow in GLOBAL memory access: ptr=%p, size=%zu, access range=[%p, %p], allocated range=[%p, %p]", 
+                        host_ptr, size, access_addr, access_addr + size, start_addr, end_addr);
+                    throw std::runtime_error("Buffer overflow in GLOBAL memory access");
+                }
+            }
+        }
+        
+        if (!found) {
             PTX_DEBUG_MEM("Accessing unallocated GLOBAL memory: ptr=%p, size=%zu", host_ptr, size);
             throw std::runtime_error("Accessing unallocated GLOBAL memory");
         }
 
-        const auto &alloc = it->second;
-        if (size > alloc.size) {
-            PTX_DEBUG_MEM("Buffer overflow in GLOBAL memory access: ptr=%p, requested_size=%zu, allocated_size=%zu", 
-                host_ptr, size, alloc.size);
-            throw std::runtime_error("Buffer overflow in GLOBAL memory access");
-        }
-
         PTX_DEBUG_MEM("GLOBAL memory %s: ptr=%p, host_offset=%zu, size=%zu", 
-            is_write ? "WRITE" : "READ", host_ptr, alloc.offset, size);
+            is_write ? "WRITE" : "READ", host_ptr, alloc->offset, size);
 
         MemoryAccess req{.space = space,
-                         .address = alloc.offset,
+                         .address = alloc->offset,
                          .size = size,
                          .is_write = is_write,
                          .data = data};

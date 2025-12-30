@@ -79,6 +79,8 @@ public:
     // 新增：转储线程状态
     void dump_state(std::ostream &os) const;
 
+    std::vector<void *>
+        operand_collected; // collect operand addr  from BASE_INSTR operands
 private:
     void _execute_once();
     bool is_immediate_or_vector(OperandContext &op);
