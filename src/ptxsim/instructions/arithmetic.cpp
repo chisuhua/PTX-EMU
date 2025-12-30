@@ -3,54 +3,257 @@
 #include "ptxsim/utils/qualifier_utils.h"
 #include "ptxsim/utils/type_utils.h"
 #include <cmath>
+#include <type_traits>
+
+// 半精度浮点数转换函数声明
+inline float f16_to_f32(uint16_t h);
+inline uint16_t f32_to_f16(float f);
+
+// 通用模板函数，用于处理二元算术操作
+template<typename OpFunc>
+void process_binary_arithmetic(void *dst, void *src1, void *src2, int bytes, 
+                              bool is_float, bool is_signed, OpFunc op) {
+    if (is_float) {
+        // 浮点运算
+        switch (bytes) {
+        case 2: {
+            // 需要 f16 支持（简化：转 f32 计算）
+            uint16_t h1, h2;
+            std::memcpy(&h1, src1, 2);
+            std::memcpy(&h2, src2, 2);
+
+            float f1 = f16_to_f32(h1);
+            float f2 = f16_to_f32(h2);
+            float result = op(f1, f2);
+            uint16_t h_result = f32_to_f16(result);
+
+            std::memcpy(dst, &h_result, 2);
+            break;
+        }
+        case 4: {
+            float a, b, r;
+            std::memcpy(&a, src1, 4);
+            std::memcpy(&b, src2, 4);
+            r = op(a, b);
+            std::memcpy(dst, &r, 4);
+            break;
+        }
+        case 8: {
+            double a, b, r;
+            std::memcpy(&a, src1, 8);
+            std::memcpy(&b, src2, 8);
+            r = op(a, b);
+            std::memcpy(dst, &r, 8);
+            break;
+        }
+        default:
+            assert(0 && "Unsupported data size for floating point");
+        }
+    } else {
+        // 整数运算
+        if (is_signed) {
+            // 有符号整数
+            switch (bytes) {
+            case 1: {
+                int8_t a, b, r;
+                std::memcpy(&a, src1, 1);
+                std::memcpy(&b, src2, 1);
+                r = op(a, b);
+                std::memcpy(dst, &r, 1);
+                break;
+            }
+            case 2: {
+                int16_t a, b, r;
+                std::memcpy(&a, src1, 2);
+                std::memcpy(&b, src2, 2);
+                r = op(a, b);
+                std::memcpy(dst, &r, 2);
+                break;
+            }
+            case 4: {
+                int32_t a, b, r;
+                std::memcpy(&a, src1, 4);
+                std::memcpy(&b, src2, 4);
+                r = op(a, b);
+                std::memcpy(dst, &r, 4);
+                break;
+            }
+            case 8: {
+                int64_t a, b, r;
+                std::memcpy(&a, src1, 8);
+                std::memcpy(&b, src2, 8);
+                r = op(a, b);
+                std::memcpy(dst, &r, 8);
+                break;
+            }
+            default:
+                assert(0 && "Unsupported data size for signed integer");
+            }
+        } else {
+            // 无符号整数
+            switch (bytes) {
+            case 1: {
+                uint8_t a, b, r;
+                std::memcpy(&a, src1, 1);
+                std::memcpy(&b, src2, 1);
+                r = op(a, b);
+                std::memcpy(dst, &r, 1);
+                break;
+            }
+            case 2: {
+                uint16_t a, b, r;
+                std::memcpy(&a, src1, 2);
+                std::memcpy(&b, src2, 2);
+                r = op(a, b);
+                std::memcpy(dst, &r, 2);
+                break;
+            }
+            case 4: {
+                uint32_t a, b, r;
+                std::memcpy(&a, src1, 4);
+                std::memcpy(&b, src2, 4);
+                r = op(a, b);
+                std::memcpy(dst, &r, 4);
+                break;
+            }
+            case 8: {
+                uint64_t a, b, r;
+                std::memcpy(&a, src1, 8);
+                std::memcpy(&b, src2, 8);
+                r = op(a, b);
+                std::memcpy(dst, &r, 8);
+                break;
+            }
+            default:
+                assert(0 && "Unsupported data size for unsigned integer");
+            }
+        }
+    }
+}
+
+// 通用模板函数，用于处理一元算术操作
+template<typename OpFunc>
+void process_unary_arithmetic(void *dst, void *src, int bytes, 
+                             bool is_float, bool is_signed, OpFunc op) {
+    if (is_float) {
+        // 浮点运算
+        switch (bytes) {
+        case 2: {
+            // 需要 f16 支持（简化：转 f32 计算）
+            uint16_t h;
+            std::memcpy(&h, src, 2);
+
+            float f = f16_to_f32(h);
+            float result = op(f);
+            uint16_t h_result = f32_to_f16(result);
+
+            std::memcpy(dst, &h_result, 2);
+            break;
+        }
+        case 4: {
+            float a, r;
+            std::memcpy(&a, src, 4);
+            r = op(a);
+            std::memcpy(dst, &r, 4);
+            break;
+        }
+        case 8: {
+            double a, r;
+            std::memcpy(&a, src, 8);
+            r = op(a);
+            std::memcpy(dst, &r, 8);
+            break;
+        }
+        default:
+            assert(0 && "Unsupported data size for floating point");
+        }
+    } else {
+        // 整数运算
+        if (is_signed) {
+            // 有符号整数
+            switch (bytes) {
+            case 1: {
+                int8_t a, r;
+                std::memcpy(&a, src, 1);
+                r = op(a);
+                std::memcpy(dst, &r, 1);
+                break;
+            }
+            case 2: {
+                int16_t a, r;
+                std::memcpy(&a, src, 2);
+                r = op(a);
+                std::memcpy(dst, &r, 2);
+                break;
+            }
+            case 4: {
+                int32_t a, r;
+                std::memcpy(&a, src, 4);
+                r = op(a);
+                std::memcpy(dst, &r, 4);
+                break;
+            }
+            case 8: {
+                int64_t a, r;
+                std::memcpy(&a, src, 8);
+                r = op(a);
+                std::memcpy(dst, &r, 8);
+                break;
+            }
+            default:
+                assert(0 && "Unsupported data size for signed integer");
+            }
+        } else {
+            // 无符号整数
+            switch (bytes) {
+            case 1: {
+                uint8_t a, r;
+                std::memcpy(&a, src, 1);
+                r = op(a);
+                std::memcpy(dst, &r, 1);
+                break;
+            }
+            case 2: {
+                uint16_t a, r;
+                std::memcpy(&a, src, 2);
+                r = op(a);
+                std::memcpy(dst, &r, 2);
+                break;
+            }
+            case 4: {
+                uint32_t a, r;
+                std::memcpy(&a, src, 4);
+                r = op(a);
+                std::memcpy(dst, &r, 4);
+                break;
+            }
+            case 8: {
+                uint64_t a, r;
+                std::memcpy(&a, src, 8);
+                r = op(a);
+                std::memcpy(dst, &r, 8);
+                break;
+            }
+            default:
+                assert(0 && "Unsupported data size for unsigned integer");
+            }
+        }
+    }
+}
 
 void ADD::process_operation(ThreadContext *context, void *op[3],
                             const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
+    bool is_signed = TypeUtils::is_signed_type(qualifiers);
     void *dst = op[0];
     void *src1 = op[1];
     void *src2 = op[2];
 
-    // 根据数据类型执行加法操作
-    switch (bytes) {
-    case 1: {
-        if (is_float) {
-            *(uint8_t *)dst = (*(uint8_t *)src1) + (*(uint8_t *)src2);
-        } else {
-            *(uint8_t *)dst = (*(uint8_t *)src1) + (*(uint8_t *)src2);
-        }
-        break;
-    }
-    case 2: {
-        if (is_float) {
-            *(uint16_t *)dst = (*(uint16_t *)src1) + (*(uint16_t *)src2);
-        } else {
-            *(uint16_t *)dst = (*(uint16_t *)src1) + (*(uint16_t *)src2);
-        }
-        break;
-    }
-    case 4: {
-        if (is_float) {
-            *(float *)dst = (*(float *)src1) + (*(float *)src2);
-        } else {
-            *(uint32_t *)dst = (*(uint32_t *)src1) + (*(uint32_t *)src2);
-        }
-        break;
-    }
-    case 8: {
-        if (is_float) {
-            *(double *)dst = (*(double *)src1) + (*(double *)src2);
-        } else {
-            *(uint64_t *)dst = (*(uint64_t *)src1) + (*(uint64_t *)src2);
-        }
-        break;
-    }
-    default:
-        // 不支持的数据大小
-        assert(0 && "Unsupported data size for ADD instruction");
-    }
+    // 使用模板函数执行加法操作
+    process_binary_arithmetic(dst, src1, src2, bytes, is_float, is_signed,
+        [](auto a, auto b) { return a + b; });
 }
 
 void SUB::process_operation(ThreadContext *context, void *op[3],
@@ -58,48 +261,14 @@ void SUB::process_operation(ThreadContext *context, void *op[3],
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
+    bool is_signed = TypeUtils::is_signed_type(qualifiers);
     void *dst = op[0];
     void *src1 = op[1];
     void *src2 = op[2];
 
-    // 根据数据类型执行减法操作
-    switch (bytes) {
-    case 1: {
-        if (is_float) {
-            *(uint8_t *)dst = (*(uint8_t *)src1) - (*(uint8_t *)src2);
-        } else {
-            *(uint8_t *)dst = (*(uint8_t *)src1) - (*(uint8_t *)src2);
-        }
-        break;
-    }
-    case 2: {
-        if (is_float) {
-            *(uint16_t *)dst = (*(uint16_t *)src1) - (*(uint16_t *)src2);
-        } else {
-            *(uint16_t *)dst = (*(uint16_t *)src1) - (*(uint16_t *)src2);
-        }
-        break;
-    }
-    case 4: {
-        if (is_float) {
-            *(float *)dst = (*(float *)src1) - (*(float *)src2);
-        } else {
-            *(uint32_t *)dst = (*(uint32_t *)src1) - (*(uint32_t *)src2);
-        }
-        break;
-    }
-    case 8: {
-        if (is_float) {
-            *(double *)dst = (*(double *)src1) - (*(double *)src2);
-        } else {
-            *(uint64_t *)dst = (*(uint64_t *)src1) - (*(uint64_t *)src2);
-        }
-        break;
-    }
-    default:
-        // 不支持的数据大小
-        assert(0 && "Unsupported data size for SUB instruction");
-    }
+    // 使用模板函数执行减法操作
+    process_binary_arithmetic(dst, src1, src2, bytes, is_float, is_signed,
+        [](auto a, auto b) { return a - b; });
 }
 
 // Helper function to convert f16 to f32 (simplified)
@@ -349,48 +518,14 @@ void DIV::process_operation(ThreadContext *context, void *op[3],
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
+    bool is_signed = TypeUtils::is_signed_type(qualifiers);
     void *dst = op[0];
     void *src1 = op[1];
     void *src2 = op[2];
 
-    // 根据数据类型执行除法操作
-    switch (bytes) {
-    case 1: {
-        if (is_float) {
-            *(uint8_t *)dst = (*(uint8_t *)src1) / (*(uint8_t *)src2);
-        } else {
-            *(uint8_t *)dst = (*(uint8_t *)src1) / (*(uint8_t *)src2);
-        }
-        break;
-    }
-    case 2: {
-        if (is_float) {
-            *(uint16_t *)dst = (*(uint16_t *)src1) / (*(uint16_t *)src2);
-        } else {
-            *(uint16_t *)dst = (*(uint16_t *)src1) / (*(uint16_t *)src2);
-        }
-        break;
-    }
-    case 4: {
-        if (is_float) {
-            *(float *)dst = (*(float *)src1) / (*(float *)src2);
-        } else {
-            *(uint32_t *)dst = (*(uint32_t *)src1) / (*(uint32_t *)src2);
-        }
-        break;
-    }
-    case 8: {
-        if (is_float) {
-            *(double *)dst = (*(double *)src1) / (*(double *)src2);
-        } else {
-            *(uint64_t *)dst = (*(uint64_t *)src1) / (*(uint64_t *)src2);
-        }
-        break;
-    }
-    default:
-        // 不支持的数据大小
-        assert(0 && "Unsupported data size for DIV instruction");
-    }
+    // 使用模板函数执行除法操作
+    process_binary_arithmetic(dst, src1, src2, bytes, is_float, is_signed,
+        [](auto a, auto b) { return a / b; });
 }
 
 void MAD::process_operation(ThreadContext *context, void *op[4],
@@ -851,270 +986,102 @@ void FMA::process_operation(ThreadContext *context, void *op[4],
 
 void NEG::process_operation(ThreadContext *context, void *op[2],
                             const std::vector<Qualifier> &qualifiers) {
-    void *dst = op[0];
-    void *src = op[1];
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
+    bool is_signed = TypeUtils::is_signed_type(qualifiers);
+    void *dst = op[0];
+    void *src = op[1];
 
-    // 根据数据类型执行取负操作
-    switch (bytes) {
-    case 2: {
-        if (is_float) {
-            *(int16_t *)dst = -(*(int16_t *)src);
-        } else {
-            *(uint16_t *)dst = -(uint16_t)(*(uint16_t *)src);
-        }
-        break;
-    }
-    case 4: {
-        if (is_float) {
-            float val = *(float *)src;
-            *(float *)dst = -val;
-        } else {
-            *(uint32_t *)dst = -(uint32_t)(*(uint32_t *)src);
-        }
-        break;
-    }
-    case 8: {
-        if (is_float) {
-            double val = *(double *)src;
-            *(double *)dst = -val;
-        } else {
-            *(uint64_t *)dst = -(uint64_t)(*(uint64_t *)src);
-        }
-        break;
-    }
-    default:
-        assert(0 && "Unsupported data size for NEG instruction");
-    }
+    // 使用模板函数执行取负操作
+    process_unary_arithmetic(dst, src, bytes, is_float, is_signed,
+        [](auto val) { return -val; });
 }
 
 void ABS::process_operation(ThreadContext *context, void *op[2],
                             const std::vector<Qualifier> &qualifiers) {
-    void *dst = op[0];
-    void *src = op[1];
+    // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
+    void *dst = op[0];
+    void *src = op[1];
 
-    // 根据数据类型执行绝对值操作
-    switch (bytes) {
-    case 1: {
-        if (is_float) {
-            *(float *)dst = std::abs(*(float *)src);
-        } else if (is_signed) {
-            // 有符号类型取绝对值
-            int8_t val = *(int8_t *)src;
-            *(int8_t *)dst = (val < 0) ? -val : val;
-        } else {
-            // 对于无符号类型，绝对值就是本身
-            *(uint8_t *)dst = *(uint8_t *)src;
-        }
-        break;
-    }
-    case 2: {
-        if (is_float) {
-            *(float *)dst = std::abs(*(float *)src);
-        } else if (is_signed) {
-            // 有符号类型取绝对值
-            int16_t val = *(int16_t *)src;
-            *(int16_t *)dst = (val < 0) ? -val : val;
-        } else {
-            // 对于无符号类型，绝对值就是本身
-            *(uint16_t *)dst = *(uint16_t *)src;
-        }
-        break;
-    }
-    case 4: {
-        if (is_float) {
-            float val = *(float *)src;
-            *(float *)dst = std::abs(val);
-        } else if (is_signed) {
-            // 有符号类型取绝对值
-            int32_t val = *(int32_t *)src;
-            *(int32_t *)dst = (val < 0) ? -val : val;
-        } else {
-            // 对于无符号类型，绝对值就是本身
-            *(uint32_t *)dst = *(uint32_t *)src;
-        }
-        break;
-    }
-    case 8: {
-        if (is_float) {
-            double val = *(double *)src;
-            *(double *)dst = std::abs(val);
-        } else if (is_signed) {
-            // 有符号类型取绝对值
-            int64_t val = *(int64_t *)src;
-            *(int64_t *)dst = (val < 0) ? -val : val;
-        } else {
-            // 对于无符号类型，绝对值就是本身
-            *(uint64_t *)dst = *(uint64_t *)src;
-        }
-        break;
-    }
-    default:
-        assert(0 && "Unsupported data size for ABS instruction");
-    }
+    // 使用模板函数执行绝对值操作
+    process_unary_arithmetic(dst, src, bytes, is_float, is_signed,
+        [](auto val) {
+            if constexpr (std::is_floating_point_v<std::decay_t<decltype(val)>>) {
+                return std::abs(val);
+            } else if constexpr (std::is_signed_v<std::decay_t<decltype(val)>>) {
+                return val < 0 ? -val : val;
+            } else {
+                return val; // 无符号类型直接返回
+            }
+        });
 }
 
 void MIN::process_operation(ThreadContext *context, void *op[3],
                             const std::vector<Qualifier> &qualifiers) {
-    void *dst = op[0];
-    void *src1 = op[1];
-    void *src2 = op[2];
+    // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
+    void *dst = op[0];
+    void *src1 = op[1];
+    void *src2 = op[2];
 
-    // 根据数据类型执行最小值操作
-    switch (bytes) {
-    case 1: {
-        if (is_float) {
-            *(float *)dst = std::min(*(float *)src1, *(float *)src2);
-        } else if (is_signed) {
-            *(int8_t *)dst = std::min(*(int8_t *)src1, *(int8_t *)src2);
-        } else {
-            *(uint8_t *)dst = std::min(*(uint8_t *)src1, *(uint8_t *)src2);
-        }
-        break;
-    }
-    case 2: {
-        if (is_float) {
-            *(float *)dst = std::min(*(float *)src1, *(float *)src2);
-        } else if (is_signed) {
-            *(int16_t *)dst = std::min(*(int16_t *)src1, *(int16_t *)src2);
-        } else {
-            *(uint16_t *)dst = std::min(*(uint16_t *)src1, *(uint16_t *)src2);
-        }
-        break;
-    }
-    case 4: {
-        if (is_float) {
-            *(float *)dst = std::min(*(float *)src1, *(float *)src2);
-        } else if (is_signed) {
-            *(int32_t *)dst = std::min(*(int32_t *)src1, *(int32_t *)src2);
-        } else {
-            *(uint32_t *)dst = std::min(*(uint32_t *)src1, *(uint32_t *)src2);
-        }
-        break;
-    }
-    case 8: {
-        if (is_float) {
-            *(double *)dst = std::min(*(double *)src1, *(double *)src2);
-        } else if (is_signed) {
-            *(int64_t *)dst = std::min(*(int64_t *)src1, *(int64_t *)src2);
-        } else {
-            *(uint64_t *)dst = std::min(*(uint64_t *)src1, *(uint64_t *)src2);
-        }
-        break;
-    }
-    default:
-        assert(0 && "Unsupported data size for MIN instruction");
-    }
+    // 使用模板函数执行最小值操作
+    process_binary_arithmetic(dst, src1, src2, bytes, is_float, is_signed,
+        [](auto a, auto b) { 
+            if constexpr (std::is_floating_point_v<std::decay_t<decltype(a)>>) {
+                return std::min(a, b);
+            } else {
+                return std::min(a, b);
+            }
+        });
 }
 
-void MAX::process_operation(ThreadContext *context, void **op,
+void MAX::process_operation(ThreadContext *context, void *op[3],
                             const std::vector<Qualifier> &qualifiers) {
-    void *dst = op[0];
-    void *src1 = op[1];
-    void *src2 = op[2];
+    // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
+    void *dst = op[0];
+    void *src1 = op[1];
+    void *src2 = op[2];
 
-    // 根据数据类型执行最大值操作
-    switch (bytes) {
-    case 1: {
-        if (is_float) {
-            *(float *)dst = std::max(*(float *)src1, *(float *)src2);
-        } else if (is_signed) {
-            *(int8_t *)dst = std::max(*(int8_t *)src1, *(int8_t *)src2);
-        } else {
-            *(uint8_t *)dst = std::max(*(uint8_t *)src1, *(uint8_t *)src2);
-        }
-        break;
-    }
-    case 2: {
-        if (is_float) {
-            *(float *)dst = std::max(*(float *)src1, *(float *)src2);
-        } else if (is_signed) {
-            *(int16_t *)dst = std::max(*(int16_t *)src1, *(int16_t *)src2);
-        } else {
-            *(uint16_t *)dst = std::max(*(uint16_t *)src1, *(uint16_t *)src2);
-        }
-        break;
-    }
-    case 4: {
-        if (is_float) {
-            *(float *)dst = std::max(*(float *)src1, *(float *)src2);
-        } else if (is_signed) {
-            *(int32_t *)dst = std::max(*(int32_t *)src1, *(int32_t *)src2);
-        } else {
-            *(uint32_t *)dst = std::max(*(uint32_t *)src1, *(uint32_t *)src2);
-        }
-        break;
-    }
-    case 8: {
-        if (is_float) {
-            *(double *)dst = std::max(*(double *)src1, *(double *)src2);
-        } else if (is_signed) {
-            *(int64_t *)dst = std::max(*(int64_t *)src1, *(int64_t *)src2);
-        } else {
-            *(uint64_t *)dst = std::max(*(uint64_t *)src1, *(uint64_t *)src2);
-        }
-        break;
-    }
-    default:
-        assert(0 && "Unsupported data size for MAX instruction");
-    }
+    // 使用模板函数执行最大值操作
+    process_binary_arithmetic(dst, src1, src2, bytes, is_float, is_signed,
+        [](auto a, auto b) { 
+            if constexpr (std::is_floating_point_v<std::decay_t<decltype(a)>>) {
+                return std::max(a, b);
+            } else {
+                return std::max(a, b);
+            }
+        });
 }
 
-void REM::process_operation(ThreadContext *context, void **op,
+void REM::process_operation(ThreadContext *context, void *op[3],
                             const std::vector<Qualifier> &qualifiers) {
-    void *dst = op[0];
-    void *src1 = op[1];
-    void *src2 = op[2];
+    // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
+    void *dst = op[0];
+    void *src1 = op[1];
+    void *src2 = op[2];
 
-    // 根据数据类型执行取余操作
-    switch (bytes) {
-    case 1: {
-        if (is_signed) {
-            *(int8_t *)dst = (*(int8_t *)src1) % (*(int8_t *)src2);
-        } else {
-            *(uint8_t *)dst = (*(uint8_t *)src1) % (*(uint8_t *)src2);
-        }
-        break;
-    }
-    case 2: {
-        if (is_signed) {
-            *(int16_t *)dst = (*(int16_t *)src1) % (*(int16_t *)src2);
-        } else {
-            *(uint16_t *)dst = (*(uint16_t *)src1) % (*(uint16_t *)src2);
-        }
-        break;
-    }
-    case 4: {
-        if (is_signed) {
-            *(int32_t *)dst = (*(int32_t *)src1) % (*(int32_t *)src2);
-        } else {
-            *(uint32_t *)dst = (*(uint32_t *)src1) % (*(uint32_t *)src2);
-        }
-        break;
-    }
-    case 8: {
-        if (is_signed) {
-            *(int64_t *)dst = (*(int64_t *)src1) % (*(int64_t *)src2);
-        } else {
-            *(uint64_t *)dst = (*(uint64_t *)src1) % (*(uint64_t *)src2);
-        }
-        break;
-    }
-    default:
-        assert(0 && "Unsupported data size for REM instruction");
-    }
+    // 使用模板函数执行取模操作
+    process_binary_arithmetic(dst, src1, src2, bytes, is_float, is_signed,
+        [](auto a, auto b) { 
+            if constexpr (std::is_floating_point_v<std::decay_t<decltype(a)>>) {
+                return std::fmod(a, b); // 对于浮点数使用fmod
+            } else if constexpr (std::is_signed_v<std::decay_t<decltype(a)>>) {
+                return a % b; // 有符号整数取模
+            } else {
+                return static_cast<std::make_unsigned_t<std::decay_t<decltype(a)>>>(a) % 
+                       static_cast<std::make_unsigned_t<std::decay_t<decltype(b)>>>(b); // 无符号整数取模
+            }
+        });
 }
