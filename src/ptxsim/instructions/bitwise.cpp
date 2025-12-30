@@ -4,6 +4,27 @@
 #include "ptxsim/utils/type_utils.h"
 #include <cmath>
 
+// 通用模板函数，用于处理二元位运算操作
+template<typename OpFunc>
+void process_binary_bitwise(void *dst, void *src1, void *src2, int bytes, OpFunc op) {
+    switch (bytes) {
+    case 1:
+        *(uint8_t *)dst = op(*(uint8_t *)src1, *(uint8_t *)src2);
+        break;
+    case 2:
+        *(uint16_t *)dst = op(*(uint16_t *)src1, *(uint16_t *)src2);
+        break;
+    case 4:
+        *(uint32_t *)dst = op(*(uint32_t *)src1, *(uint32_t *)src2);
+        break;
+    case 8:
+        *(uint64_t *)dst = op(*(uint64_t *)src1, *(uint64_t *)src2);
+        break;
+    default:
+        assert(0 && "Unsupported data size for bitwise operation");
+    }
+}
+
 void AND::process_operation(ThreadContext *context, void *op[3],
                             const std::vector<Qualifier> &qualifiers) {
     int bytes = getBytes(qualifiers);
@@ -11,22 +32,7 @@ void AND::process_operation(ThreadContext *context, void *op[3],
     void *src1 = op[1];
     void *src2 = op[2];
 
-    switch (bytes) {
-    case 1:
-        *(uint8_t *)dst = (*(uint8_t *)src1) & (*(uint8_t *)src2);
-        break;
-    case 2:
-        *(uint16_t *)dst = (*(uint16_t *)src1) & (*(uint16_t *)src2);
-        break;
-    case 4:
-        *(uint32_t *)dst = (*(uint32_t *)src1) & (*(uint32_t *)src2);
-        break;
-    case 8:
-        *(uint64_t *)dst = (*(uint64_t *)src1) & (*(uint64_t *)src2);
-        break;
-    default:
-        assert(0 && "Unsupported data size for AND operation");
-    }
+    process_binary_bitwise(dst, src1, src2, bytes, [](uint64_t a, uint64_t b) { return a & b; });
 }
 
 void OR::process_operation(ThreadContext *context, void *op[3],
@@ -36,22 +42,7 @@ void OR::process_operation(ThreadContext *context, void *op[3],
     void *src2 = op[2];
     int bytes = getBytes(qualifiers);
 
-    switch (bytes) {
-    case 1:
-        *(uint8_t *)dst = (*(uint8_t *)src1) | (*(uint8_t *)src2);
-        break;
-    case 2:
-        *(uint16_t *)dst = (*(uint16_t *)src1) | (*(uint16_t *)src2);
-        break;
-    case 4:
-        *(uint32_t *)dst = (*(uint32_t *)src1) | (*(uint32_t *)src2);
-        break;
-    case 8:
-        *(uint64_t *)dst = (*(uint64_t *)src1) | (*(uint64_t *)src2);
-        break;
-    default:
-        assert(0 && "Unsupported data size for OR operation");
-    }
+    process_binary_bitwise(dst, src1, src2, bytes, [](uint64_t a, uint64_t b) { return a | b; });
 }
 
 void XOR::process_operation(ThreadContext *context, void *op[3],
@@ -61,21 +52,31 @@ void XOR::process_operation(ThreadContext *context, void *op[3],
     void *src2 = op[2];
     int bytes = getBytes(qualifiers);
 
+    process_binary_bitwise(dst, src1, src2, bytes, [](uint64_t a, uint64_t b) { return a ^ b; });
+}
+
+// 通用模板函数，用于处理移位操作
+template<typename OpFunc>
+void process_shift_operation(void *dst, void *src1, void *src2, int bytes, OpFunc op) {
     switch (bytes) {
-    case 1:
-        *(uint8_t *)dst = (*(uint8_t *)src1) ^ (*(uint8_t *)src2);
+    case 1: {
+        *(uint8_t *)dst = op(*(uint8_t *)src1, *(uint8_t *)src2);
         break;
-    case 2:
-        *(uint16_t *)dst = (*(uint16_t *)src1) ^ (*(uint16_t *)src2);
+    }
+    case 2: {
+        *(uint16_t *)dst = op(*(uint16_t *)src1, *(uint16_t *)src2);
         break;
-    case 4:
-        *(uint32_t *)dst = (*(uint32_t *)src1) ^ (*(uint32_t *)src2);
+    }
+    case 4: {
+        *(uint32_t *)dst = op(*(uint32_t *)src1, *(uint32_t *)src2);
         break;
-    case 8:
-        *(uint64_t *)dst = (*(uint64_t *)src1) ^ (*(uint64_t *)src2);
+    }
+    case 8: {
+        *(uint64_t *)dst = op(*(uint64_t *)src1, *(uint64_t *)src2);
         break;
+    }
     default:
-        assert(0 && "Unsupported data size for XOR operation");
+        assert(0 && "Unsupported data size for shift operation");
     }
 }
 
@@ -86,28 +87,8 @@ void SHL::process_operation(ThreadContext *context, void *op[3],
     void *src2 = op[2];
     int bytes = getBytes(qualifiers);
 
-    // 根据数据类型执行左移操作
-    switch (bytes) {
-    case 1: {
-        *(uint8_t *)dst = (*(uint8_t *)src1) << (*(uint8_t *)src2);
-        break;
-    }
-    case 2: {
-        *(uint16_t *)dst = (*(uint16_t *)src1) << (*(uint16_t *)src2);
-        break;
-    }
-    case 4: {
-        *(uint32_t *)dst = (*(uint32_t *)src1) << (*(uint32_t *)src2);
-        break;
-    }
-    case 8: {
-        *(uint64_t *)dst = (*(uint64_t *)src1) << (*(uint64_t *)src2);
-        break;
-    }
-    default:
-        // 不支持的数据大小
-        assert(0 && "Unsupported data size for SHL instruction");
-    }
+    process_shift_operation(dst, src1, src2, bytes, 
+        [](uint64_t a, uint64_t b) { return a << b; });
 }
 
 void SHR::process_operation(ThreadContext *context, void *op[3],
@@ -117,28 +98,8 @@ void SHR::process_operation(ThreadContext *context, void *op[3],
     void *src2 = op[2];
     int bytes = getBytes(qualifiers);
 
-    // 根据数据类型执行逻辑右移操作（使用无符号类型）
-    switch (bytes) {
-    case 1: {
-        *(uint8_t *)dst = (*(uint8_t *)src1) >> (*(uint8_t *)src2);
-        break;
-    }
-    case 2: {
-        *(uint16_t *)dst = (*(uint16_t *)src1) >> (*(uint16_t *)src2);
-        break;
-    }
-    case 4: {
-        *(uint32_t *)dst = (*(uint32_t *)src1) >> (*(uint32_t *)src2);
-        break;
-    }
-    case 8: {
-        *(uint64_t *)dst = (*(uint64_t *)src1) >> (*(uint64_t *)src2);
-        break;
-    }
-    default:
-        // 不支持的数据大小
-        assert(0 && "Unsupported data size for SHR instruction");
-    }
+    process_shift_operation(dst, src1, src2, bytes, 
+        [](uint64_t a, uint64_t b) { return a >> b; });
 }
 
 // 辅助：高效 popcount（使用编译器内置函数）
@@ -246,9 +207,32 @@ void CLZ::process_operation(ThreadContext *context, void *op[2],
     std::memcpy(dst, &result, bytes);
 }
 
+// 通用模板函数，用于处理一元位运算操作
+template<typename OpFunc>
+void process_unary_bitwise(void *dst, void *src, int bytes, OpFunc op) {
+    switch (bytes) {
+    case 1:
+        *(uint8_t *)dst = op(*(uint8_t *)src);
+        break;
+    case 2:
+        *(uint16_t *)dst = op(*(uint16_t *)src);
+        break;
+    case 4:
+        *(uint32_t *)dst = op(*(uint32_t *)src);
+        break;
+    case 8:
+        *(uint64_t *)dst = op(*(uint64_t *)src);
+        break;
+    default:
+        assert(0 && "Unsupported data size for unary bitwise operation");
+    }
+}
+
 void NOT::process_operation(ThreadContext *context, void *op[2],
                             const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
-    void *src1 = op[1];
-    // TODO
+    void *src = op[1];
+    int bytes = getBytes(qualifiers);
+
+    process_unary_bitwise(dst, src, bytes, [](uint64_t x) { return ~x; });
 }
