@@ -61,6 +61,8 @@ X(S_ABS,     ABS,     Abs,     2, GENERIC_INSTR)      // abs: dst, src
 X(S_MAD,     MAD,     Mad,     4, GENERIC_INSTR)      // mad: dst, src1, src2, src3 (a*b + c)
 X(S_MAD24,   MAD24,   Mad24,   4, GENERIC_INSTR)      // mad24: dst, src1, src2, src3
 X(S_FMA,     FMA,     Fma,     4, GENERIC_INSTR)      // fma: dst, src1, src2, src3
+X(S_ADDC,    ADDC,    Addc,    3, GENERIC_INSTR)      // addc: dst, src1, src2 (with carry)
+X(S_SUBC,    SUBC,    Subc,    3, GENERIC_INSTR)      // subc: dst, src1, src2 (with borrow)
 
 // -----------------------------------------------------------------------------
 // 5. 位运算（Bitwise Instructions）

@@ -59,6 +59,7 @@ add_library(ptxsim SHARED
     ptxsim/instruction_base.cpp
     ptxsim/utils/qualifier_utils.cpp
     ptxsim/utils/type_utils.cpp
+    ptxsim/utils/half_utils.cpp
     ptxsim/instructions/arithmetic.cpp
     ptxsim/instructions/bitwise.cpp
     ptxsim/instructions/math.cpp
@@ -67,6 +68,7 @@ add_library(ptxsim SHARED
     ptxsim/instructions/comparison.cpp
     ptxsim/instructions/atomic.cpp
     ptxsim/instructions/tensor.cpp
+    ptxsim/instructions/arithmetic_ext.cpp
 )
 target_link_libraries(ptxsim ptx_ir)
 

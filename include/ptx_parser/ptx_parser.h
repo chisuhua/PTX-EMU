@@ -94,128 +94,12 @@ public:
     virtual void
     enterBraStatement(ptxParser::BraStatementContext *ctx) override;
     virtual void exitBraStatement(ptxParser::BraStatementContext *ctx) override;
-    virtual void
-    enterRcpStatement(ptxParser::RcpStatementContext *ctx) override;
-    virtual void exitRcpStatement(ptxParser::RcpStatementContext *ctx) override;
-    virtual void enterLdStatement(ptxParser::LdStatementContext *ctx) override;
-    virtual void exitLdStatement(ptxParser::LdStatementContext *ctx) override;
-    virtual void
-    enterMovStatement(ptxParser::MovStatementContext *ctx) override;
-    virtual void exitMovStatement(ptxParser::MovStatementContext *ctx) override;
-    virtual void
-    enterSetpStatement(ptxParser::SetpStatementContext *ctx) override;
-    virtual void
-    exitSetpStatement(ptxParser::SetpStatementContext *ctx) override;
-    virtual void
-    enterCvtaStatement(ptxParser::CvtaStatementContext *ctx) override;
-    virtual void
-    exitCvtaStatement(ptxParser::CvtaStatementContext *ctx) override;
-    virtual void
-    enterCvtStatement(ptxParser::CvtStatementContext *ctx) override;
-    virtual void exitCvtStatement(ptxParser::CvtStatementContext *ctx) override;
-    virtual void
-    enterMulStatement(ptxParser::MulStatementContext *ctx) override;
-    virtual void exitMulStatement(ptxParser::MulStatementContext *ctx) override;
 
-    virtual void
-    enterMul24Statement(ptxParser::Mul24StatementContext *ctx) override;
-    virtual void
-    exitMul24Statement(ptxParser::Mul24StatementContext *ctx) override;
-
-    virtual void
-    enterDivStatement(ptxParser::DivStatementContext *ctx) override;
-    virtual void exitDivStatement(ptxParser::DivStatementContext *ctx) override;
-    virtual void
-    enterSubStatement(ptxParser::SubStatementContext *ctx) override;
-    virtual void exitSubStatement(ptxParser::SubStatementContext *ctx) override;
-    virtual void
-    enterAddStatement(ptxParser::AddStatementContext *ctx) override;
-    virtual void exitAddStatement(ptxParser::AddStatementContext *ctx) override;
-    virtual void
-    enterShlStatement(ptxParser::ShlStatementContext *ctx) override;
-    virtual void exitShlStatement(ptxParser::ShlStatementContext *ctx) override;
-    virtual void
-    enterShrStatement(ptxParser::ShrStatementContext *ctx) override;
-    virtual void exitShrStatement(ptxParser::ShrStatementContext *ctx) override;
-    virtual void
-    enterMaxStatement(ptxParser::MaxStatementContext *ctx) override;
-    virtual void exitMaxStatement(ptxParser::MaxStatementContext *ctx) override;
-    virtual void
-    enterMinStatement(ptxParser::MinStatementContext *ctx) override;
-    virtual void exitMinStatement(ptxParser::MinStatementContext *ctx) override;
-    virtual void
-    enterAndStatement(ptxParser::AndStatementContext *ctx) override;
-    virtual void exitAndStatement(ptxParser::AndStatementContext *ctx) override;
-    virtual void enterOrStatement(ptxParser::OrStatementContext *ctx) override;
-    virtual void exitOrStatement(ptxParser::OrStatementContext *ctx) override;
-    virtual void enterStStatement(ptxParser::StStatementContext *ctx) override;
-    virtual void exitStStatement(ptxParser::StStatementContext *ctx) override;
-    virtual void
-    enterSelpStatement(ptxParser::SelpStatementContext *ctx) override;
-    virtual void
-    exitSelpStatement(ptxParser::SelpStatementContext *ctx) override;
-    virtual void
-    enterMadStatement(ptxParser::MadStatementContext *ctx) override;
-    virtual void exitMadStatement(ptxParser::MadStatementContext *ctx) override;
-    virtual void
-    enterMad24Statement(ptxParser::Mad24StatementContext *ctx) override;
-    virtual void
-    exitMad24Statement(ptxParser::Mad24StatementContext *ctx) override;
-    virtual void
-    enterFmaStatement(ptxParser::FmaStatementContext *ctx) override;
-    virtual void exitFmaStatement(ptxParser::FmaStatementContext *ctx) override;
     virtual void
     enterWmmaStatement(ptxParser::WmmaStatementContext *ctx) override;
     virtual void
     exitWmmaStatement(ptxParser::WmmaStatementContext *ctx) override;
-    virtual void
-    enterNegStatement(ptxParser::NegStatementContext *ctx) override;
-    virtual void exitNegStatement(ptxParser::NegStatementContext *ctx) override;
-    virtual void
-    enterNotStatement(ptxParser::NotStatementContext *ctx) override;
-    virtual void exitNotStatement(ptxParser::NotStatementContext *ctx) override;
-    virtual void
-    enterSqrtStatement(ptxParser::SqrtStatementContext *ctx) override;
-    virtual void
-    exitSqrtStatement(ptxParser::SqrtStatementContext *ctx) override;
-    virtual void
-    enterCosStatement(ptxParser::CosStatementContext *ctx) override;
-    virtual void exitCosStatement(ptxParser::CosStatementContext *ctx) override;
-    virtual void
-    enterLg2Statement(ptxParser::Lg2StatementContext *ctx) override;
-    virtual void exitLg2Statement(ptxParser::Lg2StatementContext *ctx) override;
-    virtual void
-    enterEx2Statement(ptxParser::Ex2StatementContext *ctx) override;
-    virtual void exitEx2Statement(ptxParser::Ex2StatementContext *ctx) override;
-    virtual void
-    enterAtomStatement(ptxParser::AtomStatementContext *ctx) override;
-    virtual void
-    exitAtomStatement(ptxParser::AtomStatementContext *ctx) override;
-    virtual void
-    enterXorStatement(ptxParser::XorStatementContext *ctx) override;
-    virtual void exitXorStatement(ptxParser::XorStatementContext *ctx) override;
-    virtual void
-    enterAbsStatement(ptxParser::AbsStatementContext *ctx) override;
-    virtual void exitAbsStatement(ptxParser::AbsStatementContext *ctx) override;
-    virtual void
-    enterSinStatement(ptxParser::SinStatementContext *ctx) override;
-    virtual void exitSinStatement(ptxParser::SinStatementContext *ctx) override;
-    virtual void
-    enterRsqrtStatement(ptxParser::RsqrtStatementContext *ctx) override;
-    virtual void
-    exitRsqrtStatement(ptxParser::RsqrtStatementContext *ctx) override;
-    virtual void
-    enterPopcStatement(ptxParser::PopcStatementContext *ctx) override;
-    virtual void
-    exitPopcStatement(ptxParser::PopcStatementContext *ctx) override;
 
-    virtual void
-    enterClzStatement(ptxParser::ClzStatementContext *ctx) override;
-    virtual void exitClzStatement(ptxParser::ClzStatementContext *ctx) override;
-
-    virtual void
-    enterRemStatement(ptxParser::RemStatementContext *ctx) override;
-    virtual void exitRemStatement(ptxParser::RemStatementContext *ctx) override;
     virtual void enterReg(ptxParser::RegContext *ctx) override;
     virtual void exitReg(ptxParser::RegContext *ctx) override;
     virtual void enterVector(ptxParser::VectorContext *ctx) override;
@@ -227,6 +111,34 @@ public:
     virtual void exitImm(ptxParser::ImmContext *ctx) override;
     virtual void enterVar(ptxParser::VarContext *ctx) override;
     virtual void exitVar(ptxParser::VarContext *ctx) override;
+
+#define STATEMENT_DECL_OPERAND_REG(opstr, opname, opcount)
+#define STATEMENT_DECL_OPERAND_CONST(opstr, opname, opcount)
+#define STATEMENT_DECL_OPERAND_MEMORY(opstr, opname, opcount)
+#define STATEMENT_DECL_SIMPLE_NAME(opstr, opname, opcount)
+#define STATEMENT_DECL_SIMPLE_STRING(opstr, opname, opcount)
+#define STATEMENT_DECL_VOID_INSTR(opstr, opname, opcount)
+#define STATEMENT_DECL_PREDICATE_PREFIX(opstr, opname, opcount)
+#define STATEMENT_DECL_BRANCH(opstr, opname, opcount)
+#define STATEMENT_DECL_GENERIC_INSTR(opstr, opname, opcount)                   \
+    virtual void enter##opstr##Statement(                                      \
+        ptxParser::opstr##StatementContext *ctx) override;                     \
+    virtual void exit##opstr##Statement(                                       \
+        ptxParser::opstr##StatementContext *ctx) override;
+
+#define STATEMENT_DECL_ATOM_INSTR(opstr, op_name, opcount)                     \
+    virtual void enter##opstr##Statement(                                      \
+        ptxParser::opstr##StatementContext *ctx);                              \
+    virtual void exit##opstr##Statement(                                       \
+        ptxParser::opstr##StatementContext *ctx);
+
+#define STATEMENT_DECL_WMMA_INSTR(opstr, op_name, opcount)
+#define STATEMENT_DECL_BARRIER(opstr, op_name, opcount)
+
+#define X(openum, opname, opstr, opcount, struct_kind)                         \
+    STATEMENT_DECL_##struct_kind(opstr, opname, opcount)
+#include "ptx_ir/ptx_op.def"
+#undef X
 };
 
 #endif

@@ -99,6 +99,8 @@ LE: '.le' ;
 
 LEU: '.leu' ;
 
+CC: '.cc' ;
+
 DOTADD: '.add';
 
 DOTOR: '.or';
@@ -190,6 +192,10 @@ POPC: 'popc' ;
 CLZ: 'clz' ;
 
 RSQRT: 'rsqrt';
+
+ADDC: 'addc' ;
+
+SUBC: 'subc' ;
 
 /* ************ */
 DOUBLEQUOTES: '"' ;

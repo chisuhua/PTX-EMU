@@ -86,6 +86,7 @@ qualifier : U64
           | RZI
           | DOTOR
           | SAT
+          | CC
           ;
 
 params : param COMMA params
@@ -150,6 +151,8 @@ statement : compoundStatement
           | rsqrtStatement
           | popcStatement
           | clzStatement
+          | addcStatement
+          | subcStatement
           ;
 
 regStatement : REG qualifier reg (LESS DIGITS GREATER)? SEMI ;
@@ -202,6 +205,8 @@ remStatement : REM qualifier* operandThree SEMI ;
 rsqrtStatement : RSQRT qualifier* operandTwo SEMI ;
 popcStatement : POPC qualifier* operandTwo SEMI ;
 clzStatement : CLZ qualifier* operandTwo SEMI ;
+addcStatement : ADDC qualifier* operandThree SEMI ;
+subcStatement : SUBC qualifier* operandThree SEMI ;
 
 operandTwo : operand COMMA operand ;
 operandThree : operand COMMA operand COMMA operand;
