@@ -121,23 +121,27 @@ add_catch_test(test_ptx_integer
 )
 set_tests_properties(test_ptx_integer PROPERTIES LABELS "ptx;integer")
 
-# # 浮点算术测试
-# add_catch_test(test_ptx_float
-#     test_ptx_float.cu
-#     ptx_float_arith.cu
-# )
+# 浮点算术测试
+add_catch_test(test_ptx_float
+    test_ptx_float.cu
+    ptx_float_arith.cu
+)
+set_tests_properties(test_ptx_float PROPERTIES LABELS "ptx;float")
 
-# # 扩展精度整数测试
-# add_catch_test(test_ptx_extended
-#     test_ptx_extended.cu
-#     ptx_extended_prec.cu
-# )
+# 扩展精度整数测试
+add_catch_test(test_ptx_extended
+    test_ptx_extended.cu
+    ptx_extended_prec.cu
+)
+set_tests_properties(test_ptx_float PROPERTIES LABELS "ptx;integer")
 
-# # 逻辑与移位测试
-# add_catch_test(test_ptx_logic
-#     test_ptx_logic.cu
-#     ptx_logic_shift.cu
-# )
+# 逻辑与移位测试
+add_catch_test(test_ptx_bitwise
+    test_ptx_bitwise.cu
+    ptx_bitwise_shift.cu
+)
+set_tests_properties(test_ptx_float PROPERTIES LABELS "ptx;bitwise")
+
 
 # （保留其他非 PTX 的 catch 测试，如将来有）
 # add_catch_test(test_another test_another.cpp)
