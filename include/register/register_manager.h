@@ -172,9 +172,11 @@ public:
 
     // 前进模拟周期
     void tick() {
+        /*
         for (auto &pair : registers_) {
             pair.second->tick();
         }
+        */
     }
 
     // 检查所有寄存器操作是否完成

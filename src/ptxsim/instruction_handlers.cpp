@@ -123,6 +123,7 @@
             }                                                                  \
         }                                                                      \
         context->collect_operands(stmt, ss->operands, &(ss->qualifier));       \
+        context->next_pc = context->pc + 1;                                    \
         return true;                                                           \
     }                                                                          \
     bool Name::commit(ThreadContext *context, StatementContext &stmt) {        \
@@ -131,6 +132,7 @@
         for (int i = 0; i < op_count; i++) {                                   \
             ss->operands[i].operand_phy_addr = nullptr;                        \
         }                                                                      \
+        stmt.state = InstructionState::COMMIT;                                 \
         return true; /* Typically no commit work needed */                     \
     }
 

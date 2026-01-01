@@ -41,6 +41,7 @@ void ThreadContext::init(
     this->name2Sym = name2Sym;
     this->label2pc = label2pc;
     this->pc = 0;
+    this->next_pc = 0;
     this->state = RUN;
     operand_collected.resize(4); // max operands perf instruction reserved is 4
 

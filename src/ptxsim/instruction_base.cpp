@@ -22,7 +22,7 @@ void INSTR_BASE::execute(ThreadContext *context, StatementContext &stmt) {
             return;
         }
         if (stmt.state == InstructionState::COMMIT) {
-            context->pc++;
+            context->pc = context->next_pc;
             stmt.state = InstructionState::READY;
         }
     }
@@ -32,6 +32,7 @@ bool INSTR_BASE::prepare(ThreadContext *context, StatementContext &stmt) {
     return true;
 }
 bool INSTR_BASE::commit(ThreadContext *context, StatementContext &stmt) {
+    stmt.state = InstructionState::COMMIT;
     return true;
 }
 

@@ -6,7 +6,7 @@
 void BRA::process_operation(ThreadContext *context, void *op[1],
                             const std::vector<Qualifier> &qualifier) {
     int target_pc = *(int *)(op[0]);
-    context->pc = target_pc - 1;
+    context->next_pc = target_pc - 1;
 }
 
 // void RET::process_operation(ThreadContext *context) { context->state = EXIT;

@@ -20,13 +20,15 @@
 
 // 条件码寄存器标志
 struct ConditionCodeRegister {
-    bool carry : 1;      // 进位标志
-    bool overflow : 1;   // 溢出标志
-    bool zero : 1;       // 零标志
-    bool sign : 1;       // 符号标志
-    bool reserved : 4;   // 预留位
+    bool carry : 1;    // 进位标志
+    bool overflow : 1; // 溢出标志
+    bool zero : 1;     // 零标志
+    bool sign : 1;     // 符号标志
+    bool reserved : 4; // 预留位
 
-    ConditionCodeRegister() : carry(false), overflow(false), zero(false), sign(false), reserved(0) {}
+    ConditionCodeRegister()
+        : carry(false), overflow(false), zero(false), sign(false), reserved(0) {
+    }
 };
 
 class ThreadContext {
@@ -41,6 +43,7 @@ public:
     // 线程状态
     Dim3 BlockIdx, ThreadIdx, GridDim, BlockDim;
     int pc;
+    int next_pc;
     EXE_STATE state;
 
     // 条件码寄存器
