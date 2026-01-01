@@ -95,6 +95,35 @@
             "miDebuggerPath": "/usr/bin/gdb"
         },
         {
+            "name": "调试活动测试文件 without Build",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/tests/${fileBasenameNoExtension}",
+            "args": [],
+            "stopAtEntry": true,
+            "cwd": "${workspaceFolder}/build",
+            "environment": [
+                {
+                    "name": "LD_LIBRARY_PATH",
+                    "value": "${workspaceFolder}/lib:${env:LD_LIBRARY_PATH}"
+                },
+                {
+                    "name": "PTX_EMU_PATH",
+                    "value": "${workspaceFolder}"
+                }
+            ],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
             "name": "Debug Dummy Add Test (CMake)",
             "type": "cppdbg",
             "request": "launch",
