@@ -1,0 +1,98 @@
+// =============================================================================
+// PTX Qualifier Type Definition (X-Macro Format)
+// Format: X(enum_value, enum_name, string_value)
+// Note: Defines all possible qualifiers in PTX
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// 1. Data Types
+// -----------------------------------------------------------------------------
+X(Q_U8, U8, ".u8")      // Unsigned 8-bit integer
+X(Q_U16, U16, ".u16")   // Unsigned 16-bit integer
+X(Q_U32, U32, ".u32")   // Unsigned 32-bit integer
+X(Q_U64, U64, ".u64")   // Unsigned 64-bit integer
+
+X(Q_S8, S8, ".s8")      // Signed 8-bit integer
+X(Q_S16, S16, ".s16")   // Signed 16-bit integer
+X(Q_S32, S32, ".s32")   // Signed 32-bit integer
+X(Q_S64, S64, ".s64")   // Signed 64-bit integer
+
+X(Q_B8, B8, ".b8")      // Bit 8-bit
+X(Q_B16, B16, ".b16")   // Bit 16-bit
+X(Q_B32, B32, ".b32")   // Bit 32-bit
+X(Q_B64, B64, ".b64")   // Bit 64-bit
+
+X(Q_F8, F8, ".f8")      // Float 8-bit
+X(Q_F16, F16, ".f16")   // Float 16-bit
+X(Q_F32, F32, ".f32")   // Float 32-bit
+X(Q_F64, F64, ".f64")   // Float 64-bit
+
+X(Q_PRED, PRED, ".pred") // Predicate
+
+// -----------------------------------------------------------------------------
+// 2. Vector Types
+// -----------------------------------------------------------------------------
+X(Q_V2, V2, ".v2")      // Vector of 2 elements
+X(Q_V4, V4, ".v4")      // Vector of 4 elements
+
+// -----------------------------------------------------------------------------
+// 3. Memory Space Qualifiers
+// -----------------------------------------------------------------------------
+X(Q_CONST, CONST, ".const")    // Constant memory space
+X(Q_PARAM, PARAM, ".param")    // Parameter space
+X(Q_GLOBAL, GLOBAL, ".global") // Global memory space
+X(Q_LOCAL, LOCAL, ".local")    // Local memory space
+X(Q_SHARED, SHARED, ".shared") // Shared memory space
+
+// -----------------------------------------------------------------------------
+// 4. Comparison and Condition Qualifiers
+// -----------------------------------------------------------------------------
+X(Q_GT, GT, ".gt")      // Greater than
+X(Q_GE, GE, ".ge")      // Greater equal
+X(Q_EQ, EQ, ".eq")      // Equal
+X(Q_NE, NE, ".ne")      // Not equal
+X(Q_LT, LT, ".lt")      // Less than
+X(Q_LE, LE, ".le")      // Less equal
+X(Q_LTU, LTU, ".ltu")   // Less than unsigned
+X(Q_LEU, LEU, ".leu")   // Less equal unsigned
+X(Q_GTU, GTU, ".gtu")   // Greater than unsigned
+X(Q_GEU, GEU, ".geu")   // Greater equal unsigned
+
+// -----------------------------------------------------------------------------
+// 5. Other Qualifiers
+// -----------------------------------------------------------------------------
+X(Q_TO, TO, ".to")      // To
+X(Q_WIDE, WIDE, ".wide") // Wide
+X(Q_SYNC, SYNC, ".sync") // Synchronous
+X(Q_LO, LO, ".lo")      // Low part
+X(Q_HI, HI, ".hi")      // High part
+X(Q_UNI, UNI, ".uni")   // Unit
+X(Q_RN, RN, ".rn")      // Round to nearest
+X(Q_A, A, ".a")         // A operand
+X(Q_B, B, ".b")         // B operand
+X(Q_D, D, ".d")         // D operand
+X(Q_ROW, ROW, ".row")   // Row
+
+// -----------------------------------------------------------------------------
+// 6. Alignment and Special Qualifiers
+// -----------------------------------------------------------------------------
+X(Q_ALIGNED, ALIGNED, ".aligned") // Aligned
+X(Q_M8N8K4, M8N8K4, ".m8n8k4")   // Matrix size 8x8x4
+X(Q_M16N16K16, M16N16K16, ".m16n16k16") // Matrix size 16x16x16
+
+// -----------------------------------------------------------------------------
+// 7. WMMA and Specialized Qualifiers
+// -----------------------------------------------------------------------------
+X(Q_NEU, NEU, ".neu")    // Neu
+X(Q_NC, NC, ".nc")      // No cache
+X(Q_FTZ, FTZ, ".ftz")   // Flush to zero
+X(Q_APPROX, APPROX, ".approx") // Approximate
+X(Q_DOTADD, DOTADD, ".add")    // Dot add
+X(Q_DOTOR, DOTOR, ".or")       // Dot or
+X(Q_RZI, RZI, ".rzi")   // Round towards zero infinity
+X(Q_SAT, SAT, ".sat")   // Saturation
+
+// -----------------------------------------------------------------------------
+// 8. New qualifier: Carry Condition (for addc/subc)
+// -----------------------------------------------------------------------------
+X(Q_CC, CC, ".cc")      // Carry condition

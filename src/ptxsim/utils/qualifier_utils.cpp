@@ -121,7 +121,7 @@ Qualifier getDataQualifier(const std::vector<Qualifier> &qualifiers) {
             return q;
     }
     assert(0);
-    return Qualifier::S_UNKNOWN; // 添加默认返回值
+    return Qualifier::Q_UNKNOWN; // 添加默认返回值
 }
 
 Qualifier getCmpOpQualifier(const std::vector<Qualifier> &qualifiers) {
@@ -143,7 +143,7 @@ Qualifier getCmpOpQualifier(const std::vector<Qualifier> &qualifiers) {
             return e;
         }
     }
-    return Qualifier::S_UNKNOWN;
+    return Qualifier::Q_UNKNOWN;
 }
 
 void splitDstSrcQualifiers(const std::vector<Qualifier> &qualifiers,
@@ -329,5 +329,20 @@ void parseImmediate(const std::string &s, Qualifier q, void *out) {
 }
 
 bool QvecHasQ(const std::vector<Qualifier> &qvec, Qualifier q) {
-    return std::find(qvec.begin(), qvec.end(), q) != qvec.end();
+    for (const auto& item : qvec) {
+        if (item == q) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// 检查修饰符中是否包含.cc修饰符
+bool hasCCQualifier(const std::vector<Qualifier> &qualifiers) {
+    for (const auto& q : qualifiers) {
+        if (q == Qualifier::Q_CC) {
+            return true;
+        }
+    }
+    return false;
 }

@@ -19,7 +19,7 @@ TypeUtils::get_comparison_op(const std::vector<Qualifier> &qualifiers) {
             return q;
         }
     }
-    return Qualifier::S_UNKNOWN; // 如果没有找到比较操作符
+    return Qualifier::Q_UNKNOWN; // 如果没有找到比较操作符
 }
 
 bool TypeUtils::is_signed_type(const std::vector<Qualifier> &qualifiers) {

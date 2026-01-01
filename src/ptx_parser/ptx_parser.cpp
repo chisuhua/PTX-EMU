@@ -199,120 +199,20 @@ void PtxListener::enterQualifier(ptxParser::QualifierContext *ctx) {
 }
 
 void PtxListener::exitQualifier(ptxParser::QualifierContext *ctx) {
-    if (ctx->U64()) {
-        qualifier.push(Qualifier::Q_U64);
-    } else if (ctx->U32()) {
-        qualifier.push(Qualifier::Q_U32);
-    } else if (ctx->U16()) {
-        qualifier.push(Qualifier::Q_U16);
-    } else if (ctx->U8()) {
-        qualifier.push(Qualifier::Q_U8);
-    } else if (ctx->PRED()) {
-        qualifier.push(Qualifier::Q_PRED);
-    } else if (ctx->B8()) {
-        qualifier.push(Qualifier::Q_B8);
-    } else if (ctx->B16()) {
-        qualifier.push(Qualifier::Q_B16);
-    } else if (ctx->B32()) {
-        qualifier.push(Qualifier::Q_B32);
-    } else if (ctx->B64()) {
-        qualifier.push(Qualifier::Q_B64);
-    } else if (ctx->F8()) {
-        qualifier.push(Qualifier::Q_F8);
-    } else if (ctx->F16()) {
-        qualifier.push(Qualifier::Q_F16);
-    } else if (ctx->F32()) {
-        qualifier.push(Qualifier::Q_F32);
-    } else if (ctx->F64()) {
-        qualifier.push(Qualifier::Q_F64);
-    } else if (ctx->S8()) {
-        qualifier.push(Qualifier::Q_S8);
-    } else if (ctx->S16()) {
-        qualifier.push(Qualifier::Q_S16);
-    } else if (ctx->S32()) {
-        qualifier.push(Qualifier::Q_S32);
-    } else if (ctx->S64()) {
-        qualifier.push(Qualifier::Q_S64);
-    } else if (ctx->V2()) {
-        qualifier.push(Qualifier::Q_V2);
-    } else if (ctx->V4()) {
-        qualifier.push(Qualifier::Q_V4);
-    } else if (ctx->CONST()) {
-        qualifier.push(Qualifier::Q_CONST);
-    } else if (ctx->PARAM()) {
-        qualifier.push(Qualifier::Q_PARAM);
-    } else if (ctx->GLOBAL()) {
-        qualifier.push(Qualifier::Q_GLOBAL);
-    } else if (ctx->LOCAL()) {
-        qualifier.push(Qualifier::Q_LOCAL);
-    } else if (ctx->SHARED()) {
-        qualifier.push(Qualifier::Q_SHARED);
-    } else if (ctx->GT()) {
-        qualifier.push(Qualifier::Q_GT);
-    } else if (ctx->GE()) {
-        qualifier.push(Qualifier::Q_GE);
-    } else if (ctx->EQ()) {
-        qualifier.push(Qualifier::Q_EQ);
-    } else if (ctx->NE()) {
-        qualifier.push(Qualifier::Q_NE);
-    } else if (ctx->LT()) {
-        qualifier.push(Qualifier::Q_LT);
-    } else if (ctx->TO()) {
-        qualifier.push(Qualifier::Q_TO);
-    } else if (ctx->WIDE()) {
-        qualifier.push(Qualifier::Q_WIDE);
-    } else if (ctx->SYNC()) {
-        qualifier.push(Qualifier::Q_SYNC);
-    } else if (ctx->LO()) {
-        qualifier.push(Qualifier::Q_LO);
-    } else if (ctx->HI()) {
-        qualifier.push(Qualifier::Q_HI);
-    } else if (ctx->UNI()) {
-        qualifier.push(Qualifier::Q_UNI);
-    } else if (ctx->RN()) {
-        qualifier.push(Qualifier::Q_RN);
-    } else if (ctx->A()) {
-        qualifier.push(Qualifier::Q_A);
-    } else if (ctx->B()) {
-        qualifier.push(Qualifier::Q_B);
-    } else if (ctx->D()) {
-        qualifier.push(Qualifier::Q_D);
-    } else if (ctx->ROW()) {
-        qualifier.push(Qualifier::Q_ROW);
-    } else if (ctx->ALIGNED()) {
-        qualifier.push(Qualifier::Q_ALIGNED);
-    } else if (ctx->M8N8K4()) {
-        qualifier.push(Qualifier::Q_M8N8K4);
-    } else if (ctx->M16N16K16()) {
-        qualifier.push(Qualifier::Q_M16N16K16);
-    } else if (ctx->NEU()) {
-        qualifier.push(Qualifier::Q_NEU);
-    } else if (ctx->NC()) {
-        qualifier.push(Qualifier::Q_NC);
-    } else if (ctx->FTZ()) {
-        qualifier.push(Qualifier::Q_FTZ);
-    } else if (ctx->APPROX()) {
-        qualifier.push(Qualifier::Q_APPROX);
-    } else if (ctx->LTU()) {
-        qualifier.push(Qualifier::Q_LTU);
-    } else if (ctx->LE()) {
-        qualifier.push(Qualifier::Q_LE);
-    } else if (ctx->GTU()) {
-        qualifier.push(Qualifier::Q_GTU);
-    } else if (ctx->LEU()) {
-        qualifier.push(Qualifier::Q_LEU);
-    } else if (ctx->DOTADD()) {
-        qualifier.push(Qualifier::Q_DOTADD);
-    } else if (ctx->GEU()) {
-        qualifier.push(Qualifier::Q_GEU);
-    } else if (ctx->RZI()) {
-        qualifier.push(Qualifier::Q_RZI);
-    } else if (ctx->DOTOR()) {
-        qualifier.push(Qualifier::Q_DOTOR);
-    } else if (ctx->SAT()) {
-        qualifier.push(Qualifier::Q_SAT);
-    } else
+// Use a macro to generate the if-else chain for all qualifiers
+#define X(enum_val, enum_name, str_val)                                        \
+    else if (ctx->enum_name()) {                                               \
+        qualifier.push(Qualifier::enum_val);                                   \
+    }
+
+    if (0) { // Initial condition to start the if-else chain
+        // No action for the initial false condition
+    }
+#include "ptx_ir/ptx_qualifier.def"
+#undef X
+    else {
         assert(0 && "some qualifier not recognized!\n");
+    }
 
 #ifdef LOG
     std::cout << __func__ << std::endl;

@@ -38,4 +38,7 @@ void parseImmediate(const std::string &s, Qualifier q, void *out);
 
 bool QvecHasQ(const std::vector<Qualifier> &qvec, Qualifier q);
 
+// 检查修饰符中是否包含.cc修饰符
+bool hasCCQualifier(const std::vector<Qualifier> &qualifiers);
+
 #endif // QUALIFIER_UTILS_H
