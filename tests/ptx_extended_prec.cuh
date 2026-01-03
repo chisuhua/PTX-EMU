@@ -8,7 +8,7 @@
 __device__ __forceinline__ uint32_t ptx_addc_u32(uint32_t a, uint32_t b, bool carry_in, bool* carry_out) {
     uint32_t res;
     if (carry_in) {
-        asm("add.cc.u32 %%r0, 0xFFFFFFFF, 1;");  // 设置进位为1: 0xFFFFFFFF + 1 = 0, carry=1
+        asm("add.cc.u32 %r0, 0xFFFFFFFF, 1;");  // 设置进位为1: 0xFFFFFFFF + 1 = 0, carry=1
         asm("addc.cc.u32 %0, %1, %2;" : "=r"(res) : "r"(a), "r"(b));  // 执行 a + b + 1
     } else {
         asm("add.cc.u32 %0, %1, %2;" : "=r"(res) : "r"(a), "r"(b));   // 执行 a + b + 0
