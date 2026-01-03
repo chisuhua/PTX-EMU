@@ -61,6 +61,7 @@ add_library(ptxsim SHARED
     ptxsim/utils/type_utils.cpp
     ptxsim/utils/half_utils.cpp
     ptxsim/instructions/arithmetic.cpp
+    ptxsim/instructions/arithmetic_muldiv.cpp
     ptxsim/instructions/bitwise.cpp
     ptxsim/instructions/math.cpp
     ptxsim/instructions/memory.cpp

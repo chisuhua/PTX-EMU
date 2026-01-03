@@ -271,7 +271,6 @@ void ThreadContext::commit_operand(StatementContext &stmt,
                                    OperandContext &operand,
                                    std::vector<Qualifier> &qualifier) {
     int bytes = getBytes(qualifier);
-    stmt.state = InstructionState::COMMIT;
     PTX_DEBUG_EMU("Commit:  %s ", operand.toString(bytes).c_str());
 };
 

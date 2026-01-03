@@ -3,6 +3,7 @@
 #include "ptxsim/utils/qualifier_utils.h"
 #include "ptxsim/utils/type_utils.h"
 #include "ptxsim/utils/half_utils.h"
+#include "ptxsim/utils/arithmetic_utils.h"
 #include <cassert>
 #include <cstdint>
 #include <cstring>
@@ -155,6 +156,7 @@ void ADDC::process_operation(ThreadContext *context, void *op[3],
             std::memcpy(&a, src1, 4);
             std::memcpy(&b, src2, 4);
 
+            // 对于32位无符号整数，需要特殊处理进位
             uint64_t temp = (uint64_t)a + (uint64_t)b + carry;
             r = (uint32_t)temp;
             
