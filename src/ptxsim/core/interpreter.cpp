@@ -55,17 +55,36 @@ void PtxInterpreter::funcInterpreter(
     setupKernelArguments(name2Sym);
     setupLabels(label2pc);
 
+    // 创建SM上下文，模拟硬件SM
+    // 这里我们创建一个SM，实际中可能有多个SM
+    SMContext sm(32, 2048, 1024 * 64); // 假设每个SM最多32个warp，2048个线程，64KB共享内存
+    sm.init(gridDim, blockDim, kernelContext->kernelStatements, name2Sym, label2pc);
+
     int ctaNum = gridDim.x * gridDim.y * gridDim.z;
-    CTAContext cta;
-    Dim3 blockIdx;
+    
+    // 为每个CTA创建上下文并添加到SM
     for (int i = 0; i < ctaNum; i++) {
+        Dim3 blockIdx;
         blockIdx.z = i / (gridDim.x * gridDim.y);
         blockIdx.y = i % (gridDim.x * gridDim.y) / (gridDim.x);
         blockIdx.x = i % (gridDim.x * gridDim.y) % (gridDim.x);
-        cta.init(gridDim, blockDim, blockIdx, kernelContext->kernelStatements,
-                 name2Sym, label2pc);
-        while (cta.exe_once() != EXIT)
-            ;
+        
+        // 创建CTAContext
+        CTAContext* cta = new CTAContext();
+        cta->init(gridDim, blockDim, blockIdx, kernelContext->kernelStatements,
+                  name2Sym, label2pc);
+        
+        // 将CTA添加到SM
+        if (!sm.add_block(cta)) {
+            // 如果SM资源不足，可以创建另一个SM或等待
+            delete cta;
+            break; // 简化处理：如果当前SM无法容纳更多块，则停止
+        }
+    }
+
+    // 执行直到所有CTA完成
+    while (sm.get_state() != EXIT) {
+        sm.exe_once();
     }
 }
 

@@ -154,7 +154,9 @@ set_tests_properties(test_ptx_float PROPERTIES LABELS "ptx;bitwise")
 add_standalone_test(test-ptx test-ptx.cpp)
 add_standalone_test(test-wmma test_wmma.cpp)
 add_standalone_test(test-cc-register test_cc_register.cpp)
-add_standalone_test(test-warp-context warp/test_warp-context.cpp)
+add_standalone_test(test_warp_context warp/test_warp_context.cpp)
+add_standalone_test(test_warp_scheduler warp/test_warp_scheduler.cpp)
+add_standalone_test(test_sm_context warp/test_sm_context.cpp)
 
 # ================================
 # 添加基于 CUDA 的测试（直接使用 CMake 编译）

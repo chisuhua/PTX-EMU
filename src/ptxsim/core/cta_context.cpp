@@ -74,6 +74,9 @@ void CTAContext::init(
 }
 
 EXE_STATE CTAContext::exe_once() {
+    // CTAContext不再执行指令，因为warp已转移给SMContext
+    // 此函数现在只返回当前状态
+
     // 重新计算退出和屏障线程数
     exitThreadNum = 0;
     barThreadNum = 0;
@@ -112,54 +115,14 @@ EXE_STATE CTAContext::exe_once() {
 #ifdef DEBUGINTE
         sync_thread = 0;
 #endif
-    }
-    
-    // 执行当前warp的一条指令
-    if (!warps.empty()) {
-        // 遍历warps直到找到一个活跃的warp来执行
-        for (int attempts = 0; attempts < warps.size(); attempts++) {
-            WarpContext* currentWarp = warps[curExeWarpId].get();
-            
-            if (currentWarp && currentWarp->is_active() && !currentWarp->is_finished()) {
-                // 获取当前warp中第一个活跃线程的PC作为指令来源
-                // 在实际实现中，warp中的所有活跃线程应该执行相同的指令（SIMT模型）
-                ThreadContext* firstActiveThread = nullptr;
-                StatementContext* currentStmt = nullptr;
-                
-                for (int lane = 0; lane < WarpContext::WARP_SIZE; lane++) {
-                    ThreadContext* thread = currentWarp->get_thread(lane);
-                    if (thread && thread->is_active() && !thread->is_exited()) {
-                        // 找到第一个活跃线程
-                        firstActiveThread = thread;
-                        if (thread->get_pc() < thread->statements->size()) {
-                            currentStmt = &(*thread->statements)[thread->get_pc()];
-                            break; // 找到指令后跳出
-                        }
-                    }
-                }
-                
-                if (currentStmt) {
-                    // 执行warp指令
-                    currentWarp->execute_warp_instruction(*currentStmt);
-                    
-                    // 检查是否有分歧
-                    if (currentWarp->has_divergence()) {
-                        // 在实际实现中，这里会处理分支分歧逻辑
-                        // 目前只是标记，后续可以实现更复杂的分歧处理
-                    }
-                }
-                
-                // 移动到下一个warp
-                curExeWarpId = (curExeWarpId + 1) % warpNum;
-                return RUN;
-            }
-            
-            // 尝试下一个warp
-            curExeWarpId = (curExeWarpId + 1) % warpNum;
-        }
+        return BAR_SYNC;
     }
     
     return RUN;
+}
+
+std::vector<std::unique_ptr<WarpContext>> CTAContext::release_warps() {
+    return std::move(warps);
 }
 
 CTAContext::~CTAContext() {

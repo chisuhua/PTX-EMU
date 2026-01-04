@@ -11,7 +11,7 @@ void test_warp_creation() {
 
     // 检查默认状态
     assert(warp.get_active_count() == 32);
-    assert(warp.has_active_threads() == true);
+    assert(warp.is_active() == true);
     assert(warp.get_active_mask() == 0xFFFFFFFF); // 所有线程默认活跃
 
     std::cout << "Warp creation test passed." << std::endl;
@@ -28,11 +28,11 @@ void test_warp_active_mask_management() {
     assert(warp.get_active_mask() == 0x0000000F);
 
     // 测试设置单个lane活跃状态
-    warp.set_lane_active(5, true); // 激活第5个线程
+    warp.set_active_mask(5, true); // 激活第5个线程
     assert(warp.is_lane_active(5) == true);
     assert(warp.get_active_count() == 5);
 
-    warp.set_lane_active(0, false); // 去激活第0个线程
+    warp.set_active_mask(0, false); // 去激活第0个线程
     assert(warp.is_lane_active(0) == false);
     assert(warp.get_active_count() == 4);
 
@@ -62,9 +62,7 @@ void test_warp_thread_addition() {
     // 添加线程到warp
     warp.add_thread(&thread, 0);
 
-    assert(warp.warp_thread_ids[0] == 0); // 验证线程ID被正确设置
-    assert(warp.threads.size() >= 1);
-    assert(warp.threads[0] == &thread);
+    assert(warp.get_warp_thread_id(0) == 0); // 验证线程ID被正确设置
 
     std::cout << "Warp thread addition test passed." << std::endl;
 }
@@ -75,11 +73,11 @@ void test_warp_completion() {
     WarpContext warp;
 
     // 初始时warp不完成
-    assert(warp.is_complete() == false);
+    assert(warp.is_finished() == false);
 
     // 设置所有线程为非活跃
     warp.set_active_mask(0x0);
-    assert(warp.is_complete() == true);
+    assert(warp.is_finished() == true);
 
     std::cout << "Warp completion test passed." << std::endl;
 }

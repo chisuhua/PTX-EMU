@@ -36,6 +36,9 @@ public:
 
     bool allThreadsExited() const { return exitThreadNum == threadNum; }
     bool allThreadsAtBarrier() const { return barThreadNum == threadNum; }
+    
+    // 提供方法来获取warp的所有权
+    std::vector<std::unique_ptr<WarpContext>> release_warps();
 
     ~CTAContext();
 };

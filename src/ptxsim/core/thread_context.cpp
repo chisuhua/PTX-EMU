@@ -49,21 +49,21 @@ void ThreadContext::init(
     register_manager = RegisterManager();
 }
 
-EXE_STATE ThreadContext::exe_once() {
-    if (state != RUN)
-        return state;
+// EXE_STATE ThreadContext::exe_once() {
+//     if (state != RUN)
+//         return state;
 
-    // 推进寄存器状态
-    register_manager.tick();
+//     // 推进寄存器状态
+//     register_manager.tick();
 
-    _execute_once();
+//     _execute_once();
 
-    if (pc >= statements->size())
-        state = EXIT;
+//     if (pc >= statements->size())
+//         state = EXIT;
 
-    clear_temporaries();
-    return state;
-}
+//     clear_temporaries();
+//     return state;
+// }
 
 void ThreadContext::_execute_once() {
     assert(state == RUN);
@@ -101,7 +101,7 @@ void ThreadContext::_execute_once() {
                   << static_cast<int>(statement.statementType) << std::endl;
         state = EXIT;
     }
-    
+
     // 更新PC
     pc = next_pc;
 }
@@ -157,18 +157,28 @@ void ThreadContext::prepare_breakpoint_context(
 
 void ThreadContext::dump_state(std::ostream &os) const {
     os << "Thread State:" << std::endl;
-    os << "  BlockIdx: [" << BlockIdx.x << ", " << BlockIdx.y << ", " << BlockIdx.z << "]" << std::endl;
-    os << "  ThreadIdx: [" << ThreadIdx.x << ", " << ThreadIdx.y << ", " << ThreadIdx.z << "]" << std::endl;
+    os << "  BlockIdx: [" << BlockIdx.x << ", " << BlockIdx.y << ", "
+       << BlockIdx.z << "]" << std::endl;
+    os << "  ThreadIdx: [" << ThreadIdx.x << ", " << ThreadIdx.y << ", "
+       << ThreadIdx.z << "]" << std::endl;
     os << "  PC: " << pc << std::endl;
     os << "  State: ";
     switch (state) {
-        case RUN: os << "RUN"; break;
-        case EXIT: os << "EXIT"; break;
-        case BAR_SYNC: os << "BAR_SYNC"; break;
-        default: os << "UNKNOWN"; break;
+    case RUN:
+        os << "RUN";
+        break;
+    case EXIT:
+        os << "EXIT";
+        break;
+    case BAR_SYNC:
+        os << "BAR_SYNC";
+        break;
+    default:
+        os << "UNKNOWN";
+        break;
     }
     os << std::endl;
-    
+
     os << "  Condition Codes: ";
     os << "carry=" << cc_reg.carry << ", ";
     os << "overflow=" << cc_reg.overflow << ", ";
@@ -180,11 +190,11 @@ void ThreadContext::reset() {
     pc = 0;
     next_pc = 0;
     state = RUN;
-    cc_reg = ConditionCodeRegister{};  // 重置条件码寄存器
-    
+    cc_reg = ConditionCodeRegister{}; // 重置条件码寄存器
+
     // 重置寄存器管理器
     register_manager = RegisterManager();
-    
+
     // 清空临时数据
     clear_temporaries();
     operand_collected.clear();
@@ -192,9 +202,7 @@ void ThreadContext::reset() {
 }
 
 // 添加新的执行方法
-void ThreadContext::execute_thread_instruction() { 
-    this->_execute_once(); 
-}
+EXE_STATE ThreadContext::execute_thread_instruction() { this->_execute_once(); }
 
 void *ThreadContext::acquire_operand(OperandContext &operand,
                                      std::vector<Qualifier> &qualifiers) {
