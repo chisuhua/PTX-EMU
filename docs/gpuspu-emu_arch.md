@@ -310,3 +310,43 @@ public:
 该硬件架构模拟方案将使 PTX-EMU 从简单的线程级模拟器转变为更精确的硬件行为模拟器，能够更准确地反映 NVIDIA GPU 架构的执行特性，为性能分析和优化提供更可靠的基础。通过分阶段实施，可以在保持兼容性的同时逐步提升模拟精度。
 
 该方案遵循了 GPU 架构模拟与执行模型综合规范，确保了模拟器的扩展性和维护性。
+
+下一步工作计划
+1. 完善执行流程集成
+• 修改CTAContext: 重构CTAContext以使用WarpContext，不再直接管理ThreadContext
+• 更新exe_once实现: 使CTAContext::exe_once调用WarpContext执行，而不是逐线程执行
+• 指令获取机制: 实现从CTAContext到WarpContext的指令流传递机制
+2. 实现完整的SMContext功能
+• 指令调度: 实现SMContext中的指令获取和分发逻辑
+• 资源管理: 完善共享内存管理和线程块调度逻辑
+• 状态同步: 实现warp间和线程间的同步机制
+3. 增强调试和跟踪功能
+• Warp级跟踪: 添加warp级执行跟踪，便于分析SIMT行为
+• 性能计数器: 添加warp执行效率、分支分歧等性能指标
+• 调试接口: 提供warp状态查看和调试接口
+4. 优化Warp调度策略
+• 实现更多调度算法: 例如基于优先级的调度、基于负载均衡的调度• 性能评估: 对比不同调度策略的性能表现• 动态调度: 根据运行时状态动态调整调度策略
+5. 测试和验证
+• 单元测试: 为新增的WarpContext、SMContext、WarpScheduler编写单元测试
+• 集成测试: 验证整个执行流程的正确性
+• 性能测试: 评估新架构对执行性能的影响
+6. 处理分支分歧• 分支预测: 实现分支处理逻辑，正确处理warp内的分歧分支• 重新合并: 实现分支后的路径重新合并机制• 活跃掩码更新: 根据分支指令动态更新活跃掩码
+7. 完善CMakeLists.txt• 添加新源文件: 将新创建的.cpp文件添加到构建系统• 更新依赖: 确保所有依赖关系正确配置这个框架已经建立了完整的四层架构（SMContext -> WarpScheduler -> WarpContext -> ThreadContext），下一步将逐步完善各层之间的交互和具体功能实现。
+
+
+done:
+1. 执行流程架构
+• SMContext层：管理流式多处理器资源（共享内存、warp集合等），协调多个warp的执行
+• WarpScheduler层：实现warp级调度策略（如轮询、贪心），选择下一个执行的warp
+• WarpContext层：以warp为单位统一获取指令，根据活跃掩码分发给线程，管理warp级PC和同步
+• ThreadContext层：负责单个线程的具体指令执行、寄存器状态和条件码管理
+
+2. 已完成的改进
+-. WarpContext：◦ 添加了分支分歧处理功能◦ 实现了活跃掩码管理◦ 添加了PC栈支持，用于处理分歧后的重新合并
+-. ThreadContext：◦ 添加了分支处理支持◦ 正确更新PC值 
+- CTAContext：◦ 重构为使用WarpContext管理线程◦ 正确更新线程状态计数
+
+3. 执行流程验证
+• CTAContext::exe_once()现在调用WarpContext执行，而不是逐线程执行
+• 实现了从CTAContext到WarpContext的指令流传递机制
+• 正确处理了线程状态（退出、屏障同步等）

@@ -67,7 +67,8 @@ void ThreadContext::init(
 
 void ThreadContext::_execute_once() {
     assert(state == RUN);
-    assert(pc >= 0 && pc < statements->size());
+    // 使用安全的PC检查
+    assert(is_valid_pc());
 
     // 准备断点检查上下文
     // std::unordered_map<std::string, std::any> context;

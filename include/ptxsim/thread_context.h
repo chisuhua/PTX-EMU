@@ -134,6 +134,19 @@ public:
         cc_reg = new_cc;
     }
 
+    // 检查PC是否有效
+    bool is_valid_pc() const { 
+        return statements != nullptr && pc >= 0 && pc < static_cast<int>(statements->size()); 
+    }
+    
+    // 获取当前指令
+    StatementContext* get_current_statement() {
+        if (statements != nullptr && pc >= 0 && pc < static_cast<int>(statements->size())) {
+            return &(*statements)[pc];
+        }
+        return nullptr;
+    }
+    
     // 执行单条指令（由WarpContext调用）
     EXE_STATE execute_thread_instruction();
 
