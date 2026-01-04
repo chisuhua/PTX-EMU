@@ -4,17 +4,19 @@
 #include <cstring>
 
 WarpContext::WarpContext() 
-    : active_count(0), pc(0), single_step_mode(false) {
+    : active_count(0), pc(0), warp_id(-1), single_step_mode(false), divergence_detected(false) {
     // 初始化warp线程ID和活跃掩码
     for (int i = 0; i < WARP_SIZE; i++) {
         warp_thread_ids[i] = -1;
         active_mask[i] = false;
+        pc_stacks[i] = std::vector<int>(); // 初始化PC栈
     }
     
     // 默认激活所有线程
     for (int i = 0; i < WARP_SIZE; i++) {
         active_mask[i] = true;
         warp_thread_ids[i] = i;
+        pc_stacks[i].push_back(0); // 初始PC
     }
     active_count = WARP_SIZE;
 }
@@ -23,19 +25,41 @@ void WarpContext::add_thread(ThreadContext* thread, int lane_id) {
     if (lane_id >= 0 && lane_id < WARP_SIZE) {
         threads.resize(std::max(threads.size(), static_cast<size_t>(lane_id + 1)));
         threads[lane_id] = thread;
-        warp_thread_ids[lane_id] = thread ? thread->ThreadIdx.x + 
-                                   thread->ThreadIdx.y * thread->BlockDim.x + 
-                                   thread->ThreadIdx.z * thread->BlockDim.x * thread->BlockDim.y : -1;
+        if (thread) {
+            warp_thread_ids[lane_id] = thread->ThreadIdx.x + 
+                                       thread->ThreadIdx.y * thread->BlockDim.x + 
+                                       thread->ThreadIdx.z * thread->BlockDim.x * thread->BlockDim.y;
+        } else {
+            warp_thread_ids[lane_id] = -1;
+        }
     }
 }
 
 void WarpContext::execute_warp_instruction(StatementContext &stmt) {
     // 根据活跃掩码执行指令
     for (int i = 0; i < WARP_SIZE; i++) {
-        if (active_mask[i] && i < threads.size() && threads[i] != nullptr) {
+        if (is_lane_active(i) && i < threads.size() && threads[i] != nullptr) {
             ThreadContext* thread = threads[i];
+            
+            // 设置线程的PC为当前warp的PC或线程自己的PC（用于处理分歧）
+            if (!pc_stacks[i].empty()) {
+                thread->set_pc(pc_stacks[i].back());
+            }
+            
             // 执行指令
-            thread->handle_statement(stmt);
+            thread->execute_thread_instruction();
+            
+            // 更新PC栈
+            if (!pc_stacks[i].empty()) {
+                pc_stacks[i].back() = thread->get_pc();
+            } else {
+                pc_stacks[i].push_back(thread->get_pc());
+            }
+            
+            // 更新warp的PC为第一个活跃线程的PC（在SIMT模型中，所有活跃线程应该执行相同指令）
+            if (i == 0 || pc == 0) {
+                pc = thread->get_pc();
+            }
         }
     }
     
@@ -46,33 +70,68 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt) {
 void WarpContext::update_active_mask() {
     active_count = 0;
     for (int i = 0; i < WARP_SIZE; i++) {
-        if (active_mask[i]) {
+        if (i < threads.size() && threads[i] != nullptr) {
+            // 检查线程状态，如果线程已退出则不再活跃
+            if (threads[i]->is_exited()) {
+                active_mask[i] = false;
+            } else if (threads[i]->is_active()) {
+                active_count++;
+            }
+        }
+    }
+}
+
+void WarpContext::set_active_mask(int lane_id, bool active) {
+    if (lane_id >= 0 && lane_id < WARP_SIZE) {
+        bool was_active = active_mask[lane_id];
+        active_mask[lane_id] = active;
+        
+        if (was_active && !active) {
+            active_count--;
+        } else if (!was_active && active) {
             active_count++;
         }
     }
 }
 
-bool WarpContext::is_complete() const {
+bool WarpContext::is_finished() const {
     return active_count == 0;
 }
 
-void WarpContext::sync_warp() {
-    // 在真实的硬件中，warp是同步执行的
-    // 这里我们简单地同步所有线程的状态
+void WarpContext::sync_threads() {
+    // 在真正的硬件模拟中，这里会实现warp级同步
+    // 目前我们简单地确保所有活跃线程都执行到相同的PC
+}
+
+void WarpContext::reset() {
     for (int i = 0; i < WARP_SIZE; i++) {
-        if (active_mask[i] && i < threads.size() && threads[i] != nullptr) {
-            // 确保所有活跃线程执行到相同PC
-            threads[i]->pc = pc;
+        active_mask[i] = true;
+        if (i < threads.size() && threads[i] != nullptr) {
+            threads[i]->reset();
         }
+        // 重置PC栈
+        pc_stacks[i].clear();
+        pc_stacks[i].push_back(0);
     }
+    active_count = WARP_SIZE;
+    pc = 0;
+    divergence_detected = false;
 }
 
-int WarpContext::get_active_count() const {
-    return active_count;
-}
-
-bool WarpContext::has_active_threads() const {
-    return active_count > 0;
+void WarpContext::handle_branch_divergence(int lane_id, int new_pc) {
+    if (lane_id >= 0 && lane_id < WARP_SIZE) {
+        // 将当前PC压入栈中
+        if (!pc_stacks[lane_id].empty()) {
+            pc_stacks[lane_id].push_back(pc_stacks[lane_id].back());
+        } else {
+            pc_stacks[lane_id].push_back(0);
+        }
+        
+        // 设置新PC
+        pc_stacks[lane_id].back() = new_pc;
+        
+        divergence_detected = true;
+    }
 }
 
 uint32_t WarpContext::get_active_mask() const {
@@ -94,24 +153,4 @@ void WarpContext::set_active_mask(uint32_t mask) {
             active_count++;
         }
     }
-}
-
-void WarpContext::set_lane_active(int lane_id, bool active) {
-    if (lane_id >= 0 && lane_id < WARP_SIZE) {
-        bool was_active = active_mask[lane_id];
-        active_mask[lane_id] = active;
-        
-        if (active && !was_active) {
-            active_count++;
-        } else if (!active && was_active) {
-            active_count--;
-        }
-    }
-}
-
-bool WarpContext::is_lane_active(int lane_id) const {
-    if (lane_id >= 0 && lane_id < WARP_SIZE) {
-        return active_mask[lane_id];
-    }
-    return false;
 }

@@ -3,24 +3,27 @@
 
 #include "ptxsim/execution_types.h"
 #include "ptxsim/interpreter.h"
+#include "ptxsim/warp_context.h"
 #include <map>
 #include <string>
 #include <vector>
+#include <memory>
 
 class StatementContext; // 前向声明
 class ThreadContext;    // 前向声明
-// class PtxInterpreter;
-// class PtxInterpreter {
-// public:
-//     class Symtable; // 前向声明
-// };
 
 class CTAContext {
 public:
-    ThreadContext *thread = nullptr;
-    bool *exitThread = nullptr;
-    bool *barThread = nullptr;
-    int threadNum, curExeThreadId, exitThreadNum, barThreadNum;
+    std::vector<std::unique_ptr<WarpContext>> warps;
+    int warpNum;
+    int curExeWarpId;
+    
+    int threadNum;
+    int curExeThreadId;
+    int exitThreadNum;
+    int barThreadNum;
+    
+    size_t sharedMemBytes = 0;
     Dim3 blockIdx, GridDim, BlockDim;
     std::map<std::string, PtxInterpreter::Symtable *> name2Share;
 

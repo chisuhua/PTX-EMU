@@ -1,22 +1,17 @@
 #ifndef THREAD_CONTEXT_H
 #define THREAD_CONTEXT_H
 
-#include "ptx_ir/operand_context.h"
-#include "ptx_ir/ptx_types.h"
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/execution_types.h"
-#include "ptxsim/instruction_factory.h"
+#include "ptxsim/dim3.h"
+#include "ptxsim/register_manager.h"
+#include "ptxsim/condition_code_register.h"
+#include "ptx_ir/ptx_types.h"
 #include "ptxsim/interpreter.h"
-#include "ptxsim/ptx_debug.h"
-#include "ptxsim/utils/type_utils.h"
-#include "register/register_manager.h"
-#include <any>
-#include <map>
-#include <ostream>
-#include <queue>
-#include <string>
-#include <unordered_map>
 #include <vector>
+#include <map>
+#include <queue>
+#include <any>
 
 // 条件码寄存器标志
 struct ConditionCodeRegister {
@@ -98,6 +93,52 @@ public:
 
     std::vector<void *>
         operand_collected; // collect operand addr  from BASE_INSTR operands
+
+    // 新增接口：获取线程状态
+    EXE_STATE get_state() const { return state; }
+    
+    // 检查是否活跃
+    bool is_active() const { return state == RUN; }
+    
+    // 检查是否在屏障等待
+    bool is_at_barrier() const { return state == BAR_SYNC; }
+    
+    // 检查是否退出
+    bool is_exited() const { return state == EXIT; }
+    
+    // 设置线程状态
+    void set_state(EXE_STATE new_state) { state = new_state; }
+    
+    // 获取PC值
+    int get_pc() const { return pc; }
+    
+    // 设置PC值
+    void set_pc(int new_pc) { pc = new_pc; }
+    
+    // 获取下一个PC值
+    int get_next_pc() const { return next_pc; }
+    
+    // 设置下一个PC值
+    void set_next_pc(int new_next_pc) { next_pc = new_next_pc; }
+    
+    // 获取线程索引
+    Dim3 get_thread_idx() const { return ThreadIdx; }
+    
+    // 获取块索引
+    Dim3 get_block_idx() const { return BlockIdx; }
+    
+    // 检查条件码寄存器
+    const ConditionCodeRegister& get_condition_codes() const { return cc_reg; }
+    
+    // 设置条件码寄存器
+    void set_condition_codes(const ConditionCodeRegister& new_cc) { cc_reg = new_cc; }
+    
+    // 执行单条指令（由WarpContext调用）
+    EXE_STATE execute_thread_instruction();
+    
+    // 重置线程状态
+    void reset();
+    
 private:
     void _execute_once();
     bool is_immediate_or_vector(OperandContext &op);

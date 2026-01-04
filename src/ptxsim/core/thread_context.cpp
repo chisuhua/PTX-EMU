@@ -101,6 +101,9 @@ void ThreadContext::_execute_once() {
                   << static_cast<int>(statement.statementType) << std::endl;
         state = EXIT;
     }
+    
+    // 更新PC
+    pc = next_pc;
 }
 
 void ThreadContext::trace_instruction(StatementContext &statement) {
@@ -133,58 +136,64 @@ void ThreadContext::prepare_breakpoint_context(
         if (reg_interface && reg_interface->get_phy_address()) {
             // 根据寄存器大小推测类型
             size_t reg_size = reg_interface->get_size();
-            void *addr = reg_interface->get_phy_address();
 
-            if (reg_size == 4) {
-                context[reg_name] = *(int32_t *)addr;
-            } else if (reg_size == 8) {
-                context[reg_name] = *(int64_t *)addr;
+            // 尝试获取值
+            if (reg_size <= 8) { // 假设最多8字节的值
+                uint64_t val = 0;
+                memcpy(&val, reg_interface->get_phy_address(), reg_size);
+                context[reg_name] = val;
             } else {
-                // 其他大小的寄存器暂时跳过
+                // 对于较大值，可能需要特殊处理
+                context[reg_name] = reg_interface->get_phy_address();
             }
         }
     }
 
-    // 添加特殊寄存器
+    // 添加其他上下文信息
     context["pc"] = pc;
-    context["tid.x"] = (int)ThreadIdx.x;
-    context["tid.y"] = (int)ThreadIdx.y;
-    context["tid.z"] = (int)ThreadIdx.z;
-    context["bid.x"] = (int)BlockIdx.x;
-    context["bid.y"] = (int)BlockIdx.y;
-    context["bid.z"] = (int)BlockIdx.z;
+    context["blockIdx"] = BlockIdx;
+    context["threadIdx"] = ThreadIdx;
 }
 
 void ThreadContext::dump_state(std::ostream &os) const {
-    // 寄存器状态 - 现在从RegisterManager获取
-    os << "Registers:" << std::endl;
-    for (const auto &reg_pair : register_manager.get_all_registers()) {
-        std::string reg_name = reg_pair.first;
-        RegisterInterface *reg_interface = reg_pair.second;
-        if (reg_interface && reg_interface->get_phy_address()) {
-            os << "  " << reg_name << " = ";
-            size_t reg_size = reg_interface->get_size();
-
-            // 由于我们不知道寄存器的确切类型，需要基于大小进行推测
-            if (reg_size == 4) {
-                os << ptxsim::debug_format::format_i32(
-                    *(int32_t *)reg_interface->get_phy_address(), true);
-            } else if (reg_size == 8) {
-                os << ptxsim::debug_format::format_i64(
-                    *(int64_t *)reg_interface->get_phy_address(), true);
-            } else {
-                os << "[unknown size: " << reg_size << "]";
-            }
-            os << std::endl;
-        }
+    os << "Thread State:" << std::endl;
+    os << "  BlockIdx: [" << BlockIdx.x << ", " << BlockIdx.y << ", " << BlockIdx.z << "]" << std::endl;
+    os << "  ThreadIdx: [" << ThreadIdx.x << ", " << ThreadIdx.y << ", " << ThreadIdx.z << "]" << std::endl;
+    os << "  PC: " << pc << std::endl;
+    os << "  State: ";
+    switch (state) {
+        case RUN: os << "RUN"; break;
+        case EXIT: os << "EXIT"; break;
+        case BAR_SYNC: os << "BAR_SYNC"; break;
+        default: os << "UNKNOWN"; break;
     }
+    os << std::endl;
+    
+    os << "  Condition Codes: ";
+    os << "carry=" << cc_reg.carry << ", ";
+    os << "overflow=" << cc_reg.overflow << ", ";
+    os << "zero=" << cc_reg.zero << ", ";
+    os << "sign=" << cc_reg.sign << std::endl;
+}
 
-    // 当前PC和指令
-    if (pc >= 0 && pc < (int)statements->size()) {
-        StatementContext &statement = (*statements)[pc];
-        os << "Current Instruction:" << std::endl;
-        os << "  [" << pc << "] " << S2s(statement.statementType) << std::endl;
-    }
+void ThreadContext::reset() {
+    pc = 0;
+    next_pc = 0;
+    state = RUN;
+    cc_reg = ConditionCodeRegister{};  // 重置条件码寄存器
+    
+    // 重置寄存器管理器
+    register_manager = RegisterManager();
+    
+    // 清空临时数据
+    clear_temporaries();
+    operand_collected.clear();
+    operand_collected.resize(4);
+}
+
+// 添加新的执行方法
+void ThreadContext::execute_thread_instruction() { 
+    this->_execute_once(); 
 }
 
 void *ThreadContext::acquire_operand(OperandContext &operand,
