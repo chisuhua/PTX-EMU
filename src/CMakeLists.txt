@@ -50,6 +50,7 @@ add_library(ptxsim SHARED
     ptxsim/core/cta_context.cpp
     ptxsim/core/interpreter.cpp
     ptxsim/core/thread_context.cpp
+    ptxsim/core/warp_context.cpp
     memory/memory_manager.cpp
     memory/simple_memory.cpp
     memory/simple_memory_allocator.cpp
