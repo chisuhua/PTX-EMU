@@ -591,17 +591,17 @@ void PtxListener::exitWmmaStatement(ptxParser::WmmaStatementContext *ctx) {
     if (ctx->LOAD()) {
         st->wmmaType = WMMA_LOAD;
         for (int i = 0; i < 3; i++) {
-            fetchOperand(st->operands[i]);
+            fetchOperand(st->operands);
         }
     } else if (ctx->STORE()) {
         st->wmmaType = WMMA_STORE;
         for (int i = 0; i < 3; i++) {
-            fetchOperand(st->operands[i]);
+            fetchOperand(st->operands);
         }
     } else if (ctx->WMMA()) {
         st->wmmaType = WMMA_MMA;
         for (int i = 0; i < 4; i++) {
-            fetchOperand(st->operands[i]);
+            fetchOperand(st->operands);
         }
     }
 
