@@ -1,57 +1,23 @@
 #ifndef INTERPRETER_H
 #define INTERPRETER_H
 
-#include "ptx_ir/ptx_context.h"
-#include "ptx_ir/statement_context.h"
-#include "ptx_ir/qualifier.h"
-#include "execution_types.h"
 #include "gpu_context.h"
+#include "ptx_ir/ptx_context.h"
+#include "ptx_ir/ptx_types.h"
+#include "ptx_ir/statement_context.h"
+#include "ptxsim/common_types.h"
+#include "ptxsim/execution_types.h"
+#include "ptxsim/gpu_context.h"
 #include <map>
-#include <string>
 #include <memory>
+#include <string>
+
+class GPUContext;
 
 class PtxInterpreter {
 public:
-    class Symtable { // integrate param local const
-    public:
-        Qualifier symType;
-        int byteNum;
-        int elementNum;
-        std::string name;
-        uint64_t val;
-    };
-
-    class Reg {
-    public:
-        Qualifier regType;
-        int byteNum;
-        int elementNum;
-        std::string name;
-        void *addr;
-    };
-
-    class IMM {
-    public:
-        Qualifier type;
-        union Data {
-            uint8_t u8;
-            uint16_t u16;
-            uint32_t u32;
-            uint64_t u64;
-            float f32;
-            double f64;
-        };
-        Data data;
-    };
-
-    class VEC {
-    public:
-        std::vector<void *> vec;
-    };
-
-public:
     // 构造函数，可以选择是否使用配置文件
-    explicit PtxInterpreter(const std::string& gpu_config_path = "");
+    explicit PtxInterpreter(const std::string &gpu_config_path = "");
 
     PtxContext *ptxContext;
     KernelContext *kernelContext;
@@ -59,7 +25,7 @@ public:
     Dim3 gridDim{1, 1, 1}, blockDim{1, 1, 1};
 
     std::map<std::string, uint64_t> constName2addr;
-    
+
     // PARAM空间管理
     void *param_space;
 

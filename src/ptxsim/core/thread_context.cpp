@@ -11,6 +11,7 @@
 #include <any>
 #include <cassert>
 #include <cmath>
+#include <cstdint> // 添加此行以支持uint64_t
 #include <cstdio>
 #include <cstring>
 #include <iostream>
@@ -26,12 +27,12 @@ extern bool sync_thread;
 extern bool IFLOG();
 #endif
 
-void ThreadContext::init(
-    Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim, Dim3 BlockDim,
-    std::vector<StatementContext> &statements,
-    std::map<std::string, PtxInterpreter::Symtable *> &name2Share,
-    std::map<std::string, PtxInterpreter::Symtable *> &name2Sym,
-    std::map<std::string, int> &label2pc) {
+void ThreadContext::init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim,
+                         Dim3 BlockDim,
+                         std::vector<StatementContext> &statements,
+                         std::map<std::string, Symtable *> &name2Share,
+                         std::map<std::string, Symtable *> &name2Sym,
+                         std::map<std::string, int> &label2pc) {
     this->BlockIdx = blockIdx;
     this->ThreadIdx = threadIdx;
     this->GridDim = GridDim;
@@ -182,10 +183,10 @@ void ThreadContext::dump_state(std::ostream &os) const {
     os << std::endl;
 
     os << "  Condition Codes: ";
-    os << "carry=" << cc_reg.carry << ", ";
-    os << "overflow=" << cc_reg.overflow << ", ";
-    os << "zero=" << cc_reg.zero << ", ";
-    os << "sign=" << cc_reg.sign << std::endl;
+    os << "carry=" << cc_reg.get_carry() << ", ";
+    os << "overflow=" << cc_reg.get_overflow() << ", ";
+    os << "zero=" << cc_reg.get_zero() << ", ";
+    os << "sign=" << cc_reg.get_sign() << std::endl;
 }
 
 void ThreadContext::reset() {
@@ -259,7 +260,7 @@ void *ThreadContext::acquire_operand(OperandContext &operand,
     case O_VEC: {
         auto vecOp = (OperandContext::VEC *)operand.operand;
         // 创建一个新的VEC对象用于存储向量元素地址
-        PtxInterpreter::VEC *newVec = new PtxInterpreter::VEC();
+        VEC *newVec = new VEC();
         // 递归处理向量中的每个元素
         for (auto &elem : vecOp->vec) {
             newVec->vec.push_back(acquire_operand(elem, qualifiers));

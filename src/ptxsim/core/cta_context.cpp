@@ -1,6 +1,7 @@
 #include "ptxsim/cta_context.h"
 #include "ptx_ir/kernel_context.h"
 #include "ptxsim/thread_context.h"
+#include "ptxsim/common_types.h"  // 添加对common_types.h的引用
 #include <cassert>
 #include <cstring>
 #include <memory>
@@ -15,7 +16,7 @@ extern bool IFLOG();
 void CTAContext::init(
     Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
     std::vector<StatementContext> &statements,
-    std::map<std::string, PtxInterpreter::Symtable *> &name2Sym,
+    std::map<std::string, Symtable *> &name2Sym,
     std::map<std::string, int> &label2pc) {
 
     threadNum = BlockDim.x * BlockDim.y * BlockDim.z;

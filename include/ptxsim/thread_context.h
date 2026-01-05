@@ -1,36 +1,30 @@
 #ifndef THREAD_CONTEXT_H
 #define THREAD_CONTEXT_H
 
+#include "ptx_ir/operand_context.h"
 #include "ptx_ir/ptx_types.h"
 #include "ptx_ir/statement_context.h"
-// #include "ptxsim/condition_code_register.h"
+#include "ptxsim/common_types.h" // 包含通用类型定义
 #include "ptxsim/execution_types.h"
-#include "ptxsim/interpreter.h"
+#include "register/condition_code_register.h"
 #include "register/register_manager.h"
 #include <any>
+#include <iostream>
 #include <map>
+#include <memory>
 #include <queue>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
-// 条件码寄存器标志
-struct ConditionCodeRegister {
-    bool carry : 1;    // 进位标志
-    bool overflow : 1; // 溢出标志
-    bool zero : 1;     // 零标志
-    bool sign : 1;     // 符号标志
-    bool reserved : 4; // 预留位
-
-    ConditionCodeRegister()
-        : carry(false), overflow(false), zero(false), sign(false), reserved(0) {
-    }
-};
+class PtxInterpreter; // 前向声明
 
 class ThreadContext {
 public:
     // 资源管理
     std::vector<StatementContext> *statements;
-    std::map<std::string, PtxInterpreter::Symtable *> *name2Share;
-    std::map<std::string, PtxInterpreter::Symtable *> name2Sym;
+    std::map<std::string, Symtable *> *name2Share;
+    std::map<std::string, Symtable *> name2Sym;
     RegisterManager register_manager;
     std::map<std::string, int> label2pc;
 
@@ -45,12 +39,12 @@ public:
 
     // 当前指令执行状态
     // 临时数据存储
-    std::queue<PtxInterpreter::VEC *> vec;
+    std::queue<VEC *> vec;
 
     void init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim, Dim3 BlockDim,
               std::vector<StatementContext> &statements,
-              std::map<std::string, PtxInterpreter::Symtable *> &name2Share,
-              std::map<std::string, PtxInterpreter::Symtable *> &name2Sym,
+              std::map<std::string, Symtable *> &name2Share,
+              std::map<std::string, Symtable *> &name2Sym,
               std::map<std::string, int> &label2pc);
 
     // EXE_STATE exe_once();
@@ -135,18 +129,20 @@ public:
     }
 
     // 检查PC是否有效
-    bool is_valid_pc() const { 
-        return statements != nullptr && pc >= 0 && pc < static_cast<int>(statements->size()); 
+    bool is_valid_pc() const {
+        return statements != nullptr && pc >= 0 &&
+               pc < static_cast<int>(statements->size());
     }
-    
+
     // 获取当前指令
-    StatementContext* get_current_statement() {
-        if (statements != nullptr && pc >= 0 && pc < static_cast<int>(statements->size())) {
+    StatementContext *get_current_statement() {
+        if (statements != nullptr && pc >= 0 &&
+            pc < static_cast<int>(statements->size())) {
             return &(*statements)[pc];
         }
         return nullptr;
     }
-    
+
     // 执行单条指令（由WarpContext调用）
     EXE_STATE execute_thread_instruction();
 

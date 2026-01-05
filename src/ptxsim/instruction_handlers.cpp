@@ -1,6 +1,7 @@
 #include "ptxsim/instruction_handlers.h"
 #include "ptx_ir/ptx_types.h"
 #include "ptx_ir/statement_context.h"
+#include "ptxsim/common_types.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/utils/qualifier_utils.h"
 #include "ptxsim/utils/type_utils.h"
@@ -35,7 +36,7 @@
 #define IMPLEMENT_OPERAND_MEMORY(Name)                                         \
     void Name::execute(ThreadContext *context, StatementContext &stmt) {       \
         auto ss = (StatementContext::Name *)stmt.statement;                    \
-        PtxInterpreter::Symtable *s = new PtxInterpreter::Symtable();          \
+        Symtable *s = new Symtable();                                          \
         s->byteNum = getBytes(ss->dataType) * ss->size;                        \
         s->elementNum = ss->size;                                              \
         s->name = ss->name;                                                    \

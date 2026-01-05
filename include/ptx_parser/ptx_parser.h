@@ -7,7 +7,7 @@
 
 #include "ptxParser.h"
 #include "ptxParserBaseListener.h"
-#include "ptx_ir/kernel_context.h"
+#include "ptx_ir/ptx_context.h"
 
 using namespace ptxparser;
 using namespace antlr4;

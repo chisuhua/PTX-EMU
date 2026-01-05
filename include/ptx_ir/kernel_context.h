@@ -37,19 +37,4 @@ public:
         : ifVisibleKernel(false), ifEntryKernel(false), minnctapersm(0) {}
 };
 
-class PtxContext {
-public:
-    int ptxMajorVersion;
-    int ptxMinorVersion;
-    int ptxTarget;
-    int ptxAddressSize;
-
-    std::vector<KernelContext> ptxKernels;
-    std::vector<StatementContext> ptxStatements;
-
-    PtxContext()
-        : ptxMajorVersion(0), ptxMinorVersion(0), ptxTarget(0),
-          ptxAddressSize(0) {}
-};
-
 #endif // KERNEL_CONTEXT_H

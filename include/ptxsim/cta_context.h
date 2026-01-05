@@ -1,16 +1,16 @@
 #ifndef CTA_CONTEXT_H
 #define CTA_CONTEXT_H
 
-#include "ptxsim/execution_types.h"
-#include "ptxsim/interpreter.h"
 #include "ptxsim/warp_context.h"
-#include <map>
-#include <string>
+#include "ptxsim/thread_context.h"
+#include "ptx_ir/statement_context.h"
+#include "ptxsim/execution_types.h"
+#include "ptxsim/common_types.h"  // 包含通用类型定义
 #include <vector>
+#include <map>
 #include <memory>
 
-class StatementContext; // 前向声明
-class ThreadContext;    // 前向声明
+class PtxInterpreter;  // 前向声明
 
 class CTAContext {
 public:
@@ -25,14 +25,14 @@ public:
     
     size_t sharedMemBytes = 0;
     Dim3 blockIdx, GridDim, BlockDim;
-    std::map<std::string, PtxInterpreter::Symtable *> name2Share;
+    std::map<std::string, Symtable *> name2Share;
 
     // 添加线程池，管理线程对象的生命周期
     std::vector<std::unique_ptr<ThreadContext>> thread_pool;
 
     void init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
               std::vector<StatementContext> &statements,
-              std::map<std::string, PtxInterpreter::Symtable *> &name2Sym,
+              std::map<std::string, Symtable *> &name2Sym,
               std::map<std::string, int> &label2pc);
 
     EXE_STATE exe_once();

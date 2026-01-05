@@ -53,13 +53,15 @@ add_library(ptxsim SHARED
     ptxsim/core/warp_context.cpp
     ptxsim/core/warp_scheduler.cpp
     ptxsim/core/sm_context.cpp
+    ptxsim/core/gpu_context.cpp
+    register/condition_code_register.cpp
     memory/memory_manager.cpp
     memory/simple_memory.cpp
     memory/simple_memory_allocator.cpp
     ptxsim/debug/ptx_debug.cpp
     ptxsim/instruction_factory.cpp
-    ptxsim/instruction_handlers.cpp
     ptxsim/instruction_base.cpp
+    ptxsim/instruction_handlers.cpp
     ptxsim/utils/qualifier_utils.cpp
     ptxsim/utils/type_utils.cpp
     ptxsim/utils/half_utils.cpp

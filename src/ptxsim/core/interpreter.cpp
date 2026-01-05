@@ -3,16 +3,16 @@
 #include "ptx_ir/kernel_context.h"
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/cta_context.h"
+#include "ptxsim/gpu_context.h"
 #include "ptxsim/instruction_factory.h"
 #include "ptxsim/sm_context.h"
-#include "ptxsim/gpu_context.h"
 #include "utils/logger.h"
 #include <cassert>
 #include <cstring>
 #include <map>
 #include <memory>
 
-PtxInterpreter::PtxInterpreter(const std::string& gpu_config_path) {
+PtxInterpreter::PtxInterpreter(const std::string &gpu_config_path) {
     if (!gpu_config_path.empty()) {
         gpu_context = std::make_shared<GPUContext>(gpu_config_path);
     } else {
@@ -40,7 +40,7 @@ void PtxInterpreter::launchPtxInterpreter(PtxContext &ptx, std::string &kernel,
         }
     }
 
-    std::map<std::string, PtxInterpreter::Symtable *> name2Sym;
+    std::map<std::string, Symtable *> name2Sym;
     std::map<std::string, int> label2pc;
 
     funcInterpreter(name2Sym, label2pc);
@@ -67,11 +67,13 @@ void PtxInterpreter::funcInterpreter(
     setupLabels(label2pc);
 
     // 初始化GPU上下文
-    gpu_context->init(gridDim, blockDim, kernelContext->kernelStatements, name2Sym, label2pc);
+    gpu_context->init(gridDim, blockDim, kernelContext->kernelStatements,
+                      name2Sym, label2pc);
 
     // 使用GPU上下文执行kernel
-    gpu_context->launch_kernel(kernelArgs, gridDim, blockDim, 
-                               kernelContext->kernelStatements, name2Sym, label2pc);
+    gpu_context->launch_kernel(kernelArgs, gridDim, blockDim,
+                               kernelContext->kernelStatements, name2Sym,
+                               label2pc);
 }
 
 void PtxInterpreter::setupConstantSymbols(

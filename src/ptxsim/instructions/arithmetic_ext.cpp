@@ -1,9 +1,9 @@
 #include "ptxsim/instruction_handlers.h"
 #include "ptxsim/thread_context.h"
+#include "ptxsim/utils/arithmetic_utils.h"
+#include "ptxsim/utils/half_utils.h"
 #include "ptxsim/utils/qualifier_utils.h"
 #include "ptxsim/utils/type_utils.h"
-#include "ptxsim/utils/half_utils.h"
-#include "ptxsim/utils/arithmetic_utils.h"
 #include <cassert>
 #include <cstdint>
 #include <cstring>
@@ -19,7 +19,7 @@ void ADDC::process_operation(ThreadContext *context, void *op[3],
 
     // ADDC指令实现带进位的加法：dst = src1 + src2 + carry
     // 从条件码寄存器获取进位值
-    uint8_t carry = context->cc_reg.carry ? 1 : 0;
+    uint8_t carry_val = context->cc_reg.get_carry() ? 1 : 0;
 
     // 检查是否存在.cc修饰符，决定是否更新条件码寄存器
     bool update_cc = hasCCQualifier(qualifiers);
@@ -33,17 +33,23 @@ void ADDC::process_operation(ThreadContext *context, void *op[3],
             std::memcpy(&b, src2, 1);
 
             // 计算带进位的加法
-            r = a + b + carry;
-            
+            r = a + b + carry_val;
+
             // 如果有.cc修饰符，则更新条件码寄存器
             if (update_cc) {
-                context->cc_reg.zero = (r == 0);
-                context->cc_reg.sign = (r < 0);
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::ZERO_INDEX,
+                                           (r == 0));
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::SIGN_INDEX,
+                                           (r < 0));
                 // 对于有符号数，溢出发生在两个相同符号数相加得到相反符号结果时
-                context->cc_reg.overflow = ((a > 0 && b > 0 && r < 0) || (a < 0 && b < 0 && r > 0));
+                context->cc_reg.set_cc_reg(
+                    ConditionCodeRegister::OVERFLOW_INDEX,
+                    ((a > 0 && b > 0 && r < 0) || (a < 0 && b < 0 && r > 0)));
                 // 进位标志在结果大于有符号整数最大值或小于最小值时设置
-                context->cc_reg.carry = ((a > 0 && b > 0 && r < 0) || (a < 0 && b < 0 && r > 0) || 
-                                        (a == 0 && b > 0 && r < 0) || (a > 0 && b == 0 && r < 0));
+                context->cc_reg.set_cc_reg(
+                    ConditionCodeRegister::CARRY_INDEX,
+                    ((a > 0 && b > 0 && r < 0) || (a < 0 && b < 0 && r > 0) ||
+                     (a == 0 && b > 0 && r < 0) || (a > 0 && b == 0 && r < 0)));
             }
 
             std::memcpy(dst, &r, 1);
@@ -54,15 +60,21 @@ void ADDC::process_operation(ThreadContext *context, void *op[3],
             std::memcpy(&a, src1, 2);
             std::memcpy(&b, src2, 2);
 
-            r = a + b + carry;
-            
+            r = a + b + carry_val;
+
             // 如果有.cc修饰符，则更新条件码寄存器
             if (update_cc) {
-                context->cc_reg.zero = (r == 0);
-                context->cc_reg.sign = (r < 0);
-                context->cc_reg.overflow = ((a > 0 && b > 0 && r < 0) || (a < 0 && b < 0 && r > 0));
-                context->cc_reg.carry = ((a > 0 && b > 0 && r < 0) || (a < 0 && b < 0 && r > 0) || 
-                                        (a == 0 && b > 0 && r < 0) || (a > 0 && b == 0 && r < 0));
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::ZERO_INDEX,
+                                           (r == 0));
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::SIGN_INDEX,
+                                           (r < 0));
+                context->cc_reg.set_cc_reg(
+                    ConditionCodeRegister::OVERFLOW_INDEX,
+                    ((a > 0 && b > 0 && r < 0) || (a < 0 && b < 0 && r > 0)));
+                context->cc_reg.set_cc_reg(
+                    ConditionCodeRegister::CARRY_INDEX,
+                    ((a > 0 && b > 0 && r < 0) || (a < 0 && b < 0 && r > 0) ||
+                     (a == 0 && b > 0 && r < 0) || (a > 0 && b == 0 && r < 0)));
             }
 
             std::memcpy(dst, &r, 2);
@@ -73,15 +85,21 @@ void ADDC::process_operation(ThreadContext *context, void *op[3],
             std::memcpy(&a, src1, 4);
             std::memcpy(&b, src2, 4);
 
-            r = a + b + carry;
-            
+            r = a + b + carry_val;
+
             // 如果有.cc修饰符，则更新条件码寄存器
             if (update_cc) {
-                context->cc_reg.zero = (r == 0);
-                context->cc_reg.sign = (r < 0);
-                context->cc_reg.overflow = ((a > 0 && b > 0 && r < 0) || (a < 0 && b < 0 && r > 0));
-                context->cc_reg.carry = ((a > 0 && b > 0 && r < 0) || (a < 0 && b < 0 && r > 0) || 
-                                        (a == 0 && b > 0 && r < 0) || (a > 0 && b == 0 && r < 0));
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::ZERO_INDEX,
+                                           (r == 0));
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::SIGN_INDEX,
+                                           (r < 0));
+                context->cc_reg.set_cc_reg(
+                    ConditionCodeRegister::OVERFLOW_INDEX,
+                    ((a > 0 && b > 0 && r < 0) || (a < 0 && b < 0 && r > 0)));
+                context->cc_reg.set_cc_reg(
+                    ConditionCodeRegister::CARRY_INDEX,
+                    ((a > 0 && b > 0 && r < 0) || (a < 0 && b < 0 && r > 0) ||
+                     (a == 0 && b > 0 && r < 0) || (a > 0 && b == 0 && r < 0)));
             }
 
             std::memcpy(dst, &r, 4);
@@ -92,15 +110,21 @@ void ADDC::process_operation(ThreadContext *context, void *op[3],
             std::memcpy(&a, src1, 8);
             std::memcpy(&b, src2, 8);
 
-            r = a + b + carry;
-            
+            r = a + b + carry_val;
+
             // 如果有.cc修饰符，则更新条件码寄存器
             if (update_cc) {
-                context->cc_reg.zero = (r == 0);
-                context->cc_reg.sign = (r < 0);
-                context->cc_reg.overflow = ((a > 0 && b > 0 && r < 0) || (a < 0 && b < 0 && r > 0));
-                context->cc_reg.carry = ((a > 0 && b > 0 && r < 0) || (a < 0 && b < 0 && r > 0) || 
-                                        (a == 0 && b > 0 && r < 0) || (a > 0 && b == 0 && r < 0));
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::ZERO_INDEX,
+                                           (r == 0));
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::SIGN_INDEX,
+                                           (r < 0));
+                context->cc_reg.set_cc_reg(
+                    ConditionCodeRegister::OVERFLOW_INDEX,
+                    ((a > 0 && b > 0 && r < 0) || (a < 0 && b < 0 && r > 0)));
+                context->cc_reg.set_cc_reg(
+                    ConditionCodeRegister::CARRY_INDEX,
+                    ((a > 0 && b > 0 && r < 0) || (a < 0 && b < 0 && r > 0) ||
+                     (a == 0 && b > 0 && r < 0) || (a > 0 && b == 0 && r < 0)));
             }
 
             std::memcpy(dst, &r, 8);
@@ -118,15 +142,20 @@ void ADDC::process_operation(ThreadContext *context, void *op[3],
             std::memcpy(&b, src2, 1);
 
             // 使用64位临时变量检测溢出
-            uint16_t temp = (uint16_t)a + (uint16_t)b + carry;
+            uint16_t temp = (uint16_t)a + (uint16_t)b + carry_val;
             r = (uint8_t)temp;
-            
+
             // 如果有.cc修饰符，则更新条件码寄存器
             if (update_cc) {
-                context->cc_reg.zero = (r == 0);
-                context->cc_reg.sign = false;  // 无符号数没有符号标志
-                context->cc_reg.overflow = false;  // 无符号数没有溢出标志
-                context->cc_reg.carry = (temp > UINT8_MAX);
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::ZERO_INDEX,
+                                           (r == 0));
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::SIGN_INDEX,
+                                           false); // 无符号数没有符号标志
+                context->cc_reg.set_cc_reg(
+                    ConditionCodeRegister::OVERFLOW_INDEX,
+                    false); // 无符号数没有溢出标志
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::CARRY_INDEX,
+                                           (temp > UINT8_MAX));
             }
 
             std::memcpy(dst, &r, 1);
@@ -137,15 +166,19 @@ void ADDC::process_operation(ThreadContext *context, void *op[3],
             std::memcpy(&a, src1, 2);
             std::memcpy(&b, src2, 2);
 
-            uint32_t temp = (uint32_t)a + (uint32_t)b + carry;
+            uint32_t temp = (uint32_t)a + (uint32_t)b + carry_val;
             r = (uint16_t)temp;
-            
+
             // 如果有.cc修饰符，则更新条件码寄存器
             if (update_cc) {
-                context->cc_reg.zero = (r == 0);
-                context->cc_reg.sign = false;
-                context->cc_reg.overflow = false;
-                context->cc_reg.carry = (temp > UINT16_MAX);
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::ZERO_INDEX,
+                                           (r == 0));
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::SIGN_INDEX,
+                                           false);
+                context->cc_reg.set_cc_reg(
+                    ConditionCodeRegister::OVERFLOW_INDEX, false);
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::CARRY_INDEX,
+                                           (temp > UINT16_MAX));
             }
 
             std::memcpy(dst, &r, 2);
@@ -157,15 +190,19 @@ void ADDC::process_operation(ThreadContext *context, void *op[3],
             std::memcpy(&b, src2, 4);
 
             // 对于32位无符号整数，需要特殊处理进位
-            uint64_t temp = (uint64_t)a + (uint64_t)b + carry;
+            uint64_t temp = (uint64_t)a + (uint64_t)b + carry_val;
             r = (uint32_t)temp;
-            
+
             // 如果有.cc修饰符，则更新条件码寄存器
             if (update_cc) {
-                context->cc_reg.zero = (r == 0);
-                context->cc_reg.sign = false;
-                context->cc_reg.overflow = false;
-                context->cc_reg.carry = (temp > UINT32_MAX);
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::ZERO_INDEX,
+                                           (r == 0));
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::SIGN_INDEX,
+                                           false);
+                context->cc_reg.set_cc_reg(
+                    ConditionCodeRegister::OVERFLOW_INDEX, false);
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::CARRY_INDEX,
+                                           (temp > UINT32_MAX));
             }
 
             std::memcpy(dst, &r, 4);
@@ -177,15 +214,19 @@ void ADDC::process_operation(ThreadContext *context, void *op[3],
             std::memcpy(&b, src2, 8);
 
             // 对于64位无符号整数，需要特殊处理进位
-            __uint128_t temp = (__uint128_t)a + (__uint128_t)b + carry;
+            __uint128_t temp = (__uint128_t)a + (__uint128_t)b + carry_val;
             r = (uint64_t)temp;
-            
+
             // 如果有.cc修饰符，则更新条件码寄存器
             if (update_cc) {
-                context->cc_reg.zero = (r == 0);
-                context->cc_reg.sign = false;
-                context->cc_reg.overflow = false;
-                context->cc_reg.carry = (temp > UINT64_MAX);
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::ZERO_INDEX,
+                                           (r == 0));
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::SIGN_INDEX,
+                                           false);
+                context->cc_reg.set_cc_reg(
+                    ConditionCodeRegister::OVERFLOW_INDEX, false);
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::CARRY_INDEX,
+                                           (temp > UINT64_MAX));
             }
 
             std::memcpy(dst, &r, 8);
@@ -208,7 +249,8 @@ void SUBC::process_operation(ThreadContext *context, void *op[3],
 
     // SUBC指令实现带借位的减法：dst = src1 - src2 - borrow
     // 从条件码寄存器获取借位值
-    uint8_t borrow = context->cc_reg.carry ? 1 : 0;  // SUBC使用carry标志作为borrow
+    uint8_t borrow =
+        context->cc_reg.get_carry() ? 1 : 0; // SUBC使用carry标志作为borrow
 
     // 检查是否存在.cc修饰符，决定是否更新条件码寄存器
     bool update_cc = hasCCQualifier(qualifiers);
@@ -222,15 +264,20 @@ void SUBC::process_operation(ThreadContext *context, void *op[3],
             std::memcpy(&b, src2, 1);
 
             r = a - b - borrow;
-            
+
             // 如果有.cc修饰符，则更新条件码寄存器
             if (update_cc) {
-                context->cc_reg.zero = (r == 0);
-                context->cc_reg.sign = (r < 0);
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::ZERO_INDEX,
+                                           (r == 0));
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::SIGN_INDEX,
+                                           (r < 0));
                 // 溢出发生在正数减负数得负数，或负数减正数得正数的情况
-                context->cc_reg.overflow = ((a > 0 && b < 0 && r < 0) || (a < 0 && b > 0 && r > 0));
+                context->cc_reg.set_cc_reg(
+                    ConditionCodeRegister::OVERFLOW_INDEX,
+                    ((a > 0 && b < 0 && r < 0) || (a < 0 && b > 0 && r > 0)));
                 // 借位标志在a < b + borrow时设置
-                context->cc_reg.carry = (a < b + borrow);
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::CARRY_INDEX,
+                                           (a < b + borrow));
             }
 
             std::memcpy(dst, &r, 1);
@@ -242,13 +289,18 @@ void SUBC::process_operation(ThreadContext *context, void *op[3],
             std::memcpy(&b, src2, 2);
 
             r = a - b - borrow;
-            
+
             // 如果有.cc修饰符，则更新条件码寄存器
             if (update_cc) {
-                context->cc_reg.zero = (r == 0);
-                context->cc_reg.sign = (r < 0);
-                context->cc_reg.overflow = ((a > 0 && b < 0 && r < 0) || (a < 0 && b > 0 && r > 0));
-                context->cc_reg.carry = (a < b + borrow);
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::ZERO_INDEX,
+                                           (r == 0));
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::SIGN_INDEX,
+                                           (r < 0));
+                context->cc_reg.set_cc_reg(
+                    ConditionCodeRegister::OVERFLOW_INDEX,
+                    ((a > 0 && b < 0 && r < 0) || (a < 0 && b > 0 && r > 0)));
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::CARRY_INDEX,
+                                           (a < b + borrow));
             }
 
             std::memcpy(dst, &r, 2);
@@ -260,13 +312,18 @@ void SUBC::process_operation(ThreadContext *context, void *op[3],
             std::memcpy(&b, src2, 4);
 
             r = a - b - borrow;
-            
+
             // 如果有.cc修饰符，则更新条件码寄存器
             if (update_cc) {
-                context->cc_reg.zero = (r == 0);
-                context->cc_reg.sign = (r < 0);
-                context->cc_reg.overflow = ((a > 0 && b < 0 && r < 0) || (a < 0 && b > 0 && r > 0));
-                context->cc_reg.carry = (a < b + borrow);
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::ZERO_INDEX,
+                                           (r == 0));
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::SIGN_INDEX,
+                                           (r < 0));
+                context->cc_reg.set_cc_reg(
+                    ConditionCodeRegister::OVERFLOW_INDEX,
+                    ((a > 0 && b < 0 && r < 0) || (a < 0 && b > 0 && r > 0)));
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::CARRY_INDEX,
+                                           (a < b + borrow));
             }
 
             std::memcpy(dst, &r, 4);
@@ -278,13 +335,18 @@ void SUBC::process_operation(ThreadContext *context, void *op[3],
             std::memcpy(&b, src2, 8);
 
             r = a - b - borrow;
-            
+
             // 如果有.cc修饰符，则更新条件码寄存器
             if (update_cc) {
-                context->cc_reg.zero = (r == 0);
-                context->cc_reg.sign = (r < 0);
-                context->cc_reg.overflow = ((a > 0 && b < 0 && r < 0) || (a < 0 && b > 0 && r > 0));
-                context->cc_reg.carry = (a < b + borrow);
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::ZERO_INDEX,
+                                           (r == 0));
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::SIGN_INDEX,
+                                           (r < 0));
+                context->cc_reg.set_cc_reg(
+                    ConditionCodeRegister::OVERFLOW_INDEX,
+                    ((a > 0 && b < 0 && r < 0) || (a < 0 && b > 0 && r > 0)));
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::CARRY_INDEX,
+                                           (a < b + borrow));
             }
 
             std::memcpy(dst, &r, 8);
@@ -304,13 +366,18 @@ void SUBC::process_operation(ThreadContext *context, void *op[3],
             // 使用更大的类型来检测借位
             int16_t temp = (int16_t)a - (int16_t)b - borrow;
             r = (uint8_t)temp;
-            
+
             // 如果有.cc修饰符，则更新条件码寄存器
             if (update_cc) {
-                context->cc_reg.zero = (r == 0);
-                context->cc_reg.sign = false;
-                context->cc_reg.overflow = false;
-                context->cc_reg.carry = (temp < 0);  // 如果结果为负，说明发生了借位
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::ZERO_INDEX,
+                                           (r == 0));
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::SIGN_INDEX,
+                                           false);
+                context->cc_reg.set_cc_reg(
+                    ConditionCodeRegister::OVERFLOW_INDEX, false);
+                context->cc_reg.set_cc_reg(
+                    ConditionCodeRegister::CARRY_INDEX,
+                    (temp < 0)); // 如果结果为负，说明发生了借位
             }
 
             std::memcpy(dst, &r, 1);
@@ -323,13 +390,17 @@ void SUBC::process_operation(ThreadContext *context, void *op[3],
 
             int32_t temp = (int32_t)a - (int32_t)b - borrow;
             r = (uint16_t)temp;
-            
+
             // 如果有.cc修饰符，则更新条件码寄存器
             if (update_cc) {
-                context->cc_reg.zero = (r == 0);
-                context->cc_reg.sign = false;
-                context->cc_reg.overflow = false;
-                context->cc_reg.carry = (temp < 0);
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::ZERO_INDEX,
+                                           (r == 0));
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::SIGN_INDEX,
+                                           false);
+                context->cc_reg.set_cc_reg(
+                    ConditionCodeRegister::OVERFLOW_INDEX, false);
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::CARRY_INDEX,
+                                           (temp < 0));
             }
 
             std::memcpy(dst, &r, 2);
@@ -342,13 +413,17 @@ void SUBC::process_operation(ThreadContext *context, void *op[3],
 
             int64_t temp = (int64_t)a - (int64_t)b - borrow;
             r = (uint32_t)temp;
-            
+
             // 如果有.cc修饰符，则更新条件码寄存器
             if (update_cc) {
-                context->cc_reg.zero = (r == 0);
-                context->cc_reg.sign = false;
-                context->cc_reg.overflow = false;
-                context->cc_reg.carry = (temp < 0);
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::ZERO_INDEX,
+                                           (r == 0));
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::SIGN_INDEX,
+                                           false);
+                context->cc_reg.set_cc_reg(
+                    ConditionCodeRegister::OVERFLOW_INDEX, false);
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::CARRY_INDEX,
+                                           (temp < 0));
             }
 
             std::memcpy(dst, &r, 4);
@@ -362,13 +437,17 @@ void SUBC::process_operation(ThreadContext *context, void *op[3],
             // 使用128位类型来检测借位
             __int128_t temp = (__int128_t)a - (__int128_t)b - borrow;
             r = (uint64_t)temp;
-            
+
             // 如果有.cc修饰符，则更新条件码寄存器
             if (update_cc) {
-                context->cc_reg.zero = (r == 0);
-                context->cc_reg.sign = false;
-                context->cc_reg.overflow = false;
-                context->cc_reg.carry = (temp < 0);
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::ZERO_INDEX,
+                                           (r == 0));
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::SIGN_INDEX,
+                                           false);
+                context->cc_reg.set_cc_reg(
+                    ConditionCodeRegister::OVERFLOW_INDEX, false);
+                context->cc_reg.set_cc_reg(ConditionCodeRegister::CARRY_INDEX,
+                                           (temp < 0));
             }
 
             std::memcpy(dst, &r, 8);

@@ -1,10 +1,15 @@
 #ifndef WARP_CONTEXT_H
 #define WARP_CONTEXT_H
 
-#include "ptxsim/thread_context.h"
 #include "ptx_ir/statement_context.h"
+#include "ptxsim/execution_types.h"
+#include "ptxsim/thread_context.h"
+#include "ptxsim/common_types.h"  // 包含通用类型定义
 #include <vector>
 #include <array>
+#include <memory>
+
+class PtxInterpreter;  // 前向声明
 
 class WarpContext {
 public:

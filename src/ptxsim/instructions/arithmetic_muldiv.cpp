@@ -161,10 +161,10 @@ void MUL::process_operation(ThreadContext *context, void *op[3],
         // 如果有.cc修饰符，更新条件码寄存器
         if (has_cc) {
             uint64_t result = full;
-            context->cc_reg.zero = (result == 0);
-            context->cc_reg.sign = false;  // 乘法结果的符号标志通常不使用
-            context->cc_reg.overflow = false;  // 对于普通乘法，溢出处理比较复杂，通常不设置
-            context->cc_reg.carry = false;  // 乘法通常不设置进位标志
+            context->cc_reg.set_cc_reg(ConditionCodeRegister::ZERO_INDEX, (result == 0));
+            context->cc_reg.set_cc_reg(ConditionCodeRegister::SIGN_INDEX, false);  // 乘法结果的符号标志通常不使用
+            context->cc_reg.set_cc_reg(ConditionCodeRegister::OVERFLOW_INDEX, false);  // 对于普通乘法，溢出处理比较复杂，通常不设置
+            context->cc_reg.set_cc_reg(ConditionCodeRegister::CARRY_INDEX, false);  // 乘法通常不设置进位标志
         }
     }
 }
@@ -390,10 +390,10 @@ void MAD::process_operation(ThreadContext *context, void *op[4],
         
         // 如果有.cc修饰符，更新条件码寄存器
         if (has_cc) {
-            context->cc_reg.zero = (result == 0);
-            context->cc_reg.sign = false;  // 乘加结果的符号标志通常不使用
-            context->cc_reg.overflow = false;  // 对于普通乘加，溢出处理比较复杂，通常不设置
-            context->cc_reg.carry = false;  // 乘加通常不设置进位标志
+            context->cc_reg.set_cc_reg(ConditionCodeRegister::ZERO_INDEX, (result == 0));
+            context->cc_reg.set_cc_reg(ConditionCodeRegister::SIGN_INDEX, false);  // 乘加结果的符号标志通常不使用
+            context->cc_reg.set_cc_reg(ConditionCodeRegister::OVERFLOW_INDEX, false);  // 对于普通乘加，溢出处理比较复杂，通常不设置
+            context->cc_reg.set_cc_reg(ConditionCodeRegister::CARRY_INDEX, false);  // 乘加通常不设置进位标志
         }
     }
 }

@@ -15,11 +15,13 @@ void test_cc_register() {
     // 测试1: ADDC指令的进位功能
     std::cout << "Test 1: ADDC with carry flag" << std::endl;
 
-    // 设置初始条件码寄存器状态
-    context.cc_reg.carry = true; // 设置进位标志
-    context.cc_reg.zero = false;
-    context.cc_reg.sign = false;
-    context.cc_reg.overflow = false;
+    // 设置初始条件码寄存器状态 - 使用专门的setter方法
+    ConditionCodeRegister new_cc_reg = context.get_condition_codes();
+    new_cc_reg.set_cc_reg(ConditionCodeRegister::CARRY_INDEX, true); // 设置进位标志
+    new_cc_reg.set_cc_reg(ConditionCodeRegister::ZERO_INDEX, false);
+    new_cc_reg.set_cc_reg(ConditionCodeRegister::SIGN_INDEX, false);
+    new_cc_reg.set_cc_reg(ConditionCodeRegister::OVERFLOW_INDEX, false);
+    context.set_condition_codes(new_cc_reg);
 
     // 模拟执行ADDC指令 (255 + 1 + 1 = 257, 超过uint8_t范围，应该产生进位)
     uint8_t src1 = 255;
@@ -37,15 +39,15 @@ void test_cc_register() {
     addc_handler.process_operation(&context, operands, qualifiers);
 
     std::cout << "Result: " << (int)dst << std::endl;
-    std::cout << "Carry flag after ADDC: " << context.cc_reg.carry << std::endl;
-    std::cout << "Zero flag after ADDC: " << context.cc_reg.zero << std::endl;
-    std::cout << "Sign flag after ADDC: " << context.cc_reg.sign << std::endl;
-    std::cout << "Overflow flag after ADDC: " << context.cc_reg.overflow
+    std::cout << "Carry flag after ADDC: " << context.get_condition_codes().get_carry() << std::endl;
+    std::cout << "Zero flag after ADDC: " << context.get_condition_codes().get_zero() << std::endl;
+    std::cout << "Sign flag after ADDC: " << context.get_condition_codes().get_sign() << std::endl;
+    std::cout << "Overflow flag after ADDC: " << context.get_condition_codes().get_overflow()
               << std::endl;
 
     // 验证结果
     assert(dst == 1);                     // 255 + 1 + 1 = 257, 低8位是1
-    assert(context.cc_reg.carry == true); // 应该设置进位标志
+    assert(context.get_condition_codes().get_carry() == true); // 应该设置进位标志
 
     std::cout << "Test 1 passed!" << std::endl;
 
@@ -53,7 +55,9 @@ void test_cc_register() {
     std::cout << "\nTest 2: SUBC with borrow flag" << std::endl;
 
     // 重置条件码寄存器
-    context.cc_reg.carry = true; // 作为借位标志
+    new_cc_reg = context.get_condition_codes();
+    new_cc_reg.set_cc_reg(ConditionCodeRegister::CARRY_INDEX, true); // 作为借位标志
+    context.set_condition_codes(new_cc_reg);
 
     uint32_t src3 = 10;
     uint32_t src4 = 15;
@@ -70,11 +74,11 @@ void test_cc_register() {
     subc_handler.process_operation(&context, operands2, qualifiers2);
 
     std::cout << "Result: " << dst2 << std::endl;
-    std::cout << "Carry flag after SUBC: " << context.cc_reg.carry << std::endl;
+    std::cout << "Carry flag after SUBC: " << context.get_condition_codes().get_carry() << std::endl;
 
     // 验证结果: 10 - 15 - 1 = -6, 由于是无符号数，结果是很大的正数
     // 且由于被减数小于减数+借位，应该设置借位标志（即carry标志）
-    assert(context.cc_reg.carry == true); // 10 < 15+1，应设置借位标志
+    assert(context.get_condition_codes().get_carry() == true); // 10 < 15+1，应设置借位标志
 
     std::cout << "Test 2 passed!" << std::endl;
 
@@ -84,8 +88,10 @@ void test_cc_register() {
         << std::endl;
 
     // 设置初始状态
-    context.cc_reg.carry = true; // 设置为true
-    bool initial_carry = context.cc_reg.carry;
+    new_cc_reg = context.get_condition_codes();
+    new_cc_reg.set_cc_reg(ConditionCodeRegister::CARRY_INDEX, true); // 设置为true
+    context.set_condition_codes(new_cc_reg);
+    bool initial_carry = context.get_condition_codes().get_carry();
 
     uint32_t src5 = 10;
     uint32_t src6 = 20;
@@ -98,15 +104,15 @@ void test_cc_register() {
     qualifiers3.push_back(Qualifier::Q_U32); // 不添加.cc修饰符
 
     // 记录执行前的条件码寄存器状态
-    auto old_cc = context.cc_reg;
+    auto old_cc = context.get_condition_codes();
 
     addc_handler.process_operation(&context, operands3, qualifiers3);
 
     // 检查条件码寄存器是否保持不变
-    assert(context.cc_reg.carry == old_cc.carry);
-    assert(context.cc_reg.zero == old_cc.zero);
-    assert(context.cc_reg.sign == old_cc.sign);
-    assert(context.cc_reg.overflow == old_cc.overflow);
+    assert(context.get_condition_codes().get_carry() == old_cc.get_carry());
+    assert(context.get_condition_codes().get_zero() == old_cc.get_zero());
+    assert(context.get_condition_codes().get_sign() == old_cc.get_sign());
+    assert(context.get_condition_codes().get_overflow() == old_cc.get_overflow());
 
     std::cout << "Test 3 passed!" << std::endl;
 

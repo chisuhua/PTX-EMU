@@ -56,6 +56,7 @@ add_subdirectory(${ANTLR4_RUNTIME_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/antlr4
 # 包含ANTLR运行时头文件
 include_directories(${ANTLR4_INCLUDE_DIR})
 include_directories(${ANTLR4_GENERATED_SRC_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/json)
 
 # 设置要链接的ANTLR4库
 set(ANTLR4_LIBRARY antlr4_shared)

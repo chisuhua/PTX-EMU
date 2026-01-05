@@ -1,16 +1,16 @@
 #ifndef SM_CONTEXT_H
 #define SM_CONTEXT_H
 
-#include "cta_context.h"
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/execution_types.h"
-#include "ptxsim/interpreter.h"
-#include "thread_context.h"
-#include "warp_context.h"
-#include "warp_scheduler.h"
+#include "ptxsim/cta_context.h"
+#include "ptxsim/warp_scheduler.h"
+#include "ptxsim/common_types.h"  // 包含通用类型定义
+#include <vector>
 #include <map>
 #include <memory>
-#include <vector>
+
+class PtxInterpreter;  // 前向声明
 
 class CTAContext;
 
@@ -22,7 +22,7 @@ public:
     // 初始化SM上下文
     void init(Dim3 &gridDim, Dim3 &blockDim,
               std::vector<StatementContext> &statements,
-              std::map<std::string, PtxInterpreter::Symtable *> &name2Sym,
+              std::map<std::string, Symtable *> &name2Sym,
               std::map<std::string, int> &label2pc);
 
     // 添加线程块到SM
@@ -98,7 +98,7 @@ private:
     std::vector<std::unique_ptr<CTAContext>> managed_blocks;
 
     // 共享内存管理
-    std::map<std::string, PtxInterpreter::Symtable *> shared_memory;
+    std::map<std::string, Symtable *> shared_memory;
 };
 
 #endif // SM_CONTEXT_H
