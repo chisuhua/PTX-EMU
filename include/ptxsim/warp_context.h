@@ -14,7 +14,7 @@ public:
     virtual ~WarpContext() = default;
     
     // 添加线程到warp
-    void add_thread(ThreadContext* thread, int lane_id);
+    void add_thread(std::unique_ptr<ThreadContext> thread, int lane_id);
     
     // 执行warp的一条指令
     void execute_warp_instruction(StatementContext& stmt);
@@ -22,7 +22,7 @@ public:
     // 获取warp中的线程
     ThreadContext* get_thread(int lane_id) {
         if (lane_id >= 0 && lane_id < threads.size()) {
-            return threads[lane_id];
+            return threads[lane_id].get();
         }
         return nullptr;
     }
@@ -83,7 +83,7 @@ public:
     void set_active_mask(uint32_t mask);
 
 private:
-    std::vector<ThreadContext*> threads;  // warp中的线程指针
+    std::vector<std::unique_ptr<ThreadContext>> threads;  // warp中的线程unique_ptr
     std::array<bool, WARP_SIZE> active_mask;  // 活跃掩码
     std::array<int, WARP_SIZE> warp_thread_ids;  // 对应的线程ID
     int active_count;  // 活跃线程数量

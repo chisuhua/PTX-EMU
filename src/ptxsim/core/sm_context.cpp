@@ -46,8 +46,9 @@ bool SMContext::add_block(CTAContext* block) {
         }
     }
     
-    // 添加块到SM的跟踪列表
-    blocks.push_back(block);
+    // 将块添加到管理列表中（转移所有权）
+    std::unique_ptr<CTAContext> managed_block(block);
+    managed_blocks.push_back(std::move(managed_block));
     
     current_thread_count += block_threads;
     
@@ -96,9 +97,13 @@ EXE_STATE SMContext::exe_once() {
     for (const auto& warp : warps) {
         for (int lane = 0; lane < WarpContext::WARP_SIZE; lane++) {
             ThreadContext* thread = warp->get_thread(lane);
-            if (thread && !thread->is_at_barrier()) {
-                all_at_barrier = false;
-                break;
+            if (thread) {
+                // 在检查线程状态前，先确保线程的PC是有效的
+                // 如果线程已退出，则不需要检查其他状态
+                if (!thread->is_at_barrier() && !thread->is_exited()) {
+                    all_at_barrier = false;
+                    break;
+                }
             }
         }
         if (!all_at_barrier) break;

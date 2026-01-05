@@ -21,14 +21,14 @@ WarpContext::WarpContext()
     active_count = WARP_SIZE;
 }
 
-void WarpContext::add_thread(ThreadContext* thread, int lane_id) {
+void WarpContext::add_thread(std::unique_ptr<ThreadContext> thread, int lane_id) {
     if (lane_id >= 0 && lane_id < WARP_SIZE) {
         threads.resize(std::max(threads.size(), static_cast<size_t>(lane_id + 1)));
-        threads[lane_id] = thread;
-        if (thread) {
-            warp_thread_ids[lane_id] = thread->ThreadIdx.x + 
-                                       thread->ThreadIdx.y * thread->BlockDim.x + 
-                                       thread->ThreadIdx.z * thread->BlockDim.x * thread->BlockDim.y;
+        threads[lane_id] = std::move(thread);
+        if (threads[lane_id]) {
+            warp_thread_ids[lane_id] = threads[lane_id]->ThreadIdx.x + 
+                                       threads[lane_id]->ThreadIdx.y * threads[lane_id]->BlockDim.x + 
+                                       threads[lane_id]->ThreadIdx.z * threads[lane_id]->BlockDim.x * threads[lane_id]->BlockDim.y;
         } else {
             warp_thread_ids[lane_id] = -1;
         }
@@ -39,7 +39,7 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt) {
     // 根据活跃掩码执行指令
     for (int i = 0; i < WARP_SIZE; i++) {
         if (is_lane_active(i) && i < threads.size() && threads[i] != nullptr) {
-            ThreadContext* thread = threads[i];
+            ThreadContext* thread = threads[i].get();
             
             // 设置线程的PC为当前warp的PC或线程自己的PC（用于处理分歧）
             if (!pc_stacks[i].empty()) {

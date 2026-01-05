@@ -22,7 +22,6 @@ void INSTR_BASE::execute(ThreadContext *context, StatementContext &stmt) {
             return;
         }
         if (stmt.state == InstructionState::COMMIT) {
-            context->pc = context->next_pc;
             stmt.state = InstructionState::READY;
         }
     }

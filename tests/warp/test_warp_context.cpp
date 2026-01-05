@@ -44,8 +44,7 @@ void test_warp_thread_addition() {
 
     WarpContext warp;
 
-    // 创建一个简单的ThreadContext
-    ThreadContext thread;
+    // 创建一个简单的ThreadContext，使用unique_ptr
     Dim3 blockIdx = {0, 0, 0};
     Dim3 threadIdx = {0, 0, 0};
     Dim3 gridDim = {1, 1, 1};
@@ -56,11 +55,12 @@ void test_warp_thread_addition() {
     std::map<std::string, PtxInterpreter::Symtable *> name2Sym;
     std::map<std::string, int> label2pc;
 
-    thread.init(blockIdx, threadIdx, gridDim, blockDim, statements, name2Share,
+    auto thread = std::make_unique<ThreadContext>();
+    thread->init(blockIdx, threadIdx, gridDim, blockDim, statements, name2Share,
                 name2Sym, label2pc);
 
-    // 添加线程到warp
-    warp.add_thread(&thread, 0);
+    // 添加线程到warp，使用std::move传递unique_ptr的所有权
+    warp.add_thread(std::move(thread), 0);
 
     assert(warp.get_warp_thread_id(0) == 0); // 验证线程ID被正确设置
 

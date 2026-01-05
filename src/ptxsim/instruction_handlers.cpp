@@ -21,14 +21,14 @@
             PTX_DEBUG_EMU("Registered register: %s with size %zu",             \
                           reg_name.c_str(), reg_size);                         \
         }                                                                      \
-        context->pc++;                                                         \
+        context->next_pc = context->pc + 1;                                    \
         return;                                                                \
     }
 
 #define IMPLEMENT_OPERAND_CONST(Name)                                          \
     void Name::execute(ThreadContext *context, StatementContext &stmt) {       \
         assert(false);                                                         \
-        context->pc++;                                                         \
+        context->next_pc = context->pc + 1;                                    \
         return; /* Return true to satisfy bool return type */                  \
     }
 
@@ -44,34 +44,34 @@
         memset((void *)s->val, 0, s->byteNum);                                 \
         (*context->name2Share)[s->name] = s;                                   \
         context->name2Sym[s->name] = s;                                        \
-        context->pc++;                                                         \
+        context->next_pc = context->pc + 1;                                    \
         return;                                                                \
     }
 
 // dollar TODO
 #define IMPLEMENT_SIMPLE_NAME(Name)                                            \
     void Name::execute(ThreadContext *context, StatementContext &stmt) {       \
-        context->pc++;                                                         \
+        context->next_pc = context->pc + 1;                                    \
         return;                                                                \
     }
 
 // PRAGMA TODO
 #define IMPLEMENT_SIMPLE_STRING(Name)                                          \
     void Name::execute(ThreadContext *context, StatementContext &stmt) {       \
-        context->pc++;                                                         \
+        context->next_pc = context->pc + 1;                                    \
         return;                                                                \
     }
 
 // RET TODO
 #define IMPLEMENT_VOID_INSTR(Name)                                             \
     void Name::execute(ThreadContext *context, StatementContext &stmt) {       \
-        context->pc++;                                                         \
+        context->next_pc = context->pc + 1;                                    \
         return;                                                                \
     }
 
 #define IMPLEMENT_PREDICATE_PREFIX(Name)                                       \
     void Name::execute(ThreadContext *context, StatementContext &stmt) {       \
-        context->pc++;                                                         \
+        context->next_pc = context->pc + 1;                                    \
         return;                                                                \
     }
 

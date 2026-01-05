@@ -42,9 +42,9 @@ void CTAContext::init(
         warps.push_back(std::move(warp));
     }
     
-    // 创建线程上下文数组，用于内存管理
-    std::vector<std::unique_ptr<ThreadContext>> threads;
-    threads.reserve(threadNum);
+    // 创建线程池，管理线程对象的生命周期
+    thread_pool.clear();
+    thread_pool.reserve(threadNum);
     
     // 创建所有线程上下文
     for (int i = 0; i < threadNum; i++) {
@@ -56,7 +56,7 @@ void CTAContext::init(
         auto thread = std::make_unique<ThreadContext>();
         thread->init(blockIdx, threadIdx, GridDim, BlockDim, statements,
                      name2Share, name2Sym, label2pc);
-        threads.push_back(std::move(thread));
+        thread_pool.push_back(std::move(thread));
     }
     
     // 分配线程到warp
@@ -64,13 +64,12 @@ void CTAContext::init(
         int warpId = i / WarpContext::WARP_SIZE;
         int laneId = i % WarpContext::WARP_SIZE;
         
-        // 添加到对应的warp（使用raw pointer，warp不负责内存管理）
-        warps[warpId]->add_thread(threads[i].get(), laneId);
+        // 将线程所有权转移到对应的warp
+        warps[warpId]->add_thread(std::move(thread_pool[i]), laneId);
     }
     
-    // 保存线程上下文以便管理内存
-    // 这里我们需要一个方式来跟踪所有线程的退出和屏障状态
-    // 为简单起见，我们直接在exe_once中计算
+    // 清空线程池，因为所有权已转移给warps
+    thread_pool.clear();
 }
 
 EXE_STATE CTAContext::exe_once() {
@@ -126,6 +125,5 @@ std::vector<std::unique_ptr<WarpContext>> CTAContext::release_warps() {
 }
 
 CTAContext::~CTAContext() {
-    // warps会自动清理
-    // 线程内存由warp中的unique_ptr管理，会自动释放
+    // warps和thread_pool会自动清理
 }

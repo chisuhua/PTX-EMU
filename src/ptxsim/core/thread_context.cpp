@@ -44,6 +44,7 @@ void ThreadContext::init(
     this->next_pc = 0;
     this->state = RUN;
     operand_collected.resize(4); // max operands perf instruction reserved is 4
+    is_valid_pc();
 
     // 重新初始化RegisterManager（清空所有寄存器）
     register_manager = RegisterManager();
@@ -82,7 +83,7 @@ void ThreadContext::_execute_once() {
     // }
 
     // 开始性能计时
-    PTX_PERF_TIMER("instruction_execution");
+    // PTX_PERF_TIMER("instruction_execution");
 
     // 跟踪指令
     StatementContext &statement = (*statements)[pc];

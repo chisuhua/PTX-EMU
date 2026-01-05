@@ -9,6 +9,7 @@
 #include <cassert>
 #include <cstring>
 #include <map>
+#include <memory>
 
 void PtxInterpreter::launchPtxInterpreter(PtxContext &ptx, std::string &kernel,
                                           void **args, Dim3 &gridDim,
@@ -72,15 +73,14 @@ void PtxInterpreter::funcInterpreter(
         blockIdx.y = i % (gridDim.x * gridDim.y) / (gridDim.x);
         blockIdx.x = i % (gridDim.x * gridDim.y) % (gridDim.x);
 
-        // 创建CTAContext
-        CTAContext *cta = new CTAContext();
+        // 创建CTAContext并转移所有权
+        auto cta = std::make_unique<CTAContext>();
         cta->init(gridDim, blockDim, blockIdx, kernelContext->kernelStatements,
                   name2Sym, label2pc);
 
-        // 将CTA添加到SM
-        if (!sm.add_block(cta)) {
+        // 将CTA添加到SM（转移所有权）
+        if (!sm.add_block(cta.release())) {
             // 如果SM资源不足，可以创建另一个SM或等待
-            delete cta;
             break; // 简化处理：如果当前SM无法容纳更多块，则停止
         }
     }

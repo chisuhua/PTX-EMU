@@ -94,7 +94,8 @@ private:
 
     // 网格和块维度信息
     Dim3 gridDim;
-    std::vector<CTAContext *> blocks;
+    // 使用unique_ptr管理CTAContext的生命周期
+    std::vector<std::unique_ptr<CTAContext>> managed_blocks;
 
     // 共享内存管理
     std::map<std::string, PtxInterpreter::Symtable *> shared_memory;
