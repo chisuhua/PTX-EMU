@@ -1,0 +1,111 @@
+{
+  "gpu_arch": "Hopper",
+  "name": "NVIDIA H100",
+  "num_sms": 132,
+  "max_warps_per_sm": 72,
+  "max_threads_per_sm": 2304,
+  "shared_mem_size_per_sm": 245760,
+  "registers_per_sm": 65536,
+  "max_blocks_per_sm": 32,
+  "warp_size": 32,
+  "memory_bandwidth_gbps": 3350,
+  "clock_rate_khz": 1830000,
+  "compute_units": {
+    "cuda_cores": 18432,
+    "tensor_cores": 576,
+    "rt_cores": 132
+  },
+  "tensor_cores": {
+    "count": 576,
+    "supported_types": ["FP64", "FP32", "TF32", "FP16", "BF16", "FP8", "INT8"],
+    "matrix_size": [8, 8, 4],
+    "execution_units": [
+      {
+        "type": "wmma",
+        "name": "wmma.884.fp8",
+        "operation": "A[8x4] * B[4x8] + C[8x8] = D[8x8]",
+        "precision": "FP8"
+      }
+    ]
+  },
+  "memory_system": {
+    "global_memory": {
+      "capacity": 85899345920,
+      "bandwidth_gbps": 3350,
+      "type": "HBM3",
+      "channels": 12
+    },
+    "l2_cache": {
+      "capacity": 52428800,
+      "line_size": 32,
+      "associativity": 32,
+      "bandwidth_gbps": 4000
+    },
+    "l1_cache": {
+      "capacity_per_sm": 196608,
+      "line_size": 32,
+      "associativity": 24
+    },
+    "shared_memory": {
+      "capacity_per_sm": 245760,
+      "banks": 32,
+      "bank_width_bits": 32
+    },
+    "constant_memory": {
+      "capacity": 65536
+    },
+    "texture_memory": {
+      "capacity": 134217728,
+      "cache_size": 12288
+    },
+    "memory_hierarchy": {
+      "global_to_l2_bandwidth_ratio": 1.0,
+      "l2_to_l1_bandwidth_ratio": 4.0,
+      "l1_to_sm_bandwidth_ratio": 8.0
+    }
+  },
+  "interconnect": {
+    "nvlink": {
+      "version": "4.0",
+      "links": 18,
+      "bandwidth_gbps": {
+        "unidirectional": 50,
+        "bidirectional": 100
+      },
+      "protocols": ["hs", "ls"]
+    },
+    "pcie": {
+      "version": "5.0",
+      "lanes": 16,
+      "bandwidth_gbps": {
+        "unidirectional": 32,
+        "bidirectional": 64
+      }
+    },
+    "on_chip_interconnect": {
+      "type": "ring",
+      "bandwidth_gbps": 2500,
+      "latency_ns": 0.8,
+      "endpoints": [
+        "sm",
+        "l2_cache",
+        "memory_controllers",
+        "nvlink_controllers",
+        "pcie_controller",
+        "transformer_engine"
+      ]
+    },
+    "fabric_interconnect": {
+      "name": "HFC",
+      "bandwidth_gbps": 7000,
+      "latency_ns": 4,
+      "max_connections": 512
+    }
+  },
+  "special_features": [
+    "Transformer Engine",
+    "DPX instructions",
+    "FP8 support",
+    "HBM3 memory"
+  ]
+}

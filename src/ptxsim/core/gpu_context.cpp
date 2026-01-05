@@ -2,8 +2,10 @@
 #include <iostream>
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <thread>
+#include <future>
 
-GPUContext::GPUContext(const std::string& config_path) : gpu_state(RUN) {
+GPUContext::GPUContext(const std::string& config_path) : gpu_state(RUN), statements(nullptr), name2Sym(nullptr), label2pc(nullptr) {
     if (!config_path.empty()) {
         load_config(config_path);
     } else {
@@ -87,10 +89,16 @@ void GPUContext::init(Dim3& gridDim, Dim3& blockDim,
     std::cout << "Initialized GPU with " << config.num_sms << " SMs" << std::endl;
 }
 
-bool GPUContext::launch_kernel(void** args, Dim3& gridDim, Dim3& blockDim) {
+bool GPUContext::execute_kernel_internal(void** args, Dim3& gridDim, Dim3& blockDim,
+                                         std::vector<StatementContext>& statements,
+                                         std::map<std::string, PtxInterpreter::Symtable*>& name2Sym,
+                                         std::map<std::string, int>& label2pc) {
     // 计算总的CTA数量
     int ctaNum = gridDim.x * gridDim.y * gridDim.z;
 
+    // 清理之前的CTA
+    active_ctas.clear();
+    
     // 为每个CTA创建上下文并尝试添加到SM
     for (int i = 0; i < ctaNum; i++) {
         Dim3 blockIdx;
@@ -100,15 +108,14 @@ bool GPUContext::launch_kernel(void** args, Dim3& gridDim, Dim3& blockDim) {
 
         // 创建CTAContext
         auto cta = std::make_unique<CTAContext>();
-        cta->init(gridDim, blockDim, blockIdx, *this->statements,
-                  *this->name2Sym, *this->label2pc);
+        cta->init(gridDim, blockDim, blockIdx, statements, name2Sym, label2pc);
 
         // 尝试将CTA添加到一个可用的SM
         bool added = false;
         for (auto& sm : sms) {
             if (sm->add_block(cta.get())) {
-                // 如果添加成功，转移CTA的所有权给SM
-                // 这里我们只是将指针传递给SM，实际所有权转移在add_block中完成
+                // 如果添加成功，将CTA加入活跃列表
+                active_ctas.push_back(std::move(cta));
                 added = true;
                 break;
             }
@@ -121,7 +128,45 @@ bool GPUContext::launch_kernel(void** args, Dim3& gridDim, Dim3& blockDim) {
     }
 
     std::cout << "Launched kernel with " << ctaNum << " CTAs" << std::endl;
+    
+    // 执行直到所有CTA完成
+    while (get_state() == RUN) {
+        exe_once();
+    }
+    
     return true;
+}
+
+bool GPUContext::launch_kernel(void** args, Dim3& gridDim, Dim3& blockDim,
+                               std::vector<StatementContext>& statements,
+                               std::map<std::string, PtxInterpreter::Symtable*>& name2Sym,
+                               std::map<std::string, int>& label2pc) {
+    return execute_kernel_internal(args, gridDim, blockDim, statements, name2Sym, label2pc);
+}
+
+std::future<EXE_STATE> GPUContext::launch_kernel_async(void** args, Dim3& gridDim, Dim3& blockDim,
+                                                        std::vector<StatementContext>& statements,
+                                                        std::map<std::string, PtxInterpreter::Symtable*>& name2Sym,
+                                                        std::map<std::string, int>& label2pc) {
+    // 创建一个promise和future
+    auto promise = std::make_shared<std::promise<EXE_STATE>>();
+    auto future = promise->get_future();
+    
+    // 在新线程中执行kernel
+    std::thread([this, promise, args, gridDim, blockDim, &statements, &name2Sym, &label2pc]() {
+        try {
+            bool success = execute_kernel_internal(args, gridDim, blockDim, statements, name2Sym, label2pc);
+            if (success) {
+                promise->set_value(get_state());
+            } else {
+                promise->set_value(EXIT);
+            }
+        } catch (...) {
+            promise->set_value(EXIT);
+        }
+    }).detach();
+    
+    return future;
 }
 
 EXE_STATE GPUContext::exe_once() {
@@ -151,4 +196,9 @@ EXE_STATE GPUContext::exe_once() {
     }
 
     return gpu_state;
+}
+
+bool GPUContext::has_pending_tasks() const {
+    std::lock_guard<std::mutex> lock(queue_mutex);
+    return !task_queue.empty();
 }

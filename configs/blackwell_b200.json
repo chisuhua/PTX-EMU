@@ -1,0 +1,112 @@
+{
+  "gpu_arch": "Blackwell",
+  "name": "NVIDIA B200",
+  "num_sms": 144,
+  "max_warps_per_sm": 80,
+  "max_threads_per_sm": 2560,
+  "shared_mem_size_per_sm": 245760,
+  "registers_per_sm": 65536,
+  "max_blocks_per_sm": 32,
+  "warp_size": 32,
+  "memory_bandwidth_gbps": 4800,
+  "clock_rate_khz": 2000000,
+  "compute_units": {
+    "cuda_cores": 20480,
+    "tensor_cores": 640,
+    "rt_cores": 144
+  },
+  "tensor_cores": {
+    "count": 640,
+    "supported_types": ["FP64", "FP32", "TF32", "FP16", "BF16", "FP8", "FP6", "FP4", "INT8"],
+    "matrix_size": [8, 8, 4],
+    "execution_units": [
+      {
+        "type": "wmma",
+        "name": "wmma.884.fp4",
+        "operation": "A[8x4] * B[4x8] + C[8x8] = D[8x8]",
+        "precision": "FP4"
+      }
+    ]
+  },
+  "memory_system": {
+    "global_memory": {
+      "capacity": 128838520832,
+      "bandwidth_gbps": 4800,
+      "type": "HBM3E",
+      "channels": 18
+    },
+    "l2_cache": {
+      "capacity": 104857600,
+      "line_size": 32,
+      "associativity": 32,
+      "bandwidth_gbps": 6000
+    },
+    "l1_cache": {
+      "capacity_per_sm": 262144,
+      "line_size": 32,
+      "associativity": 32
+    },
+    "shared_memory": {
+      "capacity_per_sm": 245760,
+      "banks": 32,
+      "bank_width_bits": 32
+    },
+    "constant_memory": {
+      "capacity": 65536
+    },
+    "texture_memory": {
+      "capacity": 134217728,
+      "cache_size": 12288
+    },
+    "memory_hierarchy": {
+      "global_to_l2_bandwidth_ratio": 1.0,
+      "l2_to_l1_bandwidth_ratio": 4.0,
+      "l1_to_sm_bandwidth_ratio": 8.0
+    }
+  },
+  "interconnect": {
+    "nvlink": {
+      "version": "5.0",
+      "links": 24,
+      "bandwidth_gbps": {
+        "unidirectional": 60,
+        "bidirectional": 120
+      },
+      "protocols": ["hs", "ls"]
+    },
+    "pcie": {
+      "version": "5.0",
+      "lanes": 16,
+      "bandwidth_gbps": {
+        "unidirectional": 32,
+        "bidirectional": 64
+      }
+    },
+    "on_chip_interconnect": {
+      "type": "mesh",
+      "bandwidth_gbps": 3000,
+      "latency_ns": 0.6,
+      "endpoints": [
+        "sm",
+        "l2_cache",
+        "memory_controllers",
+        "nvlink_controllers",
+        "pcie_controller",
+        "transformer_engine_v2",
+        "die_interconnect"
+      ]
+    },
+    "fabric_interconnect": {
+      "name": "BFC",
+      "bandwidth_gbps": 9000,
+      "latency_ns": 3,
+      "max_connections": 512
+    }
+  },
+  "special_features": [
+    "Transformer Engine v2",
+    "FP4 and FP6 support",
+    "Transformer Die-to-Die interconnect",
+    "Advanced sparsity support"
+  ]
+}

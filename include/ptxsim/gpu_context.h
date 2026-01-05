@@ -11,6 +11,10 @@
 #include <memory>
 #include <map>
 #include <string>
+#include <queue>
+#include <future>
+#include <mutex>
+#include <condition_variable>
 
 // GPU硬件配置结构体
 struct GPUConfig {
@@ -34,6 +38,23 @@ struct GPUConfig {
     {}
 };
 
+// 内核启动请求结构体
+struct KernelLaunchRequest {
+    void** args;
+    Dim3 gridDim;
+    Dim3 blockDim;
+    std::vector<StatementContext>* statements;
+    std::map<std::string, PtxInterpreter::Symtable*>* name2Sym;
+    std::map<std::string, int>* label2pc;
+    
+    KernelLaunchRequest(void** _args, Dim3& _gridDim, Dim3& _blockDim,
+                        std::vector<StatementContext>* _stmts,
+                        std::map<std::string, PtxInterpreter::Symtable*>* _name2Sym,
+                        std::map<std::string, int>* _label2pc)
+        : args(_args), gridDim(_gridDim), blockDim(_blockDim),
+          statements(_stmts), name2Sym(_name2Sym), label2pc(_label2pc) {}
+};
+
 class GPUContext {
 public:
     explicit GPUContext(const std::string& config_path = "");
@@ -48,8 +69,17 @@ public:
               std::map<std::string, PtxInterpreter::Symtable*>& name2Sym,
               std::map<std::string, int>& label2pc);
     
-    // 添加kernel执行任务
-    bool launch_kernel(void** args, Dim3& gridDim, Dim3& blockDim);
+    // 同步执行kernel
+    bool launch_kernel(void** args, Dim3& gridDim, Dim3& blockDim,
+                       std::vector<StatementContext>& statements,
+                       std::map<std::string, PtxInterpreter::Symtable*>& name2Sym,
+                       std::map<std::string, int>& label2pc);
+    
+    // 异步执行kernel
+    std::future<EXE_STATE> launch_kernel_async(void** args, Dim3& gridDim, Dim3& blockDim,
+                                               std::vector<StatementContext>& statements,
+                                               std::map<std::string, PtxInterpreter::Symtable*>& name2Sym,
+                                               std::map<std::string, int>& label2pc);
     
     // 执行一个GPU周期
     EXE_STATE exe_once();
@@ -67,6 +97,9 @@ public:
     
     // 获取GPU配置
     const GPUConfig& get_config() const { return config; }
+    
+    // 检查是否有待处理的任务
+    bool has_pending_tasks() const;
 
 private:
     // GPU配置
@@ -78,7 +111,15 @@ private:
     // GPU状态
     EXE_STATE gpu_state;
     
-    // 网格和块维度信息
+    // 任务队列
+    std::queue<KernelLaunchRequest> task_queue;
+    mutable std::mutex queue_mutex;
+    std::condition_variable task_cv;
+    
+    // 当前执行的CTA列表
+    std::vector<std::unique_ptr<CTAContext>> active_ctas;
+    
+    // 网格和块维度信息（用于初始化）
     Dim3 gridDim;
     Dim3 blockDim;
     
@@ -86,6 +127,12 @@ private:
     std::vector<StatementContext>* statements;
     std::map<std::string, PtxInterpreter::Symtable*>* name2Sym;
     std::map<std::string, int>* label2pc;
+    
+    // 内部执行kernel的辅助函数
+    bool execute_kernel_internal(void** args, Dim3& gridDim, Dim3& blockDim,
+                                 std::vector<StatementContext>& statements,
+                                 std::map<std::string, PtxInterpreter::Symtable*>& name2Sym,
+                                 std::map<std::string, int>& label2pc);
 };
 
 #endif // GPU_CONTEXT_H

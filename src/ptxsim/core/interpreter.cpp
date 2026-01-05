@@ -5,11 +5,20 @@
 #include "ptxsim/cta_context.h"
 #include "ptxsim/instruction_factory.h"
 #include "ptxsim/sm_context.h"
+#include "ptxsim/gpu_context.h"
 #include "utils/logger.h"
 #include <cassert>
 #include <cstring>
 #include <map>
 #include <memory>
+
+PtxInterpreter::PtxInterpreter(const std::string& gpu_config_path) {
+    if (!gpu_config_path.empty()) {
+        gpu_context = std::make_shared<GPUContext>(gpu_config_path);
+    } else {
+        gpu_context = std::make_shared<GPUContext>(); // 使用默认配置
+    }
+}
 
 void PtxInterpreter::launchPtxInterpreter(PtxContext &ptx, std::string &kernel,
                                           void **args, Dim3 &gridDim,
@@ -57,38 +66,12 @@ void PtxInterpreter::funcInterpreter(
     setupKernelArguments(name2Sym);
     setupLabels(label2pc);
 
-    // 创建SM上下文，模拟硬件SM
-    // 这里我们创建一个SM，实际中可能有多个SM
-    SMContext sm(32, 2048,
-                 1024 * 64); // 假设每个SM最多32个warp，2048个线程，64KB共享内存
-    sm.init(gridDim, blockDim, kernelContext->kernelStatements, name2Sym,
-            label2pc);
+    // 初始化GPU上下文
+    gpu_context->init(gridDim, blockDim, kernelContext->kernelStatements, name2Sym, label2pc);
 
-    int ctaNum = gridDim.x * gridDim.y * gridDim.z;
-
-    // 为每个CTA创建上下文并添加到SM
-    for (int i = 0; i < ctaNum; i++) {
-        Dim3 blockIdx;
-        blockIdx.z = i / (gridDim.x * gridDim.y);
-        blockIdx.y = i % (gridDim.x * gridDim.y) / (gridDim.x);
-        blockIdx.x = i % (gridDim.x * gridDim.y) % (gridDim.x);
-
-        // 创建CTAContext并转移所有权
-        auto cta = std::make_unique<CTAContext>();
-        cta->init(gridDim, blockDim, blockIdx, kernelContext->kernelStatements,
-                  name2Sym, label2pc);
-
-        // 将CTA添加到SM（转移所有权）
-        if (!sm.add_block(cta.release())) {
-            // 如果SM资源不足，可以创建另一个SM或等待
-            break; // 简化处理：如果当前SM无法容纳更多块，则停止
-        }
-    }
-
-    // 执行直到所有CTA完成
-    while (sm.get_state() != EXIT) {
-        sm.exe_once();
-    }
+    // 使用GPU上下文执行kernel
+    gpu_context->launch_kernel(kernelArgs, gridDim, blockDim, 
+                               kernelContext->kernelStatements, name2Sym, label2pc);
 }
 
 void PtxInterpreter::setupConstantSymbols(
