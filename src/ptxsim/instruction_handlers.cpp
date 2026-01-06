@@ -5,23 +5,24 @@
 #include "ptxsim/thread_context.h"
 #include "ptxsim/utils/qualifier_utils.h"
 #include "ptxsim/utils/type_utils.h"
+#include "utils/logger.h"
 
+// for (int i = 0; i < ss->regNum; i++) {                                 \
+        //     std::string reg_name = ss->regName + std::to_string(i);            \
+        //     size_t reg_size = getBytes(ss->regDataType);                       \
+        //     /* Create register in RegisterManager */                           \
+        //     if (!context->register_manager.create_register(reg_name,           \
+        //                                                    reg_size)) {        \
+        //         PTX_DEBUG_EMU("Failed to create register: %s with size %zu",   \
+        //                       reg_name.c_str(), reg_size);                     \
+        //         return;                                                        \
+        //     }                                                                  \
+        //     PTX_DEBUG_EMU("Registered register: %s with size %zu",             \
+        //                   reg_name.c_str(), reg_size);                         \
+        // }
 #define IMPLEMENT_OPERAND_REG(Name)                                            \
     void Name::execute(ThreadContext *context, StatementContext &stmt) {       \
         auto ss = static_cast<StatementContext::Name *>(stmt.statement);       \
-        for (int i = 0; i < ss->regNum; i++) {                                 \
-            std::string reg_name = ss->regName + std::to_string(i);            \
-            size_t reg_size = getBytes(ss->regDataType);                       \
-            /* Create register in RegisterManager */                           \
-            if (!context->register_manager.create_register(reg_name,           \
-                                                           reg_size)) {        \
-                PTX_DEBUG_EMU("Failed to create register: %s with size %zu",   \
-                              reg_name.c_str(), reg_size);                     \
-                return;                                                        \
-            }                                                                  \
-            PTX_DEBUG_EMU("Registered register: %s with size %zu",             \
-                          reg_name.c_str(), reg_size);                         \
-        }                                                                      \
         context->next_pc = context->pc + 1;                                    \
         return;                                                                \
     }

@@ -2,7 +2,7 @@
 #include "ptxsim/utils/qualifier_utils.h"
 #include <iostream>
 
-std::unordered_set<RegisterInfo, RegisterInfoHash>
+std::vector<RegisterInfo>
 RegisterAnalyzer::analyze_registers(
     const std::vector<StatementContext> &statements) {
     std::unordered_set<RegisterInfo, RegisterInfoHash> all_registers;
@@ -11,7 +11,9 @@ RegisterAnalyzer::analyze_registers(
         extract_registers_from_statement(stmt, all_registers);
     }
 
-    return all_registers;
+    // 将unordered_set转换为vector返回
+    std::vector<RegisterInfo> result(all_registers.begin(), all_registers.end());
+    return result;
 }
 
 void RegisterAnalyzer::extract_registers_from_statement(
@@ -97,7 +99,8 @@ void RegisterAnalyzer::extract_registers_from_operand(
                 reg_size = sizeof(uint32_t);
             }
             // 添加寄存器到集合中，使用完整名称
-            std::string full_name = reg->regName + std::to_string(reg->regIdx);
+            std::string full_name =
+                reg->regName; // + std::to_string(reg->regIdx);
             registers.insert(RegisterInfo(full_name, reg->regIdx, reg_size));
         }
     } else if (op.operandType == O_VEC) {

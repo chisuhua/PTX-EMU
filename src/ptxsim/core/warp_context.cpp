@@ -3,15 +3,16 @@
 #include <cassert>
 #include <cstring>
 
-WarpContext::WarpContext() 
-    : active_count(0), pc(0), warp_id(-1), single_step_mode(false), divergence_detected(false) {
+WarpContext::WarpContext()
+    : active_count(0), pc(0), warp_id(-1), single_step_mode(false),
+      divergence_detected(false) {
     // 初始化warp线程ID和活跃掩码
     for (int i = 0; i < WARP_SIZE; i++) {
         warp_thread_ids[i] = -1;
         active_mask[i] = false;
         pc_stacks[i] = std::vector<int>(); // 初始化PC栈
     }
-    
+
     // 默认激活所有线程
     for (int i = 0; i < WARP_SIZE; i++) {
         active_mask[i] = true;
@@ -21,14 +22,18 @@ WarpContext::WarpContext()
     active_count = WARP_SIZE;
 }
 
-void WarpContext::add_thread(std::unique_ptr<ThreadContext> thread, int lane_id) {
+void WarpContext::add_thread(std::unique_ptr<ThreadContext> thread,
+                             int lane_id) {
     if (lane_id >= 0 && lane_id < WARP_SIZE) {
-        threads.resize(std::max(threads.size(), static_cast<size_t>(lane_id + 1)));
+        threads.resize(
+            std::max(threads.size(), static_cast<size_t>(lane_id + 1)));
         threads[lane_id] = std::move(thread);
         if (threads[lane_id]) {
-            warp_thread_ids[lane_id] = threads[lane_id]->ThreadIdx.x + 
-                                       threads[lane_id]->ThreadIdx.y * threads[lane_id]->BlockDim.x + 
-                                       threads[lane_id]->ThreadIdx.z * threads[lane_id]->BlockDim.x * threads[lane_id]->BlockDim.y;
+            warp_thread_ids[lane_id] =
+                threads[lane_id]->ThreadIdx.x +
+                threads[lane_id]->ThreadIdx.y * threads[lane_id]->BlockDim.x +
+                threads[lane_id]->ThreadIdx.z * threads[lane_id]->BlockDim.x *
+                    threads[lane_id]->BlockDim.y;
         } else {
             warp_thread_ids[lane_id] = -1;
         }
@@ -39,30 +44,35 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt) {
     // 根据活跃掩码执行指令
     for (int i = 0; i < WARP_SIZE; i++) {
         if (is_lane_active(i) && i < threads.size() && threads[i] != nullptr) {
-            ThreadContext* thread = threads[i].get();
-            
+            ThreadContext *thread = threads[i].get();
+
             // 设置线程的PC为当前warp的PC或线程自己的PC（用于处理分歧）
             if (!pc_stacks[i].empty()) {
                 thread->set_pc(pc_stacks[i].back());
             }
-            
+
+            // 如果有共享寄存器管理器，设置线程使用它
+            // if (warp_register_manager_) {
+            // 这里需要通过某种方式让ThreadContext使用共享寄存器
+            // 可能需要修改ThreadContext的设计
+
             // 执行指令
             thread->execute_thread_instruction();
-            
+
             // 更新PC栈
             if (!pc_stacks[i].empty()) {
                 pc_stacks[i].back() = thread->get_pc();
             } else {
                 pc_stacks[i].push_back(thread->get_pc());
             }
-            
+
             // 更新warp的PC为第一个活跃线程的PC（在SIMT模型中，所有活跃线程应该执行相同指令）
             if (i == 0 || pc == 0) {
                 pc = thread->get_pc();
             }
         }
     }
-    
+
     // 更新活跃掩码（例如，遇到分支指令时）
     update_active_mask();
 }
@@ -85,7 +95,7 @@ void WarpContext::set_active_mask(int lane_id, bool active) {
     if (lane_id >= 0 && lane_id < WARP_SIZE) {
         bool was_active = active_mask[lane_id];
         active_mask[lane_id] = active;
-        
+
         if (was_active && !active) {
             active_count--;
         } else if (!was_active && active) {
@@ -94,9 +104,7 @@ void WarpContext::set_active_mask(int lane_id, bool active) {
     }
 }
 
-bool WarpContext::is_finished() const {
-    return active_count == 0;
-}
+bool WarpContext::is_finished() const { return active_count == 0; }
 
 void WarpContext::sync_threads() {
     // 在真正的硬件模拟中，这里会实现warp级同步
@@ -126,10 +134,10 @@ void WarpContext::handle_branch_divergence(int lane_id, int new_pc) {
         } else {
             pc_stacks[lane_id].push_back(0);
         }
-        
+
         // 设置新PC
         pc_stacks[lane_id].back() = new_pc;
-        
+
         divergence_detected = true;
     }
 }

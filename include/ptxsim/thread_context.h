@@ -7,7 +7,7 @@
 #include "ptxsim/common_types.h" // 包含通用类型定义
 #include "ptxsim/execution_types.h"
 #include "register/condition_code_register.h"
-#include "register/register_manager.h"
+#include "register/register_bank_manager.h"
 #include <any>
 #include <iostream>
 #include <map>
@@ -25,7 +25,9 @@ public:
     std::vector<StatementContext> *statements;
     std::map<std::string, Symtable *> *name2Share;
     std::map<std::string, Symtable *> name2Sym;
-    RegisterManager register_manager;
+
+    // 使用寄存器银行管理器或独立寄存器管理器
+    std::shared_ptr<RegisterBankManager> register_bank_manager_;
     std::map<std::string, int> label2pc;
 
     // 线程状态
@@ -40,6 +42,10 @@ public:
     // 当前指令执行状态
     // 临时数据存储
     std::queue<VEC *> vec;
+
+    // warp和lane标识
+    int warp_id_;
+    int lane_id_;
 
     void init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim, Dim3 BlockDim,
               std::vector<StatementContext> &statements,
@@ -145,15 +151,20 @@ public:
 
     // 执行单条指令（由WarpContext调用）
     EXE_STATE execute_thread_instruction();
-    void preallocate_registers(const std::vector<StatementContext> &statements);
 
     // 重置线程状态
     void reset();
+    void
+    set_register_bank_manager(std::shared_ptr<RegisterBankManager> manager) {
+        register_bank_manager_ = manager;
+    }
 
 private:
     void _execute_once();
     bool is_immediate_or_vector(OperandContext &op);
     void set_immediate_value(std::string value, Qualifier type);
+    // 用于存储已收集的寄存器地址，避免重复分配
+    std::map<std::string, void *> cached_register_addrs;
 };
 
 #endif // THREAD_CONTEXT_H

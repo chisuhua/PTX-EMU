@@ -5,6 +5,7 @@
 #include "ptxsim/execution_types.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/common_types.h"  // 包含通用类型定义
+#include "register/register_bank_manager.h"
 #include <vector>
 #include <array>
 #include <memory>
@@ -86,6 +87,11 @@ public:
     
     // 设置活跃掩码（32位）
     void set_active_mask(uint32_t mask);
+    
+    // 设置寄存器银行管理器
+    void set_register_bank_manager(std::shared_ptr<RegisterBankManager> manager) {
+        register_bank_manager_ = manager;
+    }
 
 private:
     std::vector<std::unique_ptr<ThreadContext>> threads;  // warp中的线程unique_ptr
@@ -97,6 +103,9 @@ private:
     bool single_step_mode;  // 单步执行模式
     bool divergence_detected;  // 是否检测到分歧
     std::vector<int> pc_stacks[WARP_SIZE];  // 每个线程的PC栈，用于分支重新合并
+    
+    // 寄存器银行管理器
+    std::shared_ptr<RegisterBankManager> register_bank_manager_;
 };
 
 #endif // WARP_CONTEXT_H

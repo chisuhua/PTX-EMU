@@ -55,6 +55,7 @@ add_library(ptxsim SHARED
     ptxsim/core/sm_context.cpp
     ptxsim/core/gpu_context.cpp
     register/condition_code_register.cpp
+    register/register_bank_manager.cpp
     memory/memory_manager.cpp
     memory/simple_memory.cpp
     memory/simple_memory_allocator.cpp

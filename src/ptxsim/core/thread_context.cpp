@@ -28,12 +28,12 @@ extern bool sync_thread;
 extern bool IFLOG();
 #endif
 
-void ThreadContext::init(
-    Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim, Dim3 BlockDim,
-    std::vector<StatementContext> &statements,
-    std::map<std::string, Symtable *> &name2Share,
-    std::map<std::string, Symtable *> &name2Sym,
-    std::map<std::string, int> &label2pc) {
+void ThreadContext::init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim,
+                         Dim3 BlockDim,
+                         std::vector<StatementContext> &statements,
+                         std::map<std::string, Symtable *> &name2Share,
+                         std::map<std::string, Symtable *> &name2Sym,
+                         std::map<std::string, int> &label2pc) {
     this->BlockIdx = blockIdx;
     this->ThreadIdx = threadIdx;
     this->GridDim = GridDim;
@@ -47,28 +47,15 @@ void ThreadContext::init(
     this->state = RUN;
     operand_collected.resize(4); // max operands perf instruction reserved is 4
 
-    // 重新初始化RegisterManager（清空所有寄存器）
-    register_manager = RegisterManager();
-    
-    // 预分配寄存器，分析并创建所有需要的寄存器
-    preallocate_registers(statements);
+    // 计算并设置warp_id和lane_id
+    int thread_id = ThreadIdx.x + ThreadIdx.y * BlockDim.x +
+                    ThreadIdx.z * BlockDim.x * BlockDim.y;
+    this->warp_id_ = thread_id / WarpContext::WARP_SIZE;
+    this->lane_id_ = thread_id % WarpContext::WARP_SIZE;
+
+    // 注意：寄存器管理现在完全由RegisterBankManager负责
+    // 寄存器预分配现在由CTAContext统一处理
 }
-
-// EXE_STATE ThreadContext::exe_once() {
-//     if (state != RUN)
-//         return state;
-
-//     // 推进寄存器状态
-//     register_manager.tick();
-
-//     _execute_once();
-
-//     if (pc >= statements->size())
-//         state = EXIT;
-
-//     clear_temporaries();
-//     return state;
-// }
 
 void ThreadContext::_execute_once() {
     assert(state == RUN);
@@ -135,24 +122,32 @@ void ThreadContext::clear_temporaries() {
 
 void ThreadContext::prepare_breakpoint_context(
     std::unordered_map<std::string, std::any> &context) {
-    // 添加寄存器值 - 现在从RegisterManager获取
-    for (const auto &reg_pair : register_manager.get_all_registers()) {
-        std::string reg_name = reg_pair.first;
-        RegisterInterface *reg_interface = reg_pair.second;
-        if (reg_interface && reg_interface->get_phy_address()) {
-            // 根据寄存器大小推测类型
-            size_t reg_size = reg_interface->get_size();
+    // 使用RegisterBankManager获取寄存器值
+    if (register_bank_manager_) {
+        // 计算warp_id和lane_id
+        int warp_id = (ThreadIdx.x + ThreadIdx.y * BlockDim.x +
+                       ThreadIdx.z * BlockDim.x * BlockDim.y) /
+                      WarpContext::WARP_SIZE;
+        int lane_id = (ThreadIdx.x + ThreadIdx.y * BlockDim.x +
+                       ThreadIdx.z * BlockDim.x * BlockDim.y) %
+                      WarpContext::WARP_SIZE;
 
-            // 尝试获取值
-            if (reg_size <= 8) { // 假设最多8字节的值
-                uint64_t val = 0;
-                memcpy(&val, reg_interface->get_phy_address(), reg_size);
-                context[reg_name] = val;
-            } else {
-                // 对于较大值，可能需要特殊处理
-                context[reg_name] = reg_interface->get_phy_address();
-            }
-        }
+        // TODO
+        // // 遍历所有寄存器获取值
+        // auto all_registers = register_bank_manager_->get_all_registers();
+        // for (const auto &reg_name : all_registers) {
+        //     void *reg_data = register_bank_manager_->get_register(
+        //         reg_name, warp_id, lane_id);
+        //     if (reg_data) {
+        //         // 根据寄存器大小推测类型
+        //         //
+        //         这里假设寄存器大小不超过8字节，实际大小需要从RegisterBankManager获取
+        //         size_t reg_size = 8; // TODO: 获取实际寄存器大小
+        //         uint64_t val = 0;
+        //         memcpy(&val, reg_data, std::min(sizeof(val), reg_size));
+        //         context[reg_name] = val;
+        //     }
+        // }
     }
 
     // 添加其他上下文信息
@@ -198,10 +193,7 @@ void ThreadContext::reset() {
     state = RUN;
     cc_reg = ConditionCodeRegister{}; // 重置条件码寄存器
 
-    // 重置寄存器管理器
-    register_manager = RegisterManager();
-
-    // 清空临时数据
+    // 清空临时数据（寄存器管理由RegisterBankManager负责，无需本地重置）
     clear_temporaries();
     operand_collected.clear();
     operand_collected.resize(4);
@@ -302,53 +294,28 @@ void ThreadContext::commit_operand(StatementContext &stmt,
 
 void *ThreadContext::acquire_register(OperandContext::REG *reg,
                                       std::vector<Qualifier> qualifier) {
-    // 首先检查是否为特殊寄存器（如%tid.x）
-    // 特殊寄存器总是可以获取
-    if (reg->regName == "tid.x" || reg->regName == "tid.y" ||
-        reg->regName == "tid.z" || reg->regName == "ctaid.x" ||
-        reg->regName == "ctaid.y" || reg->regName == "ctaid.z" ||
-        reg->regName == "nctaid.x" || reg->regName == "nctaid.y" ||
-        reg->regName == "nctaid.z" || reg->regName == "ntid.x" ||
-        reg->regName == "ntid.y" || reg->regName == "ntid.z") {
-        if (reg->regName == "tid.x")
-            return &ThreadIdx.x;
-        if (reg->regName == "tid.y")
-            return &ThreadIdx.y;
-        if (reg->regName == "tid.z")
-            return &ThreadIdx.z;
-        if (reg->regName == "ctaid.x")
-            return &BlockIdx.x;
-        if (reg->regName == "ctaid.y")
-            return &BlockIdx.y;
-        if (reg->regName == "ctaid.z")
-            return &BlockIdx.z;
-        if (reg->regName == "nctaid.x")
-            return &GridDim.x;
-        if (reg->regName == "nctaid.y")
-            return &GridDim.y;
-        if (reg->regName == "nctaid.z")
-            return &GridDim.z;
-        if (reg->regName == "ntid.x")
-            return &BlockDim.x;
-        if (reg->regName == "ntid.y")
-            return &BlockDim.y;
-        if (reg->regName == "ntid.z")
-            return &BlockDim.z;
+    // 确保register_bank_manager_存在
+    if (!register_bank_manager_) {
+        throw std::runtime_error("RegisterBankManager is required but not set");
     }
 
-    // 构造组合名称
+    // 计算warp_id和lane_id
+    int warp_id = (ThreadIdx.x + ThreadIdx.y * BlockDim.x +
+                   ThreadIdx.z * BlockDim.x * BlockDim.y) /
+                  WarpContext::WARP_SIZE;
+    int lane_id = (ThreadIdx.x + ThreadIdx.y * BlockDim.x +
+                   ThreadIdx.z * BlockDim.x * BlockDim.y) %
+                  WarpContext::WARP_SIZE;
+
     std::string combinedName = reg->regName + std::to_string(reg->regIdx);
-    int bytes = getBytes(qualifier);
+    void *reg_data =
+        register_bank_manager_->get_register(combinedName, warp_id, lane_id);
 
-    // 检查寄存器是否已存在于RegisterManager中
-    auto reg_ptr =
-        register_manager.get_register(combinedName); // 仅传入combinedName参数
-    // 根据需要处理bytes参数，可能需要通过其他方式获取正确的寄存器大小
-    if (reg_ptr) {
-        // 调用寄存器接口的acquire方法
-        return reg_ptr->acquire();
-    }
-    return nullptr;
+    // 如果寄存器不存在，直接断言退出
+    assert(reg_data != nullptr &&
+           "Register not found in bank manager. Aborting.");
+
+    return reg_data;
 }
 
 void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
@@ -450,33 +417,4 @@ bool ThreadContext::isIMMorVEC(OperandContext &op) {
 
 bool ThreadContext::is_immediate_or_vector(OperandContext &op) {
     return (op.operandType == O_IMM || op.operandType == O_VEC);
-}
-
-void ThreadContext::preallocate_registers(
-    const std::vector<StatementContext> &statements) {
-    // 使用RegisterAnalyzer分析所有语句，获取需要的寄存器信息
-    auto registers = RegisterAnalyzer::analyze_registers(statements);
-
-    PTX_DEBUG_EMU("Preallocating %zu registers", registers.size());
-
-    // 为每个寄存器创建对应的存储空间
-    for (const auto &reg_info : registers) {
-        std::string full_name = reg_info.name + std::to_string(reg_info.index);
-
-        // 检查寄存器是否已存在
-        if (!register_manager.get_register(full_name)) {
-            // 创建新寄存器
-            bool success =
-                register_manager.create_register(full_name, reg_info.size);
-            if (!success) {
-                PTX_DEBUG_EMU("Failed to create register: %s with size %zu",
-                              full_name.c_str(), reg_info.size);
-            } else {
-                PTX_DEBUG_EMU("Successfully created register: %s with size %zu",
-                              full_name.c_str(), reg_info.size);
-            }
-        } else {
-            PTX_DEBUG_EMU("Register already exists: %s", full_name.c_str());
-        }
-    }
 }
