@@ -62,6 +62,7 @@ add_library(ptxsim SHARED
     ptxsim/instruction_factory.cpp
     ptxsim/instruction_base.cpp
     ptxsim/instruction_handlers.cpp
+    ptxsim/register_analyzer.cpp
     ptxsim/utils/qualifier_utils.cpp
     ptxsim/utils/type_utils.cpp
     ptxsim/utils/half_utils.cpp

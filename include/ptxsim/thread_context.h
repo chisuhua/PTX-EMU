@@ -145,6 +145,7 @@ public:
 
     // 执行单条指令（由WarpContext调用）
     EXE_STATE execute_thread_instruction();
+    void preallocate_registers(const std::vector<StatementContext> &statements);
 
     // 重置线程状态
     void reset();

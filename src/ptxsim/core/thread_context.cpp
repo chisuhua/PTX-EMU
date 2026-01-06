@@ -5,6 +5,7 @@
 #include "ptxsim/instruction_factory.h"
 #include "ptxsim/interpreter.h"
 #include "ptxsim/ptx_debug.h"
+#include "ptxsim/register_analyzer.h"
 #include "ptxsim/utils/qualifier_utils.h"
 #include "utils/logger.h"
 #include <algorithm>
@@ -27,12 +28,12 @@ extern bool sync_thread;
 extern bool IFLOG();
 #endif
 
-void ThreadContext::init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim,
-                         Dim3 BlockDim,
-                         std::vector<StatementContext> &statements,
-                         std::map<std::string, Symtable *> &name2Share,
-                         std::map<std::string, Symtable *> &name2Sym,
-                         std::map<std::string, int> &label2pc) {
+void ThreadContext::init(
+    Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim, Dim3 BlockDim,
+    std::vector<StatementContext> &statements,
+    std::map<std::string, Symtable *> &name2Share,
+    std::map<std::string, Symtable *> &name2Sym,
+    std::map<std::string, int> &label2pc) {
     this->BlockIdx = blockIdx;
     this->ThreadIdx = threadIdx;
     this->GridDim = GridDim;
@@ -45,10 +46,12 @@ void ThreadContext::init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim,
     this->next_pc = 0;
     this->state = RUN;
     operand_collected.resize(4); // max operands perf instruction reserved is 4
-    is_valid_pc();
 
     // 重新初始化RegisterManager（清空所有寄存器）
     register_manager = RegisterManager();
+    
+    // 预分配寄存器，分析并创建所有需要的寄存器
+    preallocate_registers(statements);
 }
 
 // EXE_STATE ThreadContext::exe_once() {
@@ -205,7 +208,10 @@ void ThreadContext::reset() {
 }
 
 // 添加新的执行方法
-EXE_STATE ThreadContext::execute_thread_instruction() { this->_execute_once(); }
+EXE_STATE ThreadContext::execute_thread_instruction() {
+    this->_execute_once();
+    return this->state; // 返回线程的实际状态
+}
 
 void *ThreadContext::acquire_operand(OperandContext &operand,
                                      std::vector<Qualifier> &qualifiers) {
@@ -335,11 +341,12 @@ void *ThreadContext::acquire_register(OperandContext::REG *reg,
     int bytes = getBytes(qualifier);
 
     // 检查寄存器是否已存在于RegisterManager中
-    RegisterInterface *reg_interface =
-        register_manager.get_register(combinedName, bytes);
-    if (reg_interface) {
+    auto reg_ptr =
+        register_manager.get_register(combinedName); // 仅传入combinedName参数
+    // 根据需要处理bytes参数，可能需要通过其他方式获取正确的寄存器大小
+    if (reg_ptr) {
         // 调用寄存器接口的acquire方法
-        return reg_interface->acquire();
+        return reg_ptr->acquire();
     }
     return nullptr;
 }
@@ -443,4 +450,33 @@ bool ThreadContext::isIMMorVEC(OperandContext &op) {
 
 bool ThreadContext::is_immediate_or_vector(OperandContext &op) {
     return (op.operandType == O_IMM || op.operandType == O_VEC);
+}
+
+void ThreadContext::preallocate_registers(
+    const std::vector<StatementContext> &statements) {
+    // 使用RegisterAnalyzer分析所有语句，获取需要的寄存器信息
+    auto registers = RegisterAnalyzer::analyze_registers(statements);
+
+    PTX_DEBUG_EMU("Preallocating %zu registers", registers.size());
+
+    // 为每个寄存器创建对应的存储空间
+    for (const auto &reg_info : registers) {
+        std::string full_name = reg_info.name + std::to_string(reg_info.index);
+
+        // 检查寄存器是否已存在
+        if (!register_manager.get_register(full_name)) {
+            // 创建新寄存器
+            bool success =
+                register_manager.create_register(full_name, reg_info.size);
+            if (!success) {
+                PTX_DEBUG_EMU("Failed to create register: %s with size %zu",
+                              full_name.c_str(), reg_info.size);
+            } else {
+                PTX_DEBUG_EMU("Successfully created register: %s with size %zu",
+                              full_name.c_str(), reg_info.size);
+            }
+        } else {
+            PTX_DEBUG_EMU("Register already exists: %s", full_name.c_str());
+        }
+    }
 }
