@@ -25,10 +25,7 @@ public:
 
     size_t sharedMemBytes = 0;
     Dim3 blockIdx, GridDim, BlockDim;
-    std::map<std::string, Symtable *> name2Share;
-
-    // 添加线程池，管理线程对象的生命周期
-    // std::vector<std::unique_ptr<ThreadContext>> thread_pool;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Share;
 
     void init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
               std::vector<StatementContext> &statements,

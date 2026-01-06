@@ -23,8 +23,7 @@ class ThreadContext {
 public:
     // 资源管理
     std::vector<StatementContext> *statements;
-    std::map<std::string, Symtable *> *name2Share;
-    std::map<std::string, Symtable *> name2Sym;
+    std::map<std::string, Symtable *> *name2Sym;
 
     // 使用寄存器银行管理器或独立寄存器管理器
     std::shared_ptr<RegisterBankManager> register_bank_manager_;
@@ -49,7 +48,6 @@ public:
 
     void init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim, Dim3 BlockDim,
               std::vector<StatementContext> &statements,
-              std::map<std::string, Symtable *> &name2Share,
               std::map<std::string, Symtable *> &name2Sym,
               std::map<std::string, int> &label2pc);
 
@@ -162,9 +160,9 @@ public:
 private:
     void _execute_once();
     bool is_immediate_or_vector(OperandContext &op);
-    void set_immediate_value(std::string value, Qualifier type);
+    // void set_immediate_value(std::string value, Qualifier type);
     // 用于存储已收集的寄存器地址，避免重复分配
-    std::map<std::string, void *> cached_register_addrs;
+    // std::map<std::string, void *> cached_register_addrs;
 };
 
 #endif // THREAD_CONTEXT_H

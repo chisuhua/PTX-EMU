@@ -53,9 +53,9 @@ void PtxInterpreter::launchPtxInterpreter(PtxContext &ptx, std::string &kernel,
     }
 
     // 清理符号表
-    for (auto &pair : name2Sym) {
-        delete pair.second;
-    }
+    // for (auto &pair : name2Sym) {
+    //     delete pair.second;
+    // }
 }
 
 void PtxInterpreter::funcInterpreter(

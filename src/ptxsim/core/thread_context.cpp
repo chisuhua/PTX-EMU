@@ -31,7 +31,6 @@ extern bool IFLOG();
 void ThreadContext::init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim,
                          Dim3 BlockDim,
                          std::vector<StatementContext> &statements,
-                         std::map<std::string, Symtable *> &name2Share,
                          std::map<std::string, Symtable *> &name2Sym,
                          std::map<std::string, int> &label2pc) {
     this->BlockIdx = blockIdx;
@@ -39,8 +38,7 @@ void ThreadContext::init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim,
     this->GridDim = GridDim;
     this->BlockDim = BlockDim;
     this->statements = &statements;
-    this->name2Share = &name2Share;
-    this->name2Sym = name2Sym;
+    this->name2Sym = &name2Sym;
     this->label2pc = label2pc;
     this->pc = 0;
     this->next_pc = 0;
@@ -210,15 +208,9 @@ void *ThreadContext::acquire_operand(OperandContext &operand,
     switch (operand.operandType) {
     case O_VAR: {
         OperandContext::VAR *varOp = (OperandContext::VAR *)operand.operand;
-        // 查找共享内存中的变量
-        auto share_it = name2Share->find(varOp->varName);
-        if (share_it != name2Share->end()) {
-            return &(share_it->second->val);
-        }
-
-        auto sym_it = name2Sym.find(varOp->varName);
-        if (sym_it != name2Sym.end()) {
-            PTX_DEBUG_EMU("Reading kernel argument from name2Sym: name=%s, "
+        auto sym_it = name2Sym->find(varOp->varName);
+        if (sym_it != name2Sym->end()) {
+            PTX_DEBUG_EMU("Reading kernel name2Sym from name2Sym: name=%s, "
                           "symbol_table_entry=%p, stored_value=0x%lx, "
                           "dereferenced_value=0x%lx",
                           varOp->varName.c_str(), sym_it->second,
@@ -371,22 +363,16 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
         ret = (void *)*(uint64_t *)regAddr;
     } else {
         // 直接通过ID查找符号表或共享内存
-        auto sym_it = name2Sym.find(fa->ID);
-        if (sym_it != name2Sym.end()) {
+        auto sym_it = name2Sym->find(fa->ID);
+        if (sym_it != name2Sym->end()) {
             PTX_DEBUG_EMU("Reading kernel argument from name2Sym in "
                           "get_memory_addr: name=%s, "
                           "symbol_table_entry=%p, stored_value=0x%lx",
                           fa->ID.c_str(), sym_it->second, sym_it->second->val);
             ret = (void *)sym_it->second->val;
-        } else {
-            auto share_it = name2Share->find(fa->ID);
-            if (share_it != name2Share->end()) {
-                // 处理shared memory地址
-                extern uint64_t SHMEMADDR;
-                ret = (void *)(share_it->second->val + (SHMEMADDR << 32));
-            } else {
-                assert(0);
-            }
+            // TODO : dectect it sharemem symbol 处理shared memory地址
+            // extern uint64_t SHMEMADDR;
+            // ret = (void *)(share_it->second->val + (SHMEMADDR << 32));
         }
     }
 

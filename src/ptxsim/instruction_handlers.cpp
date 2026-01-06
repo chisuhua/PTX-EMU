@@ -44,8 +44,7 @@
         s->symType = ss->dataType.back();                                      \
         s->val = (uint64_t)(new char[s->byteNum]);                             \
         memset((void *)s->val, 0, s->byteNum);                                 \
-        (*context->name2Share)[s->name] = s;                                   \
-        context->name2Sym[s->name] = s;                                        \
+        (*context->name2Sym)[s->name] = s;                                     \
         context->next_pc = context->pc + 1;                                    \
         return;                                                                \
     }

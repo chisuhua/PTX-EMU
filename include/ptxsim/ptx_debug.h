@@ -540,9 +540,9 @@ public:
             return;
 
         // 检查指令类型
-        ptxsim::InstructionType type = config.classify_instruction(opcode);
-        if (!config.is_instruction_traced(type))
-            return;
+        // ptxsim::InstructionType type = config.classify_instruction(opcode);
+        // if (!config.is_instruction_traced(type))
+        //     return;
 
         // 构建完整指令
         std::string full_instruction = opcode;

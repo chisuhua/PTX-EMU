@@ -29,6 +29,23 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
     this->BlockDim = BlockDim;
     this->blockIdx = blockIdx;
 
+    // 清空并从 name2Sym 复制内容到 name2Share，使用unique_ptr管理生命周期
+    name2Share.clear();
+    for (const auto &pair : name2Sym) {
+        auto symtable = std::make_unique<Symtable>();
+        symtable->symType = pair.second->symType;
+        symtable->byteNum = pair.second->byteNum;
+        symtable->elementNum = pair.second->elementNum;
+        symtable->name = pair.second->name;
+        symtable->val = pair.second->val;
+        name2Share[pair.first] = std::move(symtable);
+    }
+
+    name2Sym.clear();
+    for (const auto &pair : name2Share) {
+        name2Sym[pair.first] = pair.second.get();
+    }
+
     // 计算需要多少个warp
     int numWarpsNeeded =
         (threadNum + WarpContext::WARP_SIZE - 1) / WarpContext::WARP_SIZE;
@@ -57,7 +74,6 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
         warps.push_back(std::move(warp));
     }
 
-    // 直接创建并分配线程到warp，不再使用thread_pool
     for (int i = 0; i < threadNum; i++) {
         Dim3 threadIdx;
         threadIdx.z = i / (BlockDim.x * BlockDim.y);
@@ -66,7 +82,7 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
 
         auto thread = std::make_unique<ThreadContext>();
         thread->init(blockIdx, threadIdx, GridDim, BlockDim, statements,
-                     name2Share, name2Sym, label2pc);
+                     name2Sym, label2pc);
 
         // 设置线程使用寄存器银行管理器
         thread->set_register_bank_manager(register_bank_manager);
