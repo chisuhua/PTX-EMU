@@ -125,12 +125,12 @@ void ThreadContext::prepare_breakpoint_context(
     // 使用RegisterBankManager获取寄存器值
     if (register_bank_manager_) {
         // 计算warp_id和lane_id
-        int warp_id = (ThreadIdx.x + ThreadIdx.y * BlockDim.x +
-                       ThreadIdx.z * BlockDim.x * BlockDim.y) /
-                      WarpContext::WARP_SIZE;
-        int lane_id = (ThreadIdx.x + ThreadIdx.y * BlockDim.x +
-                       ThreadIdx.z * BlockDim.x * BlockDim.y) %
-                      WarpContext::WARP_SIZE;
+        // int warp_id = (ThreadIdx.x + ThreadIdx.y * BlockDim.x +
+        //                ThreadIdx.z * BlockDim.x * BlockDim.y) /
+        //               WarpContext::WARP_SIZE;
+        // int lane_id = (ThreadIdx.x + ThreadIdx.y * BlockDim.x +
+        //                ThreadIdx.z * BlockDim.x * BlockDim.y) %
+        //               WarpContext::WARP_SIZE;
 
         // TODO
         // // 遍历所有寄存器获取值
@@ -294,22 +294,47 @@ void ThreadContext::commit_operand(StatementContext &stmt,
 
 void *ThreadContext::acquire_register(OperandContext::REG *reg,
                                       std::vector<Qualifier> qualifier) {
+    // 检查是否是特殊寄存器
+    if (reg->regName == "tid.x" || reg->regName == "tid.y" ||
+        reg->regName == "tid.z" || reg->regName == "ctaid.x" ||
+        reg->regName == "ctaid.y" || reg->regName == "ctaid.z" ||
+        reg->regName == "nctaid.x" || reg->regName == "nctaid.y" ||
+        reg->regName == "nctaid.z" || reg->regName == "ntid.x" ||
+        reg->regName == "ntid.y" || reg->regName == "ntid.z") {
+        if (reg->regName == "tid.x")
+            return &ThreadIdx.x;
+        if (reg->regName == "tid.y")
+            return &ThreadIdx.y;
+        if (reg->regName == "tid.z")
+            return &ThreadIdx.z;
+        if (reg->regName == "ctaid.x")
+            return &BlockIdx.x;
+        if (reg->regName == "ctaid.y")
+            return &BlockIdx.y;
+        if (reg->regName == "ctaid.z")
+            return &BlockIdx.z;
+        if (reg->regName == "nctaid.x")
+            return &GridDim.x;
+        if (reg->regName == "nctaid.y")
+            return &GridDim.y;
+        if (reg->regName == "nctaid.z")
+            return &GridDim.z;
+        if (reg->regName == "ntid.x")
+            return &BlockDim.x;
+        if (reg->regName == "ntid.y")
+            return &BlockDim.y;
+        if (reg->regName == "ntid.z")
+            return &BlockDim.z;
+    }
+
     // 确保register_bank_manager_存在
     if (!register_bank_manager_) {
         throw std::runtime_error("RegisterBankManager is required but not set");
     }
 
-    // 计算warp_id和lane_id
-    int warp_id = (ThreadIdx.x + ThreadIdx.y * BlockDim.x +
-                   ThreadIdx.z * BlockDim.x * BlockDim.y) /
-                  WarpContext::WARP_SIZE;
-    int lane_id = (ThreadIdx.x + ThreadIdx.y * BlockDim.x +
-                   ThreadIdx.z * BlockDim.x * BlockDim.y) %
-                  WarpContext::WARP_SIZE;
-
     std::string combinedName = reg->regName + std::to_string(reg->regIdx);
     void *reg_data =
-        register_bank_manager_->get_register(combinedName, warp_id, lane_id);
+        register_bank_manager_->get_register(combinedName, warp_id_, lane_id_);
 
     // 如果寄存器不存在，直接断言退出
     assert(reg_data != nullptr &&

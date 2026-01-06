@@ -57,11 +57,7 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
         warps.push_back(std::move(warp));
     }
 
-    // 创建线程池，管理线程对象的生命周期
-    thread_pool.clear();
-    thread_pool.reserve(threadNum);
-
-    // 创建所有线程上下文
+    // 直接创建并分配线程到warp，不再使用thread_pool
     for (int i = 0; i < threadNum; i++) {
         Dim3 threadIdx;
         threadIdx.z = i / (BlockDim.x * BlockDim.y);
@@ -75,20 +71,11 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
         // 设置线程使用寄存器银行管理器
         thread->set_register_bank_manager(register_bank_manager);
 
-        thread_pool.push_back(std::move(thread));
-    }
-
-    // 分配线程到warp
-    for (int i = 0; i < threadNum; i++) {
+        // 直接将线程添加到对应的warp
         int warpId = i / WarpContext::WARP_SIZE;
         int laneId = i % WarpContext::WARP_SIZE;
-
-        // 添加到对应的warp
-        warps[warpId]->add_thread(std::move(thread_pool[i]), laneId);
+        warps[warpId]->add_thread(std::move(thread), laneId);
     }
-
-    // 清空线程池，因为所有权已转移给warps
-    thread_pool.clear();
 }
 
 EXE_STATE CTAContext::exe_once() {
@@ -140,9 +127,15 @@ EXE_STATE CTAContext::exe_once() {
 }
 
 std::vector<std::unique_ptr<WarpContext>> CTAContext::release_warps() {
-    return std::move(warps);
+    // 转移warps的所有权，并清空warps向量
+    auto result = std::move(warps);
+    // 清空原向量，避免重复析构
+    warps.clear();
+    return result;
 }
 
 CTAContext::~CTAContext() {
-    // warps和thread_pool会自动清理
+    // warps向量应该已经被清空，因为所有权已经转移
+    // thread_pool也应该被清空
+    name2Share.clear();
 }

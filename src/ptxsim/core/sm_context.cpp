@@ -49,6 +49,8 @@ bool SMContext::add_block(CTAContext *block) {
     }
 
     // 将块添加到管理列表中（转移所有权）
+    // 注意：这里我们转移的是CTAContext的所有权，但CTAContext中的warps已经被转移走
+    // 所以managed_blocks中的CTAContext不会再析构warp
     std::unique_ptr<CTAContext> managed_block(block);
     managed_blocks.push_back(std::move(managed_block));
 
@@ -84,6 +86,7 @@ EXE_STATE SMContext::exe_once() {
                     currentStmt = thread->get_current_statement();
                     break; // 找到指令后跳出
                 }
+                assert(false);
             }
         }
 

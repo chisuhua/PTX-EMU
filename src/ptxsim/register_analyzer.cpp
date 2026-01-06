@@ -2,8 +2,7 @@
 #include "ptxsim/utils/qualifier_utils.h"
 #include <iostream>
 
-std::vector<RegisterInfo>
-RegisterAnalyzer::analyze_registers(
+std::vector<RegisterInfo> RegisterAnalyzer::analyze_registers(
     const std::vector<StatementContext> &statements) {
     std::unordered_set<RegisterInfo, RegisterInfoHash> all_registers;
 
@@ -12,7 +11,8 @@ RegisterAnalyzer::analyze_registers(
     }
 
     // 将unordered_set转换为vector返回
-    std::vector<RegisterInfo> result(all_registers.begin(), all_registers.end());
+    std::vector<RegisterInfo> result(all_registers.begin(),
+                                     all_registers.end());
     return result;
 }
 
@@ -25,7 +25,7 @@ void RegisterAnalyzer::extract_registers_from_statement(
         if (reg_stmt) {
             // 对于寄存器声明语句，提取寄存器信息
             for (int i = 0; i < reg_stmt->regNum; ++i) {
-                std::string reg_name = reg_stmt->regName + std::to_string(i);
+                std::string reg_name = reg_stmt->regName;
                 size_t reg_size = getBytes(reg_stmt->regDataType);
                 if (reg_size == 0) {
                     // 如果无法确定大小，使用默认大小
@@ -37,7 +37,7 @@ void RegisterAnalyzer::extract_registers_from_statement(
     }
 
     // 然后处理所有语句中的操作数，提取实际使用的寄存器
-    extract_registers_from_all_operands(stmt, registers);
+    // extract_registers_from_all_operands(stmt, registers);
 }
 
 void RegisterAnalyzer::extract_registers_from_all_operands(

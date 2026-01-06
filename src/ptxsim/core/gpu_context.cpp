@@ -125,8 +125,8 @@ bool GPUContext::execute_kernel_internal(
         bool added = false;
         for (auto &sm : sms) {
             if (sm->add_block(cta.get())) {
-                // 如果添加成功，将CTA加入活跃列表
-                active_ctas.push_back(std::move(cta));
+                // 如果添加成功，CTAContext的所有权已经转移给SMContext
+                // 所以我们不需要将cta添加到active_ctas，避免重复析构
                 added = true;
                 break;
             }

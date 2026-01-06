@@ -67,7 +67,7 @@
 // RET TODO
 #define IMPLEMENT_VOID_INSTR(Name)                                             \
     void Name::execute(ThreadContext *context, StatementContext &stmt) {       \
-        context->next_pc = context->pc + 1;                                    \
+        context->state = EXIT;                                                 \
         return;                                                                \
     }
 
