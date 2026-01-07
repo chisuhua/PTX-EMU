@@ -24,14 +24,17 @@ public:
     int barThreadNum;
 
     size_t sharedMemBytes = 0;
-    void *sharedMemSpace = nullptr;  // 共享内存空间指针
+    void *sharedMemSpace = nullptr; // 共享内存空间指针
     Dim3 blockIdx, GridDim, BlockDim;
-    std::map<std::string, std::unique_ptr<Symtable>> name2Share;
+    std::map<std::string, Symtable *> name2Share;
 
     void init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
               std::vector<StatementContext> &statements,
-              std::map<std::string, Symtable *> &name2Sym,
+              std::map<std::string, Symtable *> *name2Sym,
               std::map<std::string, int> &label2pc);
+
+    // 新增方法：构建共享内存符号表，接收分配好的共享内存空间
+    void build_shared_memory_symbol_table(void *shared_mem_space);
 
     EXE_STATE exe_once();
 
@@ -42,6 +45,10 @@ public:
     std::vector<std::unique_ptr<WarpContext>> release_warps();
 
     ~CTAContext();
+
+private:
+    // 存储初始化时的statements引用，用于后续构建共享内存符号表
+    std::vector<StatementContext> *init_statements;
 };
 
 #endif // CTA_CONTEXT_H

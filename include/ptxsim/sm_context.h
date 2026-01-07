@@ -1,6 +1,8 @@
 #ifndef SM_CONTEXT_H
 #define SM_CONTEXT_H
 
+#include "ptxsim/sm_context.h"
+
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/common_types.h" // 包含通用类型定义
 #include "ptxsim/cta_context.h"
@@ -17,7 +19,7 @@ class CTAContext;
 class SMContext {
 public:
     SMContext(int max_warps, int max_threads_per_sm, size_t shared_mem_size);
-    virtual ~SMContext() = default;
+    virtual ~SMContext();
 
     // 初始化SM上下文
     void init(Dim3 &gridDim, Dim3 &blockDim,

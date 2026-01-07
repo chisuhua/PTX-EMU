@@ -1,5 +1,8 @@
 #include "ptxsim/sm_context.h"
 #include "ptxsim/cta_context.h"
+#include "memory/memory_manager.h" // 添加MemoryManager头文件
+#include "ptx_ir/statement_context.h"
+#include "utils/logger.h" // 添加logger头文件
 #include <algorithm>
 #include <cassert>
 
@@ -10,6 +13,24 @@ SMContext::SMContext(int max_warps, int max_threads_per_sm,
       current_thread_count(0), sm_state(RUN) {
     // 初始化warp调度器为轮询调度器
     warp_scheduler = std::make_unique<RoundRobinWarpScheduler>();
+}
+
+SMContext::~SMContext() {
+    // 在SMContext销毁时，需要释放所有warp中的共享内存
+    // 由于warp持有ThreadContext，而ThreadContext可能通过指针访问共享内存
+    // 但是共享内存空间本身是由SMContext分配的，需要在这里处理
+    
+    // 遍历所有warp，找到它们所属的CTAContext，并释放共享内存
+    // 但是由于warp已经从CTAContext转移过来，我们需要一种方式来追踪共享内存
+    // 当前的实现中，sharedMemSpace是通过build_shared_memory_symbol_table设置到CTAContext的
+    // 但在add_block后，CTAContext的warp被转移了，CTAContext本身可能没有被保存
+    
+    // 对于当前的架构，当CTA执行完成时，应该调用free_shared_memory来释放内存
+    // 在SMContext销毁时，如果还有未释放的共享内存，发出警告
+    if (allocated_shared_mem > 0) {
+        PTX_DEBUG_EMU("Warning: SMContext destroyed with %zu bytes of allocated shared memory", 
+                      allocated_shared_mem);
+    }
 }
 
 void SMContext::init(Dim3 &gridDim, Dim3 &blockDim,
@@ -36,6 +57,25 @@ bool SMContext::add_block(CTAContext *block) {
     if (!allocate_shared_memory(block)) {
         return false; // 共享内存不足
     }
+
+    // 为CTAContext分配共享内存空间
+    void *shared_mem_space = nullptr;
+    if (block->sharedMemBytes > 0) {
+        shared_mem_space = MemoryManager::instance().malloc_shared(block->sharedMemBytes);
+        if (shared_mem_space == nullptr) {
+            PTX_DEBUG_EMU("Failed to allocate SHARED memory of size %zu for block",
+                          block->sharedMemBytes);
+            // 释放已分配的共享内存
+            free_shared_memory(block);
+            return false;
+        }
+        
+        PTX_DEBUG_EMU("Allocated SHARED memory of size %zu at %p for block",
+                      block->sharedMemBytes, shared_mem_space);
+    }
+
+    // 调用CTAContext的启动函数来构建共享内存符号表，传入分配好的内存空间
+    block->build_shared_memory_symbol_table(shared_mem_space);
 
     // 获取CTAContext中的warp所有权
     auto block_warps = block->release_warps();
@@ -187,14 +227,20 @@ bool SMContext::allocate_shared_memory(CTAContext *block) {
         return false; // 共享内存不足
     }
 
+    // 分配共享内存并构建符号表
+    // 为了实现这个功能，我们需要修改CTAContext的初始化过程
+    // 使CTAContext能够接收一个外部分配的共享内存地址
+    // 并在SMContext中调用build_shared_memory_symbol_table来构建符号表
     allocated_shared_mem += required_shared_mem;
     return true;
 }
 
 void SMContext::free_shared_memory(CTAContext *block) {
     // 释放共享内存
-    size_t freed_mem = block->sharedMemBytes;
-    if (allocated_shared_mem >= freed_mem) {
-        allocated_shared_mem -= freed_mem;
+    if (block->sharedMemSpace != nullptr) {
+        MemoryManager::instance().free_shared(block->sharedMemSpace);
+        allocated_shared_mem -= block->sharedMemBytes;
+        // 重置block的共享内存指针
+        const_cast<void*&>(block->sharedMemSpace) = nullptr;
     }
 }

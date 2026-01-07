@@ -31,7 +31,7 @@ extern bool IFLOG();
 void ThreadContext::init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim,
                          Dim3 BlockDim,
                          std::vector<StatementContext> &statements,
-                         std::map<std::string, Symtable *> &name2Sym,
+                         std::map<std::string, Symtable *> *name2Sym,
                          std::map<std::string, int> &label2pc,
                          std::map<std::string, Symtable *> *name2Share) {
     this->BlockIdx = blockIdx;
@@ -39,8 +39,8 @@ void ThreadContext::init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim,
     this->GridDim = GridDim;
     this->BlockDim = BlockDim;
     this->statements = &statements;
-    this->name2Sym = &name2Sym;
-    this->name2Share = name2Share;  // 设置共享内存符号表引用
+    this->name2Sym = name2Sym;
+    this->name2Share = name2Share; // 设置共享内存符号表引用
     this->label2pc = label2pc;
     this->pc = 0;
     this->next_pc = 0;
@@ -210,7 +210,7 @@ void *ThreadContext::acquire_operand(OperandContext &operand,
     switch (operand.operandType) {
     case O_VAR: {
         OperandContext::VAR *varOp = (OperandContext::VAR *)operand.operand;
-        
+
         // 优先在name2Share中查找（共享内存变量）
         if (name2Share != nullptr) {
             auto share_it = name2Share->find(varOp->varName);
@@ -223,7 +223,7 @@ void *ThreadContext::acquire_operand(OperandContext &operand,
                 return (void *)(share_it->second->val);
             }
         }
-        
+
         // 如果在name2Share中没找到，再到name2Sym中查找（参数、局部变量等）
         auto sym_it = name2Sym->find(varOp->varName);
         if (sym_it != name2Sym->end()) {
@@ -235,7 +235,7 @@ void *ThreadContext::acquire_operand(OperandContext &operand,
                           *(uint64_t *)(sym_it->second->val));
             return &(sym_it->second->val);
         }
-        
+
         break;
     }
 
@@ -395,7 +395,8 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
                 PTX_DEBUG_EMU("Reading shared memory from name2Share in "
                               "get_memory_addr: name=%s, "
                               "symbol_table_entry=%p, stored_value=0x%lx",
-                              fa->ID.c_str(), share_it->second, share_it->second->val);
+                              fa->ID.c_str(), share_it->second,
+                              share_it->second->val);
                 ret = (void *)share_it->second->val;
             } else {
                 // 如果都没找到，返回nullptr

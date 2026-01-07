@@ -119,7 +119,7 @@ bool GPUContext::execute_kernel_internal(
 
         // 创建CTAContext
         auto cta = std::make_unique<CTAContext>();
-        cta->init(gridDim, blockDim, blockIdx, statements, name2Sym, label2pc);
+        cta->init(gridDim, blockDim, blockIdx, statements, &name2Sym, label2pc);
 
         // 尝试将CTA添加到一个可用的SM
         bool added = false;
@@ -167,8 +167,8 @@ GPUContext::launch_kernel_async(void **args, Dim3 &gridDim, Dim3 &blockDim,
     auto future = promise->get_future();
 
     // 在新线程中执行kernel
-    std::thread([this, promise, args, &gridDim, &blockDim, &statements, &name2Sym,
-                 &label2pc]() {
+    std::thread([this, promise, args, &gridDim, &blockDim, &statements,
+                 &name2Sym, &label2pc]() {
         try {
             bool success = execute_kernel_internal(
                 args, gridDim, blockDim, statements, name2Sym, label2pc);

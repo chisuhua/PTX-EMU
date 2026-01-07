@@ -56,7 +56,7 @@ void test_warp_thread_addition() {
     std::map<std::string, int> label2pc;
 
     auto thread = std::make_unique<ThreadContext>();
-    thread->init(blockIdx, threadIdx, gridDim, blockDim, statements, name2Sym,
+    thread->init(blockIdx, threadIdx, gridDim, blockDim, statements, &name2Sym,
                  label2pc);
 
     // 添加线程到warp，使用std::move传递unique_ptr的所有权

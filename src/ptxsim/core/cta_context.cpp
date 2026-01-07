@@ -20,7 +20,7 @@ extern bool IFLOG();
 
 void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
                       std::vector<StatementContext> &statements,
-                      std::map<std::string, Symtable *> &name2Sym,
+                      std::map<std::string, Symtable *> *name2Sym,
                       std::map<std::string, int> &label2pc) {
 
     threadNum = BlockDim.x * BlockDim.y * BlockDim.z;
@@ -32,6 +32,9 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
     this->GridDim = GridDim;
     this->BlockDim = BlockDim;
     this->blockIdx = blockIdx;
+
+    // 保存statements引用，用于后续构建共享内存符号表
+    this->init_statements = &statements;
 
     // 计算共享内存大小，遍历PTX语句查找.shared声明
     sharedMemBytes = 0;
@@ -45,31 +48,13 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
         }
     }
 
-    // 分配共享内存空间
-    if (sharedMemBytes > 0) {
-        sharedMemSpace =
-            MemoryManager::instance().malloc_shared(sharedMemBytes);
-        if (sharedMemSpace == nullptr) {
-            PTX_DEBUG_EMU("Failed to allocate SHARED memory of size %zu",
-                          sharedMemBytes);
-            // 可以考虑抛出异常或返回错误
-        } else {
-            PTX_DEBUG_EMU("Allocated SHARED memory of size %zu at %p",
-                          sharedMemBytes, sharedMemSpace);
-            memset(sharedMemSpace, 0, sharedMemBytes);
-        }
-    } else {
-        sharedMemSpace = nullptr;
-        PTX_DEBUG_EMU("No SHARED memory needed, sharedMemBytes is 0");
-    }
-
-    // 构建共享内存符号表
+    // 预先创建共享内存符号表的结构，但不分配实际内存空间
     size_t shared_offset = 0;
     for (const auto &stmt : statements) {
         if (stmt.statementType == S_SHARED) {
             auto sharedStmt = (StatementContext::SHARED *)stmt.statement;
-            // 创建Symtable条目
-            auto s = std::make_unique<Symtable>();
+            // 使用new操作符创建Symtable实例
+            Symtable *s = new Symtable();
             s->name = sharedStmt->name;
             s->elementNum = sharedStmt->size;
             s->symType = sharedStmt->dataType[0]; // 假设dataType[0]是元素类型
@@ -77,19 +62,24 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
 
             size_t var_size = s->byteNum * sharedStmt->size;
 
-            // 设置符号表中的地址
-            s->val = (uint64_t)((char *)sharedMemSpace + shared_offset);
+            // 暂时设置地址为0，等待SMContext分配后填入
+            s->val = 0;
 
-            PTX_DEBUG_EMU(
-                "Shared memory variable: name=%s, elementNum=%d, byteNum=%d, "
-                "var_size=%zu, shared_mem_offset=%zu, stored_addr=%p",
-                s->name.c_str(), s->elementNum, s->byteNum, var_size, shared_offset,
-                (void *)s->val);
+            PTX_DEBUG_EMU("Prepared shared memory variable: name=%s, "
+                          "elementNum=%d, byteNum=%d, "
+                          "var_size=%zu, shared_mem_offset=%zu",
+                          s->name.c_str(), s->elementNum, s->byteNum, var_size,
+                          shared_offset);
 
-            name2Share[s->name] = std::move(s);
+            name2Share[s->name] = s;
             shared_offset += var_size;
         }
     }
+
+    // 共享内存分配现在在build_shared_memory_symbol_table中进行，由SMContext提供空间
+    sharedMemSpace = nullptr; // 初始化为nullptr
+    PTX_DEBUG_EMU("Calculated shared memory size needed: %zu bytes",
+                  sharedMemBytes);
 
     // 计算需要多少个warp
     int numWarpsNeeded =
@@ -127,14 +117,9 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
 
         auto thread = std::make_unique<ThreadContext>();
 
-        // 将name2Share中的Symtable指针复制到map中传递给线程
-        std::map<std::string, Symtable *> thread_name2Share;
-        for (const auto &pair : name2Share) {
-            thread_name2Share[pair.first] = pair.second.get();
-        }
-
+        // 传递空的符号表，等待后续填充
         thread->init(blockIdx, threadIdx, GridDim, BlockDim, statements,
-                     name2Sym, label2pc, &thread_name2Share);
+                     name2Sym, label2pc, &name2Share);
 
         // 设置线程使用寄存器银行管理器
         thread->set_register_bank_manager(register_bank_manager);
@@ -143,6 +128,52 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
         int warpId = i / WarpContext::WARP_SIZE;
         int laneId = i % WarpContext::WARP_SIZE;
         warps[warpId]->add_thread(std::move(thread), laneId);
+    }
+}
+
+// 实现新方法：构建共享内存符号表，现在需要接收分配好的共享内存空间
+void CTAContext::build_shared_memory_symbol_table(void *shared_mem_space) {
+    if (!init_statements) {
+        PTX_DEBUG_EMU("Error: init_statements is null, cannot build shared "
+                      "memory symbol table");
+        return;
+    }
+
+    // 设置共享内存空间
+    sharedMemSpace = shared_mem_space;
+
+    if (sharedMemBytes > 0 && sharedMemSpace != nullptr) {
+        PTX_DEBUG_EMU("Using provided SHARED memory of size %zu at %p",
+                      sharedMemBytes, sharedMemSpace);
+        memset(sharedMemSpace, 0, sharedMemBytes);
+    }
+
+    // 填充name2Share中的地址信息
+    size_t shared_offset = 0;
+    for (const auto &stmt : *init_statements) {
+        if (stmt.statementType == S_SHARED) {
+            auto sharedStmt = (StatementContext::SHARED *)stmt.statement;
+
+            // 查找对应的Symtable并设置地址
+            auto it = name2Share.find(sharedStmt->name);
+            if (it != name2Share.end()) {
+                Symtable *s = it->second;
+
+                size_t var_size = s->byteNum * s->elementNum;
+
+                // 设置符号表中的地址
+                s->val = (uint64_t)((char *)sharedMemSpace + shared_offset);
+
+                PTX_DEBUG_EMU(
+                    "Updated shared memory variable: name=%s, elementNum=%d, "
+                    "byteNum=%d, "
+                    "var_size=%zu, shared_mem_offset=%zu, stored_addr=%p",
+                    s->name.c_str(), s->elementNum, s->byteNum, var_size,
+                    shared_offset, (void *)s->val);
+
+                shared_offset += var_size;
+            }
+        }
     }
 }
 
@@ -203,14 +234,15 @@ std::vector<std::unique_ptr<WarpContext>> CTAContext::release_warps() {
 }
 
 CTAContext::~CTAContext() {
-    // 释放共享内存空间
-    if (sharedMemSpace != nullptr) {
-        PTX_DEBUG_EMU("Freeing SHARED memory at %p", sharedMemSpace);
-        MemoryManager::instance().free_shared(sharedMemSpace);
-        sharedMemSpace = nullptr;
-    }
+    // 注意：共享内存空间不由CTAContext释放，而是由SMContext管理
+    // 因此这里不需要释放sharedMemSpace
+    // 确保sharedMemSpace被设置为nullptr，防止任何可能的重复释放
+    sharedMemSpace = nullptr;
 
     // warps向量应该已经被清空，因为所有权已经转移
     // thread_pool也应该被清空
+
+    // name2Share中的Symtable内存由build_shared_memory_symbol_table统一管理释放
+    // 这里只需要清空map，不要delete指针
     name2Share.clear();
 }

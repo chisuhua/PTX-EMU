@@ -40,7 +40,7 @@ void test_sm_context_block_addition() {
     std::map<std::string, Symtable *> name2Sym;
     std::map<std::string, int> label2pc;
 
-    block.init(gridDim, blockDim, blockIdx, statements, name2Sym, label2pc);
+    block.init(gridDim, blockDim, blockIdx, statements, &name2Sym, label2pc);
 
     // 设置一些共享内存需求
     block.sharedMemBytes = 1024;
@@ -85,7 +85,7 @@ void test_sm_context_resource_limits() {
     std::map<std::string, Symtable *> name2Sym;
     std::map<std::string, int> label2pc;
 
-    block.init(gridDim, blockDim, blockIdx, statements, name2Sym, label2pc);
+    block.init(gridDim, blockDim, blockIdx, statements, &name2Sym, label2pc);
     block.sharedMemBytes = 2048; // 需要2KB共享内存，超过限制
 
     // 尝试添加块到SM - 应该失败
