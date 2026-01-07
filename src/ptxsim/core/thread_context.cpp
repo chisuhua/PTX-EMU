@@ -32,13 +32,15 @@ void ThreadContext::init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim,
                          Dim3 BlockDim,
                          std::vector<StatementContext> &statements,
                          std::map<std::string, Symtable *> &name2Sym,
-                         std::map<std::string, int> &label2pc) {
+                         std::map<std::string, int> &label2pc,
+                         std::map<std::string, Symtable *> *name2Share) {
     this->BlockIdx = blockIdx;
     this->ThreadIdx = threadIdx;
     this->GridDim = GridDim;
     this->BlockDim = BlockDim;
     this->statements = &statements;
     this->name2Sym = &name2Sym;
+    this->name2Share = name2Share;  // 设置共享内存符号表引用
     this->label2pc = label2pc;
     this->pc = 0;
     this->next_pc = 0;
@@ -108,7 +110,7 @@ void ThreadContext::trace_instruction(StatementContext &statement) {
     PTX_TRACE_INSTR(pc, opcode, operands, BlockIdx, ThreadIdx);
 
     // 记录性能统计
-    ptxsim::PTXDebugger::get().get_perf_stats().record_instruction(opcode);
+    // ptxsim::PTXDebugger::get().get_perf_stats().record_instruction(opcode);
 }
 
 void ThreadContext::clear_temporaries() {
@@ -208,6 +210,21 @@ void *ThreadContext::acquire_operand(OperandContext &operand,
     switch (operand.operandType) {
     case O_VAR: {
         OperandContext::VAR *varOp = (OperandContext::VAR *)operand.operand;
+        
+        // 优先在name2Share中查找（共享内存变量）
+        if (name2Share != nullptr) {
+            auto share_it = name2Share->find(varOp->varName);
+            if (share_it != name2Share->end()) {
+                // 对于共享内存变量，返回实际的内存地址值，而不是地址的地址
+                PTX_DEBUG_EMU("Reading shared memory from name2Share: name=%s, "
+                              "symbol_table_entry=%p, stored_value=0x%lx",
+                              varOp->varName.c_str(), share_it->second,
+                              share_it->second->val);
+                return (void *)(share_it->second->val);
+            }
+        }
+        
+        // 如果在name2Share中没找到，再到name2Sym中查找（参数、局部变量等）
         auto sym_it = name2Sym->find(varOp->varName);
         if (sym_it != name2Sym->end()) {
             PTX_DEBUG_EMU("Reading kernel name2Sym from name2Sym: name=%s, "
@@ -218,6 +235,7 @@ void *ThreadContext::acquire_operand(OperandContext &operand,
                           *(uint64_t *)(sym_it->second->val));
             return &(sym_it->second->val);
         }
+        
         break;
     }
 
@@ -370,17 +388,29 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
                           "symbol_table_entry=%p, stored_value=0x%lx",
                           fa->ID.c_str(), sym_it->second, sym_it->second->val);
             ret = (void *)sym_it->second->val;
-            // TODO : dectect it sharemem symbol 处理shared memory地址
-            // extern uint64_t SHMEMADDR;
-            // ret = (void *)(share_it->second->val + (SHMEMADDR << 32));
+        } else if (name2Share != nullptr) {
+            // 如果在name2Sym中没找到，继续在name2Share中查找
+            auto share_it = name2Share->find(fa->ID);
+            if (share_it != name2Share->end()) {
+                PTX_DEBUG_EMU("Reading shared memory from name2Share in "
+                              "get_memory_addr: name=%s, "
+                              "symbol_table_entry=%p, stored_value=0x%lx",
+                              fa->ID.c_str(), share_it->second, share_it->second->val);
+                ret = (void *)share_it->second->val;
+            } else {
+                // 如果都没找到，返回nullptr
+                return nullptr;
+            }
+        } else {
+            // 如果都没找到，返回nullptr
+            return nullptr;
         }
     }
 
-    // 如果是shared memory访问，需要特殊处理高32位地址
-    // 这适用于通过寄存器访问shared memory的情况
+    // 如果是shared memory访问，需要特殊处理
     if (QvecHasQ(qualifiers, Qualifier::Q_SHARED)) {
-        extern uint64_t SHMEMADDR;
-        ret = (void *)((uint64_t)ret + (SHMEMADDR << 32));
+        // 对于共享内存，地址已经在name2Share中正确设置了
+        // 不需要额外的处理，因为我们已经通过符号表获取了正确的地址
     }
 
     // 处理偏移量

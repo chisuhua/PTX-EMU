@@ -2,11 +2,9 @@
 #ifndef MEMORY_MANAGER_H
 #define MEMORY_MANAGER_H
 
-#include "memory_interface.h"
-#include "simple_memory_allocator.h"  // 添加对 SimpleMemoryAllocator 定义的包含
-#include <cstdint>
+#include "memory/memory_interface.h"
+#include "memory/simple_memory_allocator.h"
 #include <mutex>
-#include <sys/mman.h>
 #include <unordered_map>
 
 enum mycudaError_t {
@@ -34,6 +32,10 @@ public:
     // PARAM空间内存分配和释放
     void *malloc_param(size_t size);
     void free_param(void *param_ptr);
+
+    // SHARED空间内存分配和释放
+    void *malloc_shared(size_t size);
+    void free_shared(void *shared_ptr);
 
     // PTX 指令内存访问
     void access(void *host_ptr, void *data, size_t size, bool is_write);
@@ -70,6 +72,9 @@ private:
     
     // PARAM空间管理
     std::unordered_map<uint64_t, Allocation> param_allocations_;
+
+    // SHARED空间管理
+    std::unordered_map<uint64_t, Allocation> shared_allocations_;
 
     MemoryInterface *memory_interface_ = nullptr;
 };

@@ -1,10 +1,13 @@
 // memory/memory_manager.cpp
 #include "memory/memory_manager.h"
 #include "memory/simple_memory_allocator.h"
+#include "memory/memory_interface.h" // 添加缺少的头文件
+#include "utils/logger.h" // 添加日志头文件
 #include <cstring>
 #include <stdexcept>
 #include <unistd.h>
-#include "utils/logger.h"
+#include <mutex> // 添加mutex头文件
+#include <unordered_map> // 添加unordered_map头文件
 
 namespace {
     SimpleMemoryAllocator* get_global_allocator() {
@@ -21,9 +24,17 @@ MemoryManager &MemoryManager::instance() {
 MemoryManager::MemoryManager() {
     // 使用全局内存分配器
     allocator_ = get_global_allocator();
+    
+    // 初始化共享内存池
+    shared_pool_ = new uint8_t[SHARED_SIZE];
 }
 
 MemoryManager::~MemoryManager() {
+    // 释放共享内存池
+    if (shared_pool_) {
+        delete[] shared_pool_;
+        shared_pool_ = nullptr;
+    }
     // 不需要释放allocator_，因为它是一个全局单例
 }
 
@@ -95,6 +106,52 @@ void MemoryManager::free_param(void *param_ptr) {
     if (it != param_allocations_.end()) {
         allocator_->deallocate(it->second.offset);
         param_allocations_.erase(it);
+    }
+}
+
+void *MemoryManager::malloc_shared(size_t size) {
+    if (size == 0)
+        return nullptr;
+
+    std::lock_guard<std::mutex> lock(mutex_);
+    
+    // 在共享内存池中查找可用空间
+    size_t current_offset = 0;
+    bool found = false;
+    
+    // 简单的连续分配策略，实际应用中可能需要更复杂的内存管理
+    for (auto& pair : shared_allocations_) {
+        size_t end_offset = pair.second.offset + pair.second.size;
+        if (end_offset > current_offset) {
+            current_offset = end_offset;
+        }
+    }
+    
+    // 检查是否有足够的空间
+    if (current_offset + size > SHARED_SIZE) {
+        PTX_DEBUG_MEM("Not enough shared memory: requested=%zu, available=%zu", 
+            size, SHARED_SIZE - current_offset);
+        return nullptr;
+    }
+    
+    void *shared_ptr = shared_pool_ + current_offset;
+    shared_allocations_[reinterpret_cast<uint64_t>(shared_ptr)] = {current_offset, size};
+    
+    PTX_DEBUG_MEM("SHARED memory allocated: ptr=%p, offset=%zu, size=%zu", 
+        shared_ptr, current_offset, size);
+    return shared_ptr;
+}
+
+void MemoryManager::free_shared(void *shared_ptr) {
+    if (!shared_ptr)
+        return;
+
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = shared_allocations_.find(reinterpret_cast<uint64_t>(shared_ptr));
+    if (it != shared_allocations_.end()) {
+        // 对于简单实现，我们不真正释放空间，只是移除记录
+        // 实际应用中可能需要实现真正的内存块回收
+        shared_allocations_.erase(it);
     }
 }
 
@@ -199,6 +256,47 @@ void MemoryManager::access(void *host_ptr, void *data, size_t size,
             std::memcpy(host_ptr, data, size);
         } else {
             std::memcpy(data, host_ptr, size);
+        }
+        break;
+    }
+
+    case MemorySpace::SHARED: {
+        // 对于SHARED空间，检查host_ptr是否在共享内存池范围内
+        uint8_t* access_addr = static_cast<uint8_t*>(host_ptr);
+        uint8_t* pool_start = shared_pool_;
+        uint8_t* pool_end = shared_pool_ + SHARED_SIZE;
+        
+        if (access_addr >= pool_start && access_addr + size <= pool_end) {
+            // 验证访问的地址是否在已分配的共享内存块中
+            bool found = false;
+            for (const auto& pair : shared_allocations_) {
+                uint8_t* block_start = shared_pool_ + pair.second.offset;
+                uint8_t* block_end = block_start + pair.second.size;
+                
+                // 检查访问范围是否在分配的块内
+                if (access_addr >= block_start && access_addr + size <= block_end) {
+                    found = true;
+                    break;
+                }
+            }
+            
+            if (!found) {
+                PTX_DEBUG_MEM("Accessing unallocated SHARED memory: ptr=%p, size=%zu", host_ptr, size);
+                throw std::runtime_error("Accessing unallocated SHARED memory");
+            }
+
+            PTX_DEBUG_MEM("SHARED memory %s: ptr=%p, size=%zu", 
+                is_write ? "WRITE" : "READ", host_ptr, size);
+
+            // 对于SHARED空间，直接进行内存拷贝
+            if (is_write) {
+                std::memcpy(host_ptr, data, size);
+            } else {
+                std::memcpy(data, host_ptr, size);
+            }
+        } else {
+            PTX_DEBUG_MEM("SHARED memory access out of bounds: ptr=%p, size=%zu", host_ptr, size);
+            throw std::runtime_error("SHARED memory access out of bounds");
         }
         break;
     }

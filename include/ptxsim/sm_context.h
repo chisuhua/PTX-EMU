@@ -2,15 +2,15 @@
 #define SM_CONTEXT_H
 
 #include "ptx_ir/statement_context.h"
-#include "ptxsim/execution_types.h"
+#include "ptxsim/common_types.h" // 包含通用类型定义
 #include "ptxsim/cta_context.h"
+#include "ptxsim/execution_types.h"
 #include "ptxsim/warp_scheduler.h"
-#include "ptxsim/common_types.h"  // 包含通用类型定义
-#include <vector>
 #include <map>
 #include <memory>
+#include <vector>
 
-class PtxInterpreter;  // 前向声明
+class PtxInterpreter; // 前向声明
 
 class CTAContext;
 

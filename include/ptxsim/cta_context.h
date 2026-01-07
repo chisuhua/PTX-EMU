@@ -24,6 +24,7 @@ public:
     int barThreadNum;
 
     size_t sharedMemBytes = 0;
+    void *sharedMemSpace = nullptr;  // 共享内存空间指针
     Dim3 blockIdx, GridDim, BlockDim;
     std::map<std::string, std::unique_ptr<Symtable>> name2Share;
 
