@@ -1,7 +1,7 @@
 #include "ptxsim/sm_context.h"
-#include "ptxsim/cta_context.h"
 #include "memory/memory_manager.h" // 添加MemoryManager头文件
 #include "ptx_ir/statement_context.h"
+#include "ptxsim/cta_context.h"
 #include "utils/logger.h" // 添加logger头文件
 #include <algorithm>
 #include <cassert>
@@ -10,25 +10,27 @@ SMContext::SMContext(int max_warps, int max_threads_per_sm,
                      size_t shared_mem_size)
     : max_warps_per_sm(max_warps), max_threads_per_sm(max_threads_per_sm),
       max_shared_mem(shared_mem_size), allocated_shared_mem(0),
-      current_thread_count(0), sm_state(RUN) {
-    // 初始化warp调度器为轮询调度器
-    warp_scheduler = std::make_unique<RoundRobinWarpScheduler>();
+      current_thread_count(0), sm_state(EXE_STATE::IDLE),
+      next_physical_block_id(0), next_physical_warp_id(0) {
+    // 初始化warp调度器
+    warp_scheduler = std::make_unique<WarpScheduler>();
 }
 
 SMContext::~SMContext() {
     // 在SMContext销毁时，需要释放所有warp中的共享内存
     // 由于warp持有ThreadContext，而ThreadContext可能通过指针访问共享内存
     // 但是共享内存空间本身是由SMContext分配的，需要在这里处理
-    
+
     // 遍历所有warp，找到它们所属的CTAContext，并释放共享内存
     // 但是由于warp已经从CTAContext转移过来，我们需要一种方式来追踪共享内存
     // 当前的实现中，sharedMemSpace是通过build_shared_memory_symbol_table设置到CTAContext的
     // 但在add_block后，CTAContext的warp被转移了，CTAContext本身可能没有被保存
-    
+
     // 对于当前的架构，当CTA执行完成时，应该调用free_shared_memory来释放内存
     // 在SMContext销毁时，如果还有未释放的共享内存，发出警告
     if (allocated_shared_mem > 0) {
-        PTX_DEBUG_EMU("Warning: SMContext destroyed with %zu bytes of allocated shared memory", 
+        PTX_DEBUG_EMU("Warning: SMContext destroyed with %zu bytes of "
+                      "allocated shared memory",
                       allocated_shared_mem);
     }
 }
@@ -42,34 +44,32 @@ void SMContext::init(Dim3 &gridDim, Dim3 &blockDim,
 
 bool SMContext::add_block(CTAContext *block) {
     // 检查资源是否足够
-    int block_threads =
-        block->BlockDim.x * block->BlockDim.y * block->BlockDim.z;
-
-    if (current_thread_count + block_threads > max_threads_per_sm) {
-        return false; // 超出线程数限制
+    if (warps.size() + block->warpNum > max_warps_per_sm) {
+        return false; // 超过SM最大warp数限制
     }
 
-    if (static_cast<int>(warps.size()) + block->warpNum > max_warps_per_sm) {
-        return false; // 超出warp数限制
+    if (allocated_shared_mem + block->sharedMemBytes > max_shared_mem) {
+        return false; // 超过共享内存限制
     }
 
-    // 尝试分配共享内存
+    // 分配共享内存
     if (!allocate_shared_memory(block)) {
-        return false; // 共享内存不足
+        return false; // 内存分配失败
     }
-
     // 为CTAContext分配共享内存空间
     void *shared_mem_space = nullptr;
     if (block->sharedMemBytes > 0) {
-        shared_mem_space = MemoryManager::instance().malloc_shared(block->sharedMemBytes);
+        shared_mem_space =
+            MemoryManager::instance().malloc_shared(block->sharedMemBytes);
         if (shared_mem_space == nullptr) {
-            PTX_DEBUG_EMU("Failed to allocate SHARED memory of size %zu for block",
-                          block->sharedMemBytes);
+            PTX_DEBUG_EMU(
+                "Failed to allocate SHARED memory of size %zu for block",
+                block->sharedMemBytes);
             // 释放已分配的共享内存
             free_shared_memory(block);
             return false;
         }
-        
+
         PTX_DEBUG_EMU("Allocated SHARED memory of size %zu at %p for block",
                       block->sharedMemBytes, shared_mem_space);
     }
@@ -77,24 +77,27 @@ bool SMContext::add_block(CTAContext *block) {
     // 调用CTAContext的启动函数来构建共享内存符号表，传入分配好的内存空间
     block->build_shared_memory_symbol_table(shared_mem_space);
 
+    // 分配物理ID并记录这个块的warp总数
+    int physical_block_id = next_physical_block_id++;
+    physical_block_warp_counts[physical_block_id] = block->warpNum;
+
+    // 将块添加到管理列表
+    managed_blocks.emplace_back(
+        {physical_block_id, std::unique_ptr<CTAContext>(block)});
+
     // 获取CTAContext中的warp所有权
     auto block_warps = block->release_warps();
 
-    // 将warp添加到SM并注册到调度器
-    for (auto &block_warp : block_warps) {
-        if (block_warp) { // 确保warp不为空
-            warps.push_back(std::move(block_warp));
-            warp_scheduler->add_warp(warps.back().get());
-        }
+    // 将warp添加到SM的warp列表中
+    for (auto &warp : block_warps) {
+        // 设置物理warp ID
+        warp->set_physical_warp_id(next_physical_warp_id++);
+        // 添加到SM的warp列表
+        warps.push_back(std::move(warp));
     }
 
-    // 将块添加到管理列表中（转移所有权）
-    // 注意：这里我们转移的是CTAContext的所有权，但CTAContext中的warps已经被转移走
-    // 所以managed_blocks中的CTAContext不会再析构warp
-    // std::unique_ptr<CTAContext> managed_block(block);
-    // managed_blocks.push_back(std::move(managed_block));
-
-    current_thread_count += block_threads;
+    // 更新SM状态
+    update_state();
 
     return true;
 }
@@ -205,10 +208,16 @@ void SMContext::update_state() {
 
     // 检查整体SM状态
     bool has_active_warps = false;
-    for (const auto &warp : warps) {
+    auto it = warps.begin();
+    while (it != warps.end()) {
+        auto warp = *it;
         if (warp && !warp->is_finished()) {
             has_active_warps = true;
-            break;
+            it++;
+        } else {
+            auto physical_block_id = warp->get_physical_block_id();
+            physical_block_warp_counts[physical_block_id]--;
+            it = warps.erase(it);
         }
     }
 
@@ -216,6 +225,26 @@ void SMContext::update_state() {
         sm_state = EXIT;
     } else {
         sm_state = RUN;
+    }
+}
+
+void SMContext::cleanup_finished_blocks() {
+    // 检查每个managed_block，看其相关的warp是否都已完成
+    auto it = managed_blocks.begin();
+    while (it != managed_blocks.end()) {
+        auto physical_block_id = it->first;
+        auto block = it->second.get();
+        if (physical_block_warp_counts[physical_block_id] == 0) {
+            // 释放这个块的共享内存
+            free_shared_memory(it->get());
+
+            physical_block_warp_counts.erase(physical_block_id);
+            // 从managed_blocks中移除这个块
+            it = managed_blocks.erase(it);
+
+        } else {
+            ++it;
+        }
     }
 }
 
@@ -241,6 +270,6 @@ void SMContext::free_shared_memory(CTAContext *block) {
         MemoryManager::instance().free_shared(block->sharedMemSpace);
         allocated_shared_mem -= block->sharedMemBytes;
         // 重置block的共享内存指针
-        const_cast<void*&>(block->sharedMemSpace) = nullptr;
+        const_cast<void *&>(block->sharedMemSpace) = nullptr;
     }
 }

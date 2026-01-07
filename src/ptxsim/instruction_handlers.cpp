@@ -36,15 +36,6 @@
 
 #define IMPLEMENT_OPERAND_MEMORY(Name)                                         \
     void Name::execute(ThreadContext *context, StatementContext &stmt) {       \
-        auto ss = (StatementContext::Name *)stmt.statement;                    \
-        Symtable *s = new Symtable();                                          \
-        s->byteNum = getBytes(ss->dataType) * ss->size;                        \
-        s->elementNum = ss->size;                                              \
-        s->name = ss->name;                                                    \
-        s->symType = ss->dataType.back();                                      \
-        s->val = (uint64_t)(new char[s->byteNum]);                             \
-        memset((void *)s->val, 0, s->byteNum);                                 \
-        (*context->name2Sym)[s->name] = s;                                     \
         context->next_pc = context->pc + 1;                                    \
         return;                                                                \
     }

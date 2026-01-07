@@ -117,16 +117,17 @@ bool GPUContext::execute_kernel_internal(
         blockIdx.y = i % (gridDim.x * gridDim.y) / (gridDim.x);
         blockIdx.x = i % (gridDim.x * gridDim.y) % (gridDim.x);
 
-        // 创建CTAContext
+        // 创建CTAContext并添加到active_ctas
         auto cta = std::make_unique<CTAContext>();
         cta->init(gridDim, blockDim, blockIdx, statements, &name2Sym, label2pc);
+
+        // 添加到active_ctas，等待分配到SM
+        active_ctas.push_back(std::move(cta));
 
         // 尝试将CTA添加到一个可用的SM
         bool added = false;
         for (auto &sm : sms) {
-            if (sm->add_block(cta.get())) {
-                // 如果添加成功，CTAContext的所有权已经转移给SMContext
-                // 所以我们不需要将cta添加到active_ctas，避免重复析构
+            if (sm->add_block(active_ctas.back().get())) {
                 added = true;
                 break;
             }
@@ -137,6 +138,9 @@ bool GPUContext::execute_kernel_internal(
                       << std::endl;
             return false;
         }
+
+        // 从active_ctas移除已添加到SM的CTA，因为SM现在负责管理它
+        active_ctas.pop_back();
     }
 
     std::cout << "Launched kernel with " << ctaNum << " CTAs" << std::endl;
@@ -144,6 +148,11 @@ bool GPUContext::execute_kernel_internal(
     // 执行直到所有CTA完成
     while (get_state() == RUN) {
         exe_once();
+
+        // 检查是否有完成的CTA，需要从SM中移除并确保正确析构
+        for (auto &sm : sms) {
+            sm->cleanup_finished_blocks();
+        }
     }
 
     return true;

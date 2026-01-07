@@ -5,6 +5,7 @@
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/register_analyzer.h"
 #include "ptxsim/thread_context.h"
+#include "ptxsim/utils/qualifier_utils.h"
 #include "register/register_bank_manager.h"
 #include "utils/logger.h"
 #include <algorithm>
@@ -52,15 +53,15 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
     size_t shared_offset = 0;
     for (const auto &stmt : statements) {
         if (stmt.statementType == S_SHARED) {
-            auto sharedStmt = (StatementContext::SHARED *)stmt.statement;
+            auto ss = (StatementContext::SHARED *)stmt.statement;
             // 使用new操作符创建Symtable实例
             Symtable *s = new Symtable();
-            s->name = sharedStmt->name;
-            s->elementNum = sharedStmt->size;
-            s->symType = sharedStmt->dataType[0]; // 假设dataType[0]是元素类型
-            s->byteNum = Q2bytes(sharedStmt->dataType[0]);
+            s->byteNum = getBytes(ss->dataType) * ss->size;
+            s->elementNum = ss->size;
+            s->name = ss->name;
+            s->symType = ss->dataType.back(); // 假设dataType[0]是元素类型
 
-            size_t var_size = s->byteNum * sharedStmt->size;
+            size_t var_size = s->byteNum;
 
             // 暂时设置地址为0，等待SMContext分配后填入
             s->val = 0;

@@ -1,8 +1,6 @@
 #ifndef SM_CONTEXT_H
 #define SM_CONTEXT_H
 
-#include "ptxsim/sm_context.h"
-
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/common_types.h" // 包含通用类型定义
 #include "ptxsim/cta_context.h"
@@ -65,6 +63,9 @@ public:
         return idx < warps.size() ? warps[idx].get() : nullptr;
     }
 
+    // 清理已完成的块
+    void cleanup_finished_blocks();
+
 private:
     // 初始化warp
     void init_warps_for_block(CTAContext *block);
@@ -97,7 +98,14 @@ private:
     // 网格和块维度信息
     Dim3 gridDim;
     // 使用unique_ptr管理CTAContext的生命周期
-    std::vector<std::unique_ptr<CTAContext>> managed_blocks;
+    std::map<int, std::unique_ptr<CTAContext>> managed_blocks;
+
+    // 记录每个块的warp总数和已完成warp数（使用物理ID）
+    std::map<int, int> physical_block_warp_counts;
+
+    // 物理ID生成器
+    int next_physical_block_id = 0;
+    int next_physical_warp_id = 0;
 
     // 共享内存管理
     std::map<std::string, Symtable *> shared_memory;
