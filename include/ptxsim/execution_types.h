@@ -5,7 +5,7 @@
 #include <sstream>
 #include <string>
 
-enum EXE_STATE { RUN, EXIT, BAR_SYNC };
+enum EXE_STATE { IDLE, RUN, EXIT, BAR_SYNC };
 enum BAR_TYPE { SYNC };
 
 struct Dim3 {

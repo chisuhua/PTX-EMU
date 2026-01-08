@@ -10,11 +10,17 @@
 #include <memory>
 #include <vector>
 
+enum class CTAState {
+    INIT,           // 初始化完成
+    TRANSFERRED,    // warp已转移至SM
+    EXECUTING,      // 正在执行
+    FINISHED        // 执行完成
+};
+
 class PtxInterpreter; // 前向声明
 
 class CTAContext {
 public:
-    std::vector<std::unique_ptr<WarpContext>> warps;
     int warpNum;
     int curExeWarpId;
 
@@ -41,7 +47,24 @@ public:
     bool allThreadsExited() const { return exitThreadNum == threadNum; }
     bool allThreadsAtBarrier() const { return barThreadNum == threadNum; }
 
-    // 提供方法来获取warp的所有权
+    // 获取共享内存需求
+    size_t get_shared_memory_requirement() const { return sharedMemBytes; }
+    
+    // 获取warp数量需求
+    int get_warp_count() const { return warpNum; }
+    
+    // 获取线程数量
+    int get_thread_count() const { return threadNum; }
+    
+    // 获取和设置状态
+    CTAState get_state() const { return state_; }
+    void set_state(CTAState state) { state_ = state; }
+    
+    // 资源预留ID的getter和setter方法
+    int get_reservation_id() const { return reservation_id_; }
+    void set_reservation_id(int id) { reservation_id_ = id; }
+    
+    // 释放warp的所有权
     std::vector<std::unique_ptr<WarpContext>> release_warps();
 
     ~CTAContext();
@@ -49,6 +72,15 @@ public:
 private:
     // 存储初始化时的statements引用，用于后续构建共享内存符号表
     std::vector<StatementContext> *init_statements;
+    
+    // 状态管理
+    CTAState state_ = CTAState::INIT;
+    
+    // 添加资源预留ID
+    int reservation_id_ = -1;
+    
+    // 存储warp的向量，用于转移所有权
+    std::vector<std::unique_ptr<WarpContext>> warps;
 };
 
 #endif // CTA_CONTEXT_H

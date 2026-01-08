@@ -1,8 +1,11 @@
 #include "ptxsim/sm_context.h"
-#include "memory/memory_manager.h" // 添加MemoryManager头文件
+#include "memory/memory_manager.h"        // 添加MemoryManager头文件
+#include "memory/resource_manager.h"      // 添加ResourceManager头文件
+#include "memory/shared_memory_manager.h" // 添加SharedMemoryManager头文件
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/cta_context.h"
-#include "utils/logger.h" // 添加logger头文件
+#include "ptxsim/warp_scheduler.h" // 添加warp调度器头文件
+#include "utils/logger.h"          // 添加logger头文件
 #include <algorithm>
 #include <cassert>
 
@@ -10,10 +13,14 @@ SMContext::SMContext(int max_warps, int max_threads_per_sm,
                      size_t shared_mem_size)
     : max_warps_per_sm(max_warps), max_threads_per_sm(max_threads_per_sm),
       max_shared_mem(shared_mem_size), allocated_shared_mem(0),
-      current_thread_count(0), sm_state(EXE_STATE::IDLE),
-      next_physical_block_id(0), next_physical_warp_id(0) {
-    // 初始化warp调度器
-    warp_scheduler = std::make_unique<WarpScheduler>();
+      current_thread_count(0), sm_state(IDLE), next_physical_block_id(0),
+      next_physical_warp_id(0), shared_mem_manager_(nullptr),
+      current_reservation_id_(0) {
+    // 初始化warp调度器，使用RoundRobinWarpScheduler具体实现
+    warp_scheduler = std::make_unique<RoundRobinWarpScheduler>();
+
+    // 初始化资源统计
+    stats_ = {0, max_shared_mem, 0, max_warps, 0, max_threads_per_sm};
 }
 
 SMContext::~SMContext() {
@@ -40,64 +47,69 @@ void SMContext::init(Dim3 &gridDim, Dim3 &blockDim,
                      std::map<std::string, Symtable *> &name2Sym,
                      std::map<std::string, int> &label2pc) {
     this->gridDim = gridDim;
+
+    // 获取共享内存管理器 (此处的sm_id为占位符，实际应由外部传入或从上下文获取)
+    int sm_id = 0;
+    shared_mem_manager_ =
+        ResourceManager::instance().get_shared_memory_manager(sm_id);
+    if (!shared_mem_manager_) {
+        PTX_DEBUG_EMU("Failed to get shared memory manager for SM %d", sm_id);
+    }
 }
 
 bool SMContext::add_block(CTAContext *block) {
-    // 检查资源是否足够
-    if (warps.size() + block->warpNum > max_warps_per_sm) {
-        return false; // 超过SM最大warp数限制
+    // 1. 计算资源需求
+    size_t required_shared_mem = block->get_shared_memory_requirement();
+    int required_warps = block->get_warp_count();
+
+    // 2. 检查资源是否足够
+    if (!reserve_resources(required_shared_mem, required_warps)) {
+        PTX_DEBUG_EMU("Failed to reserve resources for block: "
+                      "shared_mem=%zu, warps=%d",
+                      required_shared_mem, required_warps);
+        return false; // 资源不足
     }
 
-    if (allocated_shared_mem + block->sharedMemBytes > max_shared_mem) {
-        return false; // 超过共享内存限制
-    }
-
-    // 分配共享内存
-    if (!allocate_shared_memory(block)) {
-        return false; // 内存分配失败
-    }
-    // 为CTAContext分配共享内存空间
+    // 3. 分配共享内存
     void *shared_mem_space = nullptr;
-    if (block->sharedMemBytes > 0) {
-        shared_mem_space =
-            MemoryManager::instance().malloc_shared(block->sharedMemBytes);
-        if (shared_mem_space == nullptr) {
+    if (required_shared_mem > 0 && shared_mem_manager_) {
+        shared_mem_space = shared_mem_manager_->allocate(
+            required_shared_mem, block->get_reservation_id());
+        if (!shared_mem_space) {
+            // 分配失败，释放预留
+            release_resources(block->get_reservation_id());
             PTX_DEBUG_EMU(
-                "Failed to allocate SHARED memory of size %zu for block",
-                block->sharedMemBytes);
-            // 释放已分配的共享内存
-            free_shared_memory(block);
+                "Failed to allocate shared memory of size %zu for block %d",
+                required_shared_mem, block->get_reservation_id());
             return false;
         }
-
-        PTX_DEBUG_EMU("Allocated SHARED memory of size %zu at %p for block",
-                      block->sharedMemBytes, shared_mem_space);
     }
 
-    // 调用CTAContext的启动函数来构建共享内存符号表，传入分配好的内存空间
+    // 4. 构建共享内存符号表
     block->build_shared_memory_symbol_table(shared_mem_space);
 
-    // 分配物理ID并记录这个块的warp总数
+    // 5. 分配物理ID并记录块信息
     int physical_block_id = next_physical_block_id++;
-    physical_block_warp_counts[physical_block_id] = block->warpNum;
+    physical_block_warp_counts[physical_block_id] = required_warps;
 
-    // 将块添加到管理列表
-    managed_blocks.emplace_back(
+    // 6. 添加到管理列表
+    managed_blocks.insert(
         {physical_block_id, std::unique_ptr<CTAContext>(block)});
 
-    // 获取CTAContext中的warp所有权
+    // 7. 获取warp所有权并添加到SM
     auto block_warps = block->release_warps();
-
-    // 将warp添加到SM的warp列表中
     for (auto &warp : block_warps) {
-        // 设置物理warp ID
+        warp->set_physical_block_id(physical_block_id);
         warp->set_physical_warp_id(next_physical_warp_id++);
-        // 添加到SM的warp列表
         warps.push_back(std::move(warp));
     }
 
-    // 更新SM状态
+    // 更新状态
     update_state();
+
+    PTX_DEBUG_EMU("Successfully added block with %zu shared memory bytes, "
+                  "%d warps, physical_block_id=%d",
+                  required_shared_mem, required_warps, physical_block_id);
 
     return true;
 }
@@ -210,7 +222,7 @@ void SMContext::update_state() {
     bool has_active_warps = false;
     auto it = warps.begin();
     while (it != warps.end()) {
-        auto warp = *it;
+        auto warp = it->get();
         if (warp && !warp->is_finished()) {
             has_active_warps = true;
             it++;
@@ -226,6 +238,13 @@ void SMContext::update_state() {
     } else {
         sm_state = RUN;
     }
+
+    // 更新统计信息
+    stats_.active_warps = warps.size();
+    stats_.active_threads = get_active_threads_count();
+    if (shared_mem_manager_) {
+        stats_.allocated_shared_mem = shared_mem_manager_->get_allocated_size();
+    }
 }
 
 void SMContext::cleanup_finished_blocks() {
@@ -236,7 +255,7 @@ void SMContext::cleanup_finished_blocks() {
         auto block = it->second.get();
         if (physical_block_warp_counts[physical_block_id] == 0) {
             // 释放这个块的共享内存
-            free_shared_memory(it->get());
+            free_shared_memory(it->second.get());
 
             physical_block_warp_counts.erase(physical_block_id);
             // 从managed_blocks中移除这个块
@@ -248,28 +267,73 @@ void SMContext::cleanup_finished_blocks() {
     }
 }
 
-bool SMContext::allocate_shared_memory(CTAContext *block) {
-    // 计算block所需的共享内存大小
-    size_t required_shared_mem = block->sharedMemBytes;
-
-    if (allocated_shared_mem + required_shared_mem > max_shared_mem) {
-        return false; // 共享内存不足
-    }
-
-    // 分配共享内存并构建符号表
-    // 为了实现这个功能，我们需要修改CTAContext的初始化过程
-    // 使CTAContext能够接收一个外部分配的共享内存地址
-    // 并在SMContext中调用build_shared_memory_symbol_table来构建符号表
-    allocated_shared_mem += required_shared_mem;
-    return true;
-}
-
 void SMContext::free_shared_memory(CTAContext *block) {
     // 释放共享内存
-    if (block->sharedMemSpace != nullptr) {
-        MemoryManager::instance().free_shared(block->sharedMemSpace);
-        allocated_shared_mem -= block->sharedMemBytes;
+    if (block->sharedMemSpace != nullptr && shared_mem_manager_) {
+        shared_mem_manager_->deallocate(block->sharedMemSpace,
+                                        block->get_reservation_id());
+        // allocated_shared_mem 由 shared_mem_manager_ 管理，不需要在这里更新
         // 重置block的共享内存指针
         const_cast<void *&>(block->sharedMemSpace) = nullptr;
     }
+}
+
+bool SMContext::reserve_resources(size_t shared_mem_size, int warp_count) {
+    if (!shared_mem_manager_) {
+        PTX_DEBUG_EMU("Shared memory manager not initialized");
+        return false;
+    }
+
+    // 检查共享内存是否足够
+    if (shared_mem_manager_->get_available_size() < shared_mem_size) {
+        PTX_DEBUG_EMU(
+            "Insufficient shared memory: requested %zu, available %zu",
+            shared_mem_size, shared_mem_manager_->get_available_size());
+        return false;
+    }
+
+    // 检查warp数量是否足够
+    if (static_cast<int>(warps.size()) + warp_count > max_warps_per_sm) {
+        PTX_DEBUG_EMU("Insufficient warps: current %zu, requested %d, max %d",
+                      warps.size(), warp_count, max_warps_per_sm);
+        return false;
+    }
+
+    // 分配预留ID
+    int reservation_id = current_reservation_id_++;
+
+    // 更新CTAContext的预留ID
+    // 注意：block参数是CTAContext指针，但我们不能直接访问其reservation_id_成员
+    // 因为这是私有成员，所以我们需要在调用reserve_resources之前设置reservation_id
+    return true;
+}
+
+void SMContext::release_resources(int reservation_id) {
+    // 在实际实现中，这会释放为特定块预留的资源
+    // 但现在我们使用共享内存管理器来处理资源释放
+    PTX_DEBUG_EMU("Releasing resources for reservation_id %d", reservation_id);
+}
+
+SMContext::ResourceStats SMContext::get_resource_stats() const {
+    return stats_;
+}
+
+void SMContext::print_resource_usage() const {
+    PTX_DEBUG_EMU("=== SM %p Resource Usage ===", this);
+    PTX_DEBUG_EMU("Shared Memory: %zu/%zu (%.2f%%)",
+                  stats_.allocated_shared_mem, stats_.max_shared_mem,
+                  stats_.max_shared_mem > 0
+                      ? 100.0 * stats_.allocated_shared_mem /
+                            stats_.max_shared_mem
+                      : 0.0);
+    PTX_DEBUG_EMU(
+        "Warps: %d/%d (%.2f%%)", stats_.active_warps, stats_.max_warps,
+        stats_.max_warps > 0 ? 100.0 * stats_.active_warps / stats_.max_warps
+                             : 0.0);
+    PTX_DEBUG_EMU("Threads: %d/%d (%.2f%%)", stats_.active_threads,
+                  stats_.max_threads,
+                  stats_.max_threads > 0
+                      ? 100.0 * stats_.active_threads / stats_.max_threads
+                      : 0.0);
+    PTX_DEBUG_EMU("========================");
 }

@@ -54,11 +54,14 @@ add_library(ptxsim SHARED
     ptxsim/core/warp_scheduler.cpp
     ptxsim/core/sm_context.cpp
     ptxsim/core/gpu_context.cpp
+    ptxsim/core/active_warp_manager.cpp
     register/condition_code_register.cpp
     register/register_bank_manager.cpp
     memory/memory_manager.cpp
     memory/simple_memory.cpp
     memory/simple_memory_allocator.cpp
+    memory/shared_memory_manager.cpp
+    memory/resource_manager.cpp
     ptxsim/debug/ptx_debug.cpp
     ptxsim/instruction_factory.cpp
     ptxsim/instruction_base.cpp

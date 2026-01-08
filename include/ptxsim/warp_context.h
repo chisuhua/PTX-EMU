@@ -105,12 +105,6 @@ private:
     int physical_warp_id;                       // 物理warp ID
     int physical_block_id;                      // 物理warp ID
 
-    void set_physical_warp_id(int id) { physical_warp_id = id; }
-    int get_physical_warp_id() const { return physical_warp_id; }
-
-    void set_physical_block_id(int id) { physical_block_id = id; }
-    int get_physical_block_id() const { return physical_block_id; }
-
     bool divergence_detected;              // 分歧检测标志
     std::vector<int> pc_stacks[WARP_SIZE]; // 每个线程的PC栈，用于分支重新合并
 
@@ -119,6 +113,14 @@ private:
 
     // 单步执行模式
     bool single_step_mode;
+
+public:
+    // 物理ID管理方法 - 从private移动到public
+    void set_physical_warp_id(int id) { physical_warp_id = id; }
+    int get_physical_warp_id() const { return physical_warp_id; }
+
+    void set_physical_block_id(int id) { physical_block_id = id; }
+    int get_physical_block_id() const { return physical_block_id; }
 };
 
 #endif // WARP_CONTEXT_H

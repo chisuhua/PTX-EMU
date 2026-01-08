@@ -2,17 +2,18 @@
 #define SM_CONTEXT_H
 
 #include "ptx_ir/statement_context.h"
-#include "ptxsim/common_types.h" // 包含通用类型定义
+#include "ptxsim/common_types.h"
 #include "ptxsim/cta_context.h"
 #include "ptxsim/execution_types.h"
+#include "ptxsim/warp_context.h"
 #include "ptxsim/warp_scheduler.h"
 #include <map>
 #include <memory>
 #include <vector>
 
-class PtxInterpreter; // 前向声明
-
+class WarpScheduler;
 class CTAContext;
+class SharedMemoryManager;
 
 class SMContext {
 public:
@@ -66,6 +67,27 @@ public:
     // 清理已完成的块
     void cleanup_finished_blocks();
 
+    // 预留资源
+    bool reserve_resources(size_t shared_mem_size, int warp_count);
+
+    // 释放资源
+    void release_resources(int reservation_id);
+
+    // 获取资源使用统计
+    struct ResourceStats {
+        size_t allocated_shared_mem;
+        size_t max_shared_mem;
+        int active_warps;
+        int max_warps;
+        int active_threads;
+        int max_threads;
+    };
+
+    ResourceStats get_resource_stats() const;
+
+    // 打印资源使用情况
+    void print_resource_usage() const;
+
 private:
     // 初始化warp
     void init_warps_for_block(CTAContext *block);
@@ -109,6 +131,15 @@ private:
 
     // 共享内存管理
     std::map<std::string, Symtable *> shared_memory;
+
+    // 资源管理器引用
+    SharedMemoryManager *shared_mem_manager_ = nullptr;
+
+    // 资源预留ID
+    int current_reservation_id_ = 0;
+
+    // 资源统计
+    mutable ResourceStats stats_;
 };
 
 #endif // SM_CONTEXT_H
