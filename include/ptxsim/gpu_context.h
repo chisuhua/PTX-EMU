@@ -5,7 +5,6 @@
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/common_types.h" // 包含通用类型定义
 #include "ptxsim/execution_types.h"
-#include "ptxsim/interpreter.h"
 #include "sm_context.h"
 #include "warp_context.h"
 #include <condition_variable>
@@ -29,7 +28,7 @@ struct GPUConfig {
 
     // 构造函数提供默认值
     GPUConfig()
-        : num_sms(80),              // 默认80个SM，类似Ampere A100
+        : num_sms(1),               // 默认80个SM，类似Ampere A100
           max_warps_per_sm(64),     // 每个SM最大64个warp
           max_threads_per_sm(2048), // 每个SM最大2048个线程
           shared_mem_size_per_sm(1024 * 64), // 每个SM 64KB共享内存
@@ -44,14 +43,15 @@ struct KernelLaunchRequest {
     void **args;
     Dim3 gridDim;
     Dim3 blockDim;
-    std::vector<StatementContext> *statements;
-    std::map<std::string, Symtable *> *name2Sym;
-    std::map<std::string, int> *label2pc;
+    std::vector<StatementContext> *statements; // 直接引用，由ptxContext持有
+    std::shared_ptr<std::map<std::string, Symtable *>> name2Sym;
+    std::shared_ptr<std::map<std::string, int>> label2pc;
 
-    KernelLaunchRequest(void **_args, Dim3 &_gridDim, Dim3 &_blockDim,
-                        std::vector<StatementContext> *_stmts,
-                        std::map<std::string, Symtable *> *_name2Sym,
-                        std::map<std::string, int> *_label2pc)
+    KernelLaunchRequest(
+        void **_args, Dim3 &_gridDim, Dim3 &_blockDim,
+        std::vector<StatementContext> *_stmts,
+        std::shared_ptr<std::map<std::string, Symtable *>> _name2Sym,
+        std::shared_ptr<std::map<std::string, int>> _label2pc)
         : args(_args), gridDim(_gridDim), blockDim(_blockDim),
           statements(_stmts), name2Sym(_name2Sym), label2pc(_label2pc) {}
 };
@@ -64,24 +64,17 @@ public:
     // 从配置文件加载GPU配置
     bool load_config(const std::string &config_path);
 
-    // 初始化GPU上下文
-    void init(Dim3 &gridDim, Dim3 &blockDim,
-              std::vector<StatementContext> &statements,
-              std::map<std::string, Symtable *> &name2Sym,
-              std::map<std::string, int> &label2pc);
+    // 硬件初始化，不再需要任务参数
+    void init();
+
+    // 提交kernel请求
+    void submit_kernel_request(KernelLaunchRequest &&request);
 
     // 同步执行kernel
-    bool launch_kernel(void **args, Dim3 &gridDim, Dim3 &blockDim,
-                       std::vector<StatementContext> &statements,
-                       std::map<std::string, Symtable *> &name2Sym,
-                       std::map<std::string, int> &label2pc);
-
-    // 异步执行kernel
-    std::future<EXE_STATE>
-    launch_kernel_async(void **args, Dim3 &gridDim, Dim3 &blockDim,
-                        std::vector<StatementContext> &statements,
-                        std::map<std::string, Symtable *> &name2Sym,
-                        std::map<std::string, int> &label2pc);
+    // bool launch_kernel(void **args, Dim3 &gridDim, Dim3 &blockDim,
+    //                    std::vector<StatementContext> &statements,
+    //                    std::map<std::string, Symtable *> &name2Sym,
+    //                    std::map<std::string, int> &label2pc);
 
     // 执行一个GPU周期
     EXE_STATE exe_once();
@@ -100,8 +93,11 @@ public:
     // 获取GPU配置
     const GPUConfig &get_config() const { return config; }
 
-    // 检查是否有待处理的任务
+    // 检查是否有等待的任务
     bool has_pending_tasks() const;
+
+    // 等待所有任务完成
+    void wait_for_completion();
 
 private:
     // GPU配置
@@ -117,18 +113,6 @@ private:
     std::queue<KernelLaunchRequest> task_queue;
     mutable std::mutex queue_mutex;
     std::condition_variable task_cv;
-
-    // 当前执行的CTA列表
-    std::vector<std::unique_ptr<CTAContext>> active_ctas;
-
-    // 网格和块维度信息（用于初始化）
-    Dim3 gridDim;
-    Dim3 blockDim;
-
-    // 存储语句和符号表
-    std::vector<StatementContext> *statements;
-    std::map<std::string, Symtable *> *name2Sym;
-    std::map<std::string, int> *label2pc;
 
     // 内部执行kernel的辅助函数
     bool execute_kernel_internal(void **args, Dim3 &gridDim, Dim3 &blockDim,

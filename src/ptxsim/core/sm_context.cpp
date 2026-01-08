@@ -10,17 +10,23 @@
 #include <cassert>
 
 SMContext::SMContext(int max_warps, int max_threads_per_sm,
-                     size_t shared_mem_size)
+                     size_t shared_mem_size, int sm_id)
     : max_warps_per_sm(max_warps), max_threads_per_sm(max_threads_per_sm),
       max_shared_mem(shared_mem_size), allocated_shared_mem(0),
       current_thread_count(0), sm_state(IDLE), next_physical_block_id(0),
-      next_physical_warp_id(0), shared_mem_manager_(nullptr),
-      current_reservation_id_(0) {
+      next_physical_warp_id(0), shared_mem_manager_(nullptr), 
+      current_reservation_id_(0), sm_id_(sm_id) {
     // 初始化warp调度器，使用RoundRobinWarpScheduler具体实现
     warp_scheduler = std::make_unique<RoundRobinWarpScheduler>();
-
+    
     // 初始化资源统计
     stats_ = {0, max_shared_mem, 0, max_warps, 0, max_threads_per_sm};
+    
+    // 获取共享内存管理器
+    shared_mem_manager_ = ResourceManager::instance().get_shared_memory_manager(sm_id);
+    if (!shared_mem_manager_) {
+        PTX_DEBUG_EMU("Failed to get shared memory manager for SM %d", sm_id);
+    }
 }
 
 SMContext::~SMContext() {
@@ -42,22 +48,12 @@ SMContext::~SMContext() {
     }
 }
 
-void SMContext::init(Dim3 &gridDim, Dim3 &blockDim,
-                     std::vector<StatementContext> &statements,
-                     std::map<std::string, Symtable *> &name2Sym,
-                     std::map<std::string, int> &label2pc) {
-    this->gridDim = gridDim;
-
-    // 获取共享内存管理器 (此处的sm_id为占位符，实际应由外部传入或从上下文获取)
-    int sm_id = 0;
-    shared_mem_manager_ =
-        ResourceManager::instance().get_shared_memory_manager(sm_id);
-    if (!shared_mem_manager_) {
-        PTX_DEBUG_EMU("Failed to get shared memory manager for SM %d", sm_id);
-    }
+void SMContext::init() {
+    // 现在初始化逻辑在构造函数中完成
+    // 这里可以放置其他初始化逻辑
 }
 
-bool SMContext::add_block(CTAContext *block) {
+bool SMContext::add_block(std::unique_ptr<CTAContext> block) {
     // 1. 计算资源需求
     size_t required_shared_mem = block->get_shared_memory_requirement();
     int required_warps = block->get_warp_count();
@@ -92,12 +88,12 @@ bool SMContext::add_block(CTAContext *block) {
     int physical_block_id = next_physical_block_id++;
     physical_block_warp_counts[physical_block_id] = required_warps;
 
-    // 6. 添加到管理列表
+    // 6. 添加到管理列表 - 直接使用unique_ptr
     managed_blocks.insert(
-        {physical_block_id, std::unique_ptr<CTAContext>(block)});
+        {physical_block_id, std::move(block)});
 
     // 7. 获取warp所有权并添加到SM
-    auto block_warps = block->release_warps();
+    auto block_warps = managed_blocks[physical_block_id]->release_warps();
     for (auto &warp : block_warps) {
         warp->set_physical_block_id(physical_block_id);
         warp->set_physical_warp_id(next_physical_warp_id++);
@@ -108,8 +104,8 @@ bool SMContext::add_block(CTAContext *block) {
     update_state();
 
     PTX_DEBUG_EMU("Successfully added block with %zu shared memory bytes, "
-                  "%d warps, physical_block_id=%d",
-                  required_shared_mem, required_warps, physical_block_id);
+                  "%d warps to SM %d",
+                  required_shared_mem, required_warps, sm_id_);
 
     return true;
 }
@@ -233,7 +229,10 @@ void SMContext::update_state() {
         }
     }
 
-    if (!has_active_warps) {
+    // 检查是否有正在管理的blocks
+    bool has_managed_blocks = !managed_blocks.empty();
+
+    if (!has_active_warps && !has_managed_blocks) {
         sm_state = EXIT;
     } else {
         sm_state = RUN;

@@ -21,7 +21,8 @@
 #include "ptxParser.h"
 #include "ptxParserBaseListener.h"
 #include "ptx_parser/ptx_parser.h"
-#include "ptxsim/interpreter.h"
+#include "ptxsim/gpu_context.h"  // 添加GPUContext头文件
+#include "ptx_interpreter.h"
 #include "ptxsim/ptx_debug.h"
 #include "utils/logger.h"
 
@@ -38,6 +39,9 @@ dim3 _gridDim, _blockDim;
 size_t _sharedMem;
 PtxListener ptxListener;
 PtxInterpreter ptxInterpreter;
+
+// 全局GPUContext实例
+std::unique_ptr<GPUContext> g_gpu_context;
 
 // std::map<uint64_t, bool> memAlloc;
 // 全局初始化（在 main 或首次调用时）
@@ -74,7 +78,7 @@ static const char *DEBUG_CONFIG_FILE = "ptx_debug.conf";
 
 #define LOGEMU 1
 
-// 初始化调试环境
+// 初始化调试环境和GPUContext
 void initialize_debug_environment() {
     auto &logger_config = ptxsim::LoggerConfig::get();
     auto &debugger = ptxsim::DebugConfig::get();
@@ -89,6 +93,14 @@ void initialize_debug_environment() {
             "No debug configuration file found, using default settings");
         // 设置默认的日志级别
         logger_config.set_global_level(ptxsim::log_level::info);
+    }
+
+    // 初始化全局GPUContext
+    static bool gpu_initialized = false;
+    if (!gpu_initialized) {
+        g_gpu_context = std::make_unique<GPUContext>(DEBUG_CONFIG_FILE);
+        g_gpu_context->init();
+        gpu_initialized = true;
     }
 }
 
@@ -203,7 +215,7 @@ cudaError_t cudaMalloc(void **p, size_t s) {
     *p = MemoryManager::instance().malloc(s);
 #ifdef LOGEMU
     printf("EMU: call %s\n", __my_func__);
-    printf("EMU: malloc %lx\n", *p);
+    printf("EMU: malloc %p\n", *p);
 #endif
     return (*p) ? cudaSuccess : cudaErrorMemoryAllocation;
 }
@@ -329,9 +341,14 @@ cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim, dim3 blockDim,
 
     Dim3 gridDim3(gridDim.x, gridDim.y, gridDim.z);
     Dim3 blockDim3(blockDim.x, blockDim.y, blockDim.z);
+
+    // 调用PtxInterpreter的launch函数，提交请求到全局GPUContext
     ptxInterpreter.launchPtxInterpreter(ptxListener.ptxContext,
                                         func2name[(uint64_t)func], args,
                                         gridDim3, blockDim3);
+
+    // 等待kernel执行完成
+    g_gpu_context->wait_for_completion();
 
     return cudaSuccess;
 }

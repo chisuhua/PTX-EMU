@@ -1,14 +1,12 @@
 #include "ptxsim/gpu_context.h"
-#include "ptxsim/interpreter.h"
+#include "memory/resource_manager.h"
 #include <fstream>
 #include <future>
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <thread>
 
-GPUContext::GPUContext(const std::string &config_path)
-    : gpu_state(RUN), statements(nullptr), name2Sym(nullptr),
-      label2pc(nullptr) {
+GPUContext::GPUContext(const std::string &config_path) : gpu_state(RUN) {
     if (!config_path.empty()) {
         load_config(config_path);
     } else {
@@ -74,15 +72,10 @@ bool GPUContext::load_config(const std::string &config_path) {
     }
 }
 
-void GPUContext::init(Dim3 &gridDim, Dim3 &blockDim,
-                      std::vector<StatementContext> &statements,
-                      std::map<std::string, Symtable *> &name2Sym,
-                      std::map<std::string, int> &label2pc) {
-    this->gridDim = gridDim;
-    this->blockDim = blockDim;
-    this->statements = &statements;
-    this->name2Sym = &name2Sym;
-    this->label2pc = &label2pc;
+void GPUContext::init() {
+    // 初始化 ResourceManager
+    ResourceManager::instance().initialize(config.num_sms,
+                                           config.shared_mem_size_per_sm);
 
     // 创建SMs
     sms.clear();
@@ -90,13 +83,22 @@ void GPUContext::init(Dim3 &gridDim, Dim3 &blockDim,
     for (int i = 0; i < config.num_sms; i++) {
         auto sm = std::make_unique<SMContext>(config.max_warps_per_sm,
                                               config.max_threads_per_sm,
-                                              config.shared_mem_size_per_sm);
-        sm->init(gridDim, blockDim, statements, name2Sym, label2pc);
+                                              config.shared_mem_size_per_sm,
+                                              i); // 传递SM ID
+        // SMContext现在在构造时完成初始化
         sms.push_back(std::move(sm));
     }
 
     std::cout << "Initialized GPU with " << config.num_sms << " SMs"
               << std::endl;
+}
+
+void GPUContext::submit_kernel_request(KernelLaunchRequest &&request) {
+    {
+        std::lock_guard<std::mutex> lock(queue_mutex);
+        task_queue.emplace(std::forward<KernelLaunchRequest>(request));
+    }
+    task_cv.notify_one(); // 通知执行线程有新任务
 }
 
 bool GPUContext::execute_kernel_internal(
@@ -107,9 +109,6 @@ bool GPUContext::execute_kernel_internal(
     // 计算总的CTA数量
     int ctaNum = gridDim.x * gridDim.y * gridDim.z;
 
-    // 清理之前的CTA
-    active_ctas.clear();
-
     // 为每个CTA创建上下文并尝试添加到SM
     for (int i = 0; i < ctaNum; i++) {
         Dim3 blockIdx;
@@ -117,17 +116,14 @@ bool GPUContext::execute_kernel_internal(
         blockIdx.y = i % (gridDim.x * gridDim.y) / (gridDim.x);
         blockIdx.x = i % (gridDim.x * gridDim.y) % (gridDim.x);
 
-        // 创建CTAContext并添加到active_ctas
+        // 创建CTAContext
         auto cta = std::make_unique<CTAContext>();
         cta->init(gridDim, blockDim, blockIdx, statements, &name2Sym, label2pc);
-        
-        // 添加到active_ctas，等待分配到SM
-        active_ctas.push_back(std::move(cta));
 
         // 尝试将CTA添加到一个可用的SM
         bool added = false;
         for (auto &sm : sms) {
-            if (sm->add_block(active_ctas.back().get())) {
+            if (sm->add_block(std::move(cta))) { // 使用std::move转移所有权
                 added = true;
                 break;
             }
@@ -138,79 +134,58 @@ bool GPUContext::execute_kernel_internal(
                       << std::endl;
             return false;
         }
-        
-        // 从active_ctas移除已添加到SM的CTA，因为SM现在负责管理它
-        active_ctas.pop_back();
     }
 
     std::cout << "Launched kernel with " << ctaNum << " CTAs" << std::endl;
 
-    // 执行直到所有CTA完成
-    while (get_state() == RUN) {
-        exe_once();
-        
-        // 检查是否有完成的CTA，需要从SM中移除并确保正确析构
-        for (auto &sm : sms) {
-            sm->cleanup_finished_blocks();
-        }
-    }
-
     return true;
 }
 
-bool GPUContext::launch_kernel(void **args, Dim3 &gridDim, Dim3 &blockDim,
-                               std::vector<StatementContext> &statements,
-                               std::map<std::string, Symtable *> &name2Sym,
-                               std::map<std::string, int> &label2pc) {
-    return execute_kernel_internal(args, gridDim, blockDim, statements,
-                                   name2Sym, label2pc);
-}
-
-std::future<EXE_STATE>
-GPUContext::launch_kernel_async(void **args, Dim3 &gridDim, Dim3 &blockDim,
-                                std::vector<StatementContext> &statements,
-                                std::map<std::string, Symtable *> &name2Sym,
-                                std::map<std::string, int> &label2pc) {
-    // 创建一个promise和future
-    auto promise = std::make_shared<std::promise<EXE_STATE>>();
-    auto future = promise->get_future();
-
-    // 在新线程中执行kernel
-    std::thread([this, promise, args, &gridDim, &blockDim, &statements,
-                 &name2Sym, &label2pc]() {
-        try {
-            bool success = execute_kernel_internal(
-                args, gridDim, blockDim, statements, name2Sym, label2pc);
-            if (success) {
-                promise->set_value(get_state());
-            } else {
-                promise->set_value(EXIT);
-            }
-        } catch (...) {
-            promise->set_value(EXIT);
-        }
-    }).detach();
-
-    return future;
-}
-
+/**
+ * @brief 执行GPU模拟器的一个时钟周期。
+ *
+ * 该方法是整个GPU模拟器的核心驱动循环。它在一个时间片内完成以下主要工作：
+ * 1. **任务调度**:
+ * 检查所有流式多处理器（SM）是否都处于空闲状态（IDLE/EXIT）。如果是，并且任务队列中有待处理的核函数请求，
+ *    则从队列中取出一个请求并调用 `execute_kernel_internal`
+ * 将其启动。这实现了核函数的按序、非抢占式调度。
+ * 2. **SM执行**: 遍历所有SM，对每一个当前状态为 `RUN` 的SM调用其 `exe_once()`
+ * 方法，让它们各自向前执行一个模拟周期。
+ * 3. **状态管理**:
+ * 在所有SM都完成了一个周期的执行后，检查它们的整体状态。如果所有SM都已退出（`EXIT`）当前核函数的执行，
+ *    并且任务队列中没有更多待处理的任务，则将整个GPU上下文的状态 `gpu_state`
+ * 设置为 `EXIT`，表示模拟结束。 否则，将 `gpu_state` 保持为
+ * `RUN`，以便下一次调用 `exe_once` 继续执行。
+ *
+ * 通过反复调用此方法，可以逐步推进GPU上所有核函数的执行，直到所有任务完成。
+ *
+ * @return EXE_STATE
+ * 返回当前GPU的整体执行状态。当所有任务队列为空且所有SM都已完成时返回
+ * EXIT，否则返回 RUN。
+ */
 EXE_STATE GPUContext::exe_once() {
-    if (gpu_state != RUN) {
-        return gpu_state;
-    }
-
-    // 检查是否所有SM都已完成
-    bool all_finished = true;
+    // 检查任务队列，如果有新任务且当前没有正在运行的kernel，则启动它
+    bool all_sm_idle = true;
     for (const auto &sm : sms) {
-        if (sm->get_state() != EXIT) {
-            all_finished = false;
+        if (sm->get_state() == RUN) {
+            all_sm_idle = false;
             break;
         }
     }
 
-    if (all_finished) {
-        gpu_state = EXIT;
-        return gpu_state;
+    // 如果所有SM都处于空闲状态且有任务等待执行，则启动新任务
+    if (all_sm_idle) {
+        std::lock_guard<std::mutex> lock(queue_mutex);
+        if (!task_queue.empty()) {
+            // 启动新任务
+            auto request = std::move(task_queue.front());
+            task_queue.pop();
+
+            // 执行任务分配，将kernel分配给各个SM
+            execute_kernel_internal(request.args, request.gridDim,
+                                    request.blockDim, *request.statements,
+                                    *request.name2Sym, *request.label2pc);
+        }
     }
 
     // 执行每个SM的一个周期
@@ -220,10 +195,34 @@ EXE_STATE GPUContext::exe_once() {
         }
     }
 
+    // 检查是否所有SM都已完成当前kernel
+    bool all_finished = true;
+    for (const auto &sm : sms) {
+        if (sm->get_state() != EXIT) {
+            all_finished = false;
+            break;
+        }
+    }
+
+    // 如果所有SM都完成了当前kernel，但还有任务在队列中，保持RUN状态
+    std::lock_guard<std::mutex> lock(queue_mutex);
+    if (all_finished && task_queue.empty()) {
+        gpu_state = EXIT; // 没有任务了，设置为EXIT状态
+    } else {
+        gpu_state = RUN; // 还有任务要处理或当前kernel还在运行
+    }
+
     return gpu_state;
 }
 
 bool GPUContext::has_pending_tasks() const {
     std::lock_guard<std::mutex> lock(queue_mutex);
     return !task_queue.empty();
+}
+
+void GPUContext::wait_for_completion() {
+    EXE_STATE state;
+    do {
+        state = exe_once();
+    } while (state != EXIT);
 }

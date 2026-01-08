@@ -17,17 +17,14 @@ class SharedMemoryManager;
 
 class SMContext {
 public:
-    SMContext(int max_warps, int max_threads_per_sm, size_t shared_mem_size);
+    SMContext(int max_warps, int max_threads_per_sm, size_t shared_mem_size, int sm_id);
     virtual ~SMContext();
 
-    // 初始化SM上下文
-    void init(Dim3 &gridDim, Dim3 &blockDim,
-              std::vector<StatementContext> &statements,
-              std::map<std::string, Symtable *> &name2Sym,
-              std::map<std::string, int> &label2pc);
+    // 初始化SM上下文，不再需要任务相关参数
+    void init();
 
-    // 添加线程块到SM
-    bool add_block(CTAContext *block);
+    // 添加块到SM，接收unique_ptr以转移所有权
+    bool add_block(std::unique_ptr<CTAContext> block);
 
     // 执行一个SM周期
     EXE_STATE exe_once();
@@ -117,8 +114,6 @@ private:
     std::vector<std::unique_ptr<WarpContext>> warps;
     std::unique_ptr<WarpScheduler> warp_scheduler;
 
-    // 网格和块维度信息
-    Dim3 gridDim;
     // 使用unique_ptr管理CTAContext的生命周期
     std::map<int, std::unique_ptr<CTAContext>> managed_blocks;
 
@@ -140,6 +135,9 @@ private:
 
     // 资源统计
     mutable ResourceStats stats_;
+
+    // SM ID
+    int sm_id_;
 };
 
 #endif // SM_CONTEXT_H

@@ -6,12 +6,14 @@
 #include <cassert>
 #include <iostream>
 #include <memory>
+#include <vector>
+#include <map>
 
 void test_sm_context_creation() {
     std::cout << "Testing SMContext creation..." << std::endl;
 
-    // 创建SMContext，限制为最多4个warp，最多128个线程，4KB共享内存
-    SMContext sm(4, 128, 4096);
+    // 创建SMContext，限制为最多4个warp，最多128个线程，4KB共享内存，sm_id为0
+    SMContext sm(4, 128, 4096, 0);
 
     // 检查初始状态
     assert(sm.get_state() == RUN);
@@ -26,10 +28,10 @@ void test_sm_context_creation() {
 void test_sm_context_block_addition() {
     std::cout << "Testing SMContext block addition..." << std::endl;
 
-    SMContext sm(8, 256, 8192); // 最多8个warp，256个线程，8KB共享内存
+    SMContext sm(8, 256, 8192, 0); // 最多8个warp，256个线程，8KB共享内存，sm_id为0
 
     // 创建一个CTAContext
-    CTAContext block;
+    std::unique_ptr<CTAContext> block = std::make_unique<CTAContext>();
 
     // 初始化CTAContext
     Dim3 gridDim = {1, 1, 1};
@@ -40,13 +42,13 @@ void test_sm_context_block_addition() {
     std::map<std::string, Symtable *> name2Sym;
     std::map<std::string, int> label2pc;
 
-    block.init(gridDim, blockDim, blockIdx, statements, &name2Sym, label2pc);
+    block->init(gridDim, blockDim, blockIdx, statements, &name2Sym, label2pc);
 
     // 设置一些共享内存需求
-    block.sharedMemBytes = 1024;
+    block->sharedMemBytes = 1024;
 
     // 添加块到SM
-    bool success = sm.add_block(&block);
+    bool success = sm.add_block(std::move(block));
     assert(success == true);
 
     // 检查资源分配
@@ -59,7 +61,7 @@ void test_sm_context_block_addition() {
 void test_sm_context_execution() {
     std::cout << "Testing SMContext execution..." << std::endl;
 
-    SMContext sm(4, 128, 4096);
+    SMContext sm(4, 128, 4096, 0);
 
     // 验证初始状态
     EXE_STATE state = sm.exe_once();
@@ -72,10 +74,10 @@ void test_sm_context_resource_limits() {
     std::cout << "Testing SMContext resource limits..." << std::endl;
 
     // 创建一个资源受限的SM (仅允许1个warp, 64个线程, 1KB共享内存)
-    SMContext sm(1, 64, 1024);
+    SMContext sm(1, 64, 1024, 0);
 
     // 创建一个需要超过限制的块
-    CTAContext block;
+    std::unique_ptr<CTAContext> block = std::make_unique<CTAContext>();
 
     Dim3 gridDim = {1, 1, 1};
     Dim3 blockDim = {128, 1, 1}; // 需要128个线程，超过限制
@@ -85,11 +87,11 @@ void test_sm_context_resource_limits() {
     std::map<std::string, Symtable *> name2Sym;
     std::map<std::string, int> label2pc;
 
-    block.init(gridDim, blockDim, blockIdx, statements, &name2Sym, label2pc);
-    block.sharedMemBytes = 2048; // 需要2KB共享内存，超过限制
+    block->init(gridDim, blockDim, blockIdx, statements, &name2Sym, label2pc);
+    block->sharedMemBytes = 2048; // 需要2KB共享内存，超过限制
 
     // 尝试添加块到SM - 应该失败
-    bool success = sm.add_block(&block);
+    bool success = sm.add_block(std::move(block));
     assert(success == false);
 
     std::cout << "SMContext resource limits test passed." << std::endl;

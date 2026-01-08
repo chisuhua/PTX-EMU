@@ -3,10 +3,10 @@
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/instruction_factory.h"
-#include "ptxsim/interpreter.h"
 #include "ptxsim/ptx_debug.h"
 #include "ptxsim/register_analyzer.h"
 #include "ptxsim/utils/qualifier_utils.h"
+#include "ptxsim/warp_context.h" // 添加WarpContext头文件包含
 #include "utils/logger.h"
 #include <algorithm>
 #include <any>

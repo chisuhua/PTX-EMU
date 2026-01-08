@@ -28,7 +28,8 @@ add_custom_target(GenerateParser DEPENDS ${ANTLR4_GENERATED_SOURCES} ptxLexer.g4
 
 # 设置源文件（包含ANTLR生成的源文件）
 set(SOURCES
-    PTXEMU.cpp
+    cudart/cudart_sim.cpp
+    cudart/ptx_interpreter.cpp
     #utils/logger.cpp
     ${ANTLR4_GENERATED_SOURCES}
 )
@@ -48,7 +49,6 @@ target_include_directories(ptx_ir PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
 add_library(ptxsim SHARED
     ptxsim/core/cta_context.cpp
-    ptxsim/core/interpreter.cpp
     ptxsim/core/thread_context.cpp
     ptxsim/core/warp_context.cpp
     ptxsim/core/warp_scheduler.cpp

@@ -1,4 +1,4 @@
-#include "ptxsim/interpreter.h"
+#include "ptx_interpreter.h"
 #include "memory/memory_manager.h" // 添加 MemoryManager 头文件
 #include "ptx_ir/kernel_context.h"
 #include "ptx_ir/statement_context.h"
@@ -12,12 +12,10 @@
 #include <map>
 #include <memory>
 
-PtxInterpreter::PtxInterpreter(const std::string &gpu_config_path) {
-    if (!gpu_config_path.empty()) {
-        gpu_context = std::make_shared<GPUContext>(gpu_config_path);
-    } else {
-        gpu_context = std::make_shared<GPUContext>(); // 使用默认配置
-    }
+// 不再需要在这里声明g_gpu_context，已在头文件中声明
+
+PtxInterpreter::PtxInterpreter() {
+    // 不再创建 GPUContext
 }
 
 void PtxInterpreter::launchPtxInterpreter(PtxContext &ptx, std::string &kernel,
@@ -43,7 +41,7 @@ void PtxInterpreter::launchPtxInterpreter(PtxContext &ptx, std::string &kernel,
     std::map<std::string, Symtable *> name2Sym;
     std::map<std::string, int> label2pc;
 
-    funcInterpreter(name2Sym, label2pc);
+    funcInterpreter(name2Sym, label2pc, ptx, kernel, args, gridDim, blockDim);
 
     // 内核执行结束后，释放PARAM空间，使用 MemoryManager 提供的 free_param 函数
     if (this->param_space) {
@@ -60,20 +58,33 @@ void PtxInterpreter::launchPtxInterpreter(PtxContext &ptx, std::string &kernel,
 
 void PtxInterpreter::funcInterpreter(
     std::map<std::string, Symtable *> &name2Sym,
-    std::map<std::string, int> &label2pc) {
+    std::map<std::string, int> &label2pc,
+    PtxContext &ptx,
+    std::string &kernel,
+    void **args,
+    Dim3 &gridDim,
+    Dim3 &blockDim) {
     // Setup symbols
     setupConstantSymbols(name2Sym);
     setupKernelArguments(name2Sym);
     setupLabels(label2pc);
 
-    // 初始化GPU上下文
-    gpu_context->init(gridDim, blockDim, kernelContext->kernelStatements,
-                      name2Sym, label2pc);
+    // 构建KernelLaunchRequest并提交到全局GPUContext
+    if (g_gpu_context) {
+        // 只传递name2Sym和label2pc的所有权，statements由ptxContext持有
+        auto name2sym_ptr = std::make_shared<std::map<std::string, Symtable*>>(
+            name2Sym);
+        auto label2pc_ptr = std::make_shared<std::map<std::string, int>>(
+            label2pc);
 
-    // 使用GPU上下文执行kernel
-    gpu_context->launch_kernel(kernelArgs, gridDim, blockDim,
-                               kernelContext->kernelStatements, name2Sym,
-                               label2pc);
+        // 构建请求，statements由ptxContext持有，不转移所有权
+        KernelLaunchRequest request(args, gridDim, blockDim, 
+                                  &kernelContext->kernelStatements,  // 直接引用ptxContext中的statements
+                                  name2sym_ptr, label2pc_ptr);
+
+        // 提交请求
+        g_gpu_context->submit_kernel_request(std::move(request));
+    }
 }
 
 void PtxInterpreter::setupConstantSymbols(
