@@ -46,14 +46,23 @@ struct KernelLaunchRequest {
     std::vector<StatementContext> *statements; // 直接引用，由ptxContext持有
     std::shared_ptr<std::map<std::string, Symtable *>> name2Sym;
     std::shared_ptr<std::map<std::string, int>> label2pc;
+    int request_id; // 添加请求ID以追踪任务状态
+    std::function<void()> on_complete; // 任务完成时的回调函数
+
+    // 默认构造函数
+    KernelLaunchRequest() : args(nullptr), gridDim(), blockDim(),
+                            statements(nullptr), name2Sym(nullptr), label2pc(nullptr),
+                            request_id(0), on_complete(nullptr) {}
 
     KernelLaunchRequest(
         void **_args, Dim3 &_gridDim, Dim3 &_blockDim,
         std::vector<StatementContext> *_stmts,
         std::shared_ptr<std::map<std::string, Symtable *>> _name2Sym,
-        std::shared_ptr<std::map<std::string, int>> _label2pc)
+        std::shared_ptr<std::map<std::string, int>> _label2pc,
+        int _request_id = 0, std::function<void()> _on_complete = nullptr)
         : args(_args), gridDim(_gridDim), blockDim(_blockDim),
-          statements(_stmts), name2Sym(_name2Sym), label2pc(_label2pc) {}
+          statements(_stmts), name2Sym(_name2Sym), label2pc(_label2pc),
+          request_id(_request_id), on_complete(_on_complete) {}
 };
 
 class GPUContext {
@@ -62,19 +71,13 @@ public:
     virtual ~GPUContext() = default;
 
     // 从配置文件加载GPU配置
-    bool load_config(const std::string &config_path);
+    bool load_json_config(const std::string &config_path);
 
     // 硬件初始化，不再需要任务参数
     void init();
 
     // 提交kernel请求
     void submit_kernel_request(KernelLaunchRequest &&request);
-
-    // 同步执行kernel
-    // bool launch_kernel(void **args, Dim3 &gridDim, Dim3 &blockDim,
-    //                    std::vector<StatementContext> &statements,
-    //                    std::map<std::string, Symtable *> &name2Sym,
-    //                    std::map<std::string, int> &label2pc);
 
     // 执行一个GPU周期
     EXE_STATE exe_once();
@@ -113,6 +116,10 @@ private:
     std::queue<KernelLaunchRequest> task_queue;
     mutable std::mutex queue_mutex;
     std::condition_variable task_cv;
+
+    // 正在执行的任务映射
+    std::map<int, KernelLaunchRequest> executing_requests;
+    int next_request_id = 0;
 
     // 内部执行kernel的辅助函数
     bool execute_kernel_internal(void **args, Dim3 &gridDim, Dim3 &blockDim,

@@ -3,6 +3,7 @@
  * generate fake libcudart.so to replace origin libcudart.so
  */
 
+#include "inipp/inipp.h"
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
@@ -20,9 +21,9 @@
 #include "ptxLexer.h"
 #include "ptxParser.h"
 #include "ptxParserBaseListener.h"
-#include "ptx_parser/ptx_parser.h"
-#include "ptxsim/gpu_context.h"  // 添加GPUContext头文件
 #include "ptx_interpreter.h"
+#include "ptx_parser/ptx_parser.h"
+#include "ptxsim/gpu_context.h"
 #include "ptxsim/ptx_debug.h"
 #include "utils/logger.h"
 
@@ -73,32 +74,204 @@ static void ensure_memory_manager_initialized() {
     }
 }
 
-// 调试配置文件路径
-static const char *DEBUG_CONFIG_FILE = "ptx_debug.conf";
+// 配置文件路径
+static const char *CONFIG_FILE = "config.ini";
 
 #define LOGEMU 1
 
-// 初始化调试环境和GPUContext
-void initialize_debug_environment() {
+// 从INI配置中加载日志配置
+void load_logger_config(const inipp::Ini<char>::Section &logger_section) {
     auto &logger_config = ptxsim::LoggerConfig::get();
-    auto &debugger = ptxsim::DebugConfig::get();
 
-    // 尝试加载调试配置文件
-    if (logger_config.load_from_file(DEBUG_CONFIG_FILE)) {
-        PTX_INFO_EMU("Debug configuration loaded from %s", DEBUG_CONFIG_FILE);
-        // 加载调试器配置
-        debugger.load_from_file(DEBUG_CONFIG_FILE);
+    std::string level_str;
+    inipp::get_value(logger_section, "global_level", level_str);
+    if (!level_str.empty()) {
+        logger_config.set_global_level(
+            logger_config.string_to_log_level(level_str));
+    }
+
+    std::string target_str;
+    inipp::get_value(logger_section, "target", target_str);
+    if (!target_str.empty()) {
+        logger_config.set_target_from_string(target_str);
+    }
+
+    std::string logfile;
+    inipp::get_value(logger_section, "logfile", logfile);
+    if (!logfile.empty()) {
+        logger_config.set_logfile(logfile);
+    }
+
+    std::string async_str;
+    inipp::get_value(logger_section, "async", async_str);
+    if (!async_str.empty()) {
+        bool async = (async_str == "true" || async_str == "1");
+        logger_config.enable_async_logging(async);
+    }
+
+    std::string colorize_str;
+    inipp::get_value(logger_section, "colorize", colorize_str);
+    if (!colorize_str.empty()) {
+        bool colorize = (colorize_str == "true" || colorize_str == "1");
+        logger_config.set_use_color_output(colorize);
+    }
+
+    // 读取组件级别配置
+    for (const auto &pair : logger_section) {
+        if (pair.first.substr(0, 9) == "component") {
+            std::string component =
+                pair.first.substr(10); // skip "component."
+            if (!component.empty()) {
+                ptxsim::log_level level =
+                    logger_config.string_to_log_level(pair.second);
+                logger_config.set_component_level(component, level);
+            }
+        }
+    }
+}
+
+// 从INI配置中加载调试器配置
+void load_debugger_config(const inipp::Ini<char>::Section &debugger_section) {
+    auto &debugger_config = ptxsim::DebugConfig::get();
+
+    std::string trace_instr;
+    inipp::get_value(debugger_section, "trace_instruction", trace_instr);
+    if (!trace_instr.empty()) {
+        bool trace = (trace_instr == "true" || trace_instr == "1");
+        debugger_config.enable_instruction_trace(
+            ptxsim::InstructionType::MEMORY, trace);
+        debugger_config.enable_instruction_trace(
+            ptxsim::InstructionType::ARITHMETIC, trace);
+        debugger_config.enable_instruction_trace(
+            ptxsim::InstructionType::CONTROL, trace);
+        debugger_config.enable_instruction_trace(
+            ptxsim::InstructionType::LOGIC, trace);
+        debugger_config.enable_instruction_trace(
+            ptxsim::InstructionType::CONVERT, trace);
+        debugger_config.enable_instruction_trace(
+            ptxsim::InstructionType::SPECIAL, trace);
+        debugger_config.enable_instruction_trace(
+            ptxsim::InstructionType::OTHER, trace);
+    }
+
+    // 按类型设置指令跟踪
+    std::string trace_memory;
+    inipp::get_value(debugger_section, "trace_instruction_type.memory",
+                     trace_memory);
+    if (!trace_memory.empty()) {
+        debugger_config.enable_instruction_trace(
+            ptxsim::InstructionType::MEMORY,
+            (trace_memory == "true" || trace_memory == "1"));
+    }
+
+    std::string trace_arithmetic;
+    inipp::get_value(debugger_section, "trace_instruction_type.arithmetic",
+                     trace_arithmetic);
+    if (!trace_arithmetic.empty()) {
+        debugger_config.enable_instruction_trace(
+            ptxsim::InstructionType::ARITHMETIC,
+            (trace_arithmetic == "true" || trace_arithmetic == "1"));
+    }
+
+    std::string trace_control;
+    inipp::get_value(debugger_section, "trace_instruction_type.control",
+                     trace_control);
+    if (!trace_control.empty()) {
+        debugger_config.enable_instruction_trace(
+            ptxsim::InstructionType::CONTROL,
+            (trace_control == "true" || trace_control == "1"));
+    }
+
+    std::string trace_logic;
+    inipp::get_value(debugger_section, "trace_instruction_type.logic",
+                     trace_logic);
+    if (!trace_logic.empty()) {
+        debugger_config.enable_instruction_trace(
+            ptxsim::InstructionType::LOGIC,
+            (trace_logic == "true" || trace_logic == "1"));
+    }
+
+    std::string trace_convert;
+    inipp::get_value(debugger_section, "trace_instruction_type.convert",
+                     trace_convert);
+    if (!trace_convert.empty()) {
+        debugger_config.enable_instruction_trace(
+            ptxsim::InstructionType::CONVERT,
+            (trace_convert == "true" || trace_convert == "1"));
+    }
+
+    std::string trace_special;
+    inipp::get_value(debugger_section, "trace_instruction_type.special",
+                     trace_special);
+    if (!trace_special.empty()) {
+        debugger_config.enable_instruction_trace(
+            ptxsim::InstructionType::SPECIAL,
+            (trace_special == "true" || trace_special == "1"));
+    }
+
+    std::string trace_other;
+    inipp::get_value(debugger_section, "trace_instruction_type.other",
+                     trace_other);
+    if (!trace_other.empty()) {
+        debugger_config.enable_instruction_trace(
+            ptxsim::InstructionType::OTHER,
+            (trace_other == "true" || trace_other == "1"));
+    }
+
+    // 设置内存和寄存器跟踪
+    std::string trace_mem;
+    inipp::get_value(debugger_section, "trace_memory", trace_mem);
+    if (!trace_mem.empty()) {
+        debugger_config.enable_memory_trace(
+            (trace_mem == "true" || trace_mem == "1"));
+    }
+
+    std::string trace_reg;
+    inipp::get_value(debugger_section, "trace_registers", trace_reg);
+    if (!trace_reg.empty()) {
+        debugger_config.enable_register_trace(
+            (trace_reg == "true" || trace_reg == "1"));
+    }
+}
+
+// 初始化调试环境和GPUContext
+void initialize_environment() {
+    // 解析配置文件一次，然后分别设置各个组件
+    inipp::Ini<char> ini;
+    std::ifstream is(CONFIG_FILE);
+    if (is.is_open()) {
+        ini.parse(is);
+
+        // 设置日志配置
+        auto logger_section = ini.sections["logger"];
+        load_logger_config(logger_section);
+
+        // 设置调试器配置
+        auto debugger_section = ini.sections["debugger"];
+        load_debugger_config(debugger_section);
+
+        PTX_INFO_EMU("Configuration loaded from %s", CONFIG_FILE);
     } else {
-        PTX_INFO_EMU(
-            "No debug configuration file found, using default settings");
+        PTX_INFO_EMU("No configuration file found, using default settings");
         // 设置默认的日志级别
-        logger_config.set_global_level(ptxsim::log_level::info);
+        ptxsim::LoggerConfig::get().set_global_level(ptxsim::log_level::info);
     }
 
     // 初始化全局GPUContext
     static bool gpu_initialized = false;
     if (!gpu_initialized) {
-        g_gpu_context = std::make_unique<GPUContext>(DEBUG_CONFIG_FILE);
+        // 从INI配置文件中读取GPU配置文件路径
+        std::string gpu_config_filename;
+        auto gpu_section = ini.sections["gpu"];
+        inipp::get_value(gpu_section, "gpu_config_file", gpu_config_filename);
+        if (!gpu_config_filename.empty()) {
+            // 创建GPUContext并直接加载JSON配置
+            g_gpu_context =
+                std::make_unique<GPUContext>("configs/" + gpu_config_filename);
+        } else {
+            // 如果INI文件中没有指定GPU配置文件或加载失败，使用默认配置
+            g_gpu_context = std::make_unique<GPUContext>();
+        }
         g_gpu_context->init();
         gpu_initialized = true;
     }
@@ -114,7 +287,7 @@ void **__cudaRegisterFatBinary(void *fatCubin) {
     // 初始化调试环境
     static bool debug_initialized = false;
     if (!debug_initialized) {
-        initialize_debug_environment();
+        initialize_environment();
         debug_initialized = true;
     }
 

@@ -2,20 +2,27 @@
 #include "memory/resource_manager.h"
 #include <fstream>
 #include <future>
+#include <inipp/inipp.h>
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <thread>
 
 GPUContext::GPUContext(const std::string &config_path) : gpu_state(RUN) {
     if (!config_path.empty()) {
-        load_config(config_path);
+        // 尝试加载JSON配置文件
+        if (!load_json_config(config_path)) {
+            // 如果加载失败，使用默认配置
+            config = GPUConfig();
+            std::cout << "Failed to load config from: " << config_path
+                      << ", using default configuration." << std::endl;
+        }
     } else {
         // 使用默认配置
         config = GPUConfig();
     }
 }
 
-bool GPUContext::load_config(const std::string &config_path) {
+bool GPUContext::load_json_config(const std::string &config_path) {
     try {
         std::ifstream config_file(config_path);
         if (!config_file.is_open()) {
@@ -96,6 +103,8 @@ void GPUContext::init() {
 void GPUContext::submit_kernel_request(KernelLaunchRequest &&request) {
     {
         std::lock_guard<std::mutex> lock(queue_mutex);
+        // 为请求分配唯一ID
+        request.request_id = next_request_id++;
         task_queue.emplace(std::forward<KernelLaunchRequest>(request));
     }
     task_cv.notify_one(); // 通知执行线程有新任务
@@ -149,7 +158,7 @@ bool GPUContext::execute_kernel_internal(
  * 检查所有流式多处理器（SM）是否都处于空闲状态（IDLE/EXIT）。如果是，并且任务队列中有待处理的核函数请求，
  *    则从队列中取出一个请求并调用 `execute_kernel_internal`
  * 将其启动。这实现了核函数的按序、非抢占式调度。
- * 2. **SM执行**: 遍历所有SM，对每一个当前状态为 `RUN` 的SM调用其 `exe_once()`
+ * 2. **SM执行**: 遍历所有SM，对每一个当前状态为 `RUN` 的SM调用其 `exe_once()``
  * 方法，让它们各自向前执行一个模拟周期。
  * 3. **状态管理**:
  * 在所有SM都完成了一个周期的执行后，检查它们的整体状态。如果所有SM都已退出（`EXIT`）当前核函数的执行，
@@ -179,7 +188,11 @@ EXE_STATE GPUContext::exe_once() {
         if (!task_queue.empty()) {
             // 启动新任务
             auto request = std::move(task_queue.front());
-            task_queue.pop();
+            task_queue
+                .pop(); // 现在可以安全地移除，因为我们要将它标记为正在执行
+
+            // 将请求添加到正在执行的映射中
+            executing_requests[request.request_id] = request;
 
             // 执行任务分配，将kernel分配给各个SM
             execute_kernel_internal(request.args, request.gridDim,
@@ -195,6 +208,35 @@ EXE_STATE GPUContext::exe_once() {
         }
     }
 
+    // 检查是否所有SM都已完成当前kernel，清理已完成的请求
+    std::lock_guard<std::mutex> lock(queue_mutex);
+    for (auto it = executing_requests.begin();
+         it != executing_requests.end();) {
+        bool request_complete = true;
+
+        // 检查所有SM的状态，判断这个特定请求是否完成
+        for (const auto &sm : sms) {
+            // 如果SM状态不是EXIT，则说明还有任务在执行
+            // 这里我们假设如果SM状态是EXIT，意味着它已经完成了之前分配的请求
+            if (sm->get_state() != EXIT) {
+                request_complete = false;
+                break;
+            }
+        }
+
+        if (request_complete) {
+            // 请求已完成，如果存在完成回调，则执行它
+            if (it->second.on_complete) {
+                it->second.on_complete();
+            }
+            
+            // 请求已完成，从执行映射中移除
+            it = executing_requests.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
     // 检查是否所有SM都已完成当前kernel
     bool all_finished = true;
     for (const auto &sm : sms) {
@@ -205,8 +247,7 @@ EXE_STATE GPUContext::exe_once() {
     }
 
     // 如果所有SM都完成了当前kernel，但还有任务在队列中，保持RUN状态
-    std::lock_guard<std::mutex> lock(queue_mutex);
-    if (all_finished && task_queue.empty()) {
+    if (all_finished && task_queue.empty() && executing_requests.empty()) {
         gpu_state = EXIT; // 没有任务了，设置为EXIT状态
     } else {
         gpu_state = RUN; // 还有任务要处理或当前kernel还在运行
@@ -217,7 +258,7 @@ EXE_STATE GPUContext::exe_once() {
 
 bool GPUContext::has_pending_tasks() const {
     std::lock_guard<std::mutex> lock(queue_mutex);
-    return !task_queue.empty();
+    return !task_queue.empty() || !executing_requests.empty();
 }
 
 void GPUContext::wait_for_completion() {

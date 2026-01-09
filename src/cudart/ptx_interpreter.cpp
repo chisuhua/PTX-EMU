@@ -43,27 +43,13 @@ void PtxInterpreter::launchPtxInterpreter(PtxContext &ptx, std::string &kernel,
 
     funcInterpreter(name2Sym, label2pc, ptx, kernel, args, gridDim, blockDim);
 
-    // 内核执行结束后，释放PARAM空间，使用 MemoryManager 提供的 free_param 函数
-    if (this->param_space) {
-        PTX_DEBUG_EMU("Freeing PARAM space at %p", this->param_space);
-        MemoryManager::instance().free_param(this->param_space);
-        this->param_space = nullptr;
-    }
-
-    // 清理符号表
-    // for (auto &pair : name2Sym) {
-    //     delete pair.second;
-    // }
+    // 内核执行结束后，不再立即释放参数空间，而是通过回调机制在任务完成后释放
 }
 
 void PtxInterpreter::funcInterpreter(
     std::map<std::string, Symtable *> &name2Sym,
-    std::map<std::string, int> &label2pc,
-    PtxContext &ptx,
-    std::string &kernel,
-    void **args,
-    Dim3 &gridDim,
-    Dim3 &blockDim) {
+    std::map<std::string, int> &label2pc, PtxContext &ptx, std::string &kernel,
+    void **args, Dim3 &gridDim, Dim3 &blockDim) {
     // Setup symbols
     setupConstantSymbols(name2Sym);
     setupKernelArguments(name2Sym);
@@ -72,15 +58,26 @@ void PtxInterpreter::funcInterpreter(
     // 构建KernelLaunchRequest并提交到全局GPUContext
     if (g_gpu_context) {
         // 只传递name2Sym和label2pc的所有权，statements由ptxContext持有
-        auto name2sym_ptr = std::make_shared<std::map<std::string, Symtable*>>(
-            name2Sym);
-        auto label2pc_ptr = std::make_shared<std::map<std::string, int>>(
-            label2pc);
+        auto name2sym_ptr =
+            std::make_shared<std::map<std::string, Symtable *>>(name2Sym);
+        auto label2pc_ptr =
+            std::make_shared<std::map<std::string, int>>(label2pc);
+
+        // 创建完成回调，用于在任务完成后释放参数空间
+        auto param_space_ptr = this->param_space; // 捕获当前param_space指针
+        auto completion_callback = [param_space_ptr]() {
+            if (param_space_ptr) {
+                PTX_DEBUG_EMU("Freeing PARAM space at %p", param_space_ptr);
+                MemoryManager::instance().free_param(param_space_ptr);
+            }
+        };
 
         // 构建请求，statements由ptxContext持有，不转移所有权
-        KernelLaunchRequest request(args, gridDim, blockDim, 
-                                  &kernelContext->kernelStatements,  // 直接引用ptxContext中的statements
-                                  name2sym_ptr, label2pc_ptr);
+        KernelLaunchRequest request(
+            args, gridDim, blockDim,
+            &kernelContext
+                 ->kernelStatements, // 直接引用ptxContext中的statements
+            name2sym_ptr, label2pc_ptr, 0, completion_callback);
 
         // 提交请求
         g_gpu_context->submit_kernel_request(std::move(request));

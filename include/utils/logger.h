@@ -2,6 +2,7 @@
 #ifndef PTX_LOGGER_H
 #define PTX_LOGGER_H
 
+#include "inipp/inipp.h"
 #include <atomic>
 #include <cassert>
 #include <chrono>
@@ -144,7 +145,8 @@ void output_log_simple(log_level level, const std::string &component,
 template <typename... Args>
 std::string printf_format(const char *fmt, Args &&...args) {
     // 添加检查以确保 fmt 是有效的格式字符串
-    if (!fmt) return std::string();
+    if (!fmt)
+        return std::string();
     size_t size = snprintf(nullptr, 0, fmt, args...) + 1;
     std::unique_ptr<char[]> buf(new char[size]);
     snprintf(buf.get(), size, fmt, args...);
@@ -243,51 +245,58 @@ public:
     bool load_from_file(const std::string &filename) {
         std::lock_guard<std::mutex> lock(mutex_);
         try {
-            std::ifstream config_file(filename);
-            if (!config_file.is_open()) {
+            inipp::Ini<char> ini;
+            std::ifstream is(filename);
+            if (!is.is_open()) {
                 return false;
             }
 
-            std::string line;
-            while (std::getline(config_file, line)) {
-                // 跳过注释和空行
-                if (line.empty() || line[0] == '#')
-                    continue;
+            ini.parse(is);
+            ini.strip_trailing_comments(); // 移除值末尾的空格
 
-                // 解析 key=value 格式的配置行
-                size_t eq_pos = line.find('=');
-                if (eq_pos == std::string::npos)
-                    continue;
+            auto &section =
+                ini.sections["logger"]; // 假设所有配置都在 [logger] 段下
 
-                std::string key = line.substr(0, eq_pos);
-                std::string value = line.substr(eq_pos + 1);
-
-                // 去除首尾空白字符
-                key.erase(0, key.find_first_not_of(" \t"));
-                key.erase(key.find_last_not_of(" \t") + 1);
-                value.erase(0, value.find_first_not_of(" \t"));
-                value.erase(value.find_last_not_of(" \t") + 1);
-
-                if (key == "global_level") {
-                    set_global_level_from_string(value);
-                } else if (key == "target") {
-                    set_target_from_string(value);
-                } else if (key == "logfile") {
-                    set_logfile_internal(value);
-                } else if (key == "async") {
-                    use_async_logging_ = (value == "true" || value == "1");
-                } else if (key == "colorize") {
-                    format_options_.colorize =
-                        (value == "true" || value == "1");
-                } else if (key.find("component.") == 0) {
-                    // 组件级别的配置
-                    std::string component =
-                        key.substr(10); // 去掉 "component." 前缀
-                    set_component_level_from_string(component, value);
-                }
+            // 解析全局日志级别
+            std::string level_str;
+            inipp::get_value(section, "global_level", level_str);
+            if (!level_str.empty()) {
+                global_level_ = string_to_log_level(level_str);
             }
+
+            // 解析日志目标
+            std::string target_str;
+            inipp::get_value(section, "target", target_str);
+            if (!target_str.empty()) {
+                set_target_from_string(target_str);
+            }
+
+            // 解析日志文件路径
+            std::string logfile_str;
+            inipp::get_value(section, "logfile", logfile_str);
+            if (!logfile_str.empty()) {
+                logfile_path_ = logfile_str;
+                // 只有当路径设置成功时才尝试打开文件
+                set_logfile_internal(logfile_str);
+            }
+
+            // 解析异步日志
+            std::string async_str;
+            inipp::get_value(section, "async", async_str);
+            use_async_logging_ = (async_str == "true" || async_str == "1");
+
+            // 解析颜色输出
+            std::string colorize_str;
+            inipp::get_value(section, "colorize", colorize_str);
+            format_options_.colorize =
+                (colorize_str == "true" || colorize_str == "1");
+
+            // 解析组件级别配置 - 使用辅助函数减少重复
+            parse_component_levels(section);
+
             return true;
-        } catch (...) {
+        } catch (const std::exception &e) {
+            // 可以考虑添加一个内部错误日志，但要避免递归调用
             return false;
         }
     }
@@ -395,10 +404,58 @@ public:
         return level >= get_effective_level(component);
     }
 
+    // 获取全局日志级别
+    log_level get_global_level() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return global_level_;
+    }
+
     // 获取当前日志目标
     log_target get_target() const {
         std::lock_guard<std::mutex> lock(mutex_);
         return target_;
+    }
+
+    // 获取日志文件路径
+    const std::string &get_logfile_path() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return logfile_path_;
+    }
+
+    // 检查是否使用异步日志记录
+    bool use_async_logging() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return use_async_logging_;
+    }
+
+    // 设置是否使用颜色输出
+    void set_use_color_output(bool use_color) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        format_options_.colorize = use_color;
+    }
+
+    // 获取是否使用颜色输出
+    bool get_use_color_output() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return format_options_.colorize;
+    }
+
+    // 内部辅助方法：字符串转日志级别
+    log_level string_to_log_level(const std::string &level_str) const {
+        if (level_str == "trace")
+            return log_level::trace;
+        else if (level_str == "debug")
+            return log_level::debug;
+        else if (level_str == "info")
+            return log_level::info;
+        else if (level_str == "warning")
+            return log_level::warning;
+        else if (level_str == "error")
+            return log_level::error;
+        else if (level_str == "fatal")
+            return log_level::fatal;
+        else
+            return log_level::info; // 默认值
     }
 
     // 禁用所有日志
@@ -433,6 +490,7 @@ private:
     std::unordered_map<std::string, log_level> component_levels_;
     log_target target_;
     std::ofstream logfile_;
+    std::string logfile_path_; // 存储日志文件路径
     bool use_async_logging_;
     LogFormatOptions format_options_;
     std::unique_ptr<AsyncLogQueue> async_queue_;
@@ -449,6 +507,18 @@ private:
     friend void detail::output_log_simple(log_level level,
                                           const std::string &component,
                                           const std::string &msg);
+
+    // 辅助函数：解析组件级别配置
+    void parse_component_levels(const inipp::Ini<char>::Section &section) {
+        for (const auto &pair : section) {
+            const std::string &key = pair.first;
+            const std::string &value = pair.second;
+            if (key.rfind("component.", 0) == 0) { // 检查是否以 "component." 开头
+                std::string component = key.substr(10); // 去掉 "component." 前缀
+                set_component_level_from_string(component, value);
+            }
+        }
+    }
 };
 
 // ===========================================================================

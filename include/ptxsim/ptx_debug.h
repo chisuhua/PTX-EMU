@@ -1,27 +1,27 @@
 #ifndef PTX_DEBUG_H
 #define PTX_DEBUG_H
 
-#include "../utils/logger.h"
-#include "execution_types.h"
+#include "inipp/inipp.h"
+#include "ptx_ir/statement_context.h"
+#include "utils/logger.h"
 #include <any>
+#include <atomic>
+#include <condition_variable>
 #include <fstream>
 #include <functional>
-#include <iomanip>
 #include <iostream>
+#include <map>
+#include <memory>
 #include <mutex>
 #include <sstream>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include <variant>
 #include <vector>
-
-struct StatementContext;
-// 前向声明
-// enum class StatementType;
 
 namespace ptxsim {
 
-// PTX指令类型
+// 指令类型枚举
 enum class InstructionType {
     MEMORY,     // 内存操作 (LD, ST)
     ARITHMETIC, // 算术操作 (ADD, MUL, etc.)
@@ -75,7 +75,8 @@ public:
 
     // 检查是否启用特定类型的指令跟踪
     bool is_instruction_traced(InstructionType type) const {
-        std::lock_guard<std::mutex> lock(get_mutex());
+        std::lock_guard<std::mutex> lock(
+            const_cast<DebugConfig *>(this)->get_mutex());
         auto it = instruction_tracing_.find(type);
         return it != instruction_tracing_.end() && it->second;
     }
@@ -87,7 +88,8 @@ public:
     }
 
     bool is_memory_traced() const {
-        std::lock_guard<std::mutex> lock(get_mutex());
+        std::lock_guard<std::mutex> lock(
+            const_cast<DebugConfig *>(this)->get_mutex());
         return trace_memory_;
     }
 
@@ -98,25 +100,32 @@ public:
     }
 
     bool is_register_traced() const {
-        std::lock_guard<std::mutex> lock(get_mutex());
+        std::lock_guard<std::mutex> lock(
+            const_cast<DebugConfig *>(this)->get_mutex());
         return trace_registers_;
     }
 
     // 设置线程过滤器 - 仅对指定的blockIdx和threadIdx进行trace
-    void set_thread_filter(int block_x, int block_y, int block_z, int thread_x,
-                           int thread_y, int thread_z) {
+    void set_thread_filter(int block_x = -1, int block_y = -1, int block_z = -1,
+                           int thread_x = -1, int thread_y = -1,
+                           int thread_z = -1) {
         std::lock_guard<std::mutex> lock(get_mutex());
-        thread_filter_ = ThreadFilter{block_x,  block_y,  block_z,
-                                      thread_x, thread_y, thread_z};
+        thread_filter_.block_x = block_x;
+        thread_filter_.block_y = block_y;
+        thread_filter_.block_z = block_z;
+        thread_filter_.thread_x = thread_x;
+        thread_filter_.thread_y = thread_y;
+        thread_filter_.thread_z = thread_z;
         has_thread_filter_ = true;
     }
 
-    // 检查是否应该对指定的block_idx和thread_idx进行trace
+    // 检查是否应该跟踪指定线程
     bool should_trace_thread(const Dim3 &block_idx,
                              const Dim3 &thread_idx) const {
-        std::lock_guard<std::mutex> lock(get_mutex());
+        std::lock_guard<std::mutex> lock(
+            const_cast<DebugConfig *>(this)->get_mutex());
         if (!has_thread_filter_) {
-            return true; // 没有设置过滤器，trace所有线程
+            return true; // 如果没有设置过滤器，则跟踪所有线程
         }
         return thread_filter_.matches(block_idx, thread_idx);
     }
@@ -138,74 +147,45 @@ public:
         breakpoints_.erase(pc);
     }
 
-    void clear_all_breakpoints() {
-        std::lock_guard<std::mutex> lock(get_mutex());
-        breakpoints_.clear();
-    }
-
+    // 检查是否有断点
     bool has_breakpoint(
         int pc,
         const std::unordered_map<std::string, std::any> &context = {}) const {
-        std::lock_guard<std::mutex> lock(get_mutex());
+        std::lock_guard<std::mutex> lock(
+            const_cast<DebugConfig *>(this)->get_mutex());
         auto it = breakpoints_.find(pc);
-        if (it == breakpoints_.end())
-            return false;
-
-        // 检查条件
-        if (it->second) {
-            return it->second(pc, context);
+        if (it != breakpoints_.end()) {
+            if (it->second) { // 有条件断点
+                return it->second(pc, context);
+            } else { // 无条件断点
+                return true;
+            }
         }
-        return true;
+        return false;
     }
 
-    // 设置观察点（寄存器）
-    void set_watchpoint(const std::string &reg_name) {
-        std::lock_guard<std::mutex> lock(get_mutex());
-        watchpoints_.insert(reg_name);
-    }
-
-    void clear_watchpoint(const std::string &reg_name) {
-        std::lock_guard<std::mutex> lock(get_mutex());
-        watchpoints_.erase(reg_name);
-    }
-
-    void clear_all_watchpoints() {
-        std::lock_guard<std::mutex> lock(get_mutex());
-        watchpoints_.clear();
-    }
-
-    bool has_watchpoint(const std::string &reg_name) const {
-        std::lock_guard<std::mutex> lock(get_mutex());
-        return watchpoints_.find(reg_name) != watchpoints_.end();
-    }
-
-    // 设置PC范围
+    // 设置PC范围跟踪
     void set_pc_range(int start, int end) {
         std::lock_guard<std::mutex> lock(get_mutex());
         pc_start_ = start;
         pc_end_ = end;
     }
 
-    void clear_pc_range() {
-        std::lock_guard<std::mutex> lock(get_mutex());
-        pc_start_ = -1;
-        pc_end_ = -1;
-    }
-
+    // 检查PC是否在跟踪范围内
     bool is_pc_traced(int pc) const {
-        std::lock_guard<std::mutex> lock(get_mutex());
-        if (pc_start_ == -1 || pc_end_ == -1)
-            return true;
+        std::lock_guard<std::mutex> lock(
+            const_cast<DebugConfig *>(this)->get_mutex());
         return pc >= pc_start_ && pc <= pc_end_;
     }
 
-    // 设置跟踪回调
+    // 设置指令回调
     void set_instruction_callback(
         std::function<void(int, const std::string &)> callback) {
         std::lock_guard<std::mutex> lock(get_mutex());
         instruction_callback_ = callback;
     }
 
+    // 触发指令回调
     void trigger_instruction_callback(int pc, const std::string &instruction) {
         std::lock_guard<std::mutex> lock(get_mutex());
         if (instruction_callback_) {
@@ -217,135 +197,115 @@ public:
     bool load_from_file(const std::string &filename) {
         std::lock_guard<std::mutex> lock(get_mutex());
         try {
-            std::ifstream config_file(filename);
-            if (!config_file.is_open()) {
+            inipp::Ini<char> ini;
+            std::ifstream is(filename);
+            if (!is.is_open()) {
                 return false;
             }
 
-            std::string line;
-            while (std::getline(config_file, line)) {
-                // 跳过注释和空行
-                if (line.empty() || line[0] == '#')
-                    continue;
+            ini.parse(is);
 
-                size_t eq_pos = line.find('=');
-                if (eq_pos == std::string::npos)
-                    continue;
+            // 读取debugger section
+            auto debugger_section = ini.sections["debugger"];
 
-                std::string key = line.substr(0, eq_pos);
-                std::string value = line.substr(eq_pos + 1);
-
-                // 去除前后空格
-                key.erase(0, key.find_first_not_of(" \t"));
-                key.erase(key.find_last_not_of(" \t") + 1);
-                value.erase(0, value.find_first_not_of(" \t"));
-                value.erase(value.find_last_not_of(" \t") + 1);
-
-                // 处理配置项
-                if (key == "trace_instruction") {
-                    // 启用所有类型的指令跟踪
-                    if (value == "true" || value == "1") {
-                        instruction_tracing_[InstructionType::MEMORY] = true;
-                        instruction_tracing_[InstructionType::ARITHMETIC] =
-                            true;
-                        instruction_tracing_[InstructionType::CONTROL] = true;
-                        instruction_tracing_[InstructionType::LOGIC] = true;
-                        instruction_tracing_[InstructionType::CONVERT] = true;
-                        instruction_tracing_[InstructionType::SPECIAL] = true;
-                        instruction_tracing_[InstructionType::OTHER] = true;
-                    }
-                } else if (key == "trace_memory") {
-                    trace_memory_ = (value == "true" || value == "1");
-                } else if (key == "trace_registers") {
-                    trace_registers_ = (value == "true" || value == "1");
-                } else if (key == "trace_thread") {
-                    // 格式: "bx,by,bz,tx,ty,tz" 其中-1表示所有值
-                    std::istringstream iss(value);
-                    std::string token;
-                    std::vector<int> indices;
-
-                    while (std::getline(iss, token, ',')) {
-                        indices.push_back(std::stoi(token));
-                    }
-
-                    if (indices.size() == 6) {
-                        thread_filter_ =
-                            ThreadFilter{indices[0], indices[1], indices[2],
-                                         indices[3], indices[4], indices[5]};
-                        has_thread_filter_ = true;
-                    }
-                } else if (key == "trace_pc_range" || key == "pc_range") {
-                    size_t dash_pos = value.find('-');
-                    if (dash_pos != std::string::npos) {
-                        int start = std::stoi(value.substr(0, dash_pos));
-                        int end = std::stoi(value.substr(dash_pos + 1));
-                        pc_start_ = start;
-                        pc_end_ = end;
-                    }
-                } else if (key.find("breakpoint.") == 0) {
-                    int pc = std::stoi(key.substr(11));
-                    breakpoints_[pc] = nullptr; // 无条件断点
-                } else if (key.find("watchpoint.") == 0) {
-                    std::string reg_name = value;
-                    watchpoints_.insert(reg_name);
-                } else if (key.find("trace_instruction_type.") == 0) {
-                    std::string type_str = key.substr(23); // Fixed length
-                    bool enable = (value == "true" || value == "1");
-
-                    InstructionType type;
-                    if (type_str == "memory")
-                        type = InstructionType::MEMORY;
-                    else if (type_str == "arithmetic")
-                        type = InstructionType::ARITHMETIC;
-                    else if (type_str == "control")
-                        type = InstructionType::CONTROL;
-                    else if (type_str == "logic")
-                        type = InstructionType::LOGIC;
-                    else if (type_str == "convert")
-                        type = InstructionType::CONVERT;
-                    else if (type_str == "special")
-                        type = InstructionType::SPECIAL;
-                    else if (type_str == "other")
-                        type = InstructionType::OTHER;
-                    else
-                        continue;
-
-                    instruction_tracing_[type] = enable;
+            std::string trace_instr;
+            inipp::get_value(debugger_section, "trace_instruction",
+                             trace_instr);
+            if (!trace_instr.empty()) {
+                bool trace = (trace_instr == "true" || trace_instr == "1");
+                // 批量设置所有指令类型的跟踪
+                for (int i = 0; i <= static_cast<int>(InstructionType::OTHER); ++i) {
+                    enable_instruction_trace(static_cast<InstructionType>(i), trace);
                 }
             }
+
+            // 按类型设置指令跟踪 - 使用辅助函数减少重复
+            set_instruction_type_trace(debugger_section, "trace_instruction_type.memory", InstructionType::MEMORY);
+            set_instruction_type_trace(debugger_section, "trace_instruction_type.arithmetic", InstructionType::ARITHMETIC);
+            set_instruction_type_trace(debugger_section, "trace_instruction_type.control", InstructionType::CONTROL);
+            set_instruction_type_trace(debugger_section, "trace_instruction_type.logic", InstructionType::LOGIC);
+            set_instruction_type_trace(debugger_section, "trace_instruction_type.convert", InstructionType::CONVERT);
+            set_instruction_type_trace(debugger_section, "trace_instruction_type.special", InstructionType::SPECIAL);
+            set_instruction_type_trace(debugger_section, "trace_instruction_type.other", InstructionType::OTHER);
+
+            // 设置内存和寄存器跟踪
+            std::string trace_mem;
+            inipp::get_value(debugger_section, "trace_memory", trace_mem);
+            if (!trace_mem.empty()) {
+                enable_memory_trace((trace_mem == "true" || trace_mem == "1"));
+            }
+
+            std::string trace_reg;
+            inipp::get_value(debugger_section, "trace_registers", trace_reg);
+            if (!trace_reg.empty()) {
+                enable_register_trace(
+                    (trace_reg == "true" || trace_reg == "1"));
+            }
+
             return true;
-        } catch (...) {
+        } catch (const std::exception &e) {
+            std::cerr << "Error loading debugger config: " << e.what()
+                      << std::endl;
             return false;
         }
     }
 
+    // 检查是否有watchpoint（观察点）
+    bool has_watchpoint(const std::string &reg_name) const {
+        std::lock_guard<std::mutex> lock(
+            const_cast<DebugConfig *>(this)->get_mutex());
+        return watchpoints_.find(reg_name) != watchpoints_.end();
+    }
+
+    // 添加观察点
+    void add_watchpoint(const std::string &reg_name) {
+        std::lock_guard<std::mutex> lock(get_mutex());
+        watchpoints_.insert(reg_name);
+    }
+
+    // 移除观察点
+    void remove_watchpoint(const std::string &reg_name) {
+        std::lock_guard<std::mutex> lock(get_mutex());
+        watchpoints_.erase(reg_name);
+    }
+
+    // 清除所有观察点
+    void clear_watchpoints() {
+        std::lock_guard<std::mutex> lock(get_mutex());
+        watchpoints_.clear();
+    }
+
+    std::mutex &get_mutex() { return mutex_; }
+    const std::mutex &get_mutex() const { return mutex_; }
+
 private:
-    // 使用函数局部静态变量来避免死锁问题
-    static std::mutex &get_mutex() {
-        static std::mutex mutex_instance;
-        return mutex_instance;
+    // 辅助函数：设置特定类型的指令跟踪
+    void set_instruction_type_trace(const inipp::Ini<char>::Section &section,
+                                   const std::string &key, InstructionType type) {
+        std::string value;
+        inipp::get_value(section, key.c_str(), value);
+        if (!value.empty()) {
+            enable_instruction_trace(type, (value == "true" || value == "1"));
+        }
     }
 
-    DebugConfig()
-        : trace_memory_(false), trace_registers_(false), pc_start_(-1),
-          pc_end_(-1), has_thread_filter_(false) {
-        // 默认启用控制流指令跟踪
-        instruction_tracing_[InstructionType::CONTROL] = true;
-    }
-
+    mutable std::mutex mutex_; // 使用mutable确保const成员函数中也可访问
     std::unordered_map<InstructionType, bool> instruction_tracing_;
-    bool trace_memory_;
-    bool trace_registers_;
+    bool trace_memory_ = false;
+    bool trace_registers_ = false;
     std::unordered_map<int, BreakpointCondition> breakpoints_;
-    std::unordered_set<std::string> watchpoints_;
-    int pc_start_;
-    int pc_end_;
+    int pc_start_ = 0;
+    int pc_end_ = INT32_MAX;
     std::function<void(int, const std::string &)> instruction_callback_;
 
     // 线程过滤器
     ThreadFilter thread_filter_;
-    bool has_thread_filter_;
+    bool has_thread_filter_ = false;
 
+    // 观察点
+    std::unordered_set<std::string> watchpoints_;
+
+    DebugConfig() = default; // 添加默认构造函数
     DebugConfig(const DebugConfig &) = delete;
     DebugConfig &operator=(const DebugConfig &) = delete;
 
@@ -486,42 +446,82 @@ inline std::string format_address(uint64_t addr) {
     return ss.str();
 }
 
-// 格式化线程/块坐标
-inline std::string format_coord(int x, int y, int z) {
-    return detail::printf_format("(%d,%d,%d)", x, y, z);
-}
-
 // 格式化寄存器值
-inline std::string format_register_value(const std::any &value, bool hex) {
-    try {
-        if (value.type() == typeid(int32_t)) {
-            return format_i32(std::any_cast<int32_t>(value), hex);
-        } else if (value.type() == typeid(uint32_t)) {
-            return format_u32(std::any_cast<uint32_t>(value), hex);
-        } else if (value.type() == typeid(int64_t)) {
-            return format_i64(std::any_cast<int64_t>(value), hex);
-        } else if (value.type() == typeid(uint64_t)) {
-            return format_u64(std::any_cast<uint64_t>(value), hex);
-        } else if (value.type() == typeid(float)) {
-            return format_f32(std::any_cast<float>(value));
-        } else if (value.type() == typeid(double)) {
-            return format_f64(std::any_cast<double>(value));
-        } else if (value.type() == typeid(bool)) {
-            return format_pred(std::any_cast<bool>(value));
-        } else if (value.type() == typeid(std::string)) {
-            return std::any_cast<std::string>(value);
+template <typename T>
+inline std::string format_register_value(T value, bool hex = false) {
+    if constexpr (std::is_same_v<T, bool>) {
+        return value ? "true" : "false";
+    } else if constexpr (std::is_floating_point_v<T>) {
+        return detail::printf_format("%.6f", value);
+    } else if constexpr (std::is_integral_v<T> && sizeof(T) <= 4) {
+        if (hex) {
+            std::stringstream ss;
+            ss << "0x" << std::hex << value;
+            return ss.str();
         } else {
-            return "[unknown type]";
+            return detail::printf_format("%d", static_cast<int>(value));
         }
-    } catch (const std::bad_any_cast &) {
-        return "[bad cast]";
-    } catch (...) {
-        return "[error]";
+    } else if constexpr (std::is_integral_v<T> && sizeof(T) > 4) {
+        if (hex) {
+            std::stringstream ss;
+            ss << "0x" << std::hex << value;
+            return ss.str();
+        } else {
+            return detail::printf_format("%lld", static_cast<long long>(value));
+        }
+    } else {
+        std::stringstream ss;
+        ss << value;
+        return ss.str();
     }
 }
+
+// 专门处理std::any类型的寄存器值格式化
+inline std::string format_register_value(const std::any &value,
+                                         bool hex = false) {
+    if (!value.has_value()) {
+        return "null";
+    }
+
+    try {
+        // 尝试各种常见类型
+        if (value.type() == typeid(bool)) {
+            return format_register_value(any_cast<bool>(value), hex);
+        } else if (value.type() == typeid(int8_t)) {
+            return format_register_value(any_cast<int8_t>(value), hex);
+        } else if (value.type() == typeid(uint8_t)) {
+            return format_register_value(any_cast<uint8_t>(value), hex);
+        } else if (value.type() == typeid(int16_t)) {
+            return format_register_value(any_cast<int16_t>(value), hex);
+        } else if (value.type() == typeid(uint16_t)) {
+            return format_register_value(any_cast<uint16_t>(value), hex);
+        } else if (value.type() == typeid(int32_t)) {
+            return format_register_value(any_cast<int32_t>(value), hex);
+        } else if (value.type() == typeid(uint32_t)) {
+            return format_register_value(any_cast<uint32_t>(value), hex);
+        } else if (value.type() == typeid(int64_t)) {
+            return format_register_value(any_cast<int64_t>(value), hex);
+        } else if (value.type() == typeid(uint64_t)) {
+            return format_register_value(any_cast<uint64_t>(value), hex);
+        } else if (value.type() == typeid(float)) {
+            return format_register_value(any_cast<float>(value), hex);
+        } else if (value.type() == typeid(double)) {
+            return format_register_value(any_cast<double>(value), hex);
+        } else {
+            return "unknown_type";
+        }
+    } catch (...) {
+        return "format_error";
+    }
+}
+
 } // namespace debug_format
 
-// 调试工具类
+// 添加PTX_INFO_THREAD宏定义，确保在PTXDebugger类中可以使用
+#define PTX_INFO_THREAD(fmt, ...)                                              \
+    PTX_LOG_SIMPLE(ptxsim::log_level::info, "thread", fmt, ##__VA_ARGS__)
+
+// 调试器类 - 用于执行调试相关操作
 class PTXDebugger {
 public:
     static PTXDebugger &get() {
@@ -540,9 +540,9 @@ public:
             return;
 
         // 检查指令类型
-        // ptxsim::InstructionType type = config.classify_instruction(opcode);
-        // if (!config.is_instruction_traced(type))
-        //     return;
+        ptxsim::InstructionType type = config.classify_instruction(opcode);
+        if (!config.is_instruction_traced(type))
+            return;
 
         // 构建完整指令
         std::string full_instruction = opcode;
@@ -631,42 +631,23 @@ public:
 
     // 线程状态转储
     template <typename T>
-    void dump_thread_state(const std::string &name, const T &state, int block_x,
-                           int block_y, int block_z, int thread_x, int thread_y,
-                           int thread_z) {
-        std::stringstream ss;
-        ss << "=== Thread State Dump ===" << std::endl;
-        ss << "Thread: " << name << std::endl;
-        ss << "Block: "
-           << ptxsim::debug_format::format_coord(block_x, block_y, block_z)
-           << std::endl;
-        ss << "Thread: "
-           << ptxsim::debug_format::format_coord(thread_x, thread_y, thread_z)
-           << std::endl;
-        ss << "PC: " << state.pc << " | State: "
-           << (state.state == 0   ? "RUN"
-               : state.state == 1 ? "EXIT"
-                                  : "UNKNOWN")
-           << std::endl;
-
-        // 调用具体类型的转储函数
-        state.dump_state(ss);
-
-        ss << "=========================" << std::endl;
-
-        PTX_DEBUG_THREAD("\n%s", ss.str().c_str());
-        PTX_DEBUG_EMU_SIMPLE("\n%s", ss.str().c_str());
+    void dump_thread_state(const std::string &prefix, const T &thread_ctx,
+                           const Dim3 &block, const Dim3 &thread) {
+        PTX_INFO_THREAD("%s - Block(%d,%d,%d) Thread(%d,%d,%d)", prefix.c_str(),
+                        block.x, block.y, block.z, thread.x, thread.y,
+                        thread.z);
+        // 这里可以添加更详细的线程状态输出
     }
 
     // 检查断点
-    bool check_breakpoint(
-        int pc, const std::unordered_map<std::string, std::any> &context = {}) {
-        if (ptxsim::DebugConfig::get().has_breakpoint(pc, context)) {
-            PTX_INFO_EMU("Hit breakpoint at PC=%d", pc);
-            return true;
-        }
-        return false;
-    }
+    // bool check_breakpoint(const ptx_instruction_address &pc,
+    //                       const ptx_statement_context &context) {
+    //     if (ptxsim::DebugConfig::get().has_breakpoint(pc, context)) {
+    //         PTX_INFO_EMU("Hit breakpoint at PC=%d", pc);
+    //         return true;
+    //     }
+    //     return false;
+    // }
 
     // 性能统计
     class PerfStats {
@@ -796,7 +777,11 @@ private:
 #define PTX_CHECK_BREAKPOINT(pc, context)                                      \
     (ptxsim::PTXDebugger::get().check_breakpoint(pc, context))
 
-#ifndef PTX_TRACE_EXEC
+// 在ptxsim命名空间内定义PTX_INFO_THREAD宏
+#define PTX_INFO_THREAD(fmt, ...)                                              \
+    PTX_LOG_SIMPLE(ptxsim::log_level::info, "thread", fmt, ##__VA_ARGS__)
+
+// 添加缺失的PTX_INFO_THREAD宏定义
 #define PTX_TRACE_EXEC(...)                                                    \
     do {                                                                       \
         if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
@@ -804,25 +789,40 @@ private:
             ptxsim::Logger::log(ptxsim::log_level::info, "exec", __VA_ARGS__); \
         }                                                                      \
     } while (0)
-#endif
 
-#define PTX_DUMP_THREAD_STATE(name, state, blockIdx, threadIdx)                \
+#define PTX_TRACE_MEM(...)                                                     \
     do {                                                                       \
-        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::debug,   \
-                                                   "thread")) {                \
-            ptxsim::PTXDebugger::get().dump_thread_state(                      \
-                name, state, blockIdx.x, blockIdx.y, blockIdx.z, threadIdx.x,  \
-                threadIdx.y, threadIdx.z);                                     \
+        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
+                                                   "mem")) {                   \
+            ptxsim::Logger::log(ptxsim::log_level::info, "mem", __VA_ARGS__);  \
         }                                                                      \
     } while (0)
 
-// 作用域性能计时器
+#define PTX_TRACE_REG(...)                                                     \
+    do {                                                                       \
+        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
+                                                   "reg")) {                   \
+            ptxsim::Logger::log(ptxsim::log_level::info, "reg", __VA_ARGS__);  \
+        }                                                                      \
+    } while (0)
+
+#define PTX_DUMP_THREAD_STATE(prefix, thread_ctx, block, thread)               \
+    do {                                                                       \
+        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
+                                                   "thread")) {                \
+            ptxsim::PTXDebugger::get().dump_thread_state(prefix, thread_ctx,   \
+                                                         block, thread);       \
+        }                                                                      \
+    } while (0)
+
+// 性能计时器
 class PerfTimer {
 public:
-    explicit PerfTimer(const std::string &name, bool enabled = true)
-        : name_(name), enabled_(enabled) {
+    PerfTimer(const std::string &name, bool enabled = true)
+        : name_(name), enabled_(enabled),
+          start_(std::chrono::high_resolution_clock::now()) {
         if (enabled_) {
-            start_ = std::chrono::high_resolution_clock::now();
+            PTX_DEBUG_EMU("Starting timer: %s", name_.c_str());
         }
     }
 
@@ -832,11 +832,8 @@ public:
             auto duration =
                 std::chrono::duration_cast<std::chrono::microseconds>(end -
                                                                       start_);
-
-            PTX_INFO_EMU_SIMPLE("PERF[%s]: %s took %lld μs",
-                                ptxsim::detail::current_thread_id().c_str(),
-                                name_.c_str(),
-                                static_cast<long long>(duration.count()));
+            PTX_DEBUG_EMU("Timer %s took %ld microseconds", name_.c_str(),
+                          duration.count());
         }
     }
 

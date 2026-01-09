@@ -14,16 +14,17 @@ SMContext::SMContext(int max_warps, int max_threads_per_sm,
     : max_warps_per_sm(max_warps), max_threads_per_sm(max_threads_per_sm),
       max_shared_mem(shared_mem_size), allocated_shared_mem(0),
       current_thread_count(0), sm_state(IDLE), next_physical_block_id(0),
-      next_physical_warp_id(0), shared_mem_manager_(nullptr), 
+      next_physical_warp_id(0), shared_mem_manager_(nullptr),
       current_reservation_id_(0), sm_id_(sm_id) {
     // 初始化warp调度器，使用RoundRobinWarpScheduler具体实现
     warp_scheduler = std::make_unique<RoundRobinWarpScheduler>();
-    
+
     // 初始化资源统计
     stats_ = {0, max_shared_mem, 0, max_warps, 0, max_threads_per_sm};
-    
+
     // 获取共享内存管理器
-    shared_mem_manager_ = ResourceManager::instance().get_shared_memory_manager(sm_id);
+    shared_mem_manager_ =
+        ResourceManager::instance().get_shared_memory_manager(sm_id);
     if (!shared_mem_manager_) {
         PTX_DEBUG_EMU("Failed to get shared memory manager for SM %d", sm_id);
     }
@@ -89,8 +90,7 @@ bool SMContext::add_block(std::unique_ptr<CTAContext> block) {
     physical_block_warp_counts[physical_block_id] = required_warps;
 
     // 6. 添加到管理列表 - 直接使用unique_ptr
-    managed_blocks.insert(
-        {physical_block_id, std::move(block)});
+    managed_blocks.insert({physical_block_id, std::move(block)});
 
     // 7. 获取warp所有权并添加到SM
     auto block_warps = managed_blocks[physical_block_id]->release_warps();
@@ -98,6 +98,7 @@ bool SMContext::add_block(std::unique_ptr<CTAContext> block) {
         warp->set_physical_block_id(physical_block_id);
         warp->set_physical_warp_id(next_physical_warp_id++);
         warps.push_back(std::move(warp));
+        warp_scheduler->add_warp(warps.back().get());
     }
 
     // 更新状态
