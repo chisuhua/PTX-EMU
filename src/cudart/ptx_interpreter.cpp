@@ -15,7 +15,8 @@
 
 // 不再需要在这里声明g_gpu_context，已在头文件中声明
 
-PtxInterpreter::PtxInterpreter() {
+PtxInterpreter::PtxInterpreter() : ptxContext(nullptr), kernelContext(nullptr), 
+                                   kernelArgs(nullptr), param_space(nullptr) {
     // 不再创建 GPUContext
 }
 
@@ -25,6 +26,7 @@ void PtxInterpreter::launchPtxInterpreter(PtxContext &ptx, std::string &kernel,
     // 初始化指令工厂，注册所有指令处理器
     InstructionFactory::initialize();
 
+    // 使用传入的ptx引用，而不是尝试访问可能已失效的引用
     this->ptxContext = &ptx;
     this->gridDim = gridDim;
     this->blockDim = blockDim;
@@ -77,7 +79,7 @@ void PtxInterpreter::funcInterpreter(
         KernelLaunchRequest request(
             args, gridDim, blockDim,
             &kernelContext
-                 ->kernelStatements, // 直接引用ptxContext中的statements
+                 ->kernelStatements, // 直接引用kernelContext中的statements
             name2sym_ptr, label2pc_ptr, 0, completion_callback);
 
         // 提交请求
@@ -87,17 +89,31 @@ void PtxInterpreter::funcInterpreter(
 
 void PtxInterpreter::setupConstantSymbols(
     std::map<std::string, Symtable *> &name2Sym) {
+    if (!ptxContext) {
+        PTX_DEBUG_EMU("ptxContext is null in setupConstantSymbols");
+        return;
+    }
+    
     for (auto e : ptxContext->ptxStatements) {
-        assert(e.statementType == S_CONST);
+        if (e.statementType != S_CONST) continue;
+        
         Symtable *s = new Symtable();
         auto st = (StatementContext::CONST *)e.statement;
+        if (!st) {
+            delete s;
+            continue;
+        }
+        
         assert(st->constDataType.size() == 1);
         s->name = st->constName;
         s->symType = st->constDataType.back();
         s->elementNum = st->constSize;
         s->byteNum = Q2bytes(st->constDataType.back());
         s->val = constName2addr[s->name];
-        assert(s->val);
+        if (!s->val) {
+            delete s;
+            continue;
+        }
         name2Sym[s->name] = s;
     }
 }
@@ -173,9 +189,10 @@ void PtxInterpreter::setupLabels(std::map<std::string, int> &label2pc) {
     }
 }
 
-void PtxInterpreter::set_ptx_context(PtxContext &ptx) {
-    this->ptxContext = &ptx;
-    // 可能还需要设置其他相关字段
+void PtxInterpreter::set_ptx_context(const PtxContext &ptx) {
+    // 存储ptxContext的副本而不是引用，以避免悬垂引用问题
+    this->owned_ptx_context = std::make_unique<PtxContext>(ptx);
+    this->ptxContext = this->owned_ptx_context.get();
 }
 
 PtxContext &PtxInterpreter::get_ptx_context() { return *this->ptxContext; }

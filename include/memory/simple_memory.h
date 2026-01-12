@@ -15,6 +15,7 @@ public:
 
     // 获取内存池指针
     uint8_t *get_global_pool() const { return global_base_; }
+    size_t get_global_size() const { return global_size_; }
 
 private:
     uint8_t *global_base_;

@@ -2,7 +2,7 @@
 #define DRIVER_MEMORY_MANAGER_H
 
 #include "cudart/simple_memory_allocator.h"
-#include "memory/simple_memory.h"  // 包含SimpleMemory的完整定义
+#include "memory/simple_memory.h" // 包含SimpleMemory的完整定义
 #include <mutex>
 #include <unordered_map>
 
@@ -24,6 +24,8 @@ public:
     // 设置SimpleMemory实例
     void set_simple_memory(SimpleMemory *simple_memory) {
         simple_memory_ = simple_memory;
+        global_size_ = simple_memory_->get_global_size();
+        allocator_->init(global_size_);
     };
 
     // CUDA 内存分配 - 用于 cudart_sim 和 ptx_interpreter
@@ -37,15 +39,16 @@ public:
 
     // 获取内存池指针（供 cudart_sim 使用）
     uint8_t *get_global_pool() const;
+    size_t get_global_size() const;
 
-    static constexpr size_t GLOBAL_SIZE = 4ULL << 30; // 4GB
+    size_t global_size_;
 
 private:
     CudaDriver();
     ~CudaDriver();
 
     SimpleMemory *simple_memory_ = nullptr;
-    SimpleMemoryAllocator *allocator_ = nullptr;
+    std::unique_ptr<SimpleMemoryAllocator> allocator_;
 
     mutable std::mutex mutex_;
 

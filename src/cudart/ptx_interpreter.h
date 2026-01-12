@@ -6,6 +6,7 @@
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/common_types.h"
 #include "ptxsim/execution_types.h"
+// #include "utils/dim3.h"
 #include <map>
 #include <memory>
 #include <string>
@@ -39,13 +40,19 @@ public:
                          std::map<std::string, int> &label2pc, PtxContext &ptx,
                          std::string &kernel, void **args, Dim3 &gridDim,
                          Dim3 &blockDim);
-    void set_ptx_context(PtxContext &ptx);
+    void set_ptx_context(const PtxContext &ptx);
     PtxContext &get_ptx_context();
 
 private:
     void setupConstantSymbols(std::map<std::string, Symtable *> &name2Sym);
     void setupKernelArguments(std::map<std::string, Symtable *> &name2Sym);
     void setupLabels(std::map<std::string, int> &label2pc);
+
+    // 持有PtxContext的副本，以避免悬垂引用问题
+    std::unique_ptr<PtxContext> owned_ptx_context;
 };
 
-#endif // INTERPRETER_H
+// 声明全局PtxInterpreter实例
+extern std::unique_ptr<PtxInterpreter> g_ptx_interpreter;
+
+#endif

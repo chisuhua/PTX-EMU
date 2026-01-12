@@ -193,7 +193,7 @@ void **__cudaRegisterFatBinary(void **fatCubinHandle, void *fat_bin,
     parser.addParseListener(&ptxListener);
     tree::ParseTree *tree = parser.ast();
 
-    // 4. 初始化PtxInterpreter
+    // 4. 初始化PtxInterpreter - 现在会拷贝ptxContext以避免悬垂引用
     g_ptx_interpreter->set_ptx_context(ptxListener.ptxContext);
 
     // 5. 返回虚拟句柄
@@ -357,7 +357,7 @@ cudaError_t cudaMemcpy(void *dst, const void *src, size_t count,
         // 从主机内存复制到设备内存
         // dst是设备指针（即偏移量），src是主机指针
         uint64_t device_offset = reinterpret_cast<uint64_t>(dst);
-        if (device_offset >= CudaDriver::GLOBAL_SIZE) {
+        if (device_offset >= CudaDriver::instance().get_global_size()) {
             return cudaErrorInvalidValue;
         }
 
@@ -368,7 +368,7 @@ cudaError_t cudaMemcpy(void *dst, const void *src, size_t count,
         // 从设备内存复制到主机内存
         // src是设备指针（即偏移量），dst是主机指针
         uint64_t device_offset = reinterpret_cast<uint64_t>(src);
-        if (device_offset >= CudaDriver::GLOBAL_SIZE) {
+        if (device_offset >= CudaDriver::instance().get_global_size()) {
             return cudaErrorInvalidValue;
         }
 
@@ -380,8 +380,8 @@ cudaError_t cudaMemcpy(void *dst, const void *src, size_t count,
         uint64_t src_device_offset = reinterpret_cast<uint64_t>(src);
         uint64_t dst_device_offset = reinterpret_cast<uint64_t>(dst);
 
-        if (src_device_offset >= CudaDriver::GLOBAL_SIZE ||
-            dst_device_offset >= CudaDriver::GLOBAL_SIZE) {
+        if (src_device_offset >= CudaDriver::instance().get_global_size() ||
+            dst_device_offset >= CudaDriver::instance().get_global_size()) {
             return cudaErrorInvalidValue;
         }
 
@@ -419,7 +419,7 @@ cudaError_t cudaMemset(void *devPtr, int value, size_t count) {
     }
 
     uint64_t device_offset = reinterpret_cast<uint64_t>(devPtr);
-    if (device_offset >= CudaDriver::GLOBAL_SIZE) {
+    if (device_offset >= CudaDriver::instance().get_global_size()) {
         return cudaErrorInvalidValue;
     }
 
@@ -769,7 +769,7 @@ cudaError_t cudaMemcpyToSymbol(void *symbol, void *src, size_t count,
 
     // 将数据复制到符号地址（加上偏移量）
     uint64_t symbol_offset = reinterpret_cast<uint64_t>(symbol) + offset;
-    if (symbol_offset >= CudaDriver::GLOBAL_SIZE) {
+    if (symbol_offset >= CudaDriver::instance().get_global_size()) {
         return cudaErrorInvalidValue;
     }
 
