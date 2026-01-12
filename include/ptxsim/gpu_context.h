@@ -7,6 +7,7 @@
 #include "ptxsim/execution_types.h"
 #include "sm_context.h"
 #include "warp_context.h"
+#include "memory/simple_memory.h"  // 添加SimpleMemory的头文件包含
 #include <condition_variable>
 #include <future>
 #include <map>
@@ -25,6 +26,7 @@ struct GPUConfig {
     int registers_per_sm;
     int max_blocks_per_sm;
     int warp_size;
+    size_t global_mem_size;  // 添加全局内存大小配置
 
     // 构造函数提供默认值
     GPUConfig()
@@ -34,7 +36,8 @@ struct GPUConfig {
           shared_mem_size_per_sm(1024 * 64), // 每个SM 64KB共享内存
           registers_per_sm(65536),           // 每个SM 64K寄存器
           max_blocks_per_sm(32),             // 每个SM最大32个block
-          warp_size(32)                      // warp大小为32
+          warp_size(32),                     // warp大小为32
+          global_mem_size(4ULL << 30)        // 默认4GB全局内存
     {}
 };
 
@@ -102,6 +105,9 @@ public:
     // 等待所有任务完成
     void wait_for_completion();
 
+    // 获取设备内存
+    SimpleMemory* get_device_memory() { return device_memory.get(); }
+
 private:
     // GPU配置
     GPUConfig config;
@@ -120,6 +126,9 @@ private:
     // 正在执行的任务映射
     std::map<int, KernelLaunchRequest> executing_requests;
     int next_request_id = 0;
+
+    // 设备内存
+    std::unique_ptr<SimpleMemory> device_memory;
 
     // 内部执行kernel的辅助函数
     bool execute_kernel_internal(void **args, Dim3 &gridDim, Dim3 &blockDim,

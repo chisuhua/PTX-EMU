@@ -3,9 +3,66 @@
 #include "utils/logger.h"
 #include <cassert>
 #include <cstdio>
+#include <cstdlib>
+#include <fstream>
 #include <queue>
+#include <sstream>
 #include <string>
+#include <unistd.h>
 #include <vector>
+
+// 定义通用的日志宏
+#define PTX_ERROR(fmt, ...)   PTX_ERROR_EMU(fmt, ##__VA_ARGS__)
+#define PTX_DEBUG(fmt, ...)   PTX_DEBUG_EMU(fmt, ##__VA_ARGS__)
+
+// 实现extract_ptx_with_cuobjdump函数
+std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
+    // 创建临时文件存储PTX列表
+    char ptx_list_cmd[1024];
+    snprintf(ptx_list_cmd, 1024,
+             "cuobjdump -lptx %s | cut -d : -f 2 | awk '{$1=$1}1' > "
+             "__ptx_list_temp__",
+             executable_path.c_str());
+
+    if (system(ptx_list_cmd) != 0) {
+        PTX_ERROR("Failed to execute: %s", ptx_list_cmd);
+        return "";
+    }
+
+    // 读取PTX文件列表
+    std::ifstream infile("__ptx_list_temp__");
+    std::string ptx_file;
+    std::string ptx_code;
+    char cmd[1024];
+
+    while (std::getline(infile, ptx_file)) {
+        PTX_DEBUG("Extracting PTX file: %s", ptx_file.c_str());
+
+        snprintf(cmd, 1024, "cuobjdump -xptx %s %s >/dev/null",
+                 ptx_file.c_str(), executable_path.c_str());
+        if (system(cmd) != 0) {
+            PTX_ERROR("Failed to extract PTX: %s", cmd);
+            continue;
+        }
+
+        std::ifstream if_ptx(ptx_file);
+        std::ostringstream of_ptx;
+        char ch;
+        while (if_ptx.get(ch)) {
+            of_ptx.put(ch);
+        }
+        ptx_code += of_ptx.str(); // 累加所有PTX代码
+
+        // 清理临时PTX文件
+        snprintf(cmd, 1024, "rm %s", ptx_file.c_str());
+        system(cmd);
+    }
+
+    // 清理临时文件列表
+    system("rm __ptx_list_temp__");
+
+    return ptx_code;
+}
 
 void PtxListener::test_semantic() {
     PtxContext &ptx = ptxContext;

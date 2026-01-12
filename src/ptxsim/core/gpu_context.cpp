@@ -1,5 +1,7 @@
 #include "ptxsim/gpu_context.h"
+#include "memory/hardware_memory_manager.h" // 添加硬件内存管理器头文件
 #include "memory/resource_manager.h"
+#include "memory/simple_memory.h" // 添加SimpleMemory头文件
 #include <fstream>
 #include <future>
 #include <inipp/inipp.h>
@@ -56,6 +58,10 @@ bool GPUContext::load_json_config(const std::string &config_path) {
         if (j.contains("warp_size")) {
             config.warp_size = j["warp_size"];
         }
+        // 添加全局内存大小的配置
+        if (j.contains("global_mem_size")) {
+            config.global_mem_size = j["global_mem_size"];
+        }
 
         std::cout << "GPU configuration loaded from: " << config_path
                   << std::endl;
@@ -71,6 +77,8 @@ bool GPUContext::load_json_config(const std::string &config_path) {
         std::cout << "  max_blocks_per_sm: " << config.max_blocks_per_sm
                   << std::endl;
         std::cout << "  warp_size: " << config.warp_size << std::endl;
+        std::cout << "  global_mem_size: " << config.global_mem_size
+                  << std::endl;
 
         return true;
     } catch (const std::exception &e) {
@@ -80,6 +88,12 @@ bool GPUContext::load_json_config(const std::string &config_path) {
 }
 
 void GPUContext::init() {
+    // 创建SimpleMemory实例作为成员变量
+    device_memory = std::make_unique<SimpleMemory>(config.global_mem_size);
+
+    // 设置HardwareMemoryManager使用的SimpleMemory实例
+    HardwareMemoryManager::instance().set_simple_memory(device_memory.get());
+
     // 初始化 ResourceManager
     ResourceManager::instance().initialize(config.num_sms,
                                            config.shared_mem_size_per_sm);
@@ -229,7 +243,7 @@ EXE_STATE GPUContext::exe_once() {
             if (it->second.on_complete) {
                 it->second.on_complete();
             }
-            
+
             // 请求已完成，从执行映射中移除
             it = executing_requests.erase(it);
         } else {

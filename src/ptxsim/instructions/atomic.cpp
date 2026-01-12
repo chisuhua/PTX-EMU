@@ -1,4 +1,4 @@
-#include "memory/memory_manager.h" // 确保包含 MemoryManager
+#include "memory/hardware_memory_manager.h" // 添加HardwareMemoryManager头文件
 #include "ptxsim/instruction_handlers.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/utils/qualifier_utils.h"

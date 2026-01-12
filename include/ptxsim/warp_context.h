@@ -94,6 +94,22 @@ public:
         register_bank_manager_ = manager;
     }
 
+    // 获取warp中所有线程的引用
+    const std::vector<std::unique_ptr<ThreadContext>>& get_threads() const {
+        return threads;
+    }
+
+    // 获取指定范围内的活跃线程
+    std::vector<ThreadContext*> get_active_threads() const {
+        std::vector<ThreadContext*> active_threads;
+        for (int i = 0; i < threads.size(); ++i) {
+            if (is_lane_active(i) && threads[i]) {
+                active_threads.push_back(threads[i].get());
+            }
+        }
+        return active_threads;
+    }
+
 private:
     std::vector<std::unique_ptr<ThreadContext>>
         threads;                                // warp中的线程unique_ptr

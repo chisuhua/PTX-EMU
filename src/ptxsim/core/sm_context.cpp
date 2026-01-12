@@ -1,5 +1,5 @@
 #include "ptxsim/sm_context.h"
-#include "memory/memory_manager.h"        // 添加MemoryManager头文件
+// #include "memory/memory_manager.h"        // 添加MemoryManager头文件
 #include "memory/resource_manager.h"      // 添加ResourceManager头文件
 #include "memory/shared_memory_manager.h" // 添加SharedMemoryManager头文件
 #include "ptx_ir/statement_context.h"

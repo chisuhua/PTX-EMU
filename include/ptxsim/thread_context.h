@@ -47,6 +47,9 @@ public:
     int warp_id_;
     int lane_id_;
 
+    // 共享内存基地址
+    void *shared_mem_space = nullptr;
+
     void init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim, Dim3 BlockDim,
               std::vector<StatementContext> &statements,
               std::map<std::string, Symtable *> *name2Sym,

@@ -1,0 +1,10 @@
+{
+  "num_sms": 80,
+  "max_warps_per_sm": 64,
+  "max_threads_per_sm": 2048,
+  "shared_mem_size_per_sm": 65536,
+  "registers_per_sm": 65536,
+  "max_blocks_per_sm": 32,
+  "warp_size": 32,
+  "global_mem_size": 4294967296
+}

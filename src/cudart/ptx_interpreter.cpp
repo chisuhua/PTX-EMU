@@ -1,5 +1,5 @@
 #include "ptx_interpreter.h"
-#include "memory/memory_manager.h" // 添加 MemoryManager 头文件
+#include "cudart/cuda_driver.h" // 使用CudaDriver头文件
 #include "ptx_ir/kernel_context.h"
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/cta_context.h"
@@ -8,6 +8,7 @@
 #include "ptxsim/sm_context.h"
 #include "utils/logger.h"
 #include <cassert>
+#include <cstdint>
 #include <cstring>
 #include <map>
 #include <memory>
@@ -68,7 +69,7 @@ void PtxInterpreter::funcInterpreter(
         auto completion_callback = [param_space_ptr]() {
             if (param_space_ptr) {
                 PTX_DEBUG_EMU("Freeing PARAM space at %p", param_space_ptr);
-                MemoryManager::instance().free_param(param_space_ptr);
+                CudaDriver::instance().free(param_space_ptr);
             }
         };
 
@@ -114,10 +115,9 @@ void PtxInterpreter::setupKernelArguments(
             Q2bytes(e.paramType) * (e.paramNum ? e.paramNum : 1);
     }
 
-    // 申请PARAM空间，使用 MemoryManager 提供的 malloc_param 函数
+    // 申请PARAM空间，使用 CudaDriver 提供的 malloc_param 函数
     if (total_param_size > 0) {
-        this->param_space =
-            MemoryManager::instance().malloc_param(total_param_size);
+        this->param_space = CudaDriver::instance().malloc(total_param_size);
         if (this->param_space == nullptr) {
             PTX_DEBUG_EMU("Failed to allocate PARAM space of size %zu",
                           total_param_size);
@@ -149,20 +149,17 @@ void PtxInterpreter::setupKernelArguments(
             // 将参数值拷贝到PARAM空间
             memcpy((char *)this->param_space + offset, kernelArgs[i],
                    param_size);
+            s->val = (uint64_t)((char *)this->param_space + offset);
+        } else {
+            s->val = (uint64_t)kernelArgs[i];
         }
-
-        // 在符号表中存储PARAM空间中该参数的地址
-        s->val = (uint64_t)((char *)this->param_space + offset);
-
-        PTX_DEBUG_EMU(
-            "Kernel argument[%d]: name=%s, elementNum=%d, byteNum=%d, "
-            "param_size=%zu, param_space_offset=%zu, stored_addr=%p, "
-            "first_8_bytes_of_data=0x%lx",
-            i, s->name.c_str(), s->elementNum, s->byteNum, param_size, offset,
-            (void *)s->val, *(uint64_t *)kernelArgs[i]);
 
         name2Sym[s->name] = s;
         offset += param_size;
+        PTX_DEBUG_EMU("Added kernel argument to name2Sym: name=%s, "
+                      "symbol_table_entry=%p, stored_value=0x%lx",
+                      "first_8_bytes_of_data=0x%lx", s->name.c_str(), s, s->val,
+                      *(uint64_t *)(s->val));
     }
 }
 
@@ -175,3 +172,10 @@ void PtxInterpreter::setupLabels(std::map<std::string, int> &label2pc) {
         }
     }
 }
+
+void PtxInterpreter::set_ptx_context(PtxContext &ptx) {
+    this->ptxContext = &ptx;
+    // 可能还需要设置其他相关字段
+}
+
+PtxContext &PtxInterpreter::get_ptx_context() { return *this->ptxContext; }

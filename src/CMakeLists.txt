@@ -28,8 +28,10 @@ add_custom_target(GenerateParser DEPENDS ${ANTLR4_GENERATED_SOURCES} ptxLexer.g4
 
 # 设置源文件（包含ANTLR生成的源文件）
 set(SOURCES
-    cudart/cudart_sim.cpp
     cudart/ptx_interpreter.cpp
+    cudart/cuda_driver.cpp  # 添加新的驱动内存管理器
+    cudart/simple_memory_allocator.cpp
+    cudart/cudart_sim.cpp
     #utils/logger.cpp
     ${ANTLR4_GENERATED_SOURCES}
 )
@@ -57,12 +59,12 @@ add_library(ptxsim SHARED
     ptxsim/core/active_warp_manager.cpp
     register/condition_code_register.cpp
     register/register_bank_manager.cpp
-    memory/memory_manager.cpp
+    memory/hardware_memory_manager.cpp  # 添加新的硬件内存管理器
     memory/simple_memory.cpp
-    memory/simple_memory_allocator.cpp
     memory/shared_memory_manager.cpp
     memory/resource_manager.cpp
-    ptxsim/debug/ptx_debug.cpp
+    ptxsim/debug/ptx_config.cpp
+    ptxsim/debug/ptx_debugger.cpp
     ptxsim/instruction_factory.cpp
     ptxsim/instruction_base.cpp
     ptxsim/instruction_handlers.cpp

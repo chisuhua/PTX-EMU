@@ -220,7 +220,7 @@ void *ThreadContext::acquire_operand(OperandContext &operand,
                               "symbol_table_entry=%p, stored_value=0x%lx",
                               varOp->varName.c_str(), share_it->second,
                               share_it->second->val);
-                return (void *)(share_it->second->val);
+                return &(share_it->second->val);
             }
         }
 
@@ -360,13 +360,17 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
         // 1. 执行到get_memory_addr时，传入的qualifiers含有Q_GLOBAL, Q_SHARED,
         // Q_PARAM如何处理地址信息，
         // 把qualifiers里的地址信息设定到mem_qualifiers，而不是假定哟个Q_U64.
-        Qualifier mem_qualifier;
+        Qualifier mem_qualifier = Qualifier::Q_UNKNOWN;
         for (const auto &q : qualifiers) {
             // 将地址空间信息添加到mem_qualifiers中
-            if (q == Qualifier::Q_GLOBAL || q == Qualifier::Q_SHARED ||
-                q == Qualifier::Q_PARAM) {
+            if (q == Qualifier::Q_SHARED) {
+                mem_qualifier = Qualifier::Q_U32;
+            } else if (q == Qualifier::Q_GLOBAL || q == Qualifier::Q_PARAM) {
                 mem_qualifier = Qualifier::Q_U64;
             }
+        }
+        if (mem_qualifier == Qualifier::Q_UNKNOWN) {
+            assert(false);
         }
 
         assert(fa->reg->operandType == O_REG);
@@ -376,9 +380,25 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
         if (!regAddr)
             return nullptr;
 
-        // 根据地址类型决定如何解读寄存器内容
-        // 地址通常应该是64位的
-        ret = (void *)*(uint64_t *)regAddr;
+        uint64_t reg_value;
+        if (mem_qualifier == Qualifier::Q_U32) {
+            reg_value = *(uint32_t *)regAddr;
+        } else {
+            reg_value = *(uint64_t *)regAddr;
+        }
+
+        // 如果是shared memory访问，需要特殊处理
+        if (QvecHasQ(qualifiers, Qualifier::Q_SHARED)) {
+            // 对于共享内存访问，寄存器中的值是偏移量，需要加上共享内存基地址
+            if (shared_mem_space != nullptr) {
+                ret = (void *)((uint64_t)shared_mem_space + reg_value);
+            } else {
+                // 如果没有设置共享内存基地址，则返回nullptr
+                return nullptr;
+            }
+        } else {
+            ret = (void *)reg_value;
+        }
     } else {
         // 直接通过ID查找符号表或共享内存
         auto sym_it = name2Sym->find(fa->ID);

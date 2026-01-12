@@ -3,81 +3,53 @@
  * generate fake libcudart.so to replace origin libcudart.so
  */
 
+#include "antlr4-runtime.h"
+#include "cudart/cuda_driver.h"       // 替换为新的驱动内存管理器
+#include "cudart/cudart_intrinsics.h" // 添加缺失的CUDA类型定义
+#include "cudart/ptx_interpreter.h"
 #include "inipp/inipp.h"
+#include "memory/simple_memory.h"
+#include "ptx_interpreter.h"
+#include "ptx_parser/ptx_grammar.h" // 添加解析器相关的头文件
+#include "ptx_parser/ptx_parser.h"
+#include "ptxsim/gpu_context.h"
+#include "utils/cubin_utils.h" // 添加cuobjdump工具函数
+#include "utils/logger.h"
+
+// 添加缺失的宏定义
+#define PTX_ERROR_CUDART(fmt, ...)                                             \
+    do {                                                                       \
+        fprintf(stderr, "[ERROR][CUDART] %s:%d: " fmt "\n", __FILE__,          \
+                __LINE__, ##__VA_ARGS__);                                      \
+        fflush(stderr);                                                        \
+    } while (0)
+
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
-#include <driver_types.h>
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <sstream>
+#include <string>
 #include <unistd.h>
+#include <vector>
 
-#include "antlr4-runtime.h"
-#include "memory/memory_manager.h"
-#include "memory/simple_memory.h"
-#include "ptxLexer.h"
-#include "ptxParser.h"
-#include "ptxParserBaseListener.h"
-#include "ptx_interpreter.h"
-#include "ptx_parser/ptx_parser.h"
-#include "ptxsim/gpu_context.h"
-#include "ptxsim/ptx_debug.h"
-#include "utils/logger.h"
-
-#define __my_func__ __func__
-
-using namespace ptxparser;
-using namespace antlr4;
-
-std::string ptx_buffer;
+// 新增缺失的全局变量和数据结构
 std::map<uint64_t, std::string> func2name;
 std::map<uint64_t, cudaKernel_t> func2kernel;
 std::map<cudaKernel_t, const char *> kernel2func;
 dim3 _gridDim, _blockDim;
 size_t _sharedMem;
-PtxListener ptxListener;
-PtxInterpreter ptxInterpreter;
 
-// 全局GPUContext实例
+// 全局GPUContext和PtxInterpreter实例
 std::unique_ptr<GPUContext> g_gpu_context;
-
-// std::map<uint64_t, bool> memAlloc;
-// 全局初始化（在 main 或首次调用时）
-static std::unique_ptr<SimpleMemory>
-    g_simple_memory; // 使用 unique_ptr 延迟构造
-
-static void ensure_memory_manager_initialized() {
-    static bool initialized = false;
-    if (!initialized) {
-        // 1. 获取 MemoryManager 单例
-        MemoryManager &mgr = MemoryManager::instance();
-
-        // 2. 构造 SimpleMemory（复用 MemoryManager 的内存池）
-        g_simple_memory = std::make_unique<SimpleMemory>(
-            mgr.get_global_pool(), MemoryManager::GLOBAL_SIZE,
-            mgr.get_shared_pool(), MemoryManager::SHARED_SIZE);
-
-        // 3. 注入 MemoryInterface
-        mgr.set_memory_interface(g_simple_memory.get());
-
-        // =============================================================================
-        // Gem5 接入占位（未来只需取消注释以下代码，并注释 SimpleMemory 部分）
-        // =============================================================================
-        // static std::unique_ptr<Gem5MemoryService> g_gem5_memory;
-        // g_gem5_memory = std::make_unique<Gem5MemoryService>();
-        // mgr.set_memory_interface(g_gem5_memory.get());
-        // =============================================================================
-        initialized = true;
-    }
-}
+std::unique_ptr<PtxInterpreter> g_ptx_interpreter;
 
 // 配置文件路径
 static const char *CONFIG_FILE = "config.ini";
-
-#define LOGEMU 1
 
 // 从INI配置中加载日志配置
 void load_logger_config(const inipp::Ini<char>::Section &logger_section) {
@@ -119,118 +91,13 @@ void load_logger_config(const inipp::Ini<char>::Section &logger_section) {
     // 读取组件级别配置
     for (const auto &pair : logger_section) {
         if (pair.first.substr(0, 9) == "component") {
-            std::string component =
-                pair.first.substr(10); // skip "component."
+            std::string component = pair.first.substr(10); // skip "component."
             if (!component.empty()) {
                 ptxsim::log_level level =
                     logger_config.string_to_log_level(pair.second);
                 logger_config.set_component_level(component, level);
             }
         }
-    }
-}
-
-// 从INI配置中加载调试器配置
-void load_debugger_config(const inipp::Ini<char>::Section &debugger_section) {
-    auto &debugger_config = ptxsim::DebugConfig::get();
-
-    std::string trace_instr;
-    inipp::get_value(debugger_section, "trace_instruction", trace_instr);
-    if (!trace_instr.empty()) {
-        bool trace = (trace_instr == "true" || trace_instr == "1");
-        debugger_config.enable_instruction_trace(
-            ptxsim::InstructionType::MEMORY, trace);
-        debugger_config.enable_instruction_trace(
-            ptxsim::InstructionType::ARITHMETIC, trace);
-        debugger_config.enable_instruction_trace(
-            ptxsim::InstructionType::CONTROL, trace);
-        debugger_config.enable_instruction_trace(
-            ptxsim::InstructionType::LOGIC, trace);
-        debugger_config.enable_instruction_trace(
-            ptxsim::InstructionType::CONVERT, trace);
-        debugger_config.enable_instruction_trace(
-            ptxsim::InstructionType::SPECIAL, trace);
-        debugger_config.enable_instruction_trace(
-            ptxsim::InstructionType::OTHER, trace);
-    }
-
-    // 按类型设置指令跟踪
-    std::string trace_memory;
-    inipp::get_value(debugger_section, "trace_instruction_type.memory",
-                     trace_memory);
-    if (!trace_memory.empty()) {
-        debugger_config.enable_instruction_trace(
-            ptxsim::InstructionType::MEMORY,
-            (trace_memory == "true" || trace_memory == "1"));
-    }
-
-    std::string trace_arithmetic;
-    inipp::get_value(debugger_section, "trace_instruction_type.arithmetic",
-                     trace_arithmetic);
-    if (!trace_arithmetic.empty()) {
-        debugger_config.enable_instruction_trace(
-            ptxsim::InstructionType::ARITHMETIC,
-            (trace_arithmetic == "true" || trace_arithmetic == "1"));
-    }
-
-    std::string trace_control;
-    inipp::get_value(debugger_section, "trace_instruction_type.control",
-                     trace_control);
-    if (!trace_control.empty()) {
-        debugger_config.enable_instruction_trace(
-            ptxsim::InstructionType::CONTROL,
-            (trace_control == "true" || trace_control == "1"));
-    }
-
-    std::string trace_logic;
-    inipp::get_value(debugger_section, "trace_instruction_type.logic",
-                     trace_logic);
-    if (!trace_logic.empty()) {
-        debugger_config.enable_instruction_trace(
-            ptxsim::InstructionType::LOGIC,
-            (trace_logic == "true" || trace_logic == "1"));
-    }
-
-    std::string trace_convert;
-    inipp::get_value(debugger_section, "trace_instruction_type.convert",
-                     trace_convert);
-    if (!trace_convert.empty()) {
-        debugger_config.enable_instruction_trace(
-            ptxsim::InstructionType::CONVERT,
-            (trace_convert == "true" || trace_convert == "1"));
-    }
-
-    std::string trace_special;
-    inipp::get_value(debugger_section, "trace_instruction_type.special",
-                     trace_special);
-    if (!trace_special.empty()) {
-        debugger_config.enable_instruction_trace(
-            ptxsim::InstructionType::SPECIAL,
-            (trace_special == "true" || trace_special == "1"));
-    }
-
-    std::string trace_other;
-    inipp::get_value(debugger_section, "trace_instruction_type.other",
-                     trace_other);
-    if (!trace_other.empty()) {
-        debugger_config.enable_instruction_trace(
-            ptxsim::InstructionType::OTHER,
-            (trace_other == "true" || trace_other == "1"));
-    }
-
-    // 设置内存和寄存器跟踪
-    std::string trace_mem;
-    inipp::get_value(debugger_section, "trace_memory", trace_mem);
-    if (!trace_mem.empty()) {
-        debugger_config.enable_memory_trace(
-            (trace_mem == "true" || trace_mem == "1"));
-    }
-
-    std::string trace_reg;
-    inipp::get_value(debugger_section, "trace_registers", trace_reg);
-    if (!trace_reg.empty()) {
-        debugger_config.enable_register_trace(
-            (trace_reg == "true" || trace_reg == "1"));
     }
 }
 
@@ -246,20 +113,6 @@ void initialize_environment() {
         auto logger_section = ini.sections["logger"];
         load_logger_config(logger_section);
 
-        // 设置调试器配置
-        auto debugger_section = ini.sections["debugger"];
-        load_debugger_config(debugger_section);
-
-        PTX_INFO_EMU("Configuration loaded from %s", CONFIG_FILE);
-    } else {
-        PTX_INFO_EMU("No configuration file found, using default settings");
-        // 设置默认的日志级别
-        ptxsim::LoggerConfig::get().set_global_level(ptxsim::log_level::info);
-    }
-
-    // 初始化全局GPUContext
-    static bool gpu_initialized = false;
-    if (!gpu_initialized) {
         // 从INI配置文件中读取GPU配置文件路径
         std::string gpu_config_filename;
         auto gpu_section = ini.sections["gpu"];
@@ -273,16 +126,30 @@ void initialize_environment() {
             g_gpu_context = std::make_unique<GPUContext>();
         }
         g_gpu_context->init();
-        gpu_initialized = true;
+        g_ptx_interpreter = std::make_unique<PtxInterpreter>();
+
+        PTX_INFO_EMU("Configuration loaded from %s", CONFIG_FILE);
+    } else {
+        PTX_INFO_EMU("No configuration file found, using default settings");
+        // 设置默认的日志级别
+        ptxsim::LoggerConfig::get().set_global_level(ptxsim::log_level::info);
+
+        // 使用默认GPU配置
+        g_gpu_context = std::make_unique<GPUContext>();
+        g_gpu_context->init();
+        g_ptx_interpreter = std::make_unique<PtxInterpreter>();
     }
 }
 
+#ifdef __cplusplus
 extern "C" {
-
-void **__cudaRegisterFatBinary(void *fatCubin) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
 #endif
+
+void **__cudaRegisterFatBinary(void **fatCubinHandle, void *fat_bin,
+                               unsigned long long fat_bin_size,
+                               unsigned int version) {
+    PTX_DEBUG_EMU("Called __cudaRegisterFatBinary(%p, %p, %llu, %u)",
+                  fatCubinHandle, fat_bin, fat_bin_size, version);
 
     // 初始化调试环境
     static bool debug_initialized = false;
@@ -291,212 +158,128 @@ void **__cudaRegisterFatBinary(void *fatCubin) {
         debug_initialized = true;
     }
 
-    static bool if_executed = 0;
-
-    if (!if_executed) {
-        if_executed = 1;
-        // get program abspath
-        char self_exe_path[1025] = "";
-        long size = readlink("/proc/self/exe", self_exe_path, 1024);
-        assert(size != -1);
-        self_exe_path[size] = '\0';
-#ifdef LOGEMU
-        printf("EMU: self exe links to %s\n", self_exe_path);
-#endif
-
-        // get ptx file name embedded in binary
-        char cmd[1024] = "";
-        snprintf(cmd, 1024,
-                 "cuobjdump -lptx %s | cut -d : -f 2 | awk '{$1=$1}1' > %s",
-                 self_exe_path, "__ptx_list__");
-        if (system(cmd) != 0) {
-#ifdef LOGEMU
-            printf("EMU: fail to execute %s\n", cmd);
-#endif
-            exit(0);
-        }
-
-        // get ptx embedded in binary
-        std::ifstream infile("__ptx_list__");
-        std::string ptx_file;
-        while (std::getline(infile, ptx_file)) {
-#ifdef LOGEMU
-            printf("EMU: extract PTX file %s \n", ptx_file.c_str());
-#endif
-            snprintf(cmd, 1024, "cuobjdump -xptx %s %s >/dev/null",
-                     ptx_file.c_str(), self_exe_path);
-            if (system(cmd) != 0) {
-#ifdef LOGEMU
-                printf("EMU: fail to execute %s\n", cmd);
-#endif
-                exit(0);
-            }
-            std::ifstream if_ptx(ptx_file);
-            std::ostringstream of_ptx;
-            char ch;
-            while (of_ptx && if_ptx.get(ch))
-                of_ptx.put(ch);
-            ptx_buffer = of_ptx.str();
-        }
-
-        // clean intermediate file
-        snprintf(cmd, 1024, "rm __ptx_list__ %s", ptx_file.c_str());
-        system(cmd);
-
-        // launch antlr4 parse
-        ANTLRInputStream input(ptx_buffer);
-        ptxLexer lexer(&input);
-        CommonTokenStream tokens(&lexer);
-        tokens.fill();
-        ptxParser parser(&tokens);
-        parser.addParseListener(&ptxListener);
-        tree::ParseTree *tree = parser.ast();
+    // 1. 获取当前进程路径
+    char self_exe_path[1025] = "";
+    long size = readlink("/proc/self/exe", self_exe_path, 1024);
+    if (size == -1) {
+        PTX_ERROR_CUDART("Could not read /proc/self/exe");
+        exit(1);
     }
-#ifdef LOGEMU
-    printf("EMU: call_end %s\n", __my_func__);
-    ptxListener.test_semantic();
-#endif
-    return nullptr;
+    self_exe_path[size] = '\0';
+
+    // 2. 从当前进程提取PTX代码
+    std::string ptx_code = extract_ptx_with_cuobjdump(self_exe_path);
+
+    if (ptx_code.empty()) {
+        std::cerr << "Error: Could not extract PTX code" << std::endl;
+        return nullptr;
+    }
+
+    // 使用g_gpu_context的get_device_memory函数获取SimpleMemory实例
+    SimpleMemory *simple_mem = g_gpu_context->get_device_memory();
+
+    // 设置CudaDriver使用的SimpleMemory实例
+    CudaDriver::instance().set_simple_memory(simple_mem);
+
+    // 3. 解析PTX代码
+    ANTLRInputStream input(ptx_code);
+    ptxLexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    tokens.fill();
+    ptxParser parser(&tokens);
+
+    // 创建PtxListener实例
+    PtxListener ptxListener;
+    parser.addParseListener(&ptxListener);
+    tree::ParseTree *tree = parser.ast();
+
+    // 4. 初始化PtxInterpreter
+    g_ptx_interpreter->set_ptx_context(ptxListener.ptxContext);
+
+    // 5. 返回虚拟句柄
+    static int dummy_handle = 0;
+    *fatCubinHandle = &dummy_handle;
+    return fatCubinHandle;
 }
 
 void __cudaRegisterFunction(void **fatCubinHandle, const char *hostFun,
                             cudaKernel_t deviceFun, const char *deviceName,
                             int thread_limit, uint3 *tid, uint3 *bid,
                             dim3 *bDim, dim3 *gDim, int *wSize) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-    printf("EMU: hostFun %p\n", hostFun);
-    printf("EMU: deviceFun %p\n", deviceFun);
-    printf("EMU: deviceFunName %s\n", deviceName);
-#endif
+    PTX_DEBUG_EMU("Called __cudaRegisterFunction(%p, %s, %p, %s)",
+                  fatCubinHandle, hostFun, deviceFun, deviceName);
+
     func2name[(uint64_t)hostFun] = *(new std::string(deviceName));
     func2kernel[(uint64_t)hostFun] = (cudaKernel_t)deviceFun;
     kernel2func[deviceFun] = hostFun;
 }
 
 void __cudaRegisterFatBinaryEnd(void **fatCubinHandle) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-    ptxListener.test_semantic();
-#endif
+    PTX_DEBUG_EMU("Called __cudaRegisterFatBinaryEnd(%p)", fatCubinHandle);
+    // 目前不需要做任何事情
 }
 
-cudaError_t cudaMalloc(void **p, size_t s) {
-    // *p = malloc(s);
-    // memAlloc[(uint64_t)p] = 1;
-    ensure_memory_manager_initialized();
-    *p = MemoryManager::instance().malloc(s);
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-    printf("EMU: malloc %p\n", *p);
-#endif
-    return (*p) ? cudaSuccess : cudaErrorMemoryAllocation;
+CUresult cuModuleLoad(CUmodule *module, const char *fname) {
+    PTX_DEBUG_EMU("Called cuModuleLoad(%p, %s)", module, fname);
+
+    // 在仿真环境中，我们不实际加载模块
+    // 直接返回成功
+    *module = reinterpret_cast<CUmodule>(0x12345678);
+    return CUDA_SUCCESS;
 }
 
-cudaError_t cudaMemcpy(void *dst, const void *src, size_t count,
-                       enum cudaMemcpyKind kind) {
-    memcpy(dst, src, count);
-#ifdef LOGEMU
-    printf("EMU: memcpy dst:%p src:%p\n", dst, src);
-    printf("EMU: call %s\n", __my_func__);
-#endif
-    return cudaSuccess;
+CUresult cuModuleGetFunction(CUfunction *hfunc, CUmodule hmod,
+                             const char *name) {
+    PTX_DEBUG_EMU("Called cuModuleGetFunction(%p, %p, %s)", hfunc, hmod, name);
+
+    // 在仿真环境中，我们将函数名存储在句柄中
+    *hfunc = reinterpret_cast<CUfunction>(const_cast<char *>(name));
+    return CUDA_SUCCESS;
 }
 
-cudaError_t cudaEventCreate(cudaEvent_t *event, unsigned int flags) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-#endif
-    return cudaSuccess;
-}
+// 补充缺失的 __cudaPushCallConfiguration 函数
+unsigned __cudaPushCallConfiguration(dim3 gridDim, dim3 blockDim,
+                                     size_t sharedMem,
+                                     struct CUstream_st *stream) {
+    PTX_DEBUG_EMU("Called __cudaPushCallConfiguration(grid=(%d,%d,%d), "
+                  "block=(%d,%d,%d), sharedMem=%zu, stream=%p)",
+                  gridDim.x, gridDim.y, gridDim.z, blockDim.x, blockDim.y,
+                  blockDim.z, sharedMem, stream);
 
-cudaError_t cudaEventRecord(cudaEvent_t event, cudaStream_t stream) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-#endif
-    return cudaSuccess;
-}
-
-unsigned __cudaPushCallConfiguration(
-    dim3 gridDim, dim3 blockDim, size_t sharedMem = 0,
-    struct CUstream_st *stream = 0 // temporily ignore stream
-) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-    printf("EMU: gridDim(%d,%d,%d)\n", gridDim.x, gridDim.y, gridDim.z);
-    printf("EMU: blockDim(%d,%d,%d)\n", blockDim.x, blockDim.y, blockDim.z);
-#endif
     _gridDim = gridDim;
     _blockDim = blockDim;
     _sharedMem = sharedMem;
     return 0;
 }
 
-cudaError_t cudaEventSynchronize(cudaEvent_t event) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-#endif
-    return cudaSuccess;
-}
-
-cudaError_t cudaEventElapsedTime(float *ms, cudaEvent_t start,
-                                 cudaEvent_t end) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-#endif
-    return cudaSuccess;
-}
-
-cudaError_t cudaFree(void *devPtr) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-#endif
-    ensure_memory_manager_initialized();
-    auto ret = MemoryManager::instance().free(devPtr);
-    if (ret == Success)
-        return cudaSuccess;
-    else if (ret == ErrorMemoryAllocation)
-        return cudaErrorMemoryAllocation;
-    else if (ret == ErrorInvalidValue)
-        return cudaErrorInvalidValue;
-}
-
-void __cudaUnregisterFatBinary(void **fatCubinHandle) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-#endif
-}
-
+// 补充缺失的 __cudaPopCallConfiguration 函数
 cudaError_t __cudaPopCallConfiguration(dim3 *gridDim, dim3 *blockDim,
                                        size_t *sharedMem, void *stream) {
+    PTX_DEBUG_EMU("Called __cudaPopCallConfiguration(%p, %p, %p, %p)", gridDim,
+                  blockDim, sharedMem, stream);
+
     *gridDim = _gridDim;
     *blockDim = _blockDim;
     *sharedMem = _sharedMem;
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-#endif
     return cudaSuccess;
 }
 
+// 补充缺失的 __cudaGetKernel 函数
 cudaError_t __cudaGetKernel(cudaKernel_t *kernelPtr, const void *funcAddr) {
-    // PTX-EMU 的实现
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-    printf("EMU: kernelPtr=%p funcAddr=%p\n", kernelPtr, funcAddr);
-#endif
+    PTX_DEBUG_EMU("Called __cudaGetKernel(%p, %p)", kernelPtr, funcAddr);
+
     *kernelPtr = func2kernel[(uint64_t)funcAddr];
     return cudaSuccess;
 }
 
+// 补充缺失的 cudaLaunchKernel 函数
 cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim, dim3 blockDim,
                              void **args, size_t sharedMem,
-                             cudaStream_t stream // temporily ignore stream
-) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-    printf("EMU: func %p\n", func);
-    printf("EMU: arg %p\n", args);
-#endif
+                             cudaStream_t stream) {
+    PTX_DEBUG_EMU("Called cudaLaunchKernel(func=%p, grid=(%d,%d,%d), "
+                  "block=(%d,%d,%d), args=%p, sharedMem=%zu, stream=%p)",
+                  func, gridDim.x, gridDim.y, gridDim.z, blockDim.x, blockDim.y,
+                  blockDim.z, args, sharedMem, stream);
 
     // 添加参数内容打印的日志，增强安全性
     if (args) {
@@ -504,21 +287,24 @@ cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim, dim3 blockDim,
         PTX_DEBUG_EMU("cudaLaunchKernel args array address: %p", args);
 
         int i = 0;
-        PTX_DEBUG_EMU("cudaLaunchKernel argument[%d]: address=%p, value=0x%lx",
-                      i, args[i], *(uint64_t *)args[i]);
+        if (args[i]) {
+            PTX_DEBUG_EMU(
+                "cudaLaunchKernel argument[%d]: address=%p, value=0x%lx", i,
+                args[i], *(uint64_t *)args[i]);
+        }
     }
 
-    printf("EMU: deviceFunName %s\n", func2name[(uint64_t)func].c_str());
-    printf("EMU: gridDim(%d,%d,%d)\n", gridDim.x, gridDim.y, gridDim.z);
-    printf("EMU: blockDim(%d,%d,%d)\n", blockDim.x, blockDim.y, blockDim.z);
+    PTX_DEBUG_EMU("deviceFunName %s", func2name[(uint64_t)func].c_str());
+    PTX_DEBUG_EMU("gridDim(%d,%d,%d)", gridDim.x, gridDim.y, gridDim.z);
+    PTX_DEBUG_EMU("blockDim(%d,%d,%d)", blockDim.x, blockDim.y, blockDim.z);
 
     Dim3 gridDim3(gridDim.x, gridDim.y, gridDim.z);
     Dim3 blockDim3(blockDim.x, blockDim.y, blockDim.z);
 
-    // 调用PtxInterpreter的launch函数，提交请求到全局GPUContext
-    ptxInterpreter.launchPtxInterpreter(ptxListener.ptxContext,
-                                        func2name[(uint64_t)func], args,
-                                        gridDim3, blockDim3);
+    // 调用PtxInterpreter的launch函数
+    g_ptx_interpreter->launchPtxInterpreter(
+        g_ptx_interpreter->get_ptx_context(), func2name[(uint64_t)func], args,
+        gridDim3, blockDim3);
 
     // 等待kernel执行完成
     g_gpu_context->wait_for_completion();
@@ -526,131 +312,500 @@ cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim, dim3 blockDim,
     return cudaSuccess;
 }
 
+// 补充缺失的 __cudaLaunchKernel 函数
 cudaError_t __cudaLaunchKernel(cudaKernel_t kernel, dim3 gridDim, dim3 blockDim,
                                void **args, size_t sharedMem,
-                               cudaStream_t stream // temporily ignore stream
-) {
+                               cudaStream_t stream) {
     return cudaLaunchKernel(kernel2func[kernel], gridDim, blockDim, args,
                             sharedMem, stream);
 }
 
+// 补充缺失的 __cudaRegisterVar 函数
 void __cudaRegisterVar(void **fatCubinHandle, char *hostVar,
                        char *deviceAddress, const char *deviceName, int ext,
                        int size, int constant, int global) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-    printf("%p %p %s\n", hostVar, deviceAddress, deviceName);
-#endif
+    PTX_DEBUG_EMU("Called __cudaRegisterVar(%p, %p, %p, %s, %d, %d, %d, %d)",
+                  fatCubinHandle, hostVar, deviceAddress, deviceName, ext, size,
+                  constant, global);
+
     std::string s(deviceName);
-    ptxInterpreter.constName2addr[s] = (uint64_t)hostVar;
+    g_ptx_interpreter->constName2addr[s] = (uint64_t)hostVar;
 }
 
-cudaError_t cudaMallocManaged(void **devPtr, size_t size,
-                              unsigned int flags = cudaMemAttachGlobal) {
-    // *devPtr = malloc(size);
-    // memAlloc[(uint64_t)devPtr] = 1;
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-#endif
-    ensure_memory_manager_initialized();
-    *devPtr = MemoryManager::instance().malloc_managed(size);
-    return (*devPtr) ? cudaSuccess : cudaErrorMemoryAllocation;
-}
+cudaError_t cudaMemcpy(void *dst, const void *src, size_t count,
+                       cudaMemcpyKind kind) {
+    PTX_DEBUG_EMU("Called cudaMemcpy(%p, %p, %zu, %d)", dst, src, count, kind);
 
-cudaError_t cudaDeviceSynchronize(void) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-#endif
+    if (!dst || !src || count == 0) {
+        return cudaErrorInvalidValue;
+    }
+
+    // 获取CudaDriver的全局内存池地址
+    uint8_t *global_pool = CudaDriver::instance().get_global_pool();
+    if (!global_pool) {
+        return cudaErrorInitializationError;
+    }
+
+    // 根据复制类型执行内存复制
+    switch (kind) {
+    case cudaMemcpyHostToHost: {
+        // 从主机内存复制到设备内存
+        std::memcpy(dst, src, count);
+        break;
+    }
+    case cudaMemcpyHostToDevice: {
+        // 从主机内存复制到设备内存
+        // dst是设备指针（即偏移量），src是主机指针
+        uint64_t device_offset = reinterpret_cast<uint64_t>(dst);
+        if (device_offset >= CudaDriver::GLOBAL_SIZE) {
+            return cudaErrorInvalidValue;
+        }
+
+        std::memcpy(global_pool + device_offset, src, count);
+        break;
+    }
+    case cudaMemcpyDeviceToHost: {
+        // 从设备内存复制到主机内存
+        // src是设备指针（即偏移量），dst是主机指针
+        uint64_t device_offset = reinterpret_cast<uint64_t>(src);
+        if (device_offset >= CudaDriver::GLOBAL_SIZE) {
+            return cudaErrorInvalidValue;
+        }
+
+        std::memcpy(dst, global_pool + device_offset, count);
+        break;
+    }
+    case cudaMemcpyDeviceToDevice: {
+        // 设备到设备的复制
+        uint64_t src_device_offset = reinterpret_cast<uint64_t>(src);
+        uint64_t dst_device_offset = reinterpret_cast<uint64_t>(dst);
+
+        if (src_device_offset >= CudaDriver::GLOBAL_SIZE ||
+            dst_device_offset >= CudaDriver::GLOBAL_SIZE) {
+            return cudaErrorInvalidValue;
+        }
+
+        std::memcpy(global_pool + dst_device_offset,
+                    global_pool + src_device_offset, count);
+        break;
+    }
+    default:
+        return cudaErrorInvalidValue;
+    }
+
     return cudaSuccess;
+}
+
+cudaError_t cudaMemcpyAsync(void *dst, const void *src, size_t count,
+                            cudaMemcpyKind kind, cudaStream_t stream) {
+    PTX_DEBUG_EMU("Called cudaMemcpyAsync(%p, %p, %zu, %d, %p)", dst, src,
+                  count, kind, stream);
+
+    // 异步复制在仿真器中与同步复制相同
+    return cudaMemcpy(dst, src, count, kind);
 }
 
 cudaError_t cudaMemset(void *devPtr, int value, size_t count) {
-    memset(devPtr, value, count);
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-#endif
+    PTX_DEBUG_EMU("Called cudaMemset(%p, %d, %zu)", devPtr, value, count);
+
+    if (!devPtr) {
+        return cudaErrorInvalidValue;
+    }
+
+    // 获取CudaDriver的全局内存池地址
+    uint8_t *global_pool = CudaDriver::instance().get_global_pool();
+    if (!global_pool) {
+        return cudaErrorInitializationError;
+    }
+
+    uint64_t device_offset = reinterpret_cast<uint64_t>(devPtr);
+    if (device_offset >= CudaDriver::GLOBAL_SIZE) {
+        return cudaErrorInvalidValue;
+    }
+
+    std::memset(global_pool + device_offset, value, count);
     return cudaSuccess;
 }
 
-cudaError_t cudaGetLastError(void) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-#endif
+cudaError_t cudaMalloc(void **devPtr, size_t size) {
+    PTX_DEBUG_EMU("Called cudaMalloc(%p, %zu)", devPtr, size);
+
+    if (!devPtr) {
+        return cudaErrorInvalidValue;
+    }
+
+    // 使用 CudaDriver 分配内存
+    *devPtr = CudaDriver::instance().malloc(size);
+    if (!*devPtr) {
+        return cudaErrorMemoryAllocation;
+    }
+
     return cudaSuccess;
 }
 
-cudaError_t cudaMemsetAsync(void *devPtr, int value, size_t count,
-                            cudaStream_t stream = 0) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-#endif
+cudaError_t cudaMallocManaged(void **devPtr, size_t size) {
+    PTX_DEBUG_EMU("Called cudaMallocManaged(%p, %zu)", devPtr, size);
+
+    if (!devPtr) {
+        return cudaErrorInvalidValue;
+    }
+
+    // 使用 CudaDriver 分配托管内存
+    *devPtr = CudaDriver::instance().malloc_managed(size);
+    if (!*devPtr) {
+        return cudaErrorMemoryAllocation;
+    }
+
     return cudaSuccess;
 }
 
-cudaError_t cudaPeekAtLastError(void) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-#endif
+cudaError_t cudaFree(void *devPtr) {
+    PTX_DEBUG_EMU("Called cudaFree(%p)", devPtr);
+
+    // 使用 CudaDriver 释放内存
+    auto ret = CudaDriver::instance().free(devPtr);
+    if (ret != Success) {
+        return cudaErrorInvalidValue;
+    }
+
     return cudaSuccess;
 }
 
-cudaError_t cudaThreadSynchronize(void) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-#endif
+cudaError_t cudaFreeHost(void *ptr) {
+    PTX_DEBUG_EMU("Called cudaFreeHost(%p)", ptr);
+
+    // Host内存由系统管理，无需特殊处理
     return cudaSuccess;
 }
 
-cudaError_t cudaGetDeviceCount(int *count) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-#endif
-    assert(count);
-    *count = 1;
+cudaError_t cudaMallocHost(void **ptr, size_t size) {
+    PTX_DEBUG_EMU("Called cudaMallocHost(%p, %zu)", ptr, size);
+
+    if (!ptr) {
+        return cudaErrorInvalidValue;
+    }
+
+    // Host内存由系统分配
+    *ptr = std::malloc(size);
+    if (!*ptr) {
+        return cudaErrorMemoryAllocation;
+    }
+
     return cudaSuccess;
 }
 
-cudaError_t cudaGetDeviceProperties(cudaDeviceProp *prop, int device) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-#endif
-    prop->name[0] = '\0';
-    strcpy(prop->name, "PTX-EMU");
-    prop->major = 8;
-    prop->minor = 0;
+cudaError_t cudaDeviceSynchronize() {
+    PTX_DEBUG_EMU("Called cudaDeviceSynchronize()");
+
+    // 在仿真器中，同步是立即完成的
+    return cudaSuccess;
+}
+
+cudaError_t cudaPeekAtLastError() {
+    PTX_DEBUG_EMU("Called cudaPeekAtLastError()");
+
+    // 在仿真器中，通常没有错误
+    return cudaSuccess;
+}
+
+cudaError_t cudaGetLastError() {
+    PTX_DEBUG_EMU("Called cudaGetLastError()");
+
+    // 在仿真器中，通常没有错误
     return cudaSuccess;
 }
 
 cudaError_t cudaSetDevice(int device) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-#endif
+    PTX_DEBUG_EMU("Called cudaSetDevice(%d)", device);
+
+    // 在仿真器中，只支持一个设备
+    if (device != 0) {
+        return cudaErrorInvalidDevice;
+    }
+
     return cudaSuccess;
 }
 
+cudaError_t cudaDeviceReset() {
+    PTX_DEBUG_EMU("Called cudaDeviceReset()");
+
+    // 重置全局GPU上下文
+    g_gpu_context.reset();
+
+    return cudaSuccess;
+}
+
+cudaError_t cudaFuncSetCacheConfig(const char *func,
+                                   cudaFuncCache cacheConfig) {
+    PTX_DEBUG_EMU("Called cudaFuncSetCacheConfig(%p, %d)", func, cacheConfig);
+
+    // 在仿真器中，缓存配置不起作用
+    return cudaSuccess;
+}
+
+cudaError_t cudaFuncSetSharedMemConfig(const char *func,
+                                       cudaSharedMemConfig config) {
+    PTX_DEBUG_EMU("Called cudaFuncSetSharedMemConfig(%p, %d)", func, config);
+
+    // 在仿真器中，共享内存配置不起作用
+    return cudaSuccess;
+}
+
+cudaError_t cudaStreamCreate(cudaStream_t *stream) {
+    PTX_DEBUG_EMU("Called cudaStreamCreate(%p)", stream);
+
+    if (!stream) {
+        return cudaErrorInvalidValue;
+    }
+
+    // 在仿真器中，流只是一个占位符
+    *stream = reinterpret_cast<cudaStream_t>(new int(0));
+    return cudaSuccess;
+}
+
+cudaError_t cudaStreamDestroy(cudaStream_t stream) {
+    PTX_DEBUG_EMU("Called cudaStreamDestroy(%p)", stream);
+
+    if (stream) {
+        delete reinterpret_cast<int *>(stream);
+    }
+
+    return cudaSuccess;
+}
+
+cudaError_t cudaStreamSynchronize(cudaStream_t stream) {
+    PTX_DEBUG_EMU("Called cudaStreamSynchronize(%p)", stream);
+
+    // 在仿真器中，同步是立即完成的
+    return cudaSuccess;
+}
+
+cudaError_t cudaEventCreate(cudaEvent_t *event) {
+    PTX_DEBUG_EMU("Called cudaEventCreate(%p)", event);
+
+    if (!event) {
+        return cudaErrorInvalidValue;
+    }
+
+    // 在仿真器中，事件只是一个占位符
+    *event = reinterpret_cast<cudaEvent_t>(new int(0));
+    return cudaSuccess;
+}
+
+cudaError_t cudaEventDestroy(cudaEvent_t event) {
+    PTX_DEBUG_EMU("Called cudaEventDestroy(%p)", event);
+
+    if (event) {
+        delete reinterpret_cast<int *>(event);
+    }
+
+    return cudaSuccess;
+}
+
+cudaError_t cudaEventRecord(cudaEvent_t event, cudaStream_t stream) {
+    PTX_DEBUG_EMU("Called cudaEventRecord(%p, %p)", event, stream);
+
+    // 在仿真器中，事件记录立即完成
+    return cudaSuccess;
+}
+
+cudaError_t cudaEventSynchronize(cudaEvent_t event) {
+    PTX_DEBUG_EMU("Called cudaEventSynchronize(%p)", event);
+
+    // 在仿真器中，同步是立即完成的
+    return cudaSuccess;
+}
+
+float cudaEventElapsedTime(cudaEvent_t start, cudaEvent_t end) {
+    PTX_DEBUG_EMU("Called cudaEventElapsedTime(%p, %p)", start, end);
+
+    // 在仿真器中，我们不测量实际时间
+    // 返回一个虚拟值
+    return 1.0f; // 1毫秒
+}
+
+// 补充缺失的 cudaGetDeviceCount 函数
+cudaError_t cudaGetDeviceCount(int *count) {
+    PTX_DEBUG_EMU("Called cudaGetDeviceCount(%p)", count);
+
+    if (!count) {
+        return cudaErrorInvalidValue;
+    }
+
+    *count = 1;
+    return cudaSuccess;
+}
+
+// 补充缺失的 cudaGetDeviceProperties 函数
+cudaError_t cudaGetDeviceProperties(cudaDeviceProp *prop, int device) {
+    PTX_DEBUG_EMU("Called cudaGetDeviceProperties(%p, %d)", prop, device);
+
+    if (!prop) {
+        return cudaErrorInvalidValue;
+    }
+
+    if (device != 0) {
+        return cudaErrorInvalidDevice;
+    }
+
+    // 初始化设备属性
+    memset(prop, 0, sizeof(cudaDeviceProp));
+    snprintf(prop->name, sizeof(prop->name), "PTX-EMU Virtual Device");
+    prop->major = 8;
+    prop->minor = 0;
+    prop->totalGlobalMem = 1ULL << 32; // 4GB
+    prop->sharedMemPerBlock = 49152;   // 48KB
+    prop->regsPerBlock = 65536;
+    prop->warpSize = 32;
+    prop->memPitch = 2147483647;
+    prop->maxThreadsPerBlock = 1024;
+    prop->maxThreadsDim[0] = 1024;
+    prop->maxThreadsDim[1] = 1024;
+    prop->maxThreadsDim[2] = 64;
+    prop->maxGridSize[0] = 2147483647;
+    prop->maxGridSize[1] = 65535;
+    prop->maxGridSize[2] = 65535;
+    // prop->clockRate = 1000000; // 1GHz // 已在较新版本中移除
+    prop->totalConstMem = 65536;
+    prop->textureAlignment = 512;
+    // prop->deviceOverlap = 1; // 已在较新版本中移除
+    prop->multiProcessorCount = 80; // 假设80个SM
+    // prop->kernelExecTimeoutEnabled = 0; // 已在较新版本中移除
+    prop->integrated = 0;
+    prop->canMapHostMemory = 1;
+    // prop->computeMode = 0; // 已在较新版本中移除
+    prop->maxTexture1D = 65536;
+    prop->maxTexture1DMipmap = 65536;
+    // prop->maxTexture1DLinear = 134217728;  // 已在较新版本中移除
+    prop->maxTexture2D[0] = 65536;
+    prop->maxTexture2D[1] = 65536;
+    prop->maxTexture2DMipmap[0] = 65536;
+    prop->maxTexture2DMipmap[1] = 65536;
+    // prop->maxTexture2DLinear[0] = 134217728; // 已在较新版本中移除
+    // prop->maxTexture2DLinear[1] = 65536; // 已在较新版本中移除
+    // prop->maxTexture2DLinear[2] = 2048; // 已在较新版本中移除
+    prop->maxTexture3D[0] = 16384;
+    prop->maxTexture3D[1] = 16384;
+    prop->maxTexture3D[2] = 16384;
+    prop->maxTexture3DAlt[0] = 16384;
+    prop->maxTexture3DAlt[1] = 16384;
+    prop->maxTexture3DAlt[2] = 16384;
+    prop->maxTextureCubemap = 65536;
+    prop->maxTexture1DLayered[0] = 65536;
+    prop->maxTexture1DLayered[1] = 2048;
+    prop->maxTexture2DLayered[0] = 65536;
+    prop->maxTexture2DLayered[1] = 65536;
+    prop->maxTexture2DLayered[2] = 2048;
+    prop->maxTextureCubemapLayered[0] = 65536;
+    prop->maxTextureCubemapLayered[1] = 2048;
+    prop->maxSurface1D = 65536;
+    prop->maxSurface2D[0] = 65536;
+    prop->maxSurface2D[1] = 65536;
+    prop->maxSurface3D[0] = 16384;
+    prop->maxSurface3D[1] = 16384;
+    prop->maxSurface3D[2] = 16384;
+    prop->maxSurface1DLayered[0] = 65536;
+    prop->maxSurface1DLayered[1] = 2048;
+    prop->maxSurface2DLayered[0] = 65536;
+    prop->maxSurface2DLayered[1] = 65536;
+    prop->maxSurface2DLayered[2] = 2048;
+    prop->maxSurfaceCubemap = 65536;
+    prop->maxSurfaceCubemapLayered[0] = 65536;
+    prop->maxSurfaceCubemapLayered[1] = 2048;
+    prop->surfaceAlignment = 512;
+    prop->concurrentKernels = 16;
+    prop->ECCEnabled = 0;
+    prop->pciBusID = 0;
+    prop->pciDeviceID = 0;
+    prop->tccDriver = 1;
+    prop->asyncEngineCount = 2;
+    prop->unifiedAddressing = 1;
+    // prop->memoryClockRate = 1000000; // 1GHz // 已在较新版本中移除
+    prop->memoryBusWidth = 320;
+    prop->l2CacheSize = 4194304; // 4MB
+    prop->persistingL2CacheMaxSize = 0;
+    prop->maxThreadsPerMultiProcessor = 2048;
+    prop->streamPrioritiesSupported = 0;
+    prop->globalL1CacheSupported = 1;
+    prop->localL1CacheSupported = 1;
+    prop->sharedMemPerMultiprocessor = 163840; // 160KB
+    prop->regsPerMultiprocessor = 65536;
+    prop->managedMemory = 1;
+    prop->isMultiGpuBoard = 0;
+    prop->multiGpuBoardGroupID = 0;
+    prop->hostNativeAtomicSupported = 0;
+    // prop->singleToDoublePrecisionPerfRatio = 32; // 已在较新版本中移除
+    prop->pageableMemoryAccess = 0;
+    prop->concurrentManagedAccess = 0;
+    prop->computePreemptionSupported = 0;
+    prop->canUseHostPointerForRegisteredMem = 0;
+    prop->cooperativeLaunch = 1;
+    // prop->cooperativeMultiDeviceLaunch = 1; // 已在较新版本中移除
+    prop->sharedMemPerBlockOptin = 49152;
+    prop->pageableMemoryAccessUsesHostPageTables = 0;
+    prop->directManagedMemAccessFromHost = 0;
+    prop->maxBlocksPerMultiProcessor = 32;
+    prop->accessPolicyMaxWindowSize = 1024;
+    prop->reservedSharedMemPerBlock = 0;
+
+    return cudaSuccess;
+}
+
+// 补充缺失的 cudaMemcpyToSymbol 函数
 cudaError_t cudaMemcpyToSymbol(void *symbol, void *src, size_t count,
-                               size_t offset = 0,
-                               cudaMemcpyKind kind = cudaMemcpyHostToDevice) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-    printf("src:%p symbal:%p\n", src, symbol);
-#endif
-    memcpy((void *)((uint64_t)symbol + offset), src, count);
+                               size_t offset, cudaMemcpyKind kind) {
+    PTX_DEBUG_EMU("Called cudaMemcpyToSymbol(%p, %p, %zu, %zu, %d)", symbol,
+                  src, count, offset, kind);
+
+    if (!symbol || !src) {
+        return cudaErrorInvalidValue;
+    }
+
+    // 获取CudaDriver的全局内存池地址
+    uint8_t *global_pool = CudaDriver::instance().get_global_pool();
+    if (!global_pool) {
+        return cudaErrorInitializationError;
+    }
+
+    // 将数据复制到符号地址（加上偏移量）
+    uint64_t symbol_offset = reinterpret_cast<uint64_t>(symbol) + offset;
+    if (symbol_offset >= CudaDriver::GLOBAL_SIZE) {
+        return cudaErrorInvalidValue;
+    }
+
+    std::memcpy(global_pool + symbol_offset, src, count);
     return cudaSuccess;
 }
 
+// 补充缺失的 cudaGetDevice 函数
 cudaError_t cudaGetDevice(int *device) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-#endif
+    PTX_DEBUG_EMU("Called cudaGetDevice(%p)", device);
+
+    if (!device) {
+        return cudaErrorInvalidValue;
+    }
+
+    *device = 0; // 仿真器只有一个设备
     return cudaSuccess;
 }
 
+// 补充缺失的 __cudaInitModule 函数
 char __cudaInitModule(void **fatCubinHandle) {
-#ifdef LOGEMU
-    printf("EMU: call %s\n", __my_func__);
-#endif
-    return cudaSuccess;
+    PTX_DEBUG_EMU("Called __cudaInitModule(%p)", fatCubinHandle);
+
+    return 1; // 返回成功标识
 }
 
-} // end of extern "C"
+void __cudaUnregisterFatBinary(void **fatCubinHandle) {
+    PTX_DEBUG_EMU("Called __cudaUnregisterFatBinary(%p)", fatCubinHandle);
+
+    // 清理PtxInterpreter
+    g_ptx_interpreter.reset();
+
+    // 重置全局GPU上下文
+    g_gpu_context.reset();
+}
+
+#ifdef __cplusplus
+}
+#endif

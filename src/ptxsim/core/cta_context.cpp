@@ -1,5 +1,5 @@
 #include "ptxsim/cta_context.h"
-#include "memory/memory_manager.h" // 添加MemoryManager头文件
+#include "memory/hardware_memory_manager.h" // 添加MemoryManager头文件
 #include "ptx_ir/kernel_context.h"
 #include "ptx_ir/ptx_types.h"
 #include "ptx_ir/statement_context.h"
@@ -162,17 +162,26 @@ void CTAContext::build_shared_memory_symbol_table(void *shared_mem_space) {
 
                 size_t var_size = s->byteNum * s->elementNum;
 
-                // 设置符号表中的地址
-                s->val = (uint64_t)((char *)sharedMemSpace + shared_offset);
+                // 设置符号表中的地址为相对于共享内存基地址的偏移量
+                s->val = shared_offset;
 
                 PTX_DEBUG_EMU(
                     "Updated shared memory variable: name=%s, elementNum=%d, "
                     "byteNum=%d, "
-                    "var_size=%zu, shared_mem_offset=%zu, stored_addr=%p",
+                    "var_size=%zu, shared_mem_offset=%zu, stored_offset=%zu",
                     s->name.c_str(), s->elementNum, s->byteNum, var_size,
-                    shared_offset, (void *)s->val);
+                    shared_offset, s->val);
 
                 shared_offset += var_size;
+            }
+        }
+    }
+
+    // 将共享内存基地址传递给所有线程
+    for (auto &warp : warps) {
+        for (auto &thread : warp->get_threads()) {
+            if (thread) {
+                thread->shared_mem_space = shared_mem_space;
             }
         }
     }

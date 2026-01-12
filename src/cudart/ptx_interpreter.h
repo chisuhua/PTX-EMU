@@ -39,6 +39,8 @@ public:
                          std::map<std::string, int> &label2pc, PtxContext &ptx,
                          std::string &kernel, void **args, Dim3 &gridDim,
                          Dim3 &blockDim);
+    void set_ptx_context(PtxContext &ptx);
+    PtxContext &get_ptx_context();
 
 private:
     void setupConstantSymbols(std::map<std::string, Symtable *> &name2Sym);

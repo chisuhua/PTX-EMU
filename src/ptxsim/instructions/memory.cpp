@@ -1,4 +1,4 @@
-#include "memory/memory_manager.h" // 确保包含 MemoryManager
+#include "memory/hardware_memory_manager.h" // 添加HardwareMemoryManager头文件
 #include "ptxsim/instruction_handlers.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/utils/qualifier_utils.h"
@@ -354,9 +354,8 @@ void LD::process_operation(ThreadContext *context, void *op[2],
     // ========================
     if (!QvecHasQ(qualifier, Qualifier::Q_V2) &&
         !QvecHasQ(qualifier, Qualifier::Q_V4)) {
-        // 单次内存读取
-        MemoryManager::instance().access(host_ptr, dst, data_size,
-                                         /*is_write=*/false, space);
+        HardwareMemoryManager::instance().access(host_ptr, dst, data_size,
+                                                 /*is_write=*/false, space);
         return;
     }
 
@@ -382,7 +381,8 @@ void LD::process_operation(ThreadContext *context, void *op[2],
         uint64_t element_host_ptr =
             reinterpret_cast<uint64_t>(host_ptr) + i * step;
 
-        MemoryManager::instance().access(
+        // 对于其他内存空间，使用HardwareMemoryManager访问
+        HardwareMemoryManager::instance().access(
             reinterpret_cast<void *>(element_host_ptr), element_dst, data_size,
             /*is_write=*/false, space);
     }
@@ -408,9 +408,10 @@ void ST::process_operation(ThreadContext *context, void *op[2],
     // ========================
     if (!QvecHasQ(qualifiers, Qualifier::Q_V2) &&
         !QvecHasQ(qualifiers, Qualifier::Q_V4)) {
-        // 单次内存写入
-        MemoryManager::instance().access(host_ptr, src, data_size,
-                                         /*is_write=*/true, space);
+        // 根据地址空间选择内存访问方式
+        // 对于其他内存空间，使用HardwareMemoryManager访问
+        HardwareMemoryManager::instance().access(host_ptr, src, data_size,
+                                                 /*is_write=*/true, space);
         return;
     }
 
@@ -436,7 +437,8 @@ void ST::process_operation(ThreadContext *context, void *op[2],
         uint64_t element_host_ptr =
             reinterpret_cast<uint64_t>(host_ptr) + i * step;
 
-        MemoryManager::instance().access(
+        // 对于其他内存空间，使用HardwareMemoryManager访问
+        HardwareMemoryManager::instance().access(
             reinterpret_cast<void *>(element_host_ptr), element_src, data_size,
             /*is_write=*/true, space);
     }
