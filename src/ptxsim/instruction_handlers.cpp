@@ -86,14 +86,12 @@
                                                                                \
         if (ss->barType == "sync") {                                           \
             context->state = BAR_SYNC;                                         \
+            process_operation(context, ss->barId, ss->qualifier);              \
         } else {                                                               \
-            assert(false && "Unsupported barrier type");                       \
+            PTX_FATAL_EMU("Unsupported barrier type %s", ss->barType);         \
+            assert(false);                                                     \
         }                                                                      \
         return true;                                                           \
-    }                                                                          \
-    void Name::process_operation(ThreadContext *context, void **operands,      \
-                                 const std::vector<Qualifier> &qualifiers) {   \
-        /* Barrier operation handled in execute method */                      \
     }
 
 #define IMPLEMENT_GENERIC_INSTR(Name)                                          \

@@ -63,9 +63,8 @@ public:
     virtual bool commit(ThreadContext *context, StatementContext &stmt);
 
     virtual bool operate(ThreadContext *context, StatementContext &stmt) = 0;
-    virtual void
-    process_operation(ThreadContext *context, void **operands,
-                      const std::vector<Qualifier> &qualifiers) = 0;
+    virtual void process_operation(ThreadContext *context, void **operands,
+                                   const std::vector<Qualifier> &qualifiers) {};
 };
 
 // BRANCH 类型的基类处理器

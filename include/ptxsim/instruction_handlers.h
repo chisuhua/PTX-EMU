@@ -62,9 +62,8 @@ class StatementContext;
     class Name : public BARRIER {                                              \
     public:                                                                    \
         bool operate(ThreadContext *context, StatementContext &stmt) override; \
-        void                                                                   \
-        process_operation(ThreadContext *context, void **operands,             \
-                          const std::vector<Qualifier> &qualifiers) override;  \
+        void process_operation(ThreadContext *context, int barId,              \
+                               const std::vector<Qualifier> &qualifiers);      \
     };
 
 #define DECLARE_GENERIC_INSTR(Name, OpCount)                                   \
