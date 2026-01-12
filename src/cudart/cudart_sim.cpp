@@ -103,15 +103,15 @@ extern "C" {
 void **__cudaRegisterFatBinary(void **fatCubinHandle, void *fat_bin,
                                unsigned long long fat_bin_size,
                                unsigned int version) {
-    PTX_DEBUG_EMU("Called __cudaRegisterFatBinary(%p, %p, %llu, %u)",
-                  fatCubinHandle, fat_bin, fat_bin_size, version);
-
     // 初始化调试环境
     static bool debug_initialized = false;
     if (!debug_initialized) {
         initialize_environment();
         debug_initialized = true;
     }
+
+    PTX_DEBUG_EMU("Called __cudaRegisterFatBinary(%p, %p, %llu, %u)",
+                  fatCubinHandle, fat_bin, fat_bin_size, version);
 
     // 1. 获取当前进程路径
     char self_exe_path[1025] = "";
@@ -296,7 +296,8 @@ cudaError_t cudaMemcpy(void *dst, const void *src, size_t count,
     }
 
     // 获取CudaDriver的全局内存池地址
-    uint8_t *global_pool = CudaDriver::instance().get_global_pool();
+    uint64_t global_pool = (uint64_t)CudaDriver::instance().get_global_pool();
+    uint64_t global_size = (uint64_t)CudaDriver::instance().get_global_size();
     if (!global_pool) {
         return cudaErrorInitializationError;
     }
@@ -312,22 +313,28 @@ cudaError_t cudaMemcpy(void *dst, const void *src, size_t count,
         // 从主机内存复制到设备内存
         // dst是设备指针（即偏移量），src是主机指针
         uint64_t device_offset = reinterpret_cast<uint64_t>(dst);
-        if (device_offset >= CudaDriver::instance().get_global_size()) {
+        if (device_offset >= global_pool) {
+            device_offset -= global_pool;
+        }
+        if (device_offset >= global_size) {
             return cudaErrorInvalidValue;
         }
 
-        std::memcpy(global_pool + device_offset, src, count);
+        std::memcpy((uint8_t *)(global_pool + device_offset), src, count);
         break;
     }
     case cudaMemcpyDeviceToHost: {
         // 从设备内存复制到主机内存
         // src是设备指针（即偏移量），dst是主机指针
         uint64_t device_offset = reinterpret_cast<uint64_t>(src);
-        if (device_offset >= CudaDriver::instance().get_global_size()) {
+        if (device_offset >= global_pool) {
+            device_offset -= global_pool;
+        }
+        if (device_offset >= global_size) {
             return cudaErrorInvalidValue;
         }
 
-        std::memcpy(dst, global_pool + device_offset, count);
+        std::memcpy(dst, (uint8_t *)(global_pool + device_offset), count);
         break;
     }
     case cudaMemcpyDeviceToDevice: {
@@ -335,13 +342,20 @@ cudaError_t cudaMemcpy(void *dst, const void *src, size_t count,
         uint64_t src_device_offset = reinterpret_cast<uint64_t>(src);
         uint64_t dst_device_offset = reinterpret_cast<uint64_t>(dst);
 
-        if (src_device_offset >= CudaDriver::instance().get_global_size() ||
-            dst_device_offset >= CudaDriver::instance().get_global_size()) {
+        if (src_device_offset >= global_pool) {
+            src_device_offset -= global_pool;
+        }
+        if (dst_device_offset >= global_pool) {
+            dst_device_offset -= global_pool;
+        }
+
+        if ((src_device_offset >= global_size) ||
+            (dst_device_offset >= global_size)) {
             return cudaErrorInvalidValue;
         }
 
-        std::memcpy(global_pool + dst_device_offset,
-                    global_pool + src_device_offset, count);
+        std::memcpy((uint8_t *)(global_pool + dst_device_offset),
+                    (uint8_t *)(global_pool + src_device_offset), count);
         break;
     }
     default:

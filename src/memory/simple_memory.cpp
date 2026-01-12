@@ -24,6 +24,11 @@ SimpleMemory::~SimpleMemory() {
 
 void SimpleMemory::direct_access(uint64_t address, void *data, size_t size,
                                  bool is_write) {
+    // cacluate offset from real ptr
+    if ((address >= (uint64_t)global_base_) &
+        address < ((uint64_t)global_base_ + global_size_)) {
+        address -= (uint64_t)global_base_;
+    }
     // 确保访问不超过全局内存池大小
     if (address + size > global_size_) {
         throw std::runtime_error(

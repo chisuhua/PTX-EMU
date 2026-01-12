@@ -12,8 +12,8 @@
 #include <vector>
 
 // 定义通用的日志宏
-#define PTX_ERROR(fmt, ...)   PTX_ERROR_EMU(fmt, ##__VA_ARGS__)
-#define PTX_DEBUG(fmt, ...)   PTX_DEBUG_EMU(fmt, ##__VA_ARGS__)
+#define PTX_ERROR(fmt, ...) PTX_ERROR_EMU(fmt, ##__VA_ARGS__)
+#define PTX_DEBUG(fmt, ...) PTX_DEBUG_EMU(fmt, ##__VA_ARGS__)
 
 // 实现extract_ptx_with_cuobjdump函数
 std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
@@ -51,7 +51,9 @@ std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
         while (if_ptx.get(ch)) {
             of_ptx.put(ch);
         }
-        ptx_code += of_ptx.str(); // 累加所有PTX代码
+        // FIXME cubin have multiple ptx
+        // ptx_code += of_ptx.str(); // 累加所有PTX代码
+        ptx_code = of_ptx.str(); // 累加所有PTX代码
 
         // 清理临时PTX文件
         snprintf(cmd, 1024, "rm %s", ptx_file.c_str());
