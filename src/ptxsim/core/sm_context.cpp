@@ -85,14 +85,17 @@ bool SMContext::add_block(std::unique_ptr<CTAContext> block) {
     // 4. 构建共享内存符号表
     block->build_shared_memory_symbol_table(shared_mem_space);
 
-    // 5. 分配物理ID并记录块信息
+    // 5. 更新已分配的共享内存统计
+    allocated_shared_mem += required_shared_mem;
+
+    // 6. 分配物理ID并记录块信息
     int physical_block_id = next_physical_block_id++;
     physical_block_warp_counts[physical_block_id] = required_warps;
 
-    // 6. 添加到管理列表 - 直接使用unique_ptr
+    // 7. 添加到管理列表 - 直接使用unique_ptr
     managed_blocks.insert({physical_block_id, std::move(block)});
 
-    // 7. 获取warp所有权并添加到SM
+    // 8. 获取warp所有权并添加到SM
     auto block_warps = managed_blocks[physical_block_id]->release_warps();
     for (auto &warp : block_warps) {
         warp->set_physical_block_id(physical_block_id);
@@ -270,9 +273,19 @@ void SMContext::cleanup_finished_blocks() {
 void SMContext::free_shared_memory(CTAContext *block) {
     // 释放共享内存
     if (block->sharedMemSpace != nullptr && shared_mem_manager_) {
+        size_t shared_mem_size = block->get_shared_memory_requirement(); // 获取要释放的内存大小
+        
         shared_mem_manager_->deallocate(block->sharedMemSpace,
                                         block->get_reservation_id());
-        // allocated_shared_mem 由 shared_mem_manager_ 管理，不需要在这里更新
+        
+        // 更新本地统计 - 减去释放的内存大小
+        if (allocated_shared_mem >= shared_mem_size) {
+            allocated_shared_mem -= shared_mem_size;
+        } else {
+            // 防止下溢出，理论上不应该发生
+            allocated_shared_mem = 0;
+        }
+        
         // 重置block的共享内存指针
         const_cast<void *&>(block->sharedMemSpace) = nullptr;
     }

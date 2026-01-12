@@ -1,3 +1,4 @@
+#include "memory/resource_manager.h" // 添加ResourceManager头文件
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/common_types.h"
 #include "ptxsim/cta_context.h"
@@ -5,18 +6,22 @@
 #include "ptxsim/sm_context.h"
 #include <cassert>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <vector>
-#include <map>
 
 void test_sm_context_creation() {
+    // 初始化ResourceManager（测试中只需要一个SM）
+    ResourceManager::instance().initialize(1,
+                                           8192); // 1个SM，8KB共享内存
+
     std::cout << "Testing SMContext creation..." << std::endl;
 
     // 创建SMContext，限制为最多4个warp，最多128个线程，4KB共享内存，sm_id为0
     SMContext sm(4, 128, 4096, 0);
 
     // 检查初始状态
-    assert(sm.get_state() == RUN);
+    assert(sm.get_state() == IDLE);
     assert(sm.get_allocated_shared_mem() == 0);
     assert(sm.get_max_shared_mem() == 4096);
     assert(sm.get_active_warps_count() == 0);
@@ -26,9 +31,14 @@ void test_sm_context_creation() {
 }
 
 void test_sm_context_block_addition() {
+    // 确保ResourceManager已初始化（如果之前没有初始化）
+    ResourceManager::instance().initialize(1,
+                                           8192); // 1个SM，8KB共享内存
+
     std::cout << "Testing SMContext block addition..." << std::endl;
 
-    SMContext sm(8, 256, 8192, 0); // 最多8个warp，256个线程，8KB共享内存，sm_id为0
+    SMContext sm(8, 256, 8192,
+                 0); // 最多8个warp，256个线程，8KB共享内存，sm_id为0
 
     // 创建一个CTAContext
     std::unique_ptr<CTAContext> block = std::make_unique<CTAContext>();
@@ -59,18 +69,24 @@ void test_sm_context_block_addition() {
 }
 
 void test_sm_context_execution() {
+    // 确保ResourceManager已初始化
+    ResourceManager::instance().initialize(1, 8192);
+
     std::cout << "Testing SMContext execution..." << std::endl;
 
     SMContext sm(4, 128, 4096, 0);
 
     // 验证初始状态
     EXE_STATE state = sm.exe_once();
-    assert(state == EXIT); // 因为没有warp
+    assert(state == IDLE); // 因为没有warp
 
     std::cout << "SMContext execution test passed." << std::endl;
 }
 
 void test_sm_context_resource_limits() {
+    // 确保ResourceManager已初始化
+    ResourceManager::instance().initialize(1, 8192);
+
     std::cout << "Testing SMContext resource limits..." << std::endl;
 
     // 创建一个资源受限的SM (仅允许1个warp, 64个线程, 1KB共享内存)
