@@ -13,6 +13,7 @@
 #include "ptx_parser/ptx_grammar.h" // 添加解析器相关的头文件
 #include "ptx_parser/ptx_parser.h"
 #include "ptxsim/gpu_context.h"
+#include "ptxsim/ptx_config.h" // 添加DebugConfig所需的头文件
 #include "utils/cubin_utils.h" // 添加cuobjdump工具函数
 #include "utils/logger.h"
 
@@ -51,56 +52,6 @@ std::unique_ptr<PtxInterpreter> g_ptx_interpreter;
 // 配置文件路径
 static const char *CONFIG_FILE = "config.ini";
 
-// 从INI配置中加载日志配置
-void load_logger_config(const inipp::Ini<char>::Section &logger_section) {
-    auto &logger_config = ptxsim::LoggerConfig::get();
-
-    std::string level_str;
-    inipp::get_value(logger_section, "global_level", level_str);
-    if (!level_str.empty()) {
-        logger_config.set_global_level(
-            logger_config.string_to_log_level(level_str));
-    }
-
-    std::string target_str;
-    inipp::get_value(logger_section, "target", target_str);
-    if (!target_str.empty()) {
-        logger_config.set_target_from_string(target_str);
-    }
-
-    std::string logfile;
-    inipp::get_value(logger_section, "logfile", logfile);
-    if (!logfile.empty()) {
-        logger_config.set_logfile(logfile);
-    }
-
-    std::string async_str;
-    inipp::get_value(logger_section, "async", async_str);
-    if (!async_str.empty()) {
-        bool async = (async_str == "true" || async_str == "1");
-        logger_config.enable_async_logging(async);
-    }
-
-    std::string colorize_str;
-    inipp::get_value(logger_section, "colorize", colorize_str);
-    if (!colorize_str.empty()) {
-        bool colorize = (colorize_str == "true" || colorize_str == "1");
-        logger_config.set_use_color_output(colorize);
-    }
-
-    // 读取组件级别配置
-    for (const auto &pair : logger_section) {
-        if (pair.first.substr(0, 9) == "component") {
-            std::string component = pair.first.substr(10); // skip "component."
-            if (!component.empty()) {
-                ptxsim::log_level level =
-                    logger_config.string_to_log_level(pair.second);
-                logger_config.set_component_level(component, level);
-            }
-        }
-    }
-}
-
 // 初始化调试环境和GPUContext
 void initialize_environment() {
     // 解析配置文件一次，然后分别设置各个组件
@@ -111,7 +62,11 @@ void initialize_environment() {
 
         // 设置日志配置
         auto logger_section = ini.sections["logger"];
-        load_logger_config(logger_section);
+        ptxsim::LoggerConfig::get().load_logger_config(logger_section);
+
+        // 设置调试器配置
+        auto debugger_section = ini.sections["debugger"];
+        ptxsim::DebugConfig::get().load_from_ini_section(debugger_section);
 
         // 从INI配置文件中读取GPU配置文件路径
         std::string gpu_config_filename;

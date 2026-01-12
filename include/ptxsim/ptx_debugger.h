@@ -1,9 +1,9 @@
 #ifndef PTX_DEBUGGER_H
 #define PTX_DEBUGGER_H
 
-#include "ptx_config.h"
-#include "debug_format.h"
 #include "../utils/logger.h"
+#include "debug_format.h"
+#include "ptx_config.h"
 #include <any>
 #include <atomic>
 #include <condition_variable>
@@ -23,9 +23,10 @@
     do {                                                                       \
         if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
                                                    "thread")) {                \
-            auto formatted_msg = ptxsim::detail::printf_format(fmt, ##__VA_ARGS__); \
-            ptxsim::detail::output_log_simple(ptxsim::log_level::info, "thread", \
-                                 formatted_msg);                               \
+            auto formatted_msg =                                               \
+                ptxsim::detail::printf_format(fmt, ##__VA_ARGS__);             \
+            ptxsim::detail::output_log_simple(ptxsim::log_level::info,         \
+                                              "thread", formatted_msg);        \
         }                                                                      \
     } while (0)
 #endif
@@ -37,7 +38,7 @@
                                                    "exec")) {                  \
             auto formatted_msg = ptxsim::detail::printf_format(__VA_ARGS__);   \
             ptxsim::detail::output_log_simple(ptxsim::log_level::info, "exec", \
-                                 formatted_msg);                               \
+                                              formatted_msg);                  \
         }                                                                      \
     } while (0)
 #endif
@@ -48,13 +49,12 @@
     do {                                                                       \
         if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::trace,   \
                                                    "instr")) {                 \
-            auto formatted_msg = ptxsim::detail::printf_format(                 \
-                "%s %s pc=%4d: %s %s",                                          \
-                block.to_string().c_str(),                                      \
-                thread.to_string().c_str(), pc,                                 \
-                opcode.c_str(), operands.c_str());                              \
-            ptxsim::detail::output_log_simple(ptxsim::log_level::trace, "instr", \
-                                 formatted_msg);                               \
+            auto formatted_msg = ptxsim::detail::printf_format(                \
+                "%s %s pc=%4d: %s %s", block.to_string().c_str(),              \
+                thread.to_string().c_str(), pc, opcode.c_str(),                \
+                operands.c_str());                                             \
+            ptxsim::detail::output_log_simple(ptxsim::log_level::trace,        \
+                                              "instr", formatted_msg);         \
         }                                                                      \
     } while (0)
 #endif
@@ -64,9 +64,9 @@
     do {                                                                       \
         if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
                                                    "mem")) {                   \
-            auto formatted_msg = ptxsim::detail::printf_format(__VA_ARGS__);  \
+            auto formatted_msg = ptxsim::detail::printf_format(__VA_ARGS__);   \
             ptxsim::detail::output_log_simple(ptxsim::log_level::info, "mem",  \
-                                 formatted_msg);                               \
+                                              formatted_msg);                  \
         }                                                                      \
     } while (0)
 #endif
@@ -76,9 +76,9 @@
     do {                                                                       \
         if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
                                                    "reg")) {                   \
-            auto formatted_msg = ptxsim::detail::printf_format(__VA_ARGS__);    \
+            auto formatted_msg = ptxsim::detail::printf_format(__VA_ARGS__);   \
             ptxsim::detail::output_log_simple(ptxsim::log_level::info, "reg",  \
-                                 formatted_msg);                               \
+                                              formatted_msg);                  \
         }                                                                      \
     } while (0)
 #endif
@@ -276,30 +276,7 @@ public:
 
     PerfStats &get_perf_stats() { return perf_stats_; }
 
-    // 加载配置文件
-    bool load_config(const std::string &filename) {
-        bool success = true;
-
-        if (ptxsim::LoggerConfig::get().load_from_file(filename)) {
-            PTX_INFO_EMU("Loaded logger configuration from %s",
-                         filename.c_str());
-        } else {
-            PTX_WARN_EMU("Failed to load logger configuration from %s",
-                         filename.c_str());
-            success = false;
-        }
-
-        if (ptxsim::DebugConfig::get().load_from_file(filename)) {
-            PTX_INFO_EMU("Loaded debugger configuration from %s",
-                         filename.c_str());
-        } else {
-            PTX_WARN_EMU("Failed to load debugger configuration from %s",
-                         filename.c_str());
-            success = false;
-        }
-
-        return success;
-    }
+    // 加载配置文件的功能已移除
 
 private:
     PTXDebugger() = default;

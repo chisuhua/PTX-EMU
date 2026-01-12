@@ -196,9 +196,6 @@ public:
         }
     }
 
-    // 从配置文件加载
-    bool load_from_file(const std::string &filename);
-
     // 从INI section加载调试器配置 - 供内部使用
     void
     load_from_ini_section(const inipp::Ini<char>::Section &debugger_section);

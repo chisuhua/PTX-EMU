@@ -241,115 +241,55 @@ public:
         : global_level_(log_level::info), target_(log_target::console),
           use_async_logging_(false) {}
 
-    // 从配置文件加载设置
-    bool load_from_file(const std::string &filename) {
+    // 从INI配置部分加载日志配置
+    void load_logger_config(const inipp::Ini<char>::Section &logger_section) {
         std::lock_guard<std::mutex> lock(mutex_);
-        try {
-            inipp::Ini<char> ini;
-            std::ifstream is(filename);
-            if (!is.is_open()) {
-                return false;
-            }
 
-            ini.parse(is);
-            ini.strip_trailing_comments(); // 移除值末尾的空格
-
-            auto &section =
-                ini.sections["logger"]; // 假设所有配置都在 [logger] 段下
-
-            // 解析全局日志级别
-            std::string level_str;
-            inipp::get_value(section, "global_level", level_str);
-            if (!level_str.empty()) {
-                global_level_ = string_to_log_level(level_str);
-            }
-
-            // 解析日志目标
-            std::string target_str;
-            inipp::get_value(section, "target", target_str);
-            if (!target_str.empty()) {
-                set_target_from_string(target_str);
-            }
-
-            // 解析日志文件路径
-            std::string logfile_str;
-            inipp::get_value(section, "logfile", logfile_str);
-            if (!logfile_str.empty()) {
-                logfile_path_ = logfile_str;
-                // 只有当路径设置成功时才尝试打开文件
-                set_logfile_internal(logfile_str);
-            }
-
-            // 解析异步日志
-            std::string async_str;
-            inipp::get_value(section, "async", async_str);
-            use_async_logging_ = (async_str == "true" || async_str == "1");
-
-            // 解析颜色输出
-            std::string colorize_str;
-            inipp::get_value(section, "colorize", colorize_str);
-            format_options_.colorize =
-                (colorize_str == "true" || colorize_str == "1");
-
-            // 解析组件级别配置 - 使用辅助函数减少重复
-            parse_component_levels(section);
-
-            return true;
-        } catch (const std::exception &e) {
-            // 可以考虑添加一个内部错误日志，但要避免递归调用
-            return false;
+        std::string level_str;
+        inipp::get_value(logger_section, "global_level", level_str);
+        if (!level_str.empty()) {
+            set_global_level(string_to_log_level(level_str));
         }
-    }
 
-    // 设置全局日志级别（字符串形式）
-    void set_global_level_from_string(const std::string &level_str) {
-        log_level level = global_level_;
-        if (level_str == "trace")
-            level = log_level::trace;
-        else if (level_str == "debug")
-            level = log_level::debug;
-        else if (level_str == "info")
-            level = log_level::info;
-        else if (level_str == "warning")
-            level = log_level::warning;
-        else if (level_str == "error")
-            level = log_level::error;
-        else if (level_str == "fatal")
-            level = log_level::fatal;
+        std::string target_str;
+        inipp::get_value(logger_section, "target", target_str);
+        if (!target_str.empty()) {
+            set_target_from_string(target_str);
+        }
 
-        // 注意：此处不再加锁，因为调用此函数的load_from_file已经持有锁
-        global_level_ = level;
-    }
+        std::string logfile;
+        inipp::get_value(logger_section, "logfile", logfile);
+        if (!logfile.empty()) {
+            logfile_path_ = logfile;
+            // 只有当路径设置成功时才尝试打开文件
+            set_logfile_internal(logfile);
+        }
 
-    // 设置特定组件的日志级别（字符串形式）
-    void set_component_level_from_string(const std::string &component,
-                                         const std::string &level_str) {
-        log_level level = log_level::info; // 默认级别
-        if (level_str == "trace")
-            level = log_level::trace;
-        else if (level_str == "debug")
-            level = log_level::debug;
-        else if (level_str == "info")
-            level = log_level::info;
-        else if (level_str == "warning")
-            level = log_level::warning;
-        else if (level_str == "error")
-            level = log_level::error;
-        else if (level_str == "fatal")
-            level = log_level::fatal;
+        std::string async_str;
+        inipp::get_value(logger_section, "async", async_str);
+        if (!async_str.empty()) {
+            bool async = (async_str == "true" || async_str == "1");
+            enable_async_logging(async);
+        }
 
-        // 注意：此处不再加锁，因为调用此函数的load_from_file已经持有锁
-        component_levels_[component] = level;
-    }
+        std::string colorize_str;
+        inipp::get_value(logger_section, "colorize", colorize_str);
+        if (!colorize_str.empty()) {
+            bool colorize = (colorize_str == "true" || colorize_str == "1");
+            set_use_color_output(colorize);
+        }
 
-    // 设置日志输出目标（字符串形式）
-    void set_target_from_string(const std::string &target_str) {
-        if (target_str == "console")
-            target_ = log_target::console;
-        else if (target_str == "file")
-            target_ = log_target::file;
-        else if (target_str == "both")
-            target_ = log_target::both;
+        // 读取组件级别配置
+        for (const auto &pair : logger_section) {
+            if (pair.first.substr(0, 9) == "component") {
+                std::string component =
+                    pair.first.substr(10); // skip "component."
+                if (!component.empty()) {
+                    ptxsim::log_level level = string_to_log_level(pair.second);
+                    set_component_level(component, level);
+                }
+            }
+        }
     }
 
     // 设置全局日志级别
@@ -372,6 +312,16 @@ public:
             return it->second;
         }
         return global_level_;
+    }
+
+    // 设置日志输出目标（字符串形式）
+    void set_target_from_string(const std::string &target_str) {
+        if (target_str == "console")
+            target_ = log_target::console;
+        else if (target_str == "file")
+            target_ = log_target::file;
+        else if (target_str == "both")
+            target_ = log_target::both;
     }
 
     // 设置日志输出目标
@@ -508,17 +458,6 @@ private:
                                           const std::string &component,
                                           const std::string &msg);
 
-    // 辅助函数：解析组件级别配置
-    void parse_component_levels(const inipp::Ini<char>::Section &section) {
-        for (const auto &pair : section) {
-            const std::string &key = pair.first;
-            const std::string &value = pair.second;
-            if (key.rfind("component.", 0) == 0) { // 检查是否以 "component." 开头
-                std::string component = key.substr(10); // 去掉 "component." 前缀
-                set_component_level_from_string(component, value);
-            }
-        }
-    }
 };
 
 // ===========================================================================
