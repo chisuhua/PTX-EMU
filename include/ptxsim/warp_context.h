@@ -2,15 +2,17 @@
 #define WARP_CONTEXT_H
 
 #include "ptx_ir/statement_context.h"
-#include "ptxsim/common_types.h" // 包含通用类型定义
+#include "ptxsim/common_types.h"
 #include "ptxsim/execution_types.h"
-#include "ptxsim/thread_context.h"
 #include "register/register_bank_manager.h"
 #include <array>
 #include <memory>
+#include <queue>
 #include <vector>
 
-class PtxInterpreter; // 前向声明
+// Forward declarations to avoid circular includes
+class SMContext;
+class ThreadContext;  // 添加ThreadContext的前向声明
 
 class WarpContext {
 public:
@@ -110,6 +112,12 @@ public:
         return active_threads;
     }
 
+    // 设置SM Context
+    void set_sm_context(SMContext *sm_ctx) { sm_context_ = sm_ctx; }
+    
+    // 获取SM Context
+    SMContext *get_sm_context() const { return sm_context_; }
+
 private:
     std::vector<std::unique_ptr<ThreadContext>>
         threads;                                // warp中的线程unique_ptr
@@ -130,8 +138,11 @@ private:
     // 单步执行模式
     bool single_step_mode;
 
+    // 指向SMContext的指针
+    SMContext *sm_context_ = nullptr;
+
 public:
-    // 物理ID管理方法 - 从private移动到public
+    // 物理ID管理方法
     void set_physical_warp_id(int id) { physical_warp_id = id; }
     int get_physical_warp_id() const { return physical_warp_id; }
 

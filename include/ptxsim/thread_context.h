@@ -18,6 +18,7 @@
 #include <vector>
 
 class PtxInterpreter; // 前向声明
+class WarpContext; // 前向声明
 
 class ThreadContext {
 public:
@@ -49,6 +50,9 @@ public:
 
     // 共享内存基地址
     void *shared_mem_space = nullptr;
+
+    // 指向warp的指针，用于访问SMContext
+    WarpContext *warp_context_ = nullptr;
 
     void init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim, Dim3 BlockDim,
               std::vector<StatementContext> &statements,
@@ -161,6 +165,12 @@ public:
     set_register_bank_manager(std::shared_ptr<RegisterBankManager> manager) {
         register_bank_manager_ = manager;
     }
+
+    // 设置warp上下文
+    void set_warp_context(WarpContext *warp_ctx) { warp_context_ = warp_ctx; }
+
+    // 获取warp上下文
+    WarpContext *get_warp_context() const { return warp_context_; }
 
 private:
     void _execute_once();

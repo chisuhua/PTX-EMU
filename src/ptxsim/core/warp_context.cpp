@@ -1,11 +1,12 @@
 #include "ptxsim/warp_context.h"
+#include "ptxsim/sm_context.h"
 #include <algorithm>
 #include <cassert>
 #include <cstring>
 
 WarpContext::WarpContext()
     : active_count(0), pc(0), warp_id(-1), single_step_mode(false),
-      divergence_detected(false) {
+      divergence_detected(false), sm_context_(nullptr) {
     // 初始化warp线程ID和活跃掩码
     for (int i = 0; i < WARP_SIZE; i++) {
         warp_thread_ids[i] = -1;
@@ -28,7 +29,11 @@ void WarpContext::add_thread(std::unique_ptr<ThreadContext> thread,
         threads.resize(
             std::max(threads.size(), static_cast<size_t>(lane_id + 1)));
         threads[lane_id] = std::move(thread);
+        
         if (threads[lane_id]) {
+            // 设置warp_context_指针
+            threads[lane_id]->set_warp_context(this);
+            
             warp_thread_ids[lane_id] =
                 threads[lane_id]->ThreadIdx.x +
                 threads[lane_id]->ThreadIdx.y * threads[lane_id]->BlockDim.x +
@@ -41,6 +46,19 @@ void WarpContext::add_thread(std::unique_ptr<ThreadContext> thread,
 }
 
 void WarpContext::execute_warp_instruction(StatementContext &stmt) {
+    // 首先尝试处理barrier同步，释放可能等待的线程
+    for (int i = 0; i < WARP_SIZE; i++) {
+        if (is_lane_active(i) && i < threads.size() && threads[i] != nullptr) {
+            ThreadContext *thread = threads[i].get();
+            
+            // 检查线程状态，如果是BAR_SYNC状态，说明遇到了barrier指令
+            if (thread->get_state() == BAR_SYNC && sm_context_ != nullptr) {
+                // 调用同步方法，可能会释放等待的线程
+                sm_context_->synchronize_barrier(0, thread); // 默认使用barrier 0
+            }
+        }
+    }
+
     // 根据活跃掩码执行指令
     for (int i = 0; i < WARP_SIZE; i++) {
         if (is_lane_active(i) && i < threads.size() && threads[i] != nullptr) {
@@ -51,13 +69,20 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt) {
                 thread->set_pc(pc_stacks[i].back());
             }
 
-            // 如果有共享寄存器管理器，设置线程使用它
-            // if (warp_register_manager_) {
-            // 这里需要通过某种方式让ThreadContext使用共享寄存器
-            // 可能需要修改ThreadContext的设计
+            // 检查线程状态，如果是BAR_SYNC状态，说明线程在等待barrier，跳过执行
+            if (thread->get_state() == BAR_SYNC) {
+                continue; // 跳过处于barrier同步状态的线程
+            }
 
             // 执行指令
             thread->execute_thread_instruction();
+
+            // 检查线程状态，如果是BAR_SYNC状态，说明遇到了barrier指令
+            if (thread->get_state() == BAR_SYNC && sm_context_ != nullptr) {
+                // 在这里处理barrier同步
+                // 遍历所有属于相同block的线程，执行同步
+                sm_context_->synchronize_barrier(0, thread); // 默认使用barrier 0
+            }
 
             // 更新PC栈
             if (!pc_stacks[i].empty()) {

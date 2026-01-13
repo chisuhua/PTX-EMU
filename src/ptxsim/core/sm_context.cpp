@@ -8,6 +8,7 @@
 #include "utils/logger.h"          // 添加logger头文件
 #include <algorithm>
 #include <cassert>
+#include <set>
 
 SMContext::SMContext(int max_warps, int max_threads_per_sm,
                      size_t shared_mem_size, int sm_id)
@@ -100,6 +101,8 @@ bool SMContext::add_block(std::unique_ptr<CTAContext> block) {
     for (auto &warp : block_warps) {
         warp->set_physical_block_id(physical_block_id);
         warp->set_physical_warp_id(next_physical_warp_id++);
+        // 设置SMContext指针
+        warp->set_sm_context(this);
         warps.push_back(std::move(warp));
         warp_scheduler->add_warp(warps.back().get());
     }
@@ -125,59 +128,74 @@ EXE_STATE SMContext::exe_once() {
         return sm_state;
     }
 
+    // 检查barrier等待的线程，如果有线程在等待barrier且已满足同步条件，需要更新它们的状态
+    for (auto& [barId, waiting_threads] : barrier_waiting_threads) {
+        if (!waiting_threads.empty()) {
+            // 找到这些等待线程所属的block，检查是否所有线程都已到达barrier
+            ThreadContext* sample_thread = *waiting_threads.begin();
+            if (sample_thread && sample_thread->get_warp_context()) {
+                int physical_block_id = sample_thread->get_warp_context()->get_physical_block_id();
+                if (physical_block_id != -1) {
+                    auto block_it = managed_blocks.find(physical_block_id);
+                    if (block_it != managed_blocks.end()) {
+                        CTAContext* cta_ctx = block_it->second.get();
+                        int total_threads_in_block = cta_ctx->get_thread_count();
+                        
+                        // 检查是否所有线程都已经到达barrier
+                        if (waiting_threads.size() >= static_cast<size_t>(total_threads_in_block)) {
+                            // 所有线程都到达了barrier，释放所有等待的线程
+                            PTX_DEBUG_EMU("All threads reached barrier %d, releasing %zu threads", 
+                                          barId, waiting_threads.size());
+                            
+                            // 设置所有等待线程的状态为RUN
+                            for (auto waiting_thread : waiting_threads) {
+                                waiting_thread->set_state(RUN);
+                            }
+                            
+                            // 清空barrier等待队列
+                            waiting_threads.clear();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // 调度下一个warp执行
     WarpContext *next_warp = warp_scheduler->schedule_next();
     if (next_warp) {
-        // 获取当前warp中第一个活跃线程的PC作为指令来源
-        ThreadContext *firstActiveThread = nullptr;
-        StatementContext *currentStmt = nullptr;
-
+        // 检查warp中是否有活跃线程处于barrier状态
+        bool has_barrier_threads = false;
         for (int lane = 0; lane < WarpContext::WARP_SIZE; lane++) {
             ThreadContext *thread = next_warp->get_thread(lane);
-            if (thread && thread->is_active() && !thread->is_exited()) {
-                firstActiveThread = thread;
-                // 使用安全的PC检查
-                if (thread->is_valid_pc()) {
-                    currentStmt = thread->get_current_statement();
-                    break; // 找到指令后跳出
-                }
-                assert(false);
+            if (thread && thread->is_at_barrier()) {
+                has_barrier_threads = true;
+                break;
             }
         }
+        
+        // 如果warp中有线程在barrier等待，则跳过该warp的执行
+        if (!has_barrier_threads) {
+            // 获取当前warp中第一个活跃线程的PC作为指令来源
+            ThreadContext *firstActiveThread = nullptr;
+            StatementContext *currentStmt = nullptr;
 
-        if (currentStmt) {
-            // 执行warp指令
-            next_warp->execute_warp_instruction(*currentStmt);
-        }
-    }
-
-    // 检查同步操作 - 现在我们直接检查warp中的线程状态
-    // 如果所有线程都在barrier状态，则释放所有barrier状态的线程
-    bool all_at_barrier = true;
-    for (const auto &warp : warps) {
-        for (int lane = 0; lane < WarpContext::WARP_SIZE; lane++) {
-            ThreadContext *thread = warp->get_thread(lane);
-            if (thread) {
-                // 在检查线程状态前，先确保线程的PC是有效的
-                // 如果线程已退出，则不需要检查其他状态
-                if (!thread->is_at_barrier() && !thread->is_exited()) {
-                    all_at_barrier = false;
-                    break;
-                }
-            }
-        }
-        if (!all_at_barrier)
-            break;
-    }
-
-    if (all_at_barrier) {
-        // 所有线程都在屏障处等待，释放屏障
-        for (auto &warp : warps) {
             for (int lane = 0; lane < WarpContext::WARP_SIZE; lane++) {
-                ThreadContext *thread = warp->get_thread(lane);
-                if (thread && thread->is_at_barrier()) {
-                    thread->set_state(RUN);
+                ThreadContext *thread = next_warp->get_thread(lane);
+                if (thread && thread->is_active() && !thread->is_exited() && !thread->is_at_barrier()) {
+                    firstActiveThread = thread;
+                    // 使用安全的PC检查
+                    if (thread->is_valid_pc()) {
+                        currentStmt = thread->get_current_statement();
+                        break; // 找到指令后跳出
+                    }
+                    assert(false);
                 }
+            }
+
+            if (currentStmt) {
+                // 执行warp指令
+                next_warp->execute_warp_instruction(*currentStmt);
             }
         }
     }
@@ -349,4 +367,56 @@ void SMContext::print_resource_usage() const {
                       ? 100.0 * stats_.active_threads / stats_.max_threads
                       : 0.0);
     PTX_DEBUG_EMU("========================");
+}
+
+bool SMContext::synchronize_barrier(int barId, ThreadContext *thread) {
+    // 获取线程所在的物理block ID
+    int physical_block_id = thread->get_warp_context() ? 
+        thread->get_warp_context()->get_physical_block_id() : -1;
+    
+    if (physical_block_id == -1) {
+        PTX_DEBUG_EMU("Error: Could not determine physical block ID for thread at barrier");
+        return false;
+    }
+
+    // 获取该block的CTAContext来获取block维度信息
+    auto block_it = managed_blocks.find(physical_block_id);
+    if (block_it == managed_blocks.end()) {
+        PTX_DEBUG_EMU("Error: Could not find block %d for barrier sync", physical_block_id);
+        return false;
+    }
+    
+    CTAContext *cta_ctx = block_it->second.get();
+    int total_threads_in_block = cta_ctx->get_thread_count();
+    
+    // 更新该barrier的线程计数
+    barrier_thread_counts[barId] = total_threads_in_block;
+    
+    // 将当前线程加入到barrier等待队列
+    barrier_waiting_threads[barId].insert(thread);
+    
+    PTX_DEBUG_EMU("Thread in block %d waiting at barrier %d, %zu threads waiting, need %d",
+                  physical_block_id, barId, barrier_waiting_threads[barId].size(), total_threads_in_block);
+    
+    // 检查是否所有线程都已经到达barrier
+    if (barrier_waiting_threads[barId].size() >= static_cast<size_t>(barrier_thread_counts[barId])) {
+        // 所有线程都到达了barrier，释放所有等待的线程
+        PTX_DEBUG_EMU("All threads reached barrier %d, releasing %zu threads", barId, 
+                      barrier_waiting_threads[barId].size());
+        
+        // 设置所有等待线程的状态为RUN
+        for (auto waiting_thread : barrier_waiting_threads[barId]) {
+            waiting_thread->set_state(RUN);
+        }
+        
+        // 清空barrier等待队列
+        barrier_waiting_threads[barId].clear();
+        
+        return true; // 表示同步完成
+    }
+    
+    // 线程设置为等待状态
+    thread->set_state(BAR_SYNC);
+    
+    return false; // 表示线程还在等待
 }

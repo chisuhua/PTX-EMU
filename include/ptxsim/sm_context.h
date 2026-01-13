@@ -9,11 +9,13 @@
 #include "ptxsim/warp_scheduler.h"
 #include <map>
 #include <memory>
+#include <set>  // 添加set头文件
 #include <vector>
 
 class WarpScheduler;
 class CTAContext;
 class SharedMemoryManager;
+class ThreadContext; // 添加ThreadContext前向声明
 
 class SMContext {
 public:
@@ -85,6 +87,9 @@ public:
     // 打印资源使用情况
     void print_resource_usage() const;
 
+    // 新增：barrier同步功能
+    bool synchronize_barrier(int barId, ThreadContext *thread);
+
 private:
     // 初始化warp
     void init_warps_for_block(CTAContext *block);
@@ -138,6 +143,10 @@ private:
 
     // SM ID
     int sm_id_;
+
+    // 新增：barrier同步数据结构
+    std::map<int, std::set<ThreadContext*>> barrier_waiting_threads;
+    std::map<int, int> barrier_thread_counts;  // 每个barrier需要等待的线程数
 };
 
 #endif // SM_CONTEXT_H
