@@ -127,7 +127,7 @@ public:
     EXE_STATE get_state() const { return state; }
 
     // 检查是否活跃
-    bool is_active() const { return state == RUN; }
+    bool is_active() const { return state != EXIT; }
 
     // 检查是否在屏障等待
     bool is_at_barrier() const { return state == BAR_SYNC; }

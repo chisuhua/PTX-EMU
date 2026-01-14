@@ -169,6 +169,9 @@ EXE_STATE SMContext::exe_once() {
     // 调度下一个warp执行
     WarpContext *next_warp = warp_scheduler->schedule_next();
     if (next_warp) {
+        // 设置warp为被调度状态
+        next_warp->set_scheduled(true);
+
         // 检查warp中是否有活跃线程处于barrier状态
         bool has_barrier_threads = false;
         for (int lane = 0; lane < WarpContext::WARP_SIZE; lane++) {
@@ -181,6 +184,7 @@ EXE_STATE SMContext::exe_once() {
 
         // 如果warp中有线程在barrier等待，则跳过该warp的执行
         if (!has_barrier_threads) {
+
             // 获取当前warp中第一个活跃线程的PC作为指令来源
             ThreadContext *firstActiveThread = nullptr;
             StatementContext *currentStmt = nullptr;
@@ -200,18 +204,27 @@ EXE_STATE SMContext::exe_once() {
             }
 
             if (currentStmt) {
+                // 从DebugConfig单例获取warp跟踪配置
+                if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
+                    print_warp_status(
+                        next_warp); // 在执行指令前打印被调度warp的状态
+                }
+
                 // 执行warp指令
                 next_warp->execute_warp_instruction(*currentStmt);
             }
         }
+
+        // 执行完后取消warp的被调度状态
+        next_warp->set_scheduled(false);
     }
 
     // 更新状态
     update_state();
 
-    // 从DebugConfig单例获取warp跟踪配置
+    // 从DebugConfig单例获取warp跟踪配置，如果需要打印所有warp状态
     if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
-        print_warp_status();
+        print_warp_status(); // 打印所有warp的状态
     }
 
     return sm_state;
@@ -256,6 +269,9 @@ void SMContext::update_state() {
             has_active_warps = true;
             it++;
         } else {
+            // 从warp调度器中移除warp
+            warp_scheduler->remove_warp(warp);
+
             auto physical_block_id = warp->get_physical_block_id();
             physical_block_warp_counts[physical_block_id]--;
             it = warps.erase(it);
@@ -442,90 +458,99 @@ bool SMContext::synchronize_barrier(int barId, ThreadContext *thread) {
 }
 
 void SMContext::print_warp_status() const {
-    PTX_DEBUG_EMU("=== SM %d Warp Status ===", sm_id_);
-    PTX_DEBUG_EMU("Total warps: %zu", warps.size());
+    PTX_DEBUG_EMU("=== SM %d All %zu Warps Status ===", sm_id_, warps.size());
 
     for (size_t i = 0; i < warps.size(); ++i) {
         const auto &warp = warps[i];
         if (warp) {
-            int active_count = warp->get_active_count();
-            bool is_finished = warp->is_finished();
-            bool is_all_exited = warp->is_all_threads_exited();
-            int warp_id = warp->get_warp_id();
+            print_warp_status(warp.get(), false); // 调用带参数版本
+        }
+    }
+}
 
-            PTX_DEBUG_EMU("Warp[%zu]: ID=%d, Active Threads=%d, IsFinished=%s, "
-                          "AllExited=%s",
-                          i, warp_id, active_count, is_finished ? "Yes" : "No",
-                          is_all_exited ? "Yes" : "No");
+void SMContext::print_warp_status(const WarpContext *warp,
+                                  bool print_sm_id) const {
+    if (!warp) {
+        PTX_DEBUG_EMU("Warp is null, cannot print status");
+        return;
+    }
 
-            // 按PC值分组，记录每个PC对应的lane及其状态
-            std::map<int, std::array<char, WarpContext::WARP_SIZE>> pc_to_lanes;
-            std::map<int, std::string> pc_to_instruction;
+    if (print_sm_id)
+        PTX_DEBUG_EMU("--- SM %d Warp Status ---", sm_id_);
 
-            for (int lane = 0; lane < WarpContext::WARP_SIZE; ++lane) {
-                ThreadContext *thread = warp->get_thread(lane);
+    int active_count = warp->get_active_count();
+    bool is_finished = warp->is_finished();
+    bool is_all_exited = warp->is_all_threads_exited();
+    int warp_id = warp->get_warp_id();
+    bool is_scheduled = warp->is_scheduled(); // 获取调度状态
 
-                if (thread) {
-                    int pc = thread->get_pc();
+    PTX_DEBUG_EMU("Warp ID=%d, Active Threads=%d, IsFinished=%s, "
+                  "AllExited=%s, Scheduled=%s",
+                  warp_id, active_count, is_finished ? "Yes" : "No",
+                  is_all_exited ? "Yes" : "No", is_scheduled ? "Yes" : "No");
 
-                    // 获取线程状态字符
-                    char state_char;
-                    EXE_STATE state = thread->get_state();
-                    switch (state) {
-                    case RUN:
-                        state_char = 'R';
-                        break;
-                    case EXIT:
-                        state_char = 'E';
-                        break;
-                    case BAR_SYNC:
-                        state_char = 'S';
-                        break;
-                    default:
-                        state_char = 'U';
-                        break;
-                    }
+    // 按PC值分组，记录每个PC对应的lane及其状态
+    std::map<int, std::array<char, WarpContext::WARP_SIZE>> pc_to_lanes;
+    std::map<int, std::string> pc_to_instruction;
 
-                    // 将该lane的状态加入对应的PC组
-                    pc_to_lanes[pc][lane] = state_char;
+    for (int lane = 0; lane < WarpContext::WARP_SIZE; ++lane) {
+        ThreadContext *thread = warp->get_thread(lane);
 
-                    // 获取当前PC对应的指令文本
-                    if (pc_to_instruction.find(pc) == pc_to_instruction.end()) {
-                        StatementContext *stmt =
-                            thread->get_current_statement();
-                        if (stmt != nullptr) {
-                            pc_to_instruction[pc] = stmt->instructionText;
-                        } else {
-                            pc_to_instruction[pc] = "<no_instruction>";
-                        }
-                    }
-                } else {
-                    // 如果线程不存在，标记为未知，但仍然要记录其位置
-                    // 因为我们仍需在每个PC组中为这个lane显示'-'
-                    for (auto &[pc, lanes] : pc_to_lanes) {
-                        lanes[lane] = '-';
-                    }
-                }
+        if (thread) {
+            int pc = thread->get_pc();
+
+            // 获取线程状态字符
+            char state_char;
+            EXE_STATE state = thread->get_state();
+            switch (state) {
+            case RUN:
+                state_char = 'R';
+                break;
+            case EXIT:
+                state_char = 'E';
+                break;
+            case BAR_SYNC:
+                state_char = 'S';
+                break;
+            default:
+                state_char = 'U';
+                break;
             }
 
-            // 为每个不同的PC值打印一行信息
-            for (const auto &[pc, lanes] : pc_to_lanes) {
-                std::string lane_states = "";
-                for (int lane = 0; lane < WarpContext::WARP_SIZE; ++lane) {
-                    if (lanes[lane] != '\0') {
-                        lane_states += lanes[lane];
-                    } else {
-                        // 如果此lane的PC与此PC不匹配，则显示'-'
-                        lane_states += '-';
-                    }
-                }
+            // 将该lane的状态加入对应的PC组
+            pc_to_lanes[pc][lane] = state_char;
 
-                PTX_DEBUG_EMU("  PC[0x%x]: %s | Lane States: %s", pc,
-                              pc_to_instruction[pc].c_str(),
-                              lane_states.c_str());
+            // 获取当前PC对应的指令文本
+            if (pc_to_instruction.find(pc) == pc_to_instruction.end()) {
+                StatementContext *stmt = thread->get_current_statement();
+                if (stmt != nullptr) {
+                    pc_to_instruction[pc] = stmt->instructionText;
+                } else {
+                    pc_to_instruction[pc] = "<no_instruction>";
+                }
+            }
+        } else {
+            // 如果线程不存在，标记为未知，但仍然要记录其位置
+            // 因为我们仍需在每个PC组中为这个lane显示'-'
+            for (auto &[pc, lanes] : pc_to_lanes) {
+                lanes[lane] = '-';
             }
         }
     }
 
-    PTX_DEBUG_EMU("========================");
+    // 为每个不同的PC值打印一行信息
+    for (const auto &[pc, lanes] : pc_to_lanes) {
+        std::string lane_states = "";
+        for (int lane = 0; lane < WarpContext::WARP_SIZE; ++lane) {
+            if (lanes[lane] != '\0') {
+                lane_states += lanes[lane];
+            } else {
+                // 如果此lane的PC与此PC不匹配，则显示'-'
+                lane_states += '-';
+            }
+        }
+
+        PTX_DEBUG_EMU("  PC[0x%x]: %s | Lane States: %s", pc,
+                      pc_to_instruction[pc].c_str(), lane_states.c_str());
+    }
 }

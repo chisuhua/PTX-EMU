@@ -5,6 +5,13 @@ void RoundRobinWarpScheduler::add_warp(WarpContext* warp) {
     warps.push_back(warp);
 }
 
+void RoundRobinWarpScheduler::remove_warp(WarpContext* warp) {
+    auto it = std::find(warps.begin(), warps.end(), warp);
+    if (it != warps.end()) {
+        warps.erase(it);
+    }
+}
+
 WarpContext* RoundRobinWarpScheduler::schedule_next() {
     if (warps.empty()) {
         return nullptr;
@@ -39,6 +46,13 @@ bool RoundRobinWarpScheduler::all_warps_finished() const {
 
 void GreedyWarpScheduler::add_warp(WarpContext* warp) {
     warps.push_back(warp);
+}
+
+void GreedyWarpScheduler::remove_warp(WarpContext* warp) {
+    auto it = std::find(warps.begin(), warps.end(), warp);
+    if (it != warps.end()) {
+        warps.erase(it);
+    }
 }
 
 WarpContext* GreedyWarpScheduler::schedule_next() {

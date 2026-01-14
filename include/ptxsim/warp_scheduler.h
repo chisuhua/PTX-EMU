@@ -12,6 +12,9 @@ public:
     // 添加warp到调度器
     virtual void add_warp(WarpContext* warp) = 0;
     
+    // 从调度器移除warp
+    virtual void remove_warp(WarpContext* warp) = 0;
+    
     // 调度下一个warp执行
     virtual WarpContext* schedule_next() = 0;
     
@@ -29,6 +32,7 @@ public:
     virtual ~RoundRobinWarpScheduler() = default;
     
     void add_warp(WarpContext* warp) override;
+    void remove_warp(WarpContext* warp) override;
     WarpContext* schedule_next() override;
     void update_state() override;
     bool all_warps_finished() const override;
@@ -45,6 +49,7 @@ public:
     virtual ~GreedyWarpScheduler() = default;
     
     void add_warp(WarpContext* warp) override;
+    void remove_warp(WarpContext* warp) override;
     WarpContext* schedule_next() override;
     void update_state() override;
     bool all_warps_finished() const override;

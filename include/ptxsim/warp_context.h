@@ -28,7 +28,7 @@ public:
     void execute_warp_instruction(StatementContext &stmt);
 
     // 获取warp中的线程
-    ThreadContext *get_thread(int lane_id) {
+    ThreadContext *get_thread(int lane_id) const {
         if (lane_id >= 0 && lane_id < threads.size()) {
             return threads[lane_id].get();
         }
@@ -144,7 +144,14 @@ private:
     // 指向SMContext的指针
     SMContext *sm_context_ = nullptr;
 
+    // 调度状态
+    bool is_scheduled_{false}; // 表示warp是否被调度执行
+
 public:
+    // 调度状态相关方法
+    void set_scheduled(bool scheduled) { is_scheduled_ = scheduled; }
+    bool is_scheduled() const { return is_scheduled_; }
+
     // 物理ID管理方法
     void set_physical_warp_id(int id) { physical_warp_id = id; }
     int get_physical_warp_id() const { return physical_warp_id; }

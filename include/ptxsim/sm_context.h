@@ -9,7 +9,7 @@
 #include "ptxsim/warp_scheduler.h"
 #include <map>
 #include <memory>
-#include <set>  // 添加set头文件
+#include <set> // 添加set头文件
 #include <vector>
 
 class WarpScheduler;
@@ -19,7 +19,8 @@ class ThreadContext; // 添加ThreadContext前向声明
 
 class SMContext {
 public:
-    SMContext(int max_warps, int max_threads_per_sm, size_t shared_mem_size, int sm_id);
+    SMContext(int max_warps, int max_threads_per_sm, size_t shared_mem_size,
+              int sm_id);
     virtual ~SMContext();
 
     // 初始化SM上下文，不再需要任务相关参数
@@ -63,7 +64,6 @@ public:
         return idx < warps.size() ? warps[idx].get() : nullptr;
     }
 
-
     // 清理已完成的块
     void cleanup_finished_blocks();
 
@@ -93,6 +93,8 @@ public:
 
     // 新增：调试打印函数，用于显示warp状态信息
     void print_warp_status() const;
+    void print_warp_status(const WarpContext *warp,
+                           bool print_sm_id = true) const;
 
 private:
     // 初始化warp
@@ -148,10 +150,9 @@ private:
     // SM ID
     int sm_id_;
 
-
     // 新增：barrier同步数据结构
-    std::map<int, std::set<ThreadContext*>> barrier_waiting_threads;
-    std::map<int, int> barrier_thread_counts;  // 每个barrier需要等待的线程数
+    std::map<int, std::set<ThreadContext *>> barrier_waiting_threads;
+    std::map<int, int> barrier_thread_counts; // 每个barrier需要等待的线程数
 };
 
 #endif // SM_CONTEXT_H
