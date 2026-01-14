@@ -72,8 +72,11 @@ public:
     // 重置warp状态
     void reset();
 
-    // 检查warp是否完成
+    // 检查warp是否完成 - 现在检查是否所有线程都已退出
     bool is_finished() const;
+
+    // 检查warp是否真正完成（所有线程都已退出），而不是仅活跃计数为0
+    bool is_all_threads_exited() const;
 
     // 同步warp内所有线程
     void sync_threads();

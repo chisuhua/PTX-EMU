@@ -4,6 +4,7 @@
 #include "memory/shared_memory_manager.h" // 添加SharedMemoryManager头文件
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/cta_context.h"
+#include "ptxsim/ptx_config.h"     // 添加ptx_config头文件
 #include "ptxsim/warp_scheduler.h" // 添加warp调度器头文件
 #include "utils/logger.h"          // 添加logger头文件
 #include <algorithm>
@@ -129,29 +130,33 @@ EXE_STATE SMContext::exe_once() {
     }
 
     // 检查barrier等待的线程，如果有线程在等待barrier且已满足同步条件，需要更新它们的状态
-    for (auto& [barId, waiting_threads] : barrier_waiting_threads) {
+    for (auto &[barId, waiting_threads] : barrier_waiting_threads) {
         if (!waiting_threads.empty()) {
             // 找到这些等待线程所属的block，检查是否所有线程都已到达barrier
-            ThreadContext* sample_thread = *waiting_threads.begin();
+            ThreadContext *sample_thread = *waiting_threads.begin();
             if (sample_thread && sample_thread->get_warp_context()) {
-                int physical_block_id = sample_thread->get_warp_context()->get_physical_block_id();
+                int physical_block_id =
+                    sample_thread->get_warp_context()->get_physical_block_id();
                 if (physical_block_id != -1) {
                     auto block_it = managed_blocks.find(physical_block_id);
                     if (block_it != managed_blocks.end()) {
-                        CTAContext* cta_ctx = block_it->second.get();
-                        int total_threads_in_block = cta_ctx->get_thread_count();
-                        
+                        CTAContext *cta_ctx = block_it->second.get();
+                        int total_threads_in_block =
+                            cta_ctx->get_thread_count();
+
                         // 检查是否所有线程都已经到达barrier
-                        if (waiting_threads.size() >= static_cast<size_t>(total_threads_in_block)) {
+                        if (waiting_threads.size() >=
+                            static_cast<size_t>(total_threads_in_block)) {
                             // 所有线程都到达了barrier，释放所有等待的线程
-                            PTX_DEBUG_EMU("All threads reached barrier %d, releasing %zu threads", 
+                            PTX_DEBUG_EMU("All threads reached barrier %d, "
+                                          "releasing %zu threads",
                                           barId, waiting_threads.size());
-                            
+
                             // 设置所有等待线程的状态为RUN
                             for (auto waiting_thread : waiting_threads) {
                                 waiting_thread->set_state(RUN);
                             }
-                            
+
                             // 清空barrier等待队列
                             waiting_threads.clear();
                         }
@@ -173,7 +178,7 @@ EXE_STATE SMContext::exe_once() {
                 break;
             }
         }
-        
+
         // 如果warp中有线程在barrier等待，则跳过该warp的执行
         if (!has_barrier_threads) {
             // 获取当前warp中第一个活跃线程的PC作为指令来源
@@ -182,7 +187,8 @@ EXE_STATE SMContext::exe_once() {
 
             for (int lane = 0; lane < WarpContext::WARP_SIZE; lane++) {
                 ThreadContext *thread = next_warp->get_thread(lane);
-                if (thread && thread->is_active() && !thread->is_exited() && !thread->is_at_barrier()) {
+                if (thread && thread->is_active() && !thread->is_exited() &&
+                    !thread->is_at_barrier()) {
                     firstActiveThread = thread;
                     // 使用安全的PC检查
                     if (thread->is_valid_pc()) {
@@ -202,6 +208,11 @@ EXE_STATE SMContext::exe_once() {
 
     // 更新状态
     update_state();
+
+    // 从DebugConfig单例获取warp跟踪配置
+    if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
+        print_warp_status();
+    }
 
     return sm_state;
 }
@@ -291,11 +302,12 @@ void SMContext::cleanup_finished_blocks() {
 void SMContext::free_shared_memory(CTAContext *block) {
     // 释放共享内存
     if (block->sharedMemSpace != nullptr && shared_mem_manager_) {
-        size_t shared_mem_size = block->get_shared_memory_requirement(); // 获取要释放的内存大小
-        
+        size_t shared_mem_size =
+            block->get_shared_memory_requirement(); // 获取要释放的内存大小
+
         shared_mem_manager_->deallocate(block->sharedMemSpace,
                                         block->get_reservation_id());
-        
+
         // 更新本地统计 - 减去释放的内存大小
         if (allocated_shared_mem >= shared_mem_size) {
             allocated_shared_mem -= shared_mem_size;
@@ -303,7 +315,7 @@ void SMContext::free_shared_memory(CTAContext *block) {
             // 防止下溢出，理论上不应该发生
             allocated_shared_mem = 0;
         }
-        
+
         // 重置block的共享内存指针
         const_cast<void *&>(block->sharedMemSpace) = nullptr;
     }
@@ -371,52 +383,149 @@ void SMContext::print_resource_usage() const {
 
 bool SMContext::synchronize_barrier(int barId, ThreadContext *thread) {
     // 获取线程所在的物理block ID
-    int physical_block_id = thread->get_warp_context() ? 
-        thread->get_warp_context()->get_physical_block_id() : -1;
-    
+    int physical_block_id =
+        thread->get_warp_context()
+            ? thread->get_warp_context()->get_physical_block_id()
+            : -1;
+
     if (physical_block_id == -1) {
-        PTX_DEBUG_EMU("Error: Could not determine physical block ID for thread at barrier");
+        PTX_DEBUG_EMU("Error: Could not determine physical block ID for thread "
+                      "at barrier");
         return false;
     }
 
     // 获取该block的CTAContext来获取block维度信息
     auto block_it = managed_blocks.find(physical_block_id);
     if (block_it == managed_blocks.end()) {
-        PTX_DEBUG_EMU("Error: Could not find block %d for barrier sync", physical_block_id);
+        PTX_DEBUG_EMU("Error: Could not find block %d for barrier sync",
+                      physical_block_id);
         return false;
     }
-    
+
     CTAContext *cta_ctx = block_it->second.get();
     int total_threads_in_block = cta_ctx->get_thread_count();
-    
+
     // 更新该barrier的线程计数
     barrier_thread_counts[barId] = total_threads_in_block;
-    
+
     // 将当前线程加入到barrier等待队列
     barrier_waiting_threads[barId].insert(thread);
-    
-    PTX_DEBUG_EMU("Thread in block %d waiting at barrier %d, %zu threads waiting, need %d",
-                  physical_block_id, barId, barrier_waiting_threads[barId].size(), total_threads_in_block);
-    
+
+    PTX_DEBUG_EMU("Thread in block %d waiting at barrier %d, %zu threads "
+                  "waiting, need %d",
+                  physical_block_id, barId,
+                  barrier_waiting_threads[barId].size(),
+                  total_threads_in_block);
+
     // 检查是否所有线程都已经到达barrier
-    if (barrier_waiting_threads[barId].size() >= static_cast<size_t>(barrier_thread_counts[barId])) {
+    if (barrier_waiting_threads[barId].size() >=
+        static_cast<size_t>(barrier_thread_counts[barId])) {
         // 所有线程都到达了barrier，释放所有等待的线程
-        PTX_DEBUG_EMU("All threads reached barrier %d, releasing %zu threads", barId, 
-                      barrier_waiting_threads[barId].size());
-        
+        PTX_DEBUG_EMU("All threads reached barrier %d, releasing %zu threads",
+                      barId, barrier_waiting_threads[barId].size());
+
         // 设置所有等待线程的状态为RUN
         for (auto waiting_thread : barrier_waiting_threads[barId]) {
             waiting_thread->set_state(RUN);
         }
-        
+
         // 清空barrier等待队列
         barrier_waiting_threads[barId].clear();
-        
+
         return true; // 表示同步完成
     }
-    
+
     // 线程设置为等待状态
     thread->set_state(BAR_SYNC);
-    
+
     return false; // 表示线程还在等待
+}
+
+void SMContext::print_warp_status() const {
+    PTX_DEBUG_EMU("=== SM %d Warp Status ===", sm_id_);
+    PTX_DEBUG_EMU("Total warps: %zu", warps.size());
+
+    for (size_t i = 0; i < warps.size(); ++i) {
+        const auto &warp = warps[i];
+        if (warp) {
+            int active_count = warp->get_active_count();
+            bool is_finished = warp->is_finished();
+            bool is_all_exited = warp->is_all_threads_exited();
+            int warp_id = warp->get_warp_id();
+
+            PTX_DEBUG_EMU("Warp[%zu]: ID=%d, Active Threads=%d, IsFinished=%s, "
+                          "AllExited=%s",
+                          i, warp_id, active_count, is_finished ? "Yes" : "No",
+                          is_all_exited ? "Yes" : "No");
+
+            // 按PC值分组，记录每个PC对应的lane及其状态
+            std::map<int, std::array<char, WarpContext::WARP_SIZE>> pc_to_lanes;
+            std::map<int, std::string> pc_to_instruction;
+
+            for (int lane = 0; lane < WarpContext::WARP_SIZE; ++lane) {
+                ThreadContext *thread = warp->get_thread(lane);
+
+                if (thread) {
+                    int pc = thread->get_pc();
+
+                    // 获取线程状态字符
+                    char state_char;
+                    EXE_STATE state = thread->get_state();
+                    switch (state) {
+                    case RUN:
+                        state_char = 'R';
+                        break;
+                    case EXIT:
+                        state_char = 'E';
+                        break;
+                    case BAR_SYNC:
+                        state_char = 'S';
+                        break;
+                    default:
+                        state_char = 'U';
+                        break;
+                    }
+
+                    // 将该lane的状态加入对应的PC组
+                    pc_to_lanes[pc][lane] = state_char;
+
+                    // 获取当前PC对应的指令文本
+                    if (pc_to_instruction.find(pc) == pc_to_instruction.end()) {
+                        StatementContext *stmt =
+                            thread->get_current_statement();
+                        if (stmt != nullptr) {
+                            pc_to_instruction[pc] = stmt->instructionText;
+                        } else {
+                            pc_to_instruction[pc] = "<no_instruction>";
+                        }
+                    }
+                } else {
+                    // 如果线程不存在，标记为未知，但仍然要记录其位置
+                    // 因为我们仍需在每个PC组中为这个lane显示'-'
+                    for (auto &[pc, lanes] : pc_to_lanes) {
+                        lanes[lane] = '-';
+                    }
+                }
+            }
+
+            // 为每个不同的PC值打印一行信息
+            for (const auto &[pc, lanes] : pc_to_lanes) {
+                std::string lane_states = "";
+                for (int lane = 0; lane < WarpContext::WARP_SIZE; ++lane) {
+                    if (lanes[lane] != '\0') {
+                        lane_states += lanes[lane];
+                    } else {
+                        // 如果此lane的PC与此PC不匹配，则显示'-'
+                        lane_states += '-';
+                    }
+                }
+
+                PTX_DEBUG_EMU("  PC[0x%x]: %s | Lane States: %s", pc,
+                              pc_to_instruction[pc].c_str(),
+                              lane_states.c_str());
+            }
+        }
+    }
+
+    PTX_DEBUG_EMU("========================");
 }

@@ -8,6 +8,7 @@
 #include "ptxsim/execution_types.h"
 #include "register/condition_code_register.h"
 #include "register/register_bank_manager.h"
+#include "utils/logger.h"
 #include <any>
 #include <iostream>
 #include <map>
@@ -18,7 +19,7 @@
 #include <vector>
 
 class PtxInterpreter; // 前向声明
-class WarpContext; // 前向声明
+class WarpContext;    // 前向声明
 
 class ThreadContext {
 public:
@@ -35,6 +36,7 @@ public:
     Dim3 BlockIdx, ThreadIdx, GridDim, BlockDim;
     int pc;
     int next_pc;
+    int bar_id;
     EXE_STATE state;
 
     // 条件码寄存器
@@ -99,6 +101,27 @@ public:
 
     std::vector<void *>
         operand_collected; // collect operand addr  from BASE_INSTR operands
+
+    // 新增：打印指令状态
+    void print_instruction_status(StatementContext &stmt);
+
+    // 新增：模板函数用于打印线程状态信息
+    template <typename... Args>
+    void trace_status(ptxsim::log_level level, const std::string &component,
+                      const char *fmt, Args &&...args) {
+        // 首先格式化用户提供的消息
+        std::string formatted_msg =
+            ptxsim::detail::printf_format(fmt, std::forward<Args>(args)...);
+
+        // 然后构建包含线程和块维度信息的消息
+        std::string full_msg = ptxsim::detail::printf_format(
+            "Thread[%d,%d,%d][%d,%d,%d] %s", BlockIdx.x, BlockIdx.y, BlockIdx.z,
+            ThreadIdx.x, ThreadIdx.y, ThreadIdx.z, formatted_msg.c_str());
+
+        // 使用logger的printf_to_logger_simple函数打印消息
+        ptxsim::printf_to_logger_simple(level, component, "%s",
+                                        full_msg.c_str());
+    }
 
     // 新增接口：获取线程状态
     EXE_STATE get_state() const { return state; }

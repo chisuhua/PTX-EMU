@@ -13,6 +13,7 @@ public:
     void *statement;
     InstructionState state;
     std::vector<Qualifier> *qualifier; // qualifer for collect operand
+    std::string instructionText;       // 存储原始指令文本
 
 // =============================================================================
 // 1. 操作数描述结构体
@@ -112,7 +113,7 @@ public:
 
     StatementContext()
         : statementType(S_REG), statement(nullptr),
-          state{InstructionState::READY} {}
+          state{InstructionState::READY}, instructionText("") {}
     ~StatementContext();
 
     // 深拷贝方法

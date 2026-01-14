@@ -32,7 +32,7 @@ set(SOURCES
     cudart/cuda_driver.cpp  # 添加新的驱动内存管理器
     cudart/simple_memory_allocator.cpp
     cudart/cudart_sim.cpp
-    #utils/logger.cpp
+    utils/logger.cpp
     ${ANTLR4_GENERATED_SOURCES}
 )
 
@@ -50,6 +50,7 @@ add_library(ptx_ir SHARED
 target_include_directories(ptx_ir PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
 add_library(ptxsim SHARED
+    utils/logger.cpp
     ptxsim/core/cta_context.cpp
     ptxsim/core/thread_context.cpp
     ptxsim/core/warp_context.cpp

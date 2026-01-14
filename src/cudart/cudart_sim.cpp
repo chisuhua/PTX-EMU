@@ -62,7 +62,7 @@ void initialize_environment() {
 
         // 设置日志配置
         auto logger_section = ini.sections["logger"];
-        ptxsim::LoggerConfig::get().load_logger_config(logger_section);
+        ptxsim::LoggerConfig::get().load_from_ini_section(logger_section);
 
         // 设置调试器配置
         auto debugger_section = ini.sections["debugger"];

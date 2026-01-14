@@ -1,5 +1,6 @@
 #include "ptxsim/warp_context.h"
 #include "ptxsim/sm_context.h"
+#include "ptxsim/ptx_config.h"
 #include <algorithm>
 #include <cassert>
 #include <cstring>
@@ -29,11 +30,11 @@ void WarpContext::add_thread(std::unique_ptr<ThreadContext> thread,
         threads.resize(
             std::max(threads.size(), static_cast<size_t>(lane_id + 1)));
         threads[lane_id] = std::move(thread);
-        
+
         if (threads[lane_id]) {
             // 设置warp_context_指针
             threads[lane_id]->set_warp_context(this);
-            
+
             warp_thread_ids[lane_id] =
                 threads[lane_id]->ThreadIdx.x +
                 threads[lane_id]->ThreadIdx.y * threads[lane_id]->BlockDim.x +
@@ -46,19 +47,6 @@ void WarpContext::add_thread(std::unique_ptr<ThreadContext> thread,
 }
 
 void WarpContext::execute_warp_instruction(StatementContext &stmt) {
-    // 首先尝试处理barrier同步，释放可能等待的线程
-    for (int i = 0; i < WARP_SIZE; i++) {
-        if (is_lane_active(i) && i < threads.size() && threads[i] != nullptr) {
-            ThreadContext *thread = threads[i].get();
-            
-            // 检查线程状态，如果是BAR_SYNC状态，说明遇到了barrier指令
-            if (thread->get_state() == BAR_SYNC && sm_context_ != nullptr) {
-                // 调用同步方法，可能会释放等待的线程
-                sm_context_->synchronize_barrier(0, thread); // 默认使用barrier 0
-            }
-        }
-    }
-
     // 根据活跃掩码执行指令
     for (int i = 0; i < WARP_SIZE; i++) {
         if (is_lane_active(i) && i < threads.size() && threads[i] != nullptr) {
@@ -74,6 +62,12 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt) {
                 continue; // 跳过处于barrier同步状态的线程
             }
 
+            // 检查当前lane是否启用trace，以及trace_instruction_status是否启用
+            if (ptxsim::DebugConfig::get().is_lane_traced(i) && 
+                ptxsim::DebugConfig::get().is_trace_instruction_status_enabled()) {
+                thread->print_instruction_status(stmt);
+            }
+
             // 执行指令
             thread->execute_thread_instruction();
 
@@ -81,7 +75,8 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt) {
             if (thread->get_state() == BAR_SYNC && sm_context_ != nullptr) {
                 // 在这里处理barrier同步
                 // 遍历所有属于相同block的线程，执行同步
-                sm_context_->synchronize_barrier(0, thread); // 默认使用barrier 0
+                sm_context_->synchronize_barrier(thread->bar_id,
+                                                 thread); // 默认使用barrier 0
             }
 
             // 更新PC栈
@@ -129,7 +124,23 @@ void WarpContext::set_active_mask(int lane_id, bool active) {
     }
 }
 
-bool WarpContext::is_finished() const { return active_count == 0; }
+bool WarpContext::is_finished() const { 
+    // 修改逻辑：不只是检查active_count，而是检查是否所有线程都已退出
+    return is_all_threads_exited(); 
+}
+
+bool WarpContext::is_all_threads_exited() const {
+    // 检查warp中的所有线程是否都已退出
+    for (int i = 0; i < WARP_SIZE; i++) {
+        if (i < threads.size() && threads[i] != nullptr) {
+            if (!threads[i]->is_exited()) {
+                // 如果有任何一个线程还没有退出，则warp尚未完成
+                return false;
+            }
+        }
+    }
+    return true;
+}
 
 void WarpContext::sync_threads() {
     // 在真正的硬件模拟中，这里会实现warp级同步

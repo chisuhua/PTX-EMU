@@ -71,18 +71,18 @@ public:
     get_full_instruction_string(const StatementContext &statement);
 
     // 启用/禁用特定类型的指令跟踪
-    void enable_instruction_trace(InstructionType type, bool enable = true) {
-        std::lock_guard<std::mutex> lock(get_mutex());
-        instruction_tracing_[type] = enable;
-    }
+    // void enable_instruction_trace(InstructionType type, bool enable = true) {
+    //     std::lock_guard<std::mutex> lock(get_mutex());
+    //     instruction_tracing_[type] = enable;
+    // }
 
-    // 检查是否启用特定类型的指令跟踪
-    bool is_instruction_traced(InstructionType type) const {
-        std::lock_guard<std::mutex> lock(
-            const_cast<DebugConfig *>(this)->get_mutex());
-        auto it = instruction_tracing_.find(type);
-        return it != instruction_tracing_.end() && it->second;
-    }
+    // // 检查是否启用特定类型的指令跟踪
+    // bool is_instruction_traced(InstructionType type) const {
+    //     std::lock_guard<std::mutex> lock(
+    //         const_cast<DebugConfig *>(this)->get_mutex());
+    //     auto it = instruction_tracing_.find(type);
+    //     return it != instruction_tracing_.end() && it->second;
+    // }
 
     // 启用/禁用内存访问跟踪
     void enable_memory_trace(bool enable = true) {
@@ -106,6 +106,52 @@ public:
         std::lock_guard<std::mutex> lock(
             const_cast<DebugConfig *>(this)->get_mutex());
         return trace_registers_;
+    }
+
+    // 启用/禁用warp状态跟踪
+    void set_trace_warp_enabled(bool enabled) {
+        std::lock_guard<std::mutex> lock(get_mutex());
+        trace_warp_enabled_ = enabled;
+    }
+
+    bool is_trace_warp_enabled() const {
+        std::lock_guard<std::mutex> lock(
+            const_cast<DebugConfig *>(this)->get_mutex());
+        return trace_warp_enabled_;
+    }
+
+    // 启用/禁用指令状态跟踪
+    void set_trace_instruction_status_enabled(bool enabled) {
+        std::lock_guard<std::mutex> lock(get_mutex());
+        trace_instruction_status_enabled_ = enabled;
+    }
+
+    bool is_trace_instruction_status_enabled() const {
+        std::lock_guard<std::mutex> lock(
+            const_cast<DebugConfig *>(this)->get_mutex());
+        return trace_instruction_status_enabled_;
+    }
+
+    // 设置/获取lane跟踪掩码
+    void set_trace_lanes_mask(uint32_t mask) {
+        std::lock_guard<std::mutex> lock(get_mutex());
+        trace_lanes_mask_ = mask;
+    }
+
+    uint32_t get_trace_lanes_mask() const {
+        std::lock_guard<std::mutex> lock(
+            const_cast<DebugConfig *>(this)->get_mutex());
+        return trace_lanes_mask_;
+    }
+
+    // 检查特定lane是否被启用跟踪
+    bool is_lane_traced(int lane_id) const {
+        std::lock_guard<std::mutex> lock(
+            const_cast<DebugConfig *>(this)->get_mutex());
+        if (lane_id < 0 || lane_id >= 32) {
+            return false; // 无效的lane ID
+        }
+        return (trace_lanes_mask_ & (1U << lane_id)) != 0;
     }
 
     // 设置线程过滤器 - 仅对指定的blockIdx和threadIdx进行trace
@@ -230,20 +276,56 @@ public:
 
 private:
     // 辅助函数：设置特定类型的指令跟踪
-    void set_instruction_type_trace(const inipp::Ini<char>::Section &section,
-                                    const std::string &key,
-                                    InstructionType type) {
-        std::string value;
-        inipp::get_value(section, key.c_str(), value);
-        if (!value.empty()) {
-            enable_instruction_trace(type, (value == "true" || value == "1"));
+    // void set_instruction_type_trace(const inipp::Ini<char>::Section &section,
+    //                                 const std::string &key,
+    //                                 InstructionType type) {
+    //     std::string value;
+    //     inipp::get_value(section, key.c_str(), value);
+    //     if (!value.empty()) {
+    //         enable_instruction_trace(type, (value == "true" || value ==
+    //         "1"));
+    //     }
+    // }
+
+    // 辅助函数：设置跟踪lane掩码
+    void set_trace_lanes_mask_from_string(const std::string &mask_str) {
+        if (mask_str.empty())
+            return;
+
+        // 处理十六进制数（以0x开头）
+        if (mask_str.length() >= 2 && mask_str[0] == '0' &&
+            (mask_str[1] == 'x' || mask_str[1] == 'X')) {
+            try {
+                size_t pos;
+                uint32_t mask =
+                    static_cast<uint32_t>(std::stoul(mask_str, &pos, 16));
+                set_trace_lanes_mask(mask);
+            } catch (...) {
+                // 如果转换失败，使用默认值
+                set_trace_lanes_mask(0xFFFFFFFF); // 默认启用所有lane
+            }
+        } else {
+            // 处理十进制数
+            try {
+                size_t pos;
+                uint32_t mask =
+                    static_cast<uint32_t>(std::stoul(mask_str, &pos, 10));
+                set_trace_lanes_mask(mask);
+            } catch (...) {
+                // 如果转换失败，使用默认值
+                set_trace_lanes_mask(0xFFFFFFFF); // 默认启用所有lane
+            }
         }
     }
 
     mutable std::mutex mutex_; // 使用mutable确保const成员函数中也可访问
-    std::unordered_map<InstructionType, bool> instruction_tracing_;
+    // std::unordered_map<InstructionType, bool> instruction_tracing_;
     bool trace_memory_ = false;
     bool trace_registers_ = false;
+    bool trace_warp_enabled_ = false;               // 新增warp跟踪开关
+    bool trace_instruction_status_enabled_ = false; // 新增指令状态跟踪开关
+    uint32_t trace_lanes_mask_ =
+        0xFFFFFFFF; // 新增lane跟踪掩码，默认启用所有lane
     std::unordered_map<int, BreakpointCondition> breakpoints_;
     int pc_start_ = 0;
     int pc_end_ = INT32_MAX;

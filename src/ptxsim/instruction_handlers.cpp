@@ -88,15 +88,21 @@
             context->state = BAR_SYNC;                                         \
             process_operation(context, ss->barId, ss->qualifier);              \
         } else {                                                               \
+            context->state = BAR_SYNC;                                         \
+            process_operation(context, ss->barId, ss->qualifier);              \
             PTX_FATAL_EMU("Unsupported barrier type %s", ss->barType);         \
-            assert(false);                                                     \
+            std::cout << "barrier type string " << ss->barType << std::endl;   \
+            assert(true);                                                      \
         }                                                                      \
         return true;                                                           \
     }
 
 #define IMPLEMENT_GENERIC_INSTR(Name)                                          \
     bool Name::prepare(ThreadContext *context, StatementContext &stmt) {       \
-        PTX_DEBUG_EMU("run to prepare" #Name);                                 \
+        context->trace_status(ptxsim::log_level::debug, "thread",              \
+                              "PC=%x (%d,%d) " #Name " : %s", context->pc,     \
+                              context->warp_id_, context->lane_id_,            \
+                              stmt.instructionText.c_str());                   \
         auto ss = (StatementContext::Name *)stmt.statement;                    \
         /* Pre-validate operand addresses */                                   \
         for (int i = 0; i < op_count; i++) {                                   \
@@ -158,13 +164,3 @@
     IMPLEMENT_##struct_kind(type_name)
 #include "ptx_ir/ptx_op.def"
 #undef X
-
-// bool Name::operate(ThreadContext *context, StatementContext &stmt) {       \
-    //     auto ss = (StatementContext::Name *)stmt.statement;                    \
-    //     void *op_phy_addr[op_count];                                           \
-    //     for (int i = 0; i < op_count; i++) {                                   \
-    //         op_phy_addr[i] = ss->operands[i].operand_addr;                     \
-    //     }                                                                      \
-    //     process_operation(context, op_phy_addr, ss->qualifier);                \
-    //     return true;                                                           \
-    // }                                                                          \

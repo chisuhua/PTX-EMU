@@ -17,71 +17,78 @@
 #include <unordered_map>
 #include <vector>
 
-// 添加PTX_INFO_THREAD宏定义，确保在PTXDebugger类中可以使用
-#ifndef PTX_INFO_THREAD
-#define PTX_INFO_THREAD(fmt, ...)                                              \
-    do {                                                                       \
-        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
-                                                   "thread")) {                \
-            auto formatted_msg =                                               \
-                ptxsim::detail::printf_format(fmt, ##__VA_ARGS__);             \
-            ptxsim::detail::output_log_simple(ptxsim::log_level::info,         \
-                                              "thread", formatted_msg);        \
-        }                                                                      \
-    } while (0)
-#endif
+// // 添加PTX_INFO_THREAD宏定义，确保在PTXDebugger类中可以使用
+// #ifndef PTX_INFO_THREAD
+// #define PTX_INFO_THREAD(fmt, ...) \
+//     do { \
+//         if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info, \
+//                                                    "thread")) { \
+//             auto formatted_msg = \
+//                 ptxsim::detail::printf_format(fmt, ##__VA_ARGS__); \
+//             ptxsim::detail::output_log_simple(ptxsim::log_level::info, \
+//                                               "thread", formatted_msg); \
+//         } \
+//     } while (0)
+// #endif
 
-#ifndef PTX_TRACE_EXEC
-#define PTX_TRACE_EXEC(...)                                                    \
-    do {                                                                       \
-        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
-                                                   "exec")) {                  \
-            auto formatted_msg = ptxsim::detail::printf_format(__VA_ARGS__);   \
-            ptxsim::detail::output_log_simple(ptxsim::log_level::info, "exec", \
-                                              formatted_msg);                  \
-        }                                                                      \
-    } while (0)
-#endif
+// #ifndef PTX_TRACE_EXEC
+// #define PTX_TRACE_EXEC(...) \
+//     do { \
+//         if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info, \
+//                                                    "exec")) { \
+//             auto formatted_msg = ptxsim::detail::printf_format(__VA_ARGS__);
+//             \
+//             ptxsim::detail::output_log_simple(ptxsim::log_level::info,
+//             "exec", \
+//                                               formatted_msg); \
+//         } \
+//     } while (0)
+// #endif
 
 // 添加PTX_TRACE_INSTR宏定义
-#ifndef PTX_TRACE_INSTR
-#define PTX_TRACE_INSTR(pc, opcode, operands, block, thread)                   \
-    do {                                                                       \
-        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::trace,   \
-                                                   "instr")) {                 \
-            auto formatted_msg = ptxsim::detail::printf_format(                \
-                "%s %s pc=%4d: %s %s", block.to_string().c_str(),              \
-                thread.to_string().c_str(), pc, opcode.c_str(),                \
-                operands.c_str());                                             \
-            ptxsim::detail::output_log_simple(ptxsim::log_level::trace,        \
-                                              "instr", formatted_msg);         \
-        }                                                                      \
-    } while (0)
-#endif
+// #ifndef PTX_TRACE_INSTR
+// #define PTX_TRACE_INSTR(pc, opcode, operands, block, thread) \
+//     do { \
+//         if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::trace,
+//         \
+//                                                    "instr")) { \
+//             auto formatted_msg = ptxsim::detail::printf_format( \
+//                 "%s %s pc=%4d: %s %s", block.to_string().c_str(), \
+//                 thread.to_string().c_str(), pc, opcode.c_str(), \
+//                 operands.c_str()); \
+//             ptxsim::detail::output_log_simple(ptxsim::log_level::trace, \
+//                                               "instr", formatted_msg); \
+//         } \
+//     } while (0)
+// #endif
 
-#ifndef PTX_TRACE_MEM
-#define PTX_TRACE_MEM(...)                                                     \
-    do {                                                                       \
-        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
-                                                   "mem")) {                   \
-            auto formatted_msg = ptxsim::detail::printf_format(__VA_ARGS__);   \
-            ptxsim::detail::output_log_simple(ptxsim::log_level::info, "mem",  \
-                                              formatted_msg);                  \
-        }                                                                      \
-    } while (0)
-#endif
+// #ifndef PTX_TRACE_MEM
+// #define PTX_TRACE_MEM(...) \
+//     do { \
+//         if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info, \
+//                                                    "mem")) { \
+//             auto formatted_msg = ptxsim::detail::printf_format(__VA_ARGS__);
+//             \
+//             ptxsim::detail::output_log_simple(ptxsim::log_level::info, "mem",
+//             \
+//                                               formatted_msg); \
+//         } \
+//     } while (0)
+// #endif
 
-#ifndef PTX_TRACE_REG
-#define PTX_TRACE_REG(...)                                                     \
-    do {                                                                       \
-        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
-                                                   "reg")) {                   \
-            auto formatted_msg = ptxsim::detail::printf_format(__VA_ARGS__);   \
-            ptxsim::detail::output_log_simple(ptxsim::log_level::info, "reg",  \
-                                              formatted_msg);                  \
-        }                                                                      \
-    } while (0)
-#endif
+// #ifndef PTX_TRACE_REG
+// #define PTX_TRACE_REG(...) \
+//     do { \
+//         if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info, \
+//                                                    "reg")) { \
+//             auto formatted_msg = ptxsim::detail::printf_format(__VA_ARGS__);
+//             \
+//             ptxsim::detail::output_log_simple(ptxsim::log_level::info, "reg",
+//             \
+//                                               formatted_msg); \
+//         } \
+//     } while (0)
+// #endif
 
 namespace ptxsim {
 
@@ -94,38 +101,38 @@ public:
     }
 
     // 记录指令执行
-    void trace_instruction(int pc, const std::string &opcode,
-                           const std::string &operands, const Dim3 &block,
-                           const Dim3 &thread) {
-        auto &config = ptxsim::DebugConfig::get();
+    // void trace_instruction(int pc, const std::string &opcode,
+    //                        const std::string &operands, const Dim3 &block,
+    //                        const Dim3 &thread) {
+    //     auto &config = ptxsim::DebugConfig::get();
 
-        // 检查PC范围
-        if (!config.is_pc_traced(pc))
-            return;
+    //     // 检查PC范围
+    //     if (!config.is_pc_traced(pc))
+    //         return;
 
-        // 检查指令类型
-        ptxsim::InstructionType type = config.classify_instruction(opcode);
-        if (!config.is_instruction_traced(type))
-            return;
+    //     // 检查指令类型
+    //     ptxsim::InstructionType type = config.classify_instruction(opcode);
+    //     if (!config.is_instruction_traced(type))
+    //         return;
 
-        // 构建完整指令
-        std::string full_instruction = opcode;
-        if (!operands.empty()) {
-            full_instruction += " " + operands;
-        }
+    //     // 构建完整指令
+    //     std::string full_instruction = opcode;
+    //     if (!operands.empty()) {
+    //         full_instruction += " " + operands;
+    //     }
 
-        // 检查线程过滤器
-        if (!config.should_trace_thread(block, thread))
-            return;
+    //     // 检查线程过滤器
+    //     if (!config.should_trace_thread(block, thread))
+    //         return;
 
-        // 触发回调
-        config.trigger_instruction_callback(pc, full_instruction);
+    //     // 触发回调
+    //     config.trigger_instruction_callback(pc, full_instruction);
 
-        // 记录日志，包含线程和块索引信息
-        PTX_TRACE_EXEC("%s %s pc=%4d: %s", block.to_string().c_str(),
-                       thread.to_string().c_str(), pc,
-                       full_instruction.c_str());
-    }
+    //     // 记录日志，包含线程和块索引信息
+    //     PTX_TRACE_EXEC("%s %s pc=%4d: %s", block.to_string().c_str(),
+    //                    thread.to_string().c_str(), pc,
+    //                    full_instruction.c_str());
+    // }
 
     // 记录内存访问
     void trace_memory_access(bool is_write, const std::string &addr_expr,
@@ -160,14 +167,17 @@ public:
                     ptxsim::detail::printf_format("0x%p", (void *)value);
             }
 
-            PTX_TRACE_MEM("%s %s        %s: [%s] = %s (size=%zu)",
-                          block.to_string().c_str(), thread.to_string().c_str(),
-                          access_type, addr_str.c_str(), value_str.c_str(),
-                          size);
+            ptxsim::printf_to_logger_simple(
+                ptxsim::log_level::info, "mem",
+                "%s %s        %s: [%s] = %s (size=%zu)",
+                block.to_string().c_str(), thread.to_string().c_str(),
+                access_type, addr_str.c_str(), value_str.c_str(), size);
         } else {
-            PTX_TRACE_MEM("%s %s         %s: [%s] (size=%zu)",
-                          block.to_string().c_str(), thread.to_string().c_str(),
-                          access_type, addr_str.c_str(), size);
+            ptxsim::printf_to_logger_simple(
+                ptxsim::log_level::info, "mem",
+                "%s %s         %s: [%s] (size=%zu)", block.to_string().c_str(),
+                thread.to_string().c_str(), access_type, addr_str.c_str(),
+                size);
         }
     }
 
@@ -188,20 +198,22 @@ public:
         std::string value_str =
             ptxsim::debug_format::format_register_value(value, true);
 
-        PTX_TRACE_REG("%s %s        %s: %s = %s", block.to_string().c_str(),
-                      thread.to_string().c_str(), access_type, reg_name.c_str(),
-                      value_str.c_str());
+        ptxsim::printf_to_logger_simple(
+            ptxsim::log_level::info, "reg", "%s %s        %s: %s = %s",
+            block.to_string().c_str(), thread.to_string().c_str(), access_type,
+            reg_name.c_str(), value_str.c_str());
     }
 
     // 线程状态转储
-    template <typename T>
-    void dump_thread_state(const std::string &prefix, const T &thread_ctx,
-                           const Dim3 &block, const Dim3 &thread) {
-        PTX_INFO_THREAD("%s - Block(%d,%d,%d) Thread(%d,%d,%d)", prefix.c_str(),
-                        block.x, block.y, block.z, thread.x, thread.y,
-                        thread.z);
-        // 这里可以添加更详细的线程状态输出
-    }
+    // template <typename T>
+    // void dump_thread_state(const std::string &prefix, const T &thread_ctx,
+    //                        const Dim3 &block, const Dim3 &thread) {
+    //     PTX_INFO_THREAD("%s - Block(%d,%d,%d) Thread(%d,%d,%d)",
+    //     prefix.c_str(),
+    //                     block.x, block.y, block.z, thread.x, thread.y,
+    //                     thread.z);
+    //     // 这里可以添加更详细的线程状态输出
+    // }
 
     // 检查断点
     // bool check_breakpoint(const ptx_instruction_address &pc,
@@ -288,13 +300,13 @@ private:
 
 } // namespace ptxsim
 
-#define PTX_DUMP_THREAD_STATE(prefix, thread_ctx, block, thread)               \
-    do {                                                                       \
-        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
-                                                   "thread")) {                \
-            ptxsim::PTXDebugger::get().dump_thread_state(prefix, thread_ctx,   \
-                                                         block, thread);       \
-        }                                                                      \
-    } while (0)
+// #define PTX_DUMP_THREAD_STATE(prefix, thread_ctx, block, thread)               \
+//     do {                                                                       \
+//         if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::info,    \
+//                                                    "thread")) {                \
+//             ptxsim::PTXDebugger::get().dump_thread_state(prefix, thread_ctx,   \
+//                                                          block, thread);       \
+//         }                                                                      \
+//     } while (0)
 
 #endif // PTX_DEBUGGER_H

@@ -13,7 +13,9 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <iomanip> // 用于时间格式化
 #include <iostream>
+#include <map> // 添加缺失的map头文件
 #include <memory>
 #include <mutex>
 #include <new>
@@ -33,12 +35,12 @@ namespace ptxsim {
 // ===========================================================================
 
 enum class log_level {
-    fatal = 0,
-    error = 1,
-    warning = 2,
-    info = 3,
-    trace = 4, // 比debug更详细，用于指令级跟踪
-    debug = 5
+    trace = 0,
+    debug = 1,
+    info = 2,
+    warning = 3,
+    error = 4,
+    fatal = 5
 };
 
 // ===========================================================================
@@ -46,9 +48,9 @@ enum class log_level {
 // ===========================================================================
 
 enum class log_target {
-    console, // 控制台
-    file,    // 文件
-    both     // 同时输出到控制台和文件
+    console = 0, // 控制台
+    file = 1,    // 文件
+    both = 2     // 同时输出到控制台和文件
 };
 
 // ===========================================================================
@@ -92,15 +94,15 @@ inline const char *log_level_str(log_level level) {
 // 获取当前时间戳
 inline std::string current_timestamp() {
     auto now = std::chrono::system_clock::now();
+    auto time_t = std::chrono::system_clock::to_time_t(now);
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                   now.time_since_epoch()) %
               1000;
-    auto timer = std::chrono::system_clock::to_time_t(now);
-    std::tm bt = *std::localtime(&timer);
-    char buffer[32];
-    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &bt);
-    sprintf(buffer + strlen(buffer), ".%03ld", ms.count());
-    return std::string(buffer);
+
+    std::stringstream ss;
+    ss << std::put_time(std::localtime(&time_t), "%Y-%m-%d %H:%M:%S");
+    ss << '.' << std::setfill('0') << std::setw(3) << ms.count();
+    return ss.str();
 }
 
 // 获取当前线程ID
@@ -144,13 +146,16 @@ void output_log_simple(log_level level, const std::string &component,
 // 格式化函数模板
 template <typename... Args>
 std::string printf_format(const char *fmt, Args &&...args) {
-    // 添加检查以确保 fmt 是有效的格式字符串
-    if (!fmt)
-        return std::string();
-    size_t size = snprintf(nullptr, 0, fmt, args...) + 1;
-    std::unique_ptr<char[]> buf(new char[size]);
-    snprintf(buf.get(), size, fmt, args...);
-    return std::string(buf.get(), buf.get() + size - 1);
+    if constexpr (sizeof...(Args) == 0) {
+        return fmt ? std::string(fmt) : std::string();
+    } else {
+        if (!fmt)
+            return std::string();
+        size_t size = snprintf(nullptr, 0, fmt, args...) + 1;
+        std::unique_ptr<char[]> buf(new char[size]);
+        snprintf(buf.get(), size, fmt, args...);
+        return std::string(buf.get(), buf.get() + size - 1);
+    }
 }
 } // namespace detail
 
@@ -164,8 +169,9 @@ public:
         log_level level;
         std::string component;
         std::string message;
+        std::string timestamp;
+        std::string thread_id;
         std::source_location loc;
-        std::chrono::system_clock::time_point timestamp;
     };
 
     AsyncLogQueue() : stop_(false) {
@@ -237,229 +243,190 @@ public:
     }
 
     // 构造函数
-    LoggerConfig()
-        : global_level_(log_level::info), target_(log_target::console),
-          use_async_logging_(false) {}
+    LoggerConfig();
 
     // 从INI配置部分加载日志配置
-    void load_logger_config(const inipp::Ini<char>::Section &logger_section) {
+    void load_from_ini_section(const inipp::Ini<char>::Section &logger_section);
+
+    struct FormatOptions {
+        bool show_timestamp = true;
+        bool show_level = true;
+        bool show_component = true;
+        bool show_location = true;
+        bool show_thread_id = true;
+        bool colorize = true;
+    };
+
+    // 新增：获取格式选项
+    const FormatOptions &get_format_options() const {
         std::lock_guard<std::mutex> lock(mutex_);
-
-        std::string level_str;
-        inipp::get_value(logger_section, "global_level", level_str);
-        if (!level_str.empty()) {
-            set_global_level(string_to_log_level(level_str));
-        }
-
-        std::string target_str;
-        inipp::get_value(logger_section, "target", target_str);
-        if (!target_str.empty()) {
-            set_target_from_string(target_str);
-        }
-
-        std::string logfile;
-        inipp::get_value(logger_section, "logfile", logfile);
-        if (!logfile.empty()) {
-            logfile_path_ = logfile;
-            // 只有当路径设置成功时才尝试打开文件
-            set_logfile_internal(logfile);
-        }
-
-        std::string async_str;
-        inipp::get_value(logger_section, "async", async_str);
-        if (!async_str.empty()) {
-            bool async = (async_str == "true" || async_str == "1");
-            enable_async_logging(async);
-        }
-
-        std::string colorize_str;
-        inipp::get_value(logger_section, "colorize", colorize_str);
-        if (!colorize_str.empty()) {
-            bool colorize = (colorize_str == "true" || colorize_str == "1");
-            set_use_color_output(colorize);
-        }
-
-        // 读取组件级别配置
-        for (const auto &pair : logger_section) {
-            if (pair.first.substr(0, 9) == "component") {
-                std::string component =
-                    pair.first.substr(10); // skip "component."
-                if (!component.empty()) {
-                    ptxsim::log_level level = string_to_log_level(pair.second);
-                    set_component_level(component, level);
-                }
-            }
-        }
+        return format_options_;
     }
 
-    // 设置全局日志级别
-    void set_global_level(log_level level) {
+    // 新增：检查指定级别和组件的日志是否启用
+    bool is_enabled(log_level level, const std::string &component) const {
         std::lock_guard<std::mutex> lock(mutex_);
-        global_level_ = level;
-    }
-
-    // 设置特定组件的日志级别
-    void set_component_level(const std::string &component, log_level level) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        component_levels_[component] = level;
-    }
-
-    // 获取组件的有效日志级别
-    log_level get_effective_level(const std::string &component) const {
-        std::lock_guard<std::mutex> lock(mutex_);
+        log_level threshold = global_level_;
         auto it = component_levels_.find(component);
         if (it != component_levels_.end()) {
-            return it->second;
+            threshold = it->second;
         }
-        return global_level_;
+        return level >= threshold;
     }
 
-    // 设置日志输出目标（字符串形式）
-    void set_target_from_string(const std::string &target_str) {
-        if (target_str == "console")
-            target_ = log_target::console;
-        else if (target_str == "file")
-            target_ = log_target::file;
-        else if (target_str == "both")
-            target_ = log_target::both;
-    }
-
-    // 设置日志输出目标
-    void set_target(log_target target) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        target_ = target;
-    }
-
-    // 设置日志文件 (外部调用接口，带锁保护)
-    bool set_logfile(const std::string &filename) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        return set_logfile_internal(filename);
-    }
-
-    // 设置日志文件 (内部使用，无锁)
-    bool set_logfile_internal(const std::string &filename) {
-        try {
-            logfile_.open(filename, std::ios::app);
-            if (!logfile_.is_open()) {
-                return false;
-            }
-            return true;
-        } catch (...) {
-            return false;
-        }
-    }
-
-    // 检查是否启用了某个级别的日志
-    bool is_enabled(log_level level, const std::string &component = "") const {
-        return level >= get_effective_level(component);
-    }
-
-    // 获取全局日志级别
+    // Getter和Setter方法
     log_level get_global_level() const {
         std::lock_guard<std::mutex> lock(mutex_);
         return global_level_;
     }
 
-    // 获取当前日志目标
+    void set_global_level(log_level level) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        global_level_ = level;
+    }
+
     log_target get_target() const {
         std::lock_guard<std::mutex> lock(mutex_);
         return target_;
     }
 
-    // 获取日志文件路径
-    const std::string &get_logfile_path() const {
+    void set_target(log_target target) {
         std::lock_guard<std::mutex> lock(mutex_);
-        return logfile_path_;
+        target_ = target;
     }
 
-    // 检查是否使用异步日志记录
-    bool use_async_logging() const {
+    void set_target_from_string(const std::string &target_str) {
+        if (target_str == "console") {
+            set_target(log_target::console);
+        } else if (target_str == "file") {
+            set_target(log_target::file);
+        } else if (target_str == "both") {
+            set_target(log_target::both);
+        } else {
+            set_target(log_target::console); // 默认值
+        }
+    }
+
+    bool is_async_logging_enabled() const {
         std::lock_guard<std::mutex> lock(mutex_);
         return use_async_logging_;
     }
 
-    // 设置是否使用颜色输出
-    void set_use_color_output(bool use_color) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        format_options_.colorize = use_color;
-    }
-
-    // 获取是否使用颜色输出
-    bool get_use_color_output() const {
-        std::lock_guard<std::mutex> lock(mutex_);
-        return format_options_.colorize;
-    }
-
-    // 内部辅助方法：字符串转日志级别
-    log_level string_to_log_level(const std::string &level_str) const {
-        if (level_str == "trace")
-            return log_level::trace;
-        else if (level_str == "debug")
-            return log_level::debug;
-        else if (level_str == "info")
-            return log_level::info;
-        else if (level_str == "warning")
-            return log_level::warning;
-        else if (level_str == "error")
-            return log_level::error;
-        else if (level_str == "fatal")
-            return log_level::fatal;
-        else
-            return log_level::info; // 默认值
-    }
-
-    // 禁用所有日志
-    void disable_all() { set_global_level(log_level::fatal); }
-
-    // 启用/禁用异步日志记录
     void enable_async_logging(bool enable) {
         std::lock_guard<std::mutex> lock(mutex_);
         use_async_logging_ = enable;
     }
 
-    // 获取日志格式选项
-    const LogFormatOptions &get_format_options() const {
-        return format_options_;
+    bool get_use_color_output() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return use_color_output_;
     }
 
-    // 设置日志格式选项
-    void set_format_options(const LogFormatOptions &options) {
-        format_options_ = options;
+    void set_use_color_output(bool colorize) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        use_color_output_ = colorize;
     }
 
-    ~LoggerConfig() {
-        if (logfile_.is_open()) {
-            logfile_.close();
+    // 设置日志文件
+    void set_logfile(const std::string &path) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        logfile_path_ = path;
+        set_logfile_internal(path);
+    }
+
+    const std::string &get_logfile_path() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return logfile_path_;
+    }
+
+    // 组件级别日志控制
+    log_level get_component_level(const std::string &component) const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto it = component_levels_.find(component);
+        if (it != component_levels_.end()) {
+            return it->second;
+        }
+        return global_level_; // 默认返回全局级别
+    }
+
+    void set_component_level(const std::string &component, log_level level) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        component_levels_[component] = level;
+    }
+
+    // 工具方法
+    log_level string_to_log_level(const std::string &level_str) const {
+        if (level_str == "trace") {
+            return log_level::trace;
+        } else if (level_str == "debug") {
+            return log_level::debug;
+        } else if (level_str == "info") {
+            return log_level::info;
+        } else if (level_str == "warning") {
+            return log_level::warning;
+        } else if (level_str == "error") {
+            return log_level::error;
+        } else if (level_str == "fatal") {
+            return log_level::fatal;
+        } else {
+            return log_level::info; // 默认值
         }
     }
 
-    // 私有成员变量
+    // 添加一个公共方法用于写入日志文件
+    void write_to_logfile(const std::string &message) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (logfile_.is_open()) {
+            logfile_ << message;
+            logfile_.flush();
+        }
+    }
+
+    // 添加一个公共方法用于检查日志文件是否打开
+    bool is_logfile_open() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return logfile_.is_open();
+    }
+
 private:
-    mutable std::mutex mutex_;
+    // 私有方法
+    void set_logfile_internal(const std::string &path) {
+        // 关闭现有文件
+        if (logfile_.is_open()) {
+            logfile_.close();
+        }
+
+        // 尝试打开新文件
+        logfile_.open(path, std::ios_base::out | std::ios_base::trunc);
+        if (!logfile_.is_open()) {
+            // 如果无法打开文件，回退到控制台输出
+            std::cerr << "Warning: Could not open log file: " << path
+                      << ", falling back to console output." << std::endl;
+        }
+    }
+
+    std::string trim(const std::string &str) const {
+        size_t start = str.find_first_not_of(" \t\r\n");
+        if (start == std::string::npos) {
+            return "";
+        }
+        size_t end = str.find_last_not_of(" \t\r\n");
+        return str.substr(start, end - start + 1);
+    }
+
+    // 成员变量
     log_level global_level_;
-    std::unordered_map<std::string, log_level> component_levels_;
     log_target target_;
-    std::ofstream logfile_;
-    std::string logfile_path_; // 存储日志文件路径
+    mutable std::mutex mutex_;
     bool use_async_logging_;
-    LogFormatOptions format_options_;
-    std::unique_ptr<AsyncLogQueue> async_queue_;
+    bool use_color_output_ = true;
+    std::string logfile_path_;
+    std::ofstream logfile_; // 使用ofstream而不是FILE*
+    std::map<std::string, log_level> component_levels_;
 
-    // 禁止拷贝构造和赋值
-    LoggerConfig(const LoggerConfig &) = delete;
-    LoggerConfig &operator=(const LoggerConfig &) = delete;
-
-    // 友元声明，允许detail命名空间中的函数访问私有成员
-    friend void detail::output_log(log_level level,
-                                   const std::string &component,
-                                   const std::string &msg,
-                                   const std::source_location &loc);
-    friend void detail::output_log_simple(log_level level,
-                                          const std::string &component,
-                                          const std::string &msg);
-
+    // 新增成员变量
+    FormatOptions format_options_;
 };
-
 // ===========================================================================
 // 基础日志输出函数
 // ===========================================================================
@@ -533,18 +500,13 @@ inline void output_log(log_level level, const std::string &component,
     if (config.get_target() != log_target::console) {
         // 文件输出
         auto &config_ref = LoggerConfig::get();
-        {
-            std::lock_guard<std::mutex> lock(config_ref.mutex_);
-            if (config_ref.logfile_.is_open()) {
-                config_ref.logfile_ << formatted_message;
-                if (format_opts.show_location && loc.file_name()[0]) {
-                    config_ref.logfile_ << " at " << loc.file_name() << ":"
-                                        << loc.line();
-                }
-                config_ref.logfile_ << std::endl;
-                config_ref.logfile_.flush();
-            }
+        std::string full_message = formatted_message;
+        if (format_opts.show_location && loc.file_name()[0]) {
+            full_message += " at " + std::string(loc.file_name()) + ":" +
+                            std::to_string(loc.line());
         }
+        full_message += "\n";
+        config_ref.write_to_logfile(full_message);
     }
 
     // 致命错误需要特殊处理
@@ -606,13 +568,8 @@ inline void output_log_simple(log_level level, const std::string &component,
     if (config.get_target() != log_target::console) {
         // 文件输出
         auto &config_ref = LoggerConfig::get();
-        {
-            std::lock_guard<std::mutex> lock(config_ref.mutex_);
-            if (config_ref.logfile_.is_open()) {
-                config_ref.logfile_ << formatted_message << std::endl;
-                config_ref.logfile_.flush();
-            }
-        }
+        std::string full_message = formatted_message + "\n";
+        config_ref.write_to_logfile(full_message);
     }
 
     // 致命错误需要特殊处理
@@ -654,8 +611,6 @@ inline void output_log_simple(log_level level, const std::string &component,
 
 // 可切换版本的日志宏，默认使用PTX_LOG_SIMPLE
 #ifdef PTXSIM_USE_DETAILED_LOGGING
-#define PTX_TRACE_EMU(fmt, ...)                                                \
-    PTX_LOG(ptxsim::log_level::trace, "emu", fmt, ##__VA_ARGS__)
 #define PTX_DEBUG_EMU(fmt, ...)                                                \
     PTX_LOG(ptxsim::log_level::debug, "emu", fmt, ##__VA_ARGS__)
 #define PTX_INFO_EMU(fmt, ...)                                                 \
@@ -667,37 +622,25 @@ inline void output_log_simple(log_level level, const std::string &component,
 #define PTX_FATAL_EMU(fmt, ...)                                                \
     PTX_LOG(ptxsim::log_level::fatal, "emu", fmt, ##__VA_ARGS__)
 
-#define PTX_TRACE_EXEC(fmt, ...)                                               \
-    PTX_LOG(ptxsim::log_level::trace, "exec", fmt, ##__VA_ARGS__)
 #define PTX_DEBUG_EXEC(fmt, ...)                                               \
     PTX_LOG(ptxsim::log_level::debug, "exec", fmt, ##__VA_ARGS__)
 #define PTX_INFO_EXEC(fmt, ...)                                                \
     PTX_LOG(ptxsim::log_level::info, "exec", fmt, ##__VA_ARGS__)
 
-#define PTX_TRACE_REG(fmt, ...)                                                \
-    PTX_LOG(ptxsim::log_level::trace, "reg", fmt, ##__VA_ARGS__)
 #define PTX_DEBUG_REG(fmt, ...)                                                \
     PTX_LOG(ptxsim::log_level::debug, "reg", fmt, ##__VA_ARGS__)
 
-#define PTX_TRACE_MEM(fmt, ...)                                                \
-    PTX_LOG(ptxsim::log_level::trace, "mem", fmt, ##__VA_ARGS__)
 #define PTX_DEBUG_MEM(fmt, ...)                                                \
     PTX_LOG(ptxsim::log_level::debug, "mem", fmt, ##__VA_ARGS__)
 
-#define PTX_TRACE_THREAD(fmt, ...)                                             \
-    PTX_LOG(ptxsim::log_level::trace, "thread", fmt, ##__VA_ARGS__)
 #define PTX_DEBUG_THREAD(fmt, ...)                                             \
     PTX_LOG(ptxsim::log_level::debug, "thread", fmt, ##__VA_ARGS__)
 
-#define PTX_TRACE_EMU_SIMPLE(fmt, ...)                                         \
-    PTX_LOG(ptxsim::log_level::trace, "emu", fmt, ##__VA_ARGS__)
 #define PTX_DEBUG_EMU_SIMPLE(fmt, ...)                                         \
     PTX_LOG(ptxsim::log_level::debug, "emu", fmt, ##__VA_ARGS__)
 #define PTX_INFO_EMU_SIMPLE(fmt, ...)                                          \
     PTX_LOG(ptxsim::log_level::info, "emu_simple", fmt, ##__VA_ARGS__)
 #else
-#define PTX_TRACE_EMU(fmt, ...)                                                \
-    PTX_LOG_SIMPLE(ptxsim::log_level::trace, "emu", fmt, ##__VA_ARGS__)
 #define PTX_DEBUG_EMU(fmt, ...)                                                \
     PTX_LOG_SIMPLE(ptxsim::log_level::debug, "emu", fmt, ##__VA_ARGS__)
 #define PTX_INFO_EMU(fmt, ...)                                                 \
@@ -709,30 +652,20 @@ inline void output_log_simple(log_level level, const std::string &component,
 #define PTX_FATAL_EMU(fmt, ...)                                                \
     PTX_LOG_SIMPLE(ptxsim::log_level::fatal, "emu", fmt, ##__VA_ARGS__)
 
-#define PTX_TRACE_EXEC(fmt, ...)                                               \
-    PTX_LOG_SIMPLE(ptxsim::log_level::trace, "exec", fmt, ##__VA_ARGS__)
 #define PTX_DEBUG_EXEC(fmt, ...)                                               \
     PTX_LOG_SIMPLE(ptxsim::log_level::debug, "exec", fmt, ##__VA_ARGS__)
 #define PTX_INFO_EXEC(fmt, ...)                                                \
     PTX_LOG_SIMPLE(ptxsim::log_level::info, "exec", fmt, ##__VA_ARGS__)
 
-#define PTX_TRACE_REG(fmt, ...)                                                \
-    PTX_LOG_SIMPLE(ptxsim::log_level::trace, "reg", fmt, ##__VA_ARGS__)
 #define PTX_DEBUG_REG(fmt, ...)                                                \
     PTX_LOG_SIMPLE(ptxsim::log_level::debug, "reg", fmt, ##__VA_ARGS__)
 
-#define PTX_TRACE_MEM(fmt, ...)                                                \
-    PTX_LOG_SIMPLE(ptxsim::log_level::trace, "mem", fmt, ##__VA_ARGS__)
 #define PTX_DEBUG_MEM(fmt, ...)                                                \
     PTX_LOG_SIMPLE(ptxsim::log_level::debug, "mem", fmt, ##__VA_ARGS__)
 
-#define PTX_TRACE_THREAD(fmt, ...)                                             \
-    PTX_LOG_SIMPLE(ptxsim::log_level::trace, "thread", fmt, ##__VA_ARGS__)
 #define PTX_DEBUG_THREAD(fmt, ...)                                             \
     PTX_LOG_SIMPLE(ptxsim::log_level::debug, "thread", fmt, ##__VA_ARGS__)
 
-#define PTX_TRACE_EMU_SIMPLE(fmt, ...)                                         \
-    PTX_LOG_SIMPLE(ptxsim::log_level::trace, "emu", fmt, ##__VA_ARGS__)
 #define PTX_DEBUG_EMU_SIMPLE(fmt, ...)                                         \
     PTX_LOG_SIMPLE(ptxsim::log_level::debug, "emu", fmt, ##__VA_ARGS__)
 #define PTX_INFO_EMU_SIMPLE(fmt, ...)                                          \
@@ -741,21 +674,9 @@ inline void output_log_simple(log_level level, const std::string &component,
 
 // 条件编译日志宏
 #ifdef PTXSIM_DISABLE_LOGGING
-#define PTX_TRACE_EMU_IF(cond, fmt, ...) ((void)0)
 #define PTX_DEBUG_EMU_IF(cond, fmt, ...) ((void)0)
 #else
 #ifdef PTXSIM_USE_DETAILED_LOGGING
-#define PTX_TRACE_EMU_IF(cond, fmt, ...)                                       \
-    do {                                                                       \
-        if ((cond) && ptxsim::LoggerConfig::get().is_enabled(                  \
-                          ptxsim::log_level::trace, "emu")) {                  \
-            auto loc = std::source_location::current();                        \
-            std::string msg =                                                  \
-                ptxsim::detail::printf_format(fmt, ##__VA_ARGS__);             \
-            ptxsim::detail::output_log(ptxsim::log_level::trace, "emu", msg,   \
-                                       loc);                                   \
-        }                                                                      \
-    } while (0)
 
 #define PTX_DEBUG_EMU_IF(cond, fmt, ...)                                       \
     do {                                                                       \
@@ -769,16 +690,6 @@ inline void output_log_simple(log_level level, const std::string &component,
         }                                                                      \
     } while (0)
 #else
-#define PTX_TRACE_EMU_IF(cond, fmt, ...)                                       \
-    do {                                                                       \
-        if ((cond) && ptxsim::LoggerConfig::get().is_enabled(                  \
-                          ptxsim::log_level::trace, "emu")) {                  \
-            std::string msg =                                                  \
-                ptxsim::detail::printf_format(fmt, ##__VA_ARGS__);             \
-            ptxsim::detail::output_log_simple(ptxsim::log_level::trace, "emu", \
-                                              msg);                            \
-        }                                                                      \
-    } while (0)
 
 #define PTX_DEBUG_EMU_IF(cond, fmt, ...)                                       \
     do {                                                                       \
@@ -818,37 +729,6 @@ inline void output_log_simple(log_level level, const std::string &component,
                     (unsigned long long)(uintptr_t)(ptr)));                    \
         }                                                                      \
     } while (0)
-
-// 函数入口跟踪
-#ifdef PTXSIM_USE_DETAILED_LOGGING
-#define PTX_TRACE_FUNC()                                                       \
-    do {                                                                       \
-        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::trace,   \
-                                                   "")) {                      \
-            auto loc = std::source_location::current();                        \
-            std::string short_name =                                           \
-                ptxsim::detail::short_function_name(loc.function_name());      \
-            ptxsim::detail::output_log(ptxsim::log_level::trace, "func",       \
-                                       ptxsim::detail::printf_format(          \
-                                           "[ENTER] %s", short_name.c_str()),  \
-                                       loc);                                   \
-        }                                                                      \
-    } while (0)
-#else
-#define PTX_TRACE_FUNC()                                                       \
-    do {                                                                       \
-        if (ptxsim::LoggerConfig::get().is_enabled(ptxsim::log_level::trace,   \
-                                                   "")) {                      \
-            auto loc = std::source_location::current();                        \
-            std::string short_name =                                           \
-                ptxsim::detail::short_function_name(loc.function_name());      \
-            ptxsim::detail::output_log_simple(                                 \
-                ptxsim::log_level::trace, "func",                              \
-                ptxsim::detail::printf_format("[ENTER] %s",                    \
-                                              short_name.c_str()));            \
-        }                                                                      \
-    } while (0)
-#endif
 
 // 条件检查宏
 #define PTX_CHECK(condition, component, fmt, ...)                              \

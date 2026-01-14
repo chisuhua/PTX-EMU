@@ -63,6 +63,7 @@ public:
         return idx < warps.size() ? warps[idx].get() : nullptr;
     }
 
+
     // 清理已完成的块
     void cleanup_finished_blocks();
 
@@ -89,6 +90,9 @@ public:
 
     // 新增：barrier同步功能
     bool synchronize_barrier(int barId, ThreadContext *thread);
+
+    // 新增：调试打印函数，用于显示warp状态信息
+    void print_warp_status() const;
 
 private:
     // 初始化warp
@@ -143,6 +147,7 @@ private:
 
     // SM ID
     int sm_id_;
+
 
     // 新增：barrier同步数据结构
     std::map<int, std::set<ThreadContext*>> barrier_waiting_threads;

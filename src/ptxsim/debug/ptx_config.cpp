@@ -62,25 +62,27 @@ DebugConfig::get_full_instruction_string(const StatementContext &statement) {
 void DebugConfig::load_from_ini_section(
     const inipp::Ini<char>::Section &debugger_section) {
     // 按类型设置指令跟踪 - 使用辅助函数减少重复
-    set_instruction_type_trace(debugger_section,
-                               "trace_instruction_type.memory",
-                               InstructionType::MEMORY);
-    set_instruction_type_trace(debugger_section,
-                               "trace_instruction_type.arithmetic",
-                               InstructionType::ARITHMETIC);
-    set_instruction_type_trace(debugger_section,
-                               "trace_instruction_type.control",
-                               InstructionType::CONTROL);
-    set_instruction_type_trace(debugger_section, "trace_instruction_type.logic",
-                               InstructionType::LOGIC);
-    set_instruction_type_trace(debugger_section,
-                               "trace_instruction_type.convert",
-                               InstructionType::CONVERT);
-    set_instruction_type_trace(debugger_section,
-                               "trace_instruction_type.special",
-                               InstructionType::SPECIAL);
-    set_instruction_type_trace(debugger_section, "trace_instruction_type.other",
-                               InstructionType::OTHER);
+    // set_instruction_type_trace(debugger_section,
+    //                            "trace_instruction_type.memory",
+    //                            InstructionType::MEMORY);
+    // set_instruction_type_trace(debugger_section,
+    //                            "trace_instruction_type.arithmetic",
+    //                            InstructionType::ARITHMETIC);
+    // set_instruction_type_trace(debugger_section,
+    //                            "trace_instruction_type.control",
+    //                            InstructionType::CONTROL);
+    // set_instruction_type_trace(debugger_section,
+    // "trace_instruction_type.logic",
+    //                            InstructionType::LOGIC);
+    // set_instruction_type_trace(debugger_section,
+    //                            "trace_instruction_type.convert",
+    //                            InstructionType::CONVERT);
+    // set_instruction_type_trace(debugger_section,
+    //                            "trace_instruction_type.special",
+    //                            InstructionType::SPECIAL);
+    // set_instruction_type_trace(debugger_section,
+    // "trace_instruction_type.other",
+    //                            InstructionType::OTHER);
 
     // 设置内存和寄存器跟踪
     std::string trace_mem;
@@ -93,6 +95,31 @@ void DebugConfig::load_from_ini_section(
     inipp::get_value(debugger_section, "trace_registers", trace_reg);
     if (!trace_reg.empty()) {
         enable_register_trace((trace_reg == "true" || trace_reg == "1"));
+    }
+
+    // 设置warp跟踪
+    std::string trace_warp_str;
+    inipp::get_value(debugger_section, "trace_warp", trace_warp_str);
+    if (!trace_warp_str.empty()) {
+        bool trace_warp = (trace_warp_str == "true" || trace_warp_str == "1");
+        set_trace_warp_enabled(trace_warp);
+    }
+
+    // 设置指令状态跟踪
+    std::string trace_instr_status_str;
+    inipp::get_value(debugger_section, "trace_instruction_status",
+                     trace_instr_status_str);
+    if (!trace_instr_status_str.empty()) {
+        bool trace_instr_status =
+            (trace_instr_status_str == "true" || trace_instr_status_str == "1");
+        set_trace_instruction_status_enabled(trace_instr_status);
+    }
+
+    // 设置lane跟踪掩码
+    std::string trace_lanes_str;
+    inipp::get_value(debugger_section, "trace_lanes", trace_lanes_str);
+    if (!trace_lanes_str.empty()) {
+        set_trace_lanes_mask_from_string(trace_lanes_str);
     }
 }
 

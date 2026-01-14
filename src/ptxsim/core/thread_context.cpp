@@ -79,9 +79,9 @@ void ThreadContext::_execute_once() {
     // 跟踪指令
     StatementContext &statement = (*statements)[pc];
 
-    if (statement.state == InstructionState::READY) {
-        trace_instruction(statement);
-    }
+    // if (statement.state == InstructionState::READY) {
+    //     trace_instruction(statement);
+    // }
 
     // 使用工厂创建对应的处理器
     InstructionHandler *handler =
@@ -99,19 +99,20 @@ void ThreadContext::_execute_once() {
     pc = next_pc;
 }
 
-void ThreadContext::trace_instruction(StatementContext &statement) {
-    std::string opcode = S2s(statement.statementType);
+// void ThreadContext::trace_instruction(StatementContext &statement) {
+//     std::string opcode = S2s(statement.statementType);
 
-    // 使用DebugConfig获取完整的指令字符串（包含操作数）
-    std::string operands =
-        ptxsim::DebugConfig::get_full_instruction_string(statement);
+//     // 使用DebugConfig获取完整的指令字符串（包含操作数）
+//     std::string operands =
+//         ptxsim::DebugConfig::get_full_instruction_string(statement);
 
-    // 使用PTX_TRACE_INSTR宏跟踪指令执行
-    PTX_TRACE_INSTR(pc, opcode, operands, BlockIdx, ThreadIdx);
+//     // 使用PTX_TRACE_INSTR宏跟踪指令执行
+//     PTX_TRACE_INSTR(pc, opcode, operands, BlockIdx, ThreadIdx);
 
-    // 记录性能统计
-    // ptxsim::PTXDebugger::get().get_perf_stats().record_instruction(opcode);
-}
+//     // 记录性能统计
+//     //
+//     ptxsim::PTXDebugger::get().get_perf_stats().record_instruction(opcode);
+// }
 
 void ThreadContext::clear_temporaries() {
     while (!vec.empty()) {
@@ -289,7 +290,8 @@ void ThreadContext::collect_operands(StatementContext &stmt,
                                      std::vector<Qualifier> *qualifier) {
     int bytes = getBytes(*qualifier);
     for (int i = 0; i < operands.size(); i++) {
-        PTX_DEBUG_EMU("Collect: %s ", operands[i].toString(bytes).c_str());
+        trace_status(ptxsim::log_level::debug, "thread", "Collect: %s ",
+                     operands[i].toString(bytes).c_str());
         operand_collected[i] = operands[i].operand_phy_addr;
     }
     stmt.qualifier = qualifier;
@@ -299,7 +301,8 @@ void ThreadContext::commit_operand(StatementContext &stmt,
                                    OperandContext &operand,
                                    std::vector<Qualifier> &qualifier) {
     int bytes = getBytes(qualifier);
-    PTX_DEBUG_EMU("Commit:  %s ", operand.toString(bytes).c_str());
+    trace_status(ptxsim::log_level::debug, "thread", "Commit:  %s ",
+                 operand.toString(bytes).c_str());
 };
 
 void *ThreadContext::acquire_register(OperandContext::REG *reg,
@@ -479,4 +482,16 @@ bool ThreadContext::isIMMorVEC(OperandContext &op) {
 
 bool ThreadContext::is_immediate_or_vector(OperandContext &op) {
     return (op.operandType == O_IMM || op.operandType == O_VEC);
+}
+
+void ThreadContext::print_instruction_status(StatementContext &stmt) {
+    // 获取操作数字符串
+    std::string operands_str = ptxsim::DebugConfig::getOperandsString(stmt);
+
+    // 获取操作码字符串
+    std::string opcode_str = S2s(stmt.statementType);
+
+    // 使用trace_status函数替代PTX_TRACE宏
+    trace_status(ptxsim::log_level::trace, "instr", "PC[0x%x] %s %s", pc,
+                 opcode_str.c_str(), operands_str.c_str());
 }

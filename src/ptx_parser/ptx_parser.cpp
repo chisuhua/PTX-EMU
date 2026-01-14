@@ -361,6 +361,8 @@ void PtxListener::enterStatement(ptxParser::StatementContext *ctx) {
 }
 void PtxListener::exitStatement(ptxParser::StatementContext *ctx) {
     assert(op.size() == 0);
+    // 获取当前语句的完整文本
+    statementContext.instructionText = ctx->getText();
     statementContext.statementType = statementType;
     statementContext.statement = statement;
     if (kernelContext)

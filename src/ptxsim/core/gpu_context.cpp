@@ -9,19 +9,50 @@
 #include <nlohmann/json.hpp>
 #include <thread>
 
-GPUContext::GPUContext(const std::string &config_path) : gpu_state(RUN) {
+GPUContext::GPUContext(const std::string &config_path) : gpu_state(RUN), config(GPUConfig()) {
     if (!config_path.empty()) {
         // 尝试加载JSON配置文件
-        if (!load_json_config(config_path)) {
-            // 如果加载失败，使用默认配置
-            config = GPUConfig();
-            std::cout << "Failed to load config from: " << config_path
-                      << ", using default configuration." << std::endl;
+        if (config_path.substr(config_path.find_last_of(".") + 1) == "json") {
+            load_json_config(config_path);
+        } 
+        // 如果不是JSON，暂时也尝试加载（为了向后兼容）
+        else {
+            load_json_config(config_path);
         }
-    } else {
+    } 
+    else {
         // 使用默认配置
         config = GPUConfig();
     }
+    
+    std::cout << "GPU context created." << std::endl;
+}
+
+void GPUContext::init() {
+    // 创建SimpleMemory实例作为成员变量
+    device_memory = std::make_unique<SimpleMemory>(config.global_mem_size);
+
+    // 设置HardwareMemoryManager使用的SimpleMemory实例
+    HardwareMemoryManager::instance().set_simple_memory(device_memory.get());
+
+    // 初始化 ResourceManager
+    ResourceManager::instance().initialize(config.num_sms,
+                                           config.shared_mem_size_per_sm);
+
+    // 创建SMs
+    sms.clear();
+    sms.reserve(config.num_sms);
+    for (int i = 0; i < config.num_sms; i++) {
+        auto sm = std::make_unique<SMContext>(config.max_warps_per_sm,
+                                              config.max_threads_per_sm,
+                                              config.shared_mem_size_per_sm,
+                                              i); // 传递SM ID
+        // SMContext现在在构造时完成初始化
+        sms.push_back(std::move(sm));
+    }
+
+    std::cout << "Initialized GPU with " << config.num_sms << " SMs"
+              << std::endl;
 }
 
 bool GPUContext::load_json_config(const std::string &config_path) {
@@ -58,7 +89,6 @@ bool GPUContext::load_json_config(const std::string &config_path) {
         if (j.contains("warp_size")) {
             config.warp_size = j["warp_size"];
         }
-        // 添加全局内存大小的配置
         if (j.contains("global_mem_size")) {
             config.global_mem_size = j["global_mem_size"];
         }
@@ -77,41 +107,13 @@ bool GPUContext::load_json_config(const std::string &config_path) {
         std::cout << "  max_blocks_per_sm: " << config.max_blocks_per_sm
                   << std::endl;
         std::cout << "  warp_size: " << config.warp_size << std::endl;
-        std::cout << "  global_mem_size: " << config.global_mem_size
-                  << std::endl;
+        std::cout << "  global_mem_size: " << config.global_mem_size << std::endl;
 
         return true;
     } catch (const std::exception &e) {
         std::cerr << "Error loading config: " << e.what() << std::endl;
         return false;
     }
-}
-
-void GPUContext::init() {
-    // 创建SimpleMemory实例作为成员变量
-    device_memory = std::make_unique<SimpleMemory>(config.global_mem_size);
-
-    // 设置HardwareMemoryManager使用的SimpleMemory实例
-    HardwareMemoryManager::instance().set_simple_memory(device_memory.get());
-
-    // 初始化 ResourceManager
-    ResourceManager::instance().initialize(config.num_sms,
-                                           config.shared_mem_size_per_sm);
-
-    // 创建SMs
-    sms.clear();
-    sms.reserve(config.num_sms);
-    for (int i = 0; i < config.num_sms; i++) {
-        auto sm = std::make_unique<SMContext>(config.max_warps_per_sm,
-                                              config.max_threads_per_sm,
-                                              config.shared_mem_size_per_sm,
-                                              i); // 传递SM ID
-        // SMContext现在在构造时完成初始化
-        sms.push_back(std::move(sm));
-    }
-
-    std::cout << "Initialized GPU with " << config.num_sms << " SMs"
-              << std::endl;
 }
 
 void GPUContext::submit_kernel_request(KernelLaunchRequest &&request) {

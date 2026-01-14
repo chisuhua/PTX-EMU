@@ -99,6 +99,9 @@ public:
     // 获取GPU配置
     const GPUConfig &get_config() const { return config; }
 
+    // 获取资源使用统计
+    SMContext::ResourceStats get_resource_stats() const;
+
     // 检查是否有等待的任务
     bool has_pending_tasks() const;
 

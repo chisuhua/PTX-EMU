@@ -41,7 +41,7 @@ StatementContext::~StatementContext() {
 
 StatementContext::StatementContext(const StatementContext &other)
     : statement(nullptr), statementType(S_UNKNOWN),
-      state(InstructionState::READY) {
+      state(InstructionState::READY), instructionText(other.instructionText) {
     if (!other.statement)
         return;
     statementType = other.statementType;
