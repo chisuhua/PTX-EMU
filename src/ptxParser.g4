@@ -160,7 +160,7 @@ constStatement : CONST ALIGN DIGITS qualifier ID (LeftBracket DIGITS RightBracke
 sharedStatement : SHARED ALIGN DIGITS qualifier ID (LeftBracket DIGITS RightBracket)? SEMI ;
 localStatement : LOCAL ALIGN DIGITS qualifier ID (LeftBracket DIGITS RightBracket)? SEMI ;
 dollorStatement : DOLLOR ID COLON ;
-atStatement : AT operand BRA DOLLOR ID SEMI ;
+atStatement : AT operand BRA qualifier* DOLLOR ID SEMI ;
 pragmaStatement : PRAGMA STRING SEMI ;
 retStatement : RET SEMI ;
 barStatement : BAR qualifier* DIGITS SEMI ;

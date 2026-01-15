@@ -11,7 +11,8 @@ set(CMAKE_CUDA_IMPLICIT_LINK_LIBRARIES "")
 set(CMAKE_CUDA_HOST_IMPLICIT_LINK_DIRECTORIES "")
 set(CMAKE_CUDA_HOST_IMPLICIT_LINK_LIBRARIES "")
 
-
+# 设置CUDA编译选项，保留中间PTX文件
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -keep")
 
 # 启用测试支持
 enable_testing()
@@ -166,13 +167,15 @@ set_tests_properties(test_ptx_float PROPERTIES LABELS "ptx;bitwise")
 # add_standalone_test(test-ptx test-ptx.cpp)
 # add_standalone_test(test-wmma test_wmma.cpp)
 # add_standalone_test(test-cc-register test_cc_register.cpp)
-# add_standalone_test(test_warp_context warp/test_warp_context.cpp)
-# add_standalone_test(test_warp_scheduler warp/test_warp_scheduler.cpp)
-# add_standalone_test(test_sm_context warp/test_sm_context.cpp)
+# add_standalone_test(test_ptx_bra test_ptx_bra.cu)
+# add_standalone_test(warp/test_warp_context.cpp)
+# add_standalone_test(warp/test_warp_scheduler.cpp)
+# add_standalone_test(warp/test_sm_context.cpp)
 
 add_standalone_test(test-ptx.cpp)
 add_standalone_test(test_wmma.cpp)
 add_standalone_test(test_cc_register.cpp)
+add_standalone_test(instructions/test_ptx_bra.cu)
 add_standalone_test(warp/test_warp_context.cpp)
 add_standalone_test(warp/test_warp_scheduler.cpp)
 add_standalone_test(warp/test_sm_context.cpp)
@@ -185,7 +188,7 @@ add_standalone_test(warp/test_sm_context.cpp)
 # 定义 mini tests (基础测试集)
 set(PTX_MINI_TESTS 
     dummy dummy-args dummy-add dummy-float dummy-grid dummy-mul dummy-sub dummy-condition
-    dummy-long dummy-sieve dummy-share)
+    dummy-long dummy-sieve dummy-share dummy-loop)
 
 set(PTX_BASIC_TESTS 
     simpleGEMM-int simpleGEMM-float simpleGEMM-double
@@ -231,46 +234,49 @@ foreach(TEST_NAME ${PTX_ALL_TESTS})
     # 检查测试源文件是否存在
     if(EXISTS ${CMAKE_SOURCE_DIR}/bench/${TEST_NAME}/${TEST_NAME}.cu)
         set(CUDA_INCLUDE_DIRS ${CUDA_PATH}/include)
+    else()
+        message(FATAL_ERROR "Test file does not exist: ${CMAKE_SOURCE_DIR}/bench/${TEST_NAME}/${TEST_NAME}.cu")
+    endif()
 
-        set(OBJECT_FILE "${CMAKE_CURRENT_BINARY_DIR}/${TEST_NAME}.cu.o")
-        add_custom_command(
-            OUTPUT ${OBJECT_FILE}
-            COMMAND ${CMAKE_CUDA_COMPILER}
-                -cudart=shared
-                -g -std=c++14
-                -arch=compute_80
-                -code=compute_80
-                -I${PROJECT_SOURCE_DIR}/include
-                -I${CUDA_INCLUDE_DIRS}
-                -x cu
-                -c ${CMAKE_SOURCE_DIR}/bench/${TEST_NAME}/${TEST_NAME}.cu
-                -o ${OBJECT_FILE}
-            DEPENDS ${CMAKE_SOURCE_DIR}/bench/${TEST_NAME}/${TEST_NAME}.cu
-            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-            VERBATIM
-        )
-        # 创建可执行文件
-        add_executable(${TEST_NAME} "")
+    set(OBJECT_FILE "${CMAKE_CURRENT_BINARY_DIR}/${TEST_NAME}.cu.o")
+    add_custom_command(
+        OUTPUT ${OBJECT_FILE}
+        COMMAND ${CMAKE_CUDA_COMPILER}
+            -cudart=shared
+            -g -std=c++14
+            -arch=compute_80
+            -code=compute_80
+            -I${PROJECT_SOURCE_DIR}/include
+            -I${CUDA_INCLUDE_DIRS}
+            -x cu
+            -c ${CMAKE_SOURCE_DIR}/bench/${TEST_NAME}/${TEST_NAME}.cu
+            -o ${OBJECT_FILE}
+        DEPENDS ${CMAKE_SOURCE_DIR}/bench/${TEST_NAME}/${TEST_NAME}.cu
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        VERBATIM
+    )
+    # 创建可执行文件
+    add_executable(${TEST_NAME} "")
 
-        target_sources(${TEST_NAME} PRIVATE ${OBJECT_FILE}) 
+    target_sources(${TEST_NAME} PRIVATE ${OBJECT_FILE}) 
 
-        set_target_properties(${TEST_NAME} PROPERTIES
-            LINKER_LANGUAGE CXX  # 必须显式指定!
-            SUFFIX ""            # 防止添加.a后缀
-            OUTPUT_NAME "${TEST_NAME}"
-            PREFIX ""  # 防止添加lib前缀
-        )
+    set_target_properties(${TEST_NAME} PROPERTIES
+        LINKER_LANGUAGE CXX  # 必须显式指定!
+        SUFFIX ""            # 防止添加.a后缀
+        OUTPUT_NAME "${TEST_NAME}"
+        PREFIX ""  # 防止添加lib前缀
+    )
        
-        # 包含 CUDA 头文件
-        target_include_directories(${TEST_NAME} PRIVATE ${CUDA_INCLUDE_DIRS})
+    # 包含 CUDA 头文件
+    target_include_directories(${TEST_NAME} PRIVATE ${CUDA_INCLUDE_DIRS})
 
-        # 链接我们自己构建的 cudart 库和 ANTLR 库
-        target_link_directories(${TEST_NAME} PRIVATE 
-            ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
-            ${CMAKE_SOURCE_DIR}/lib
+    # 链接我们自己构建的 cudart 库和 ANTLR 库
+    target_link_directories(${TEST_NAME} PRIVATE 
+        ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+        ${CMAKE_SOURCE_DIR}/lib
             )
 
-        target_link_libraries(${TEST_NAME} PRIVATE
+    target_link_libraries(${TEST_NAME} PRIVATE
             -Wl,--no-as-needed
             cudart
             antlr4_shared
@@ -278,8 +284,8 @@ foreach(TEST_NAME ${PTX_ALL_TESTS})
             -ldl -lpthread
             )
             
-        # 设置 RPATH，确保运行时能找到我们自己的库
-        set_target_properties(${TEST_NAME} PROPERTIES
+    # 设置 RPATH，确保运行时能找到我们自己的库
+    set_target_properties(${TEST_NAME} PROPERTIES
             INSTALL_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
             BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
             BUILD_WITH_INSTALL_RPATH TRUE
@@ -288,27 +294,26 @@ foreach(TEST_NAME ${PTX_ALL_TESTS})
             RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
         )
 
-        add_dependencies(${TEST_NAME} cudart antlr4_shared)  # 确保库先构建
+    add_dependencies(${TEST_NAME} cudart antlr4_shared)  # 确保库先构建
 
-        add_custom_target(${TEST_NAME}_obj DEPENDS ${OBJECT_FILE})
-        add_dependencies(${TEST_NAME} ${TEST_NAME}_obj)
+    add_custom_target(${TEST_NAME}_obj DEPENDS ${OBJECT_FILE})
+    add_dependencies(${TEST_NAME} ${TEST_NAME}_obj)
         
-        # 添加测试
-        add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+    # 添加测试
+    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
         
-        # 设置属性，标记哪些是基础测试
-        list(FIND PTX_MINI_TESTS ${TEST_NAME} IS_MINI_TEST)
-        if(NOT IS_MINI_TEST EQUAL -1)
-            # 标记为基础测试
-            set_tests_properties(${TEST_NAME} PROPERTIES LABELS "mini")
-        endif()
-        list(FIND PTX_BASIC_TESTS ${TEST_NAME} IS_BASIC_TEST)
-        if(NOT IS_BASIC_TEST EQUAL -1)
-            set_tests_properties(${TEST_NAME} PROPERTIES LABELS "basic")
-        endif()
-        list(FIND PTX_MMA_TESTS ${TEST_NAME} IS_MMA_TEST)
-        if(NOT IS_MMA_TEST EQUAL -1)
-            set_tests_properties(${TEST_NAME} PROPERTIES LABELS "mma")
-        endif()
+    # 设置属性，标记哪些是基础测试
+    list(FIND PTX_MINI_TESTS ${TEST_NAME} IS_MINI_TEST)
+    if(NOT IS_MINI_TEST EQUAL -1)
+        # 标记为基础测试
+        set_tests_properties(${TEST_NAME} PROPERTIES LABELS "mini")
+    endif()
+    list(FIND PTX_BASIC_TESTS ${TEST_NAME} IS_BASIC_TEST)
+    if(NOT IS_BASIC_TEST EQUAL -1)
+        set_tests_properties(${TEST_NAME} PROPERTIES LABELS "basic")
+    endif()
+    list(FIND PTX_MMA_TESTS ${TEST_NAME} IS_MMA_TEST)
+    if(NOT IS_MMA_TEST EQUAL -1)
+        set_tests_properties(${TEST_NAME} PROPERTIES LABELS "mma")
     endif()
 endforeach()

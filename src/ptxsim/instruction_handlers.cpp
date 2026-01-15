@@ -72,8 +72,7 @@
 #define IMPLEMENT_BRANCH(Name)                                                 \
     bool Name::operate(ThreadContext *context, StatementContext &stmt) {       \
         context->trace_status(ptxsim::log_level::debug, "thread",              \
-                              "PC=%x (%d,%d) " #Name " : %s", context->pc,     \
-                              context->warp_id_, context->lane_id_,            \
+                              "PC=%x " #Name " : %s", context->pc,             \
                               stmt.instructionText.c_str());                   \
         auto ss = (StatementContext::Name *)stmt.statement;                    \
         auto iter = context->label2pc.find(ss->braTarget);                     \
@@ -87,8 +86,7 @@
 #define IMPLEMENT_BARRIER(Name)                                                \
     bool Name::operate(ThreadContext *context, StatementContext &stmt) {       \
         context->trace_status(ptxsim::log_level::debug, "thread",              \
-                              "PC=%x (%d,%d) " #Name " : %s", context->pc,     \
-                              context->warp_id_, context->lane_id_,            \
+                              "PC=%x " #Name " : %s", context->pc,             \
                               stmt.instructionText.c_str());                   \
         auto ss = (StatementContext::Name *)stmt.statement;                    \
                                                                                \
@@ -106,8 +104,7 @@
 #define IMPLEMENT_GENERIC_INSTR(Name)                                          \
     bool Name::prepare(ThreadContext *context, StatementContext &stmt) {       \
         context->trace_status(ptxsim::log_level::debug, "thread",              \
-                              "PC=%x (%d,%d) " #Name " : %s", context->pc,     \
-                              context->warp_id_, context->lane_id_,            \
+                              "PC=%x " #Name " : %s", context->pc,             \
                               stmt.instructionText.c_str());                   \
         auto ss = (StatementContext::Name *)stmt.statement;                    \
         /* Pre-validate operand addresses */                                   \
