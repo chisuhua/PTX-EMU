@@ -32,7 +32,6 @@ set(SOURCES
     cudart/cuda_driver.cpp  # 添加新的驱动内存管理器
     cudart/simple_memory_allocator.cpp
     cudart/cudart_sim.cpp
-    utils/logger.cpp
     ${ANTLR4_GENERATED_SOURCES}
 )
 

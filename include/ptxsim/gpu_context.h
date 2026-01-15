@@ -88,6 +88,9 @@ public:
     // 获取GPU状态
     EXE_STATE get_state() const { return gpu_state; }
 
+    // 获取GPU时钟
+    uint64_t get_clock() const { return gpu_clock; }
+
     // 获取SM数量
     size_t get_num_sms() const { return sms.size(); }
 
@@ -120,6 +123,9 @@ private:
 
     // GPU状态
     EXE_STATE gpu_state;
+
+    // GPU时钟
+    uint64_t gpu_clock = 0;
 
     // 任务队列
     std::queue<KernelLaunchRequest> task_queue;

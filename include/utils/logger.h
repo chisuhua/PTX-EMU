@@ -28,6 +28,11 @@
 #include <unordered_map>
 #include <vector>
 
+// 前向声明GPUContext类，避免包含完整头文件
+class GPUContext;
+
+// 获取GPU时钟数
+std::string get_gpu_clock_str();
 namespace ptxsim {
 
 // ===========================================================================
@@ -405,14 +410,14 @@ private:
         }
     }
 
-    std::string trim(const std::string &str) const {
-        size_t start = str.find_first_not_of(" \t\r\n");
-        if (start == std::string::npos) {
-            return "";
-        }
-        size_t end = str.find_last_not_of(" \t\r\n");
-        return str.substr(start, end - start + 1);
-    }
+    // std::string trim(const std::string &str) const {
+    //     size_t start = str.find_first_not_of(" \t\r\n");
+    //     if (start == std::string::npos) {
+    //         return "";
+    //     }
+    //     size_t end = str.find_last_not_of(" \t\r\n");
+    //     return str.substr(start, end - start + 1);
+    // }
 
     // 成员变量
     log_level global_level_;
@@ -452,7 +457,8 @@ inline void output_log(log_level level, const std::string &component,
     const auto &format_opts = config.get_format_options();
 
     if (format_opts.show_timestamp) {
-        ss << "[" << detail::current_timestamp() << "] ";
+        // 添加时间戳 - 现在打印GPU时钟
+        ss << "[" << get_gpu_clock_str() << "] ";
     }
 
     if (format_opts.show_level) {
@@ -527,7 +533,8 @@ inline void output_log_simple(log_level level, const std::string &component,
     const auto &format_opts = config.get_format_options();
 
     if (format_opts.show_timestamp) {
-        ss << "[" << detail::current_timestamp() << "] ";
+        // 添加时间戳 - 现在打印GPU时钟
+        ss << "[" << get_gpu_clock_str() << "] ";
     }
 
     if (format_opts.show_level) {

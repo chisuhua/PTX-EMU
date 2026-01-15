@@ -115,8 +115,9 @@ public:
 
         // 然后构建包含线程和块维度信息的消息
         std::string full_msg = ptxsim::detail::printf_format(
-            "Thread[%d,%d,%d][%d,%d,%d] %s", BlockIdx.x, BlockIdx.y, BlockIdx.z,
-            ThreadIdx.x, ThreadIdx.y, ThreadIdx.z, formatted_msg.c_str());
+            "[%d,%d,%d][%d,%d,%d][%d,%d] %s", BlockIdx.x, BlockIdx.y,
+            BlockIdx.z, ThreadIdx.x, ThreadIdx.y, ThreadIdx.z, warp_id_,
+            lane_id_, formatted_msg.c_str());
 
         // 使用logger的printf_to_logger_simple函数打印消息
         ptxsim::printf_to_logger_simple(level, component, "%s",

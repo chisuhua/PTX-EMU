@@ -16,6 +16,7 @@
 #include "ptxsim/ptx_config.h" // 添加DebugConfig所需的头文件
 #include "utils/cubin_utils.h" // 添加cuobjdump工具函数
 #include "utils/logger.h"
+#include <string>
 
 // 添加缺失的宏定义
 #define PTX_ERROR_CUDART(fmt, ...)                                             \
@@ -99,6 +100,13 @@ void initialize_environment() {
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+size_t get_gpu_clock_from_context() {
+    if (g_gpu_context) {
+        return g_gpu_context->get_clock();
+    }
+    return 0;
+}
 
 void **__cudaRegisterFatBinary(void **fatCubinHandle, void *fat_bin,
                                unsigned long long fat_bin_size,

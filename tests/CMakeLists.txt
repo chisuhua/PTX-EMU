@@ -30,7 +30,10 @@ function(add_catch_test TEST_NAME)
     get_filename_component(TEST_TARGET_NAME ${TEST_NAME} NAME_WE)
 
     # 自动包含 catch_amalgamated.cpp
-    list(APPEND SOURCES ${CATCH_INCLUDE_DIR}/catch_amalgamated.cpp)
+    list(APPEND SOURCES 
+    ${CATCH_INCLUDE_DIR}/catch_amalgamated.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils/logger.cpp
+    )
 
     # 创建可执行文件，使用处理后的目标名称
     add_executable(${TEST_TARGET_NAME} ${SOURCES})
@@ -39,6 +42,7 @@ function(add_catch_test TEST_NAME)
     target_include_directories(${TEST_TARGET_NAME} PRIVATE
         ${CATCH_INCLUDE_DIR}
         ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
     )
 
     # 链接我们自己构建的 cudart 库和 ANTLR 库
@@ -49,6 +53,7 @@ function(add_catch_test TEST_NAME)
 
     # 链接库
     target_link_libraries(${TEST_TARGET_NAME} PRIVATE 
+        ptxsim
         cudart 
         antlr4_shared
         -Wl,--as-needed  # 恢复默认行为
@@ -67,13 +72,20 @@ endfunction()
 # 定义创建单个独立测试的函数（不使用Catch2）
 function(add_standalone_test TEST_NAME)
     # 参数：测试名称，其余为该测试的源文件
-    set(SOURCES ${ARGN})
+    set(SOURCES ${TEST_NAME} ${ARGN})
+    
+    get_filename_component(TEST_TARGET_NAME ${TEST_NAME} NAME_WE)
+
+    # 自动包含 catch_amalgamated.cpp
+    list(APPEND SOURCES 
+    ${CMAKE_SOURCE_DIR}/src/utils/logger.cpp
+    )
 
     # 创建可执行文件
-    add_executable(${TEST_NAME} ${SOURCES})
+    add_executable(${TEST_TARGET_NAME} ${SOURCES})
 
     # 包含目录
-    target_include_directories(${TEST_NAME} PRIVATE
+    target_include_directories(${TEST_TARGET_NAME} PRIVATE
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/src
         ${ANTLR4_INCLUDE_DIR}
@@ -81,25 +93,25 @@ function(add_standalone_test TEST_NAME)
     )
     
     # 链接必要的库
-    target_link_libraries(${TEST_NAME} 
+    target_link_libraries(${TEST_TARGET_NAME} 
         ptx_ir
         ptx_parser
-        ptxsim
         cudart
+        ptxsim
         antlr4_shared
         pthread
     )
     
     # 设置运行时路径
-    set_target_properties(${TEST_NAME} PROPERTIES
+    set_target_properties(${TEST_TARGET_NAME} PROPERTIES
         INSTALL_RPATH "$ORIGIN/../lib;${CMAKE_SOURCE_DIR}/lib"
         BUILD_WITH_INSTALL_RPATH TRUE
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
         
     # 注册为 CTest 测试
-    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+    add_test(NAME ${TEST_TARGET_NAME} COMMAND ${TEST_TARGET_NAME})
 
-    set_tests_properties(${TEST_NAME} PROPERTIES
+    set_tests_properties(${TEST_TARGET_NAME} PROPERTIES
         PASS_REGULAR_EXPRESSION "PASS"
         FAIL_REGULAR_EXPRESSION "Error|Failed"
     )
@@ -151,12 +163,20 @@ set_tests_properties(test_ptx_float PROPERTIES LABELS "ptx;bitwise")
 # 添加独立测试（不使用Catch2）
 # ================================
 
-add_standalone_test(test-ptx test-ptx.cpp)
-add_standalone_test(test-wmma test_wmma.cpp)
-add_standalone_test(test-cc-register test_cc_register.cpp)
-add_standalone_test(test_warp_context warp/test_warp_context.cpp)
-add_standalone_test(test_warp_scheduler warp/test_warp_scheduler.cpp)
-add_standalone_test(test_sm_context warp/test_sm_context.cpp)
+# add_standalone_test(test-ptx test-ptx.cpp)
+# add_standalone_test(test-wmma test_wmma.cpp)
+# add_standalone_test(test-cc-register test_cc_register.cpp)
+# add_standalone_test(test_warp_context warp/test_warp_context.cpp)
+# add_standalone_test(test_warp_scheduler warp/test_warp_scheduler.cpp)
+# add_standalone_test(test_sm_context warp/test_sm_context.cpp)
+
+add_standalone_test(test-ptx.cpp)
+add_standalone_test(test_wmma.cpp)
+add_standalone_test(test_cc_register.cpp)
+add_standalone_test(warp/test_warp_context.cpp)
+add_standalone_test(warp/test_warp_scheduler.cpp)
+add_standalone_test(warp/test_sm_context.cpp)
+
 
 # ================================
 # 添加基于 CUDA 的测试（直接使用 CMake 编译）

@@ -1,7 +1,14 @@
 #include "utils/logger.h"
+#include "cudart/ptx_interpreter.h" // 添加这一行以访问g_gpu_context
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+
+// 声明获取GPU时钟的函数 - 实现在cudart_sim.cpp中
+extern "C" size_t get_gpu_clock_from_context();
+std::string get_gpu_clock_str() {
+    return "CLK:" + std::to_string(get_gpu_clock_from_context());
+}
 
 namespace ptxsim {
 
@@ -69,6 +76,41 @@ void LoggerConfig::load_from_ini_section(
         set_use_color_output(colorize);
     }
 
+    // 读取日志格式选项
+    std::string show_timestamp_str;
+    inipp::get_value(logger_section, "show_timestamp", show_timestamp_str);
+    if (!show_timestamp_str.empty()) {
+        format_options_.show_timestamp =
+            (show_timestamp_str == "true" || show_timestamp_str == "1");
+    }
+
+    std::string show_level_str;
+    inipp::get_value(logger_section, "show_level", show_level_str);
+    if (!show_level_str.empty()) {
+        format_options_.show_level =
+            (show_level_str == "true" || show_level_str == "1");
+    }
+
+    std::string show_component_str;
+    inipp::get_value(logger_section, "show_component", show_component_str);
+    if (!show_component_str.empty()) {
+        format_options_.show_component =
+            (show_component_str == "true" || show_component_str == "1");
+    }
+
+    std::string show_location_str;
+    inipp::get_value(logger_section, "show_location", show_location_str);
+    if (!show_location_str.empty()) {
+        format_options_.show_location =
+            (show_location_str == "true" || show_location_str == "1");
+    }
+
+    std::string show_thread_id_str;
+    inipp::get_value(logger_section, "show_thread_id", show_thread_id_str);
+    if (!show_thread_id_str.empty()) {
+        format_options_.show_thread_id =
+            (show_thread_id_str == "true" || show_thread_id_str == "1");
+    }
 
     // 读取组件级别配置
     for (const auto &pair : logger_section) {

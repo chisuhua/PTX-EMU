@@ -262,12 +262,15 @@ EXE_STATE GPUContext::exe_once() {
         }
     }
 
-    // 如果所有SM都完成了当前kernel，但还有任务在队列中，保持RUN状态
+    // 如果所有SM都完成了当前kernel
     if (all_finished && task_queue.empty() && executing_requests.empty()) {
         gpu_state = EXIT; // 没有任务了，设置为EXIT状态
     } else {
         gpu_state = RUN; // 还有任务要处理或当前kernel还在运行
     }
+
+    // 每次执行后增加GPU时钟
+    gpu_clock++;
 
     return gpu_state;
 }
