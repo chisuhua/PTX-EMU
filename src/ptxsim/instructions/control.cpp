@@ -11,6 +11,14 @@ void BRA::process_operation(ThreadContext *context, void *op[1],
     context->next_pc = target_pc - 1;
 }
 
+void AT::process_operation(ThreadContext *context, void *op[2],
+                           const std::vector<Qualifier> &qualifier) {
+    int predicate = *(int *)(op[0]);
+    int target_pc = *(int *)(op[1]);
+    if (predicate)
+        context->next_pc = target_pc - 1;
+}
+
 // void RET::process_operation(ThreadContext *context) { context->state = EXIT;
 // }
 

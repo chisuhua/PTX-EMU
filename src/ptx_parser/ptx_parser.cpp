@@ -543,7 +543,7 @@ void PtxListener::exitAtStatement(ptxParser::AtStatementContext *ctx) {
     auto st = (StatementContext::AT *)statement;
 
     /* reg */
-    fetchOperand(st->atPred);
+    fetchOperand(st->operands);
 
     /* ID */
     st->atLabelName = ctx->ID()->getText();

@@ -61,12 +61,6 @@
         return;                                                                \
     }
 
-#define IMPLEMENT_PREDICATE_PREFIX(Name)                                       \
-    void Name::execute(ThreadContext *context, StatementContext &stmt) {       \
-        context->next_pc = context->pc + 1;                                    \
-        return;                                                                \
-    }
-
 // BRA
 // -1 because pc will be incremented after this instruction
 #define IMPLEMENT_BRANCH(Name)                                                 \
@@ -133,6 +127,43 @@
         }                                                                      \
         stmt.state = InstructionState::COMMIT;                                 \
         return true; /* Typically no commit work needed */                     \
+    }
+
+// AT BRA
+#define IMPLEMENT_PREDICATE_PREFIX(Name)                                       \
+    bool Name::prepare(ThreadContext *context, StatementContext &stmt) {       \
+        context->trace_status(ptxsim::log_level::debug, "thread",              \
+                              "PC=%x " #Name " : %s", context->pc,             \
+                              stmt.instructionText.c_str());                   \
+        auto ss = (StatementContext::Name *)stmt.statement;                    \
+        /* Pre-validate predicate operand addresses */                         \
+        if (!ss->operands[0].operand_phy_addr) {                               \
+            void *result =                                                     \
+                context->acquire_operand(ss->operands[0], ss->qualifier);      \
+            if (!result) {                                                     \
+                PTX_DEBUG_EMU("Failed to get operand address for op[%d]", 0);  \
+                return false;                                                  \
+            } else {                                                           \
+                ss->operands[0].operand_phy_addr = result;                     \
+            }                                                                  \
+        }                                                                      \
+        context->collect_operands(stmt, ss->operands, &(ss->qualifier));       \
+        auto iter = context->label2pc.find(ss->atLabelName);                   \
+        assert(iter != context->label2pc.end());                               \
+        context->operand_collected[1] = &(iter->second);                       \
+        context->next_pc = context->pc + 1;                                    \
+        return true;                                                           \
+    }                                                                          \
+    bool Name::operate(ThreadContext *context, StatementContext &stmt) {       \
+        process_operation(context, &(context->operand_collected[0]),           \
+                          *stmt.qualifier);                                    \
+        return true;                                                           \
+    }                                                                          \
+    bool Name::commit(ThreadContext *context, StatementContext &stmt) {        \
+        auto ss = (StatementContext::Name *)stmt.statement;                    \
+        ss->operands[0].operand_phy_addr = nullptr;                            \
+        stmt.state = InstructionState::COMMIT;                                 \
+        return true;                                                           \
     }
 
 #define IMPLEMENT_ATOM_INSTR(Name)                                             \

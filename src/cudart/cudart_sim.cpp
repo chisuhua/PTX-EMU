@@ -156,6 +156,8 @@ void **__cudaRegisterFatBinary(void **fatCubinHandle, void *fat_bin,
     parser.addParseListener(&ptxListener);
     tree::ParseTree *tree = parser.ast();
 
+    ptxListener.test_semantic();
+
     // 4. 初始化PtxInterpreter - 现在会拷贝ptxContext以避免悬垂引用
     g_ptx_interpreter->set_ptx_context(ptxListener.ptxContext);
 

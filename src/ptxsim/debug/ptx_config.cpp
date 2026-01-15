@@ -21,6 +21,7 @@ std::string DebugConfig::getOperandsString(const StatementContext &statement) {
     case enum_val: {                                                           \
         if constexpr (std::string_view(#struct_kind) == "GENERIC_INSTR" ||     \
                       std::string_view(#struct_kind) == "ATOM_INSTR" ||        \
+                      std::string_view(#struct_kind) == "PREDICATE_PREFIX" ||  \
                       std::string_view(#struct_kind) == "WMMA_INSTR") {        \
             auto *stmt = static_cast<const StatementContext::BASE_INSTR *>(    \
                 statement.statement);                                          \

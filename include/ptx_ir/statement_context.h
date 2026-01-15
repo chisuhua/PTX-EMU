@@ -75,12 +75,6 @@ public:
         int barId;                                                             \
     };
 
-#define DEFINE_PREDICATE_PREFIX(Name, _)                                       \
-    struct Name {                                                              \
-        OperandContext atPred;                                                 \
-        std::string atLabelName;                                               \
-    };
-
     // =============================================================================
     // 4. 通用指令结构体
     // =============================================================================
@@ -92,6 +86,12 @@ public:
 #define DEFINE_GENERIC_INSTR(Name, OpCount)                                    \
     struct Name : BASE_INSTR {                                                 \
         static constexpr int op_count = OpCount;                               \
+    };
+
+#define DEFINE_PREDICATE_PREFIX(Name, OpCount)                                 \
+    struct Name : BASE_INSTR {                                                 \
+        static constexpr int op_count = OpCount;                               \
+        std::string atLabelName;                                               \
     };
 
 #define DEFINE_WMMA_INSTR(Name, OpCount)                                       \
@@ -222,12 +222,13 @@ inline void deepCopyOperandArray(std::vector<OperandContext> &dst,
         statement = dest;                                                      \
     } while (0)
 
-#define COPY_IMPL_PREDICATE_PREFIX_IMPL(Name)                                  \
+#define COPY_IMPL_PREDICATE_PREFIX_IMPL(Name, _)                               \
     do {                                                                       \
         auto source = static_cast<const Name *>(other.statement);              \
         auto dest = new Name();                                                \
-        dest->atPred = OperandContext(source->atPred);                         \
         dest->atLabelName = source->atLabelName;                               \
+        dest->qualifier = source->qualifier;                                   \
+        deepCopyOperandArray(dest->operands, source->operands);                \
         statement = dest;                                                      \
     } while (0)
 

@@ -60,7 +60,7 @@ StatementContext::StatementContext(const StatementContext &other)
 #define COPY_IMPL_BRANCH(Name, OpCount) COPY_IMPL_BRANCH_IMPL(Name)
 #define COPY_IMPL_BARRIER(Name, OpCount) COPY_IMPL_BARRIER_IMPL(Name)
 #define COPY_IMPL_PREDICATE_PREFIX(Name, OpCount)                              \
-    COPY_IMPL_PREDICATE_PREFIX_IMPL(Name)
+    COPY_IMPL_PREDICATE_PREFIX_IMPL(Name, OpCount)
 #define COPY_IMPL_GENERIC_INSTR(Name, OpCount)                                 \
     COPY_IMPL_GENERIC_INSTR_IMPL(Name, OpCount)
 #define COPY_IMPL_WMMA_INSTR(Name, OpCount) COPY_IMPL_WMMA_INSTR_IMPL(Name)

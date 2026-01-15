@@ -50,12 +50,6 @@ public:
     // virtual void execute(ThreadContext *context, StatementContext &stmt);
 };
 
-// PREDICATE_PREFIX 类型的基类处理器
-class PREDICATE_PREFIX : public InstructionHandler {
-public:
-    // virtual void execute(ThreadContext *context, StatementContext &stmt);
-};
-
 class INSTR_BASE : public InstructionHandler {
 public:
     virtual void execute(ThreadContext *context, StatementContext &stmt);
@@ -69,6 +63,10 @@ public:
 
 // BRANCH 类型的基类处理器
 class BRANCH : public INSTR_BASE {
+public:
+};
+
+class PREDICATE_PREFIX : public INSTR_BASE {
 public:
 };
 

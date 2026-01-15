@@ -37,12 +37,6 @@ class StatementContext;
         void execute(ThreadContext *context, StatementContext &stmt) override; \
     };
 
-#define DECLARE_PREDICATE_PREFIX(Name, _)                                      \
-    class Name : public PREDICATE_PREFIX {                                     \
-    public:                                                                    \
-        void execute(ThreadContext *context, StatementContext &stmt) override; \
-    };
-
 #define DECLARE_VOID_INSTR(Name, _)                                            \
     class Name : public VOID_INSTR {                                           \
     public:                                                                    \
@@ -71,6 +65,18 @@ class StatementContext;
     public:                                                                    \
         static constexpr int op_count = OpCount;                               \
         bool prepare(ThreadContext *context, StatementContext &stmt) override; \
+        bool commit(ThreadContext *context, StatementContext &stmt) override;  \
+        void                                                                   \
+        process_operation(ThreadContext *context, void **operands,             \
+                          const std::vector<Qualifier> &qualifiers) override;  \
+    };
+
+#define DECLARE_PREDICATE_PREFIX(Name, OpCount)                                \
+    class Name : public PREDICATE_PREFIX {                                     \
+    public:                                                                    \
+        static constexpr int op_count = OpCount;                               \
+        bool prepare(ThreadContext *context, StatementContext &stmt) override; \
+        bool operate(ThreadContext *context, StatementContext &stmt) override; \
         bool commit(ThreadContext *context, StatementContext &stmt) override;  \
         void                                                                   \
         process_operation(ThreadContext *context, void **operands,             \
