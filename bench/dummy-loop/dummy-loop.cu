@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define SIZE 64
+#define SIZE 32
 
 template<typename T>
 __global__ void dummy_d(T *a) {
@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
         // 预期结果是 0+1+2+...+i = i*(i+1)/2
         int expected = i * (i + 1) / 2;
         if (host_a[i] != expected) {
-            printf("at:%p expect:%d got:%d\n", &host_a[i], expected, host_a[i]);
+            printf("at:%d expect:%d got:%d\n", i, expected, host_a[i]);
             success = false;
             break;
         }
