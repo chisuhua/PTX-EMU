@@ -163,6 +163,8 @@
         auto ss = (StatementContext::Name *)stmt.statement;                    \
         ss->operands[0].operand_phy_addr = nullptr;                            \
         stmt.state = InstructionState::COMMIT;                                 \
+        context->trace_status(ptxsim::log_level::debug, "thread",              \
+                              "Commit: NEXT_PC=%x ", context->next_pc);        \
         return true;                                                           \
     }
 

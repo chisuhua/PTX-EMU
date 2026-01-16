@@ -243,7 +243,7 @@ foreach(TEST_NAME ${PTX_ALL_TESTS})
         OUTPUT ${OBJECT_FILE}
         COMMAND ${CMAKE_CUDA_COMPILER}
             -cudart=shared
-            -g -std=c++14
+            -g -std=c++17
             -arch=compute_80
             -code=compute_80
             -I${PROJECT_SOURCE_DIR}/include

@@ -69,6 +69,11 @@ add_subdirectory(src)
 enable_testing()
 add_subdirectory(tests)
 
+# 添加cute子目录（如果存在）
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/bench/cute/CMakeLists.txt)
+    add_subdirectory(bench/cute)
+endif()
+
 # 添加安装规则
 install(DIRECTORY lib/ 
         DESTINATION lib
