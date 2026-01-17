@@ -35,6 +35,8 @@ SHARED: '.shared' ;
 
 GLOBAL: '.global' ;
 
+EXTERN: '.extern' ;
+
 ALIGN: '.align' ;
 
 GT: '.gt' ;

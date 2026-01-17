@@ -108,6 +108,8 @@ statement : compoundStatement
           | constStatement
           | sharedStatement
           | localStatement
+          | globalStatement
+          | externSharedStatement
           | dollorStatement
           | atStatement
           | pragmaStatement
@@ -159,6 +161,8 @@ regStatement : REG qualifier reg (LESS DIGITS GREATER)? SEMI ;
 constStatement : CONST ALIGN DIGITS qualifier ID (LeftBracket DIGITS RightBracket)? SEMI ;
 sharedStatement : SHARED ALIGN DIGITS qualifier ID (LeftBracket DIGITS RightBracket)? SEMI ;
 localStatement : LOCAL ALIGN DIGITS qualifier ID (LeftBracket DIGITS RightBracket)? SEMI ;
+globalStatement : GLOBAL ALIGN DIGITS qualifier ID (LeftBracket DIGITS RightBracket)? SEMI ;
+externSharedStatement : EXTERN SHARED (ALIGN DIGITS)? qualifier ID (LeftBracket RightBracket)? SEMI ;
 dollorStatement : DOLLOR ID COLON ;
 atStatement : AT operand BRA qualifier* DOLLOR ID SEMI ;
 pragmaStatement : PRAGMA STRING SEMI ;

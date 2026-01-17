@@ -20,7 +20,7 @@ foreach(CUDA_FILE ${CUTE_CUDA_FILES})
     get_filename_component(TEST_NAME ${CUDA_FILE} NAME_WE)
     
     # 设置完整测试名称
-    set(FULL_TEST_NAME "cute_${TEST_NAME}")
+    set(FULL_TEST_NAME "${TEST_NAME}")
     
     # 设置对象文件
     set(OBJECT_FILE "${CMAKE_CURRENT_BINARY_DIR}/${TEST_NAME}.cu.o")

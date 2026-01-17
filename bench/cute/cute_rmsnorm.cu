@@ -6,6 +6,18 @@
 #include <random>
 #include <cassert>
 
+// ----------------------------
+// Utility
+// ----------------------------
+#define cudaCheck(err) \
+    do { \
+        cudaError_t e = (err); \
+        if (e != cudaSuccess) { \
+            std::cerr << "CUDA error " << e << " at " << __FILE__ << ":" << __LINE__ << std::endl; \
+            exit(1); \
+        } \
+    } while(0)
+
 // CUTLASS CUTE headers (only needed for layout abstraction; we use minimal subset)
 #include "cute/tensor.hpp"
 using namespace cute;
@@ -23,7 +35,7 @@ std::vector<float> reference_rmsnorm(const std::vector<float>& input, int M, int
         }
         float rms = sqrtf(sum_sq / static_cast<float>(N));
         float scale = 1.0f / fmaxf(rms, sqrtf(eps)); // equivalent to rsqrt(mean_sq + eps)
-        for (int j = 0; j < j < N; ++j) {
+        for (int j = 0; j < N; ++j) {
             output[i * N + j] = input[i * N + j] * scale;
         }
     }
@@ -48,7 +60,7 @@ __global__ void rmsnorm_kernel(
 
     // Extract the row as a rank-1 tensor
     auto input_row  = gLayout(row, _);
-    auto output_row = gLayout(row, _);
+    auto output_row = gLayout(row, _); // This creates a view, not a direct reference to output
 
     extern __shared__ float sdata[];
 
@@ -85,7 +97,8 @@ __global__ void rmsnorm_kernel(
     // Step 4: Write normalized output
     for (int j = tid; j < N; j += blockSize) {
         T val = input_row(j);
-        output_row(j) = static_cast<T>(static_cast<float>(val) * scale);
+        // Fix: Directly calculate output index instead of using output_row(j)
+        output[row * N + j] = static_cast<T>(static_cast<float>(val) * scale);
     }
 }
 
@@ -101,18 +114,6 @@ void launch_rmsnorm(float const* d_input, float* d_output, int M, int N, cudaStr
     rmsnorm_kernel<float><<<grid, block, smem_size, stream>>>(d_input, d_output, M, N);
     cudaCheck(cudaGetLastError());
 }
-
-// ----------------------------
-// Utility
-// ----------------------------
-#define cudaCheck(err) \
-    do { \
-        cudaError_t e = (err); \
-        if (e != cudaSuccess) { \
-            std::cerr << "CUDA error " << e << " at " << __FILE__ << ":" << __LINE__ << std::endl; \
-            exit(1); \
-        } \
-    } while(0)
 
 // ----------------------------
 // Main test
