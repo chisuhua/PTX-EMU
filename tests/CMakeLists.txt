@@ -223,10 +223,10 @@ cmake_policy(SET CMP0104 NEW)
 # 简化架构设置处理 - 现代CMake方式
 if(NOT DEFAULT_CUDA_ARCH)
     # 默认使用Ampere架构
-    set(DEFAULT_CUDA_ARCH "80")
+    set(DEFAULT_CUDA_ARCH "100")
 endif()
 
-set(CMAKE_CUDA_ARCHITECTURES "80")       # 仅虚拟架构
+set(CMAKE_CUDA_ARCHITECTURES "100")       # 仅虚拟架构
 
 
 # 为每个测试创建 CMake 编译目标
@@ -244,8 +244,8 @@ foreach(TEST_NAME ${PTX_ALL_TESTS})
         COMMAND ${CMAKE_CUDA_COMPILER}
             -cudart=shared
             -g -std=c++17
-            -arch=compute_80
-            -code=compute_80
+            -arch=compute_100
+            -code=compute_100
             -I${PROJECT_SOURCE_DIR}/include
             -I${CUDA_INCLUDE_DIRS}
             -x cu

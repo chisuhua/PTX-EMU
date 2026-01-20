@@ -38,7 +38,7 @@ find_package(Java COMPONENTS Runtime REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 
 # 设置CUDA架构
-set(DEFAULT_CUDA_ARCH "80" CACHE STRING "Default CUDA architecture")
+set(DEFAULT_CUDA_ARCH "100" CACHE STRING "Default CUDA architecture")
 
 # 添加ANTLR依赖
 set(ANTLR_EXECUTABLE ${CMAKE_SOURCE_DIR}/antlr4/antlr-4.11.1-complete.jar)

@@ -93,7 +93,7 @@ params : param COMMA params
        | param 
        ;
 
-param : PARAM (ALIGN DIGITS)? qualifier ID (LeftBracket DIGITS RightBracket)?
+param : PARAM qualifier (PTR)? (ALIGN DIGITS)? ID (LeftBracket DIGITS RightBracket)?
       ;
 
 compoundStatement : LeftBrace statements? RightBrace 
@@ -110,6 +110,7 @@ statement : compoundStatement
           | localStatement
           | globalStatement
           | externSharedStatement
+          | externFuncStatement
           | dollorStatement
           | atStatement
           | pragmaStatement
@@ -161,8 +162,11 @@ regStatement : REG qualifier reg (LESS DIGITS GREATER)? SEMI ;
 constStatement : CONST ALIGN DIGITS qualifier ID (LeftBracket DIGITS RightBracket)? SEMI ;
 sharedStatement : SHARED ALIGN DIGITS qualifier ID (LeftBracket DIGITS RightBracket)? SEMI ;
 localStatement : LOCAL ALIGN DIGITS qualifier ID (LeftBracket DIGITS RightBracket)? SEMI ;
-globalStatement : GLOBAL ALIGN DIGITS qualifier ID (LeftBracket DIGITS RightBracket)? SEMI ;
+globalStatement : GLOBAL ALIGN DIGITS qualifier ID (LeftBracket DIGITS RightBracket)? (ASSIGN LeftBrace (DIGITS (COMMA DIGITS)*)? RightBrace)? SEMI ;
 externSharedStatement : EXTERN SHARED (ALIGN DIGITS)? qualifier ID (LeftBracket RightBracket)? SEMI ;
+externFuncStatement : EXTERN FUNC LeftParen PARAM LeftParen qualifier ID RightParen ID RightParen ID LeftParen (param (COMMA param)*)? RightParen SEMI ;
+
+retval : PARAM LeftParen qualifier ID RightParen ID ;
 dollorStatement : DOLLOR ID COLON ;
 atStatement : AT operand BRA qualifier* DOLLOR ID SEMI ;
 pragmaStatement : PRAGMA STRING SEMI ;

@@ -31,8 +31,8 @@ foreach(CUDA_FILE ${CUTE_CUDA_FILES})
         COMMAND ${CMAKE_CUDA_COMPILER}
             -cudart=shared
             -g -std=c++17
-            -arch=compute_80
-            -code=compute_80
+            -arch=compute_100
+            -code=compute_100
             -I${PROJECT_SOURCE_DIR}/include
             -I${CUDA_PATH}/include
             -I${PROJECT_SOURCE_DIR}/bench/cute/include

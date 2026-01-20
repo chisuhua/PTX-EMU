@@ -115,6 +115,12 @@ SAT: '.sat' ;
 
 PRAGMA: '.pragma' ;
 
+FUNC: '.func' ;
+
+PTR: '.ptr' ;
+
+/* ************ */
+
 LD: 'ld' ;
 
 MOV: 'mov' ;
@@ -221,6 +227,8 @@ LESS: '<' ;
 GREATER: '>' ;
 
 SEMI: ';' ;
+
+ASSIGN: '=' ;
 
 LeftParen: '(';
 

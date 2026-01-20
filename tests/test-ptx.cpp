@@ -3,13 +3,13 @@
  * test lexer parser semantic
  */
 
-// #define TOKEN
-// #define TREE
 #include "ptxLexer.h"
 #include "ptx_parser/ptx_parser.h"
 #include <ostream>
 #include <string>
 
+// #define TOKEN
+#define TREE
 #define SEMANTIC
 
 int main(int argc, const char *argv[]) {
@@ -69,7 +69,11 @@ int main(int argc, const char *argv[]) {
     tl.test_semantic();
 #endif
 
-    std::cout << "PASS" << std::endl;
+    if (tl.ptxContext.ptxKernels.size() >= 1) {
+        std::cout << "PASS" << std::endl;
+    } else {
+        std::cout << "FAIL" << std::endl;
+    }
     stream.close();
 
     return 0;

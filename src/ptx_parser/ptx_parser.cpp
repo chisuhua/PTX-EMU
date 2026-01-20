@@ -155,8 +155,13 @@ void PtxListener::exitTargetDes(ptxParser::TargetDesContext *ctx) {
     /* assume target always be 'sm_xx' */
     auto id = ctx->ID();
     auto str = id->getText();
-    assert(str.length() == 5);
-    ptxContext.ptxTarget = stoi(id->getText().substr(3, 2));
+    if (str.length() == 5) {
+        ptxContext.ptxTarget = stoi(id->getText().substr(3, 2));
+    } else if (str.length() == 6) {
+        ptxContext.ptxTarget = stoi(id->getText().substr(3, 3));
+    } else {
+        assert(0 && "sm_xxx is not recognized!\n");
+    }
 #ifdef LOG
     std::cout << __func__ << std::endl;
 #endif
