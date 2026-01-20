@@ -2,6 +2,7 @@
 #include <cuda_runtime.h>
 #include <iostream>
 #include <vector>
+#include <cstdint>
 
 // Only need this one header for basic CUTE
 #include <cute/tensor.hpp>
@@ -37,11 +38,15 @@ __global__ void cute_hello_kernel(half const* gptr, float* out) {
         out[0] = __half2float(a00);
         out[1] = __half2float(a12);
         out[2] = __half2float(t01);
-    //     printf("Original [0][0] = %.1f\n", __half2float(a00));
-    //     printf("Original [1][2] = %.1f\n", __half2float(a12));
-    //     printf("Transposed view [0][1] = %.1f (should equal Original[1][0] = %.1f)\n",
-    //            __half2float(t01), __half2float(tensor(1, 0)));
+        out[3] = __half2float(tensor(1,0));
     }
+}
+
+// Helper: get float bits as uint32_t
+uint32_t float_to_bits(float f) {
+    uint32_t bits;
+    std::memcpy(&bits, &f, sizeof(f));
+    return bits;
 }
 
 int main() {
@@ -50,19 +55,58 @@ int main() {
     for (int i = 0; i < N; ++i) {
         h_data[i] = __float2half(static_cast<float>(i * 1.5f)); // 0.0, 1.5, 3.0, ...
     }
+    // 🔍 Print the original 4x4 Tile on host (before copying to GPU)
+    std::cout << "Original 4x4 Tile (row-major) on host:\n";
+    std::cout << "Format: value | half(16b) | float(32b)\n\n";
+
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            half h = h_data[i * 4 + j];
+            float f = __half2float(h);
+            unsigned short half_bits = __half_as_ushort(h);
+            uint32_t float_bits = float_to_bits(f);
+
+            // Save current flags
+            std::ios_base::fmtflags f_flags(std::cout.flags());
+
+            std::cout << std::fixed << std::setprecision(1) << std::setw(6) << f
+                      << " | 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(4) << half_bits
+                      << " | 0x" << std::setw(8) << float_bits
+                      << "  ";
+
+            // Restore flags (back to dec, etc.)
+            std::cout.flags(f_flags);
+        }
+        std::cout << "\n";
+    }
+    std::cout << "\n";
 
     half* d_data;
     float* d_out;
     cudaMalloc(&d_data, N * sizeof(half));
-    cudaMalloc(&d_out, 3 * sizeof(float));
+    cudaMalloc(&d_out, 4 * sizeof(float));
     cudaMemcpy(d_data, h_data.data(), N * sizeof(half), cudaMemcpyHostToDevice);
 
     cute_hello_kernel<<<1, 32>>>(d_data, d_out);
     cudaDeviceSynchronize();
 
-    float h_out[3];
-    cudaMemcpy(h_out, d_out, 3 * sizeof(float), cudaMemcpyDeviceToHost);
-    std::cout << "Result: [" << h_out[0] << ", " << h_out[1] << ", " << h_out[2] << "]\n";
+    // Optional: check for kernel errors
+    // cudaError_t err = cudaGetLastError();
+    // if (err != cudaSuccess) {
+    //     std::cerr << "Kernel error: " << cudaGetErrorString(err) << "\n";
+    // }
+
+    float h_out[4];
+    cudaMemcpy(h_out, d_out, 4 * sizeof(float), cudaMemcpyDeviceToHost);
+    for (int i = 0; i < 4; ++i) {
+      float f = h_out[i];
+      uint32_t float_bits = float_to_bits(f);
+
+      std::cout << std::setw(6) << std::fixed << std::setprecision(1) << f
+                      << " | 0x" << std::setw(8) << float_bits << "  ";
+      std::cout << "\n";
+    }
+
 
     cudaFree(d_data);
     return 0;
