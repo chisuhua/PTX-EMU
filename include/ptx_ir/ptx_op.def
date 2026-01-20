@@ -17,6 +17,7 @@ X(S_REG,     REG,     reg,     0, OPERAND_REG)      // Register reference
 X(S_CONST,   CONST,   const,   0, OPERAND_CONST)      // Constant value
 X(S_SHARED,  SHARED,  shared,  0, OPERAND_MEMORY)      // Shared memory address
 X(S_LOCAL,   LOCAL,   local,   0, OPERAND_MEMORY)      // Local memory address
+X(S_GLOBAL,  GLOBAL,  global,  0, OPERAND_MEMORY)      // Global memory address
 X(S_DOLLOR,  DOLLOR,  dollar,  0, SIMPLE_NAME)      // Inline register ($r1)
 
 // -----------------------------------------------------------------------------

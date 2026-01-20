@@ -15,8 +15,9 @@
 
 // 不再需要在这里声明g_gpu_context，已在头文件中声明
 
-PtxInterpreter::PtxInterpreter() : ptxContext(nullptr), kernelContext(nullptr), 
-                                   kernelArgs(nullptr), param_space(nullptr) {
+PtxInterpreter::PtxInterpreter()
+    : ptxContext(nullptr), kernelContext(nullptr), kernelArgs(nullptr),
+      param_space(nullptr) {
     // 不再创建 GPUContext
 }
 
@@ -93,17 +94,18 @@ void PtxInterpreter::setupConstantSymbols(
         PTX_DEBUG_EMU("ptxContext is null in setupConstantSymbols");
         return;
     }
-    
+
     for (auto e : ptxContext->ptxStatements) {
-        if (e.statementType != S_CONST) continue;
-        
+        if (e.statementType != S_CONST)
+            continue;
+
         Symtable *s = new Symtable();
         auto st = (StatementContext::CONST *)e.statement;
         if (!st) {
             delete s;
             continue;
         }
-        
+
         assert(st->constDataType.size() == 1);
         s->name = st->constName;
         s->symType = st->constDataType.back();
@@ -128,7 +130,7 @@ void PtxInterpreter::setupKernelArguments(
     for (int i = 0; i < kernelContext->kernelParams.size(); i++) {
         auto e = kernelContext->kernelParams[i];
         total_param_size +=
-            Q2bytes(e.paramType) * (e.paramNum ? e.paramNum : 1);
+            Q2bytes(e.paramTypes[0]) * (e.paramNum ? e.paramNum : 1);
     }
 
     // 申请PARAM空间，使用 CudaDriver 提供的 malloc_param 函数
@@ -154,8 +156,8 @@ void PtxInterpreter::setupKernelArguments(
         Symtable *s = new Symtable();
         s->name = e.paramName;
         s->elementNum = e.paramNum;
-        s->symType = e.paramType;
-        s->byteNum = Q2bytes(e.paramType);
+        s->symType = e.paramTypes[0];
+        s->byteNum = Q2bytes(e.paramTypes[0]);
 
         // 计算当前参数大小
         size_t param_size = s->byteNum * (e.paramNum ? e.paramNum : 1);
@@ -173,9 +175,9 @@ void PtxInterpreter::setupKernelArguments(
         name2Sym[s->name] = s;
         offset += param_size;
         PTX_DEBUG_EMU("Added kernel argument to name2Sym: name=%s, "
-                      "symbol_table_entry=%p, stored_value=0x%lx",
-                      "first_8_bytes_of_data=0x%lx", s->name.c_str(), s, s->val,
-                      *(uint64_t *)(s->val));
+                      "symbol_table_entry = %p, stored_value = 0x%llx,"
+                      "first_8_bytes_of_data = 0x%llx ",
+                      s->name.c_str(), s, s->val, *(uint64_t *)(s->val));
     }
 }
 

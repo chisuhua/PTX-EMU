@@ -76,6 +76,10 @@ public:
     virtual void
     exitLocalStatement(ptxParser::LocalStatementContext *ctx) override;
     virtual void
+    enterGlobalStatement(ptxParser::GlobalStatementContext *ctx) override;
+    virtual void
+    exitGlobalStatement(ptxParser::GlobalStatementContext *ctx) override;
+    virtual void
     enterDollorStatement(ptxParser::DollorStatementContext *ctx) override;
     virtual void
     exitDollorStatement(ptxParser::DollorStatementContext *ctx) override;

@@ -88,7 +88,12 @@ void PtxListener::test_semantic() {
             if (param.paramAlign != 0) {
                 std::printf("align %d ", param.paramAlign);
             }
-            std::printf("%s ", Q2s(param.paramType).c_str());
+            
+            // 遍历paramTypes向量并打印每个类型
+            for(const auto& paramType : param.paramTypes) {
+                std::printf("%s ", Q2s(paramType).c_str());
+            }
+            
             if (param.paramNum != 0) {
                 std::printf("arraySize %d ", param.paramNum);
             }
@@ -263,24 +268,27 @@ void PtxListener::enterQualifier(ptxParser::QualifierContext *ctx) {
 }
 
 void PtxListener::exitQualifier(ptxParser::QualifierContext *ctx) {
-// Use a macro to generate the if-else chain for all qualifiers
+#ifdef LOG
+    std::cout << __func__ << std::endl;
+#endif
+
+    // 获取当前上下文的完整文本
+    std::string ctxText = ctx->getText();
+    
+    // 使用宏来处理各种情况
 #define X(enum_val, enum_name, str_val)                                        \
-    else if (ctx->enum_name()) {                                               \
+    else if (ctxText.find(std::string(str_val).substr(1)) != std::string::npos) {          \
         qualifier.push(Qualifier::enum_val);                                   \
     }
 
-    if (0) { // Initial condition to start the if-else chain
-        // No action for the initial false condition
+    if (0) { // 初始条件以启动if-else链
+        // 无操作
     }
 #include "ptx_ir/ptx_qualifier.def"
 #undef X
     else {
         assert(0 && "some qualifier not recognized!\n");
     }
-
-#ifdef LOG
-    std::cout << __func__ << std::endl;
-#endif
 }
 
 void PtxListener::enterParams(ptxParser::ParamsContext *ctx) {
@@ -308,6 +316,9 @@ void PtxListener::exitParam(ptxParser::ParamContext *ctx) {
     /* ID */
     paramContext->paramName = ctx->ID()->getText();
 
+    /* Check for PTR modifier */
+    paramContext->isPtr = ctx->PTR() != nullptr;
+
     /* align */
     if (ctx->ALIGN()) {
         digit_idx++;
@@ -316,16 +327,18 @@ void PtxListener::exitParam(ptxParser::ParamContext *ctx) {
         paramContext->paramAlign = 0;
     }
 
-    /* paramNum */
+    /* paramNum - check if we have array brackets */
     if (ctx->LeftBracket()) {
         paramContext->paramNum = stoi(ctx->DIGITS(digit_idx)->getText());
     } else {
         paramContext->paramNum = 1;
     }
 
-    /* qualifier */
-    paramContext->paramType = qualifier.front();
-    qualifier.pop();
+    /* qualifier - process all qualifiers in the queue */
+    while (!qualifier.empty()) {
+        paramContext->paramTypes.push_back(qualifier.front());
+        qualifier.pop();
+    }
 
     /* end of parsing param */
     kernelContext->kernelParams.push_back(*paramContext);
@@ -514,6 +527,48 @@ void PtxListener::exitLocalStatement(ptxParser::LocalStatementContext *ctx) {
 
     /* end */
     statementType = S_LOCAL;
+#ifdef LOG
+    std::cout << __func__ << std::endl;
+#endif
+}
+
+void PtxListener::enterGlobalStatement(ptxParser::GlobalStatementContext *ctx) {
+    statement = new StatementContext::GLOBAL();
+#ifdef LOG
+    std::cout << __func__ << std::endl;
+#endif
+}
+void PtxListener::exitGlobalStatement(ptxParser::GlobalStatementContext *ctx) {
+    auto st = (StatementContext::GLOBAL *)statement;
+
+    /* align */
+    if (ctx->DIGITS(0)) {
+        st->align = stoi(ctx->DIGITS(0)->getText());
+    } else {
+        st->align = 1; // 默认对齐值
+    }
+
+    /* qualifier */
+    while (qualifier.size()) {
+        st->dataType.push_back(qualifier.front());
+        qualifier.pop();
+    }
+
+    /* ID */
+    st->name = ctx->ID()->getText();
+
+    /* size - 可能是数组大小或者没有指定大小 */
+    if (ctx->DIGITS(1)) {
+        st->size = stoi(ctx->DIGITS(1)->getText());
+    } else if (ctx->LeftBracket() && ctx->RightBracket()) {
+        // 处理 [] 形式（未指定大小的数组）
+        st->size = 0; // 表示未指定大小
+    } else {
+        st->size = 1; // 默认大小为1
+    }
+
+    /* end */
+    statementType = S_GLOBAL;
 #ifdef LOG
     std::cout << __func__ << std::endl;
 #endif

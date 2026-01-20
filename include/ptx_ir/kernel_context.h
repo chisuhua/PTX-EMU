@@ -7,12 +7,13 @@
 
 class ParamContext {
 public:
-    Qualifier paramType;
+    std::vector<Qualifier> paramTypes;  // 修改为支持多个类型
     std::string paramName;
     int paramAlign;
     int paramNum;
+    bool isPtr;  // 新增字段，用于存储PTR修饰符
 
-    ParamContext() : paramType(Qualifier::Q_B32), paramAlign(0), paramNum(0) {}
+    ParamContext() : paramAlign(0), paramNum(0), isPtr(false) {}
 };
 
 class KernelContext {

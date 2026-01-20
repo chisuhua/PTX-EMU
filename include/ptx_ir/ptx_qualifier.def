@@ -45,7 +45,12 @@ X(Q_LOCAL, LOCAL, ".local")    // Local memory space
 X(Q_SHARED, SHARED, ".shared") // Shared memory space
 
 // -----------------------------------------------------------------------------
-// 4. Comparison and Condition Qualifiers
+// 4. Pointer Type Qualifier
+// -----------------------------------------------------------------------------
+X(Q_PTR, PTR, ".ptr")    // Pointer type
+
+// -----------------------------------------------------------------------------
+// 5. Comparison and Condition Qualifiers
 // -----------------------------------------------------------------------------
 X(Q_GT, GT, ".gt")      // Greater than
 X(Q_GE, GE, ".ge")      // Greater equal
@@ -59,7 +64,7 @@ X(Q_GTU, GTU, ".gtu")   // Greater than unsigned
 X(Q_GEU, GEU, ".geu")   // Greater equal unsigned
 
 // -----------------------------------------------------------------------------
-// 5. Other Qualifiers
+// 6. Other Qualifiers
 // -----------------------------------------------------------------------------
 X(Q_TO, TO, ".to")      // To
 X(Q_WIDE, WIDE, ".wide") // Wide
@@ -74,14 +79,14 @@ X(Q_D, D, ".d")         // D operand
 X(Q_ROW, ROW, ".row")   // Row
 
 // -----------------------------------------------------------------------------
-// 6. Alignment and Special Qualifiers
+// 7. Alignment and Special Qualifiers
 // -----------------------------------------------------------------------------
 X(Q_ALIGNED, ALIGNED, ".aligned") // Aligned
 X(Q_M8N8K4, M8N8K4, ".m8n8k4")   // Matrix size 8x8x4
 X(Q_M16N16K16, M16N16K16, ".m16n16k16") // Matrix size 16x16x16
 
 // -----------------------------------------------------------------------------
-// 7. WMMA and Specialized Qualifiers
+// 8. WMMA and Specialized Qualifiers
 // -----------------------------------------------------------------------------
 X(Q_NEU, NEU, ".neu")    // Neu
 X(Q_NC, NC, ".nc")      // No cache
@@ -93,6 +98,6 @@ X(Q_RZI, RZI, ".rzi")   // Round towards zero infinity
 X(Q_SAT, SAT, ".sat")   // Saturation
 
 // -----------------------------------------------------------------------------
-// 8. New qualifier: Carry Condition (for addc/subc)
+// 9. New qualifier: Carry Condition (for addc/subc)
 // -----------------------------------------------------------------------------
 X(Q_CC, CC, ".cc")      // Carry condition
