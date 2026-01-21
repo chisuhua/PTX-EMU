@@ -64,7 +64,25 @@ X(Q_GTU, GTU, ".gtu")   // Greater than unsigned
 X(Q_GEU, GEU, ".geu")   // Greater equal unsigned
 
 // -----------------------------------------------------------------------------
-// 6. Other Qualifiers
+// 6. Rounding Modifiers
+// -----------------------------------------------------------------------------
+
+// Integer Rounding Modifiers
+X(Q_RNI, RNI, ".rni")   // Round to nearest integer, ties to even
+X(Q_RZI, RZI, ".rzi")   // Round toward zero (truncate)
+X(Q_RMI, RMI, ".rmi")   // Round toward negative infinity
+X(Q_RPI, RPI, ".rpi")   // Round toward positive infinity
+
+// Floating-Point Rounding Modifiers
+X(Q_RN, RN, ".rn")      // Round to nearest even
+X(Q_RNA, RNA, ".rna")   // Round to nearest, ties away from zero
+X(Q_RZ, RZ, ".rz")      // Round toward zero
+X(Q_RM, RM, ".rm")      // Round toward -∞
+X(Q_RP, RP, ".rp")      // Round toward +∞
+X(Q_RS, RS, ".rs")       // Stochastic rounding
+
+// -----------------------------------------------------------------------------
+// 7. Other Qualifiers
 // -----------------------------------------------------------------------------
 X(Q_TO, TO, ".to")      // To
 X(Q_WIDE, WIDE, ".wide") // Wide
@@ -72,21 +90,20 @@ X(Q_SYNC, SYNC, ".sync") // Synchronous
 X(Q_LO, LO, ".lo")      // Low part
 X(Q_HI, HI, ".hi")      // High part
 X(Q_UNI, UNI, ".uni")   // Unit
-X(Q_RN, RN, ".rn")      // Round to nearest
 X(Q_A, A, ".a")         // A operand
 X(Q_B, B, ".b")         // B operand
 X(Q_D, D, ".d")         // D operand
 X(Q_ROW, ROW, ".row")   // Row
 
 // -----------------------------------------------------------------------------
-// 7. Alignment and Special Qualifiers
+// 8. Alignment and Special Qualifiers
 // -----------------------------------------------------------------------------
 X(Q_ALIGNED, ALIGNED, ".aligned") // Aligned
 X(Q_M8N8K4, M8N8K4, ".m8n8k4")   // Matrix size 8x8x4
 X(Q_M16N16K16, M16N16K16, ".m16n16k16") // Matrix size 16x16x16
 
 // -----------------------------------------------------------------------------
-// 8. WMMA and Specialized Qualifiers
+// 9. WMMA and Specialized Qualifiers
 // -----------------------------------------------------------------------------
 X(Q_NEU, NEU, ".neu")    // Neu
 X(Q_NC, NC, ".nc")      // No cache
@@ -94,10 +111,9 @@ X(Q_FTZ, FTZ, ".ftz")   // Flush to zero
 X(Q_APPROX, APPROX, ".approx") // Approximate
 X(Q_DOTADD, DOTADD, ".add")    // Dot add
 X(Q_DOTOR, DOTOR, ".or")       // Dot or
-X(Q_RZI, RZI, ".rzi")   // Round towards zero infinity
 X(Q_SAT, SAT, ".sat")   // Saturation
 
 // -----------------------------------------------------------------------------
-// 9. New qualifier: Carry Condition (for addc/subc)
+// 10. New qualifier: Carry Condition (for addc/subc)
 // -----------------------------------------------------------------------------
 X(Q_CC, CC, ".cc")      // Carry condition

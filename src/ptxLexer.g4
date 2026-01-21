@@ -109,6 +109,20 @@ DOTOR: '.or';
 
 RZI: '.rzi' ;
 
+RNI: '.rni' ;
+
+RNA: '.rna' ;
+
+RM: '.rm' ;
+
+RP: '.rp' ;
+
+RMI: '.rmi' ;
+
+RPI: '.rpi' ;
+
+RS: '.rs' ;
+
 SAT: '.sat' ;
 
 /* ************ */

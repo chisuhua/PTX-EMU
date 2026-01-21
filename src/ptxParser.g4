@@ -84,6 +84,13 @@ qualifier : U64
           | DOTADD
           | GEU
           | RZI
+          | RNI
+          | RNA
+          | RM
+          | RP
+          | RMI
+          | RPI
+          | RS
           | DOTOR
           | SAT
           | CC

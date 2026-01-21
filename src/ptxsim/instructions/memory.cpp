@@ -55,6 +55,8 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
     }
 
     bool has_sat = QvecHasQ(qualifiers, Qualifier::Q_SAT);
+    // 检查是否有rn(round to nearest)修饰符
+    bool has_rn = QvecHasQ(qualifiers, Qualifier::Q_RN);
 
     // 根据目标数据大小执行转换
     switch (dst_bytes) {
@@ -71,28 +73,25 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
             } else {
                 // 源是整型
                 if (src_bytes == 1) {
-                    temp = (float)*(uint8_t *)src;
+                    temp = (float)*(int8_t *)src;
                 } else if (src_bytes == 2) {
-                    temp = (float)*(uint16_t *)src;
+                    temp = (float)*(int16_t *)src;
                 } else if (src_bytes == 4) {
-                    temp = (float)*(uint32_t *)src;
+                    temp = (float)*(int32_t *)src;
                 } else {
-                    temp = (float)*(uint64_t *)src;
+                    temp = (float)*(int64_t *)src;
                 }
             }
 
             if (has_sat) {
                 if (std::isnan(temp)) {
-                    *(uint8_t *)dst = 0;
-                } else if (temp < 0.0f) {
-                    *(uint8_t *)dst = 0;
-                } else if (temp > 255.0f) {
-                    *(uint8_t *)dst = 255;
+                    *(float *)dst = 0.0f;
                 } else {
-                    *(uint8_t *)dst = (uint8_t)temp;
+                    // 不需要饱和，因为目标是浮点数
+                    *(float *)dst = temp;
                 }
             } else {
-                *(uint8_t *)dst = (uint8_t)temp;
+                *(float *)dst = temp;
             }
         } else {
             // 目标是整型
@@ -107,15 +106,23 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
                 if (has_sat) {
                     if (std::isnan(temp)) {
                         *(uint8_t *)dst = 0;
-                    } else if (temp < 0.0f) {
+                    } else if (temp <= 0.0f) {
                         *(uint8_t *)dst = 0;
-                    } else if (temp > 255.0f) {
+                    } else if (temp >= 255.0f) {
                         *(uint8_t *)dst = 255;
                     } else {
-                        *(uint8_t *)dst = static_cast<uint8_t>(std::round(temp));  // 使用round来确保正确转换
+                        if (has_rn) {
+                            *(uint8_t *)dst = static_cast<uint8_t>(std::round(temp));
+                        } else {
+                            *(uint8_t *)dst = static_cast<uint8_t>(temp);
+                        }
                     }
                 } else {
-                    *(uint8_t *)dst = static_cast<uint8_t>(temp);
+                    if (has_rn) {
+                        *(uint8_t *)dst = static_cast<uint8_t>(std::round(temp));
+                    } else {
+                        *(uint8_t *)dst = static_cast<uint8_t>(temp);
+                    }
                 }
             } else {
                 // 整数到整数转换
@@ -145,28 +152,24 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
             } else {
                 // 源是整型
                 if (src_bytes == 1) {
-                    temp = (float)*(uint8_t *)src;
+                    temp = (float)*(int16_t *)src;
                 } else if (src_bytes == 2) {
-                    temp = (float)*(uint16_t *)src;
+                    temp = (float)*(int16_t *)src;
                 } else if (src_bytes == 4) {
-                    temp = (float)*(uint32_t *)src;
+                    temp = (float)*(int32_t *)src;
                 } else {
-                    temp = (float)*(uint64_t *)src;
+                    temp = (float)*(int64_t *)src;
                 }
             }
 
             if (has_sat) {
                 if (std::isnan(temp)) {
-                    *(uint16_t *)dst = 0;
-                } else if (temp < 0.0f) {
-                    *(uint16_t *)dst = 0;
-                } else if (temp > 65535.0f) {
-                    *(uint16_t *)dst = 65535;
+                    *(float *)dst = 0.0f;
                 } else {
-                    *(uint16_t *)dst = (uint16_t)temp;
+                    *(float *)dst = temp;
                 }
             } else {
-                *(uint16_t *)dst = (uint16_t)temp;
+                *(float *)dst = temp;
             }
         } else {
             // 目标是整型
@@ -181,26 +184,44 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
                 if (has_sat) {
                     if (std::isnan(temp)) {
                         *(uint16_t *)dst = 0;
-                    } else if (temp < 0.0f) {
+                    } else if (temp <= 0.0f) {
                         *(uint16_t *)dst = 0;
-                    } else if (temp > 65535.0f) {
+                    } else if (temp >= 65535.0f) {
                         *(uint16_t *)dst = 65535;
                     } else {
-                        *(uint16_t *)dst = static_cast<uint16_t>(std::round(temp));  // 使用round来确保正确转换
+                        // 首先检查是否需要四舍五入
+                        if (has_rn) {
+                            float rounded_temp = std::round(temp);
+                            // 然后再次检查范围并饱和
+                            if (rounded_temp <= 0.0f) {
+                                *(uint16_t *)dst = 0;
+                            } else if (rounded_temp >= 65535.0f) {
+                                *(uint16_t *)dst = 65535;
+                            } else {
+                                *(uint16_t *)dst = static_cast<uint16_t>(rounded_temp);
+                            }
+                        } else {
+                            // 没有四舍五入，直接转换前检查范围
+                            *(uint16_t *)dst = static_cast<uint16_t>(temp);
+                        }
                     }
                 } else {
-                    *(uint16_t *)dst = static_cast<uint16_t>(temp);
+                    if (has_rn) {
+                        *(uint16_t *)dst = static_cast<uint16_t>(std::round(temp));
+                    } else {
+                        *(uint16_t *)dst = static_cast<uint16_t>(temp);
+                    }
                 }
             } else {
                 // 整数到整数转换
                 if (src_bytes == 1) {
-                    *(uint16_t *)dst = (uint16_t) * (uint8_t *)src;
+                    *(uint16_t *)dst = (uint16_t) * (int16_t *)src;
                 } else if (src_bytes == 2) {
-                    *(uint16_t *)dst = *(uint16_t *)src;
+                    *(uint16_t *)dst = *(int16_t *)src;
                 } else if (src_bytes == 4) {
-                    *(uint16_t *)dst = (uint16_t) * (uint32_t *)src;
+                    *(uint16_t *)dst = (uint16_t) * (int32_t *)src;
                 } else {
-                    *(uint16_t *)dst = (uint16_t) * (uint64_t *)src;
+                    *(uint16_t *)dst = (uint16_t) * (int64_t *)src;
                 }
             }
         }
@@ -218,13 +239,13 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
             } else {
                 // 源是整型
                 if (src_bytes == 1) {
-                    *(float *)dst = (float)*(uint8_t *)src;
+                    *(float *)dst = (float)*(int32_t *)src;
                 } else if (src_bytes == 2) {
-                    *(float *)dst = (float)*(uint16_t *)src;
+                    *(float *)dst = (float)*(int32_t *)src;
                 } else if (src_bytes == 4) {
-                    *(float *)dst = (float)*(uint32_t *)src;
+                    *(float *)dst = (float)*(int32_t *)src;
                 } else {
-                    *(float *)dst = (float)*(uint64_t *)src;
+                    *(float *)dst = (float)*(int64_t *)src;
                 }
             }
         } else {
@@ -240,26 +261,44 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
                 if (has_sat) {
                     if (std::isnan(temp)) {
                         *(uint32_t *)dst = 0;
-                    } else if (temp < 0.0f) {
+                    } else if (temp <= 0.0f) {
                         *(uint32_t *)dst = 0;
-                    } else if (temp > static_cast<float>(std::numeric_limits<uint32_t>::max())) {
-                        *(uint32_t *)dst = std::numeric_limits<uint32_t>::max();
+                    } else if (temp >= 4294967295.0f) {
+                        *(uint32_t *)dst = 4294967295U;
                     } else {
-                        *(uint32_t *)dst = static_cast<uint32_t>(std::round(temp));  // 使用round来确保正确转换
+                        // 首先检查是否需要四舍五入
+                        if (has_rn) {
+                            float rounded_temp = std::round(temp);
+                            // 然后再次检查范围并饱和
+                            if (rounded_temp <= 0.0f) {
+                                *(uint32_t *)dst = 0;
+                            } else if (rounded_temp >= 4294967295.0f) {
+                                *(uint32_t *)dst = 4294967295U;
+                            } else {
+                                *(uint32_t *)dst = static_cast<uint32_t>(rounded_temp);
+                            }
+                        } else {
+                            // 没有四舍五入，直接转换前检查范围
+                            *(uint32_t *)dst = static_cast<uint32_t>(temp);
+                        }
                     }
                 } else {
-                    *(uint32_t *)dst = static_cast<uint32_t>(temp);
+                    if (has_rn) {
+                        *(uint32_t *)dst = static_cast<uint32_t>(std::round(temp));
+                    } else {
+                        *(uint32_t *)dst = static_cast<uint32_t>(temp);
+                    }
                 }
             } else {
                 // 整数到整数转换
                 if (src_bytes == 1) {
-                    *(uint32_t *)dst = (uint32_t) * (uint8_t *)src;
+                    *(uint32_t *)dst = (uint32_t) * (int32_t *)src;
                 } else if (src_bytes == 2) {
-                    *(uint32_t *)dst = (uint32_t) * (uint16_t *)src;
+                    *(uint32_t *)dst = (uint32_t) * (int32_t *)src;
                 } else if (src_bytes == 4) {
-                    *(uint32_t *)dst = *(uint32_t *)src;
+                    *(uint32_t *)dst = *(int32_t *)src;
                 } else {
-                    *(uint32_t *)dst = (uint32_t) * (uint64_t *)src;
+                    *(uint32_t *)dst = (uint32_t) * (int64_t *)src;
                 }
             }
         }
@@ -277,13 +316,13 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
             } else {
                 // 源是整型
                 if (src_bytes == 1) {
-                    *(double *)dst = (double)*(uint8_t *)src;
+                    *(double *)dst = (double)*(int64_t *)src;
                 } else if (src_bytes == 2) {
-                    *(double *)dst = (double)*(uint16_t *)src;
+                    *(double *)dst = (double)*(int64_t *)src;
                 } else if (src_bytes == 4) {
-                    *(double *)dst = (double)*(uint32_t *)src;
+                    *(double *)dst = (double)*(int64_t *)src;
                 } else {
-                    *(double *)dst = (double)*(uint64_t *)src;
+                    *(double *)dst = (double)*(int64_t *)src;
                 }
             }
         } else {
@@ -299,26 +338,37 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
                 if (has_sat) {
                     if (std::isnan(temp)) {
                         *(uint64_t *)dst = 0;
-                    } else if (temp < 0.0) {
+                    } else if (temp <= 0.0) {
                         *(uint64_t *)dst = 0;
-                    } else if (temp > static_cast<double>(std::numeric_limits<uint64_t>::max())) {
-                        *(uint64_t *)dst = std::numeric_limits<uint64_t>::max();
                     } else {
-                        *(uint64_t *)dst = static_cast<uint64_t>(std::round(temp));  // 使用round来确保正确转换
+                        if (has_rn) {
+                            double rounded_temp = std::round(temp);
+                            if (rounded_temp < 0.0) {
+                                *(uint64_t *)dst = 0;
+                            } else {
+                                *(uint64_t *)dst = static_cast<uint64_t>(rounded_temp);
+                            }
+                        } else {
+                            *(uint64_t *)dst = static_cast<uint64_t>(temp);
+                        }
                     }
                 } else {
-                    *(uint64_t *)dst = static_cast<uint64_t>(temp);
+                    if (has_rn) {
+                        *(uint64_t *)dst = static_cast<uint64_t>(std::round(temp));
+                    } else {
+                        *(uint64_t *)dst = static_cast<uint64_t>(temp);
+                    }
                 }
             } else {
                 // 整数到整数转换
                 if (src_bytes == 1) {
-                    *(uint64_t *)dst = (uint64_t) * (uint8_t *)src;
+                    *(uint64_t *)dst = (uint64_t) * (int64_t *)src;
                 } else if (src_bytes == 2) {
-                    *(uint64_t *)dst = (uint64_t) * (uint16_t *)src;
+                    *(uint64_t *)dst = (uint64_t) * (int64_t *)src;
                 } else if (src_bytes == 4) {
-                    *(uint64_t *)dst = (uint64_t) * (uint32_t *)src;
+                    *(uint64_t *)dst = (uint64_t) * (int64_t *)src;
                 } else {
-                    *(uint64_t *)dst = *(uint64_t *)src;
+                    *(uint64_t *)dst = *(int64_t *)src;
                 }
             }
         }
