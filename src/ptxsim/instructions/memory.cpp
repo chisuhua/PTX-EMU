@@ -4,6 +4,8 @@
 #include "ptxsim/utils/qualifier_utils.h"
 #include "ptxsim/utils/type_utils.h"
 #include <cmath>
+#include <limits>
+#include <algorithm>
 
 void MOV::process_operation(ThreadContext *context, void *op[2],
                             const std::vector<Qualifier> &qualifiers) {
@@ -110,10 +112,10 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
                     } else if (temp > 255.0f) {
                         *(uint8_t *)dst = 255;
                     } else {
-                        *(uint8_t *)dst = (uint8_t)temp;
+                        *(uint8_t *)dst = static_cast<uint8_t>(std::round(temp));  // 使用round来确保正确转换
                     }
                 } else {
-                    *(uint8_t *)dst = (uint8_t)temp;
+                    *(uint8_t *)dst = static_cast<uint8_t>(temp);
                 }
             } else {
                 // 整数到整数转换
@@ -184,10 +186,10 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
                     } else if (temp > 65535.0f) {
                         *(uint16_t *)dst = 65535;
                     } else {
-                        *(uint16_t *)dst = (uint16_t)temp;
+                        *(uint16_t *)dst = static_cast<uint16_t>(std::round(temp));  // 使用round来确保正确转换
                     }
                 } else {
-                    *(uint16_t *)dst = (uint16_t)temp;
+                    *(uint16_t *)dst = static_cast<uint16_t>(temp);
                 }
             } else {
                 // 整数到整数转换
@@ -240,13 +242,13 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
                         *(uint32_t *)dst = 0;
                     } else if (temp < 0.0f) {
                         *(uint32_t *)dst = 0;
-                    } else if (temp > 4294967295.0f) {
-                        *(uint32_t *)dst = 4294967295U;
+                    } else if (temp > static_cast<float>(std::numeric_limits<uint32_t>::max())) {
+                        *(uint32_t *)dst = std::numeric_limits<uint32_t>::max();
                     } else {
-                        *(uint32_t *)dst = (uint32_t)temp;
+                        *(uint32_t *)dst = static_cast<uint32_t>(std::round(temp));  // 使用round来确保正确转换
                     }
                 } else {
-                    *(uint32_t *)dst = (uint32_t)temp;
+                    *(uint32_t *)dst = static_cast<uint32_t>(temp);
                 }
             } else {
                 // 整数到整数转换
@@ -299,13 +301,13 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
                         *(uint64_t *)dst = 0;
                     } else if (temp < 0.0) {
                         *(uint64_t *)dst = 0;
-                    } else if (temp > 18446744073709551615.0) {
-                        *(uint64_t *)dst = 18446744073709551615ULL;
+                    } else if (temp > static_cast<double>(std::numeric_limits<uint64_t>::max())) {
+                        *(uint64_t *)dst = std::numeric_limits<uint64_t>::max();
                     } else {
-                        *(uint64_t *)dst = (uint64_t)temp;
+                        *(uint64_t *)dst = static_cast<uint64_t>(std::round(temp));  // 使用round来确保正确转换
                     }
                 } else {
-                    *(uint64_t *)dst = (uint64_t)temp;
+                    *(uint64_t *)dst = static_cast<uint64_t>(temp);
                 }
             } else {
                 // 整数到整数转换
