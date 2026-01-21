@@ -1,0 +1,104 @@
+{
+  "gpu_arch": "Ampere",
+  "name": "NVIDIA A100",
+  "num_sms": 1,
+  "max_warps_per_sm": 64,
+  "max_threads_per_sm": 2048,
+  "shared_mem_size_per_sm": 163840,
+  "registers_per_sm": 65536,
+  "max_blocks_per_sm": 32,
+  "warp_size": 32,
+  "memory_bandwidth_gbps": 1555,
+  "clock_rate_khz": 1410000,
+  "compute_units": {
+    "cuda_cores": 6912,
+    "tensor_cores": 432,
+    "rt_cores": 54
+  },
+  "tensor_cores": {
+    "count": 432,
+    "supported_types": ["FP64", "FP32", "TF32", "FP16", "BF16", "INT8", "INT4"],
+    "matrix_size": [8, 8, 4],
+    "execution_units": [
+      {
+        "type": "wmma",
+        "name": "wmma.884.f16",
+        "operation": "A[8x4] * B[4x8] + C[8x8] = D[8x8]",
+        "precision": "FP16"
+      }
+    ]
+  },
+  "memory_system": {
+    "global_memory": {
+      "capacity": 42949672960,
+      "bandwidth_gbps": 1555,
+      "type": "HBM2e",
+      "channels": 6
+    },
+    "l2_cache": {
+      "capacity": 41943040,
+      "line_size": 32,
+      "associativity": 32,
+      "bandwidth_gbps": 3000
+    },
+    "l1_cache": {
+      "capacity_per_sm": 131072,
+      "line_size": 32,
+      "associativity": 16
+    },
+    "shared_memory": {
+      "capacity_per_sm": 163840,
+      "banks": 32,
+      "bank_width_bits": 32
+    },
+    "constant_memory": {
+      "capacity": 65536
+    },
+    "texture_memory": {
+      "capacity": 134217728,
+      "cache_size": 12288
+    },
+    "memory_hierarchy": {
+      "global_to_l2_bandwidth_ratio": 1.0,
+      "l2_to_l1_bandwidth_ratio": 4.0,
+      "l1_to_sm_bandwidth_ratio": 8.0
+    }
+  },
+  "interconnect": {
+    "nvlink": {
+      "version": "3.0",
+      "links": 12,
+      "bandwidth_gbps": {
+        "unidirectional": 50,
+        "bidirectional": 100
+      },
+      "protocols": ["hs", "ls"]
+    },
+    "pcie": {
+      "version": "4.0",
+      "lanes": 16,
+      "bandwidth_gbps": {
+        "unidirectional": 16,
+        "bidirectional": 32
+      }
+    },
+    "on_chip_interconnect": {
+      "type": "crossbar",
+      "bandwidth_gbps": 2000,
+      "latency_ns": 1,
+      "endpoints": [
+        "sm",
+        "l2_cache",
+        "memory_controllers",
+        "nvlink_controllers",
+        "pcie_controller"
+      ]
+    },
+    "fabric_interconnect": {
+      "name": "GFC",
+      "bandwidth_gbps": 5000,
+      "latency_ns": 5,
+      "max_connections": 256
+    }
+  }
+}

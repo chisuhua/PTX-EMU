@@ -6,6 +6,7 @@
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/common_types.h" // 包含通用类型定义
 #include "ptxsim/execution_types.h"
+#include "ptxsim/ptx_config.h"
 #include "register/condition_code_register.h"
 #include "register/register_bank_manager.h"
 #include "utils/logger.h"
@@ -109,6 +110,12 @@ public:
     template <typename... Args>
     void trace_status(ptxsim::log_level level, const std::string &component,
                       const char *fmt, Args &&...args) {
+        // 检查当前线程的lane是否在trace_lanes掩码中
+        if (!ptxsim::DebugConfig::get().is_lane_traced(lane_id_)) {
+            // 如果lane不在掩码中，则不输出任何内容
+            return;
+        }
+
         // 首先格式化用户提供的消息
         std::string formatted_msg =
             ptxsim::detail::printf_format(fmt, std::forward<Args>(args)...);
