@@ -11,8 +11,17 @@ set(CMAKE_CUDA_IMPLICIT_LINK_LIBRARIES "")
 set(CMAKE_CUDA_HOST_IMPLICIT_LINK_DIRECTORIES "")
 set(CMAKE_CUDA_HOST_IMPLICIT_LINK_LIBRARIES "")
 
+# 简化架构设置处理 - 现代CMake方式
+if(NOT DEFAULT_CUDA_ARCH)
+    # 默认使用虚拟架构
+    set(DEFAULT_CUDA_ARCH "100")
+endif()
+
 # 设置CUDA编译选项，保留中间PTX文件
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -keep")
+
+# 设置为只使用sm_100架构（虚拟架构）
+set(CMAKE_CUDA_ARCHITECTURES "100")
 
 # 启用测试支持
 enable_testing()
@@ -199,15 +208,17 @@ set(PTX_MINI_TESTS
 set(PTX_BASIC_TESTS 
     simpleGEMM-int simpleGEMM-float simpleGEMM-double
     simpleCONV-int simpleCONV-float simpleCONV-double 2Dentropy
-    aligned-types all-pairs-distance bitonic bfs backprop RAY cfd)
+    aligned-types all-pairs-distance bitonic bfs )
+    # aligned-types all-pairs-distance bitonic bfs backprop RAY cfd)
 
-set(PTX_BASIC_TESTS 
+set(PTX_EXTRA_TESTS
     dummy-wmma)
 
 # 定义全部测试 (包含基础测试和其他复杂测试)
 set(PTX_ALL_TESTS 
     ${PTX_MINI_TESTS} 
-    ${PTX_BASIC_TESTS} 
+    ${PTX_BASIC_TESTS}
+    ${PTX_EXTRA_TESTS}
     ${PTX_MMA_TESTS})
 
 
@@ -225,14 +236,6 @@ add_custom_target(alltest
 
 # 设置 CMP0104 策略以避免警告
 cmake_policy(SET CMP0104 NEW)
-
-# 简化架构设置处理 - 现代CMake方式
-if(NOT DEFAULT_CUDA_ARCH)
-    # 默认使用Ampere架构
-    set(DEFAULT_CUDA_ARCH "100")
-endif()
-
-set(CMAKE_CUDA_ARCHITECTURES "100")       # 仅虚拟架构
 
 
 # 为每个测试创建 CMake 编译目标
@@ -317,6 +320,10 @@ foreach(TEST_NAME ${PTX_ALL_TESTS})
     list(FIND PTX_BASIC_TESTS ${TEST_NAME} IS_BASIC_TEST)
     if(NOT IS_BASIC_TEST EQUAL -1)
         set_tests_properties(${TEST_NAME} PROPERTIES LABELS "basic")
+    endif()
+    list(FIND PTX_EXTRA_TESTS ${TEST_NAME} IS_EXTRA_TEST)
+    if(NOT IS_EXTRA_TEST EQUAL -1)
+        set_tests_properties(${TEST_NAME} PROPERTIES LABELS "extra")
     endif()
     list(FIND PTX_MMA_TESTS ${TEST_NAME} IS_MMA_TEST)
     if(NOT IS_MMA_TEST EQUAL -1)

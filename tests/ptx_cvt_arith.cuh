@@ -8,59 +8,45 @@
 
 // Integer to integer conversions
 __device__ __forceinline__ int8_t ptx_cvt_s8_s16(int16_t a) {
-    int8_t res;
-    int32_t temp_res;
-    asm("cvt.s8.s16 %0, %1;" : "=r"(temp_res) : "h"(a));
-    res = (int8_t)(temp_res);
-    return res;
+    int32_t temp;
+    asm("cvt.s8.s16 %0, %1;" : "=r"(temp) : "h"(a));
+    return static_cast<int8_t>(static_cast<uint8_t>(temp)); // 强制低8位
 }
 
 __device__ __forceinline__ int8_t ptx_cvt_s8_s32(int32_t a) {
-    int8_t res;
-    int32_t temp_res;
-    asm("cvt.s8.s32 %0, %1;" : "=r"(temp_res) : "r"(a));
-    res = static_cast<int8_t>(temp_res);
-    return res;
+    int32_t temp;
+    asm("cvt.s8.s32 %0, %1;" : "=r"(temp) : "r"(a));
+    return static_cast<int8_t>(static_cast<uint8_t>(temp)); // 强制低8位
 }
 
 __device__ __forceinline__ int8_t ptx_cvt_s8_s64(int64_t a) {
-    int8_t res;
-    int32_t temp_res;
-    asm("cvt.s8.s64 %0, %1;" : "=r"(temp_res) : "l"(a));
-    res = static_cast<int8_t>(temp_res);
-    return res;
+    int32_t temp;
+    asm("cvt.s8.s64 %0, %1;" : "=r"(temp) : "l"(a));
+    return static_cast<int8_t>(static_cast<uint8_t>(temp)); // 强制低8位
 }
 
 __device__ __forceinline__ uint8_t ptx_cvt_u8_u16(uint16_t a) {
-    uint8_t res;
-    uint32_t temp_res;
-    asm("cvt.u8.u16 %0, %1;" : "=r"(temp_res) : "h"(a));
-    res = (uint8_t)(temp_res);
-    return res;
+    uint32_t temp;
+    asm("cvt.u8.u16 %0, %1;" : "=r"(temp) : "h"(a));
+    return static_cast<uint8_t>(static_cast<uint8_t>(temp)); // 强制低8位
 }
 
 __device__ __forceinline__ uint8_t ptx_cvt_u8_u32(uint32_t a) {
-    uint8_t res;
-    uint32_t temp_res;
-    asm("cvt.u8.u32 %0, %1;" : "=r"(temp_res) : "r"(a));
-    res = (uint8_t)(temp_res);
-    return res;
+    uint32_t temp;
+    asm("cvt.u8.u32 %0, %1;" : "=r"(temp) : "r"(a));
+    return static_cast<uint8_t>(static_cast<uint8_t>(temp)); // 强制低8位
 }
 
 __device__ __forceinline__ uint8_t ptx_cvt_u8_u64(uint64_t a) {
-    uint8_t res;
-    uint32_t temp_res;
-    asm("cvt.u8.u64 %0, %1;" : "=r"(temp_res) : "l"(a));
-    res = static_cast<uint8_t>(temp_res);
-    return res;
+    uint32_t temp;
+    asm("cvt.u8.u64 %0, %1;" : "=r"(temp) : "l"(a));
+    return static_cast<uint8_t>(static_cast<uint8_t>(temp)); // 强制低8位
 }
 
 __device__ __forceinline__ int16_t ptx_cvt_s16_s8(int8_t a) {
-    int16_t res;
-    int32_t temp_res;
-    asm("cvt.s16.s8 %0, %1;" : "=r"(temp_res) : "r"((int32_t)a));
-    res = (int16_t)(temp_res);
-    return res;
+    int32_t temp;
+    asm("cvt.s16.s8 %0, %1;" : "=r"(temp) : "r"((int32_t)a));
+    return static_cast<int16_t>(static_cast<uint16_t>(temp)); // 强制低16位
 }
 
 __device__ __forceinline__ int16_t ptx_cvt_s16_s32(int32_t a) {
@@ -76,11 +62,9 @@ __device__ __forceinline__ int16_t ptx_cvt_s16_s64(int64_t a) {
 }
 
 __device__ __forceinline__ uint16_t ptx_cvt_u16_u8(uint8_t a) {
-    uint16_t res;
-    uint32_t temp_res;
-    asm("cvt.u16.u8 %0, %1;" : "=r"(temp_res) : "r"((uint32_t)a));
-    res = (uint16_t)(temp_res);
-    return res;
+    uint32_t temp;
+    asm("cvt.u16.u8 %0, %1;" : "=r"(temp) : "r"((uint32_t)a));
+    return static_cast<uint16_t>(static_cast<uint16_t>(temp)); // 强制低16位
 }
 
 __device__ __forceinline__ uint16_t ptx_cvt_u16_u32(uint32_t a) {
@@ -96,98 +80,86 @@ __device__ __forceinline__ uint16_t ptx_cvt_u16_u64(uint64_t a) {
 }
 
 __device__ __forceinline__ int32_t ptx_cvt_s32_s8(int8_t a) {
-    int32_t res;
-    int32_t temp_res;
-    asm("cvt.s32.s8 %0, %1;" : "=r"(temp_res) : "r"((int32_t)a));
-    res = (int32_t)(temp_res);
-    return res;
+    int32_t temp;
+    asm("cvt.s32.s8 %0, %1;" : "=r"(temp) : "r"((int32_t)a));
+    return temp; // 32位目标，无需特殊处理
 }
 
 __device__ __forceinline__ int32_t ptx_cvt_s32_s16(int16_t a) {
-    int32_t res;
-    int32_t temp_res;
-    asm("cvt.s32.s16 %0, %1;" : "=r"(temp_res) : "h"(a));
-    res = static_cast<int32_t>(temp_res);
-    return res;
+    int32_t temp;
+    asm("cvt.s32.s16 %0, %1;" : "=r"(temp) : "h"(a));
+    return temp; // 32位目标，无需特殊处理
 }
 
 __device__ __forceinline__ int32_t ptx_cvt_s32_s64(int64_t a) {
-    int32_t res;
-    int32_t temp_res;
-    asm("cvt.s32.s64 %0, %1;" : "=r"(temp_res) : "l"(a));
-    res = static_cast<int32_t>(temp_res);
-    return res;
+    int32_t temp;
+    asm("cvt.s32.s64 %0, %1;" : "=r"(temp) : "l"(a));
+    return temp; // 32位目标，无需特殊处理
 }
 
 __device__ __forceinline__ uint32_t ptx_cvt_u32_u8(uint8_t a) {
-    uint32_t res;
-    uint32_t temp_res;
-    asm("cvt.u32.u8 %0, %1;" : "=r"(temp_res) : "r"((uint32_t)a));
-    res = (uint32_t)(temp_res);
-    return res;
+    uint32_t temp;
+    asm("cvt.u32.u8 %0, %1;" : "=r"(temp) : "r"((uint32_t)a));
+    return temp; // 32位目标，无需特殊处理
 }
 
 __device__ __forceinline__ uint32_t ptx_cvt_u32_u16(uint16_t a) {
-    uint32_t res;
-    uint32_t temp_res;
-    asm("cvt.u32.u16 %0, %1;" : "=r"(temp_res) : "h"(a));
-    res = static_cast<uint32_t>(temp_res);
-    return res;
+    uint32_t temp;
+    asm("cvt.u32.u16 %0, %1;" : "=r"(temp) : "h"(a));
+    return temp; // 32位目标，无需特殊处理
 }
 
 __device__ __forceinline__ uint32_t ptx_cvt_u32_u64(uint64_t a) {
-    uint32_t res;
-    uint32_t temp_res;
-    asm("cvt.u32.u64 %0, %1;" : "=r"(temp_res) : "l"(a));
-    res = static_cast<uint32_t>(temp_res);
-    return res;
+    uint32_t temp;
+    asm("cvt.u32.u64 %0, %1;" : "=r"(temp) : "l"(a));
+    return temp; // 32位目标，无需特殊处理
 }
 
 __device__ __forceinline__ int64_t ptx_cvt_s64_s8(int8_t a) {
     int64_t res;
-    int64_t temp_res;
-    asm("cvt.s64.s8 %0, %1;" : "=l"(temp_res) : "r"((int32_t)a));
-    res = (int64_t)(temp_res);
+    int64_t temp;
+    asm("cvt.s64.s8 %0, %1;" : "=l"(temp) : "r"((int32_t)a));
+    res = (int64_t)(temp);
     return res;
 }
 
 __device__ __forceinline__ int64_t ptx_cvt_s64_s16(int16_t a) {
     int64_t res;
-    int64_t temp_res;
-    asm("cvt.s64.s16 %0, %1;" : "=l"(temp_res) : "h"(a));
-    res = static_cast<int64_t>(temp_res);
+    int64_t temp;
+    asm("cvt.s64.s16 %0, %1;" : "=l"(temp) : "h"(a));
+    res = static_cast<int64_t>(temp);
     return res;
 }
 
 __device__ __forceinline__ int64_t ptx_cvt_s64_s32(int32_t a) {
     int64_t res;
-    int64_t temp_res;
-    asm("cvt.s64.s32 %0, %1;" : "=l"(temp_res) : "r"(a));
-    res = static_cast<int64_t>(temp_res);
+    int64_t temp;
+    asm("cvt.s64.s32 %0, %1;" : "=l"(temp) : "r"(a));
+    res = static_cast<int64_t>(temp);
     return res;
 }
 
 __device__ __forceinline__ uint64_t ptx_cvt_u64_u8(uint8_t a) {
     uint64_t res;
-    uint64_t temp_res;
-    asm("cvt.u64.u8 %0, %1;" : "=l"(temp_res) : "r"((uint32_t)a));
-    res = (uint64_t)(temp_res);
+    uint64_t temp;
+    asm("cvt.u64.u8 %0, %1;" : "=l"(temp) : "r"((uint32_t)a));
+    res = (uint64_t)(temp);
     return res;
 }
 
 __device__ __forceinline__ uint64_t ptx_cvt_u64_u16(uint16_t a) {
     uint64_t res;
-    uint64_t temp_res;
-    asm("cvt.u64.u16 %0, %1;" : "=l"(temp_res) : "h"(a));
-    res = static_cast<uint64_t>(temp_res);
+    uint64_t temp;
+    asm("cvt.u64.u16 %0, %1;" : "=l"(temp) : "h"(a));
+    res = static_cast<uint64_t>(temp);
     return res;
 }
 
 __device__ __forceinline__ uint64_t ptx_cvt_u64_u32(uint32_t a) {
     uint64_t res;
-    uint64_t temp_res;
-    asm("cvt.u64.u32 %0, %1;" : "=l"(temp_res) : "r"(a));
-    res = static_cast<uint64_t>(temp_res);
+    uint64_t temp;
+    asm("cvt.u64.u32 %0, %1;" : "=l"(temp) : "r"(a));
+    res = static_cast<uint64_t>(temp);
     return res;
 }
 

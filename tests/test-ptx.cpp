@@ -9,7 +9,7 @@
 #include <string>
 
 // #define TOKEN
-#define TREE
+// #define TREE
 #define SEMANTIC
 
 int main(int argc, const char *argv[]) {
