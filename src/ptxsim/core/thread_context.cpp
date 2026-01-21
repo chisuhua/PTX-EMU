@@ -420,10 +420,25 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
                               "symbol_table_entry=%p, stored_value=0x%lx",
                               fa->ID.c_str(), share_it->second,
                               share_it->second->val);
-                ret = (void *)share_it->second->val;
+                
+                // 修正：对于共享内存变量，应该返回相对于共享内存空间的绝对地址
+                if (shared_mem_space != nullptr) {
+                    ret = (void *)((uint64_t)shared_mem_space + share_it->second->val);
+                } else {
+                    // 如果没有设置共享内存空间，则返回原始偏移量
+                    ret = (void *)share_it->second->val;
+                }
             } else {
                 // 如果都没找到，返回nullptr
-                return nullptr;
+                // 但是对共享内存访问，我们可能需要特殊处理
+                if (QvecHasQ(qualifiers, Qualifier::Q_SHARED)) {
+                    // 对于共享内存访问，如果在name2Share中没找到，说明可能尚未初始化
+                    // 我们可以尝试分配空间或者返回错误
+                    PTX_ERROR_EMU("Shared memory variable not found in name2Share: %s", fa->ID.c_str());
+                    return nullptr;
+                } else {
+                    return nullptr;
+                }
             }
         } else {
             // 如果都没找到，返回nullptr
@@ -433,8 +448,7 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
 
     // 如果是shared memory访问，需要特殊处理
     if (QvecHasQ(qualifiers, Qualifier::Q_SHARED)) {
-        // 对于共享内存，地址已经在name2Share中正确设置了
-        // 不需要额外的处理，因为我们已经通过符号表获取了正确的地址
+        // 对于共享内存，地址已经在上面的逻辑中正确处理了
     }
 
     // 处理偏移量

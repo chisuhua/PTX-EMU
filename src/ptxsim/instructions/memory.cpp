@@ -53,11 +53,41 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
     if (src_bytes == 0) {
         src_bytes = getBytes(qualifiers);
     }
+    
+    // 确保源字节大小至少为1
+    if (src_bytes == 0) {
+        src_bytes = 1;
+    }
 
     bool has_sat = QvecHasQ(qualifiers, Qualifier::Q_SAT);
-    // 检查是否有rn(round to nearest)修饰符
+    // 检查是否有rn(round to nearest even)修饰符 - 用于浮点转换
     bool has_rn = QvecHasQ(qualifiers, Qualifier::Q_RN);
+    // 检查是否有rni(round to nearest integer)修饰符 - 用于整型转换
+    bool has_rni = QvecHasQ(qualifiers, Qualifier::Q_RNI);
+    // 检查是否有rz(round toward zero)修饰符 - 用于浮点转换
+    bool has_rz = QvecHasQ(qualifiers, Qualifier::Q_RZ);
+    // 检查是否有rzi(round toward zero integer)修饰符 - 用于整型转换
+    bool has_rzi = QvecHasQ(qualifiers, Qualifier::Q_RZI);
+    // 检查是否有rm(round toward negative infinity)修饰符 - 用于浮点转换
+    bool has_rm = QvecHasQ(qualifiers, Qualifier::Q_RM);
+    // 检查是否有rmi(round toward negative infinity integer)修饰符 - 用于整型转换
+    bool has_rmi = QvecHasQ(qualifiers, Qualifier::Q_RMI);
+    // 检查是否有rp(round toward positive infinity)修饰符 - 用于浮点转换
+    bool has_rp = QvecHasQ(qualifiers, Qualifier::Q_RP);
+    // 检查是否有rpi(round toward positive infinity integer)修饰符 - 用于整型转换
+    bool has_rpi = QvecHasQ(qualifiers, Qualifier::Q_RPI);
+    // 检查是否有rna(round to nearest, ties away from zero)修饰符
+    bool has_rna = QvecHasQ(qualifiers, Qualifier::Q_RNA);
+    // 检查是否有rs(stochastic rounding)修饰符
+    bool has_rs = QvecHasQ(qualifiers, Qualifier::Q_RS);
 
+    // 根据规范，禁止同时使用饱和与舍入修饰符，当使用.sat时应忽略舍入模式
+    // 但在我们的实现中，当目标为整数时，我们需要使用适当的舍入模式
+    // 为了兼容性，我们定义一个函数来判断是否需要使用舍入模式
+    auto useRoundingMode = [&](bool roundingEnabled) -> bool {
+        return roundingEnabled && !has_sat;
+    };
+    
     // 根据目标数据大小执行转换
     switch (dst_bytes) {
     case 1: { // 8-bit
@@ -71,7 +101,7 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
                     temp = (float)*(double *)src;
                 }
             } else {
-                // 源是整型
+                // 源是整型 - 根据推断出的字节大小进行转换
                 if (src_bytes == 1) {
                     temp = (float)*(int8_t *)src;
                 } else if (src_bytes == 2) {
@@ -111,15 +141,26 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
                     } else if (temp >= 255.0f) {
                         *(uint8_t *)dst = 255;
                     } else {
-                        if (has_rn) {
-                            *(uint8_t *)dst = static_cast<uint8_t>(std::round(temp));
-                        } else {
-                            *(uint8_t *)dst = static_cast<uint8_t>(temp);
-                        }
+                        // 当使用.sat时，不应用舍入，直接转换
+                        *(uint8_t *)dst = static_cast<uint8_t>(temp);
                     }
                 } else {
-                    if (has_rn) {
+                    // 不使用sat时，应用舍入模式
+                    if (has_rni || has_rn) {  // 使用RNI或RN进行四舍五入（用于整数转换）
                         *(uint8_t *)dst = static_cast<uint8_t>(std::round(temp));
+                    } else if (has_rzi || has_rz) {  // 使用RZI或RZ进行向零舍入（用于整数转换）
+                        *(uint8_t *)dst = static_cast<uint8_t>(std::trunc(temp));
+                    } else if (has_rmi || has_rm) {  // 使用RMI或RM进行向下舍入（用于整数转换）
+                        *(uint8_t *)dst = static_cast<uint8_t>(std::floor(temp));
+                    } else if (has_rpi || has_rp) {  // 使用RPI或RP进行向上舍入（用于整数转换）
+                        *(uint8_t *)dst = static_cast<uint8_t>(std::ceil(temp));
+                    } else if (has_rna) {  // 使用RNA进行向远离零舍入（用于整数转换）
+                        float rounded = (temp >= 0.0f) ? std::floor(temp + 0.5f) : std::ceil(temp - 0.5f);
+                        if (rounded < 0.0f) {
+                            *(uint8_t *)dst = 0;
+                        } else {
+                            *(uint8_t *)dst = static_cast<uint8_t>(rounded);
+                        }
                     } else {
                         *(uint8_t *)dst = static_cast<uint8_t>(temp);
                     }
@@ -150,9 +191,9 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
                     temp = (float)*(double *)src;
                 }
             } else {
-                // 源是整型
+                // 源是整型 - 根据推断出的字节大小进行转换
                 if (src_bytes == 1) {
-                    temp = (float)*(int16_t *)src;
+                    temp = (float)*(int8_t *)src;
                 } else if (src_bytes == 2) {
                     temp = (float)*(int16_t *)src;
                 } else if (src_bytes == 4) {
@@ -186,28 +227,28 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
                         *(uint16_t *)dst = 0;
                     } else if (temp <= 0.0f) {
                         *(uint16_t *)dst = 0;
-                    } else if (temp >= 65535.0f) {
+                    } else if (temp > 65535.0f) {  // 使用 > 而不是 >=，因为65535本身在范围内
                         *(uint16_t *)dst = 65535;
                     } else {
-                        // 首先检查是否需要四舍五入
-                        if (has_rn) {
-                            float rounded_temp = std::round(temp);
-                            // 然后再次检查范围并饱和
-                            if (rounded_temp <= 0.0f) {
-                                *(uint16_t *)dst = 0;
-                            } else if (rounded_temp >= 65535.0f) {
-                                *(uint16_t *)dst = 65535;
-                            } else {
-                                *(uint16_t *)dst = static_cast<uint16_t>(rounded_temp);
-                            }
-                        } else {
-                            // 没有四舍五入，直接转换前检查范围
-                            *(uint16_t *)dst = static_cast<uint16_t>(temp);
-                        }
+                        // 当使用.sat时，不应用舍入，直接转换
+                        *(uint16_t *)dst = static_cast<uint16_t>(temp);
                     }
                 } else {
-                    if (has_rn) {
+                    if (has_rni || has_rn) {  // 使用RNI或RN进行四舍五入（用于整数转换）
                         *(uint16_t *)dst = static_cast<uint16_t>(std::round(temp));
+                    } else if (has_rzi || has_rz) {  // 使用RZI或RZ进行向零舍入（用于整数转换）
+                        *(uint16_t *)dst = static_cast<uint16_t>(std::trunc(temp));
+                    } else if (has_rmi || has_rm) {  // 使用RMI或RM进行向下舍入（用于整数转换）
+                        *(uint16_t *)dst = static_cast<uint16_t>(std::floor(temp));
+                    } else if (has_rpi || has_rp) {  // 使用RPI或RP进行向上舍入（用于整数转换）
+                        *(uint16_t *)dst = static_cast<uint16_t>(std::ceil(temp));
+                    } else if (has_rna) {  // 使用RNA进行向远离零舍入（用于整数转换）
+                        float rounded = (temp >= 0.0f) ? std::floor(temp + 0.5f) : std::ceil(temp - 0.5f);
+                        if (rounded < 0.0f) {
+                            *(uint16_t *)dst = 0;
+                        } else {
+                            *(uint16_t *)dst = static_cast<uint16_t>(rounded);
+                        }
                     } else {
                         *(uint16_t *)dst = static_cast<uint16_t>(temp);
                     }
@@ -237,11 +278,11 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
                     *(float *)dst = (float)*(double *)src;
                 }
             } else {
-                // 源是整型
+                // 源是整型 - 根据推断出的字节大小进行转换
                 if (src_bytes == 1) {
-                    *(float *)dst = (float)*(int32_t *)src;
+                    *(float *)dst = (float)*(int8_t *)src;
                 } else if (src_bytes == 2) {
-                    *(float *)dst = (float)*(int32_t *)src;
+                    *(float *)dst = (float)*(int16_t *)src;
                 } else if (src_bytes == 4) {
                     *(float *)dst = (float)*(int32_t *)src;
                 } else {
@@ -263,28 +304,28 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
                         *(uint32_t *)dst = 0;
                     } else if (temp <= 0.0f) {
                         *(uint32_t *)dst = 0;
-                    } else if (temp >= 4294967295.0f) {
+                    } else if (temp > 4294967295.0f) {  // 使用 > 而不是 >=
                         *(uint32_t *)dst = 4294967295U;
                     } else {
-                        // 首先检查是否需要四舍五入
-                        if (has_rn) {
-                            float rounded_temp = std::round(temp);
-                            // 然后再次检查范围并饱和
-                            if (rounded_temp <= 0.0f) {
-                                *(uint32_t *)dst = 0;
-                            } else if (rounded_temp >= 4294967295.0f) {
-                                *(uint32_t *)dst = 4294967295U;
-                            } else {
-                                *(uint32_t *)dst = static_cast<uint32_t>(rounded_temp);
-                            }
-                        } else {
-                            // 没有四舍五入，直接转换前检查范围
-                            *(uint32_t *)dst = static_cast<uint32_t>(temp);
-                        }
+                        // 当使用.sat时，不应用舍入，直接转换
+                        *(uint32_t *)dst = static_cast<uint32_t>(temp);
                     }
                 } else {
-                    if (has_rn) {
+                    if (has_rni || has_rn) {  // 使用RNI或RN进行四舍五入（用于整数转换）
                         *(uint32_t *)dst = static_cast<uint32_t>(std::round(temp));
+                    } else if (has_rzi || has_rz) {  // 使用RZI或RZ进行向零舍入（用于整数转换）
+                        *(uint32_t *)dst = static_cast<uint32_t>(std::trunc(temp));
+                    } else if (has_rmi || has_rm) {  // 使用RMI或RM进行向下舍入（用于整数转换）
+                        *(uint32_t *)dst = static_cast<uint32_t>(std::floor(temp));
+                    } else if (has_rpi || has_rp) {  // 使用RPI或RP进行向上舍入（用于整数转换）
+                        *(uint32_t *)dst = static_cast<uint32_t>(std::ceil(temp));
+                    } else if (has_rna) {  // 使用RNA进行向远离零舍入（用于整数转换）
+                        float rounded = (temp >= 0.0f) ? std::floor(temp + 0.5f) : std::ceil(temp - 0.5f);
+                        if (rounded < 0.0f) {
+                            *(uint32_t *)dst = 0;
+                        } else {
+                            *(uint32_t *)dst = static_cast<uint32_t>(rounded);
+                        }
                     } else {
                         *(uint32_t *)dst = static_cast<uint32_t>(temp);
                     }
@@ -314,13 +355,13 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
                     *(double *)dst = *(double *)src;
                 }
             } else {
-                // 源是整型
+                // 源是整型 - 根据推断出的字节大小进行转换
                 if (src_bytes == 1) {
-                    *(double *)dst = (double)*(int64_t *)src;
+                    *(double *)dst = (double)*(int8_t *)src;
                 } else if (src_bytes == 2) {
-                    *(double *)dst = (double)*(int64_t *)src;
+                    *(double *)dst = (double)*(int16_t *)src;
                 } else if (src_bytes == 4) {
-                    *(double *)dst = (double)*(int64_t *)src;
+                    *(double *)dst = (double)*(int32_t *)src;
                 } else {
                     *(double *)dst = (double)*(int64_t *)src;
                 }
@@ -340,21 +381,28 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
                         *(uint64_t *)dst = 0;
                     } else if (temp <= 0.0) {
                         *(uint64_t *)dst = 0;
+                    } else if (temp > 18446744073709551615.0) {  // 使用 > 而不是 >=
+                        *(uint64_t *)dst = 18446744073709551615ULL;
                     } else {
-                        if (has_rn) {
-                            double rounded_temp = std::round(temp);
-                            if (rounded_temp < 0.0) {
-                                *(uint64_t *)dst = 0;
-                            } else {
-                                *(uint64_t *)dst = static_cast<uint64_t>(rounded_temp);
-                            }
-                        } else {
-                            *(uint64_t *)dst = static_cast<uint64_t>(temp);
-                        }
+                        // 当使用.sat时，不应用舍入，直接转换
+                        *(uint64_t *)dst = static_cast<uint64_t>(temp);
                     }
                 } else {
-                    if (has_rn) {
+                    if (has_rni || has_rn) {  // 使用RNI或RN进行四舍五入（用于整数转换）
                         *(uint64_t *)dst = static_cast<uint64_t>(std::round(temp));
+                    } else if (has_rzi || has_rz) {  // 使用RZI或RZ进行向零舍入（用于整数转换）
+                        *(uint64_t *)dst = static_cast<uint64_t>(std::trunc(temp));
+                    } else if (has_rmi || has_rm) {  // 使用RMI或RM进行向下舍入（用于整数转换）
+                        *(uint64_t *)dst = static_cast<uint64_t>(std::floor(temp));
+                    } else if (has_rpi || has_rp) {  // 使用RPI或RP进行向上舍入（用于整数转换）
+                        *(uint64_t *)dst = static_cast<uint64_t>(std::ceil(temp));
+                    } else if (has_rna) {  // 使用RNA进行向远离零舍入（用于整数转换）
+                        double rounded = (temp >= 0.0) ? std::floor(temp + 0.5) : std::ceil(temp - 0.5);
+                        if (rounded < 0.0) {
+                            *(uint64_t *)dst = 0;
+                        } else {
+                            *(uint64_t *)dst = static_cast<uint64_t>(rounded);
+                        }
                     } else {
                         *(uint64_t *)dst = static_cast<uint64_t>(temp);
                     }
@@ -378,6 +426,7 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
         assert(0 && "Unsupported destination size for CVT instruction");
     }
 }
+
 // // 2. 推断内存空间和大小（从 PTX 修饰符）
 // MemorySpace space = get_space_from_qualifiers(quals); // e.g., .global
 // size_t size = get_size_from_qualifiers(quals);        // e.g., 4 bytes
