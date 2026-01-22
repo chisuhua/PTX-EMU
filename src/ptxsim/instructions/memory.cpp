@@ -7,6 +7,43 @@
 #include <limits>
 #include <algorithm>
 
+// 自定义half到float的转换函数
+inline float half_to_float(uint16_t h) {
+    uint32_t sign     = ((h >> 15) & 0x1);
+    uint32_t exp      = ((h >> 10) & 0x1f);
+    uint32_t mantissa = (h & 0x3ff);
+    uint32_t f;
+
+    if (exp == 0) {
+        if (mantissa == 0) {
+            // ±0
+            f = sign << 31;
+        } else {
+            // Subnormal numbers
+            exp = 127 - 15;
+            while ((mantissa & 0x400) == 0) {
+                mantissa <<= 1;
+                exp--;
+            }
+            mantissa &= 0x3ff;
+            f = (sign << 31) | ((exp + 127) << 23) | (mantissa << 13);
+        }
+    } else if (exp == 31) {
+        if (mantissa == 0) {
+            // ±infinity
+            f = (sign << 31) | (0xFF << 23);
+        } else {
+            // NaN
+            f = (sign << 31) | (0xFF << 23) | (mantissa << 13);
+        }
+    } else {
+        // Normalized number
+        f = (sign << 31) | ((exp + 127 - 15) << 23) | (mantissa << 13);
+    }
+
+    return *reinterpret_cast<float*>(&f);
+}
+
 void MOV::process_operation(ThreadContext *context, void *op[2],
                             const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
@@ -45,17 +82,28 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
     bool dst_is_float = TypeUtils::is_float_type(dst_qualifiers);
     bool src_is_float = TypeUtils::is_float_type(src_qualifiers);
 
+    // 检查是否是half类型（16位浮点数）
+    bool src_is_half = false;
+    for (const auto &q : src_qualifiers) {
+        if (q == Qualifier::Q_F16) {
+            src_is_half = true;
+            src_is_float = true;  // 将half视为浮点类型
+            src_bytes = 2;        // half类型是16位（2字节）
+            break;
+        }
+    }
+
     // 如果没有正确识别出类型，使用默认方法
     if (dst_bytes == 0) {
         dst_bytes = getBytes(qualifiers);
     }
 
-    if (src_bytes == 0) {
+    if (src_bytes == 0 && !src_is_half) {
         src_bytes = getBytes(qualifiers);
     }
     
     // 确保源字节大小至少为1
-    if (src_bytes == 0) {
+    if (src_bytes == 0 && !src_is_half) {
         src_bytes = 1;
     }
 
@@ -95,7 +143,11 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
             // 目标是浮点型
             float temp;
             if (src_is_float) {
-                if (src_bytes == 4) {
+                if (src_is_half) {
+                    // 源是half类型，转换为float后再处理
+                    uint16_t h_temp = *reinterpret_cast<uint16_t*>(src);
+                    temp = half_to_float(h_temp);
+                } else if (src_bytes == 4) {
                     temp = *(float *)src;
                 } else {
                     temp = (float)*(double *)src;
@@ -127,7 +179,11 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
             // 目标是整型
             if (src_is_float) {
                 float temp;
-                if (src_bytes == 4) {
+                if (src_is_half) {
+                    // 源是half类型，转换为float后再处理
+                    uint16_t h_temp = *reinterpret_cast<uint16_t*>(src);
+                    temp = half_to_float(h_temp);
+                } else if (src_bytes == 4) {
                     temp = *(float *)src;
                 } else {
                     temp = (float)*(double *)src;
@@ -185,38 +241,36 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
             // 目标是浮点型
             float temp;
             if (src_is_float) {
-                if (src_bytes == 4) {
-                    temp = *(float *)src;
+                if (src_is_half) {
+                    // 源是half类型，转换为float
+                    uint16_t h_temp = *reinterpret_cast<uint16_t*>(src);
+                    *(float *)dst = half_to_float(h_temp);
+                } else if (src_bytes == 4) {
+                    *(float *)dst = *(float *)src;
                 } else {
-                    temp = (float)*(double *)src;
+                    *(float *)dst = (float)*(double *)src;
                 }
             } else {
                 // 源是整型 - 根据推断出的字节大小进行转换
                 if (src_bytes == 1) {
-                    temp = (float)*(int8_t *)src;
+                    *(float *)dst = (float)*(int8_t *)src;
                 } else if (src_bytes == 2) {
-                    temp = (float)*(int16_t *)src;
+                    *(float *)dst = (float)*(int16_t *)src;
                 } else if (src_bytes == 4) {
-                    temp = (float)*(int32_t *)src;
+                    *(float *)dst = (float)*(int32_t *)src;
                 } else {
-                    temp = (float)*(int64_t *)src;
+                    *(float *)dst = (float)*(int64_t *)src;
                 }
-            }
-
-            if (has_sat) {
-                if (std::isnan(temp)) {
-                    *(float *)dst = 0.0f;
-                } else {
-                    *(float *)dst = temp;
-                }
-            } else {
-                *(float *)dst = temp;
             }
         } else {
             // 目标是整型
             if (src_is_float) {
                 float temp;
-                if (src_bytes == 4) {
+                if (src_is_half) {
+                    // 源是half类型，转换为float后再处理
+                    uint16_t h_temp = *reinterpret_cast<uint16_t*>(src);
+                    temp = half_to_float(h_temp);
+                } else if (src_bytes == 4) {
                     temp = *(float *)src;
                 } else {
                     temp = (float)*(double *)src;
@@ -272,7 +326,11 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
         if (dst_is_float) {
             // 目标是浮点型 (float)
             if (src_is_float) {
-                if (src_bytes == 4) {
+                if (src_is_half) {
+                    // 源是half类型，转换为float
+                    uint16_t h_temp = *reinterpret_cast<uint16_t*>(src);
+                    *(float *)dst = half_to_float(h_temp);
+                } else if (src_bytes == 4) {
                     *(float *)dst = *(float *)src;
                 } else {
                     *(float *)dst = (float)*(double *)src;
@@ -293,7 +351,11 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
             // 目标是整型
             if (src_is_float) {
                 float temp;
-                if (src_bytes == 4) {
+                if (src_is_half) {
+                    // 源是half类型，转换为float
+                    uint16_t h_temp = *reinterpret_cast<uint16_t*>(src);
+                    temp = half_to_float(h_temp);
+                } else if (src_bytes == 4) {
                     temp = *(float *)src;
                 } else {
                     temp = (float)*(double *)src;
@@ -349,7 +411,11 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
         if (dst_is_float) {
             // 目标是双精度浮点型 (double)
             if (src_is_float) {
-                if (src_bytes == 4) {
+                if (src_is_half) {
+                    // 源是half类型，先转为float再转为double
+                    uint16_t h_temp = *reinterpret_cast<uint16_t*>(src);
+                    *(double *)dst = (double)half_to_float(h_temp);
+                } else if (src_bytes == 4) {
                     *(double *)dst = (double)*(float *)src;
                 } else {
                     *(double *)dst = *(double *)src;
@@ -370,7 +436,11 @@ void CVT::process_operation(ThreadContext *context, void *op[2],
             // 目标是整型
             if (src_is_float) {
                 double temp;
-                if (src_bytes == 4) {
+                if (src_is_half) {
+                    // 源是half类型，先转为float再转为double
+                    uint16_t h_temp = *reinterpret_cast<uint16_t*>(src);
+                    temp = (double)half_to_float(h_temp);
+                } else if (src_bytes == 4) {
                     temp = (double)*(float *)src;
                 } else {
                     temp = *(double *)src;

@@ -88,12 +88,12 @@ void PtxListener::test_semantic() {
             if (param.paramAlign != 0) {
                 std::printf("align %d ", param.paramAlign);
             }
-            
+
             // 遍历paramTypes向量并打印每个类型
-            for(const auto& paramType : param.paramTypes) {
+            for (const auto &paramType : param.paramTypes) {
                 std::printf("%s ", Q2s(paramType).c_str());
             }
-            
+
             if (param.paramNum != 0) {
                 std::printf("arraySize %d ", param.paramNum);
             }
@@ -274,10 +274,11 @@ void PtxListener::exitQualifier(ptxParser::QualifierContext *ctx) {
 
     // 获取当前上下文的完整文本
     std::string ctxText = ctx->getText();
-    
+
     // 使用宏来处理各种情况
 #define X(enum_val, enum_name, str_val)                                        \
-    else if (ctxText.find(std::string(str_val).substr(1)) != std::string::npos) {          \
+    else if (ctxText.find(std::string(str_val).substr(1)) !=                   \
+             std::string::npos) {                                              \
         qualifier.push(Qualifier::enum_val);                                   \
     }
 
@@ -311,46 +312,37 @@ void PtxListener::enterParam(ptxParser::ParamContext *ctx) {
 }
 
 void PtxListener::exitParam(ptxParser::ParamContext *ctx) {
-    int digit_idx = 0;
-
-    /* ID */
+    // 1. 变量名
     paramContext->paramName = ctx->ID()->getText();
 
-    /* Check for PTR modifier - iterate through all qualifiers and check if any of them is PTR */
-    bool foundPtr = false;
-    auto qualifierNodes = ctx->qualifier();
-    for (size_t i = 0; i < qualifierNodes.size(); ++i) {
-        auto qualNode = qualifierNodes[i];
-        // Check if the text of this qualifier is ".ptr"
-        if (qualNode->getText() == ".ptr") {
-            foundPtr = true;
-            break;
-        }
-    }
-    paramContext->isPtr = foundPtr;
-
-    /* align - now it comes before the qualifiers */
-    if (ctx->ALIGN()) {
-        paramContext->paramAlign = stoi(ctx->DIGITS(0)->getText());
-        digit_idx++; // increment digit index since we consumed the first digit
-    } else {
-        paramContext->paramAlign = 0;
-    }
-
-    /* paramNum - check if we have array brackets */
-    if (ctx->LeftBracket()) {
-        paramContext->paramNum = stoi(ctx->DIGITS(digit_idx)->getText());
-    } else {
-        paramContext->paramNum = 1;
-    }
-
+    // 2. 基本类型（必须存在且唯一）
     /* qualifier - process all qualifiers in the queue */
     while (!qualifier.empty()) {
         paramContext->paramTypes.push_back(qualifier.front());
         qualifier.pop();
     }
 
-    /* end of parsing param */
+    // 3. 指针标志
+    paramContext->isPtr = (ctx->PTR() != nullptr);
+
+    // 4. 对齐处理
+    if (ctx->globalAlign) {
+        // 数组对齐（如 .align 2 .b8 var[2]）
+        paramContext->paramAlign = std::stoi(ctx->globalAlignVal->getText());
+    } else if (ctx->ptrAlign) {
+        // 指针对齐（如 .u64 .ptr .align 8 p）
+        paramContext->paramAlign = std::stoi(ctx->ptrAlignVal->getText());
+    } else {
+        paramContext->paramAlign = 0; // 默认对齐
+    }
+
+    // 5. 数组大小
+    if (ctx->arrSize) {
+        paramContext->paramNum = std::stoi(ctx->arrSize->getText());
+    } else {
+        paramContext->paramNum = 1;
+    }
+
     kernelContext->kernelParams.push_back(*paramContext);
 #ifdef LOG
     std::cout << __func__ << std::endl;

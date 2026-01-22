@@ -100,7 +100,13 @@ params : param COMMA params
        | param 
        ;
 
-param : PARAM (ALIGN DIGITS)? qualifier+ (PTR (ALIGN DIGITS)?)? ID (LeftBracket DIGITS RightBracket)?
+param
+    : PARAM 
+      (globalAlign=ALIGN globalAlignVal=DIGITS)? 
+      qualifier 
+      (PTR (ptrAlign=ALIGN ptrAlignVal=DIGITS)?)? 
+      ID 
+      (LeftBracket arrSize=DIGITS RightBracket)?
       ;
 
 compoundStatement : LeftBrace statements? RightBrace 
