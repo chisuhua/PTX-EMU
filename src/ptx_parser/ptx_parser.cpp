@@ -316,13 +316,23 @@ void PtxListener::exitParam(ptxParser::ParamContext *ctx) {
     /* ID */
     paramContext->paramName = ctx->ID()->getText();
 
-    /* Check for PTR modifier */
-    paramContext->isPtr = ctx->PTR() != nullptr;
+    /* Check for PTR modifier - iterate through all qualifiers and check if any of them is PTR */
+    bool foundPtr = false;
+    auto qualifierNodes = ctx->qualifier();
+    for (size_t i = 0; i < qualifierNodes.size(); ++i) {
+        auto qualNode = qualifierNodes[i];
+        // Check if the text of this qualifier is ".ptr"
+        if (qualNode->getText() == ".ptr") {
+            foundPtr = true;
+            break;
+        }
+    }
+    paramContext->isPtr = foundPtr;
 
-    /* align */
+    /* align - now it comes before the qualifiers */
     if (ctx->ALIGN()) {
-        digit_idx++;
         paramContext->paramAlign = stoi(ctx->DIGITS(0)->getText());
+        digit_idx++; // increment digit index since we consumed the first digit
     } else {
         paramContext->paramAlign = 0;
     }
@@ -345,7 +355,6 @@ void PtxListener::exitParam(ptxParser::ParamContext *ctx) {
 #ifdef LOG
     std::cout << __func__ << std::endl;
 #endif
-    delete paramContext;
 }
 
 void PtxListener::enterCompoundStatement(

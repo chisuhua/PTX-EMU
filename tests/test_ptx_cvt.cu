@@ -1,7 +1,8 @@
 #include "catch_amalgamated.hpp"
-#include "ptx_cvt_arith.cuh"
+#include "ptx_cvt_arith.h"
 #include <cmath>
 #include <cstdint>
+#include <cuda_fp16.h>
 
 // Helper function to compare floats with tolerance
 bool float_equal(float a, float b, float epsilon = 1e-5f) {
@@ -356,6 +357,22 @@ TEST_CASE("PTX: cvt.f64.f32", "[ptx][cvt][float_to_float][f32_f64]") {
     double result;
     test_ptx_cvt_f64_f32(654.321f, &result);
     REQUIRE(double_equal(result, 654.321));
+}
+
+// Half precision (f16) to float (f32) conversions
+TEST_CASE("PTX: cvt.f32.f16", "[ptx][cvt][float_to_float][f16_f32]") {
+    float result;
+    __half input = __float2half(3.14f);
+    test_ptx_cvt_f32_f16(input, &result);
+    REQUIRE(float_equal(result, 3.14f, 0.01f));  // Allow slightly larger tolerance due to precision loss
+}
+
+TEST_CASE("PTX: cvt.f16.f32", "[ptx][cvt][float_to_float][f32_f16]") {
+    __half result;
+    float input = 2.71f;
+    test_ptx_cvt_f16_f32(input, &result);
+    float converted_back = __half2float(result);
+    REQUIRE(float_equal(converted_back, 2.71f, 0.01f));  // Allow slightly larger tolerance due to precision loss
 }
 
 // Saturation conversions

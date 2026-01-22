@@ -178,6 +178,13 @@ add_catch_test(test_ptx_ld_st
 )
 set_tests_properties(test_ptx_ld_st PROPERTIES LABELS "ptx;ld_st")
 
+# 地址转换测试
+add_catch_test(test_ptx_cvta
+    test_ptx_cvta.cu
+    ptx_cvta.cu
+)
+set_tests_properties(test_ptx_cvta PROPERTIES LABELS "ptx;cvta")
+
 # （保留其他非 PTX 的 catch 测试，如将来有）
 # add_catch_test(test_another test_another.cpp)
 
