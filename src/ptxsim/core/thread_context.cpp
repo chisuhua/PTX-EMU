@@ -1,6 +1,7 @@
 #include "ptxsim/thread_context.h"
 #include "ptx_ir/ptx_types.h"
 #include "ptx_ir/statement_context.h"
+#include "ptxsim/cta_context.h"      // 添加CTAContext头文件包含
 #include "ptxsim/execution_types.h"
 #include "ptxsim/instruction_factory.h"
 #include "ptxsim/ptx_debug.h"
@@ -55,6 +56,13 @@ void ThreadContext::init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim,
 
     // 注意：寄存器管理现在完全由RegisterBankManager负责
     // 寄存器预分配现在由CTAContext统一处理
+}
+
+// 设置本地内存空间的方法实现
+void ThreadContext::set_local_memory_space(void *local_mem_space) {
+    this->local_mem_space = local_mem_space;
+    PTX_DEBUG_EMU("Thread (%d,%d,%d) local memory space set to %p", 
+                  ThreadIdx.x, ThreadIdx.y, ThreadIdx.z, local_mem_space);
 }
 
 void ThreadContext::_execute_once() {
@@ -411,6 +419,14 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
                 // 如果没有设置共享内存基地址，则返回nullptr
                 return nullptr;
             }
+        } else if (QvecHasQ(qualifiers, Qualifier::Q_LOCAL)) {
+            // 对于本地内存访问，寄存器中的值是偏移量，需要加上本地内存基地址
+            if (local_mem_space != nullptr) {
+                ret = (void *)((uint64_t)local_mem_space + reg_value);
+            } else {
+                // 如果没有设置本地内存基地址，则返回nullptr
+                return nullptr;
+            }
         } else {
             ret = (void *)reg_value;
         }
@@ -442,17 +458,28 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
                     ret = (void *)share_it->second->val;
                 }
             } else {
-                // 如果都没找到，返回nullptr
-                // 但是对共享内存访问，我们可能需要特殊处理
-                if (QvecHasQ(qualifiers, Qualifier::Q_SHARED)) {
-                    // 对于共享内存访问，如果在name2Share中没找到，说明可能尚未初始化
-                    // 我们可以尝试分配空间或者返回错误
-                    PTX_ERROR_EMU(
-                        "Shared memory variable not found in name2Share: %s",
-                        fa->ID.c_str());
-                    return nullptr;
+                // 检查是否是本地内存变量
+                auto local_it = cta_context_->name2Local.find(fa->ID);
+                if (local_it != cta_context_->name2Local.end()) {
+                    PTX_DEBUG_EMU("Reading local memory from name2Local in "
+                                  "get_memory_addr: name=%s, "
+                                  "symbol_table_entry=%p, stored_value=0x%lx",
+                                  fa->ID.c_str(), local_it->second,
+                                  local_it->second->val);
+
+                    // 对于本地内存变量，应该返回相对于本地内存空间的绝对地址
+                    if (local_mem_space != nullptr) {
+                        ret = (void *)((uint64_t)local_mem_space +
+                                       local_it->second->val);
+                    } else {
+                        // 如果没有设置本地内存空间，则返回原始偏移量
+                        ret = (void *)local_it->second->val;
+                    }
                 } else {
-                    return nullptr;
+                    // 对于本地内存访问，如果在name2Local中没找到，说明可能尚未初始化
+                    PTX_DEBUG_EMU(
+                        "Local memory variable not found in name2Local: %s",
+                        fa->ID.c_str());
                 }
             }
         } else {
@@ -464,6 +491,8 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
     // 如果是shared memory访问，需要特殊处理
     if (QvecHasQ(qualifiers, Qualifier::Q_SHARED)) {
         // 对于共享内存，地址已经在上面的逻辑中正确处理了
+    } else if (QvecHasQ(qualifiers, Qualifier::Q_LOCAL)) {
+        // 对于本地内存，地址也已经在上面的逻辑中正确处理了
     }
 
     // 处理偏移量

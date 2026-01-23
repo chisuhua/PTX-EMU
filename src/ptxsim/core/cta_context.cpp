@@ -39,6 +39,9 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
 
     // 计算共享内存大小，遍历PTX语句查找.shared声明
     sharedMemBytes = 0;
+    // 同时计算本地内存大小
+    localMemBytesPerThread = 0;
+    
     for (const auto &stmt : statements) {
         if (stmt.statementType == S_SHARED) {
             auto sharedStmt = (StatementContext::SHARED *)stmt.statement;
@@ -46,6 +49,12 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
             size_t element_size = Q2bytes(sharedStmt->dataType[0]);
             size_t var_size = element_size * sharedStmt->size;
             sharedMemBytes += var_size;
+        } else if (stmt.statementType == S_LOCAL) {
+            // 处理本地内存声明
+            auto localStmt = (StatementContext::LOCAL *)stmt.statement;
+            size_t element_size = Q2bytes(localStmt->dataType[0]);
+            size_t var_size = element_size * localStmt->size;
+            localMemBytesPerThread += var_size;
         }
     }
 
@@ -76,11 +85,41 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
             shared_offset += var_size;
         }
     }
+    
+    // 预先创建本地内存符号表的结构
+    size_t local_offset = 0;
+    for (const auto &stmt : statements) {
+        if (stmt.statementType == S_LOCAL) {
+            auto ls = (StatementContext::LOCAL *)stmt.statement;
+            // 使用new操作符创建Symtable实例
+            Symtable *s = new Symtable();
+            s->byteNum = getBytes(ls->dataType) * ls->size;
+            s->elementNum = ls->size;
+            s->name = ls->name;
+            s->symType = ls->dataType.back(); // 假设dataType[0]是元素类型
+
+            size_t var_size = s->byteNum;
+
+            // 设置本地内存变量的偏移量
+            s->val = local_offset;
+
+            PTX_DEBUG_EMU("Prepared local memory variable: name=%s, "
+                          "elementNum=%d, byteNum=%d, "
+                          "var_size=%zu, local_mem_offset=%zu",
+                          s->name.c_str(), s->elementNum, s->byteNum, var_size,
+                          local_offset);
+
+            name2Local[s->name] = s;
+            local_offset += var_size;
+        }
+    }
 
     // 共享内存分配现在在build_shared_memory_symbol_table中进行，由SMContext提供空间
     sharedMemSpace = nullptr; // 初始化为nullptr
     PTX_DEBUG_EMU("Calculated shared memory size needed: %zu bytes",
                   sharedMemBytes);
+    PTX_DEBUG_EMU("Calculated local memory size needed per thread: %zu bytes",
+                  localMemBytesPerThread);
 
     // 计算需要多少个warp
     int numWarpsNeeded =
@@ -182,6 +221,43 @@ void CTAContext::build_shared_memory_symbol_table(void *shared_mem_space) {
         for (auto &thread : warp->get_threads()) {
             if (thread) {
                 thread->shared_mem_space = shared_mem_space;
+            }
+        }
+    }
+}
+
+// 实现构建本地内存符号表的方法
+void CTAContext::build_local_memory_symbol_table() {
+    if (!init_statements) {
+        PTX_DEBUG_EMU("Error: init_statements is null, cannot build local "
+                      "memory symbol table");
+        return;
+    }
+
+    // 为每个线程分配本地内存空间
+    localMemSpaces.resize(threadNum);
+    for (int i = 0; i < threadNum; i++) {
+        if (localMemBytesPerThread > 0) {
+            localMemSpaces[i] = malloc(localMemBytesPerThread);
+            if (localMemSpaces[i]) {
+                memset(localMemSpaces[i], 0, localMemBytesPerThread);
+                PTX_DEBUG_EMU("Allocated local memory space of size %zu for thread %d at %p",
+                              localMemBytesPerThread, i, localMemSpaces[i]);
+            } else {
+                PTX_ERROR_EMU("Failed to allocate local memory space for thread %d", i);
+            }
+        } else {
+            localMemSpaces[i] = nullptr;
+        }
+    }
+
+    // 将本地内存基地址传递给所有线程
+    int threadIdx = 0;
+    for (auto &warp : warps) {
+        for (auto &thread : warp->get_threads()) {
+            if (thread) {
+                thread->set_local_memory_space(localMemSpaces[threadIdx]);
+                threadIdx++;
             }
         }
     }

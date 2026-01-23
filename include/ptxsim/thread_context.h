@@ -21,6 +21,7 @@
 
 class PtxInterpreter; // 前向声明
 class WarpContext;    // 前向声明
+class CTAContext;     // 前向声明
 
 class ThreadContext {
 public:
@@ -53,6 +54,9 @@ public:
 
     // 共享内存基地址
     void *shared_mem_space = nullptr;
+    
+    // 本地内存基地址
+    void *local_mem_space = nullptr;
 
     // 指向warp的指针，用于访问SMContext
     WarpContext *warp_context_ = nullptr;
@@ -84,6 +88,9 @@ public:
 
     // Shared memory初始化
     void initialize_shared_memory(const std::string &name, uint64_t address);
+    
+    // 设置本地内存空间
+    void set_local_memory_space(void *local_mem_space);
 
     // 通用操作
     void mov_data(void *src, void *dst, std::vector<Qualifier> &qualifiers);
@@ -206,9 +213,11 @@ public:
 private:
     void _execute_once();
     bool is_immediate_or_vector(OperandContext &op);
-    // void set_immediate_value(std::string value, Qualifier type);
     // 用于存储已收集的寄存器地址，避免重复分配
     // std::map<std::string, void *> cached_register_addrs;
+
+    // 指向CTAContext的指针，用于访问本地内存符号表
+    CTAContext *cta_context_ = nullptr;
 };
 
 #endif // THREAD_CONTEXT_H
