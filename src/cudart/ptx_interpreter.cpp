@@ -174,10 +174,12 @@ void PtxInterpreter::setupKernelArguments(
 
         name2Sym[s->name] = s;
         offset += param_size;
-        PTX_DEBUG_EMU("Added kernel argument to name2Sym: name=%s, "
-                      "symbol_table_entry = %p, stored_value = 0x%llx,"
-                      "first_8_bytes_of_data = 0x%llx ",
-                      s->name.c_str(), s, s->val, *(uint64_t *)(s->val));
+        PTX_DEBUG_EMU(
+            "Added kernel argument to name2Sym: name=%s, "
+            "symbol_table_entry = %p, stored_value = 0x%llx,"
+            "first_8_bytes_of_data = 0x%llx, param_size=%d, param_bytes=%d ",
+            s->name.c_str(), s, s->val, *(uint64_t *)(s->val), param_size,
+            s->byteNum);
     }
 }
 

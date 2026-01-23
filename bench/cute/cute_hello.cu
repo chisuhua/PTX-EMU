@@ -70,9 +70,9 @@ int main() {
             std::ios_base::fmtflags f_flags(std::cout.flags());
 
             std::cout << std::fixed << std::setprecision(1) << std::setw(6) << f
-                      << " | 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(4) << half_bits
-                      << " | 0x" << std::setw(8) << float_bits
-                      << "  ";
+                      << " , 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(4) << half_bits
+                      << " , 0x" << std::setw(8) << float_bits
+                      << " | ";
 
             // Restore flags (back to dec, etc.)
             std::cout.flags(f_flags);
@@ -103,7 +103,11 @@ int main() {
       uint32_t float_bits = float_to_bits(f);
 
       std::cout << std::setw(6) << std::fixed << std::setprecision(1) << f
-                      << " | 0x" << std::setw(8) << float_bits << "  ";
+                      << " , 0x" << std::setw(8) << std::hex << float_bits << "  ";
+      if (i == 0) std::cout << " | expect coordinate (0,0) ";
+      if (i == 1) std::cout << " | expect coordinate (1,2) 9.0 , 0x41100000";
+      if (i == 2) std::cout << " | expect coordinate (1,0) 6.0 , 0x40C00000";
+      if (i == 3) std::cout << " | expect coordinate (1,0) 6.0 , 0x40C00000";
       std::cout << "\n";
     }
 

@@ -329,7 +329,7 @@ void parseImmediate(const std::string &s, Qualifier q, void *out) {
 }
 
 bool QvecHasQ(const std::vector<Qualifier> &qvec, Qualifier q) {
-    for (const auto& item : qvec) {
+    for (const auto &item : qvec) {
         if (item == q) {
             return true;
         }
@@ -339,10 +339,27 @@ bool QvecHasQ(const std::vector<Qualifier> &qvec, Qualifier q) {
 
 // 检查修饰符中是否包含.cc修饰符
 bool hasCCQualifier(const std::vector<Qualifier> &qualifiers) {
-    for (const auto& q : qualifiers) {
+    for (const auto &q : qualifiers) {
         if (q == Qualifier::Q_CC) {
             return true;
         }
     }
     return false;
+}
+
+// 获取每个操作数的字节大小
+std::vector<int>
+getOperandBytes(const std::vector<Qualifier> &operand_qualifiers) {
+    std::vector<int> bytes_list;
+
+    int bytes = 0;
+    for (const auto &qual : operand_qualifiers) {
+        int size = Q2bytes(qual);
+        if (size > 0) {
+            bytes = size;
+            bytes_list.push_back(bytes);
+        }
+    }
+
+    return bytes_list;
 }

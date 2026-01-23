@@ -41,4 +41,8 @@ bool QvecHasQ(const std::vector<Qualifier> &qvec, Qualifier q);
 // 检查修饰符中是否包含.cc修饰符
 bool hasCCQualifier(const std::vector<Qualifier> &qualifiers);
 
+// 获取每个操作数的字节大小
+std::vector<int>
+getOperandBytes(const std::vector<Qualifier> &operand_qualifiers);
+
 #endif // QUALIFIER_UTILS_H

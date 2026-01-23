@@ -288,8 +288,20 @@ void *ThreadContext::acquire_operand(OperandContext &operand,
 void ThreadContext::collect_operands(StatementContext &stmt,
                                      std::vector<OperandContext> &operands,
                                      std::vector<Qualifier> *qualifier) {
-    int bytes = getBytes(*qualifier);
+    // 获取每个操作数的字节大小
+    std::vector<int> operand_bytes = getOperandBytes(*qualifier);
+
+    // 扩展operand_collected向量以容纳所有操作数
+    if (operand_collected.size() < operands.size()) {
+        operand_collected.resize(operands.size());
+    }
+
     for (int i = 0; i < operands.size(); i++) {
+        // 获取当前操作数的字节大小，如果不存在则使用最后一个元素
+        int bytes = operand_bytes.size() > i
+                        ? operand_bytes[i]
+                        : (operand_bytes.empty() ? 0 : operand_bytes.back());
+
         trace_status(ptxsim::log_level::debug, "thread", "Collect: %s ",
                      operands[i].toString(bytes).c_str());
         operand_collected[i] = operands[i].operand_phy_addr;
@@ -420,10 +432,11 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
                               "symbol_table_entry=%p, stored_value=0x%lx",
                               fa->ID.c_str(), share_it->second,
                               share_it->second->val);
-                
+
                 // 修正：对于共享内存变量，应该返回相对于共享内存空间的绝对地址
                 if (shared_mem_space != nullptr) {
-                    ret = (void *)((uint64_t)shared_mem_space + share_it->second->val);
+                    ret = (void *)((uint64_t)shared_mem_space +
+                                   share_it->second->val);
                 } else {
                     // 如果没有设置共享内存空间，则返回原始偏移量
                     ret = (void *)share_it->second->val;
@@ -434,7 +447,9 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
                 if (QvecHasQ(qualifiers, Qualifier::Q_SHARED)) {
                     // 对于共享内存访问，如果在name2Share中没找到，说明可能尚未初始化
                     // 我们可以尝试分配空间或者返回错误
-                    PTX_ERROR_EMU("Shared memory variable not found in name2Share: %s", fa->ID.c_str());
+                    PTX_ERROR_EMU(
+                        "Shared memory variable not found in name2Share: %s",
+                        fa->ID.c_str());
                     return nullptr;
                 } else {
                     return nullptr;
