@@ -74,13 +74,13 @@ std::string OperandContext::toString(int bytes) const {
     }
     oss << " phy_addr:" << std::hex << operand_phy_addr;
     if (operand_phy_addr != nullptr && bytes == 1) {
-        oss << " value:" << *(uint8_t *)operand_phy_addr;
+        oss << " value:0x" << std::hex << (int)*(uint8_t *)operand_phy_addr << std::dec;
     } else if (operand_phy_addr != nullptr && bytes == 2) {
-        oss << " value:" << *(uint16_t *)operand_phy_addr;
+        oss << " value:0x" << std::hex << *(uint16_t *)operand_phy_addr << std::dec;
     } else if (operand_phy_addr != nullptr && bytes == 4) {
-        oss << " value:" << *(uint32_t *)operand_phy_addr;
+        oss << " value:0x" << std::hex << *(uint32_t *)operand_phy_addr << std::dec;
     } else if (operand_phy_addr != nullptr && bytes == 8) {
-        oss << " value:" << *(uint64_t *)operand_phy_addr;
+        oss << " value:0x" << std::hex << *(uint64_t *)operand_phy_addr << std::dec;
     }
 
     return oss.str();
