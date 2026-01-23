@@ -309,6 +309,261 @@ TEST_CASE("PTX: cvt.rni.u32.f64", "[ptx][cvt][float_to_int][f64_u32]") {
     REQUIRE(result == 98765);  // Rounded to nearest integer
 }
 
+// Tests for different rounding modes without saturation
+TEST_CASE("PTX: cvt.rni.u8.f32", "[ptx][cvt][float_to_int][f32_u8_rni]") {
+    uint8_t result;
+    test_ptx_cvt_u8_f32_rni(3.4f, &result);
+    REQUIRE(result == 3);  // Round to nearest: 3
+    
+    test_ptx_cvt_u8_f32_rni(3.5f, &result);
+    REQUIRE(result == 4);  // Round to nearest, ties to even: 4
+    
+    test_ptx_cvt_u8_f32_rni(4.5f, &result);
+    REQUIRE(result == 4);  // Round to nearest, ties to even: 4
+    
+    test_ptx_cvt_u8_f32_rni(255.4f, &result);
+    REQUIRE(result == 255);  // 255
+    
+    test_ptx_cvt_u8_f32_rni(255.5f, &result);
+    REQUIRE(result == 0);  // 256 mod 256 = 0
+    
+    test_ptx_cvt_u8_f32_rni(-0.5f, &result);
+    REQUIRE(result == 0);  // Round to nearest, ties to even: 0
+    
+    test_ptx_cvt_u8_f32_rni(-1.5f, &result);
+    REQUIRE(result == 254);  // -2 mod 256 = 254
+}
+
+TEST_CASE("PTX: cvt.rzi.u8.f32", "[ptx][cvt][float_to_int][f32_u8_rzi]") {
+    uint8_t result;
+    test_ptx_cvt_u8_f32_rzi(3.9f, &result);
+    REQUIRE(result == 3);  // Truncate towards zero: 3
+    
+    test_ptx_cvt_u8_f32_rzi(-3.9f, &result);
+    REQUIRE(result == 253);  // -3 mod 256 = 253
+    
+    test_ptx_cvt_u8_f32_rzi(255.9f, &result);
+    REQUIRE(result == 255);  // 255
+    
+    test_ptx_cvt_u8_f32_rzi(256.0f, &result);
+    REQUIRE(result == 0);  // 256 mod 256 = 0
+    
+    test_ptx_cvt_u8_f32_rzi(-1.0f, &result);
+    REQUIRE(result == 255);  // -1 mod 256 = 255
+}
+
+TEST_CASE("PTX: cvt.rmi.u8.f32", "[ptx][cvt][float_to_int][f32_u8_rmi]") {
+    uint8_t result;
+    test_ptx_cvt_u8_f32_rmi(3.1f, &result);
+    REQUIRE(result == 3);  // Floor: 3
+    
+    test_ptx_cvt_u8_f32_rmi(3.9f, &result);
+    REQUIRE(result == 3);  // Floor: 3
+    
+    test_ptx_cvt_u8_f32_rmi(-3.1f, &result);
+    REQUIRE(result == 252);  // Floor: -4 mod 256 = 252
+    
+    test_ptx_cvt_u8_f32_rmi(-3.9f, &result);
+    REQUIRE(result == 252);  // Floor: -4 mod 256 = 252
+    
+    test_ptx_cvt_u8_f32_rmi(255.1f, &result);
+    REQUIRE(result == 255);  // 255
+    
+    test_ptx_cvt_u8_f32_rmi(256.0f, &result);
+    REQUIRE(result == 0);  // 256 mod 256 = 0
+}
+
+TEST_CASE("PTX: cvt.rpi.u8.f32", "[ptx][cvt][float_to_int][f32_u8_rpi]") {
+    uint8_t result;
+    test_ptx_cvt_u8_f32_rpi(3.1f, &result);
+    REQUIRE(result == 4);  // Ceil: 4
+    
+    test_ptx_cvt_u8_f32_rpi(3.9f, &result);
+    REQUIRE(result == 4);  // Ceil: 4
+    
+    test_ptx_cvt_u8_f32_rpi(-3.1f, &result);
+    REQUIRE(result == 253);  // Ceil: -3 mod 256 = 253
+    
+    test_ptx_cvt_u8_f32_rpi(-3.9f, &result);
+    REQUIRE(result == 253);  // Ceil: -3 mod 256 = 253
+    
+    test_ptx_cvt_u8_f32_rpi(255.1f, &result);
+    REQUIRE(result == 0);  // Ceil: 256 mod 256 = 0
+    
+    test_ptx_cvt_u8_f32_rpi(-0.1f, &result);
+    REQUIRE(result == 0);  // Ceil: 0
+}
+
+// Tests for u16 rounding modes without saturation
+TEST_CASE("PTX: cvt.rni.u16.f32", "[ptx][cvt][float_to_int][f32_u16_rni]") {
+    uint16_t result;
+    test_ptx_cvt_u16_f32_rni(3.4f, &result);
+    REQUIRE(result == 3);  // Round to nearest: 3
+    
+    test_ptx_cvt_u16_f32_rni(3.5f, &result);
+    REQUIRE(result == 4);  // Round to nearest, ties to even: 4
+    
+    test_ptx_cvt_u16_f32_rni(4.5f, &result);
+    REQUIRE(result == 4);  // Round to nearest, ties to even: 4
+    
+    test_ptx_cvt_u16_f32_rni(65535.4f, &result);
+    REQUIRE(result == 65535);  // 65535
+    
+    test_ptx_cvt_u16_f32_rni(65535.5f, &result);
+    REQUIRE(result == 0);  // 65536 mod 65536 = 0
+    
+    test_ptx_cvt_u16_f32_rni(-0.5f, &result);
+    REQUIRE(result == 0);  // Round to nearest, ties to even: 0
+    
+    test_ptx_cvt_u16_f32_rni(-1.5f, &result);
+    REQUIRE(result == 65534);  // -2 mod 65536 = 65534
+}
+
+TEST_CASE("PTX: cvt.rzi.u16.f32", "[ptx][cvt][float_to_int][f32_u16_rzi]") {
+    uint16_t result;
+    test_ptx_cvt_u16_f32_rzi(3.9f, &result);
+    REQUIRE(result == 3);  // Truncate towards zero: 3
+    
+    test_ptx_cvt_u16_f32_rzi(-3.9f, &result);
+    REQUIRE(result == 65533);  // -3 mod 65536 = 65533
+    
+    test_ptx_cvt_u16_f32_rzi(65535.9f, &result);
+    REQUIRE(result == 65535);  // 65535
+    
+    test_ptx_cvt_u16_f32_rzi(65536.0f, &result);
+    REQUIRE(result == 0);  // 65536 mod 65536 = 0
+    
+    test_ptx_cvt_u16_f32_rzi(-1.0f, &result);
+    REQUIRE(result == 65535);  // -1 mod 65536 = 65535
+}
+
+TEST_CASE("PTX: cvt.rmi.u16.f32", "[ptx][cvt][float_to_int][f32_u16_rmi]") {
+    uint16_t result;
+    test_ptx_cvt_u16_f32_rmi(3.1f, &result);
+    REQUIRE(result == 3);  // Floor: 3
+    
+    test_ptx_cvt_u16_f32_rmi(3.9f, &result);
+    REQUIRE(result == 3);  // Floor: 3
+    
+    test_ptx_cvt_u16_f32_rmi(-3.1f, &result);
+    REQUIRE(result == 65532);  // Floor: -4 mod 65536 = 65532
+    
+    test_ptx_cvt_u16_f32_rmi(-3.9f, &result);
+    REQUIRE(result == 65532);  // Floor: -4 mod 65536 = 65532
+    
+    test_ptx_cvt_u16_f32_rmi(65535.1f, &result);
+    REQUIRE(result == 65535);  // 65535
+    
+    test_ptx_cvt_u16_f32_rmi(65536.0f, &result);
+    REQUIRE(result == 0);  // 65536 mod 65536 = 0
+}
+
+TEST_CASE("PTX: cvt.rpi.u16.f32", "[ptx][cvt][float_to_int][f32_u16_rpi]") {
+    uint16_t result;
+    test_ptx_cvt_u16_f32_rpi(3.1f, &result);
+    REQUIRE(result == 4);  // Ceil: 4
+    
+    test_ptx_cvt_u16_f32_rpi(3.9f, &result);
+    REQUIRE(result == 4);  // Ceil: 4
+    
+    test_ptx_cvt_u16_f32_rpi(-3.1f, &result);
+    REQUIRE(result == 65533);  // Ceil: -3 mod 65536 = 65533
+    
+    test_ptx_cvt_u16_f32_rpi(-3.9f, &result);
+    REQUIRE(result == 65533);  // Ceil: -3 mod 65536 = 65533
+    
+    test_ptx_cvt_u16_f32_rpi(65535.1f, &result);
+    REQUIRE(result == 0);  // Ceil: 65536 mod 65536 = 0
+    
+    test_ptx_cvt_u16_f32_rpi(-0.1f, &result);
+    REQUIRE(result == 0);  // Ceil: 0
+}
+
+// Tests for u32 rounding modes without saturation
+TEST_CASE("PTX: cvt.rni.u32.f32", "[ptx][cvt][float_to_int][f32_u32_rni]") {
+    uint32_t result;
+    test_ptx_cvt_u32_f32_rni(3.4f, &result);
+    REQUIRE(result == 3);  // Round to nearest: 3
+    
+    test_ptx_cvt_u32_f32_rni(3.5f, &result);
+    REQUIRE(result == 4);  // Round to nearest, ties to even: 4
+    
+    test_ptx_cvt_u32_f32_rni(4.5f, &result);
+    REQUIRE(result == 4);  // Round to nearest, ties to even: 4
+    
+    test_ptx_cvt_u32_f32_rni(4294967295.4f, &result);
+    REQUIRE(result == 4294967295U);  // 0xFFFFFFFF
+    
+    test_ptx_cvt_u32_f32_rni(4294967295.5f, &result);
+    REQUIRE(result == 0);  // Overflow: wraps to 0
+    
+    test_ptx_cvt_u32_f32_rni(-0.5f, &result);
+    REQUIRE(result == 0);  // Round to nearest, ties to even: 0
+    
+    test_ptx_cvt_u32_f32_rni(-1.5f, &result);
+    REQUIRE(result == 4294967294U);  // -2 mod 2^32 = 4294967294
+}
+
+TEST_CASE("PTX: cvt.rzi.u32.f32", "[ptx][cvt][float_to_int][f32_u32_rzi]") {
+    uint32_t result;
+    test_ptx_cvt_u32_f32_rzi(3.9f, &result);
+    REQUIRE(result == 3);  // Truncate towards zero: 3
+    
+    test_ptx_cvt_u32_f32_rzi(-3.9f, &result);
+    REQUIRE(result == 4294967293U);  // -3 mod 2^32 = 4294967293
+    
+    test_ptx_cvt_u32_f32_rzi(4294967295.9f, &result);
+    REQUIRE(result == 4294967295U);  // 0xFFFFFFFF
+    
+    test_ptx_cvt_u32_f32_rzi(4294967296.0f, &result);
+    REQUIRE(result == 0);  // 2^32 mod 2^32 = 0
+    
+    test_ptx_cvt_u32_f32_rzi(-1.0f, &result);
+    REQUIRE(result == 4294967295U);  // -1 mod 2^32 = 4294967295
+}
+
+TEST_CASE("PTX: cvt.rmi.u32.f32", "[ptx][cvt][float_to_int][f32_u32_rmi]") {
+    uint32_t result;
+    test_ptx_cvt_u32_f32_rmi(3.1f, &result);
+    REQUIRE(result == 3);  // Floor: 3
+    
+    test_ptx_cvt_u32_f32_rmi(3.9f, &result);
+    REQUIRE(result == 3);  // Floor: 3
+    
+    test_ptx_cvt_u32_f32_rmi(-3.1f, &result);
+    REQUIRE(result == 4294967292U);  // Floor: -4 mod 2^32 = 4294967292
+    
+    test_ptx_cvt_u32_f32_rmi(-3.9f, &result);
+    REQUIRE(result == 4294967292U);  // Floor: -4 mod 2^32 = 4294967292
+    
+    test_ptx_cvt_u32_f32_rmi(4294967295.1f, &result);
+    REQUIRE(result == 4294967295U);  // 0xFFFFFFFF
+    
+    test_ptx_cvt_u32_f32_rmi(4294967296.0f, &result);
+    REQUIRE(result == 0);  // 2^32 mod 2^32 = 0
+}
+
+TEST_CASE("PTX: cvt.rpi.u32.f32", "[ptx][cvt][float_to_int][f32_u32_rpi]") {
+    uint32_t result;
+    test_ptx_cvt_u32_f32_rpi(3.1f, &result);
+    REQUIRE(result == 4);  // Ceil: 4
+    
+    test_ptx_cvt_u32_f32_rpi(3.9f, &result);
+    REQUIRE(result == 4);  // Ceil: 4
+    
+    test_ptx_cvt_u32_f32_rpi(-3.1f, &result);
+    REQUIRE(result == 4294967293U);  // Ceil: -3 mod 2^32 = 4294967293
+    
+    test_ptx_cvt_u32_f32_rpi(-3.9f, &result);
+    REQUIRE(result == 4294967293U);  // Ceil: -3 mod 2^32 = 4294967293
+    
+    test_ptx_cvt_u32_f32_rpi(4294967295.1f, &result);
+    REQUIRE(result == 0);  // Ceil: overflows to 0
+    
+    test_ptx_cvt_u32_f32_rpi(-0.1f, &result);
+    REQUIRE(result == 0);  // Ceil: 0
+}
+
 // Integer to float conversions
 TEST_CASE("PTX: cvt.f32.s32", "[ptx][cvt][int_to_float][s32_f32]") {
     float result;

@@ -796,7 +796,7 @@ void test_ptx_cvt_satu8_f32(float a, uint8_t* result) {
 
 __device__ uint8_t ptx_cvt_satu8_f32(float a) {
     uint16_t result;
-    asm("cvt.u8.f32.sat.rni %0, %1;" : "=h"(result) : "f"(a));
+    asm("cvt.rzi.sat.u8.f32 %0, %1;" : "=h"(result) : "f"(a));
     return (uint8_t)result;
 }
 
@@ -815,7 +815,7 @@ void test_ptx_cvt_satu16_f32(float a, uint16_t* result) {
 
 __device__ uint16_t ptx_cvt_satu16_f32(float a) {
     uint16_t result;
-    asm("cvt.sat.u16.f32.rni %0, %1;" : "=h"(result) : "f"(a));
+    asm("cvt.rzi.sat.u16.f32 %0, %1;" : "=h"(result) : "f"(a));
     return result;
 }
 
@@ -834,6 +834,235 @@ void test_ptx_cvt_satu32_f32(float a, uint32_t* result) {
 
 __device__ uint32_t ptx_cvt_satu32_f32(float a) {
     uint32_t result;
-    asm("cvt.sat.u32.f32.rni %0, %1;" : "=r"(result) : "f"(a));
+    asm("cvt.rzi.sat.u32.f32 %0, %1;" : "=r"(result) : "f"(a));
+    return result;
+}
+
+// Rounding mode conversions (non-saturated)
+__global__ void test_cvt_u8_f32_rni_kernel(float a, uint8_t* result) {
+    uint8_t temp = ptx_cvt_u8_f32_rni(a);
+    *result = temp;
+}
+
+void test_ptx_cvt_u8_f32_rni(float a, uint8_t* result) {
+    uint8_t *d_result;
+    cudaMalloc(&d_result, sizeof(uint8_t));
+    test_cvt_u8_f32_rni_kernel<<<1, 1>>>(a, d_result);
+    cudaMemcpy(result, d_result, sizeof(uint8_t), cudaMemcpyDeviceToHost);
+    cudaFree(d_result);
+}
+
+__device__ uint8_t ptx_cvt_u8_f32_rni(float a) {
+    uint16_t result;
+    asm("cvt.rni.u8.f32 %0, %1;" : "=h"(result) : "f"(a));
+    return (uint8_t)result;
+}
+
+__global__ void test_cvt_u8_f32_rzi_kernel(float a, uint8_t* result) {
+    uint8_t temp = ptx_cvt_u8_f32_rzi(a);
+    *result = temp;
+}
+
+void test_ptx_cvt_u8_f32_rzi(float a, uint8_t* result) {
+    uint8_t *d_result;
+    cudaMalloc(&d_result, sizeof(uint8_t));
+    test_cvt_u8_f32_rzi_kernel<<<1, 1>>>(a, d_result);
+    cudaMemcpy(result, d_result, sizeof(uint8_t), cudaMemcpyDeviceToHost);
+    cudaFree(d_result);
+}
+
+__device__ uint8_t ptx_cvt_u8_f32_rzi(float a) {
+    uint16_t result;
+    asm("cvt.rzi.u8.f32 %0, %1;" : "=h"(result) : "f"(a));
+    return (uint8_t)result;
+}
+
+__global__ void test_cvt_u8_f32_rmi_kernel(float a, uint8_t* result) {
+    uint8_t temp = ptx_cvt_u8_f32_rmi(a);
+    *result = temp;
+}
+
+void test_ptx_cvt_u8_f32_rmi(float a, uint8_t* result) {
+    uint8_t *d_result;
+    cudaMalloc(&d_result, sizeof(uint8_t));
+    test_cvt_u8_f32_rmi_kernel<<<1, 1>>>(a, d_result);
+    cudaMemcpy(result, d_result, sizeof(uint8_t), cudaMemcpyDeviceToHost);
+    cudaFree(d_result);
+}
+
+__device__ uint8_t ptx_cvt_u8_f32_rmi(float a) {
+    uint16_t result;
+    asm("cvt.rmi.u8.f32 %0, %1;" : "=h"(result) : "f"(a));
+    return (uint8_t)result;
+}
+
+__global__ void test_cvt_u8_f32_rpi_kernel(float a, uint8_t* result) {
+    uint8_t temp = ptx_cvt_u8_f32_rpi(a);
+    *result = temp;
+}
+
+void test_ptx_cvt_u8_f32_rpi(float a, uint8_t* result) {
+    uint8_t *d_result;
+    cudaMalloc(&d_result, sizeof(uint8_t));
+    test_cvt_u8_f32_rpi_kernel<<<1, 1>>>(a, d_result);
+    cudaMemcpy(result, d_result, sizeof(uint8_t), cudaMemcpyDeviceToHost);
+    cudaFree(d_result);
+}
+
+__device__ uint8_t ptx_cvt_u8_f32_rpi(float a) {
+    uint16_t result;
+    asm("cvt.rpi.u8.f32 %0, %1;" : "=h"(result) : "f"(a));
+    return (uint8_t)result;
+}
+
+__global__ void test_cvt_u16_f32_rni_kernel(float a, uint16_t* result) {
+    uint16_t temp = ptx_cvt_u16_f32_rni(a);
+    *result = temp;
+}
+
+void test_ptx_cvt_u16_f32_rni(float a, uint16_t* result) {
+    uint16_t *d_result;
+    cudaMalloc(&d_result, sizeof(uint16_t));
+    test_cvt_u16_f32_rni_kernel<<<1, 1>>>(a, d_result);
+    cudaMemcpy(result, d_result, sizeof(uint16_t), cudaMemcpyDeviceToHost);
+    cudaFree(d_result);
+}
+
+__device__ uint16_t ptx_cvt_u16_f32_rni(float a) {
+    uint16_t result;
+    asm("cvt.rni.u16.f32 %0, %1;" : "=h"(result) : "f"(a));
+    return result;
+}
+
+__global__ void test_cvt_u16_f32_rzi_kernel(float a, uint16_t* result) {
+    uint16_t temp = ptx_cvt_u16_f32_rzi(a);
+    *result = temp;
+}
+
+void test_ptx_cvt_u16_f32_rzi(float a, uint16_t* result) {
+    uint16_t *d_result;
+    cudaMalloc(&d_result, sizeof(uint16_t));
+    test_cvt_u16_f32_rzi_kernel<<<1, 1>>>(a, d_result);
+    cudaMemcpy(result, d_result, sizeof(uint16_t), cudaMemcpyDeviceToHost);
+    cudaFree(d_result);
+}
+
+__device__ uint16_t ptx_cvt_u16_f32_rzi(float a) {
+    uint16_t result;
+    asm("cvt.rzi.u16.f32 %0, %1;" : "=h"(result) : "f"(a));
+    return result;
+}
+
+__global__ void test_cvt_u16_f32_rmi_kernel(float a, uint16_t* result) {
+    uint16_t temp = ptx_cvt_u16_f32_rmi(a);
+    *result = temp;
+}
+
+void test_ptx_cvt_u16_f32_rmi(float a, uint16_t* result) {
+    uint16_t *d_result;
+    cudaMalloc(&d_result, sizeof(uint16_t));
+    test_cvt_u16_f32_rmi_kernel<<<1, 1>>>(a, d_result);
+    cudaMemcpy(result, d_result, sizeof(uint16_t), cudaMemcpyDeviceToHost);
+    cudaFree(d_result);
+}
+
+__device__ uint16_t ptx_cvt_u16_f32_rmi(float a) {
+    uint16_t result;
+    asm("cvt.rmi.u16.f32 %0, %1;" : "=h"(result) : "f"(a));
+    return result;
+}
+
+__global__ void test_cvt_u16_f32_rpi_kernel(float a, uint16_t* result) {
+    uint16_t temp = ptx_cvt_u16_f32_rpi(a);
+    *result = temp;
+}
+
+void test_ptx_cvt_u16_f32_rpi(float a, uint16_t* result) {
+    uint16_t *d_result;
+    cudaMalloc(&d_result, sizeof(uint16_t));
+    test_cvt_u16_f32_rpi_kernel<<<1, 1>>>(a, d_result);
+    cudaMemcpy(result, d_result, sizeof(uint16_t), cudaMemcpyDeviceToHost);
+    cudaFree(d_result);
+}
+
+__device__ uint16_t ptx_cvt_u16_f32_rpi(float a) {
+    uint16_t result;
+    asm("cvt.rpi.u16.f32 %0, %1;" : "=h"(result) : "f"(a));
+    return result;
+}
+
+__global__ void test_cvt_u32_f32_rni_kernel(float a, uint32_t* result) {
+    uint32_t temp = ptx_cvt_u32_f32_rni(a);
+    *result = temp;
+}
+
+void test_ptx_cvt_u32_f32_rni(float a, uint32_t* result) {
+    uint32_t *d_result;
+    cudaMalloc(&d_result, sizeof(uint32_t));
+    test_cvt_u32_f32_rni_kernel<<<1, 1>>>(a, d_result);
+    cudaMemcpy(result, d_result, sizeof(uint32_t), cudaMemcpyDeviceToHost);
+    cudaFree(d_result);
+}
+
+__device__ uint32_t ptx_cvt_u32_f32_rni(float a) {
+    uint32_t result;
+    asm("cvt.rni.u32.f32 %0, %1;" : "=r"(result) : "f"(a));
+    return result;
+}
+
+__global__ void test_cvt_u32_f32_rzi_kernel(float a, uint32_t* result) {
+    uint32_t temp = ptx_cvt_u32_f32_rzi(a);
+    *result = temp;
+}
+
+void test_ptx_cvt_u32_f32_rzi(float a, uint32_t* result) {
+    uint32_t *d_result;
+    cudaMalloc(&d_result, sizeof(uint32_t));
+    test_cvt_u32_f32_rzi_kernel<<<1, 1>>>(a, d_result);
+    cudaMemcpy(result, d_result, sizeof(uint32_t), cudaMemcpyDeviceToHost);
+    cudaFree(d_result);
+}
+
+__device__ uint32_t ptx_cvt_u32_f32_rzi(float a) {
+    uint32_t result;
+    asm("cvt.rzi.u32.f32 %0, %1;" : "=r"(result) : "f"(a));
+    return result;
+}
+
+__global__ void test_cvt_u32_f32_rmi_kernel(float a, uint32_t* result) {
+    uint32_t temp = ptx_cvt_u32_f32_rmi(a);
+    *result = temp;
+}
+
+void test_ptx_cvt_u32_f32_rmi(float a, uint32_t* result) {
+    uint32_t *d_result;
+    cudaMalloc(&d_result, sizeof(uint32_t));
+    test_cvt_u32_f32_rmi_kernel<<<1, 1>>>(a, d_result);
+    cudaMemcpy(result, d_result, sizeof(uint32_t), cudaMemcpyDeviceToHost);
+    cudaFree(d_result);
+}
+
+__device__ uint32_t ptx_cvt_u32_f32_rmi(float a) {
+    uint32_t result;
+    asm("cvt.rmi.u32.f32 %0, %1;" : "=r"(result) : "f"(a));
+    return result;
+}
+
+__global__ void test_cvt_u32_f32_rpi_kernel(float a, uint32_t* result) {
+    uint32_t temp = ptx_cvt_u32_f32_rpi(a);
+    *result = temp;
+}
+
+void test_ptx_cvt_u32_f32_rpi(float a, uint32_t* result) {
+    uint32_t *d_result;
+    cudaMalloc(&d_result, sizeof(uint32_t));
+    test_cvt_u32_f32_rpi_kernel<<<1, 1>>>(a, d_result);
+    cudaMemcpy(result, d_result, sizeof(uint32_t), cudaMemcpyDeviceToHost);
+    cudaFree(d_result);
+}
+
+__device__ uint32_t ptx_cvt_u32_f32_rpi(float a) {
+    uint32_t result;
+    asm("cvt.rpi.u32.f32 %0, %1;" : "=r"(result) : "f"(a));
     return result;
 }
