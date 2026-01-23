@@ -82,6 +82,8 @@ add_library(ptxsim SHARED
     ptxsim/instructions/atomic.cpp
     ptxsim/instructions/tensor.cpp
     ptxsim/instructions/arithmetic_ext.cpp
+    ptxsim/instructions/arithmetic_conversion.cpp
+    ptxsim/instructions/data_transfer.cpp
 )
 target_link_libraries(ptxsim ptx_ir)
 
