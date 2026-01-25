@@ -1,7 +1,7 @@
 #include "ptxsim/thread_context.h"
 #include "ptx_ir/ptx_types.h"
 #include "ptx_ir/statement_context.h"
-#include "ptxsim/cta_context.h"      // 添加CTAContext头文件包含
+#include "ptxsim/cta_context.h" // 添加CTAContext头文件包含
 #include "ptxsim/execution_types.h"
 #include "ptxsim/instruction_factory.h"
 #include "ptxsim/ptx_debug.h"
@@ -34,7 +34,8 @@ void ThreadContext::init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim,
                          std::vector<StatementContext> &statements,
                          std::map<std::string, Symtable *> *name2Sym,
                          std::map<std::string, int> &label2pc,
-                         std::map<std::string, Symtable *> *name2Share) {
+                         std::map<std::string, Symtable *> *name2Share,
+                         CTAContext *cta_ctx) {
     this->BlockIdx = blockIdx;
     this->ThreadIdx = threadIdx;
     this->GridDim = GridDim;
@@ -54,6 +55,9 @@ void ThreadContext::init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim,
     this->warp_id_ = thread_id / WarpContext::WARP_SIZE;
     this->lane_id_ = thread_id % WarpContext::WARP_SIZE;
 
+    // 设置CTAContext指针，用于访问本地内存符号表
+    this->cta_context_ = cta_ctx;
+
     // 注意：寄存器管理现在完全由RegisterBankManager负责
     // 寄存器预分配现在由CTAContext统一处理
 }
@@ -61,8 +65,8 @@ void ThreadContext::init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim,
 // 设置本地内存空间的方法实现
 void ThreadContext::set_local_memory_space(void *local_mem_space) {
     this->local_mem_space = local_mem_space;
-    PTX_DEBUG_EMU("Thread (%d,%d,%d) local memory space set to %p", 
-                  ThreadIdx.x, ThreadIdx.y, ThreadIdx.z, local_mem_space);
+    PTX_DEBUG_EMU("Thread (%d,%d,%d) local memory space set to %p", ThreadIdx.x,
+                  ThreadIdx.y, ThreadIdx.z, local_mem_space);
 }
 
 void ThreadContext::_execute_once() {
@@ -233,6 +237,20 @@ void *ThreadContext::acquire_operand(OperandContext &operand,
             }
         }
 
+        // 尝试在CTAContext的name2Local中查找（本地内存变量）
+        if (cta_context_ != nullptr) {
+            auto local_it = cta_context_->name2Local.find(varOp->varName);
+            if (local_it != cta_context_->name2Local.end()) {
+                PTX_DEBUG_EMU("Reading local memory from name2Local: name=%s, "
+                              "symbol_table_entry=%p, stored_value=0x%lx",
+                              varOp->varName.c_str(), local_it->second,
+                              local_it->second->val);
+
+                // 对于本地内存变量，返回符号表条目的值（即实际内存地址）
+                return &(local_it->second->val);
+            }
+        }
+
         // 如果在name2Share中没找到，再到name2Sym中查找（参数、局部变量等）
         auto sym_it = name2Sym->find(varOp->varName);
         if (sym_it != name2Sym->end()) {
@@ -277,13 +295,21 @@ void *ThreadContext::acquire_operand(OperandContext &operand,
     case O_VEC: {
         auto vecOp = (OperandContext::VEC *)operand.operand;
         // 创建一个新的VEC对象用于存储向量元素地址
+        void *result = nullptr;
         VEC *newVec = new VEC();
         // 递归处理向量中的每个元素
         for (auto &elem : vecOp->vec) {
-            newVec->vec.push_back(acquire_operand(elem, qualifiers));
+            result = acquire_operand(elem, qualifiers);
+            if (result == nullptr)
+                return nullptr;
+            newVec->vec.push_back(result);
         }
+        // 将向量对象存储到vec队列中，并返回指向向量对象的指针
         vec.push(newVec);
-        return nullptr;
+
+        // 设置操作数的物理地址为新创建的向量对象
+        // operand.operand_phy_addr = newVec;
+        return newVec;
     }
 
     default:
@@ -312,6 +338,8 @@ void ThreadContext::collect_operands(StatementContext &stmt,
 
         trace_status(ptxsim::log_level::debug, "thread", "Collect: %s ",
                      operands[i].toString(bytes).c_str());
+
+        // 获取当前操作数的物理地址
         operand_collected[i] = operands[i].operand_phy_addr;
     }
     stmt.qualifier = qualifier;
@@ -365,7 +393,7 @@ void *ThreadContext::acquire_register(OperandContext::REG *reg,
         throw std::runtime_error("RegisterBankManager is required but not set");
     }
 
-    std::string combinedName = reg->regName + std::to_string(reg->regIdx);
+    std::string combinedName = reg->getFullName();
     void *reg_data =
         register_bank_manager_->get_register(combinedName, warp_id_, lane_id_);
 
@@ -388,7 +416,8 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
             // 将地址空间信息添加到mem_qualifiers中
             if (q == Qualifier::Q_SHARED) {
                 mem_qualifier = Qualifier::Q_U32;
-            } else if (q == Qualifier::Q_GLOBAL || q == Qualifier::Q_PARAM) {
+            } else if (q == Qualifier::Q_GLOBAL || q == Qualifier::Q_PARAM ||
+                       q == Qualifier::Q_LOCAL) {
                 mem_qualifier = Qualifier::Q_U64;
             }
         }
@@ -467,7 +496,8 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
                                   fa->ID.c_str(), local_it->second,
                                   local_it->second->val);
 
-                    // 对于本地内存变量，应该返回相对于本地内存空间的绝对地址
+                    // 对于本地内存变量，应该返回相对于当前线程本地内存空间的绝对地址
+                    // 直接使用当前线程的本地内存空间（已经通过set_local_memory_space设置）
                     if (local_mem_space != nullptr) {
                         ret = (void *)((uint64_t)local_mem_space +
                                        local_it->second->val);

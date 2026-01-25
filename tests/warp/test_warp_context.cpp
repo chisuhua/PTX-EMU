@@ -57,7 +57,7 @@ void test_warp_thread_addition() {
 
     auto thread = std::make_unique<ThreadContext>();
     thread->init(blockIdx, threadIdx, gridDim, blockDim, statements, &name2Sym,
-                 label2pc);
+                 label2pc, nullptr, nullptr);  // 最后两个参数分别是name2Share和cta_ctx
 
     // 添加线程到warp，使用std::move传递unique_ptr的所有权
     warp.add_thread(std::move(thread), 0);

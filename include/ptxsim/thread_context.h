@@ -65,7 +65,8 @@ public:
               std::vector<StatementContext> &statements,
               std::map<std::string, Symtable *> *name2Sym,
               std::map<std::string, int> &label2pc,
-              std::map<std::string, Symtable *> *name2Share = nullptr);
+              std::map<std::string, Symtable *> *name2Share = nullptr,
+              CTAContext *cta_ctx = nullptr);
 
     // EXE_STATE exe_once();
     void clear_temporaries();

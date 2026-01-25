@@ -42,7 +42,9 @@ public:
     void init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
               std::vector<StatementContext> &statements,
               std::map<std::string, Symtable *> *name2Sym,
-              std::map<std::string, int> &label2pc);
+              std::map<std::string, int> &label2pc,
+              void *local_memory_base = nullptr,
+              size_t local_mem_per_thread = 0);
 
     // 新增方法：构建共享内存符号表，接收分配好的共享内存空间
     void build_shared_memory_symbol_table(void *shared_mem_space);

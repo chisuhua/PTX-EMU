@@ -24,14 +24,24 @@ void RegisterAnalyzer::extract_registers_from_statement(
         auto *reg_stmt = static_cast<StatementContext::REG *>(stmt.statement);
         if (reg_stmt) {
             // 对于寄存器声明语句，提取寄存器信息
-            for (int i = 0; i < reg_stmt->regNum; ++i) {
+            if (reg_stmt->regNum == -1) {
                 std::string reg_name = reg_stmt->regName;
                 size_t reg_size = getBytes(reg_stmt->regDataType);
                 if (reg_size == 0) {
                     // 如果无法确定大小，使用默认大小
                     reg_size = sizeof(uint32_t);
                 }
-                registers.insert(RegisterInfo(reg_name, i, reg_size));
+                registers.insert(RegisterInfo(reg_name, -1, reg_size));
+            } else {
+                for (int i = 0; i < reg_stmt->regNum; ++i) {
+                    std::string reg_name = reg_stmt->regName;
+                    size_t reg_size = getBytes(reg_stmt->regDataType);
+                    if (reg_size == 0) {
+                        // 如果无法确定大小，使用默认大小
+                        reg_size = sizeof(uint32_t);
+                    }
+                    registers.insert(RegisterInfo(reg_name, i, reg_size));
+                }
             }
         }
     }

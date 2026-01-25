@@ -27,6 +27,7 @@ void extractREG(std::string s, int &idx, std::string &name) {
             return;
         }
     }
+    idx = -1;
     name = s;
 }
 

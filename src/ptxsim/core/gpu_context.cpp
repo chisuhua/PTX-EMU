@@ -9,22 +9,22 @@
 #include <nlohmann/json.hpp>
 #include <thread>
 
-GPUContext::GPUContext(const std::string &config_path) : gpu_state(RUN), config(GPUConfig()) {
+GPUContext::GPUContext(const std::string &config_path)
+    : gpu_state(RUN), config(GPUConfig()) {
     if (!config_path.empty()) {
         // 尝试加载JSON配置文件
         if (config_path.substr(config_path.find_last_of(".") + 1) == "json") {
             load_json_config(config_path);
-        } 
+        }
         // 如果不是JSON，暂时也尝试加载（为了向后兼容）
         else {
             load_json_config(config_path);
         }
-    } 
-    else {
+    } else {
         // 使用默认配置
         config = GPUConfig();
     }
-    
+
     std::cout << "GPU context created." << std::endl;
 }
 
@@ -107,7 +107,8 @@ bool GPUContext::load_json_config(const std::string &config_path) {
         std::cout << "  max_blocks_per_sm: " << config.max_blocks_per_sm
                   << std::endl;
         std::cout << "  warp_size: " << config.warp_size << std::endl;
-        std::cout << "  global_mem_size: " << config.global_mem_size << std::endl;
+        std::cout << "  global_mem_size: " << config.global_mem_size
+                  << std::endl;
 
         return true;
     } catch (const std::exception &e) {
@@ -130,7 +131,8 @@ bool GPUContext::execute_kernel_internal(
     void **args, Dim3 &gridDim, Dim3 &blockDim,
     std::vector<StatementContext> &statements,
     std::map<std::string, Symtable *> &name2Sym,
-    std::map<std::string, int> &label2pc) {
+    std::map<std::string, int> &label2pc,
+    const KernelLaunchRequest &request) {
     // 计算总的CTA数量
     int ctaNum = gridDim.x * gridDim.y * gridDim.z;
 
@@ -143,7 +145,8 @@ bool GPUContext::execute_kernel_internal(
 
         // 创建CTAContext
         auto cta = std::make_unique<CTAContext>();
-        cta->init(gridDim, blockDim, blockIdx, statements, &name2Sym, label2pc);
+        cta->init(gridDim, blockDim, blockIdx, statements, &name2Sym, label2pc,
+                  request.local_memory_base, request.local_mem_per_thread);
 
         // 尝试将CTA添加到一个可用的SM
         bool added = false;
@@ -213,7 +216,8 @@ EXE_STATE GPUContext::exe_once() {
             // 执行任务分配，将kernel分配给各个SM
             execute_kernel_internal(request.args, request.gridDim,
                                     request.blockDim, *request.statements,
-                                    *request.name2Sym, *request.label2pc);
+                                    *request.name2Sym, *request.label2pc,
+                                    request);
         }
     }
 

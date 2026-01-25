@@ -22,7 +22,9 @@ extern bool IFLOG();
 void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
                       std::vector<StatementContext> &statements,
                       std::map<std::string, Symtable *> *name2Sym,
-                      std::map<std::string, int> &label2pc) {
+                      std::map<std::string, int> &label2pc,
+                      void *local_memory_base,
+                      size_t local_mem_per_thread) {
 
     threadNum = BlockDim.x * BlockDim.y * BlockDim.z;
     curExeWarpId = 0;
@@ -39,8 +41,6 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
 
     // 计算共享内存大小，遍历PTX语句查找.shared声明
     sharedMemBytes = 0;
-    // 同时计算本地内存大小
-    localMemBytesPerThread = 0;
     
     for (const auto &stmt : statements) {
         if (stmt.statementType == S_SHARED) {
@@ -49,14 +49,11 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
             size_t element_size = Q2bytes(sharedStmt->dataType[0]);
             size_t var_size = element_size * sharedStmt->size;
             sharedMemBytes += var_size;
-        } else if (stmt.statementType == S_LOCAL) {
-            // 处理本地内存声明
-            auto localStmt = (StatementContext::LOCAL *)stmt.statement;
-            size_t element_size = Q2bytes(localStmt->dataType[0]);
-            size_t var_size = element_size * localStmt->size;
-            localMemBytesPerThread += var_size;
         }
     }
+
+    // 使用从SMContext传入的本地内存大小信息
+    this->localMemBytesPerThread = local_mem_per_thread;
 
     // 预先创建共享内存符号表的结构，但不分配实际内存空间
     size_t shared_offset = 0;
@@ -157,9 +154,9 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
 
         auto thread = std::make_unique<ThreadContext>();
 
-        // 传递空的符号表，等待后续填充
+        // 传递this指针作为CTAContext指针，使ThreadContext可以访问本地内存符号表
         thread->init(blockIdx, threadIdx, GridDim, BlockDim, statements,
-                     name2Sym, label2pc, &name2Share);
+                     name2Sym, label2pc, &name2Share, this);
 
         // 设置线程使用寄存器银行管理器
         thread->set_register_bank_manager(register_bank_manager);
@@ -168,6 +165,78 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
         int warpId = i / WarpContext::WARP_SIZE;
         int laneId = i % WarpContext::WARP_SIZE;
         warps[warpId]->add_thread(std::move(thread), laneId);
+    }
+    
+    // 如果提供了本地内存基础地址，则分配每个线程的本地内存空间
+    if (local_memory_base != nullptr && localMemBytesPerThread > 0) {
+        // 计算当前CTA在全局本地内存中的偏移量
+        size_t block_id = blockIdx.x + GridDim.x * (blockIdx.y + GridDim.y * blockIdx.z);
+        size_t cta_thread_offset = block_id * (BlockDim.x * BlockDim.y * BlockDim.z) * localMemBytesPerThread;
+        
+        // 为当前CTA的每个线程分配本地内存空间
+        localMemSpaces.resize(threadNum);
+        for (int i = 0; i < threadNum; i++) {
+            // 计算该线程在全局内存中的位置
+            size_t thread_offset = cta_thread_offset + i * localMemBytesPerThread;
+            localMemSpaces[i] = (void *)((uint64_t)local_memory_base + thread_offset);
+            
+            if (localMemSpaces[i]) {
+                memset(localMemSpaces[i], 0, localMemBytesPerThread);
+                PTX_DEBUG_EMU("Assigned local memory space of size %zu for thread %d at %p",
+                              localMemBytesPerThread, i, localMemSpaces[i]);
+            } else {
+                PTX_ERROR_EMU("Failed to assign local memory space for thread %d", i);
+            }
+        }
+    } else {
+        // 如果没有提供本地内存基础地址，仍然创建空的容器
+        localMemSpaces.resize(threadNum);
+        for (int i = 0; i < threadNum; i++) {
+            localMemSpaces[i] = nullptr;
+        }
+    }
+
+    // 创建warp并分配线程
+    warps.clear();
+    warps.reserve(warpNum);
+
+    for (int w = 0; w < warpNum; w++) {
+        auto warp = std::make_unique<WarpContext>();
+        warp->set_warp_id(w);
+        // 设置寄存器银行管理器
+        warp->set_register_bank_manager(register_bank_manager);
+        warps.push_back(std::move(warp));
+    }
+
+    for (int i = 0; i < threadNum; i++) {
+        Dim3 threadIdx;
+        threadIdx.z = i / (BlockDim.x * BlockDim.y);
+        threadIdx.y = i % (BlockDim.x * BlockDim.y) / BlockDim.x;
+        threadIdx.x = i % (BlockDim.x * BlockDim.y) % BlockDim.x;
+
+        auto thread = std::make_unique<ThreadContext>();
+
+        // 传递this指针作为CTAContext指针，使ThreadContext可以访问本地内存符号表
+        thread->init(blockIdx, threadIdx, GridDim, BlockDim, statements,
+                     name2Sym, label2pc, &name2Share, this);
+
+        // 设置线程使用寄存器银行管理器
+        thread->set_register_bank_manager(register_bank_manager);
+
+        // 设置线程的本地内存空间
+        if (i < static_cast<int>(localMemSpaces.size()) && localMemSpaces[i]) {
+            thread->set_local_memory_space(localMemSpaces[i]);
+        }
+
+        // 直接将线程添加到对应的warp
+        int warpId = i / WarpContext::WARP_SIZE;
+        int laneId = i % WarpContext::WARP_SIZE;
+        warps[warpId]->add_thread(std::move(thread), laneId);
+    }
+    
+    // 构建本地内存符号表（如果尚未分配本地内存空间，则在此处分配）
+    if (local_memory_base == nullptr && localMemBytesPerThread > 0) {
+        build_local_memory_symbol_table();
     }
 }
 
@@ -234,20 +303,26 @@ void CTAContext::build_local_memory_symbol_table() {
         return;
     }
 
-    // 为每个线程分配本地内存空间
-    localMemSpaces.resize(threadNum);
-    for (int i = 0; i < threadNum; i++) {
-        if (localMemBytesPerThread > 0) {
-            localMemSpaces[i] = malloc(localMemBytesPerThread);
-            if (localMemSpaces[i]) {
-                memset(localMemSpaces[i], 0, localMemBytesPerThread);
-                PTX_DEBUG_EMU("Allocated local memory space of size %zu for thread %d at %p",
-                              localMemBytesPerThread, i, localMemSpaces[i]);
+    // 检查本地内存是否已经分配（通过检查第一个线程的本地内存空间）
+    if (localMemSpaces.size() > 0 && localMemSpaces[0] != nullptr) {
+        // 本地内存空间已经分配，只需设置线程的本地内存空间
+        PTX_DEBUG_EMU("Local memory spaces already allocated, setting thread local memory pointers");
+    } else {
+        // 本地内存空间尚未分配，需要分配内存
+        localMemSpaces.resize(threadNum);
+        for (int i = 0; i < threadNum; i++) {
+            if (localMemBytesPerThread > 0) {
+                localMemSpaces[i] = malloc(localMemBytesPerThread);
+                if (localMemSpaces[i]) {
+                    memset(localMemSpaces[i], 0, localMemBytesPerThread);
+                    PTX_DEBUG_EMU("Allocated local memory space of size %zu for thread %d at %p",
+                                  localMemBytesPerThread, i, localMemSpaces[i]);
+                } else {
+                    PTX_ERROR_EMU("Failed to allocate local memory space for thread %d", i);
+                }
             } else {
-                PTX_ERROR_EMU("Failed to allocate local memory space for thread %d", i);
+                localMemSpaces[i] = nullptr;
             }
-        } else {
-            localMemSpaces[i] = nullptr;
         }
     }
 
@@ -256,7 +331,9 @@ void CTAContext::build_local_memory_symbol_table() {
     for (auto &warp : warps) {
         for (auto &thread : warp->get_threads()) {
             if (thread) {
-                thread->set_local_memory_space(localMemSpaces[threadIdx]);
+                if (threadIdx < static_cast<int>(localMemSpaces.size())) {
+                    thread->set_local_memory_space(localMemSpaces[threadIdx]);
+                }
                 threadIdx++;
             }
         }

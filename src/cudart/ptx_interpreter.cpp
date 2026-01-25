@@ -67,12 +67,49 @@ void PtxInterpreter::funcInterpreter(
         auto label2pc_ptr =
             std::make_shared<std::map<std::string, int>>(label2pc);
 
-        // 创建完成回调，用于在任务完成后释放参数空间
+        // 预先计算总的本地内存需求
+        size_t total_local_memory_needed = 0;
+        size_t local_mem_per_thread = 0;
+        
+        // 遍历语句查找本地内存声明，计算每个线程需要的本地内存大小
+        for (const auto &stmt : kernelContext->kernelStatements) {
+            if (stmt.statementType == S_LOCAL) {
+                auto localStmt = (StatementContext::LOCAL *)stmt.statement;
+                size_t element_size = Q2bytes(localStmt->dataType[0]);
+                size_t var_size = element_size * localStmt->size;
+                local_mem_per_thread += var_size;
+            }
+        }
+
+        // 计算总的本地内存需求 (每个CTA的线程总数 * 每线程本地内存)
+        int total_threads = gridDim.x * gridDim.y * gridDim.z * 
+                           blockDim.x * blockDim.y * blockDim.z;
+        total_local_memory_needed = total_threads * local_mem_per_thread;
+
+        // 如果需要本地内存，则预先分配
+        void *local_memory_base = nullptr;
+        if (total_local_memory_needed > 0) {
+            local_memory_base = CudaDriver::instance().malloc(total_local_memory_needed);
+            if (!local_memory_base) {
+                PTX_ERROR_EMU("Failed to allocate local memory of size %zu bytes", 
+                             total_local_memory_needed);
+            }
+        }
+
+        // 创建完成回调，用于在任务完成后释放参数空间和本地内存
         auto param_space_ptr = this->param_space; // 捕获当前param_space指针
-        auto completion_callback = [param_space_ptr]() {
+        auto local_memory_ptr = local_memory_base; // 捕获本地内存指针
+        auto local_mem_size = total_local_memory_needed; // 捕获本地内存大小
+        auto completion_callback = [param_space_ptr, local_memory_ptr, local_mem_size]() {
             if (param_space_ptr) {
                 PTX_DEBUG_EMU("Freeing PARAM space at %p", param_space_ptr);
                 CudaDriver::instance().free(param_space_ptr);
+            }
+            
+            if (local_memory_ptr && local_mem_size > 0) {
+                PTX_DEBUG_EMU("Freeing LOCAL memory at %p, size %zu", 
+                             local_memory_ptr, local_mem_size);
+                CudaDriver::instance().free(local_memory_ptr);
             }
         };
 
@@ -82,6 +119,9 @@ void PtxInterpreter::funcInterpreter(
             &kernelContext
                  ->kernelStatements, // 直接引用kernelContext中的statements
             name2sym_ptr, label2pc_ptr, 0, completion_callback);
+
+        // 设置本地内存信息到请求中
+        request.set_local_memory_info(local_memory_base, local_mem_per_thread);
 
         // 提交请求
         g_gpu_context->submit_kernel_request(std::move(request));

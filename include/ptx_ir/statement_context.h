@@ -20,7 +20,7 @@ public:
 // =============================================================================
 #define DEFINE_OPERAND_REG(Name, _)                                            \
     struct Name {                                                              \
-        int regNum = 1;                                                        \
+        int regNum = 0;                                                        \
         std::vector<Qualifier> regDataType;                                    \
         std::string regName;                                                   \
     };

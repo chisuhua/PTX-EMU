@@ -51,11 +51,16 @@ struct KernelLaunchRequest {
     std::shared_ptr<std::map<std::string, int>> label2pc;
     int request_id; // 添加请求ID以追踪任务状态
     std::function<void()> on_complete; // 任务完成时的回调函数
+    
+    // 本地内存信息
+    void *local_memory_base = nullptr;
+    size_t local_mem_per_thread = 0;
 
     // 默认构造函数
     KernelLaunchRequest() : args(nullptr), gridDim(), blockDim(),
                             statements(nullptr), name2Sym(nullptr), label2pc(nullptr),
-                            request_id(0), on_complete(nullptr) {}
+                            request_id(0), on_complete(nullptr),
+                            local_memory_base(nullptr), local_mem_per_thread(0) {}
 
     KernelLaunchRequest(
         void **_args, Dim3 &_gridDim, Dim3 &_blockDim,
@@ -65,7 +70,14 @@ struct KernelLaunchRequest {
         int _request_id = 0, std::function<void()> _on_complete = nullptr)
         : args(_args), gridDim(_gridDim), blockDim(_blockDim),
           statements(_stmts), name2Sym(_name2Sym), label2pc(_label2pc),
-          request_id(_request_id), on_complete(_on_complete) {}
+          request_id(_request_id), on_complete(_on_complete),
+          local_memory_base(nullptr), local_mem_per_thread(0) {}
+          
+    // 设置本地内存信息
+    void set_local_memory_info(void *base, size_t per_thread) {
+        local_memory_base = base;
+        local_mem_per_thread = per_thread;
+    }
 };
 
 class GPUContext {
@@ -143,7 +155,8 @@ private:
     bool execute_kernel_internal(void **args, Dim3 &gridDim, Dim3 &blockDim,
                                  std::vector<StatementContext> &statements,
                                  std::map<std::string, Symtable *> &name2Sym,
-                                 std::map<std::string, int> &label2pc);
+                                 std::map<std::string, int> &label2pc,
+                                 const KernelLaunchRequest &request);
 };
 
 #endif // GPU_CONTEXT_H

@@ -419,7 +419,7 @@ void PtxListener::exitRegStatement(ptxParser::RegStatementContext *ctx) {
     if (ctx->DIGITS()) {
         st->regNum = stoi(ctx->DIGITS()->getText());
     } else {
-        st->regNum = 1;
+        st->regNum = -1;
     }
 
     /* end */
