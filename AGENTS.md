@@ -1,29 +1,139 @@
-# PTX-EMU 工作流程梳理（供 AI 编程参考）
+# PTX-EMU Agent Instructions
 
-## 1) 语法 → 解析器生成（ANTLR4）
-- 语法源文件位于 [src/grammar/ptxLexer.g4](src/grammar/ptxLexer.g4) 与 [src/grammar/ptxParser.g4](src/grammar/ptxParser.g4)。
-- CMake 在 [src/CMakeLists.txt](src/CMakeLists.txt) 中定义 `GenerateParser`，通过 ANTLR4 生成 C++ 解析器源码到 build/antlr4_generated_src，并编进 `cudart`。
-- 生成的 visitor/listener 类（如 `ptxParserBaseVisitor`/`ptxParserVisitor`）在 build/antlr4_generated_src 下，但当前代码路径主要使用 `PtxListener`（listener 方式）。
+## Build Commands
 
-## 2) PTX 解析与 `PtxContext` 构建路径
-- `PtxListener` 定义于 [include/ptx_parser/ptx_parser.h](include/ptx_parser/ptx_parser.h)，实现于 [src/ptx_parser/ptx_parser.cpp](src/ptx_parser/ptx_parser.cpp)。
-- 解析流程：ANTLR 产出的 `ptxParser` 构建 AST → `PtxListener` 在 `enter*/exit*` 回调中填充 `PtxContext`（见 [include/ptx_ir/ptx_context.h](include/ptx_ir/ptx_context.h)）。
-- `KernelContext`、`StatementContext`、`OperandContext` 的结构分别位于 [include/ptx_ir/kernel_context.h](include/ptx_ir/kernel_context.h)、[include/ptx_ir/statement_context.h](include/ptx_ir/statement_context.h)、[include/ptx_ir/operand_context.h](include/ptx_ir/operand_context.h)。
-- 之后由 `PtxInterpreter`（[src/cudart/ptx_interpreter.cpp](src/cudart/ptx_interpreter.cpp)）构建符号表并提交 `KernelLaunchRequest` 给 `GPUContext` 执行。
+```bash
+# Setup environment (required before building)
+. env.sh
 
-## 3) `ptx_op.def` 作为指令“中心配置”
-- `ptx_op.def`（[include/ptx_ir/ptx_op.def](include/ptx_ir/ptx_op.def)）是指令集的单一来源（X-Macro）：
-  - 生成 `StatementType` 枚举（[include/ptx_ir/ptx_types.h](include/ptx_ir/ptx_types.h)）。
-  - 生成指令处理器声明（[include/ptxsim/instruction_handlers.h](include/ptxsim/instruction_handlers.h)）。
-  - 驱动解析器对各类指令的 enter/exit 回调声明（[include/ptx_parser/ptx_parser.h](include/ptx_parser/ptx_parser.h)）。
-- 新增/修改指令时，优先在该文件添加/调整，再同步实现处理逻辑（位于 src/ptxsim/instructions/）。
+# Configure and build (Release)
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 
-## 4) `ptx_qualifier.def` 作为限定符“中心配置”
-- `ptx_qualifier.def`（[include/ptx_ir/ptx_qualifier.def](include/ptx_ir/ptx_qualifier.def)）定义所有限定符：类型、内存空间、舍入方式、cache/scope/async 等。
-- 该文件用于生成 `Qualifier` 枚举与字符串/字节映射（[include/ptx_ir/ptx_types.h](include/ptx_ir/ptx_types.h)）。
-- 新增限定符时，先更新该文件，确保解析、指令处理与类型判断一致。
+# Or use the build script (does env setup automatically)
+./build.sh
 
-## 5) 常见改动的最短路径
-- **新增 PTX 指令**：更新 [include/ptx_ir/ptx_op.def](include/ptx_ir/ptx_op.def) → 实现对应 handler（src/ptxsim/instructions/）→ 若语法未覆盖，扩展 [src/grammar/ptxParser.g4](src/grammar/ptxParser.g4) 并触发生成。
-- **新增限定符/类型**：更新 [include/ptx_ir/ptx_qualifier.def](include/ptx_ir/ptx_qualifier.def) → 确认解析与执行路径使用 `Qualifier`。
-- **调整解析语法**：改动 g4 后通过 CMake 触发 `GenerateParser`，生成源码位于 build/antlr4_generated_src。
+# Build specific target
+cmake --build build --target cudart
+cmake --build build --target ptxsim
+
+# Debug build
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+```
+
+## Test Commands
+
+```bash
+# Run all tests (from build directory)
+cd build && ctest
+# Or: make test
+
+# Run specific test by name
+ctest -R test_memory_manager
+
+# Run tests with labels
+ctest -L mini      # Mini tests
+ctest -L ptx       # PTX instruction tests
+
+# Run with verbose output
+ctest -V
+
+# Run single benchmark test (from project root)
+make -C build dummy
+make -C build RAY
+```
+
+## Lint/Format
+
+```bash
+# Format code with clang-format
+find src include -name "*.cpp" -o -name "*.h" | xargs clang-format -i
+```
+
+## Code Style Guidelines
+
+### Formatting
+- **Style**: LLVM-based (see `.clang-format`)
+- **Indent**: 4 spaces, no tabs
+- **Line limit**: 80 columns
+- **Braces**: Attach style (no newline before braces)
+- **Short functions**: Allow on single line
+- Use `clang-format` to auto-format before committing
+
+### Naming Conventions
+- **Files**: snake_case (e.g., `ptx_parser.cpp`, `instruction_handlers.h`)
+- **Functions**: camelCase for most; snake_case for PTX-specific handlers
+- **Classes/Structs**: PascalCase (e.g., `GPUContext`, `ThreadContext`)
+- **Variables**: camelCase (e.g., `gridDim`, `threadIdx`)
+- **Constants/Enums**: UPPER_SNAKE_CASE or enum class with PascalCase
+- **Member variables**: Same as variables (no special prefix)
+- **PTX instructions**: lowercase (e.g., `mov`, `add`, `ld`, `st`)
+
+### Types & Includes
+- **Standard**: C++20 (CUDA code uses C++17)
+- **Headers**: Use `#ifndef`/`#define`/`#endif` guards
+- **Include order**: 
+  1. Generated ANTLR headers (if needed)
+  2. Project headers (e.g., `"ptxsim/..."`)
+  3. Standard library (e.g., `<vector>`, `<string>`)
+- Use forward declarations when possible to reduce includes
+
+### Error Handling
+- Use assertions (`assert()`) for internal invariants
+- Return error codes for recoverable errors
+- Use logging macros: `PTX_ERROR()`, `PTX_WARN()`, `PTX_INFO()`
+- Fatal errors: print message and exit or throw
+
+### Project Structure
+- **src/ptx_ir/**: IR types and semantic context
+- **src/ptx_parser/**: ANTLR-based PTX parser (PtxListener)
+- **src/ptxsim/**: Execution engine (GPU/SM/CTA/Warp/Thread context)
+- **src/ptxsim/instructions/**: PTX instruction implementations
+- **src/cudart/**: CUDA runtime API replacement (fake libcudart.so)
+- **src/memory/**: Memory abstractions
+- **src/register/**: Register abstractions
+- **include/**: Public headers
+- **tests/**: Catch2 + CUDA PTX tests
+- **bench/**: Benchmark programs
+- **configs/**: GPU architecture JSON configs
+
+## Key Conventions
+
+### Adding PTX Instructions
+1. Update `include/ptx_ir/ptx_op.def` (X-Macro pattern)
+2. Implement handler in `src/ptxsim/instructions/`
+3. Update grammar in `src/grammar/ptxParser.g4` if needed
+4. Regenerate parser: `cmake --build build --target GenerateParser`
+
+### Adding Qualifiers
+1. Update `include/ptx_ir/ptx_qualifier.def`
+2. Used to generate `Qualifier` enum in `ptx_types.h`
+
+### X-Macro Pattern
+The project uses X-Macros for code generation:
+```cpp
+#define X(name, ...) process_##name(__VA_ARGS__);
+#include "ptx_op.def"
+#undef X
+```
+
+### Testing CUDA Code
+- Tests use Catch2 framework (`catch_amalgamated.cpp`)
+- CUDA files use `.cu` extension and compile to PTX
+- Tests link against fake `libcudart.so` (built as `cudart` target)
+- Set `LD_LIBRARY_PATH` to include project `lib/` directory
+
+### GPU Architecture
+- GPU configs in `configs/*.json` (e.g., `ampere_a100.json`)
+- Debug/logging controlled via `configs/config.ini`
+- See `docs/gpgpu_arch.md` for architecture details
+
+## Important Files
+
+- `include/ptx_ir/ptx_op.def` - Instruction definitions (X-Macro)
+- `include/ptx_ir/ptx_qualifier.def` - Qualifier definitions
+- `src/grammar/ptxLexer.g4` / `ptxParser.g4` - ANTLR grammar
+- `src/cudart/cudart_sim.cpp` - Main CUDA runtime entry point
+- `src/ptxsim/instruction_handlers.h` - Instruction handler declarations
+- `docs/debugging_guide.md` - Debugging and logging setup
