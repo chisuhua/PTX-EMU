@@ -15,6 +15,7 @@
 #include <map>
 #include <memory>
 #include <queue>
+#include <stack> // 添加stack头文件以支持调用栈
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -46,7 +47,7 @@ public:
 
     // 当前指令执行状态
     // 临时数据存储
-    std::queue<VEC *> vec;
+    std::queue<std::vector<void *>> vecOp_phy_addrs;
 
     // warp和lane标识
     int warp_id_;
@@ -54,12 +55,15 @@ public:
 
     // 共享内存基地址
     void *shared_mem_space = nullptr;
-    
+
     // 本地内存基地址
     void *local_mem_space = nullptr;
 
     // 指向warp的指针，用于访问SMContext
     WarpContext *warp_context_ = nullptr;
+
+    // 函数调用栈
+    std::stack<int> call_stack;
 
     void init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim, Dim3 BlockDim,
               std::vector<StatementContext> &statements,
@@ -72,24 +76,28 @@ public:
     void clear_temporaries();
 
     // 通用访问接口
-    void *acquire_operand(OperandContext &op,
-                          std::vector<Qualifier> &qualifiers);
+    void *acquire_operand(const OperandContext &op,
+                          const std::vector<Qualifier> &qualifiers);
     void collect_operands(StatementContext &stmt,
-                          std::vector<OperandContext> &operands,
-                          std::vector<Qualifier> *qualifier);
+                          const std::vector<OperandContext> &operands,
+                          const std::vector<Qualifier> *qualifier);
 
-    void commit_operand(StatementContext &stmt, OperandContext &operand,
-                        std::vector<Qualifier> &qualifier);
-    void *get_memory_addr(OperandContext::FA *fa,
-                          std::vector<Qualifier> &qualifiers);
+    void commit_operand(StatementContext &stmt, const OperandContext &operand,
+                        const std::vector<Qualifier> &qualifier);
+    // void *get_memory_addr(OperandContext::FA *fa,
+    //                       std::vector<Qualifier> &qualifiers);
+    // void *acquire_register(OperandContext::REG *reg,
+    //                        std::vector<Qualifier> qualifier);
 
+    void *get_memory_addr(const AddrOperand &op,
+                          const std::vector<Qualifier> &qualifiers);
     // 寄存器访问接口
-    void *acquire_register(OperandContext::REG *reg,
+    void *acquire_register(const RegOperand &op,
                            std::vector<Qualifier> qualifier);
 
     // Shared memory初始化
     void initialize_shared_memory(const std::string &name, uint64_t address);
-    
+
     // 设置本地内存空间
     void set_local_memory_space(void *local_mem_space);
 

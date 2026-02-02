@@ -1,354 +1,100 @@
 #include "ptx_ir/operand_context.h"
+#include <cstddef>
 #include <cstdint>
+#include <iomanip>
 #include <sstream>
 
 std::string OperandContext::toString(int bytes) const {
     std::ostringstream oss;
 
-    switch (operandType) {
-    case O_REG: {
-        auto *reg = static_cast<REG *>(operand);
-        if (reg) {
-            oss << "%" << reg->regName;
-            if (reg->regIdx >= 0) {
-                oss << reg->regIdx;
+    // Step 1: Print operand representation (e.g., %r1, { %r1, %r2 },
+    // [shared::buf + %r3])
+    std::visit(
+        [&oss, bytes](const auto &op) {
+            using T = std::decay_t<decltype(op)>;
+
+            if constexpr (std::is_same_v<T, RegOperand>) {
+                oss << "%" << op.fullName();
+            } else if constexpr (std::is_same_v<T, VariableOperand>) {
+                oss << op.name;
+            } else if constexpr (std::is_same_v<T, ImmOperand>) {
+                oss << op.value;
+            } else if constexpr (std::is_same_v<T, VecOperand>) {
+                oss << "{";
+                for (size_t i = 0; i < op.elements.size(); ++i) {
+                    if (i > 0)
+                        oss << ", ";
+                    oss << op.elements[i].toString(
+                        bytes); // propagate bytes for recursive value print
+                }
+                oss << "}";
+            } else if constexpr (std::is_same_v<T, AddrOperand>) {
+                const char *spaceStr = "";
+                switch (op.space) {
+                case AddrOperand::Space::CONST:
+                    spaceStr = "const";
+                    break;
+                case AddrOperand::Space::PARAM:
+                    spaceStr = "param";
+                    break;
+                case AddrOperand::Space::GLOBAL:
+                    spaceStr = "global";
+                    break;
+                case AddrOperand::Space::LOCAL:
+                    spaceStr = "local";
+                    break;
+                case AddrOperand::Space::SHARED:
+                    spaceStr = "shared";
+                    break;
+                }
+                oss << "[";
+                if (spaceStr[0])
+                    oss << spaceStr << "::";
+                oss << op.baseSymbol;
+
+                if (op.offsetType == AddrOperand::OffsetType::IMMEDIATE &&
+                    !op.immediateOffset.empty()) {
+                    oss << " + " << op.immediateOffset;
+                } else if (op.offsetType == AddrOperand::OffsetType::REGISTER &&
+                           op.registerOffset) {
+                    oss << " + " << op.registerOffset->toString();
+                }
+                oss << "]";
+            } else if constexpr (std::is_same_v<T, Predicate>) {
+                if (op.negated)
+                    oss << "!";
+                if (op.source)
+                    oss << op.source->toString();
+                else
+                    oss << "%p<unknown>";
+            } else {
+                oss << "<invalid>";
             }
+        },
+        data);
+
+    // Step 2: Append physical addrOperand and value (if available)
+    if (operand_phy_addr != nullptr) {
+        oss << " phy_addr:0x" << std::hex
+            << reinterpret_cast<uintptr_t>(operand_phy_addr);
+
+        // Only print value if 'bytes' is valid (1,2,4,8)
+        if (bytes == 1) {
+            uint8_t val = *static_cast<const uint8_t *>(operand_phy_addr);
+            oss << " value:0x" << std::setfill('0') << std::setw(2)
+                << static_cast<unsigned>(val);
+        } else if (bytes == 2) {
+            uint16_t val = *static_cast<const uint16_t *>(operand_phy_addr);
+            oss << " value:0x" << std::setfill('0') << std::setw(4) << val;
+        } else if (bytes == 4) {
+            uint32_t val = *static_cast<const uint32_t *>(operand_phy_addr);
+            oss << " value:0x" << std::setfill('0') << std::setw(8) << val;
+        } else if (bytes == 8) {
+            uint64_t val = *static_cast<const uint64_t *>(operand_phy_addr);
+            oss << " value:0x" << std::setfill('0') << std::setw(16) << val;
         }
-        break;
-    }
-    case O_VAR: {
-        auto *var = static_cast<VAR *>(operand);
-        if (var) {
-            oss << var->varName;
-        }
-        break;
-    }
-    case O_IMM: {
-        auto *imm = static_cast<IMM *>(operand);
-        if (imm) {
-            oss << imm->immVal;
-        }
-        break;
-    }
-    case O_VEC: {
-        auto *vec = static_cast<VEC *>(operand);
-        if (vec) {
-            oss << "{";
-            for (size_t i = 0; i < vec->vec.size(); ++i) {
-                if (i > 0)
-                    oss << ", ";
-                oss << vec->vec[i].toString();
-            }
-            oss << "}";
-        }
-        break;
-    }
-    case O_FA: {
-        auto *fa = static_cast<FA *>(operand);
-        if (fa) {
-            oss << "[" << fa->baseName;
-            if (fa->offsetType == FA::IMMEDIATE) {
-                oss << " + " << fa->offsetVal;
-            } else if (fa->offsetType == FA::REGISTER && fa->reg) {
-                oss << " + " << fa->reg->toString();
-            }
-            oss << "]";
-        }
-        break;
-    }
-    case O_PRED: {
-        auto *pred = static_cast<PRED *>(operand);
-        if (pred) {
-            if (pred->isNot) {
-                oss << "!";
-            }
-            if (pred->pred) {
-                oss << pred->pred->toString();
-            }
-        }
-        break;
-    }
-    default:
-        oss << "<unknown>";
-        break;
-    }
-    oss << " phy_addr:" << std::hex << operand_phy_addr;
-    if (operand_phy_addr != nullptr && bytes == 1) {
-        oss << " value:0x" << std::hex << (int)*(uint8_t *)operand_phy_addr << std::dec;
-    } else if (operand_phy_addr != nullptr && bytes == 2) {
-        oss << " value:0x" << std::hex << *(uint16_t *)operand_phy_addr << std::dec;
-    } else if (operand_phy_addr != nullptr && bytes == 4) {
-        oss << " value:0x" << std::hex << *(uint32_t *)operand_phy_addr << std::dec;
-    } else if (operand_phy_addr != nullptr && bytes == 8) {
-        oss << " value:0x" << std::hex << *(uint64_t *)operand_phy_addr << std::dec;
+        oss << std::dec; // restore dec for future use
     }
 
     return oss.str();
-}
-
-// Adding OperandContext destructor implementation
-OperandContext::~OperandContext() {
-    // Free memory for the operand based on operandType
-    switch (operandType) {
-    case O_REG:
-        if (operand) {
-            delete static_cast<OperandContext::REG *>(operand);
-        }
-        break;
-    case O_VEC:
-        if (operand) {
-            delete static_cast<OperandContext::VEC *>(operand);
-        }
-        break;
-    case O_FA:
-        if (operand) {
-            auto fa = static_cast<OperandContext::FA *>(operand);
-            // Note: Need to free the object pointed to by reg first
-            if (fa->reg) {
-                delete fa->reg;
-                fa->reg = nullptr; // Prevent dangling pointer
-            }
-            delete fa;
-        }
-        break;
-    case O_PRED:
-        if (operand) {
-            auto pred = static_cast<OperandContext::PRED *>(operand);
-            // Note: Need to free the object pointed to by pred first
-            if (pred->pred) {
-                delete pred->pred;
-                pred->pred = nullptr; // Prevent dangling pointer
-            }
-            delete pred;
-        }
-        break;
-    case O_IMM:
-        if (operand) {
-            delete static_cast<OperandContext::IMM *>(operand);
-        }
-        break;
-    case O_VAR:
-        if (operand) {
-            delete static_cast<OperandContext::VAR *>(operand);
-        }
-        break;
-    }
-    operand = nullptr;
-}
-
-// Adding OperandContext copy constructor implementation
-OperandContext::OperandContext(const OperandContext &other)
-    : operandType(other.operandType), operand(nullptr),
-      operand_phy_addr(nullptr) {
-    switch (operandType) {
-    case O_REG:
-        if (other.operand) {
-            auto reg = new REG();
-            auto other_reg = static_cast<const REG *>(other.operand);
-            reg->regName = other_reg->regName;
-            reg->regIdx = other_reg->regIdx;
-            operand = reg;
-        }
-        break;
-    case O_VEC:
-        if (other.operand) {
-            auto vec = new VEC();
-            auto other_vec = static_cast<const VEC *>(other.operand);
-            vec->vec = other_vec->vec;
-            operand = vec;
-        }
-        break;
-    case O_FA:
-        if (other.operand) {
-            auto fa = new FA();
-            auto other_fa = static_cast<const FA *>(other.operand);
-            fa->baseType = other_fa->baseType;
-            fa->baseName = other_fa->baseName;
-            fa->offsetType = other_fa->offsetType;
-            fa->offsetVal = other_fa->offsetVal;
-            fa->ID = other_fa->ID;
-
-            // Deep copy reg pointer
-            if (other_fa->reg) {
-                fa->reg = new OperandContext(*(other_fa->reg));
-            } else {
-                fa->reg = nullptr;
-            }
-
-            operand = fa;
-        }
-        break;
-    case O_PRED:
-        if (other.operand) {
-            auto pred = new PRED();
-            auto other_pred = static_cast<const PRED *>(other.operand);
-            pred->isNot = other_pred->isNot;
-
-            // Deep copy pred pointer
-            if (other_pred->pred) {
-                pred->pred = new OperandContext(*(other_pred->pred));
-            } else {
-                pred->pred = nullptr;
-            }
-
-            operand = pred;
-        }
-        break;
-    case O_IMM:
-        if (other.operand) {
-            auto imm = new IMM();
-            auto other_imm = static_cast<const IMM *>(other.operand);
-            imm->immVal = other_imm->immVal;
-            operand = imm;
-        }
-        break;
-    case O_VAR:
-        if (other.operand) {
-            auto var = new VAR();
-            auto other_var = static_cast<const VAR *>(other.operand);
-            var->varName = other_var->varName;
-            operand = var;
-        }
-        break;
-    }
-}
-
-// Adding OperandContext assignment operator implementation
-OperandContext &OperandContext::operator=(const OperandContext &other) {
-    // Self-assignment check
-    if (this == &other) {
-        return *this;
-    }
-
-    // Free current resources first
-    switch (operandType) {
-    case O_REG:
-        if (operand) {
-            delete static_cast<REG *>(operand);
-        }
-        break;
-    case O_VEC:
-        if (operand) {
-            delete static_cast<VEC *>(operand);
-        }
-        break;
-    case O_FA:
-        if (operand) {
-            auto fa = static_cast<FA *>(operand);
-            if (fa->reg) {
-                delete fa->reg;
-            }
-            delete fa;
-        }
-        break;
-    case O_PRED:
-        if (operand) {
-            auto pred = static_cast<PRED *>(operand);
-            if (pred->pred) {
-                delete pred->pred;
-            }
-            delete pred;
-        }
-        break;
-    case O_IMM:
-        if (operand) {
-            delete static_cast<IMM *>(operand);
-        }
-        break;
-    case O_VAR:
-        if (operand) {
-            delete static_cast<VAR *>(operand);
-        }
-        break;
-    }
-
-    // Update type
-    operandType = other.operandType;
-
-    // Deep copy new content
-    switch (operandType) {
-    case O_REG:
-        if (other.operand) {
-            auto reg = new REG();
-            auto other_reg = static_cast<const REG *>(other.operand);
-            reg->regName = other_reg->regName;
-            reg->regIdx = other_reg->regIdx;
-            operand = reg;
-        } else {
-            operand = nullptr;
-        }
-        break;
-    case O_VEC:
-        if (other.operand) {
-            auto vec = new VEC();
-            auto other_vec = static_cast<const VEC *>(other.operand);
-            vec->vec = other_vec->vec;
-            operand = vec;
-        } else {
-            operand = nullptr;
-        }
-        break;
-    case O_FA:
-        if (other.operand) {
-            auto fa = new FA();
-            auto other_fa = static_cast<const FA *>(other.operand);
-            fa->baseType = other_fa->baseType;
-            fa->baseName = other_fa->baseName;
-            fa->offsetType = other_fa->offsetType;
-            fa->offsetVal = other_fa->offsetVal;
-            fa->ID = other_fa->ID;
-
-            // Deep copy reg pointer
-            if (other_fa->reg) {
-                fa->reg = new OperandContext(*(other_fa->reg));
-            } else {
-                fa->reg = nullptr;
-            }
-
-            operand = fa;
-        } else {
-            operand = nullptr;
-        }
-        break;
-    case O_PRED:
-        if (other.operand) {
-            auto pred = new PRED();
-            auto other_pred = static_cast<const PRED *>(other.operand);
-            pred->isNot = other_pred->isNot;
-
-            // Deep copy pred pointer
-            if (other_pred->pred) {
-                pred->pred = new OperandContext(*(other_pred->pred));
-            } else {
-                pred->pred = nullptr;
-            }
-
-            operand = pred;
-        } else {
-            operand = nullptr;
-        }
-        break;
-    case O_IMM:
-        if (other.operand) {
-            auto imm = new IMM();
-            auto other_imm = static_cast<const IMM *>(other.operand);
-            imm->immVal = other_imm->immVal;
-            operand = imm;
-        } else {
-            operand = nullptr;
-        }
-        break;
-    case O_VAR:
-        if (other.operand) {
-            auto var = new VAR();
-            auto other_var = static_cast<const VAR *>(other.operand);
-            var->varName = other_var->varName;
-            operand = var;
-        } else {
-            operand = nullptr;
-        }
-        break;
-    }
-
-    return *this;
 }

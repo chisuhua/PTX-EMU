@@ -1,84 +1,99 @@
 cmake_minimum_required(VERSION 3.15)
 
-project(PTX-EMU LANGUAGES CXX)
+# ==============================
+# 🔧 关键：在 project() 前设置 CUDA 标准并启用语言
+# ==============================
+set(CMAKE_CUDA_STANDARD 20)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+set(CMAKE_CUDA_EXTENSIONS OFF)
+enable_language(CUDA)
 
-# 设置C++标准
+# ==============================
+# 📦 项目定义（包含 CXX 和 CUDA）
+# ==============================
+project(PTX-EMU LANGUAGES CXX CUDA)
+
+# ==============================
+# 🛠️ 全局设置
+# ==============================
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH ON)
 
 # 默认构建类型
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
-# 是否使用详细日志的选项
+# 日志选项
 option(USE_DETAILED_LOGGING "Use detailed logging with file location info" OFF)
-
 if(USE_DETAILED_LOGGING)
     add_compile_definitions(PTXSIM_USE_DETAILED_LOGGING)
 endif()
 
-# 检查CUDA_PATH环境变量
-if(NOT DEFINED ENV{CUDA_PATH})
-    # message(FATAL_ERROR "CUDA_PATH environment variable is not set. Please set it to your CUDA installation path.")
-    message(ERROR "CUDA_PATH environment variable is not set. Please set it to your CUDA installation path.")
-    set(CUDA_PATH /user/local/cuda)
-endif()
-
-set(CUDA_PATH $ENV{CUDA_PATH})
-
-# 设置输出目录
+# 输出目录
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-# 查找所需的包
+# ==============================
+# 🔍 查找依赖
+# ==============================
 find_package(Java COMPONENTS Runtime REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 
-# 设置CUDA架构
+# CUDA 架构（可选）
 set(DEFAULT_CUDA_ARCH "100" CACHE STRING "Default CUDA architecture")
 
-# 添加ANTLR依赖
+# ==============================
+# 🐜 ANTLR4 配置
+# ==============================
 set(ANTLR_EXECUTABLE ${CMAKE_SOURCE_DIR}/antlr4/antlr-4.11.1-complete.jar)
-set(ANTLR4_RUNTIME_SOURCE_DIR ${CMAKE_SOURCE_DIR}/antlr4/antlr4-cpp-runtime-4.11.1-source)
+set(ANTLR4_RUNTIME_SOURCE_DIR ${CMAKE_SOURCE_DIR}/antlr4/antlr4-cpp-runtime-4.13.1-source)
 set(ANTLR4_GENERATED_SRC_DIR ${CMAKE_CURRENT_BINARY_DIR}/antlr4_generated_src)
 
-# 创建目录
 file(MAKE_DIRECTORY ${ANTLR4_GENERATED_SRC_DIR})
 
-# 构建ANTLR4 C++运行时
-set(ANTLR4_INCLUDE_DIR ${ANTLR4_RUNTIME_SOURCE_DIR}/runtime/src)
-set(ANTLR4_LIB_DIR ${CMAKE_CURRENT_BINARY_DIR}/antlr4_runtime)
-add_subdirectory(${ANTLR4_RUNTIME_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/antlr4_runtime)
+# 🔥 关键：禁用 ANTLR4 的测试和 demo，避免下载 googletest
+set(ANTLR4_BUILD_TESTS OFF CACHE BOOL "Disable ANTLR4 tests" FORCE)
+set(ANTLR_BUILD_CPP_TESTS OFF CACHE BOOL "Disable ANTLR4 tests" FORCE)
+set(WITH_DEMO OFF CACHE BOOL "Disable ANTLR4 demo" FORCE)
 
-# 包含ANTLR运行时头文件
-include_directories(${ANTLR4_INCLUDE_DIR})
+# 构建 ANTLR4 运行时
+add_subdirectory(
+    ${ANTLR4_RUNTIME_SOURCE_DIR}/runtime/Cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/antlr4_runtime
+)
+
+# 包含头文件（临时方案，建议后续改用 target_include_directories）
+include_directories(${ANTLR4_RUNTIME_SOURCE_DIR}/runtime/src)
 include_directories(${ANTLR4_GENERATED_SRC_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/json)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/inipp)
 
-# 设置要链接的ANTLR4库
 set(ANTLR4_LIBRARY antlr4_shared)
 
-# 添加src子目录
+# ==============================
+# 📁 子目录
+# ==============================
 add_subdirectory(src)
 
-# 添加tests子目录
+# 启用测试（但确保 tests/CMakeLists.txt 不再 enable_language(CUDA)）
 enable_testing()
 add_subdirectory(tests)
 
-# 添加cute子目录（如果存在）
+# 可选 benchmark
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/bench/cute/CMakeLists.txt)
     add_subdirectory(bench/cute)
 endif()
 
-# 添加安装规则
-install(DIRECTORY lib/ 
+# ==============================
+# 📤 安装规则
+# ==============================
+install(DIRECTORY lib/
         DESTINATION lib
         FILES_MATCHING PATTERN "*.so*")
 
-install(DIRECTORY bin/ 
+install(DIRECTORY bin/
         DESTINATION bin
         FILES_MATCHING PATTERN "*")

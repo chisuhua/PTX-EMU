@@ -15,16 +15,16 @@ set(ANTLR4_GENERATED_SOURCES
 add_custom_command(
     OUTPUT ${ANTLR4_GENERATED_SOURCES}
     COMMAND java -Xss500M -Xmx500M -cp "${ANTLR_EXECUTABLE}" org.antlr.v4.Tool 
-        -Dlanguage=Cpp ptxLexer.g4 ptxParser.g4 
+        -Dlanguage=Cpp grammar/ptxLexer.g4 grammar/ptxParser.g4
         -listener -visitor -package ptxparser 
         -o ${ANTLR4_GENERATED_SRC_DIR}
-    DEPENDS ptxLexer.g4 ptxParser.g4
+    DEPENDS grammar/ptxLexer.g4 grammar/ptxParser.g4
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "Generating parser from ANTLR grammar files..."
     VERBATIM
 )
 
-add_custom_target(GenerateParser DEPENDS ${ANTLR4_GENERATED_SOURCES} ptxLexer.g4 ptxParser.g4)
+add_custom_target(GenerateParser DEPENDS ${ANTLR4_GENERATED_SOURCES} grammar/ptxLexer.g4 grammar/ptxParser.g4)
 
 # 设置源文件（包含ANTLR生成的源文件）
 set(SOURCES
@@ -84,19 +84,21 @@ add_library(ptxsim SHARED
     ptxsim/instructions/arithmetic_ext.cpp
     ptxsim/instructions/arithmetic_conversion.cpp
     ptxsim/instructions/data_transfer.cpp
+    ptxsim/instructions/call.cpp
 )
 target_link_libraries(ptxsim ptx_ir)
 
-add_library(ptx_parser SHARED
-    ptx_parser/ptx_parser.cpp
-) 
-target_link_libraries(ptx_parser ptx_ir)
+# add_library(ptx_parser SHARED
+    # ptx_parser/ptx_parser.cpp
+# )
+# target_link_libraries(ptx_parser ptx_ir)
 
 # 创建共享库
 add_library(cudart SHARED ${SOURCES})
-target_link_libraries(cudart ptx_ir ptx_parser ptxsim)
+# target_link_libraries(cudart ptx_ir ptx_parser ptxsim)
+target_link_libraries(cudart ptx_ir ptxsim)
 add_dependencies(cudart GenerateParser)
-add_dependencies(cudart ptx_parser)
+# add_dependencies(cudart ptx_parser)
 add_dependencies(cudart ptxsim)
 
 # 标记ANTLR生成的源文件为生成文件

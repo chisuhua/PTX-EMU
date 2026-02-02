@@ -10,7 +10,7 @@
 #include "inipp/inipp.h"
 #include "memory/simple_memory.h"
 #include "ptx_interpreter.h"
-#include "ptx_parser/ptx_grammar.h" // 添加解析器相关的头文件
+// #include "ptx_parser/ptx_grammar.h" // 添加解析器相关的头文件
 #include "ptx_parser/ptx_parser.h"
 #include "ptxsim/gpu_context.h"
 #include "ptxsim/ptx_config.h" // 添加DebugConfig所需的头文件
@@ -150,13 +150,14 @@ void **__cudaRegisterFatBinary(void **fatCubinHandle, void *fat_bin,
     CommonTokenStream tokens(&lexer);
     tokens.fill();
     ptxParser parser(&tokens);
+    auto tree = parser.ast();
 
+    // FIXME
     // 创建PtxListener实例
-    PtxListener ptxListener;
-    parser.addParseListener(&ptxListener);
-    tree::ParseTree *tree = parser.ast();
-
-    ptxListener.test_semantic();
+    // PtxListener ptxListener;
+    // parser.addParseListener(&ptxListener);
+    // tree::ParseTree *tree = parser.ast();
+    // ptxListener.test_semantic();
 
     // 4. 初始化PtxInterpreter - 现在会拷贝ptxContext以避免悬垂引用
     g_ptx_interpreter->set_ptx_context(ptxListener.ptxContext);
@@ -251,12 +252,12 @@ cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim, dim3 blockDim,
         // 打印参数数组地址
         PTX_DEBUG_EMU("cudaLaunchKernel args array address: %p", args);
 
-        int i = 0;
-        if (args[i]) {
-            PTX_DEBUG_EMU(
-                "cudaLaunchKernel argument[%d]: address=%p, value=0x%lx", i,
-                args[i], *(uint64_t *)args[i]);
-        }
+        // int i = 0;
+        // if (args[i]) {
+        //     PTX_DEBUG_EMU(
+        //         "cudaLaunchKernel argument[%d]: address=%p, value=0x%lx", i,
+        //         args[i], *(uint64_t *)args[i]);
+        // }
     }
 
     PTX_DEBUG_EMU("deviceFunName %s", func2name[(uint64_t)func].c_str());

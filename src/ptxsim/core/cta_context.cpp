@@ -23,8 +23,7 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
                       std::vector<StatementContext> &statements,
                       std::map<std::string, Symtable *> *name2Sym,
                       std::map<std::string, int> &label2pc,
-                      void *local_memory_base,
-                      size_t local_mem_per_thread) {
+                      void *local_memory_base, size_t local_mem_per_thread) {
 
     threadNum = BlockDim.x * BlockDim.y * BlockDim.z;
     curExeWarpId = 0;
@@ -41,13 +40,14 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
 
     // 计算共享内存大小，遍历PTX语句查找.shared声明
     sharedMemBytes = 0;
-    
+
     for (const auto &stmt : statements) {
-        if (stmt.statementType == S_SHARED) {
-            auto sharedStmt = (StatementContext::SHARED *)stmt.statement;
+        if (stmt.type == S_SHARED) {
+            const DeclarationInstr &sharedStmt =
+                std::get<DeclarationInstr>(stmt.data);
             // 计算变量大小
-            size_t element_size = Q2bytes(sharedStmt->dataType[0]);
-            size_t var_size = element_size * sharedStmt->size;
+            size_t element_size = Q2bytes(sharedStmt.dataType);
+            size_t var_size = element_size * (*sharedStmt.size);
             sharedMemBytes += var_size;
         }
     }
@@ -58,14 +58,14 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
     // 预先创建共享内存符号表的结构，但不分配实际内存空间
     size_t shared_offset = 0;
     for (const auto &stmt : statements) {
-        if (stmt.statementType == S_SHARED) {
-            auto ss = (StatementContext::SHARED *)stmt.statement;
+        if (stmt.type == S_SHARED) {
+            const DeclarationInstr &ss = std::get<DeclarationInstr>(stmt.data);
             // 使用new操作符创建Symtable实例
             Symtable *s = new Symtable();
-            s->byteNum = getBytes(ss->dataType) * ss->size;
-            s->elementNum = ss->size;
-            s->name = ss->name;
-            s->symType = ss->dataType.back(); // 假设dataType[0]是元素类型
+            s->byteNum = Q2bytes(ss.dataType) * (*ss.size);
+            s->elementNum = *ss.size;
+            s->name = ss.name;
+            s->symType = ss.dataType; // 假设dataType[0]是元素类型
 
             size_t var_size = s->byteNum;
 
@@ -82,18 +82,18 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
             shared_offset += var_size;
         }
     }
-    
+
     // 预先创建本地内存符号表的结构
     size_t local_offset = 0;
     for (const auto &stmt : statements) {
-        if (stmt.statementType == S_LOCAL) {
-            auto ls = (StatementContext::LOCAL *)stmt.statement;
+        if (stmt.type == S_LOCAL) {
+            const DeclarationInstr &ls = std::get<DeclarationInstr>(stmt.data);
             // 使用new操作符创建Symtable实例
             Symtable *s = new Symtable();
-            s->byteNum = getBytes(ls->dataType) * ls->size;
-            s->elementNum = ls->size;
-            s->name = ls->name;
-            s->symType = ls->dataType.back(); // 假设dataType[0]是元素类型
+            s->byteNum = Q2bytes(ls.dataType) * (*ls.size);
+            s->elementNum = *ls.size;
+            s->name = ls.name;
+            s->symType = ls.dataType; // 假设dataType[0]是元素类型
 
             size_t var_size = s->byteNum;
 
@@ -166,26 +166,33 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
         int laneId = i % WarpContext::WARP_SIZE;
         warps[warpId]->add_thread(std::move(thread), laneId);
     }
-    
+
     // 如果提供了本地内存基础地址，则分配每个线程的本地内存空间
     if (local_memory_base != nullptr && localMemBytesPerThread > 0) {
         // 计算当前CTA在全局本地内存中的偏移量
-        size_t block_id = blockIdx.x + GridDim.x * (blockIdx.y + GridDim.y * blockIdx.z);
-        size_t cta_thread_offset = block_id * (BlockDim.x * BlockDim.y * BlockDim.z) * localMemBytesPerThread;
-        
+        size_t block_id =
+            blockIdx.x + GridDim.x * (blockIdx.y + GridDim.y * blockIdx.z);
+        size_t cta_thread_offset = block_id *
+                                   (BlockDim.x * BlockDim.y * BlockDim.z) *
+                                   localMemBytesPerThread;
+
         // 为当前CTA的每个线程分配本地内存空间
         localMemSpaces.resize(threadNum);
         for (int i = 0; i < threadNum; i++) {
             // 计算该线程在全局内存中的位置
-            size_t thread_offset = cta_thread_offset + i * localMemBytesPerThread;
-            localMemSpaces[i] = (void *)((uint64_t)local_memory_base + thread_offset);
-            
+            size_t thread_offset =
+                cta_thread_offset + i * localMemBytesPerThread;
+            localMemSpaces[i] =
+                (void *)((uint64_t)local_memory_base + thread_offset);
+
             if (localMemSpaces[i]) {
                 memset(localMemSpaces[i], 0, localMemBytesPerThread);
-                PTX_DEBUG_EMU("Assigned local memory space of size %zu for thread %d at %p",
+                PTX_DEBUG_EMU("Assigned local memory space of size %zu for "
+                              "thread %d at %p",
                               localMemBytesPerThread, i, localMemSpaces[i]);
             } else {
-                PTX_ERROR_EMU("Failed to assign local memory space for thread %d", i);
+                PTX_ERROR_EMU(
+                    "Failed to assign local memory space for thread %d", i);
             }
         }
     } else {
@@ -226,6 +233,7 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
         // 设置线程的本地内存空间
         if (i < static_cast<int>(localMemSpaces.size()) && localMemSpaces[i]) {
             thread->set_local_memory_space(localMemSpaces[i]);
+            // thread->set_local_memory_space(local_memory_base);
         }
 
         // 直接将线程添加到对应的warp
@@ -233,11 +241,11 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
         int laneId = i % WarpContext::WARP_SIZE;
         warps[warpId]->add_thread(std::move(thread), laneId);
     }
-    
+
     // 构建本地内存符号表（如果尚未分配本地内存空间，则在此处分配）
-    if (local_memory_base == nullptr && localMemBytesPerThread > 0) {
-        build_local_memory_symbol_table();
-    }
+    // if (local_memory_base == nullptr && localMemBytesPerThread > 0) {
+    //     build_local_memory_symbol_table();
+    // }
 }
 
 // 实现新方法：构建共享内存符号表，现在需要接收分配好的共享内存空间
@@ -260,11 +268,11 @@ void CTAContext::build_shared_memory_symbol_table(void *shared_mem_space) {
     // 填充name2Share中的地址信息
     size_t shared_offset = 0;
     for (const auto &stmt : *init_statements) {
-        if (stmt.statementType == S_SHARED) {
-            auto sharedStmt = (StatementContext::SHARED *)stmt.statement;
+        if (stmt.type == S_SHARED) {
+            const DeclarationInstr &ss = std::get<DeclarationInstr>(stmt.data);
 
             // 查找对应的Symtable并设置地址
-            auto it = name2Share.find(sharedStmt->name);
+            auto it = name2Share.find(ss.name);
             if (it != name2Share.end()) {
                 Symtable *s = it->second;
 
@@ -296,49 +304,53 @@ void CTAContext::build_shared_memory_symbol_table(void *shared_mem_space) {
 }
 
 // 实现构建本地内存符号表的方法
-void CTAContext::build_local_memory_symbol_table() {
-    if (!init_statements) {
-        PTX_DEBUG_EMU("Error: init_statements is null, cannot build local "
-                      "memory symbol table");
-        return;
-    }
+// void CTAContext::build_local_memory_symbol_table() {
+//     if (!init_statements) {
+//         PTX_DEBUG_EMU("Error: init_statements is null, cannot build local "
+//                       "memory symbol table");
+//         return;
+//     }
 
-    // 检查本地内存是否已经分配（通过检查第一个线程的本地内存空间）
-    if (localMemSpaces.size() > 0 && localMemSpaces[0] != nullptr) {
-        // 本地内存空间已经分配，只需设置线程的本地内存空间
-        PTX_DEBUG_EMU("Local memory spaces already allocated, setting thread local memory pointers");
-    } else {
-        // 本地内存空间尚未分配，需要分配内存
-        localMemSpaces.resize(threadNum);
-        for (int i = 0; i < threadNum; i++) {
-            if (localMemBytesPerThread > 0) {
-                localMemSpaces[i] = malloc(localMemBytesPerThread);
-                if (localMemSpaces[i]) {
-                    memset(localMemSpaces[i], 0, localMemBytesPerThread);
-                    PTX_DEBUG_EMU("Allocated local memory space of size %zu for thread %d at %p",
-                                  localMemBytesPerThread, i, localMemSpaces[i]);
-                } else {
-                    PTX_ERROR_EMU("Failed to allocate local memory space for thread %d", i);
-                }
-            } else {
-                localMemSpaces[i] = nullptr;
-            }
-        }
-    }
+//     // 检查本地内存是否已经分配（通过检查第一个线程的本地内存空间）
+//     if (localMemSpaces.size() > 0 && localMemSpaces[0] != nullptr) {
+//         // 本地内存空间已经分配，只需设置线程的本地内存空间
+//         PTX_DEBUG_EMU("Local memory spaces already allocated, setting thread
+//         local memory pointers");
+//     } else {
+//         // 本地内存空间尚未分配，需要分配内存
+//         localMemSpaces.resize(threadNum);
+//         for (int i = 0; i < threadNum; i++) {
+//             if (localMemBytesPerThread > 0) {
+//                 localMemSpaces[i] = malloc(localMemBytesPerThread);
+//                 if (localMemSpaces[i]) {
+//                     memset(localMemSpaces[i], 0, localMemBytesPerThread);
+//                     PTX_DEBUG_EMU("Allocated local memory space of size %zu
+//                     for thread %d at %p",
+//                                   localMemBytesPerThread, i,
+//                                   localMemSpaces[i]);
+//                 } else {
+//                     PTX_ERROR_EMU("Failed to allocate local memory space for
+//                     thread %d", i);
+//                 }
+//             } else {
+//                 localMemSpaces[i] = nullptr;
+//             }
+//         }
+//     }
 
-    // 将本地内存基地址传递给所有线程
-    int threadIdx = 0;
-    for (auto &warp : warps) {
-        for (auto &thread : warp->get_threads()) {
-            if (thread) {
-                if (threadIdx < static_cast<int>(localMemSpaces.size())) {
-                    thread->set_local_memory_space(localMemSpaces[threadIdx]);
-                }
-                threadIdx++;
-            }
-        }
-    }
-}
+//     // 将本地内存基地址传递给所有线程
+//     int threadIdx = 0;
+//     for (auto &warp : warps) {
+//         for (auto &thread : warp->get_threads()) {
+//             if (thread) {
+//                 if (threadIdx < static_cast<int>(localMemSpaces.size())) {
+//                     thread->set_local_memory_space(localMemSpaces[threadIdx]);
+//                 }
+//                 threadIdx++;
+//             }
+//         }
+//     }
+// }
 
 EXE_STATE CTAContext::exe_once() {
     // CTAContext不再执行指令，因为warp已转移给SMContext

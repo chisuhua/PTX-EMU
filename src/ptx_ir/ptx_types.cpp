@@ -52,11 +52,14 @@ int Q2bytes(Qualifier q) {
     case Qualifier::Q_B8:
     case Qualifier::Q_S8:
     case Qualifier::Q_F8:
+    case Qualifier::Q_E4M3:
+    case Qualifier::Q_E5M2:
         return 1;
     case Qualifier::Q_U16:
     case Qualifier::Q_B16:
     case Qualifier::Q_S16:
     case Qualifier::Q_F16:
+    case Qualifier::Q_E4M3X4:
         return 2;
     case Qualifier::Q_U32:
     case Qualifier::Q_B32:

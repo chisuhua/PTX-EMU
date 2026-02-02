@@ -5,266 +5,207 @@
 #include "operand_context.h"
 #include "ptx_types.h"
 #include "ptxsim/execution_types.h"
+#include <optional>
+#include <string>
+#include <variant>
 #include <vector>
+
+// -----------------------------------------------------------------------------
+// Declaration-like statements (.reg, .const, .shared, etc.)
+// Used for S_REG, S_CONST, S_SHARED, S_LOCAL, S_GLOBAL, S_PARAM
+// -----------------------------------------------------------------------------
+struct DeclarationInstr {
+    enum class Kind { REG, CONST, SHARED, LOCAL, GLOBAL, PARAM };
+
+    Kind kind;
+    std::string name;             // e.g., "%r1", "buf"
+    Qualifier dataType;           // e.g., .b32, .u64
+    std::optional<int> alignment; // from .align N
+    std::optional<int> size;      // array size or const bytes
+    int array_size;
+    std::vector<int> initValues; // for .const {1,2,3}
+};
+
+// -----------------------------------------------------------------------------
+//  $ r1 style inline register reference (S_DOLLOR → SIMPLE_NAME)
+// -----------------------------------------------------------------------------
+struct DollarNameInstr {
+    std::string name; // e.g., " $ r1"
+};
+
+// -----------------------------------------------------------------------------
+// Pragma or directive with string content (S_PRAGMA → SIMPLE_STRING)
+// -----------------------------------------------------------------------------
+struct PragmaInstr {
+    std::string content; // e.g., "#pragma unroll"
+};
+
+// -----------------------------------------------------------------------------
+// Void instructions: no operands (S_RET, etc. → VOID_INSTR)
+// -----------------------------------------------------------------------------
+struct VoidInstr {
+    // intentionally empty
+};
+
+// -----------------------------------------------------------------------------
+// Branch instruction (S_BRA → BRANCH)
+// -----------------------------------------------------------------------------
+struct BranchInstr {
+    std::vector<Qualifier> qualifiers;
+    std::string target; // label name, e.g., "L_123"
+};
+
+// -----------------------------------------------------------------------------
+// Barrier/sync instruction (S_BAR → BARRIER)
+// -----------------------------------------------------------------------------
+struct BarrierInstr {
+    std::vector<Qualifier> qualifiers;
+    std::string type;         // e.g., "cta", "gl"
+    std::optional<int> barId; // optional barrier ID
+};
+
+// -----------------------------------------------------------------------------
+// Function call (S_CALL → CALL_INSTR)
+// -----------------------------------------------------------------------------
+struct CallInstr {
+    std::string funcName;
+    std::vector<Qualifier> qualifiers;
+    std::vector<OperandContext> operands; // args + return address (if any)
+};
+
+// -----------------------------------------------------------------------------
+// Predicate prefix (@%p1, @!%p2) — treated as standalone for IR clarity
+// (S_AT → PREDICATE_PREFIX)
+// Note: In PTX, it modifies the next instruction, but we represent it as a
+// stmt.
+// -----------------------------------------------------------------------------
+struct PredicatePrefix {
+    std::vector<Qualifier> qualifiers;
+    std::vector<OperandContext> operands; // args + return address (if any)
+    std::string target;                   // e.g., "%p1"
+};
+
+// -----------------------------------------------------------------------------
+// Generic arithmetic/memory instructions (most ops → GENERIC_INSTR)
+// e.g., add, ld, st, mov, cvt, setp, etc.
+// -----------------------------------------------------------------------------
+struct GenericInstr {
+    std::vector<Qualifier> qualifiers;
+    std::vector<OperandContext> operands;
+};
+
+// -----------------------------------------------------------------------------
+// WMMA instruction (S_WMMA → WMMA_INSTR)
+// -----------------------------------------------------------------------------
+struct WmmaInstr {
+    WmmaType wmmaType;
+    std::vector<Qualifier> qualifiers;
+    std::vector<OperandContext> operands;
+};
+
+// -----------------------------------------------------------------------------
+// Atomic instruction (S_ATOM → ATOM_INSTR)
+// -----------------------------------------------------------------------------
+struct AtomInstr {
+    std::vector<Qualifier> qualifiers;
+    std::vector<OperandContext> operands;
+    int operandNum = 0; // metadata (e.g., number of effective operands)
+};
+
+// -----------------------------------------------------------------------------
+// Async Store Instruction (S_ST_ASYNC → ASYNC_STORE)
+// -----------------------------------------------------------------------------
+struct AsyncStoreInstr {
+    std::vector<Qualifier> qualifiers;
+    std::vector<OperandContext> operands; // [addr, value]
+};
+
+// -----------------------------------------------------------------------------
+// Async Reduction Instruction (S_RED_ASYNC → ASYNC_REDUCE)
+// -----------------------------------------------------------------------------
+struct AsyncReduceInstr {
+    std::vector<Qualifier> qualifiers;
+    std::vector<OperandContext> operands; // [addr, value, (optional) old]
+};
+
+// -----------------------------------------------------------------------------
+// Tensor Core Generator Instructions (S_TCGEN_* → TCGEN_INSTR)
+// -----------------------------------------------------------------------------
+struct TcgenInstr {
+    std::string opName; // "alloc", "mma", etc.
+    std::vector<Qualifier> qualifiers;
+    std::vector<OperandContext> operands;
+};
+
+// -----------------------------------------------------------------------------
+// Tensor Map Replace (S_TENSORMAP_REPLACE → TENSORMAP_INSTR)
+// -----------------------------------------------------------------------------
+struct TensormapInstr {
+    std::vector<Qualifier> qualifiers;
+    std::vector<OperandContext> operands; // e.g., [handle, desc_ptr, layout]
+};
+
+// -----------------------------------------------------------------------------
+// ABI Preserve Directive (S_ABI_PRESERVE → ABI_DIRECTIVE)
+// Operand is register number (e.g., 15 → %r15)
+// -----------------------------------------------------------------------------
+struct AbiDirective {
+    int regNumber; // from .abi_preserve N
+};
+// =============================================================================
+// 2. Unified variant type for all instruction kinds
+// Manually listed based on struct_kind in ptx_op.def (no macro magic)
+// =============================================================================
+using InstrVariant =
+    std::variant<DeclarationInstr, // OPERAND_REG / OPERAND_CONST /
+                                   // OPERAND_MEMORY
+                 DollarNameInstr,  // SIMPLE_NAME
+                 PragmaInstr,      // SIMPLE_STRING
+                 VoidInstr,        // VOID_INSTR
+                 BranchInstr,      // BRANCH
+                 BarrierInstr,     // BARRIER
+                 CallInstr,        // CALL_INSTR
+                 GenericInstr,     // GENERIC_INSTR
+                 PredicatePrefix,  // PREDICATE_PREFIX
+                 WmmaInstr,        // WMMA_INSTR
+                 AtomInstr,        // ATOM_INSTR
+                 AsyncStoreInstr, AsyncReduceInstr, TcgenInstr, TensormapInstr,
+                 AbiDirective>;
 
 class StatementContext {
 public:
-    StatementType statementType;
-    void *statement;
-    InstructionState state;
-    std::vector<Qualifier> *qualifier; // qualifer for collect operand
-    std::string instructionText;       // 存储原始指令文本
+    StatementType type;
+    std::vector<Qualifier> qualifier; // e.g., {.u32, .sat, .rn}
+    // std::vector<OperandContext> operands;    // src/dst operands
+    // std::optional<OperandContext> predicate; // guard predicate (e.g., @%p1)
+    InstrVariant data;
+    InstructionState state = InstructionState::READY;
 
-// =============================================================================
-// 1. 操作数描述结构体
-// =============================================================================
-#define DEFINE_OPERAND_REG(Name, _)                                            \
-    struct Name {                                                              \
-        int regNum = 0;                                                        \
-        std::vector<Qualifier> regDataType;                                    \
-        std::string regName;                                                   \
-    };
+    // Original PTX source line (for debugging/printing)
+    std::string instructionText;
 
-#define DEFINE_OPERAND_CONST(Name, _)                                          \
-    struct Name {                                                              \
-        int constAlign = 0;                                                    \
-        int constSize = 1;                                                     \
-        std::vector<Qualifier> constDataType;                                  \
-        std::string constName;                                                 \
-    };
+    // Constructor: initialize with specific instruction type
+    template <typename T>
+    StatementContext(StatementType t, T &&instr)
+        : type(t), data(std::forward<T>(instr)) {}
 
-#define DEFINE_OPERAND_MEMORY(Name, _)                                         \
-    struct Name {                                                              \
-        int align = 0;                                                         \
-        int size = 1;                                                          \
-        std::vector<Qualifier> dataType;                                       \
-        std::string name;                                                      \
-    };
+    // Default constructor (needed for containers)
+    StatementContext() = default;
 
-    // =============================================================================
-    // 2. 简单结构体
-    // =============================================================================
+    // Accessors (safe)
+    template <typename T> T &get() { return std::get<T>(data); }
 
-#define DEFINE_SIMPLE_NAME(Name, _)                                            \
-    struct Name {                                                              \
-        std::string dollorName;                                                \
-    };
+    template <typename T> const T &get() const { return std::get<T>(data); }
 
-#define DEFINE_SIMPLE_STRING(Name, _)                                          \
-    struct Name {                                                              \
-        std::string pragmaString;                                              \
-    };
+    // Optional: visit support
+    template <typename Visitor> auto visit(Visitor &&vis) {
+        return std::visit(std::forward<Visitor>(vis), data);
+    }
 
-#define DEFINE_VOID_INSTR(Name, _)                                             \
-    struct Name {};
-
-    // =============================================================================
-    // 3. 控制流结构体
-    // =============================================================================
-
-#define DEFINE_BRANCH(Name, _)                                                 \
-    struct Name {                                                              \
-        std::vector<Qualifier> qualifier;                                      \
-        std::string braTarget;                                                 \
-    };
-
-#define DEFINE_BARRIER(Name, _)                                                \
-    struct Name {                                                              \
-        std::vector<Qualifier> qualifier;                                      \
-        std::string barType;                                                   \
-        int barId;                                                             \
-    };
-
-    // =============================================================================
-    // 4. 通用指令结构体
-    // =============================================================================
-    struct BASE_INSTR {
-        std::vector<Qualifier> qualifier;
-        std::vector<OperandContext> operands;
-    };
-
-#define DEFINE_GENERIC_INSTR(Name, OpCount)                                    \
-    struct Name : BASE_INSTR {                                                 \
-        static constexpr int op_count = OpCount;                               \
-    };
-
-#define DEFINE_PREDICATE_PREFIX(Name, OpCount)                                 \
-    struct Name : BASE_INSTR {                                                 \
-        static constexpr int op_count = OpCount;                               \
-        std::string atLabelName;                                               \
-    };
-
-#define DEFINE_WMMA_INSTR(Name, OpCount)                                       \
-    struct Name : BASE_INSTR {                                                 \
-        static constexpr int op_count = OpCount;                               \
-        WmmaType wmmaType;                                                     \
-    };
-
-#define DEFINE_ATOM_INSTR(Name, OpCount)                                       \
-    struct Name : BASE_INSTR {                                                 \
-        static constexpr int op_count = OpCount;                               \
-        int operandNum = 0;                                                    \
-    };
-
-#define X(enum_val, type_name, str, op_count, struct_kind)                     \
-    DEFINE_##struct_kind(type_name, op_count)
-#include "ptx_op.def"
-#undef X
-
-    StatementContext()
-        : statementType(S_REG), statement(nullptr),
-          state{InstructionState::READY}, instructionText("") {}
-    ~StatementContext();
-
-    // 深拷贝方法
-    StatementContext(const StatementContext &other);
+    template <typename Visitor> auto visit(Visitor &&vis) const {
+        return std::visit(std::forward<Visitor>(vis), data);
+    }
+    [[nodiscard]] std::string toString() const;
 };
 
-// =============================================================================
-// 内部辅助：深拷贝 OperandContext 数组
-// =============================================================================
-template <std::size_t N>
-inline void deepCopyOperandArray(OperandContext (&dst)[N],
-                                 const OperandContext (&src)[N]) {
-    for (std::size_t i = 0; i < N; ++i) {
-        dst[i] = OperandContext(
-            src[i]); // 调用 OperandContext 的拷贝构造函数（深拷贝）
-    }
-}
-
-inline void deepCopyOperandArray(std::vector<OperandContext> &dst,
-                                 const std::vector<OperandContext> &src) {
-    uint32_t op_count = src.size();
-    dst.resize(op_count);
-    for (std::size_t i = 0; i < op_count; ++i) {
-        dst[i] = src[i]; // 调用 OperandContext 的拷贝构造函数（深拷贝）
-    }
-}
-
-// =============================================================================
-// 1. 操作数描述符（Operand Kinds）
-// =============================================================================
-#define COPY_IMPL_OPERAND_REG_IMPL(Name)                                       \
-    do {                                                                       \
-        auto source = static_cast<const Name *>(other.statement);              \
-        auto dest = new Name();                                                \
-        dest->regNum = source->regNum;                                         \
-        dest->regDataType = source->regDataType;                               \
-        dest->regName = source->regName;                                       \
-        statement = dest;                                                      \
-    } while (0)
-
-#define COPY_IMPL_OPERAND_CONST_IMPL(Name)                                     \
-    do {                                                                       \
-        auto source = static_cast<const Name *>(other.statement);              \
-        auto dest = new Name();                                                \
-        dest->constAlign = source->constAlign;                                 \
-        dest->constSize = source->constSize;                                   \
-        dest->constDataType = source->constDataType;                           \
-        dest->constName = source->constName;                                   \
-        statement = dest;                                                      \
-    } while (0)
-
-#define COPY_IMPL_OPERAND_MEMORY_IMPL(Name)                                    \
-    do {                                                                       \
-        auto source = static_cast<const Name *>(other.statement);              \
-        auto dest = new Name();                                                \
-        dest->align = source->align;                                           \
-        dest->size = source->size;                                             \
-        dest->dataType = source->dataType;                                     \
-        dest->name = source->name;                                             \
-        statement = dest;                                                      \
-    } while (0)
-
-// =============================================================================
-// 2. 简单标识符
-// =============================================================================
-#define COPY_IMPL_SIMPLE_NAME_IMPL(Name)                                       \
-    do {                                                                       \
-        auto source = static_cast<const Name *>(other.statement);              \
-        auto dest = new Name();                                                \
-        dest->dollorName = source->dollorName;                                 \
-        statement = dest;                                                      \
-    } while (0)
-
-#define COPY_IMPL_SIMPLE_STRING_IMPL(Name)                                     \
-    do {                                                                       \
-        auto source = static_cast<const Name *>(other.statement);              \
-        auto dest = new Name();                                                \
-        dest->pragmaString = source->pragmaString;                             \
-        statement = dest;                                                      \
-    } while (0)
-
-#define COPY_IMPL_VOID_INSTR_IMPL(Name)                                        \
-    do {                                                                       \
-        statement = new Name();                                                \
-    } while (0)
-
-// =============================================================================
-// 3. 控制流指令
-// =============================================================================
-#define COPY_IMPL_BRANCH_IMPL(Name)                                            \
-    do {                                                                       \
-        auto source = static_cast<const Name *>(other.statement);              \
-        auto dest = new Name();                                                \
-        dest->qualifier = source->qualifier;                                   \
-        dest->braTarget = source->braTarget;                                   \
-        statement = dest;                                                      \
-    } while (0)
-
-#define COPY_IMPL_BARRIER_IMPL(Name)                                           \
-    do {                                                                       \
-        auto source = static_cast<const Name *>(other.statement);              \
-        auto dest = new Name();                                                \
-        dest->qualifier = source->qualifier;                                   \
-        dest->barType = source->barType;                                       \
-        dest->barId = source->barId;                                           \
-        statement = dest;                                                      \
-    } while (0)
-
-#define COPY_IMPL_PREDICATE_PREFIX_IMPL(Name, _)                               \
-    do {                                                                       \
-        auto source = static_cast<const Name *>(other.statement);              \
-        auto dest = new Name();                                                \
-        dest->atLabelName = source->atLabelName;                               \
-        dest->qualifier = source->qualifier;                                   \
-        deepCopyOperandArray(dest->operands, source->operands);                \
-        statement = dest;                                                      \
-    } while (0)
-
-// =============================================================================
-// 4. 通用指令（GENERIC_INSTR）
-// =============================================================================
-#define COPY_IMPL_GENERIC_INSTR_IMPL(Name, OpCount)                            \
-    do {                                                                       \
-        auto source = static_cast<const Name *>(other.statement);              \
-        auto dest = new Name();                                                \
-        dest->qualifier = source->qualifier;                                   \
-        deepCopyOperandArray(dest->operands, source->operands);                \
-        statement = dest;                                                      \
-    } while (0)
-
-// =============================================================================
-// 5. 特殊指令
-// =============================================================================
-#define COPY_IMPL_WMMA_INSTR_IMPL(Name)                                        \
-    do {                                                                       \
-        auto source = static_cast<const Name *>(other.statement);              \
-        auto dest = new Name();                                                \
-        dest->wmmaType = source->wmmaType;                                     \
-        dest->qualifier = source->qualifier;                                   \
-        deepCopyOperandArray(dest->operands, source->operands);                \
-        statement = dest;                                                      \
-    } while (0)
-
-#define COPY_IMPL_ATOM_INSTR_IMPL(Name)                                        \
-    do {                                                                       \
-        auto source = static_cast<const Name *>(other.statement);              \
-        auto dest = new Name();                                                \
-        dest->qualifier = source->qualifier;                                   \
-        deepCopyOperandArray(dest->operands, source->operands);                \
-        dest->operandNum = source->operandNum;                                 \
-        statement = dest;                                                      \
-    } while (0)
-
-#endif // STATEMENT_CONTEXT_H
+#endif

@@ -29,6 +29,6 @@ enum OperandType { O_REG, O_VAR, O_IMM, O_VEC, O_FA, O_PRED };
 
 enum WmmaType { WMMA_LOAD, WMMA_STORE, WMMA_MMA };
 
-// enum EXE_STATE { RUN, BAR, EXIT };
+enum class OperandKind { REG, VAR, IMM, VEC, ADDR, PRED };
 
 #endif // PTX_TYPES_H

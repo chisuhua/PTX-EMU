@@ -12,47 +12,52 @@ namespace ptxsim {
 
 // 辅助函数：获取操作数字符串
 std::string DebugConfig::getOperandsString(const StatementContext &statement) {
-    std::ostringstream oss;
+    return statement.toString();
 
-    // 根据statement的类型进行不同的处理
-    switch (statement.statementType) {
-        // 处理通用指令类型，这些指令继承自BASE_INSTR，具有operands字段
-#define X(enum_val, type_name, str, op_count, struct_kind)                     \
-    case enum_val: {                                                           \
-        if constexpr (std::string_view(#struct_kind) == "GENERIC_INSTR" ||     \
-                      std::string_view(#struct_kind) == "ATOM_INSTR" ||        \
-                      std::string_view(#struct_kind) == "PREDICATE_PREFIX" ||  \
-                      std::string_view(#struct_kind) == "WMMA_INSTR") {        \
-            auto *stmt = static_cast<const StatementContext::BASE_INSTR *>(    \
-                statement.statement);                                          \
-            if (stmt && !stmt->operands.empty()) {                             \
-                for (size_t i = 0; i < stmt->operands.size(); ++i) {           \
-                    if (i > 0)                                                 \
-                        oss << ", ";                                           \
-                    oss << stmt->operands[i].toString();                       \
-                }                                                              \
-            }                                                                  \
-        } else {                                                               \
-            /* 其他类型指令的处理 */                                  \
-        }                                                                      \
-        break;                                                                 \
-    }
-#include "ptx_ir/ptx_op.def"
-#undef X
-    default:
-        break;
-    }
+    // std::ostringstream oss;
 
-    return oss.str();
+    //     // 根据statement的类型进行不同的处理
+    //     switch (statement.type) {
+    //         // 处理通用指令类型，这些指令继承自BASE_INSTR，具有operands字段
+    // #define X(enum_val, type_name, str, op_count, struct_kind) \
+//     case enum_val: { \
+//         if constexpr (std::string_view(#struct_kind) == "GENERIC_INSTR"
+    //         ||     \
+//                       std::string_view(#struct_kind) == "ATOM_INSTR" || \
+//                       std::string_view(#struct_kind) ==
+    //                       "PREDICATE_PREFIX" ||  \
+//                       std::string_view(#struct_kind) == "WMMA_INSTR") { \
+//             auto *stmt = static_cast<const StatementContext::BASE_INSTR
+    //             *>(    \
+//                 statement.statement); \
+//             if (stmt && !stmt->operands.empty()) { \
+//                 for (size_t i = 0; i < stmt->operands.size(); ++i) { \
+//                     if (i > 0) \
+//                         oss << ", "; \
+//                     oss << stmt->operands[i].toString(); \
+//                 } \
+//             } \
+//         } else { \
+//             /* 其他类型指令的处理 */                                  \
+//         } \
+//         break; \
+//     }
+    // #include "ptx_ir/ptx_op.def"
+    // #undef X
+    //     default:
+    //         break;
+    //     }
+
+    // return oss.str();
 }
 
 std::string
 DebugConfig::get_full_instruction_string(const StatementContext &statement) {
     // 使用StatementContext的相关方法来获取指令字符串
     std::ostringstream oss;
-    oss << S2s(statement.statementType) << " ";
+    oss << S2s(statement.type) << " ";
 
-    // 根据不同的statementType获取对应的操作数
+    // 根据不同的type获取对应的操作数
     std::string operands = getOperandsString(statement);
     oss << operands;
 

@@ -9,6 +9,9 @@ using namespace cute;
 using half = __half;
 
 __global__ void tiled_copy_kernel(half const* g_input, half* g_output) {
+    // Only use the first 4 threads
+    if (threadIdx.x >= 4) return;
+
     // Global input: 4x4 row-major
     auto gLayout = make_layout(make_shape(_4{}, _4{}), make_stride(_4{}, _1{}));
     auto gTensor = make_tensor(const_cast<half*>(g_input), gLayout);
@@ -29,13 +32,12 @@ __global__ void tiled_copy_kernel(half const* g_input, half* g_output) {
     half frag[4];
 
     // Perform copy: GMEM -> Register
-    // We copy directly into frag by treating it as a strided destination
-    // Use a temporary tensor view over frag with correct layout
     {
-        // Create a temporary tensor view over frag
-        // Note: use &frag[0] to get pointer
-        auto rLayout = make_layout(make_shape(_1{}, _4{}), make_stride(_1{}, _1{}));
+        // Use default row-major layout for (1,4) — automatically gives stride (_4{}, _1{})
+        auto rLayout = make_layout(make_shape(_1{}, _4{}), make_stride(_4{}, _1{}));
+        // auto rLayout = make_layout(make_shape(_1{}, _4{}), make_stride(_1{}, _1{}));
         auto rTensor = make_tensor(&frag[0], rLayout);
+        //auto rTensor = make_tensor(&frag[0], Layout<_1, _4>{});
         auto r_slice = thr_slice.partition_D(rTensor);
         copy(tiled_copy, g_slice, r_slice);
     }

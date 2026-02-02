@@ -9,7 +9,7 @@
     "C_Cpp.default.cStandard": "c17",
     "C_Cpp.default.cppStandard": "c++20",
     "C_Cpp.default.intelliSenseMode": "linux-gcc-aarch64",
-    "C_Cpp.formatting": "Default",
+    "C_Cpp.formatting": "clangFormat",
     "C_Cpp.autocomplete": "disabled",
     "C_Cpp.suggestSnippets": true,
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
@@ -18,6 +18,7 @@
     "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
     "clangd.path": "clangd",
     "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
     "extensions.ignoreRecommendations": false,
     "cmake.cmakePath": "/usr/bin/cmake",
     "cmake.configureOnOpen": true,
@@ -39,5 +40,12 @@
         "cassert": "cpp",
         "iostream": "cpp",
         "sstream": "cpp"
+    },
+    "[cpp]": {
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit"
+        }
     }
 }

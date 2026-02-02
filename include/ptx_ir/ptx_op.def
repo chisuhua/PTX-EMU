@@ -13,24 +13,26 @@
 // But to keep consistency, we assign minimal op_count=1 (just for structure).
 // In practice, they should NOT be registered as InstructionHandler.
 // -----------------------------------------------------------------------------
-X(S_REG,     REG,     reg,     0, OPERAND_REG)      // Register reference
-X(S_CONST,   CONST,   const,   0, OPERAND_CONST)      // Constant value
-X(S_SHARED,  SHARED,  shared,  0, OPERAND_MEMORY)      // Shared memory address
-X(S_LOCAL,   LOCAL,   local,   0, OPERAND_MEMORY)      // Local memory address
-X(S_GLOBAL,  GLOBAL,  global,  0, OPERAND_MEMORY)      // Global memory address
-X(S_DOLLOR,  DOLLOR,  dollar,  0, SIMPLE_NAME)      // Inline register ($r1)
+X(S_REG,     REG,     Reg,     0, OPERAND_REG)      // Register reference
+X(S_CONST,   CONST,   Const,   0, OPERAND_CONST)      // Constant value
+X(S_SHARED,  SHARED,  Shared,  0, OPERAND_MEMORY)      // Shared memory address
+X(S_LOCAL,   LOCAL,   Local,   0, OPERAND_MEMORY)      // Local memory address
+X(S_GLOBAL,  GLOBAL,  Global,  0, OPERAND_MEMORY)      // Global memory address
+X(S_PARAM,  PARAM,  Param,  0, OPERAND_MEMORY)      // Param memory address
+X(S_DOLLOR,  DOLLOR,  Dollar,  0, SIMPLE_NAME)      // Inline register ($r1)
 
 // -----------------------------------------------------------------------------
 // 1. 特殊指令
 // -----------------------------------------------------------------------------
-X(S_AT,      AT,      at,      0, PREDICATE_PREFIX)      // Predicate prefix (not a full instruction)
-X(S_PRAGMA,  PRAGMA,  pragma,  0, SIMPLE_STRING)      // Pragma: no operands in PTX sense
+X(S_AT,      AT,      At,      0, PREDICATE_PREFIX)      // Predicate prefix (not a full instruction)
+X(S_PRAGMA,  PRAGMA,  Pragma,  0, SIMPLE_STRING)      // Pragma: no operands in PTX sense
 
 // -----------------------------------------------------------------------------
 // 2. 控制指令（Control Flow）
 // -----------------------------------------------------------------------------
-X(S_RET,     RET,     ret,     0, VOID_INSTR)      // Return: no operands
-X(S_BRA,     BRA,     bra,     1, BRANCH)      // Branch: target label
+X(S_RET,     RET,     Ret,     0, VOID_INSTR)      // Return: no operands
+X(S_BRA,     BRA,     Bra,     1, BRANCH)      // Branch: target label
+X(S_CALL,    CALL,    Call,    3, CALL_INSTR)      // Call: function name, args, return addr
 
 // -----------------------------------------------------------------------------
 // 3. 同步指令
@@ -104,9 +106,41 @@ X(S_WMMA,    WMMA,    Wmma,    4, WMMA_INSTR)      // wmma: dst, src_a, src_b, s
 X(S_POPC,    POPC,    Popc,    2, GENERIC_INSTR)      // popc: dst, src
 X(S_CLZ,     CLZ,     Clz,     2, GENERIC_INSTR)      // clz: dst, src
 
+// -----------------------------------------------------------------------------
+// 10. 异步内存指令（PTX 8.7+）
+// -----------------------------------------------------------------------------
+X(S_ST_ASYNC,   ST_ASYNC,   StAsync,   2, ASYNC_STORE)      // st.async space.type [qualifiers] addr, val
+X(S_RED_ASYNC,  RED_ASYNC,  RedAsync,  3, ASYNC_REDUCE)     // red.async space.op.type [qualifiers] addr, val[, old]
+
+// -----------------------------------------------------------------------------
+// 11. Tensor Core Generator (Hopper+, PTX 8.7+)
+// -----------------------------------------------------------------------------
+X(S_TCGEN_ALLOC,        TCGEN_ALLOC,        TcgenAlloc,        1, TCGEN_INSTR)
+X(S_TCGEN_DEALLOC,      TCGEN_DEALLOC,      TcgenDealloc,      1, TCGEN_INSTR)
+X(S_TCGEN_RELINQUISH,   TCGEN_RELINQUISH,   TcgenRelinquish,   1, TCGEN_INSTR)
+X(S_TCGEN_CP,           TCGEN_CP,           TcgenCp,           2, TCGEN_INSTR)
+X(S_TCGEN_SHIFT,        TCGEN_SHIFT,        TcgenShift,        2, TCGEN_INSTR)
+X(S_TCGEN_MMA,          TCGEN_MMA,          TcgenMma,          4, TCGEN_INSTR)
+X(S_TCGEN_COMMIT,       TCGEN_COMMIT,       TcgenCommit,       2, TCGEN_INSTR)
+
+// -----------------------------------------------------------------------------
+// 12. Tensor Map Instructions (PTX 8.7+)
+// -----------------------------------------------------------------------------
+X(S_TENSORMAP_REPLACE, TENSORMAP_REPLACE, TensormapReplace, 3, TENSORMAP_INSTR)
+
+// -----------------------------------------------------------------------------
+// 13. Bulk Store (PTX 9.0+)
+// -----------------------------------------------------------------------------
+X(S_ST_BULK, ST_BULK, StBulk, 3, GENERIC_INSTR)
+
+// -----------------------------------------------------------------------------
+// 14. ABI Preserve Directives (Global or in func body)
+// Note: We treat as statement for uniformity, though usually global
+// -----------------------------------------------------------------------------
+X(S_ABI_PRESERVE, ABI_PRESERVE, AbiPreserve, 1, ABI_DIRECTIVE)
 
 // =============================================================================
-// End of statement_types.def
+// End of ptx_op.def
 // Note:
 // - S_UNKNOWN is intentionally excluded.
 // - op_count includes ALL operands (dst, src1, src2, ...).

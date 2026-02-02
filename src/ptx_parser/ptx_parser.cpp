@@ -343,7 +343,14 @@ void PtxListener::exitParam(ptxParser::ParamContext *ctx) {
         paramContext->paramNum = 1;
     }
 
-    kernelContext->kernelParams.push_back(*paramContext);
+    // 修复：根据当前上下文决定参数归属
+    if (kernelContext != nullptr) {
+        kernelContext->kernelParams.push_back(*paramContext);
+    } else if (isInExternFunc) {
+        // 如果当前在解析extern func，将参数添加到临时参数列表
+        tempExternFuncParams.push_back(*paramContext);
+    }
+
 #ifdef LOG
     std::cout << __func__ << std::endl;
 #endif
@@ -566,6 +573,16 @@ void PtxListener::exitGlobalStatement(ptxParser::GlobalStatementContext *ctx) {
         st->size = 0; // 表示未指定大小
     } else {
         st->size = 1; // 默认大小为1
+    }
+
+    // 处理初始化值 (如果有)
+    if (ctx->LeftBrace() && ctx->RightBrace()) {
+        // 遍历所有初始化值
+        auto digitsList = ctx->DIGITS();
+        for (size_t i = 0; i < digitsList.size(); ++i) {
+            int value = stoi(digitsList[i]->getText());
+            st->initValues.push_back(value);
+        }
     }
 
     /* end */
@@ -923,6 +940,36 @@ void PtxListener::exitVar(ptxParser::VarContext *ctx) {
     std::cout << __func__ << std::endl;
 #endif
 }
+
+void PtxListener::enterExternFuncStatement(
+    ptxParser::ExternFuncStatementContext *ctx) {
+#ifdef LOG
+    std::cout << __func__ << std::endl;
+#endif
+    // 设置标记，表示当前正在解析extern func
+    isInExternFunc = true;
+    // 清空临时参数列表
+    tempExternFuncParams.clear();
+    // 清空之前的qualifier，准备解析新的extern func
+    while (!qualifier.empty())
+        qualifier.pop();
+}
+
+void PtxListener::exitExternFuncStatement(
+    ptxParser::ExternFuncStatementContext *ctx) {
+    ExternFuncDecl decl;
+    decl.name = ctx->ID()->getText();
+
+    // 将临时存储的参数复制到decl中
+    decl.params = tempExternFuncParams;
+
+    ptxContext.externFuncs.push_back(decl);
+    PTX_DEBUG("Parsed extern func: %s \n", decl.name);
+
+    // 重置标记
+    isInExternFunc = false;
+}
+
 #define STATEMENT_OPERAND_REG(opstr, opname, opcount)
 
 #define STATEMENT_OPERAND_CONST(opstr, opname, opcount)
@@ -971,6 +1018,34 @@ void PtxListener::exitVar(ptxParser::VarContext *ctx) {
 #define STATEMENT_WMMA_INSTR(op_str, op_name, opcount)
 
 #define STATEMENT_BARRIER(op_str, op_name, opcount)
+
+#define STATEMENT_CALL_INSTR(opstr, opname, opcount)                           \
+    void PtxListener::enter##opstr##Statement(                                 \
+        ptxParser::opstr##StatementContext *ctx) {                             \
+        statement = new StatementContext::opname();                            \
+        LOG_FUNC();                                                            \
+    }                                                                          \
+                                                                               \
+    void PtxListener::exit##opstr##Statement(                                  \
+        ptxParser::opstr##StatementContext *ctx) {                             \
+        auto st = static_cast<StatementContext::opname *>(statement);          \
+                                                                               \
+        /* qualifier */                                                        \
+        while (!qualifier.empty()) {                                           \
+            st->qualifier.push_back(qualifier.front());                        \
+            qualifier.pop();                                                   \
+        }                                                                      \
+                                                                               \
+        /* operands */                                                         \
+        int numOperands = ctx->operand().size();                               \
+        for (int i = 0; i < numOperands; ++i) {                                \
+            fetchOperand(st->operands);                                        \
+        }                                                                      \
+                                                                               \
+        /* end */                                                              \
+        statementType = S_##opname;                                            \
+        LOG_FUNC();                                                            \
+    }
 
 #define X(openum, opname, opstr, opcount, struct_kind)                         \
     STATEMENT_##struct_kind(opstr, opname, opcount)

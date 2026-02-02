@@ -131,8 +131,7 @@ bool GPUContext::execute_kernel_internal(
     void **args, Dim3 &gridDim, Dim3 &blockDim,
     std::vector<StatementContext> &statements,
     std::map<std::string, Symtable *> &name2Sym,
-    std::map<std::string, int> &label2pc,
-    const KernelLaunchRequest &request) {
+    std::map<std::string, int> &label2pc, const KernelLaunchRequest &request) {
     // 计算总的CTA数量
     int ctaNum = gridDim.x * gridDim.y * gridDim.z;
 

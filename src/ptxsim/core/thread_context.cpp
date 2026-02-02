@@ -97,13 +97,13 @@ void ThreadContext::_execute_once() {
 
     // 使用工厂创建对应的处理器
     InstructionHandler *handler =
-        InstructionFactory::get_handler(statement.statementType);
+        InstructionFactory::get_handler(statement.type);
     if (handler) {
         // 直接调用execute_full方法执行整个指令
-        handler->execute(this, statement);
+        handler->ExecPipe(this, statement);
     } else {
         std::cerr << "No handler found for statement type: "
-                  << static_cast<int>(statement.statementType) << std::endl;
+                  << static_cast<int>(statement.type) << std::endl;
         state = EXIT;
     }
 
@@ -112,7 +112,7 @@ void ThreadContext::_execute_once() {
 }
 
 // void ThreadContext::trace_instruction(StatementContext &statement) {
-//     std::string opcode = S2s(statement.statementType);
+//     std::string opcode = S2s(statement.type);
 
 //     // 使用DebugConfig获取完整的指令字符串（包含操作数）
 //     std::string operands =
@@ -127,9 +127,8 @@ void ThreadContext::_execute_once() {
 // }
 
 void ThreadContext::clear_temporaries() {
-    while (!vec.empty()) {
-        delete vec.front();
-        vec.pop();
+    while (!vecOp_phy_addrs.empty()) {
+        vecOp_phy_addrs.pop();
     }
 }
 
@@ -218,20 +217,23 @@ EXE_STATE ThreadContext::execute_thread_instruction() {
     return this->state; // 返回线程的实际状态
 }
 
-void *ThreadContext::acquire_operand(OperandContext &operand,
-                                     std::vector<Qualifier> &qualifiers) {
-    switch (operand.operandType) {
-    case O_VAR: {
-        OperandContext::VAR *varOp = (OperandContext::VAR *)operand.operand;
+// acquire_operand() return the operand_phy_addr, which later use store in
+// operand_collected by collect_operands()
+void *ThreadContext::acquire_operand(const OperandContext &operand,
+                                     const std::vector<Qualifier> &qualifiers) {
+    switch (operand.kind()) {
+    case OperandKind::VAR: {
+        const VariableOperand &varOp = std::get<VariableOperand>(operand.data);
+        // OperandContext::VAR *varOp = (OperandContext::VAR *)operand.data;
 
         // 优先在name2Share中查找（共享内存变量）
         if (name2Share != nullptr) {
-            auto share_it = name2Share->find(varOp->varName);
+            auto share_it = name2Share->find(varOp.name);
             if (share_it != name2Share->end()) {
                 // 对于共享内存变量，返回实际的内存地址值，而不是地址的地址
                 PTX_DEBUG_EMU("Reading shared memory from name2Share: name=%s, "
                               "symbol_table_entry=%p, stored_value=0x%lx",
-                              varOp->varName.c_str(), share_it->second,
+                              varOp.name.c_str(), share_it->second,
                               share_it->second->val);
                 return &(share_it->second->val);
             }
@@ -239,25 +241,34 @@ void *ThreadContext::acquire_operand(OperandContext &operand,
 
         // 尝试在CTAContext的name2Local中查找（本地内存变量）
         if (cta_context_ != nullptr) {
-            auto local_it = cta_context_->name2Local.find(varOp->varName);
+            auto local_it = cta_context_->name2Local.find(varOp.name);
             if (local_it != cta_context_->name2Local.end()) {
-                PTX_DEBUG_EMU("Reading local memory from name2Local: name=%s, "
-                              "symbol_table_entry=%p, stored_value=0x%lx",
-                              varOp->varName.c_str(), local_it->second,
-                              local_it->second->val);
-
                 // 对于本地内存变量，返回符号表条目的值（即实际内存地址）
-                return &(local_it->second->val);
+                void *ret;
+
+                if (local_mem_space != nullptr) {
+                    ret = (void *)((uint64_t)local_mem_space +
+                                   local_it->second->val);
+                } else {
+                    // 如果没有设置本地内存空间，则返回原始偏移量
+                    ret = (void *)local_it->second->val;
+                }
+                PTX_DEBUG_EMU("Reading local memory from name2Local: name=%s, "
+                              "symbol_table_entry=%p, stored_value=0x%lx, "
+                              "local_mem_space=0x%lx",
+                              varOp.name.c_str(), local_it->second, ret,
+                              local_mem_space);
+                return ret;
             }
         }
 
         // 如果在name2Share中没找到，再到name2Sym中查找（参数、局部变量等）
-        auto sym_it = name2Sym->find(varOp->varName);
+        auto sym_it = name2Sym->find(varOp.name);
         if (sym_it != name2Sym->end()) {
             PTX_DEBUG_EMU("Reading kernel name2Sym from name2Sym: name=%s, "
                           "symbol_table_entry=%p, stored_value=0x%lx, "
                           "dereferenced_value=0x%lx",
-                          varOp->varName.c_str(), sym_it->second,
+                          varOp.name.c_str(), sym_it->second,
                           sym_it->second->val,
                           *(uint64_t *)(sym_it->second->val));
             return &(sym_it->second->val);
@@ -266,16 +277,14 @@ void *ThreadContext::acquire_operand(OperandContext &operand,
         break;
     }
 
-    case O_REG:
-        return acquire_register((OperandContext::REG *)operand.operand,
-                                qualifiers);
+    case OperandKind::REG:
+        return acquire_register(std::get<RegOperand>(operand.data), qualifiers);
 
-    case O_FA:
-        return get_memory_addr((OperandContext::FA *)operand.operand,
-                               qualifiers);
+    case OperandKind::ADDR:
+        return get_memory_addr(std::get<AddrOperand>(operand.data), qualifiers);
 
-    case O_IMM: {
-        auto immOp = (OperandContext::IMM *)operand.operand;
+    case OperandKind::IMM: {
+        auto immOp = std::get<ImmOperand>(operand.data);
         Qualifier q = getDataQualifier(qualifiers);
 
         // 使用栈上缓冲区（每个 IMM 使用独立空间，支持多 IMM 指令）
@@ -288,28 +297,25 @@ void *ThreadContext::acquire_operand(OperandContext &operand,
         char *buffer = imm_buffer_pool[buffer_index];
         buffer_index = (buffer_index + 1) % 64;
 
-        parseImmediate(immOp->immVal, q, buffer);
+        parseImmediate(immOp.value, q, buffer);
         return buffer;
     }
 
-    case O_VEC: {
-        auto vecOp = (OperandContext::VEC *)operand.operand;
-        // 创建一个新的VEC对象用于存储向量元素地址
-        void *result = nullptr;
-        VEC *newVec = new VEC();
-        // 递归处理向量中的每个元素
-        for (auto &elem : vecOp->vec) {
-            result = acquire_operand(elem, qualifiers);
-            if (result == nullptr)
-                return nullptr;
-            newVec->vec.push_back(result);
-        }
-        // 将向量对象存储到vec队列中，并返回指向向量对象的指针
-        vec.push(newVec);
+    case OperandKind::VEC: {
+        auto vecOp = std::get<VecOperand>(operand.data);
 
-        // 设置操作数的物理地址为新创建的向量对象
-        // operand.operand_phy_addr = newVec;
-        return newVec;
+        vecOp_phy_addrs.emplace();
+        auto &stored_vec = vecOp_phy_addrs.back();
+
+        for (auto &elem : vecOp.elements) {
+            void *addr = acquire_operand(elem, qualifiers);
+            if (!addr)
+                return nullptr;
+            elem.operand_phy_addr = addr;
+            stored_vec.push_back(addr);
+        }
+
+        return stored_vec.data();
     }
 
     default:
@@ -319,9 +325,9 @@ void *ThreadContext::acquire_operand(OperandContext &operand,
     return nullptr;
 }
 
-void ThreadContext::collect_operands(StatementContext &stmt,
-                                     std::vector<OperandContext> &operands,
-                                     std::vector<Qualifier> *qualifier) {
+void ThreadContext::collect_operands(
+    StatementContext &stmt, const std::vector<OperandContext> &operands,
+    const std::vector<Qualifier> *qualifier) {
     // 获取每个操作数的字节大小
     std::vector<int> operand_bytes = getOperandBytes(*qualifier);
 
@@ -342,49 +348,45 @@ void ThreadContext::collect_operands(StatementContext &stmt,
         // 获取当前操作数的物理地址
         operand_collected[i] = operands[i].operand_phy_addr;
     }
-    stmt.qualifier = qualifier;
+    // FIXME should use stmt qualifier?
+    // stmt.qualifier = *qualifier;
 };
 
 void ThreadContext::commit_operand(StatementContext &stmt,
-                                   OperandContext &operand,
-                                   std::vector<Qualifier> &qualifier) {
+                                   const OperandContext &operand,
+                                   const std::vector<Qualifier> &qualifier) {
     int bytes = getBytes(qualifier);
     trace_status(ptxsim::log_level::debug, "thread", "Commit:  %s ",
                  operand.toString(bytes).c_str());
 };
 
-void *ThreadContext::acquire_register(OperandContext::REG *reg,
+void *ThreadContext::acquire_register(const RegOperand &reg,
                                       std::vector<Qualifier> qualifier) {
     // 检查是否是特殊寄存器
-    if (reg->regName == "tid.x" || reg->regName == "tid.y" ||
-        reg->regName == "tid.z" || reg->regName == "ctaid.x" ||
-        reg->regName == "ctaid.y" || reg->regName == "ctaid.z" ||
-        reg->regName == "nctaid.x" || reg->regName == "nctaid.y" ||
-        reg->regName == "nctaid.z" || reg->regName == "ntid.x" ||
-        reg->regName == "ntid.y" || reg->regName == "ntid.z") {
-        if (reg->regName == "tid.x")
+    if (reg.name.find('.') != std::string::npos) {
+        if (reg.name == "tid.x")
             return &ThreadIdx.x;
-        if (reg->regName == "tid.y")
+        if (reg.name == "tid.y")
             return &ThreadIdx.y;
-        if (reg->regName == "tid.z")
+        if (reg.name == "tid.z")
             return &ThreadIdx.z;
-        if (reg->regName == "ctaid.x")
+        if (reg.name == "ctaid.x")
             return &BlockIdx.x;
-        if (reg->regName == "ctaid.y")
+        if (reg.name == "ctaid.y")
             return &BlockIdx.y;
-        if (reg->regName == "ctaid.z")
+        if (reg.name == "ctaid.z")
             return &BlockIdx.z;
-        if (reg->regName == "nctaid.x")
+        if (reg.name == "nctaid.x")
             return &GridDim.x;
-        if (reg->regName == "nctaid.y")
+        if (reg.name == "nctaid.y")
             return &GridDim.y;
-        if (reg->regName == "nctaid.z")
+        if (reg.name == "nctaid.z")
             return &GridDim.z;
-        if (reg->regName == "ntid.x")
+        if (reg.name == "ntid.x")
             return &BlockDim.x;
-        if (reg->regName == "ntid.y")
+        if (reg.name == "ntid.y")
             return &BlockDim.y;
-        if (reg->regName == "ntid.z")
+        if (reg.name == "ntid.z")
             return &BlockDim.z;
     }
 
@@ -393,7 +395,7 @@ void *ThreadContext::acquire_register(OperandContext::REG *reg,
         throw std::runtime_error("RegisterBankManager is required but not set");
     }
 
-    std::string combinedName = reg->getFullName();
+    std::string combinedName = reg.fullName();
     void *reg_data =
         register_bank_manager_->get_register(combinedName, warp_id_, lane_id_);
 
@@ -404,10 +406,10 @@ void *ThreadContext::acquire_register(OperandContext::REG *reg,
     return reg_data;
 }
 
-void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
-                                     std::vector<Qualifier> &qualifiers) {
+void *ThreadContext::get_memory_addr(const AddrOperand &fa,
+                                     const std::vector<Qualifier> &qualifiers) {
     void *ret;
-    if (fa->reg) {
+    if (fa.offsetType == AddrOperand::OffsetType::REGISTER) {
         // 1. 执行到get_memory_addr时，传入的qualifiers含有Q_GLOBAL, Q_SHARED,
         // Q_PARAM如何处理地址信息，
         // 把qualifiers里的地址信息设定到mem_qualifiers，而不是假定哟个Q_U64.
@@ -425,10 +427,10 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
             assert(false);
         }
 
-        assert(fa->reg->operandType == O_REG);
+        assert(fa.registerOffset->kind() == OperandKind::REG);
 
         void *regAddr = acquire_register(
-            (OperandContext::REG *)(fa->reg)->operand, {mem_qualifier});
+            std::get<RegOperand>(fa.registerOffset->data), {mem_qualifier});
         if (!regAddr)
             return nullptr;
 
@@ -448,34 +450,35 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
                 // 如果没有设置共享内存基地址，则返回nullptr
                 return nullptr;
             }
-        } else if (QvecHasQ(qualifiers, Qualifier::Q_LOCAL)) {
-            // 对于本地内存访问，寄存器中的值是偏移量，需要加上本地内存基地址
-            if (local_mem_space != nullptr) {
-                ret = (void *)((uint64_t)local_mem_space + reg_value);
-            } else {
-                // 如果没有设置本地内存基地址，则返回nullptr
-                return nullptr;
-            }
+            // } else if (QvecHasQ(qualifiers, Qualifier::Q_LOCAL)) {
+            //     //
+            //     对于本地内存访问，寄存器中的值是偏移量，需要加上本地内存基地址
+            //     if (local_mem_space != nullptr) {
+            //         ret = (void *)((uint64_t)local_mem_space + reg_value);
+            //     } else {
+            //         // 如果没有设置本地内存基地址，则返回nullptr
+            //         return nullptr;
+            //     }
         } else {
             ret = (void *)reg_value;
         }
     } else {
         // 直接通过ID查找符号表或共享内存
-        auto sym_it = name2Sym->find(fa->ID);
+        auto sym_it = name2Sym->find(fa.id);
         if (sym_it != name2Sym->end()) {
             PTX_DEBUG_EMU("Reading kernel argument from name2Sym in "
                           "get_memory_addr: name=%s, "
                           "symbol_table_entry=%p, stored_value=0x%lx",
-                          fa->ID.c_str(), sym_it->second, sym_it->second->val);
+                          fa.id.c_str(), sym_it->second, sym_it->second->val);
             ret = (void *)sym_it->second->val;
         } else if (name2Share != nullptr) {
             // 如果在name2Sym中没找到，继续在name2Share中查找
-            auto share_it = name2Share->find(fa->ID);
+            auto share_it = name2Share->find(fa.id);
             if (share_it != name2Share->end()) {
                 PTX_DEBUG_EMU("Reading shared memory from name2Share in "
                               "get_memory_addr: name=%s, "
                               "symbol_table_entry=%p, stored_value=0x%lx",
-                              fa->ID.c_str(), share_it->second,
+                              fa.id.c_str(), share_it->second,
                               share_it->second->val);
 
                 // 修正：对于共享内存变量，应该返回相对于共享内存空间的绝对地址
@@ -488,14 +491,8 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
                 }
             } else {
                 // 检查是否是本地内存变量
-                auto local_it = cta_context_->name2Local.find(fa->ID);
+                auto local_it = cta_context_->name2Local.find(fa.id);
                 if (local_it != cta_context_->name2Local.end()) {
-                    PTX_DEBUG_EMU("Reading local memory from name2Local in "
-                                  "get_memory_addr: name=%s, "
-                                  "symbol_table_entry=%p, stored_value=0x%lx",
-                                  fa->ID.c_str(), local_it->second,
-                                  local_it->second->val);
-
                     // 对于本地内存变量，应该返回相对于当前线程本地内存空间的绝对地址
                     // 直接使用当前线程的本地内存空间（已经通过set_local_memory_space设置）
                     if (local_mem_space != nullptr) {
@@ -505,11 +502,18 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
                         // 如果没有设置本地内存空间，则返回原始偏移量
                         ret = (void *)local_it->second->val;
                     }
+                    PTX_DEBUG_EMU("Reading local memory from name2Local in "
+                                  "get_memory_addr: name=%s, "
+                                  "symbol_table_entry=%p, stored_value=0x%lx, "
+                                  "local_mem_space=0x%lx",
+                                  fa.id.c_str(), local_it->second, ret,
+                                  local_mem_space);
+
                 } else {
                     // 对于本地内存访问，如果在name2Local中没找到，说明可能尚未初始化
                     PTX_DEBUG_EMU(
                         "Local memory variable not found in name2Local: %s",
-                        fa->ID.c_str());
+                        fa.id.c_str());
                 }
             }
         } else {
@@ -526,12 +530,12 @@ void *ThreadContext::get_memory_addr(OperandContext::FA *fa,
     }
 
     // 处理偏移量
-    if (!fa->offsetVal.empty()) {
+    if (!fa.immediateOffset.empty()) {
         // 直接解析偏移量字符串，避免创建临时立即数操作数
         int64_t offset = 0;
         try {
             // 解析偏移量字符串为整数值
-            offset = std::stoll(fa->offsetVal);
+            offset = std::stoll(fa.immediateOffset);
         } catch (...) {
             offset = 0; // 默认偏移量为0
         }
@@ -565,11 +569,11 @@ void ThreadContext::mov(void *from, void *to, const std::vector<Qualifier> &q) {
 }
 
 bool ThreadContext::isIMMorVEC(OperandContext &op) {
-    return (op.operandType == O_IMM || op.operandType == O_VEC);
+    return (op.kind() == OperandKind::IMM || op.kind() == OperandKind::VEC);
 }
 
 bool ThreadContext::is_immediate_or_vector(OperandContext &op) {
-    return (op.operandType == O_IMM || op.operandType == O_VEC);
+    return (op.kind() == OperandKind::IMM || op.kind() == OperandKind::VEC);
 }
 
 void ThreadContext::print_instruction_status(StatementContext &stmt) {
@@ -577,7 +581,7 @@ void ThreadContext::print_instruction_status(StatementContext &stmt) {
     std::string operands_str = ptxsim::DebugConfig::getOperandsString(stmt);
 
     // 获取操作码字符串
-    std::string opcode_str = S2s(stmt.statementType);
+    std::string opcode_str = S2s(stmt.type);
 
     // 使用trace_status函数替代PTX_TRACE宏
     trace_status(ptxsim::log_level::trace, "instr", "PC[0x%x] %s %s", pc,

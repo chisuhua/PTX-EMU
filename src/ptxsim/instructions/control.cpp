@@ -19,9 +19,6 @@ void AT::process_operation(ThreadContext *context, void *op[2],
         context->next_pc = target_pc;
 }
 
-// void RET::process_operation(ThreadContext *context) { context->state = EXIT;
-// }
-
 void BAR::process_operation(ThreadContext *context, int barId,
                             const std::vector<Qualifier> &qualifier) {
     // 获取线程所属的warp上下文

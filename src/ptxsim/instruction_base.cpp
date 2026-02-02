@@ -4,7 +4,7 @@
 #include "ptxsim/execution_types.h"
 #include "ptxsim/thread_context.h"
 
-void INSTR_BASE::execute(ThreadContext *context, StatementContext &stmt) {
+void INSTR_BASE::ExecPipe(ThreadContext *context, StatementContext &stmt) {
     if (stmt.state == InstructionState::READY) {
         if (!prepare(context, stmt)) {
             return;
@@ -37,6 +37,6 @@ bool INSTR_BASE::commit(ThreadContext *context, StatementContext &stmt) {
 
 bool GENERIC_INSTR::operate(ThreadContext *context, StatementContext &stmt) {
     process_operation(context, &(context->operand_collected[0]),
-                      *stmt.qualifier);
+                      stmt.qualifier);
     return true;
 }

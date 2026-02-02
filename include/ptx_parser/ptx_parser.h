@@ -4,6 +4,8 @@
 #include <cassert>
 #include <cstdio>
 #include <queue>
+#include <string>
+#include <vector>
 
 #include "ptxParser.h"
 #include "ptxParserBaseListener.h"
@@ -23,6 +25,13 @@ public:
     StatementContext statementContext;
     void *statement = nullptr;
     std::queue<OperandContext *> op;
+
+    // 添加一个标记，用于指示当前是否在解析extern func
+    bool isInExternFunc = false;
+    // 用于保存当前正在解析的extern func的参数
+    std::vector<ParamContext> tempExternFuncParams;
+
+    std::vector<ExternFuncDecl> externFuncs;
 
     /* helper function */
     void test_semantic();
@@ -116,6 +125,11 @@ public:
     virtual void enterVar(ptxParser::VarContext *ctx) override;
     virtual void exitVar(ptxParser::VarContext *ctx) override;
 
+    virtual void enterExternFuncStatement(
+        ptxParser::ExternFuncStatementContext *ctx) override;
+    virtual void exitExternFuncStatement(
+        ptxParser::ExternFuncStatementContext *ctx) override;
+
 #define STATEMENT_DECL_OPERAND_REG(opstr, opname, opcount)
 #define STATEMENT_DECL_OPERAND_CONST(opstr, opname, opcount)
 #define STATEMENT_DECL_OPERAND_MEMORY(opstr, opname, opcount)
@@ -131,13 +145,18 @@ public:
 
 #define STATEMENT_DECL_ATOM_INSTR(opstr, op_name, opcount)                     \
     virtual void enter##opstr##Statement(                                      \
-        ptxParser::opstr##StatementContext *ctx);                              \
+        ptxParser::opstr##StatementContext *ctx) override;                     \
     virtual void exit##opstr##Statement(                                       \
-        ptxParser::opstr##StatementContext *ctx);
+        ptxParser::opstr##StatementContext *ctx) override;
 
 #define STATEMENT_DECL_PREDICATE_PREFIX(opstr, opname, opcount)
 #define STATEMENT_DECL_WMMA_INSTR(opstr, op_name, opcount)
 #define STATEMENT_DECL_BARRIER(opstr, op_name, opcount)
+#define STATEMENT_DECL_CALL_INSTR(opstr, opname, opcount)                      \
+    virtual void enter##opstr##Statement(                                      \
+        ptxParser::opstr##StatementContext *ctx) override;                     \
+    virtual void exit##opstr##Statement(                                       \
+        ptxParser::opstr##StatementContext *ctx) override;
 
 #define X(openum, opname, opstr, opcount, struct_kind)                         \
     STATEMENT_DECL_##struct_kind(opstr, opname, opcount)

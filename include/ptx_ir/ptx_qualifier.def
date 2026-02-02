@@ -89,7 +89,6 @@ X(Q_WIDE, WIDE, ".wide") // Wide
 X(Q_SYNC, SYNC, ".sync") // Synchronous
 X(Q_LO, LO, ".lo")      // Low part
 X(Q_HI, HI, ".hi")      // High part
-X(Q_UNI, UNI, ".uni")   // Unit
 X(Q_A, A, ".a")         // A operand
 X(Q_B, B, ".b")         // B operand
 X(Q_D, D, ".d")         // D operand
@@ -117,3 +116,73 @@ X(Q_SAT, SAT, ".sat")   // Saturation
 // 10. New qualifier: Carry Condition (for addc/subc)
 // -----------------------------------------------------------------------------
 X(Q_CC, CC, ".cc")      // Carry condition
+
+// -----------------------------------------------------------------------------
+// 11. FP8 Types (PTX 8.7+)
+// -----------------------------------------------------------------------------
+X(Q_E4M3, E4M3, ".e4m3")
+X(Q_E5M2, E5M2, ".e5m2")
+X(Q_E3M2, E3M2, ".e3m2")
+X(Q_E2M3, E2M3, ".e2m3")
+X(Q_E2M1, E2M1, ".e2m1")
+
+// Packed vector FP8
+X(Q_E4M3X4, E4M3X4, ".e4m3x4")
+X(Q_E5M2X4, E5M2X4, ".e5m2x4")
+X(Q_E3M2X4, E3M2X4, ".e3m2x4")
+X(Q_E2M3X4, E2M3X4, ".e2m3x4")
+X(Q_E2M1X4, E2M1X4, ".e2m1x4")
+
+// -----------------------------------------------------------------------------
+// 12. Async & Memory Ordering Qualifiers (PTX 8.7+)
+// -----------------------------------------------------------------------------
+X(Q_MMIO, MMIO, ".mmio")
+X(Q_RELEASE, RELEASE, ".release")
+X(Q_ACQUIRE, ACQUIRE, ".acquire")
+X(Q_CLUSTER, CLUSTER, ".cluster")   // scope qualifier
+X(Q_CTA, CTA, ".cta")               // scope qualifier
+X(Q_LEVEL_CACHE_HINT, LEVEL_CACHE_HINT, ".level::cache_hint")
+
+// -----------------------------------------------------------------------------
+// 13. WMMA Kind and Scale (PTX 8.7+)
+// -----------------------------------------------------------------------------
+X(Q_KIND_MXF4NVF4, KIND_MXF4NVF4, ".kind::mxf4nvf4")
+X(Q_SCALE_VEC_SIZE, SCALE_VEC_SIZE, ".scale_vec_size")
+X(Q_BLOCK_SCALE, BLOCK_SCALE, ".block_scale")
+
+// -----------------------------------------------------------------------------
+// 14. New Shapes
+// -----------------------------------------------------------------------------
+X(Q_M32N8K16, M32N8K16, ".m32n8k16")
+X(Q_M16N8K16, M16N8K16, ".m16n8k16")
+
+// -----------------------------------------------------------------------------
+// 15. Cache Levels
+// -----------------------------------------------------------------------------
+X(Q_L1, L1, ".l1")
+X(Q_L2, L2, ".l2")
+
+// -----------------------------------------------------------------------------
+// 16. Membar Scopes
+// -----------------------------------------------------------------------------
+X(Q_CTX, CTX, ".ctx")
+X(Q_SYS, SYS, ".sys")
+X(Q_COHERENT, COHERENT, ".coherent")
+X(Q_STRONG, STRONG, ".strong")
+
+// -----------------------------------------------------------------------------
+// 17. Vote Modes
+// -----------------------------------------------------------------------------
+X(Q_BALLOT, BALLOT, ".ballot")
+X(Q_ANY, ANY, ".any")
+X(Q_ALL, ALL, ".all")
+X(Q_UNI, UNI, ".uni")
+X(Q_EQV, EQV, ".eqv")
+
+// -----------------------------------------------------------------------------
+// 18. Shuffle Modes
+// -----------------------------------------------------------------------------
+X(Q_UP, UP, ".up")
+X(Q_DOWN, DOWN, ".down")
+X(Q_BFLY, BFLY, ".bfly")
+X(Q_IDX, IDX, ".idx")

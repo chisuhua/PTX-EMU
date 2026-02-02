@@ -4,6 +4,12 @@
 #include "kernel_context.h"
 #include <vector>
 
+// ============ 新增：ExternFuncDecl ============
+struct ExternFuncDecl {
+    std::string name;
+    std::vector<ParamContext> params; // 可选：记录参数信息
+};
+
 class PtxContext {
 public:
     int ptxMajorVersion;
@@ -13,6 +19,7 @@ public:
 
     std::vector<KernelContext> ptxKernels;
     std::vector<StatementContext> ptxStatements;
+    std::vector<ExternFuncDecl> externFuncs;
 
     PtxContext()
         : ptxMajorVersion(0), ptxMinorVersion(0), ptxTarget(0),
