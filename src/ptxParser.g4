@@ -13,7 +13,7 @@ addressSizeDes  : ADDRESS_SIZE decimalLiteral SEMI ;
 fileDes         : FILE (decimalLiteral | STRING) SEMI ;
 sectionDes      : SECTION ID SEMI ;
 
-smTarget        : 'sm_' DIGIT+ ('f' | 'a')? ;
+smTarget        : SM_ IMMEDIATE (SM_SUFFIX_F | SM_SUFFIX_A)? ;
 
 // --- Global Declarations ---
 globalDecls
@@ -108,6 +108,8 @@ statement
     | parallel
     | warp
     | texSurf
+    | video
+    | misc
     | pragma
     | compoundStatement
     | asyncStore
@@ -128,11 +130,13 @@ paramVarDecl    : PARAM (ALIGN decimalLiteral)? dataType ID (arraySize)? SEMI ;
 // --- Control Flow ---
 controlFlow
     : BRA (UNI | predicateExpr)? DOLLAR ID SEMI
+    | BRX IDX UNI? operand2 SEMI
     | CALL callArgs SEMI
     | RET SEMI
     | EXIT SEMI
     | TRAP SEMI
     | BRK SEMI
+    | BRKPT SEMI
     ;
 
 predicateExpr
@@ -151,6 +155,9 @@ arithmetic
     | MAD  typeWithMods operand4 SEMI
     | FMA  typeWithMods operand4 SEMI
     | DIV  typeWithMods operand3 SEMI
+    | MIN  typeWithMods operand3 SEMI
+    | MAX  typeWithMods operand3 SEMI
+    | SAD  dataType operand4 SEMI
     | ABS  dataType operand2 SEMI
     | NEG  dataType operand2 SEMI
     | SQRT typeWithMods operand2 SEMI
@@ -159,20 +166,25 @@ arithmetic
     | LG2  typeWithMods operand2 SEMI
     | EX2  typeWithMods operand2 SEMI
     | RSQRT typeWithMods operand2 SEMI
+    | TANH typeWithMods operand2 SEMI
+    | COPYSIGN dataType operand3 SEMI
+    | TESTP testpQualifier dataType operand2 SEMI
     | POPC dataType operand2 SEMI
     | CLZ  dataType operand2 SEMI
     | ADDC dataType CC? operand3 SEMI
     | SUBC dataType CC? operand3 SEMI
+    | MADC dataType CC? operand4 SEMI
     | MUL24 dataType operand3 SEMI
     | MAD24 dataType operand4 SEMI
     | REM  dataType operand3 SEMI
     ;
 
 typeWithMods
-    : dataType (RoundingMode | FTZ | SAT | APPROX | HI | LO | WIDE)*
+        : (roundingMode | FTZ | SAT | APPROX | HI | LO | WIDE | CC)* dataType
+            (roundingMode | FTZ | SAT | APPROX | HI | LO | WIDE | CC)*
     ;
 
-RoundingMode
+roundingMode
     : RN | RZ | RM | RP
     ;
 
@@ -182,8 +194,16 @@ logical
     | OR   intType operand3 SEMI
     | XOR  intType operand3 SEMI
     | NOT  intType operand2 SEMI
-    | SELP predType operand4 SEMI
-    | SETP comparisonOp operand3 SEMI
+    | CNOT intType operand2 SEMI
+    | SHL  intType operand3 SEMI
+    | SHR  intType operand3 SEMI
+    | SHF  shfDirection shfMode B32 operand4 SEMI
+    | LOP3 LUT? B32 operand5 SEMI
+    | PRMT B32 operand4 SEMI
+    | SELP dataType operand4 SEMI
+    | SLCT dataType operand4 SEMI
+    | SET  comparisonOp dataType dataType operand3 SEMI
+    | SETP comparisonOp dataType operand3 SEMI
     | MOV  (dataType | vectorType) operand2 SEMI
     ;
 
@@ -191,7 +211,7 @@ intType     : U8 | U16 | U32 | U64 | S8 | S16 | S32 | S64 | B8 | B16 | B32 | B64
 predType    : PRED ;
 
 comparisonOp
-    : EQ | NE | LT | LE | GT | GE | LTU | LEU | GTU | GEU
+    : EQ | NE | LT | LE | GT | GE | LO | LS | HI | HS | LTU | LEU | GTU | GEU
     ;
 
 // --- Memory ---
@@ -202,14 +222,18 @@ memory
     | CVTA space? (U32 | U64) TO (U32 | U64) operand2 SEMI
     | RCP  typeWithMods operand2 SEMI
     | ATOM atomSpace atomOp (dataType | F32 | F64 | E4M3 | E5M2) operand3or4 SEMI
+    | CP_ASYNC qualifiers? operandList SEMI
+    | ISSPACEP space operand2 SEMI
+    | MAPA (U64 | U32) operand3 SEMI
+    | ALLOCA space? (ALIGN decimalLiteral)? (U32 | U64) operand2 SEMI
     ;
 
-space       : CONST | PARAM | GLOBAL | LOCAL | SHARED ;
+space       : CONST | PARAM | GLOBAL | LOCAL | SHARED | GENERIC ;
 atomSpace   : GLOBAL | SHARED ;
 atomOp      : ADD_ATOM | AND_ATOM | OR_ATOM | XOR_ATOM | INC_ATOM | DEC_ATOM | EXCH_ATOM | MIN_ATOM | MAX_ATOM | CAS_ATOM ;
 
 cvtMods
-    : (FTZ | SAT | APPROX | RoundingMode)*
+    : (FTZ | SAT | APPROX | roundingMode | RS | RNI | RZI | RMI | RPI)*
     ;
 
 // === Async Instructions (PTX 8.7+) ===
@@ -266,7 +290,9 @@ qualifier
     : RN | RZ | RM | RP
     | FTZ | SAT | APPROX
     | HI | LO | WIDE
-    | VOLATILE | NC | MMIO | RELEASE | ACQUIRE | STRONG
+    | VOLATILE | NC | MMIO | RELEASE | ACQUIRE | STRONG | RELAXED | ACQ_REL
+    | SYNC | GPU | GL | CA | CG
+    | GENERIC
     | ROW | COL | ALIGNED
     | M8N8K4 | M16N16K16 | M32N8K16 | M16N8K16
     | KIND_MXF4NVF4
@@ -274,6 +300,30 @@ qualifier
     | BLOCK_SCALE
     | LEVEL_CACHE_HINT
     | CLUSTER_SCOPE | CTA_SCOPE
+    ;
+
+shfDirection
+    : LEFT_SHIFT | RIGHT_SHIFT
+    ;
+
+shfMode
+    : WRAP | CLAMP
+    ;
+
+reduxModifier
+    : ABS_MOD | NAN
+    ;
+
+testpQualifier
+    : FINITE | INFINITY | NUMBER | NAN | NORMAL | SUBNORMAL
+    ;
+
+videoType
+    : (U32 | S32) SAT?
+    ;
+
+vset4Mods
+    : (PRED | comparisonOp | MERGE | ADD_ATOM | ASEL | BSEL)+
     ;
 
 operandList
@@ -285,38 +335,75 @@ parallel
     : BAR barModifier? decimalLiteral SEMI
     | MEMBAR membarScope? SEMI
     | RED space reductionOp (dataType | F32 | F64 | F16 | E4M3 | E5M2) operand3or4 SEMI
+    | REDUX_SYNC reductionOp reduxModifier? (dataType | F32 | F16) operand3 SEMI
+    | FENCE qualifiers? SEMI
+    | MBARRIER_INIT qualifiers? operand2 SEMI
+    | MBARRIER_ARRIVE qualifiers? operand2 SEMI
+    | MBARRIER_TRY_WAIT qualifiers? operand2 SEMI
     | PREFETCH  (GLOBAL | CONST) cacheLevel? operand2 SEMI
     | PREFETCHU (GLOBAL | CONST) cacheLevel? operand2 SEMI
     ;
 
-barModifier : '.sync' | '.cta' | '.gpu' ;
-membarScope : CTX | SYS | COHERENT | STRONG | ACQUIRE | RELEASE ;
+barModifier : SYNC | CTA_SCOPE | GPU ;
+membarScope : CTA_SCOPE | GL | SYS | COHERENT | STRONG | ACQUIRE | RELEASE ;
 cacheLevel  : L1 | L2 ;
 
 // --- Warp ---
 warp
     : VOTE (ANY | ALL | UNI | BALLOT | EQ | EQV) PRED? operand2 SEMI
-    | SHFL (UP | DOWN | BFLY | IDX) (dataType | F32 | F16) operand4 SEMI
+    | SHFL SYNC? (UP | DOWN | BFLY | IDX) (dataType | F32 | F16) operand4 SEMI
     ;
 
 // --- Texture / Surface ---
 texSurf
     : TEX  texMods texInst SEMI
-    | SURF surfMods surfInst SEMI
+    | TEX_LDG texMods texInst SEMI
+    | TEX_GRAD texMods texInst SEMI
+    | TEX_LOD texMods texInst SEMI
+    | TXQ txqOp dataType operand2 SEMI
+    | SULD surfMods texInst SEMI
+    | SUST surfMods texInst SEMI
+    | SUQ suqOp dataType operand2 SEMI
+    | SURF surfMods texInst SEMI
     ;
 
 texMods     : (CONST | GLOBAL) (dataType | F32 | F16 | E4M3 | E5M2)* ;
 surfMods    : (GLOBAL) (dataType | F32 | F16)* ;
-texInst     : operand4 ;
-surfInst    : operand4 ;
+texInst     : operandList ;
+surfInst    : operandList ;
+
+txqOp
+    : DOT ID
+    ;
+
+suqOp
+    : DOT ID
+    ;
 
 // --- Misc ---
 pragma          : PRAGMA STRING SEMI ;
+
+video
+    : VADD4 videoType operand3 SEMI
+    | VSUB4 videoType operand3 SEMI
+    | VAVRG4 videoType operand3 SEMI
+    | VABSDIFF4 videoType operand3 SEMI
+    | VMIN4 videoType operand3 SEMI
+    | VMAX4 videoType operand3 SEMI
+    | VSET4 vset4Mods? videoType operand4 SEMI
+    | DP4A dataType dataType operand4 SEMI
+    | DP2A dataType dataType operand4 SEMI
+    ;
+
+misc
+    : BRANCHTARGETS ID COMMA LEFT_BRACE ID (COMMA ID)* RIGHT_BRACE SEMI
+    ;
 
 // --- Operands ---
 operand2        : operand COMMA operand ;
 operand3        : operand COMMA operand COMMA operand ;
 operand4        : operand COMMA operand COMMA operand COMMA operand ;
+operand5        : operand COMMA operand COMMA operand COMMA operand COMMA operand ;
 operand3or4     : operand4 | operand3 ;
 
 operand
@@ -328,7 +415,7 @@ operand
     ;
 
 register
-    : PERCENT ID (DOT (ID | DIGIT+))?
+    : PERCENT ID (DOT (ID | IMMEDIATE))?
     ;
 
 addressExpr
@@ -343,8 +430,9 @@ vectorLit
 dataType
     : U8 | U16 | U32 | U64
     | S8 | S16 | S32 | S64
-    | F8 | F16 | F32 | F64
+    | F8 | F16 | F16X2 | BF16 | BF16X2 | F32 | F64
     | E4M3 | E5M2 | E3M2 | E2M3 | E2M1
+    | S16X2 | U16X2
     | B8 | B16 | B32 | B64 | B128
     | PRED
     ;
@@ -359,4 +447,4 @@ vectorType
     | E2M3X4
     ;
 
-decimalLiteral  : DIGIT+ ;
+decimalLiteral  : IMMEDIATE ;

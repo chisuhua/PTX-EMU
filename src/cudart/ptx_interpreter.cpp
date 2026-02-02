@@ -73,10 +73,12 @@ void PtxInterpreter::funcInterpreter(
 
         // 遍历语句查找本地内存声明，计算每个线程需要的本地内存大小
         for (const auto &stmt : kernelContext->kernelStatements) {
-            if (stmt.statementType == S_LOCAL) {
-                auto localStmt = (StatementContext::LOCAL *)stmt.statement;
-                size_t element_size = Q2bytes(localStmt->dataType[0]);
-                size_t var_size = element_size * localStmt->size;
+            if (stmt.type == S_LOCAL) {
+                const auto &localDecl =
+                    std::get<DeclarationInstr>(stmt.data);
+                size_t element_size = Q2bytes(localDecl.dataType);
+                size_t var_size = element_size *
+                                  (localDecl.size ? *localDecl.size : 1);
                 local_mem_per_thread += var_size;
             }
         }
@@ -100,27 +102,23 @@ void PtxInterpreter::funcInterpreter(
 
         // 收集所有的S_PARAM符号，计算总大小并分配空间
         size_t total_param_size = 0;
-        std::vector<std::pair<std::string, StatementContext::PARAM *>>
+        std::vector<std::pair<std::string, const DeclarationInstr *>>
             param_symbols;
 
         for (const auto &stmt : kernelContext->kernelStatements) {
-            if (stmt.statementType == S_PARAM) {
-                auto paramStmt = (StatementContext::PARAM *)stmt.statement;
-                if (!paramStmt)
-                    continue;
+            if (stmt.type == S_PARAM) {
+                const auto &paramDecl =
+                    std::get<DeclarationInstr>(stmt.data);
 
-                // 计算参数大小
-                if (!paramStmt->dataType.empty()) {
-                    size_t param_size = Q2bytes(paramStmt->dataType[0]);
-                    // 考虑对齐，向上取整到8字节边界
-                    if (param_size % 8 != 0) {
-                        param_size = ((param_size / 8) + 1) * 8;
-                    }
-                    total_param_size += param_size;
-
-                    // 记录参数符号信息
-                    param_symbols.push_back({paramStmt->name, paramStmt});
+                size_t param_size = Q2bytes(paramDecl.dataType);
+                // 考虑对齐，向上取整到8字节边界
+                if (param_size % 8 != 0) {
+                    param_size = ((param_size / 8) + 1) * 8;
                 }
+                total_param_size += param_size;
+
+                // 记录参数符号信息
+                param_symbols.push_back({paramDecl.name, &paramDecl});
             }
         }
 
@@ -141,74 +139,70 @@ void PtxInterpreter::funcInterpreter(
         // 根据偏移设置每个参数符号
         size_t current_param_offset = 0;
         for (const auto &param_info : param_symbols) {
-            auto paramStmt = param_info.second;
+            auto paramDecl = param_info.second;
             std::string param_name = param_info.first;
 
-            if (!paramStmt->dataType.empty()) {
-                size_t param_size = Q2bytes(paramStmt->dataType[0]);
-                // 考虑对齐，向上取整到8字节边界
-                if (param_size % 8 != 0) {
-                    param_size = ((param_size / 8) + 1) * 8;
-                }
-
-                // 创建Symtable对象
-                Symtable *s = new Symtable();
-                s->name = param_name;
-                s->symType = paramStmt->dataType[0];
-                s->elementNum = 1; // 默认为1，可根据需要调整
-                s->byteNum = Q2bytes(paramStmt->dataType[0]);
-
-                // 设置参数在param空间中的地址
-                if (param_base_addr != nullptr) {
-                    s->val = (uint64_t)((char *)param_base_addr +
-                                        current_param_offset);
-                } else {
-                    s->val = 0; // 如果param空间分配失败，设为0
-                }
-
-                // 添加到符号表（如果已有同名符号，替换它）
-                if (name2Sym.find(s->name) != name2Sym.end()) {
-                    // 删除旧的Symtable对象以避免内存泄漏
-                    delete name2Sym[s->name];
-                }
-                name2Sym[s->name] = s;
-
-                PTX_DEBUG_EMU("Added param symbol: name=%s, addr=%p, size=%zu, "
-                              "offset=%zu",
-                              s->name.c_str(), (void *)s->val, s->byteNum,
-                              current_param_offset);
-
-                // 更新偏移
-                current_param_offset += param_size;
+            size_t param_size = Q2bytes(paramDecl->dataType);
+            // 考虑对齐，向上取整到8字节边界
+            if (param_size % 8 != 0) {
+                param_size = ((param_size / 8) + 1) * 8;
             }
+
+            // 创建Symtable对象
+            Symtable *s = new Symtable();
+            s->name = param_name;
+            s->symType = paramDecl->dataType;
+            s->elementNum = 1; // 默认为1，可根据需要调整
+            s->byteNum = Q2bytes(paramDecl->dataType);
+
+            // 设置参数在param空间中的地址
+            if (param_base_addr != nullptr) {
+                s->val = (uint64_t)((char *)param_base_addr +
+                                    current_param_offset);
+            } else {
+                s->val = 0; // 如果param空间分配失败，设为0
+            }
+
+            // 添加到符号表（如果已有同名符号，替换它）
+            if (name2Sym.find(s->name) != name2Sym.end()) {
+                // 删除旧的Symtable对象以避免内存泄漏
+                delete name2Sym[s->name];
+            }
+            name2Sym[s->name] = s;
+
+            PTX_DEBUG_EMU("Added param symbol: name=%s, addr=%p, size=%zu, "
+                          "offset=%zu",
+                          s->name.c_str(), (void *)s->val, s->byteNum,
+                          current_param_offset);
+
+            // 更新偏移
+            current_param_offset += param_size;
         }
 
         // 收集所有的S_GLOBAL符号，计算总大小并分配空间
         size_t total_global_size = 0;
-        std::vector<std::pair<std::string, StatementContext::GLOBAL *>>
+        std::vector<std::pair<std::string, const DeclarationInstr *>>
             global_symbols;
 
         // 遍历ptxStatements来查找全局符号（因为它们不在kernel内部）
         for (const auto &stmt : ptx.ptxStatements) {
-            if (stmt.statementType == S_GLOBAL) {
-                auto globalStmt = (StatementContext::GLOBAL *)stmt.statement;
-                if (!globalStmt)
-                    continue;
+            if (stmt.type == S_GLOBAL) {
+                const auto &globalDecl =
+                    std::get<DeclarationInstr>(stmt.data);
 
                 // 计算全局变量大小
-                if (!globalStmt->dataType.empty()) {
-                    size_t element_size = Q2bytes(globalStmt->dataType[0]);
-                    size_t var_size = element_size * globalStmt->size;
+                size_t element_size = Q2bytes(globalDecl.dataType);
+                size_t var_size = element_size *
+                                  (globalDecl.size ? *globalDecl.size : 1);
 
-                    // 考虑对齐，向上取整到8字节边界
-                    if (var_size % 8 != 0) {
-                        var_size = ((var_size / 8) + 1) * 8;
-                    }
-                    total_global_size += var_size;
-
-                    // 记录全局符号信息
-                    global_symbols.push_back({globalStmt->name, globalStmt});
+                // 考虑对齐，向上取整到8字节边界
+                if (var_size % 8 != 0) {
+                    var_size = ((var_size / 8) + 1) * 8;
                 }
+                total_global_size += var_size;
+
+                // 记录全局符号信息
+                global_symbols.push_back({globalDecl.name, &globalDecl});
             }
         }
 
@@ -229,114 +223,111 @@ void PtxInterpreter::funcInterpreter(
         // 根据偏移设置每个全局符号，并初始化其值
         size_t current_global_offset = 0;
         for (const auto &global_info : global_symbols) {
-            auto globalStmt = global_info.second;
+            auto globalDecl = global_info.second;
             std::string global_name = global_info.first;
 
-            if (!globalStmt->dataType.empty()) {
-                size_t element_size = Q2bytes(globalStmt->dataType[0]);
-                size_t var_size = element_size * globalStmt->size;
+            size_t element_size = Q2bytes(globalDecl->dataType);
+            size_t var_size = element_size *
+                              (globalDecl->size ? *globalDecl->size : 1);
 
-                // 考虑对齐，向上取整到8字节边界
-                if (var_size % 8 != 0) {
-                    var_size = ((var_size / 8) + 1) * 8;
-                }
-
-                // 创建Symtable对象
-                Symtable *s = new Symtable();
-                s->name = global_name;
-                s->symType = globalStmt->dataType[0];
-                s->elementNum = globalStmt->size; // 数组大小
-                s->byteNum = Q2bytes(globalStmt->dataType[0]);
-
-                // 设置全局变量在全局空间中的地址
-                if (global_base_addr != nullptr) {
-                    s->val = (uint64_t)((char *)global_base_addr +
-                                        current_global_offset);
-                } else {
-                    s->val = 0; // 如果全局空间分配失败，设为0
-                }
-
-                // 添加到符号表（如果已有同名符号，替换它）
-                if (name2Sym.find(s->name) != name2Sym.end()) {
-                    // 删除旧的Symtable对象以避免内存泄漏
-                    delete name2Sym[s->name];
-                }
-                name2Sym[s->name] = s;
-
-                PTX_DEBUG_EMU("Added global symbol: name=%s, addr=%p, "
-                              "size=%zu, offset=%zu",
-                              s->name.c_str(), (void *)s->val, s->byteNum,
-                              current_global_offset);
-
-                // 初始化全局变量的值（如果有的话）
-                if (!globalStmt->initValues.empty()) {
-                    void *dest_addr = (void *)((char *)global_base_addr +
-                                               current_global_offset);
-                    size_t element_size = Q2bytes(globalStmt->dataType[0]);
-
-                    // 根据数据类型初始化值
-                    for (size_t i = 0; i < globalStmt->initValues.size() &&
-                                       i < globalStmt->size;
-                         ++i) {
-                        switch (globalStmt->dataType[0]) {
-                        case Qualifier::Q_B8:
-                        case Qualifier::Q_U8:
-                        case Qualifier::Q_S8: {
-                            char *target = (char *)dest_addr + i * element_size;
-                            *target =
-                                static_cast<char>(globalStmt->initValues[i]);
-                            break;
-                        }
-                        case Qualifier::Q_B16:
-                        case Qualifier::Q_U16:
-                        case Qualifier::Q_S16:
-                        case Qualifier::Q_F16: {
-                            short *target =
-                                (short *)((char *)dest_addr + i * element_size);
-                            *target =
-                                static_cast<short>(globalStmt->initValues[i]);
-                            break;
-                        }
-                        case Qualifier::Q_B32:
-                        case Qualifier::Q_U32:
-                        case Qualifier::Q_S32:
-                        case Qualifier::Q_F32: {
-                            int *target =
-                                (int *)((char *)dest_addr + i * element_size);
-                            *target =
-                                static_cast<int>(globalStmt->initValues[i]);
-                            break;
-                        }
-                        case Qualifier::Q_B64:
-                        case Qualifier::Q_U64:
-                        case Qualifier::Q_S64:
-                        case Qualifier::Q_F64: {
-                            long long *target =
-                                (long long *)((char *)dest_addr +
-                                              i * element_size);
-                            *target = static_cast<long long>(
-                                globalStmt->initValues[i]);
-                            break;
-                        }
-                        default: {
-                            // 默认按int处理
-                            int *target =
-                                (int *)((char *)dest_addr + i * element_size);
-                            *target =
-                                static_cast<int>(globalStmt->initValues[i]);
-                            break;
-                        }
-                        }
-                    }
-
-                    PTX_DEBUG_EMU(
-                        "Initialized global symbol: name=%s with %zu values",
-                        global_name.c_str(), globalStmt->initValues.size());
-                }
-
-                // 更新偏移
-                current_global_offset += var_size;
+            // 考虑对齐，向上取整到8字节边界
+            if (var_size % 8 != 0) {
+                var_size = ((var_size / 8) + 1) * 8;
             }
+
+            // 创建Symtable对象
+            Symtable *s = new Symtable();
+            s->name = global_name;
+            s->symType = globalDecl->dataType;
+            s->elementNum =
+                globalDecl->size ? *globalDecl->size : 1; // 数组大小
+            s->byteNum = Q2bytes(globalDecl->dataType);
+
+            // 设置全局变量在全局空间中的地址
+            if (global_base_addr != nullptr) {
+                s->val = (uint64_t)((char *)global_base_addr +
+                                    current_global_offset);
+            } else {
+                s->val = 0; // 如果全局空间分配失败，设为0
+            }
+
+            // 添加到符号表（如果已有同名符号，替换它）
+            if (name2Sym.find(s->name) != name2Sym.end()) {
+                // 删除旧的Symtable对象以避免内存泄漏
+                delete name2Sym[s->name];
+            }
+            name2Sym[s->name] = s;
+
+            PTX_DEBUG_EMU("Added global symbol: name=%s, addr=%p, "
+                          "size=%zu, offset=%zu",
+                          s->name.c_str(), (void *)s->val, s->byteNum,
+                          current_global_offset);
+
+            // 初始化全局变量的值（如果有的话）
+            if (!globalDecl->initValues.empty()) {
+                void *dest_addr = (void *)((char *)global_base_addr +
+                                           current_global_offset);
+
+                // 根据数据类型初始化值
+                for (size_t i = 0; i < globalDecl->initValues.size() &&
+                                   i < s->elementNum;
+                     ++i) {
+                    switch (globalDecl->dataType) {
+                    case Qualifier::Q_B8:
+                    case Qualifier::Q_U8:
+                    case Qualifier::Q_S8: {
+                        char *target = (char *)dest_addr + i * element_size;
+                        *target =
+                            static_cast<char>(globalDecl->initValues[i]);
+                        break;
+                    }
+                    case Qualifier::Q_B16:
+                    case Qualifier::Q_U16:
+                    case Qualifier::Q_S16:
+                    case Qualifier::Q_F16: {
+                        short *target =
+                            (short *)((char *)dest_addr + i * element_size);
+                        *target =
+                            static_cast<short>(globalDecl->initValues[i]);
+                        break;
+                    }
+                    case Qualifier::Q_B32:
+                    case Qualifier::Q_U32:
+                    case Qualifier::Q_S32:
+                    case Qualifier::Q_F32: {
+                        int *target =
+                            (int *)((char *)dest_addr + i * element_size);
+                        *target = static_cast<int>(globalDecl->initValues[i]);
+                        break;
+                    }
+                    case Qualifier::Q_B64:
+                    case Qualifier::Q_U64:
+                    case Qualifier::Q_S64:
+                    case Qualifier::Q_F64: {
+                        long long *target =
+                            (long long *)((char *)dest_addr +
+                                          i * element_size);
+                        *target = static_cast<long long>(
+                            globalDecl->initValues[i]);
+                        break;
+                    }
+                    default: {
+                        // 默认按int处理
+                        int *target =
+                            (int *)((char *)dest_addr + i * element_size);
+                        *target = static_cast<int>(globalDecl->initValues[i]);
+                        break;
+                    }
+                    }
+                }
+
+                PTX_DEBUG_EMU(
+                    "Initialized global symbol: name=%s with %zu values",
+                    global_name.c_str(), globalDecl->initValues.size());
+            }
+
+            // 更新偏移
+            current_global_offset += var_size;
         }
 
         // 创建完成回调，用于在任务完成后释放参数空间和本地内存

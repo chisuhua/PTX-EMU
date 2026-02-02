@@ -4,27 +4,58 @@ find_program(ANTLR4_CC grammars-v4/ANTLRv4Parser.g4 JAR_FILE ${ANTLR_EXECUTABLE}
 # 定义ANTLR生成的源文件列表
 set(ANTLR4_GENERATED_SOURCES
     ${ANTLR4_GENERATED_SRC_DIR}/ptxLexer.cpp
+    ${ANTLR4_GENERATED_SRC_DIR}/ptxLexer.h
     ${ANTLR4_GENERATED_SRC_DIR}/ptxParser.cpp
+    ${ANTLR4_GENERATED_SRC_DIR}/ptxParser.h
     ${ANTLR4_GENERATED_SRC_DIR}/ptxParserVisitor.cpp
+    ${ANTLR4_GENERATED_SRC_DIR}/ptxParserVisitor.h
     ${ANTLR4_GENERATED_SRC_DIR}/ptxParserBaseVisitor.cpp
+    ${ANTLR4_GENERATED_SRC_DIR}/ptxParserBaseVisitor.h
     ${ANTLR4_GENERATED_SRC_DIR}/ptxParserListener.cpp
+    ${ANTLR4_GENERATED_SRC_DIR}/ptxParserListener.h
     ${ANTLR4_GENERATED_SRC_DIR}/ptxParserBaseListener.cpp
+    ${ANTLR4_GENERATED_SRC_DIR}/ptxParserBaseListener.h
+    ${ANTLR4_GENERATED_SRC_DIR}/ptxLexer.tokens
+    ${ANTLR4_GENERATED_SRC_DIR}/ptxParser.tokens
 )
 
-# 定义ANTLR生成目标
+# 定义ANTLR生成目标 - 先生成词法分析器
 add_custom_command(
-    OUTPUT ${ANTLR4_GENERATED_SOURCES}
-    COMMAND java -Xss500M -Xmx500M -cp "${ANTLR_EXECUTABLE}" org.antlr.v4.Tool 
-        -Dlanguage=Cpp grammar/ptxLexer.g4 grammar/ptxParser.g4
-        -listener -visitor -package ptxparser 
+    OUTPUT ${ANTLR4_GENERATED_SRC_DIR}/ptxLexer.cpp ${ANTLR4_GENERATED_SRC_DIR}/ptxLexer.h
+           ${ANTLR4_GENERATED_SRC_DIR}/ptxLexer.tokens
+    COMMAND java -Xss500M -Xmx500M -cp "${ANTLR_EXECUTABLE}" org.antlr.v4.Tool
+        -Dlanguage=Cpp ptxLexer.g4
+        -listener -visitor -package ptxparser
         -o ${ANTLR4_GENERATED_SRC_DIR}
-    DEPENDS grammar/ptxLexer.g4 grammar/ptxParser.g4
+    DEPENDS ptxLexer.g4
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMENT "Generating parser from ANTLR grammar files..."
+    COMMENT "Generating lexer from ANTLR grammar file..."
     VERBATIM
 )
 
-add_custom_target(GenerateParser DEPENDS ${ANTLR4_GENERATED_SOURCES} grammar/ptxLexer.g4 grammar/ptxParser.g4)
+# 定义ANTLR生成目标 - 再生成语法分析器
+add_custom_command(
+    OUTPUT ${ANTLR4_GENERATED_SRC_DIR}/ptxParser.cpp ${ANTLR4_GENERATED_SRC_DIR}/ptxParser.h
+           ${ANTLR4_GENERATED_SRC_DIR}/ptxParser.tokens
+           ${ANTLR4_GENERATED_SRC_DIR}/ptxParserBaseVisitor.cpp ${ANTLR4_GENERATED_SRC_DIR}/ptxParserBaseVisitor.h
+           ${ANTLR4_GENERATED_SRC_DIR}/ptxParserVisitor.cpp ${ANTLR4_GENERATED_SRC_DIR}/ptxParserVisitor.h
+           ${ANTLR4_GENERATED_SRC_DIR}/ptxParserBaseListener.cpp ${ANTLR4_GENERATED_SRC_DIR}/ptxParserBaseListener.h
+           ${ANTLR4_GENERATED_SRC_DIR}/ptxParserListener.cpp ${ANTLR4_GENERATED_SRC_DIR}/ptxParserListener.h
+    COMMAND java -Xss500M -Xmx500M -cp "${ANTLR_EXECUTABLE}" org.antlr.v4.Tool
+        -Dlanguage=Cpp ptxParser.g4
+        -listener -visitor -package ptxparser
+        -o ${ANTLR4_GENERATED_SRC_DIR}
+    DEPENDS ptxParser.g4 ${ANTLR4_GENERATED_SRC_DIR}/ptxLexer.tokens
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Generating parser from ANTLR grammar file..."
+    VERBATIM
+)
+
+add_custom_target(GenerateParser ALL
+    DEPENDS 
+        ${ANTLR4_GENERATED_SRC_DIR}/ptxLexer.cpp
+        ${ANTLR4_GENERATED_SRC_DIR}/ptxParser.cpp
+)
 
 # 设置源文件（包含ANTLR生成的源文件）
 set(SOURCES
