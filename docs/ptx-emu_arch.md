@@ -1,203 +1,50 @@
-# NVIDIA GPU 硬件架构模拟方案
+#PTX-EMU 代码架构概览（基于 include/ 与 src/）
 
-## 概述
+本文件总结当前实现的真实代码结构与数据流，避免与设计草案混淆。
 
-本文档详细描述了 PTX-EMU 项目中用于精确模拟 NVIDIA GPU 硬件架构的方案。该方案旨在实现更精确的硬件行为模拟，包括 warp 级执行、SM（Streaming Multiprocessor）抽象、内存层次结构模拟等功能。
+## 1. 总体流程（从 CUDA 程序到 PTX 仿真）
+- 入口为 fake libcudart：`src/cudart/cudart_sim.cpp` 实现 `__cudaRegisterFatBinary`、`cudaLaunchKernel` 等 API。
+- 通过 `cuobjdump` 提取 PTX（`utils/cubin_utils.h`），使用 ANTLR4 解析生成 AST 与 IR（`include/ptx_parser/ptx_parser.h` 中 `PtxListener`）。
+- `PtxListener` 填充 `PtxContext` → `KernelContext` → `StatementContext`/`OperandContext`（见 `include/ptx_ir/`）。
+- `PtxInterpreter`（`src/cudart/ptx_interpreter.*`）构建符号表与内存映射，提交 `KernelLaunchRequest` 给 `GPUContext`。
 
-## 现状分析
+## 2. 执行层次结构（执行核心）
+- 顶层：`GPUContext`（`include/ptxsim/gpu_context.h`）维护 SM 列表、任务队列、全局内存 `SimpleMemory`。
+- SM：`SMContext`（`include/ptxsim/sm_context.h`）负责资源预留、block 管理、warp 调度与 barrier 同步。
+- CTA：`CTAContext`（`include/ptxsim/cta_context.h`）持有 warp、构建共享/本地内存符号表并转移所有权给 SM。
+- Warp：`WarpContext`（`include/ptxsim/warp_context.h`）维护 active mask、分歧与 warp 级 PC，并驱动线程执行。
+- Thread：`ThreadContext`（`include/ptxsim/thread_context.h`）实现操作数获取/提交、条件码寄存器、调用栈和 barrier 状态。
 
-PTX-EMU 目前主要实现了线程级别的模拟，每个 ThreadContext 独立执行指令，缺乏 warp 和 SM 级别的硬件抽象。这限制了模拟器的精度，无法准确反映真实 GPU 硬件的执行特性。
+## 3. PTX IR 与解析层
+- `PtxContext` 聚合 `KernelContext` 与全局 `StatementContext`（`include/ptx_ir/ptx_context.h`）。
+- `KernelContext` 记录 `.entry/.func`、参数、`.shared/.const/.global` 资源、ABI Preserve 等（`include/ptx_ir/kernel_context.h`）。
+- `StatementContext` 使用 `InstrVariant` 表示所有指令形态（`include/ptx_ir/statement_context.h`）。
+- `OperandContext` 表示寄存器/立即数/地址/向量/谓词（`include/ptx_ir/operand_context.h`）。
 
-## 硬件架构模拟设计
+## 4. 指令执行框架
+- 指令分发由 `InstructionFactory::initialize()` 注册处理器（`include/ptxsim/instruction_factory.h`）。
+- 所有处理器继承 `InstructionHandler`/`INSTR_BASE`（`include/ptxsim/instruction_base.h`），具体实现位于 `src/ptxsim/instructions/`。
+- `InstructionHandlers` 的声明通过 `ptx_ir/ptx_op.def` 自动生成（`include/ptxsim/instruction_handlers.h`）。
 
-### 1. Warp 执行模型
+## 5. 内存与寄存器模型
+- 全局内存：`SimpleMemory`（`include/memory/simple_memory.h`）作为设备内存池。
+- 访问接口：`HardwareMemoryManager`（`include/memory/hardware_memory_manager.h`）用于指令执行时的读写。
+- 共享内存：`SharedMemoryManager`（`include/memory/shared_memory_manager.h`）按 SM 管理，由 `ResourceManager` 管理生命周期。
+- 寄存器：`RegisterBankManager` 以 CTA 为单位统一分配（`include/register/register_bank_manager.h`）。
+- 条件码：`ConditionCodeRegister` 存于 `ThreadContext`（`include/register/condition_code_register.h`）。
 
-#### 1.1 Warp Context 设计
+## 6. 配置与调试
+- 日志与断点：`ptxsim::DebugConfig`、`LoggerConfig`（`include/ptxsim/ptx_config.h`），配置来自 `configs/config.ini` 与 `configs/debug_config.ini`。
+- GPU 架构参数由 JSON 驱动（`configs/*.json`），在 `GPUContext::load_json_config()` 中加载。
 
-```cpp
-// warp_context.h
-class WarpContext {
-public:
-    static const int WARP_SIZE = 32;
-    
-    // warp 内的线程 ID 映射
-    int warp_thread_ids[WARP_SIZE];
-    bool active_mask[WARP_SIZE];  // 活跃线程掩码
-    int active_count;             // 活跃线程数
-    
-    // warp 状态
-    uint32_t pc;                  // warp 的程序计数器
-    bool single_step_mode;        // 单步执行模式
-    
-    // 执行控制
-    std::vector<ThreadContext*> threads;
-    
-    // 构造函数
-    WarpContext();
-    
-    // 执行单个 warp 指令
-    void execute_warp_instruction(StatementContext &stmt);
-    
-    // 更新活跃掩码
-    void update_active_mask();
-    
-    // 检查 warp 是否全部完成
-    bool is_complete() const;
-    
-    // 同步 warp 内所有线程
-    void sync_warp();
-};
-```
+## 7. 实际执行路径（简化时序）
+1) `__cudaRegisterFatBinary` 解析 PTX → `PtxContext`。
+2) `cudaLaunchKernel` 调用 `PtxInterpreter::launchPtxInterpreter()`。
+3) `PtxInterpreter` 建立参数/常量/全局/本地内存符号表并提交请求。
+4) `GPUContext` 分发到 `SMContext`，SM 构建 `CTAContext` 与 `WarpContext`。
+5) `WarpContext` 迭代执行 `ThreadContext::execute_thread_instruction()`，由 `InstructionFactory` 分发到具体指令处理器。
 
-#### 1.2 Warp 指令执行
-
-WarpContext 实现了 SIMD 执行模型，通过活跃掩码控制执行流程：
-
-```cpp
-void WarpContext::execute_warp_instruction(StatementContext &stmt) {
-    // 根据活跃掩码执行指令
-    for (int i = 0; i < WARP_SIZE; i++) {
-        if (active_mask[i]) {
-            ThreadContext* thread = threads[warp_thread_ids[i]];
-            // 执行指令
-            thread->execute_single_instruction(stmt);
-        }
-    }
-    
-    // 更新活跃掩码（例如，遇到分支指令时）
-    update_active_mask();
-}
-```
-
-### 2. SM（Streaming Multiprocessor）抽象
-
-#### 2.1 SM Context 设计
-
-```cpp
-// sm_context.h
-class SMContext {
-public:
-    // SM 配置参数
-    int max_warps_per_sm;
-    int max_threads_per_sm;
-    int shared_mem_size_per_sm;
-    int registers_per_sm;
-    
-    // SM 资源管理
-    std::vector<WarpContext*> warps;
-    int allocated_shared_mem;
-    int allocated_registers;
-    
-    // 硬件单元
-    WarpScheduler scheduler;
-    int execution_cycles;  // 执行周期计数
-    
-    // 执行状态
-    std::vector<ThreadContext*> threads;
-    
-    // 构造函数
-    SMContext(int sm_id, int max_warps, int shared_mem_size);
-    
-    // 执行一个时钟周期
-    void execute_cycle();
-    
-    // 分配资源给新的 thread block
-    bool allocate_resources(int thread_count, int shared_mem_needed, int reg_count);
-    
-    // 释放资源
-    void release_resources();
-    
-    // 检查是否可以接受新的 thread block
-    bool can_accept_block(int thread_count, int shared_mem_needed) const;
-};
-```
-
-#### 2.2 资源管理
-
-```cpp
-bool SMContext::allocate_resources(int thread_count, int shared_mem_needed, int reg_count) {
-    int warps_needed = (thread_count + WarpContext::WARP_SIZE - 1) / WarpContext::WARP_SIZE;
-    
-    // 检查资源是否足够
-    if (warps.size() + warps_needed > max_warps_per_sm ||
-        allocated_shared_mem + shared_mem_needed > shared_mem_size_per_sm ||
-        allocated_registers + reg_count > registers_per_sm) {
-        return false;
-    }
-    
-    // 分配资源
-    allocated_shared_mem += shared_mem_needed;
-    allocated_registers += reg_count;
-    
-    return true;
-}
-```
-
-### 3. Warp 调度器
-
-#### 3.1 调度策略
-
-```cpp
-// warp_scheduler.h
-class WarpScheduler {
-public:
-    enum class SchedulingPolicy {
-        ROUND_ROBIN,    // 轮询调度
-        GREEDY,         // 贪心调度
-        TWO_LEVEL       // 两级调度
-    };
-    
-    WarpScheduler(SchedulingPolicy policy = SchedulingPolicy::ROUND_ROBIN);
-    
-    // 选择下一个要执行的 warp
-    WarpContext* select_next_warp();
-    
-    // 更新 warp 状态
-    void update_warp_state(WarpContext* warp);
-    
-    // 记录 warp 执行统计
-    void record_warp_stats(WarpContext* warp);
-};
-```
-
-### 4. 内存层次结构模拟
-
-#### 4.1 内存层次设计
-
-```cpp
-// memory_hierarchy.h
-class MemoryHierarchy {
-public:
-    // L1 缓存模拟
-    struct L1Cache {
-        int size;
-        int line_size;
-        int associativity;
-        int access_latency;
-    };
-    
-    // L2 缓存模拟
-    struct L2Cache {
-        int size;
-        int line_size;
-        int associativity;
-        int access_latency;
-    };
-    
-    // 缓存访问延迟模拟
-    int simulate_cache_access(uint64_t addr, bool is_write);
-    
-    // 内存访问延迟模拟
-    int simulate_global_memory_access(uint64_t addr, int size);
-    
-    // 记录内存访问统计
-    void record_memory_stats();
-};
-```
-
-### 5. 精确的执行模型
-
-#### 5.1 CTA Context 修改
+> 以上内容以当前实现为准，后续如有新增模块，请补充对应 include/ 与 src/ 的入口与数据流。
 
 ```cpp
 // 修改 cta_context.h
