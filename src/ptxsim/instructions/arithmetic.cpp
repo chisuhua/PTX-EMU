@@ -397,7 +397,7 @@
 //     }
 // }
 
-void ADD::process_operation(ThreadContext *context, void *op[3],
+void ADD_Handler::process_operation(ThreadContext *context, void *op[3],
                             const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
