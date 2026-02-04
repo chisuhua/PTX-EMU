@@ -21,7 +21,7 @@ struct DeclarationInstr {
     std::string name;             // e.g., "%r1", "buf"
     Qualifier dataType;           // e.g., .b32, .u64
     std::optional<int> alignment; // from .align N
-    std::optional<int> size;      // array size or const bytes
+    std::optional<int> size;      // FIXME total size in bytes
     int array_size;
     std::vector<int> initValues; // for .const {1,2,3}
 };
@@ -38,6 +38,13 @@ struct DollarNameInstr {
 // -----------------------------------------------------------------------------
 struct PragmaInstr {
     std::string content; // e.g., "#pragma unroll"
+};
+
+// -----------------------------------------------------------------------------
+// Label definition (S_LABEL → LABEL_INSTR)
+// -----------------------------------------------------------------------------
+struct LabelInstr {
+    std::string labelName;
 };
 
 // -----------------------------------------------------------------------------
@@ -65,6 +72,41 @@ struct BarrierInstr {
 };
 
 // -----------------------------------------------------------------------------
+// Membar instruction (S_MEMBAR → MEMBAR_INSTR)
+// -----------------------------------------------------------------------------
+struct MembarInstr {
+    std::vector<Qualifier> qualifiers;
+    std::string scope; // e.g., "ctx", "sys", "coherent"
+};
+
+// -----------------------------------------------------------------------------
+// Fence instruction (S_FENCE → FENCE_INSTR)
+// -----------------------------------------------------------------------------
+struct FenceInstr {
+    std::vector<Qualifier> qualifiers;
+    std::string memoryOrder; // e.g., "acquire", "release"
+    std::string scope;       // e.g., "gpu", "sys"
+};
+
+// -----------------------------------------------------------------------------
+// Redux sync instruction (S_REDUX_SYNC → REDUX_INSTR)
+// -----------------------------------------------------------------------------
+struct ReduxSyncInstr {
+    std::vector<Qualifier> qualifiers;
+    std::string operation; // e.g., "add", "min", "max"
+    std::vector<OperandContext> operands;
+};
+
+// -----------------------------------------------------------------------------
+// Mbarrier instructions (S_MBARRIER_* → MBARRIER_INSTR)
+// -----------------------------------------------------------------------------
+struct MbarrierInstr {
+    std::vector<Qualifier> qualifiers;
+    std::string operation; // "init", "arrive", "try_wait"
+    std::vector<OperandContext> operands;
+};
+
+// -----------------------------------------------------------------------------
 // Function call (S_CALL → CALL_INSTR)
 // -----------------------------------------------------------------------------
 struct CallInstr {
@@ -81,7 +123,7 @@ struct CallInstr {
 // -----------------------------------------------------------------------------
 struct PredicatePrefix {
     std::vector<Qualifier> qualifiers;
-    std::vector<OperandContext> operands; // args + return address (if any)
+    std::vector<OperandContext> operands; // predicate register
     std::string target;                   // e.g., "%p1"
 };
 
@@ -110,6 +152,48 @@ struct AtomInstr {
     std::vector<Qualifier> qualifiers;
     std::vector<OperandContext> operands;
     int operandNum = 0; // metadata (e.g., number of effective operands)
+};
+
+// -----------------------------------------------------------------------------
+// Warp-level instructions (S_VOTE, S_SHFL → VOTE_INSTR, SHFL_INSTR)
+// -----------------------------------------------------------------------------
+struct VoteInstr {
+    std::vector<Qualifier> qualifiers;
+    std::string mode; // "ballot", "any", "all", etc.
+    std::vector<OperandContext> operands;
+};
+
+struct ShflInstr {
+    std::vector<Qualifier> qualifiers;
+    std::string mode; // "up", "down", "bfly", "idx"
+    std::vector<OperandContext> operands;
+};
+
+// -----------------------------------------------------------------------------
+// Texture/Surface instructions (S_TEX, S_SURF → TEXTURE_INSTR, SURFACE_INSTR)
+// -----------------------------------------------------------------------------
+struct TextureInstr {
+    std::vector<Qualifier> qualifiers;
+    std::vector<OperandContext> operands;
+};
+
+struct SurfaceInstr {
+    std::vector<Qualifier> qualifiers;
+    std::vector<OperandContext> operands;
+};
+
+// -----------------------------------------------------------------------------
+// Reduction/Prefetch instructions (S_RED, S_PREFETCH → REDUCTION_INSTR, PREFETCH_INSTR)
+// -----------------------------------------------------------------------------
+struct ReductionInstr {
+    std::vector<Qualifier> qualifiers;
+    std::string operation; // "add", "min", "max"
+    std::vector<OperandContext> operands;
+};
+
+struct PrefetchInstr {
+    std::vector<Qualifier> qualifiers;
+    std::vector<OperandContext> operands;
 };
 
 // -----------------------------------------------------------------------------
@@ -152,32 +236,51 @@ struct TensormapInstr {
 struct AbiDirective {
     int regNumber; // from .abi_preserve N
 };
+
+// Add this to statement_context.h
+struct CpAsyncInstr {
+    std::vector<Qualifier> qualifiers;
+    std::vector<OperandContext> operands; // [dst, src, size]
+};
+
 // =============================================================================
 // 2. Unified variant type for all instruction kinds
 // Manually listed based on struct_kind in ptx_op.def (no macro magic)
 // =============================================================================
 using InstrVariant =
-    std::variant<DeclarationInstr, // OPERAND_REG / OPERAND_CONST /
-                                   // OPERAND_MEMORY
-                 DollarNameInstr,  // SIMPLE_NAME
-                 PragmaInstr,      // SIMPLE_STRING
-                 VoidInstr,        // VOID_INSTR
-                 BranchInstr,      // BRANCH
-                 BarrierInstr,     // BARRIER
-                 CallInstr,        // CALL_INSTR
-                 GenericInstr,     // GENERIC_INSTR
-                 PredicatePrefix,  // PREDICATE_PREFIX
-                 WmmaInstr,        // WMMA_INSTR
-                 AtomInstr,        // ATOM_INSTR
-                 AsyncStoreInstr, AsyncReduceInstr, TcgenInstr, TensormapInstr,
+    std::variant<DeclarationInstr,     // OPERAND_REG / OPERAND_CONST / OPERAND_MEMORY
+                 DollarNameInstr,      // SIMPLE_NAME
+                 PragmaInstr,          // SIMPLE_STRING
+                 LabelInstr,           // LABEL_INSTR
+                 VoidInstr,            // VOID_INSTR
+                 BranchInstr,          // BRANCH
+                 BarrierInstr,         // BARRIER
+                 MembarInstr,          // MEMBAR_INSTR
+                 FenceInstr,           // FENCE_INSTR
+                 ReduxSyncInstr,       // REDUX_INSTR
+                 MbarrierInstr,        // MBARRIER_INSTR
+                 CallInstr,            // CALL_INSTR
+                 PredicatePrefix,      // PREDICATE_PREFIX
+                 GenericInstr,         // GENERIC_INSTR
+                 WmmaInstr,            // WMMA_INSTR
+                 AtomInstr,            // ATOM_INSTR
+                 VoteInstr,            // VOTE_INSTR
+                 ShflInstr,            // SHFL_INSTR
+                 TextureInstr,         // TEXTURE_INSTR
+                 SurfaceInstr,         // SURFACE_INSTR
+                 ReductionInstr,       // REDUCTION_INSTR
+                 PrefetchInstr,        // PREFETCH_INSTR
+                 CpAsyncInstr,         // CP_ASYNC_INSTR  // Add this!
+                 AsyncStoreInstr, 
+                 AsyncReduceInstr, 
+                 TcgenInstr, 
+                 TensormapInstr,
                  AbiDirective>;
 
 class StatementContext {
 public:
     StatementType type;
     std::vector<Qualifier> qualifier; // e.g., {.u32, .sat, .rn}
-    // std::vector<OperandContext> operands;    // src/dst operands
-    // std::optional<OperandContext> predicate; // guard predicate (e.g., @%p1)
     InstrVariant data;
     InstructionState state = InstructionState::READY;
 

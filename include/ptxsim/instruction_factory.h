@@ -26,6 +26,7 @@ public:
 
     // 初始化函数，用于注册所有指令处理器
     static void initialize();
+    static void cleanup();
 
 private:
     static bool initialized;

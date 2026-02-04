@@ -3,13 +3,19 @@
 #define PARAM_CONTEXT_H
 
 #include "ptx_types.h"
+#include <optional>
 #include <string>
+#include <vector>
 
 struct ParamContext {
     std::string paramName;
     std::vector<Qualifier> paramTypes; // e.g., Q_U32, Q_PTR
     size_t byteSize = 0;               // total size in bytes
     std::optional<size_t> align;       // alignment in bytes (e.g., 4, 8, 16)
+
+    // 兼容旧解析器与运行时逻辑
+    int paramAlign = 0;
+    int paramNum = 1;
 
     bool isPtr = false;
 

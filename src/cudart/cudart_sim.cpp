@@ -11,7 +11,7 @@
 #include "memory/simple_memory.h"
 #include "ptx_interpreter.h"
 // #include "ptx_parser/ptx_grammar.h" // 添加解析器相关的头文件
-#include "ptx_parser/ptx_parser.h"
+// #include "ptx_parser/ptx_parser.h"
 #include "ptxsim/gpu_context.h"
 #include "ptxsim/ptx_config.h" // 添加DebugConfig所需的头文件
 #include "utils/cubin_utils.h" // 添加cuobjdump工具函数

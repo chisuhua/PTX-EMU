@@ -21,11 +21,15 @@ X(Q_B8, B8, ".b8")      // Bit 8-bit
 X(Q_B16, B16, ".b16")   // Bit 16-bit
 X(Q_B32, B32, ".b32")   // Bit 32-bit
 X(Q_B64, B64, ".b64")   // Bit 64-bit
+X(Q_B128, B128, ".b128") // Bit 128-bit
 
 X(Q_F8, F8, ".f8")      // Float 8-bit
 X(Q_F16, F16, ".f16")   // Float 16-bit
 X(Q_F32, F32, ".f32")   // Float 32-bit
 X(Q_F64, F64, ".f64")   // Float 64-bit
+
+X(Q_BF16, BF16, ".bf16") // Brain Float 16-bit
+X(Q_F16X2, F16X2, ".f16x2") // Packed Float16x2
 
 X(Q_PRED, PRED, ".pred") // Predicate
 
@@ -39,10 +43,17 @@ X(Q_V4, V4, ".v4")      // Vector of 4 elements
 // 3. Memory Space Qualifiers
 // -----------------------------------------------------------------------------
 X(Q_CONST, CONST, ".const")    // Constant memory space
+X(Q_CONSTANT, CONSTANT, ".constant") // Alias for const (instruction modifier only)
 X(Q_PARAM, PARAM, ".param")    // Parameter space
 X(Q_GLOBAL, GLOBAL, ".global") // Global memory space
 X(Q_LOCAL, LOCAL, ".local")    // Local memory space
 X(Q_SHARED, SHARED, ".shared") // Shared memory space
+X(Q_GENERIC, GENERIC, ".generic") // Generic memory space
+X(Q_WL, WL, ".wl")            // Weakly-ordered load space (PTX 8.0+)
+X(Q_WU, WU, ".wu")            // Weakly-ordered store space (PTX 8.0+)
+X(Q_TEX, TEX, ".tex")         // Texture memory space
+X(Q_SURF, SURF, ".surf")      // Surface memory space
+X(Q_LDG, LDG, ".ldg")         // Cached global load space
 
 // -----------------------------------------------------------------------------
 // 4. Pointer Type Qualifier
@@ -62,6 +73,14 @@ X(Q_LTU, LTU, ".ltu")   // Less than unsigned
 X(Q_LEU, LEU, ".leu")   // Less equal unsigned
 X(Q_GTU, GTU, ".gtu")   // Greater than unsigned
 X(Q_GEU, GEU, ".geu")   // Greater equal unsigned
+
+// Floating-point comparisons
+X(Q_FEQ, FEQ, ".feq")   // Floating equal
+X(Q_FNE, FNE, ".fne")   // Floating not equal
+X(Q_FLT, FLT, ".flt")   // Floating less than
+X(Q_FLE, FLE, ".fle")   // Floating less equal
+X(Q_FGT, FGT, ".fgt")   // Floating greater than
+X(Q_FGE, FGE, ".fge")   // Floating greater equal
 
 // -----------------------------------------------------------------------------
 // 6. Rounding Modifiers
@@ -93,6 +112,7 @@ X(Q_A, A, ".a")         // A operand
 X(Q_B, B, ".b")         // B operand
 X(Q_D, D, ".d")         // D operand
 X(Q_ROW, ROW, ".row")   // Row
+X(Q_COL, COL, ".col")   // Column
 
 // -----------------------------------------------------------------------------
 // 8. Alignment and Special Qualifiers
@@ -139,8 +159,28 @@ X(Q_E2M1X4, E2M1X4, ".e2m1x4")
 X(Q_MMIO, MMIO, ".mmio")
 X(Q_RELEASE, RELEASE, ".release")
 X(Q_ACQUIRE, ACQUIRE, ".acquire")
+X(Q_RELAXED, RELAXED, ".relaxed")
+X(Q_ACQ_REL, ACQ_REL, ".acq_rel")
+X(Q_STRONG, STRONG, ".strong")
+
+// Scope qualifiers
 X(Q_CLUSTER, CLUSTER, ".cluster")   // scope qualifier
 X(Q_CTA, CTA, ".cta")               // scope qualifier
+X(Q_GPU, GPU, ".gpu")               // scope qualifier
+X(Q_GL, GL, ".gl")                  // scope qualifier
+X(Q_SYS, SYS, ".sys")               // scope qualifier
+
+// Cache operators
+X(Q_WB, WB, ".wb")                  // write-back
+X(Q_WT, WT, ".wt")                  // write-through
+X(Q_CG, CG, ".cg")                  // cache at global level
+X(Q_CS, CS, ".cs")                  // cache streaming
+X(Q_CV, CV, ".cv")                  // cache volatile
+X(Q_CA, CA, ".ca")                  // cache at all levels
+X(Q_EV, EV, ".ev")                  // evict after use
+X(Q_LU, LU, ".lu")                  // last use hint
+
+// Level cache hint
 X(Q_LEVEL_CACHE_HINT, LEVEL_CACHE_HINT, ".level::cache_hint")
 
 // -----------------------------------------------------------------------------
@@ -166,9 +206,9 @@ X(Q_L2, L2, ".l2")
 // 16. Membar Scopes
 // -----------------------------------------------------------------------------
 X(Q_CTX, CTX, ".ctx")
-X(Q_SYS, SYS, ".sys")
+//X(Q_SYS, SYS, ".sys")
 X(Q_COHERENT, COHERENT, ".coherent")
-X(Q_STRONG, STRONG, ".strong")
+//X(Q_STRONG, STRONG, ".strong")
 
 // -----------------------------------------------------------------------------
 // 17. Vote Modes
@@ -178,6 +218,9 @@ X(Q_ANY, ANY, ".any")
 X(Q_ALL, ALL, ".all")
 X(Q_UNI, UNI, ".uni")
 X(Q_EQV, EQV, ".eqv")
+X(Q_VOTEQ, VOTEQ, ".voteq")
+X(Q_VOTEU, VOTEU, ".voteu")
+X(Q_VOTES, VOTES, ".votes")
 
 // -----------------------------------------------------------------------------
 // 18. Shuffle Modes
@@ -186,3 +229,36 @@ X(Q_UP, UP, ".up")
 X(Q_DOWN, DOWN, ".down")
 X(Q_BFLY, BFLY, ".bfly")
 X(Q_IDX, IDX, ".idx")
+
+// -----------------------------------------------------------------------------
+// 19. Atomic Operations
+// -----------------------------------------------------------------------------
+X(Q_ADD_ATOM, ADD_ATOM, ".add")
+X(Q_AND_ATOM, AND_ATOM, ".and")
+X(Q_OR_ATOM, OR_ATOM, ".or")
+X(Q_XOR_ATOM, XOR_ATOM, ".xor")
+X(Q_INC_ATOM, INC_ATOM, ".inc")
+X(Q_DEC_ATOM, DEC_ATOM, ".dec")
+X(Q_EXCH_ATOM, EXCH_ATOM, ".exch")
+X(Q_MIN_ATOM, MIN_ATOM, ".min")
+X(Q_MAX_ATOM, MAX_ATOM, ".max")
+X(Q_CAS_ATOM, CAS_ATOM, ".cas")
+
+// -----------------------------------------------------------------------------
+// 20. Barrier Operations
+// -----------------------------------------------------------------------------
+// X(Q_SYNC, SYNC, ".sync")
+X(Q_ARRIVE, ARRIVE, ".arrive")
+X(Q_RED, RED, ".red")
+
+// -----------------------------------------------------------------------------
+// 21. Special Registers Components
+// -----------------------------------------------------------------------------
+X(Q_X, X, "x")
+X(Q_Y, Y, "y")
+X(Q_Z, Z, "z")
+X(Q_W, W, "w")
+
+// =============================================================================
+// End of ptx_qualifier.def
+// =============================================================================

@@ -1,11 +1,18 @@
-// InstructionHandlers_decl.h
+// instruction_base.h
 #ifndef INSTRUCTION_HANDLE_H
 #define INSTRUCTION_HANDLE_H
-#include "../ptx_ir/statement_context.h"
+
 #include <memory>
 #include <vector>
 
+// Forward declaration
 class ThreadContext;
+
+// Include headers in order of dependency
+#include "../ptx_ir/ptx_types.h"        // For Qualifier (no dependencies)
+#include "../ptx_ir/operand_context.h"  // For OperandContext (depends on ptx_types.h)
+#include "../ptx_ir/statement_context.h" // Depends on operand_context.h and ptx_types.h
+#include "ptxsim/execution_types.h"     // For CpAsyncInstr and other instruction types
 
 // 基础指令处理器接口
 class InstructionHandler {
@@ -14,102 +21,124 @@ public:
     virtual void ExecPipe(ThreadContext *context, StatementContext &stmt) = 0;
 };
 
-class ABI_DIRECTIVE : public InstructionHandler {
+// Base classes for different instruction categories
+class DeclarationHandler : public InstructionHandler {
 public:
-    // virtual void ExecPipe(ThreadContext *context, StatementContext &stmt);
+    void ExecPipe(ThreadContext *context, StatementContext &stmt) override;
 };
 
-// OPERAND_REG 类型的基类处理器
-class OPERAND_REG : public InstructionHandler {
+class SimpleHandler : public InstructionHandler {
 public:
-    // virtual void ExecPipe(ThreadContext *context, StatementContext &stmt);
+    void ExecPipe(ThreadContext *context, StatementContext &stmt) override;
 };
 
-// OPERAND_CONST 类型的基类处理器
-class OPERAND_CONST : public InstructionHandler {
+class VoidHandler : public InstructionHandler {
 public:
-    // virtual void ExecPipe(ThreadContext *context, StatementContext &stmt);
+    void ExecPipe(ThreadContext *context, StatementContext &stmt) override;
 };
 
-// OPERAND_MEMORY 类型的基类处理器
-class OPERAND_MEMORY : public InstructionHandler {
+class BranchHandler : public InstructionHandler {
 public:
-    // virtual void ExecPipe(ThreadContext *context, StatementContext &stmt);
+    void ExecPipe(ThreadContext *context, StatementContext &stmt) override;
+    virtual void executeBranch(ThreadContext *context, const BranchInstr &instr) {
+        // Default implementation does nothing
+        (void)context;
+        (void)instr;
+    }
 };
 
-// SIMPLE_NAME 类型的基类处理器
-class SIMPLE_NAME : public InstructionHandler {
+class BarrierHandler : public InstructionHandler {
 public:
-    // virtual void ExecPipe(ThreadContext *context, StatementContext &stmt);
+    void ExecPipe(ThreadContext *context, StatementContext &stmt) override;
+    virtual void executeBarrier(ThreadContext *context, const BarrierInstr &instr) {
+        // Default implementation does nothing
+        (void)context;
+        (void)instr;
+    }
 };
 
-// SIMPLE_STRING 类型的基类处理器
-class SIMPLE_STRING : public InstructionHandler {
+class CallHandler : public InstructionHandler {
 public:
-    // virtual void ExecPipe(ThreadContext *context, StatementContext &stmt);
+    void ExecPipe(ThreadContext *context, StatementContext &stmt) override;
+    virtual void executeCall(ThreadContext *context, const CallInstr &instr) {
+        // Default implementation does nothing
+        (void)context;
+        (void)instr;
+    }
 };
 
-// VOID_INSTR 类型的基类处理器
-class VOID_INSTR : public InstructionHandler {
+// Generic instruction handler with prepare/operate/commit pipeline
+class PipelineHandler : public InstructionHandler {
 public:
-    // virtual void ExecPipe(ThreadContext *context, StatementContext &stmt);
+    void ExecPipe(ThreadContext *context, StatementContext &stmt) override;
+    
+protected:
+    virtual bool prepareOperands(ThreadContext *context, StatementContext &stmt) = 0;
+    virtual bool executeOperation(ThreadContext *context, StatementContext &stmt) = 0;
+    virtual bool commitResults(ThreadContext *context, StatementContext &stmt) = 0;
+    
+    // Helper methods for operand management
+    bool acquireAllOperands(ThreadContext *context, std::vector<OperandContext> &operands, 
+                           const std::vector<Qualifier> &qualifiers, int opCount);
+    void releaseAllOperands(std::vector<OperandContext> &operands, int opCount);
 };
 
-class INSTR_BASE : public InstructionHandler {
-public:
-    virtual void ExecPipe(ThreadContext *context, StatementContext &stmt);
-    virtual bool prepare(ThreadContext *context, StatementContext &stmt);
-    virtual bool commit(ThreadContext *context, StatementContext &stmt);
-
-    virtual bool operate(ThreadContext *context, StatementContext &stmt) = 0;
-    virtual void process_operation(ThreadContext *context, void **operands,
-                                   const std::vector<Qualifier> &qualifiers) {};
+// Specific pipeline handler types
+class GenericPipelineHandler : public PipelineHandler {
+protected:
+    bool prepareOperands(ThreadContext *context, StatementContext &stmt) override;
+    bool executeOperation(ThreadContext *context, StatementContext &stmt) override;
+    bool commitResults(ThreadContext *context, StatementContext &stmt) override;
+    
+    virtual void processOperation(ThreadContext *context, void **operands, 
+                                const std::vector<Qualifier> &qualifiers) {
+        // Default implementation does nothing
+        (void)context;
+        (void)operands;
+        (void)qualifiers;
+    }
 };
 
-// BRANCH 类型的基类处理器
-class BRANCH : public INSTR_BASE {
-public:
+class AtomicPipelineHandler : public PipelineHandler {
+protected:
+    bool prepareOperands(ThreadContext *context, StatementContext &stmt) override;
+    bool executeOperation(ThreadContext *context, StatementContext &stmt) override;
+    bool commitResults(ThreadContext *context, StatementContext &stmt) override;
+    
+    virtual void processAtomicOperation(ThreadContext *context, void **operands, 
+                                      const std::vector<Qualifier> &qualifiers) {
+        // Default implementation does nothing
+        (void)context;
+        (void)operands;
+        (void)qualifiers;
+    }
 };
 
-class PREDICATE_PREFIX : public INSTR_BASE {
-public:
+class WmmaPipelineHandler : public PipelineHandler {
+protected:
+    bool prepareOperands(ThreadContext *context, StatementContext &stmt) override;
+    bool executeOperation(ThreadContext *context, StatementContext &stmt) override;
+    bool commitResults(ThreadContext *context, StatementContext &stmt) override;
+    
+    virtual void processWmmaOperation(ThreadContext *context, void **operands, 
+                                    const std::vector<Qualifier> &qualifiers) {
+        // Default implementation does nothing
+        (void)context;
+        (void)operands;
+        (void)qualifiers;
+    }
 };
 
-// GENERIC_INSTR 类型的基类处理器
-class GENERIC_INSTR : public INSTR_BASE {
+// Async memory copy instruction handler (e.g., cp.async)
+class AsyncCopyHandler : public InstructionHandler {
 public:
-    virtual bool operate(ThreadContext *context, StatementContext &stmt);
-};
-
-// ATOM_INSTR 类型的基类处理器
-class ATOM_INSTR : public INSTR_BASE {
-public:
-};
-
-// WMMA_INSTR 类型的基类处理器
-class WMMA_INSTR : public INSTR_BASE {
-public:
-};
-
-// BARRIER 类型的基类处理器
-class BARRIER : public INSTR_BASE {
-public:
-};
-
-class ASYNC_STORE : public INSTR_BASE {
-public:
-};
-
-class ASYNC_REDUCE : public INSTR_BASE {
-public:
-};
-
-class TCGEN_INSTR : public INSTR_BASE {
-public:
-};
-
-class TENSORMAP_INSTR : public INSTR_BASE {
-public:
+    void ExecPipe(ThreadContext *context, StatementContext &stmt) override;
+protected:
+    virtual void executeAsyncCopy(ThreadContext *context, const CpAsyncInstr &instr) {
+        // Default implementation does nothing
+        (void)context;
+        (void)instr;
+    }
 };
 
 #endif

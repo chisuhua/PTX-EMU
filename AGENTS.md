@@ -103,7 +103,7 @@ find src include -name "*.cpp" -o -name "*.h" | xargs clang-format -i
 ### Adding PTX Instructions
 1. Update `include/ptx_ir/ptx_op.def` (X-Macro pattern)
 2. Implement handler in `src/ptxsim/instructions/`
-3. Update grammar in `src/grammar/ptxParser.g4` if needed
+3. Update grammar in `src/ptxParser.g4` if needed
 4. Regenerate parser: `cmake --build build --target GenerateParser`
 
 ### Adding Qualifiers
@@ -133,7 +133,7 @@ The project uses X-Macros for code generation:
 
 - `include/ptx_ir/ptx_op.def` - Instruction definitions (X-Macro)
 - `include/ptx_ir/ptx_qualifier.def` - Qualifier definitions
-- `src/grammar/ptxLexer.g4` / `ptxParser.g4` - ANTLR grammar
+- `src/ptxLexer.g4` / `ptxParser.g4` - ANTLR grammar
 - `src/cudart/cudart_sim.cpp` - Main CUDA runtime entry point
 - `src/ptxsim/instruction_handlers.h` - Instruction handler declarations
 - `docs/debugging_guide.md` - Debugging and logging setup

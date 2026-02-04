@@ -1,207 +1,118 @@
-// instruction_handlers.h
-#ifndef PTXSIM_INSTRUCTION_HANDLERS_DECL_H
-#define PTXSIM_INSTRUCTION_HANDLERS_DECL_H
+#ifndef PTXSIM_INSTRUCTION_HANDLERS_H
+#define PTXSIM_INSTRUCTION_HANDLERS_H
 
-#include "instruction_base.h"
+#include "ptxsim/instruction_base.h"
+#include "ptx_ir/statement_context.h"
+#include <string>
+#include <vector>
 
-class ThreadContext;
-class StatementContext;
-
-#define DECLARE_ABI_DIRECTIVE(Name, _)                                         \
-    class Name : public ABI_DIRECTIVE {                                        \
-    public:                                                                    \
-        void ExecPipe(ThreadContext *context,                                  \
-                      StatementContext &stmt) override;                        \
+// Declaration handlers
+#define DECLARE_DECLARATION_HANDLER(Name) \
+    class Name##_Handler : public DeclarationHandler { \
+    public: \
+        void ExecPipe(ThreadContext *context, StatementContext &stmt) override; \
     };
 
-#define DECLARE_OPERAND_REG(Name, _)                                           \
-    class Name : public OPERAND_REG {                                          \
-    public:                                                                    \
-        void ExecPipe(ThreadContext *context,                                  \
-                      StatementContext &stmt) override;                        \
+#define DECLARE_OPERAND_REG_HANDLER(Name)     DECLARE_DECLARATION_HANDLER(Name)
+#define DECLARE_OPERAND_CONST_HANDLER(Name)   DECLARE_DECLARATION_HANDLER(Name)
+#define DECLARE_OPERAND_MEMORY_HANDLER(Name)  DECLARE_DECLARATION_HANDLER(Name)
+
+// Simple handlers
+#define DECLARE_SIMPLE_HANDLER(Name) \
+    class Name##_Handler : public SimpleHandler { \
+    public: \
+        void ExecPipe(ThreadContext *context, StatementContext &stmt) override; \
     };
 
-#define DECLARE_OPERAND_CONST(Name, _)                                         \
-    class Name : public OPERAND_CONST {                                        \
-    public:                                                                    \
-        void ExecPipe(ThreadContext *context,                                  \
-                      StatementContext &stmt) override;                        \
+#define DECLARE_SIMPLE_NAME_HANDLER(Name)     DECLARE_SIMPLE_HANDLER(Name)
+#define DECLARE_LABEL_INSTR_HANDLER(Name)     DECLARE_SIMPLE_HANDLER(Name)
+#define DECLARE_SIMPLE_STRING_HANDLER(Name)   DECLARE_SIMPLE_HANDLER(Name)
+
+// Void handlers
+#define DECLARE_VOID_HANDLER(Name) \
+    class Name##_Handler : public VoidHandler { \
+    public: \
+        void ExecPipe(ThreadContext *context, StatementContext &stmt) override; \
     };
 
-#define DECLARE_OPERAND_MEMORY(Name, _)                                        \
-    class Name : public OPERAND_MEMORY {                                       \
-    public:                                                                    \
-        void ExecPipe(ThreadContext *context,                                  \
-                      StatementContext &stmt) override;                        \
+#define DECLARE_VOID_INSTR_HANDLER(Name)      DECLARE_VOID_HANDLER(Name)
+
+// Branch handlers
+#define DECLARE_BRANCH_HANDLER(Name) \
+    class Name##_Handler : public BranchHandler { \
+    public: \
+        void executeBranch(ThreadContext *context, const BranchInstr &instr) override; \
     };
 
-#define DECLARE_SIMPLE_NAME(Name, _)                                           \
-    class Name : public SIMPLE_NAME {                                          \
-    public:                                                                    \
-        void ExecPipe(ThreadContext *context,                                  \
-                      StatementContext &stmt) override;                        \
+// Barrier handlers — FIXED: must override pure virtual
+#define DECLARE_BARRIER_HANDLER(Name) \
+    class Name##_Handler : public BarrierHandler { \
+    public: \
+        void executeBarrier(ThreadContext *context, const BarrierInstr &instr) override; \
     };
 
-#define DECLARE_SIMPLE_STRING(Name, _)                                         \
-    class Name : public SIMPLE_STRING {                                        \
-    public:                                                                    \
-        void ExecPipe(ThreadContext *context,                                  \
-                      StatementContext &stmt) override;                        \
+// Call handlers — FIXED: declare all used methods
+#define DECLARE_CALL_INSTR_HANDLER(Name) \
+    class Name##_Handler : public CallHandler { \
+    public: \
+        void executeCall(ThreadContext *context, const CallInstr &instr) override; \
+        void handlePrintf(ThreadContext *context, const CallInstr &instr); \
+        void parseAndPrintFormat(ThreadContext *context, const std::string &format, \
+                                const std::vector<void *> &args); \
     };
 
-#define DECLARE_VOID_INSTR(Name, _)                                            \
-    class Name : public VOID_INSTR {                                           \
-    public:                                                                    \
-        void ExecPipe(ThreadContext *context,                                  \
-                      StatementContext &stmt) override;                        \
-        void process_operation(ThreadContext *context);                        \
+// Generic instruction handlers — RECOMMENDED: declare override
+#define DECLARE_GENERIC_INSTR_HANDLER(Name) \
+    class Name##_Handler : public GenericPipelineHandler { \
+    public: \
+        void processOperation(ThreadContext *context, void **operands, \
+                             const std::vector<Qualifier> &qualifiers) override; \
     };
 
-#define DECLARE_BRANCH(Name, _)                                                \
-    class Name : public BRANCH {                                               \
-    public:                                                                    \
-        bool operate(ThreadContext *context, StatementContext &stmt) override; \
-        void                                                                   \
-        process_operation(ThreadContext *context, void **operands,             \
-                          const std::vector<Qualifier> &qualifiers) override;  \
+// Atomic instruction handlers — RECOMMENDED
+#define DECLARE_ATOM_INSTR_HANDLER(Name) \
+    class Name##_Handler : public AtomicPipelineHandler { \
+    public: \
+        void processAtomicOperation(ThreadContext *context, void **operands, \
+                                   const std::vector<Qualifier> &qualifiers) override; \
     };
 
-#define DECLARE_BARRIER(Name, _)                                               \
-    class Name : public BARRIER {                                              \
-    public:                                                                    \
-        bool operate(ThreadContext *context, StatementContext &stmt) override; \
-        void process_operation(ThreadContext *context, int barId,              \
-                               const std::vector<Qualifier> &qualifiers);      \
+// WMMA instruction handlers — RECOMMENDED
+#define DECLARE_WMMA_INSTR_HANDLER(Name) \
+    class Name##_Handler : public WmmaPipelineHandler { \
+    public: \
+        void processWmmaOperation(ThreadContext *context, void **operands, \
+                                 const std::vector<Qualifier> &qualifiers) override; \
     };
 
-#define DECLARE_GENERIC_INSTR(Name, OpCount)                                   \
-    class Name : public GENERIC_INSTR {                                        \
-    public:                                                                    \
-        static constexpr int op_count = OpCount;                               \
-        bool prepare(ThreadContext *context, StatementContext &stmt) override; \
-        bool commit(ThreadContext *context, StatementContext &stmt) override;  \
-        void                                                                   \
-        process_operation(ThreadContext *context, void **operands,             \
-                          const std::vector<Qualifier> &qualifiers) override;  \
+// CP_ASYNC should use AsyncCopyHandler
+#define DECLARE_CP_ASYNC_INSTR_HANDLER(Name) \
+    class Name##_Handler : public AsyncCopyHandler { \
+    public: \
+        void executeAsyncCopy(ThreadContext *context, const CpAsyncInstr &instr) override; \
     };
 
-#define DECLARE_PREDICATE_PREFIX(Name, OpCount)                                \
-    class Name : public PREDICATE_PREFIX {                                     \
-    public:                                                                    \
-        static constexpr int op_count = OpCount;                               \
-        bool prepare(ThreadContext *context, StatementContext &stmt) override; \
-        bool operate(ThreadContext *context, StatementContext &stmt) override; \
-        bool commit(ThreadContext *context, StatementContext &stmt) override;  \
-        void                                                                   \
-        process_operation(ThreadContext *context, void **operands,             \
-                          const std::vector<Qualifier> &qualifiers) override;  \
-    };
+#define DECLARE_MEMBAR_INSTR_HANDLER(Name)     DECLARE_SIMPLE_HANDLER(Name)
+#define DECLARE_FENCE_INSTR_HANDLER(Name)      DECLARE_SIMPLE_HANDLER(Name)
+#define DECLARE_REDUX_INSTR_HANDLER(Name)      DECLARE_SIMPLE_HANDLER(Name)
+#define DECLARE_MBARRIER_INSTR_HANDLER(Name)   DECLARE_SIMPLE_HANDLER(Name)
+#define DECLARE_PREDICATE_PREFIX_HANDLER(Name) DECLARE_SIMPLE_HANDLER(Name)
+#define DECLARE_VOTE_INSTR_HANDLER(Name)       DECLARE_SIMPLE_HANDLER(Name)
+#define DECLARE_SHFL_INSTR_HANDLER(Name)       DECLARE_SIMPLE_HANDLER(Name)
+#define DECLARE_TEXTURE_INSTR_HANDLER(Name)    DECLARE_SIMPLE_HANDLER(Name)
+#define DECLARE_SURFACE_INSTR_HANDLER(Name)    DECLARE_SIMPLE_HANDLER(Name)
+#define DECLARE_REDUCTION_INSTR_HANDLER(Name)  DECLARE_SIMPLE_HANDLER(Name)
+#define DECLARE_PREFETCH_INSTR_HANDLER(Name)   DECLARE_SIMPLE_HANDLER(Name)
+#define DECLARE_ASYNC_STORE_HANDLER(Name)      DECLARE_SIMPLE_HANDLER(Name)
+#define DECLARE_ASYNC_REDUCE_HANDLER(Name)     DECLARE_SIMPLE_HANDLER(Name)
+#define DECLARE_TCGEN_INSTR_HANDLER(Name)      DECLARE_SIMPLE_HANDLER(Name)
+#define DECLARE_TENSORMAP_INSTR_HANDLER(Name)  DECLARE_SIMPLE_HANDLER(Name)
+#define DECLARE_ABI_DIRECTIVE_HANDLER(Name)    DECLARE_SIMPLE_HANDLER(Name)
 
-#define DECLARE_ATOM_INSTR(Name, OpCount)                                      \
-    class Name : public ATOM_INSTR {                                           \
-    public:                                                                    \
-        static constexpr int op_count = OpCount;                               \
-        bool prepare(ThreadContext *context, StatementContext &stmt) override; \
-        bool operate(ThreadContext *context, StatementContext &stmt) override; \
-        void ExecPipe(ThreadContext *context,                                  \
-                      StatementContext &stmt) override;                        \
-        bool commit(ThreadContext *context, StatementContext &stmt) override;  \
-        void                                                                   \
-        process_operation(ThreadContext *context, void **operands,             \
-                          const std::vector<Qualifier> &qualifiers) override;  \
-    };
-
-#define DECLARE_WMMA_INSTR(Name, OpCount)                                      \
-    class Name : public WMMA_INSTR {                                           \
-    public:                                                                    \
-        static constexpr int op_count = OpCount;                               \
-        bool prepare(ThreadContext *context, StatementContext &stmt) override; \
-        bool operate(ThreadContext *context, StatementContext &stmt) override; \
-        void ExecPipe(ThreadContext *context,                                  \
-                      StatementContext &stmt) override;                        \
-        bool commit(ThreadContext *context, StatementContext &stmt) override;  \
-        void                                                                   \
-        process_operation(ThreadContext *context, void **operands,             \
-                          const std::vector<Qualifier> &qualifiers) override;  \
-    };
-
-#define DECLARE_ASYNC_STORE(Name, OpCount)                                     \
-    class Name : public ASYNC_STORE {                                          \
-    public:                                                                    \
-        static constexpr int op_count = OpCount;                               \
-        bool prepare(ThreadContext *context, StatementContext &stmt) override; \
-        bool operate(ThreadContext *context, StatementContext &stmt) override; \
-        void ExecPipe(ThreadContext *context,                                  \
-                      StatementContext &stmt) override;                        \
-        bool commit(ThreadContext *context, StatementContext &stmt) override;  \
-        void                                                                   \
-        process_operation(ThreadContext *context, void **operands,             \
-                          const std::vector<Qualifier> &qualifiers) override;  \
-    };
-
-#define DECLARE_ASYNC_REDUCE(Name, OpCount)                                    \
-    class Name : public ASYNC_REDUCE {                                         \
-    public:                                                                    \
-        static constexpr int op_count = OpCount;                               \
-        bool prepare(ThreadContext *context, StatementContext &stmt) override; \
-        bool operate(ThreadContext *context, StatementContext &stmt) override; \
-        void ExecPipe(ThreadContext *context,                                  \
-                      StatementContext &stmt) override;                        \
-        bool commit(ThreadContext *context, StatementContext &stmt) override;  \
-        void                                                                   \
-        process_operation(ThreadContext *context, void **operands,             \
-                          const std::vector<Qualifier> &qualifiers) override;  \
-    };
-
-#define DECLARE_TCGEN_INSTR(Name, OpCount)                                     \
-    class Name : public TCGEN_INSTR {                                          \
-    public:                                                                    \
-        static constexpr int op_count = OpCount;                               \
-        bool prepare(ThreadContext *context, StatementContext &stmt) override; \
-        bool operate(ThreadContext *context, StatementContext &stmt) override; \
-        void ExecPipe(ThreadContext *context,                                  \
-                      StatementContext &stmt) override;                        \
-        bool commit(ThreadContext *context, StatementContext &stmt) override;  \
-        void                                                                   \
-        process_operation(ThreadContext *context, void **operands,             \
-                          const std::vector<Qualifier> &qualifiers) override;  \
-    };
-
-#define DECLARE_TENSORMAP_INSTR(Name, OpCount)                                 \
-    class Name : public TENSORMAP_INSTR {                                      \
-    public:                                                                    \
-        static constexpr int op_count = OpCount;                               \
-        bool prepare(ThreadContext *context, StatementContext &stmt) override; \
-        bool operate(ThreadContext *context, StatementContext &stmt) override; \
-        void ExecPipe(ThreadContext *context,                                  \
-                      StatementContext &stmt) override;                        \
-        bool commit(ThreadContext *context, StatementContext &stmt) override;  \
-        void                                                                   \
-        process_operation(ThreadContext *context, void **operands,             \
-                          const std::vector<Qualifier> &qualifiers) override;  \
-    };
-
-// 专门为 CALL 指令添加声明宏
-#define DECLARE_CALL_INSTR(Name, OpCount)                                      \
-    class Name : public GENERIC_INSTR {                                        \
-    public:                                                                    \
-        static constexpr int op_count = OpCount;                               \
-        bool prepare(ThreadContext *context, StatementContext &stmt) override; \
-        bool commit(ThreadContext *context, StatementContext &stmt) override;  \
-        void ExecPipe(ThreadContext *context,                                  \
-                      StatementContext &stmt) override;                        \
-        void handlePrintf(ThreadContext *context, StatementContext &stmt);     \
-        void                                                                   \
-        process_operation(ThreadContext *context, void **operands,             \
-                          const std::vector<Qualifier> &qualifiers) override;  \
-        void parseAndPrintFormat(ThreadContext *context,                       \
-                                 const std::string &format,                    \
-                                 const std::vector<void *> &args);             \
-    };
-
-#define X(enum_val, type_name, str, op_count, struct_kind)                     \
-    DECLARE_##struct_kind(type_name, op_count)
+// Generate all handler declarations
+#define X(enum_val, type_name, str, op_count, struct_kind) \
+    DECLARE_##struct_kind##_HANDLER(type_name)
 #include "ptx_ir/ptx_op.def"
 #undef X
 
-#endif // PTXSIM_INSTRUCTION_HANDLERS_DECL_H
+#endif // PTXSIM_INSTRUCTION_HANDLERS_H

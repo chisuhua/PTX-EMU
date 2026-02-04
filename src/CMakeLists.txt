@@ -4,27 +4,38 @@ find_program(ANTLR4_CC grammars-v4/ANTLRv4Parser.g4 JAR_FILE ${ANTLR_EXECUTABLE}
 # 定义ANTLR生成的源文件列表
 set(ANTLR4_GENERATED_SOURCES
     ${ANTLR4_GENERATED_SRC_DIR}/ptxLexer.cpp
+    ${ANTLR4_GENERATED_SRC_DIR}/ptxLexer.h
     ${ANTLR4_GENERATED_SRC_DIR}/ptxParser.cpp
+    ${ANTLR4_GENERATED_SRC_DIR}/ptxParser.h
     ${ANTLR4_GENERATED_SRC_DIR}/ptxParserVisitor.cpp
+    ${ANTLR4_GENERATED_SRC_DIR}/ptxParserVisitor.h
     ${ANTLR4_GENERATED_SRC_DIR}/ptxParserBaseVisitor.cpp
+    ${ANTLR4_GENERATED_SRC_DIR}/ptxParserBaseVisitor.h
     ${ANTLR4_GENERATED_SRC_DIR}/ptxParserListener.cpp
+    ${ANTLR4_GENERATED_SRC_DIR}/ptxParserListener.h
     ${ANTLR4_GENERATED_SRC_DIR}/ptxParserBaseListener.cpp
+    ${ANTLR4_GENERATED_SRC_DIR}/ptxParserBaseListener.h
 )
 
-# 定义ANTLR生成目标
+# 定义ANTLR生成目标 - 再生成语法分析器
 add_custom_command(
     OUTPUT ${ANTLR4_GENERATED_SOURCES}
-    COMMAND java -Xss500M -Xmx500M -cp "${ANTLR_EXECUTABLE}" org.antlr.v4.Tool 
-        -Dlanguage=Cpp grammar/ptxLexer.g4 grammar/ptxParser.g4
-        -listener -visitor -package ptxparser 
+    COMMAND java -Xss500M -Xmx500M -cp "${ANTLR_EXECUTABLE}" org.antlr.v4.Tool
+        -Dlanguage=Cpp ptxLexer.g4 ptxParser.g4
+        -listener -visitor -package ptxparser
         -o ${ANTLR4_GENERATED_SRC_DIR}
-    DEPENDS grammar/ptxLexer.g4 grammar/ptxParser.g4
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMENT "Generating parser from ANTLR grammar files..."
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/grammar/ptxLexer.g4 ${CMAKE_CURRENT_SOURCE_DIR}/grammar/ptxParser.g4
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/grammar
+    COMMENT "Generating parser from ANTLR grammar file..."
     VERBATIM
 )
 
-add_custom_target(GenerateParser DEPENDS ${ANTLR4_GENERATED_SOURCES} grammar/ptxLexer.g4 grammar/ptxParser.g4)
+add_custom_target(GenerateParser
+    DEPENDS 
+        ${ANTLR4_GENERATED_SOURCES}
+        ${CMAKE_CURRENT_SOURCE_DIR}/grammar/ptxLexer.g4
+        ${CMAKE_CURRENT_SOURCE_DIR}/grammar/ptxParser.g4
+)
 
 # 设置源文件（包含ANTLR生成的源文件）
 set(SOURCES
@@ -88,17 +99,17 @@ add_library(ptxsim SHARED
 )
 target_link_libraries(ptxsim ptx_ir)
 
-# add_library(ptx_parser SHARED
-    # ptx_parser/ptx_parser.cpp
-# )
-# target_link_libraries(ptx_parser ptx_ir)
+add_library(ptx_parser SHARED
+    ptx_parser/ptx_visitor.cpp
+)
+target_link_libraries(ptx_parser ptx_ir)
 
 # 创建共享库
 add_library(cudart SHARED ${SOURCES})
-# target_link_libraries(cudart ptx_ir ptx_parser ptxsim)
+target_link_libraries(cudart ptx_ir ptx_parser ptxsim)
 target_link_libraries(cudart ptx_ir ptxsim)
 add_dependencies(cudart GenerateParser)
-# add_dependencies(cudart ptx_parser)
+add_dependencies(cudart ptx_parser)
 add_dependencies(cudart ptxsim)
 
 # 标记ANTLR生成的源文件为生成文件

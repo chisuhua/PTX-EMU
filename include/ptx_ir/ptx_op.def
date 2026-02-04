@@ -1,7 +1,6 @@
 // =============================================================================
 // PTX Statement Type Definition (X-Macro Format)
-// Format: X(enum_value, type_name, lowercase_string, op_count)
-// Note: op_count = number of operands in the statement (dst + src1 + src2 + ...)
+// Format: X(enum_value, type_name, lowercase_string, op_count, struct_kind)
 // =============================================================================
 // X macro field: statement_type, op_kind, op_name , op_count, struct_kind
 
@@ -26,18 +25,30 @@ X(S_DOLLOR,  DOLLOR,  Dollar,  0, SIMPLE_NAME)      // Inline register ($r1)
 // -----------------------------------------------------------------------------
 X(S_AT,      AT,      At,      0, PREDICATE_PREFIX)      // Predicate prefix (not a full instruction)
 X(S_PRAGMA,  PRAGMA,  Pragma,  0, SIMPLE_STRING)      // Pragma: no operands in PTX sense
+X(S_LABEL,   LABEL,   Label,   1, LABEL_INSTR)      // Label definition: name:
 
 // -----------------------------------------------------------------------------
 // 2. 控制指令（Control Flow）
 // -----------------------------------------------------------------------------
 X(S_RET,     RET,     Ret,     0, VOID_INSTR)      // Return: no operands
+X(S_EXIT,    EXIT,    Exit,    0, VOID_INSTR)      // Exit: terminate kernel
 X(S_BRA,     BRA,     Bra,     1, BRANCH)      // Branch: target label
+X(S_BRX,     BRX,     Brx,     2, BRANCH)      // Indirect branch: address, target
 X(S_CALL,    CALL,    Call,    3, CALL_INSTR)      // Call: function name, args, return addr
+X(S_TRAP,    TRAP,    Trap,    0, VOID_INSTR)      // Trap: debug breakpoint
+X(S_BRK,     BRK,     Brk,     1, VOID_INSTR)      // Break: with optional number
+X(S_BRKPT,   BRKPT,   Brkpt,   0, VOID_INSTR)      // Breakpoint
 
 // -----------------------------------------------------------------------------
 // 3. 同步指令
 // -----------------------------------------------------------------------------
-X(S_BAR,     BAR,     bar,     0, BARRIER)      // barrier: no operands (simplified)
+X(S_BAR,     BAR,     Bar,     2, BARRIER)      // barrier: sync/arrive/red, bar_id
+X(S_MEMBAR,  MEMBAR,  Membar,  1, MEMBAR_INSTR)      // membar: scope
+X(S_FENCE,   FENCE,   Fence,   1, FENCE_INSTR)      // fence: memory order + scope
+X(S_REDUX_SYNC, REDUX_SYNC, ReduxSync, 2, REDUX_INSTR)      // redux.sync: op, dst, src
+X(S_MBARRIER_INIT, MBARRIER_INIT, MbarrierInit, 2, MBARRIER_INSTR)      // mbarrier.init
+X(S_MBARRIER_ARRIVE, MBARRIER_ARRIVE, MbarrierArrive, 2, MBARRIER_INSTR)      // mbarrier.arrive
+X(S_MBARRIER_TRY_WAIT, MBARRIER_TRY_WAIT, MbarrierTryWait, 3, MBARRIER_INSTR)      // mbarrier.try_wait
 
 // -----------------------------------------------------------------------------
 // 3. 数据移动与转换（Data Movement & Conversion）
@@ -47,6 +58,11 @@ X(S_ST,      ST,      St,      2, GENERIC_INSTR)      // st: dst_addr, src
 X(S_MOV,     MOV,     Mov,     2, GENERIC_INSTR)      // mov: dst, src
 X(S_CVT,     CVT,     Cvt,     2, GENERIC_INSTR)      // cvt: dst, src
 X(S_CVTA,    CVTA,    Cvta,    2, GENERIC_INSTR)      // cvta: dst, src
+X(S_PRMT,    PRMT,    Prmt,    4, GENERIC_INSTR)      // prmt: dst, src1, src2, src3
+X(S_ISSPACEP, ISSPACEP, Isspacep, 2, GENERIC_INSTR)      // isspacep: dst, src
+X(S_MAPA,    MAPA,    Mapa,    3, GENERIC_INSTR)      // mapa: dst, src1, src2
+X(S_ALLOCA,  ALLOCA, Alloca,  2, GENERIC_INSTR)      // alloca: dst, size
+X(S_CP_ASYNC, CP_ASYNC, CpAsync, 3, CP_ASYNC_INSTR)      // cp.async: dst, src, size
 
 // -----------------------------------------------------------------------------
 // 4. 算术运算（Arithmetic Instructions）
@@ -66,6 +82,10 @@ X(S_MAD24,   MAD24,   Mad24,   4, GENERIC_INSTR)      // mad24: dst, src1, src2,
 X(S_FMA,     FMA,     Fma,     4, GENERIC_INSTR)      // fma: dst, src1, src2, src3
 X(S_ADDC,    ADDC,    Addc,    3, GENERIC_INSTR)      // addc: dst, src1, src2 (with carry)
 X(S_SUBC,    SUBC,    Subc,    3, GENERIC_INSTR)      // subc: dst, src1, src2 (with borrow)
+X(S_SAD,     SAD,     Sad,     4, GENERIC_INSTR)      // sad: dst, src1, src2, src3 (sum of absolute differences)
+X(S_COPYSIGN, COPYSIGN, Copysign, 3, GENERIC_INSTR)      // copysign: dst, src1, src2
+X(S_TESTP,   TESTP,   Testp,   2, GENERIC_INSTR)      // testp: dst, src
+X(S_TANH,    TANH,    Tanh,    2, GENERIC_INSTR)      // tanh: dst, src
 
 // -----------------------------------------------------------------------------
 // 5. 位运算（Bitwise Instructions）
@@ -76,12 +96,17 @@ X(S_XOR,     XOR,     Xor,     3, GENERIC_INSTR)      // xor: dst, src1, src2
 X(S_NOT,     NOT,     Not,     2, GENERIC_INSTR)      // not: dst, src
 X(S_SHL,     SHL,     Shl,     3, GENERIC_INSTR)      // shl: dst, src, shift_amount
 X(S_SHR,     SHR,     Shr,     3, GENERIC_INSTR)      // shr: dst, src, shift_amount
+X(S_SHF,     SHF,     Shf,     4, GENERIC_INSTR)      // shf: dst, src1, src2, shift_amount
+X(S_LOP3,    LOP3,    Lop3,    5, GENERIC_INSTR)      // lop3: dst, src1, src2, src3, imm
 
 // -----------------------------------------------------------------------------
 // 6. 比较与选择（Comparison & Selection）
 // -----------------------------------------------------------------------------
 X(S_SETP,    SETP,    Setp,    3, GENERIC_INSTR)      // setp: pred, src1, src2
+X(S_SET,     SET,     Set,     3, GENERIC_INSTR)      // set: dst, src1, src2
 X(S_SELP,    SELP,    Selp,    4, GENERIC_INSTR)      // selp: dst, src1, src2, pred
+X(S_SLCT,    SLCT,    Slct,    4, GENERIC_INSTR)      // slct: dst, src1, src2, pred
+X(S_CNOT,    CNOT,    Cnot,    2, GENERIC_INSTR)      // cnot: dst, src
 
 // -----------------------------------------------------------------------------
 // 7. 数学函数（Mathematical Functions）
@@ -107,13 +132,39 @@ X(S_POPC,    POPC,    Popc,    2, GENERIC_INSTR)      // popc: dst, src
 X(S_CLZ,     CLZ,     Clz,     2, GENERIC_INSTR)      // clz: dst, src
 
 // -----------------------------------------------------------------------------
-// 10. 异步内存指令（PTX 8.7+）
+// 10. Warp-level Instructions
+// -----------------------------------------------------------------------------
+X(S_VOTE,    VOTE,    Vote,    2, VOTE_INSTR)      // vote: mode, pred
+X(S_SHFL,    SHFL,    Shfl,    4, SHFL_INSTR)      // shfl: mode, dst, src, offset
+
+// -----------------------------------------------------------------------------
+// 11. Texture / Surface Instructions
+// -----------------------------------------------------------------------------
+X(S_TEX,     TEX,     Tex,     2, TEXTURE_INSTR)      // tex: dst, sampler
+X(S_SURF,    SURF,    Surf,    2, SURFACE_INSTR)      // surf: dst, surface
+X(S_TEX_LDG, TEX_LDG, TexLdg,  2, TEXTURE_INSTR)      // tex.ldg: dst, coord
+X(S_TEX_GRAD, TEX_GRAD, TexGrad, 3, TEXTURE_INSTR)      // tex.grad: dst, coord, grad
+X(S_TEX_LOD, TEX_LOD, TexLod,  2, TEXTURE_INSTR)      // tex.lod: dst, coord
+X(S_TXQ,     TXQ,     Txq,     2, TEXTURE_INSTR)      // txq: dst, query
+X(S_SULD,    SULD,    Suld,    2, SURFACE_INSTR)      // suld: dst, addr
+X(S_SUST,    SUST,    Sust,    2, SURFACE_INSTR)      // sust: addr, src
+X(S_SUQ,     SUQ,     Suq,     2, SURFACE_INSTR)      // suq: dst, query
+
+// -----------------------------------------------------------------------------
+// 12. Reduction & Prefetch Instructions
+// -----------------------------------------------------------------------------
+X(S_RED,     RED,     Red,     3, REDUCTION_INSTR)      // red: op, addr, val
+X(S_PREFETCH, PREFETCH, Prefetch, 1, PREFETCH_INSTR)      // prefetch: addr
+X(S_PREFETCHU, PREFETCHU, Prefetchu, 1, PREFETCH_INSTR)      // prefetchu: addr
+
+// -----------------------------------------------------------------------------
+// 13. 异步内存指令（PTX 8.7+）
 // -----------------------------------------------------------------------------
 X(S_ST_ASYNC,   ST_ASYNC,   StAsync,   2, ASYNC_STORE)      // st.async space.type [qualifiers] addr, val
 X(S_RED_ASYNC,  RED_ASYNC,  RedAsync,  3, ASYNC_REDUCE)     // red.async space.op.type [qualifiers] addr, val[, old]
 
 // -----------------------------------------------------------------------------
-// 11. Tensor Core Generator (Hopper+, PTX 8.7+)
+// 14. Tensor Core Generator (Hopper+, PTX 8.7+)
 // -----------------------------------------------------------------------------
 X(S_TCGEN_ALLOC,        TCGEN_ALLOC,        TcgenAlloc,        1, TCGEN_INSTR)
 X(S_TCGEN_DEALLOC,      TCGEN_DEALLOC,      TcgenDealloc,      1, TCGEN_INSTR)
@@ -124,17 +175,17 @@ X(S_TCGEN_MMA,          TCGEN_MMA,          TcgenMma,          4, TCGEN_INSTR)
 X(S_TCGEN_COMMIT,       TCGEN_COMMIT,       TcgenCommit,       2, TCGEN_INSTR)
 
 // -----------------------------------------------------------------------------
-// 12. Tensor Map Instructions (PTX 8.7+)
+// 15. Tensor Map Instructions (PTX 8.7+)
 // -----------------------------------------------------------------------------
 X(S_TENSORMAP_REPLACE, TENSORMAP_REPLACE, TensormapReplace, 3, TENSORMAP_INSTR)
 
 // -----------------------------------------------------------------------------
-// 13. Bulk Store (PTX 9.0+)
+// 16. Bulk Store (PTX 9.0+)
 // -----------------------------------------------------------------------------
 X(S_ST_BULK, ST_BULK, StBulk, 3, GENERIC_INSTR)
 
 // -----------------------------------------------------------------------------
-// 14. ABI Preserve Directives (Global or in func body)
+// 17. ABI Preserve Directives (Global or in func body)
 // Note: We treat as statement for uniformity, though usually global
 // -----------------------------------------------------------------------------
 X(S_ABI_PRESERVE, ABI_PRESERVE, AbiPreserve, 1, ABI_DIRECTIVE)
