@@ -5,13 +5,13 @@
 #include "ptxsim/warp_context.h"
 #include <cmath>
 
-void BRA::process_operation(ThreadContext *context, void *op[1],
+void BRA_Handler::processOperation(ThreadContext *context, void *op[1],
                             const std::vector<Qualifier> &qualifier) {
     int target_pc = *(int *)(op[0]);
     context->next_pc = target_pc;
 }
 
-void AT::process_operation(ThreadContext *context, void *op[2],
+void AT_Handler::processOperation(ThreadContext *context, void *op[2],
                            const std::vector<Qualifier> &qualifier) {
     int8_t predicate = *(int8_t *)(op[0]);
     int target_pc = *(int *)(op[1]);
@@ -19,7 +19,7 @@ void AT::process_operation(ThreadContext *context, void *op[2],
         context->next_pc = target_pc;
 }
 
-void BAR::process_operation(ThreadContext *context, int barId,
+void BRA_Handler::processOperation(ThreadContext *context, int barId,
                             const std::vector<Qualifier> &qualifier) {
     // 获取线程所属的warp上下文
     context->state = BAR_SYNC;
