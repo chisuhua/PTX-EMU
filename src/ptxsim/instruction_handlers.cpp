@@ -38,6 +38,7 @@
         /* Implementation is in separate .cpp file */ \
         (void)context; \
         (void)instr; \
+        return; \
     }
 
 // Barrier handlers
@@ -47,6 +48,7 @@
         /* Implementation is in separate .cpp file */ \
         (void)context; \
         (void)instr; \
+        return; \
     }
 
 // Call handlers
@@ -56,11 +58,13 @@
         /* Implementation is in separate .cpp file */ \
         (void)context; \
         (void)instr; \
+        return; \
     } \
     __attribute__((weak)) void Name##_Handler::handlePrintf(ThreadContext *context, const CallInstr &instr) { \
         /* Implementation is in separate .cpp file */ \
         (void)context; \
         (void)instr; \
+        return; \
     } \
     __attribute__((weak)) void Name##_Handler::parseAndPrintFormat(ThreadContext *context, const std::string &format, \
                                            const std::vector<void *> &args) { \
@@ -68,6 +72,7 @@
         (void)context; \
         (void)format; \
         (void)args; \
+        return; \
     }
 
 // Generic instruction handlers (add, ld, st, mov, etc.)
@@ -79,6 +84,7 @@
         (void)context; \
         (void)operands; \
         (void)qualifiers; \
+        return; \
     }
 
 // Atomic instruction handlers
@@ -90,6 +96,7 @@
         (void)context; \
         (void)operands; \
         (void)qualifiers; \
+        return; \
     }
 
 // WMMA instruction handlers
@@ -101,6 +108,7 @@
         (void)context; \
         (void)operands; \
         (void)qualifiers; \
+        return; \
     }
 
 // CP_ASYNC handler (currently treated as simple, but can be extended)
@@ -111,6 +119,7 @@
                       instr.operands[1].operand_phy_addr, \
                       *(int*)instr.operands[2].operand_phy_addr); \
         /* TODO: integrate with async copy engine */ \
+        return; \
     }
 
 // All other instruction types map to SimpleHandler
