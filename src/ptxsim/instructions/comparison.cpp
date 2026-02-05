@@ -128,7 +128,7 @@ void process_comparison(void *dst, void *src1, void *src2, int bytes,
     }
 }
 
-void SETP::process_operation(ThreadContext *context, void *op[3],
+void SETP_Handler::processOperation(ThreadContext *context, void *op[3],
                              const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src1 = op[1];
@@ -142,7 +142,7 @@ void SETP::process_operation(ThreadContext *context, void *op[3],
     *static_cast<uint8_t *>(dst) = result;
 }
 
-void SELP::process_operation(ThreadContext *context, void *op[4],
+void SELP_Handler::processOperation(ThreadContext *context, void *op[4],
                              const std::vector<Qualifier> &qualifiers) {
     void *dst = op[0];
     void *src1 = op[1];
