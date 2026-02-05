@@ -113,10 +113,10 @@ inline uint16_t float_to_half(float f) {
     return result;
 }
 
-void CVT::process_operation(ThreadContext *context, void *op[2],
-                            const std::vector<Qualifier> &qualifiers) {
-    void *dst = op[0];
-    void *src = op[1];
+void CVT_Handler::processOperation(ThreadContext *context, void **operands,
+                                   const std::vector<Qualifier> &qualifiers) {
+    void *dst = operands[0];
+    void *src = operands[1];
     std::vector<Qualifier> dst_qualifiers, src_qualifiers;
     splitDstSrcQualifiers(qualifiers, dst_qualifiers, src_qualifiers);
 
