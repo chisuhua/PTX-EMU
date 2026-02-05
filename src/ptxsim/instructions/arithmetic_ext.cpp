@@ -13,9 +13,9 @@ void ADDC_Handler::processOperation(ThreadContext *context, void **operands,
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
-    void *dst = op[0];
-    void *src1 = op[1];
-    void *src2 = op[2];
+    void *dst = operands[0];
+    void *src1 = operands[1];
+    void *src2 = operands[2];
 
     // ADDC指令实现带进位的加法：dst = src1 + src2 + carry
     // 从条件码寄存器获取进位值
@@ -243,9 +243,9 @@ void SUBC_Handler::processOperation(ThreadContext *context, void **operands,
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
-    void *dst = op[0];
-    void *src1 = op[1];
-    void *src2 = op[2];
+    void *dst = operands[0];
+    void *src1 = operands[1];
+    void *src2 = operands[2];
 
     // SUBC指令实现带借位的减法：dst = src1 - src2 - borrow
     // 从条件码寄存器获取借位值
@@ -464,9 +464,9 @@ void MUL24_Handler::processOperation(ThreadContext *context, void **operands,
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
-    void *dst = op[0];
-    void *src1 = op[1];
-    void *src2 = op[2];
+    void *dst = operands[0];
+    void *src1 = operands[1];
+    void *src2 = operands[2];
 
     // 检查修饰符
     bool has_hi = QvecHasQ(qualifiers, Qualifier::Q_HI);
@@ -508,10 +508,10 @@ void MAD24_Handler::processOperation(ThreadContext *context, void **operands,
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
-    void *dst = op[0];
-    void *src1 = op[1];
-    void *src2 = op[2];
-    void *src3 = op[3];
+    void *dst = operands[0];
+    void *src1 = operands[1];
+    void *src2 = operands[2];
+    void *src3 = operands[3];
 
     // 检查修饰符
     bool has_hi = QvecHasQ(qualifiers, Qualifier::Q_HI);
@@ -558,10 +558,10 @@ void FMA_Handler::processOperation(ThreadContext *context, void **operands,
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
-    void *dst = op[0];
-    void *src1 = op[1];
-    void *src2 = op[2];
-    void *src3 = op[3];
+    void *dst = operands[0];
+    void *src1 = operands[1];
+    void *src2 = operands[2];
+    void *src3 = operands[3];
 
     // 检查修饰符
     bool has_wide = QvecHasQ(qualifiers, Qualifier::Q_WIDE);
