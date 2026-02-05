@@ -34,7 +34,7 @@
 // Branch handlers
 // These are implemented in separate .cpp files
 #define IMPLEMENT_BRANCH_HANDLER(Name) \
-    void Name##_Handler::executeBranch(ThreadContext *context, const BranchInstr &instr) { \
+    __attribute__((weak)) void Name##_Handler::executeBranch(ThreadContext *context, const BranchInstr &instr) { \
         /* Implementation is in separate .cpp file */ \
         (void)context; \
         (void)instr; \
@@ -43,7 +43,7 @@
 // Barrier handlers
 // These are implemented in separate .cpp files
 #define IMPLEMENT_BARRIER_HANDLER(Name) \
-    void Name##_Handler::executeBarrier(ThreadContext *context, const BarrierInstr &instr) { \
+    __attribute__((weak)) void Name##_Handler::executeBarrier(ThreadContext *context, const BarrierInstr &instr) { \
         /* Implementation is in separate .cpp file */ \
         (void)context; \
         (void)instr; \
@@ -52,17 +52,17 @@
 // Call handlers
 // These are implemented in separate .cpp files
 #define IMPLEMENT_CALL_INSTR_HANDLER(Name) \
-    void Name##_Handler::executeCall(ThreadContext *context, const CallInstr &instr) { \
+    __attribute__((weak)) void Name##_Handler::executeCall(ThreadContext *context, const CallInstr &instr) { \
         /* Implementation is in separate .cpp file */ \
         (void)context; \
         (void)instr; \
     } \
-    void Name##_Handler::handlePrintf(ThreadContext *context, const CallInstr &instr) { \
+    __attribute__((weak)) void Name##_Handler::handlePrintf(ThreadContext *context, const CallInstr &instr) { \
         /* Implementation is in separate .cpp file */ \
         (void)context; \
         (void)instr; \
     } \
-    void Name##_Handler::parseAndPrintFormat(ThreadContext *context, const std::string &format, \
+    __attribute__((weak)) void Name##_Handler::parseAndPrintFormat(ThreadContext *context, const std::string &format, \
                                            const std::vector<void *> &args) { \
         /* Implementation is in separate .cpp file */ \
         (void)context; \
@@ -73,7 +73,7 @@
 // Generic instruction handlers (add, ld, st, mov, etc.)
 // These are implemented in separate .cpp files
 #define IMPLEMENT_GENERIC_INSTR_HANDLER(Name) \
-    void Name##_Handler::processOperation(ThreadContext *context, void **operands, \
+    __attribute__((weak)) void Name##_Handler::processOperation(ThreadContext *context, void **operands, \
                                         const std::vector<Qualifier> &qualifiers) { \
         /* Implementation is in separate .cpp file */ \
         (void)context; \
@@ -84,7 +84,7 @@
 // Atomic instruction handlers
 // These are implemented in separate .cpp files
 #define IMPLEMENT_ATOM_INSTR_HANDLER(Name) \
-    void Name##_Handler::processAtomicOperation(ThreadContext *context, void **operands, \
+    __attribute__((weak)) void Name##_Handler::processAtomicOperation(ThreadContext *context, void **operands, \
                                               const std::vector<Qualifier> &qualifiers) { \
         /* Implementation is in separate .cpp file */ \
         (void)context; \
@@ -95,7 +95,7 @@
 // WMMA instruction handlers
 // These are implemented in separate .cpp files
 #define IMPLEMENT_WMMA_INSTR_HANDLER(Name) \
-    void Name##_Handler::processWmmaOperation(ThreadContext *context, void **operands, \
+    __attribute__((weak)) void Name##_Handler::processWmmaOperation(ThreadContext *context, void **operands, \
                                             const std::vector<Qualifier> &qualifiers) { \
         /* Implementation is in separate .cpp file */ \
         (void)context; \
@@ -105,7 +105,7 @@
 
 // CP_ASYNC handler (currently treated as simple, but can be extended)
 #define IMPLEMENT_CP_ASYNC_INSTR_HANDLER(Name) \
-    void Name##_Handler::executeAsyncCopy(ThreadContext *context, const CpAsyncInstr &instr) { \
+    __attribute__((weak)) void Name##_Handler::executeAsyncCopy(ThreadContext *context, const CpAsyncInstr &instr) { \
         PTX_DEBUG_EMU("Enqueuing async copy: dst=%p, src=%p, size=%d", \
                       instr.operands[0].operand_phy_addr, \
                       instr.operands[1].operand_phy_addr, \
