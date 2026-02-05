@@ -28,11 +28,8 @@ void CALL_Handler::executeCall(ThreadContext *context, const CallInstr &instr) {
     // TODO: Implement actual call logic
 }
 
-void CALL_Handler::handlePrintf(ThreadContext *context, StatementContext &stmt) {
-    // Keep the original implementation but adapt to use StatementContext
-    auto ss = std::get<CallInstr>(stmt.data);
-
-    if (ss.operands.size() < 1) {
+void CALL_Handler::handlePrintf(ThreadContext *context, const CallInstr &instr) {
+    if (instr.operands.size() < 1) {
         return;
     }
 
@@ -43,7 +40,7 @@ void CALL_Handler::handlePrintf(ThreadContext *context, StatementContext &stmt) 
     };
 
     std::string formatStr;
-    void *formatAddr = context->acquire_operand(ss.operands[0], ss.qualifiers);
+    void *formatAddr = context->acquire_operand(instr.operands[0], instr.qualifiers);
     if (!formatAddr) {
         return;
     }
@@ -52,8 +49,8 @@ void CALL_Handler::handlePrintf(ThreadContext *context, StatementContext &stmt) 
     formatStr = get_string_from_memory(context, formatPtr);
 
     std::vector<void *> args;
-    for (int i = 1; i < ss.operands.size(); i++) {
-        void *argAddr = context->acquire_operand(ss.operands[i], ss.qualifiers);
+    for (int i = 1; i < instr.operands.size(); i++) {
+        void *argAddr = context->acquire_operand(instr.operands[i], instr.qualifiers);
         if (argAddr) {
             args.push_back(argAddr);
         }
