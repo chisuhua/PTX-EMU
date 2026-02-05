@@ -43,11 +43,8 @@
 #define IMPLEMENT_VOID_HANDLER_RET(Name) \
     /* Do nothing for RET - we have an explicit implementation */
 
-// Special implementation for RET handler - override the default
-void RET_Handler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
-    // Call the actual implementation from call.cpp
-    executeReturn(context, stmt);
-}
+// The macro above handles RET by calling executeReturn, so we don't need an explicit implementation
+// This prevents duplicate definition errors
 
 // Branch handlers
 // These are implemented in separate .cpp files
