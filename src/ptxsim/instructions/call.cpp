@@ -5,7 +5,7 @@
 #include <iostream>
 
 // RET is a VOID_INSTR handler
-void RET_Handler::executeReturn(ThreadContext *context, StatementContext &stmt) {
+void RET_Handler::processOperation(ThreadContext *context, StatementContext &stmt) {
     // Implementation for RET instruction
     // This is a simplified version of the original process_operation
     if (context->call_stack.empty()) {
@@ -16,10 +16,6 @@ void RET_Handler::executeReturn(ThreadContext *context, StatementContext &stmt) 
         context->next_pc = return_pc;
     }
     (void)stmt; // Unused for now
-}
-
-void RET_Handler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
-    executeReturn(context, stmt);
 }
 
 // CALL is a CALL_INSTR handler

@@ -36,6 +36,7 @@ void VoidHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
     context->trace_status(ptxsim::log_level::debug, "thread", 
                           "PC=%x VOID_INSTR: %s", context->pc, 
                           stmt.instructionText.c_str());
+    processOperation(context, stmt);
     context->next_pc = context->pc + 1;
 }
 

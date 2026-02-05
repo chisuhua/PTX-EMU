@@ -28,23 +28,13 @@
 // Void handlers (ret, exit, trap, etc.)
 #define IMPLEMENT_VOID_HANDLER(Name) \
     void Name##_Handler::ExecPipe(ThreadContext *context, StatementContext &stmt) { \
-        /* Handle RET specially */ \
-        if (strcmp(#Name, "RET") == 0) { \
-            /* Call executeReturn for RET */ \
-            executeReturn(context, stmt); \
-        } else { \
-            VoidHandler::ExecPipe(context, stmt); \
-        } \
+        VoidHandler::ExecPipe(context, stmt); \
+    } \
+    __attribute__((weak)) void Name##_Handler::processOperation(ThreadContext *context, StatementContext &stmt) { \
+        /* Default implementation does nothing */ \
+        (void)context; \
+        (void)stmt; \
     }
-
-// Special case for RET handler - we provide an explicit implementation
-// So we need to prevent the macro from generating a duplicate implementation
-// We'll define a separate macro for RET
-#define IMPLEMENT_VOID_HANDLER_RET(Name) \
-    /* Do nothing for RET - we have an explicit implementation */
-
-// The macro above handles RET by calling executeReturn, so we don't need an explicit implementation
-// This prevents duplicate definition errors
 
 // Branch handlers
 // These are implemented in separate .cpp files
