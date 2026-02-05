@@ -31,7 +31,13 @@
         VoidHandler::ExecPipe(context, stmt); \
     }
 
-// Special implementation for RET handler
+// Special case for RET handler - we provide an explicit implementation
+// So we need to prevent the macro from generating a duplicate implementation
+// We'll define a separate macro for RET
+#define IMPLEMENT_VOID_HANDLER_RET(Name) \
+    /* Do nothing for RET - we have an explicit implementation */
+
+// Special implementation for RET handler - override the default
 void RET_Handler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
     // Call the actual implementation from call.cpp
     executeReturn(context, stmt);
