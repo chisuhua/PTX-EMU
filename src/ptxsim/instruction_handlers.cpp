@@ -32,62 +32,75 @@
     }
 
 // Branch handlers
+// These are implemented in separate .cpp files
 #define IMPLEMENT_BRANCH_HANDLER(Name) \
     void Name##_Handler::executeBranch(ThreadContext *context, const BranchInstr &instr) { \
-        auto iter = context->label2pc.find(instr.target); \
-        if (iter != context->label2pc.end()) { \
-            context->next_pc = iter->second; \
-        } else { \
-            PTX_DEBUG_EMU("Label %s not found", instr.target.c_str()); \
-            context->next_pc = context->pc + 1; \
-        } \
+        /* Implementation is in separate .cpp file */ \
+        (void)context; \
+        (void)instr; \
     }
 
 // Barrier handlers
+// These are implemented in separate .cpp files
 #define IMPLEMENT_BARRIER_HANDLER(Name) \
     void Name##_Handler::executeBarrier(ThreadContext *context, const BarrierInstr &instr) { \
-        context->state = BAR_SYNC; \
-        context->next_pc = context->pc + 1; \
+        /* Implementation is in separate .cpp file */ \
+        (void)context; \
+        (void)instr; \
     }
 
 // Call handlers
+// These are implemented in separate .cpp files
 #define IMPLEMENT_CALL_INSTR_HANDLER(Name) \
     void Name##_Handler::executeCall(ThreadContext *context, const CallInstr &instr) { \
-        if (instr.funcName == "printf" || instr.funcName == "_printf") { \
-            handlePrintf(context, instr); \
-        } \
-        context->next_pc = context->pc + 1; \
+        /* Implementation is in separate .cpp file */ \
+        (void)context; \
+        (void)instr; \
     } \
     void Name##_Handler::handlePrintf(ThreadContext *context, const CallInstr &instr) { \
-        /* TODO: Implement printf handling */ \
+        /* Implementation is in separate .cpp file */ \
+        (void)context; \
+        (void)instr; \
     } \
     void Name##_Handler::parseAndPrintFormat(ThreadContext *context, const std::string &format, \
                                            const std::vector<void *> &args) { \
-        /* TODO: Implement format parsing */ \
+        /* Implementation is in separate .cpp file */ \
+        (void)context; \
+        (void)format; \
+        (void)args; \
     }
 
 // Generic instruction handlers (add, ld, st, mov, etc.)
+// These are implemented in separate .cpp files
 #define IMPLEMENT_GENERIC_INSTR_HANDLER(Name) \
     void Name##_Handler::processOperation(ThreadContext *context, void **operands, \
                                         const std::vector<Qualifier> &qualifiers) { \
-        PTX_DEBUG_EMU("Executing generic instruction: " #Name); \
-        /* TODO: Implement actual operation logic */ \
+        /* Implementation is in separate .cpp file */ \
+        (void)context; \
+        (void)operands; \
+        (void)qualifiers; \
     }
 
 // Atomic instruction handlers
+// These are implemented in separate .cpp files
 #define IMPLEMENT_ATOM_INSTR_HANDLER(Name) \
     void Name##_Handler::processAtomicOperation(ThreadContext *context, void **operands, \
                                               const std::vector<Qualifier> &qualifiers) { \
-        PTX_DEBUG_EMU("Executing atomic instruction: " #Name); \
-        /* TODO: Implement atomic operation */ \
+        /* Implementation is in separate .cpp file */ \
+        (void)context; \
+        (void)operands; \
+        (void)qualifiers; \
     }
 
 // WMMA instruction handlers
+// These are implemented in separate .cpp files
 #define IMPLEMENT_WMMA_INSTR_HANDLER(Name) \
     void Name##_Handler::processWmmaOperation(ThreadContext *context, void **operands, \
                                             const std::vector<Qualifier> &qualifiers) { \
-        PTX_DEBUG_EMU("Executing WMMA instruction: " #Name); \
-        /* TODO: Implement WMMA operation */ \
+        /* Implementation is in separate .cpp file */ \
+        (void)context; \
+        (void)operands; \
+        (void)qualifiers; \
     }
 
 // CP_ASYNC handler (currently treated as simple, but can be extended)
