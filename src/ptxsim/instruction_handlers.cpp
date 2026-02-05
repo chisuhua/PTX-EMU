@@ -28,7 +28,13 @@
 // Void handlers (ret, exit, trap, etc.)
 #define IMPLEMENT_VOID_HANDLER(Name) \
     void Name##_Handler::ExecPipe(ThreadContext *context, StatementContext &stmt) { \
-        VoidHandler::ExecPipe(context, stmt); \
+        /* Handle RET specially */ \
+        if (strcmp(#Name, "RET") == 0) { \
+            /* Call executeReturn for RET */ \
+            executeReturn(context, stmt); \
+        } else { \
+            VoidHandler::ExecPipe(context, stmt); \
+        } \
     }
 
 // Special case for RET handler - we provide an explicit implementation
