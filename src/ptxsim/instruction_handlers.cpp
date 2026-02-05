@@ -31,6 +31,12 @@
         VoidHandler::ExecPipe(context, stmt); \
     }
 
+// Special implementation for RET handler
+void RET_Handler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
+    // Call the actual implementation from call.cpp
+    executeReturn(context, stmt);
+}
+
 // Branch handlers
 // These are implemented in separate .cpp files
 #define IMPLEMENT_BRANCH_HANDLER(Name) \

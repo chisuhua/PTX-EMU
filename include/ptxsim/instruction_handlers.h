@@ -35,6 +35,13 @@
         void ExecPipe(ThreadContext *context, StatementContext &stmt) override; \
     };
 
+// Special declaration for RET handler
+class RET_Handler : public VoidHandler {
+public:
+    void ExecPipe(ThreadContext *context, StatementContext &stmt) override;
+    void executeReturn(ThreadContext *context, StatementContext &stmt);
+};
+
 #define DECLARE_VOID_INSTR_HANDLER(Name)      DECLARE_VOID_HANDLER(Name)
 
 // Branch handlers
