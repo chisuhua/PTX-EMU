@@ -2,63 +2,11 @@
 #include "ptxsim/thread_context.h"
 #include "ptxsim/utils/qualifier_utils.h"
 #include "ptxsim/utils/type_utils.h"
+#include "ptxsim/utils/half_utils.h"
 #include <cmath>
 #include <cstring>
 #include <cstdint>
 #include <limits>
-
-// 半精度浮点数转换函数实现
-inline float f16_to_f32(uint16_t h) {
-    // Simple implementation
-    uint32_t sign = (h & 0x8000) << 16;
-    uint32_t exponent = (h & 0x7C00) >> 10;
-    uint32_t mantissa = h & 0x03FF;
-    
-    if (exponent == 0) {
-        // Denormal
-        return std::ldexp(static_cast<float>(mantissa) / 1024.0f, -14);
-    } else if (exponent == 0x1F) {
-        // Infinity or NaN
-        return (mantissa == 0) ? std::numeric_limits<float>::infinity() : std::numeric_limits<float>::quiet_NaN();
-    } else {
-        // Normal
-        exponent += 112;
-        mantissa <<= 13;
-        uint32_t result = sign | (exponent << 23) | mantissa;
-        float f;
-        std::memcpy(&f, &result, sizeof(float));
-        return f;
-    }
-}
-
-inline uint16_t f32_to_f16(float f) {
-    // Simple implementation
-    uint32_t x;
-    std::memcpy(&x, &f, sizeof(float));
-    
-    uint32_t sign = (x >> 16) & 0x8000;
-    uint32_t exponent = (x >> 23) & 0xFF;
-    uint32_t mantissa = x & 0x7FFFFF;
-    
-    if (exponent == 0xFF) {
-        // Infinity or NaN
-        return static_cast<uint16_t>(sign | 0x7C00 | (mantissa ? 0x0200 : 0));
-    }
-    
-    // Convert to half precision
-    int32_t exp = static_cast<int32_t>(exponent) - 127 + 15;
-    if (exp >= 0x1F) {
-        // Overflow
-        return static_cast<uint16_t>(sign | 0x7C00);
-    }
-    if (exp <= 0) {
-        // Underflow
-        return static_cast<uint16_t>(sign);
-    }
-    
-    mantissa >>= 13;
-    return static_cast<uint16_t>(sign | (static_cast<uint32_t>(exp) << 10) | mantissa);
-}
 
 // 通用模板函数，用于处理一元数学操作
 template<typename OpFunc>
