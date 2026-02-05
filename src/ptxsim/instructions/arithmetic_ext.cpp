@@ -8,8 +8,8 @@
 #include <cstdint>
 #include <cstring>
 
-void ADDC::process_operation(ThreadContext *context, void *op[3],
-                             const std::vector<Qualifier> &qualifiers) {
+void ADDC_Handler::processOperation(ThreadContext *context, void **operands,
+                                    const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
@@ -238,8 +238,8 @@ void ADDC::process_operation(ThreadContext *context, void *op[3],
     }
 }
 
-void SUBC::process_operation(ThreadContext *context, void *op[3],
-                             const std::vector<Qualifier> &qualifiers) {
+void SUBC_Handler::processOperation(ThreadContext *context, void **operands,
+                                    const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
@@ -459,8 +459,8 @@ void SUBC::process_operation(ThreadContext *context, void *op[3],
     }
 }
 
-void MUL24::process_operation(ThreadContext *context, void *op[3],
-                              const std::vector<Qualifier> &qualifiers) {
+void MUL24_Handler::processOperation(ThreadContext *context, void **operands,
+                                     const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
@@ -503,8 +503,8 @@ void MUL24::process_operation(ThreadContext *context, void *op[3],
     }
 }
 
-void MAD24::process_operation(ThreadContext *context, void *op[4],
-                              const std::vector<Qualifier> &qualifiers) {
+void MAD24_Handler::processOperation(ThreadContext *context, void **operands,
+                                     const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
@@ -552,8 +552,8 @@ void MAD24::process_operation(ThreadContext *context, void *op[4],
     }
 }
 
-void FMA::process_operation(ThreadContext *context, void *op[4],
-                            const std::vector<Qualifier> &qualifiers) {
+void FMA_Handler::processOperation(ThreadContext *context, void **operands,
+                                   const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
