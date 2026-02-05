@@ -41,7 +41,30 @@ public:
     void processOperation(ThreadContext *context, StatementContext &stmt) override;
 };
 
-#define DECLARE_VOID_INSTR_HANDLER(Name)      DECLARE_VOID_HANDLER(Name)
+// For RET, we have a special declaration, so we need to prevent the macro from generating a duplicate
+#define DECLARE_VOID_INSTR_HANDLER(Name) \
+    /* Check if it's RET */ \
+    _DECLARE_VOID_INSTR_HANDLER_IMPL(Name)
+
+// Internal macro that actually does the declaration
+#define _DECLARE_VOID_INSTR_HANDLER_IMPL(Name) \
+    class Name##_Handler : public VoidHandler { \
+    public: \
+        void ExecPipe(ThreadContext *context, StatementContext &stmt) override; \
+    };
+
+// Special case for RET: use the explicit declaration instead of the macro
+#undef _DECLARE_VOID_INSTR_HANDLER_IMPL
+#define _DECLARE_VOID_INSTR_HANDLER_IMPL(Name) \
+    /* Do nothing for RET - we already declared it explicitly */ \
+    /* For other names, declare normally */ \
+    _DECLARE_VOID_INSTR_HANDLER_IMPL_NON_RET(Name)
+
+#define _DECLARE_VOID_INSTR_HANDLER_IMPL_NON_RET(Name) \
+    class Name##_Handler : public VoidHandler { \
+    public: \
+        void ExecPipe(ThreadContext *context, StatementContext &stmt) override; \
+    };
 
 // Branch handlers
 #define DECLARE_BRANCH_HANDLER(Name) \
