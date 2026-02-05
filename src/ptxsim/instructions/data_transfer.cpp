@@ -4,18 +4,18 @@
 #include "ptxsim/utils/type_utils.h"
 #include <iostream>
 
-void MOV::process_operation(ThreadContext *context, void *op[2],
-                            const std::vector<Qualifier> &qualifiers) {
-    void *dst = op[0];
-    void *src = op[1];
+void MOV_Handler::processOperation(ThreadContext *context, void **operands,
+                                   const std::vector<Qualifier> &qualifiers) {
+    void *dst = operands[0];
+    void *src = operands[1];
 
     context->mov(src, dst, qualifiers);
 }
 
-void CVTA::process_operation(ThreadContext *context, void *op[2],
-                             const std::vector<Qualifier> &qualifiers) {
-    void *to = op[0];
-    void *from = op[1];
+void CVTA_Handler::processOperation(ThreadContext *context, void **operands,
+                                    const std::vector<Qualifier> &qualifiers) {
+    void *to = operands[0];
+    void *from = operands[1];
 
     // context->mov(from, to, qualifier);
     //  空指针检查
