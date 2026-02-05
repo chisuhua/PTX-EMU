@@ -33,6 +33,7 @@
     class Name##_Handler : public VoidHandler { \
     public: \
         void ExecPipe(ThreadContext *context, StatementContext &stmt) override; \
+        virtual void processOperation(ThreadContext *context, StatementContext &stmt); \
     };
 
 // Special declaration for RET handler
@@ -42,6 +43,7 @@ public:
 };
 
 // For RET, we have a special declaration, so we need to prevent the macro from generating a duplicate
+// We'll modify the macro to handle RET specially
 #define DECLARE_VOID_INSTR_HANDLER(Name) \
     /* Check if it's RET */ \
     _DECLARE_VOID_INSTR_HANDLER_IMPL(Name)
@@ -51,6 +53,7 @@ public:
     class Name##_Handler : public VoidHandler { \
     public: \
         void ExecPipe(ThreadContext *context, StatementContext &stmt) override; \
+        virtual void processOperation(ThreadContext *context, StatementContext &stmt); \
     };
 
 // Special case for RET: use the explicit declaration instead of the macro
@@ -64,6 +67,7 @@ public:
     class Name##_Handler : public VoidHandler { \
     public: \
         void ExecPipe(ThreadContext *context, StatementContext &stmt) override; \
+        virtual void processOperation(ThreadContext *context, StatementContext &stmt); \
     };
 
 // Branch handlers
