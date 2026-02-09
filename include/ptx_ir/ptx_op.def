@@ -23,7 +23,7 @@ X(S_DOLLOR,  DOLLOR,  Dollar,  0, SIMPLE_NAME)      // Inline register ($r1)
 // -----------------------------------------------------------------------------
 // 1. 特殊指令
 // -----------------------------------------------------------------------------
-X(S_AT,      AT,      At,      0, PREDICATE_PREFIX)      // Predicate prefix (not a full instruction)
+X(S_AT,      AT,      At,      0, BRANCH)      // Predicate prefix - conditional execution
 X(S_PRAGMA,  PRAGMA,  Pragma,  0, SIMPLE_STRING)      // Pragma: no operands in PTX sense
 X(S_LABEL,   LABEL,   Label,   1, LABEL_INSTR)      // Label definition: name:
 

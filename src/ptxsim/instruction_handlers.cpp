@@ -34,7 +34,7 @@
         /* Default implementation does nothing */ \
         (void)context; \
         (void)stmt; \
-    }
+    };
 
 // Branch handlers
 // These are implemented in separate .cpp files
@@ -44,7 +44,7 @@
         (void)context; \
         (void)instr; \
         return; \
-    }
+    };
 
 // Barrier handlers
 // These are implemented in separate .cpp files
@@ -54,7 +54,7 @@
         (void)context; \
         (void)instr; \
         return; \
-    }
+    };
 
 // Call handlers
 // These are implemented in separate .cpp files
@@ -64,13 +64,13 @@
         (void)context; \
         (void)instr; \
         return; \
-    } \
+    }; \
     __attribute__((weak)) void Name##_Handler::handlePrintf(ThreadContext *context, const CallInstr &instr) { \
         /* Implementation is in separate .cpp file */ \
         (void)context; \
         (void)instr; \
         return; \
-    } \
+    }; \
     __attribute__((weak)) void Name##_Handler::parseAndPrintFormat(ThreadContext *context, const std::string &format, \
                                            const std::vector<void *> &args) { \
         /* Implementation is in separate .cpp file */ \
@@ -78,7 +78,7 @@
         (void)format; \
         (void)args; \
         return; \
-    }
+    };
 
 // Generic instruction handlers (add, ld, st, mov, etc.)
 // These are implemented in separate .cpp files
@@ -90,7 +90,7 @@
         (void)operands; \
         (void)qualifiers; \
         return; \
-    }
+    };
 
 // Atomic instruction handlers
 // These are implemented in separate .cpp files
@@ -102,7 +102,7 @@
         (void)operands; \
         (void)qualifiers; \
         return; \
-    }
+    };
 
 // WMMA instruction handlers
 // These are implemented in separate .cpp files
@@ -114,7 +114,7 @@
         (void)operands; \
         (void)qualifiers; \
         return; \
-    }
+    };
 
 // CP_ASYNC handler (currently treated as simple, but can be extended)
 #define IMPLEMENT_CP_ASYNC_INSTR_HANDLER(Name) \
@@ -125,7 +125,7 @@
                       *(int*)instr.operands[2].operand_phy_addr); \
         /* TODO: integrate with async copy engine */ \
         return; \
-    }
+    };
 
 // All other instruction types map to SimpleHandler
 #define IMPLEMENT_MEMBAR_INSTR_HANDLER(Name)     IMPLEMENT_SIMPLE_HANDLER(Name)

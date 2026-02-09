@@ -31,16 +31,30 @@ void BRA_Handler::executeBranch(ThreadContext *context, const BranchInstr &instr
     }
 }
 
-// AT is a PREDICATE_PREFIX handler (SimpleHandler)
-void AT_Handler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
-    // AT instruction sets a predicate prefix for the next instruction
+// AT is now a BRANCH handler (conditional execution based on predicate)
+void AT_Handler::executeBranch(ThreadContext *context, const BranchInstr &instr) {
+    // AT instruction: predicate prefix that determines whether to execute the next instruction
     // In PTX, @p or @!p modifies whether the next instruction executes
     
-    // For now, this is a simplified implementation
-    // Just move to the next instruction
-    context->next_pc = context->pc + 1;
+    // TODO: Need to parse the actual predicate value from the instruction
+    // For now, we'll assume predicate is true (execute next instruction)
+    bool predicate_value = true;
     
-    // Debug output
-    context->trace_status(ptxsim::log_level::debug, "predicate",
-                          "AT: predicate prefix instruction");
+    // Check if the predicate is negated (e.g., @!p)
+    // This information should be in the instruction qualifiers or operands
+    // For now, we'll assume it's not negated
+    
+    if (predicate_value) {
+        // Predicate is true: execute the next instruction
+        context->next_pc = context->pc + 1;
+        context->trace_status(ptxsim::log_level::debug, "predicate",
+                              "AT: predicate=true, executing next instruction at PC=%d", 
+                              context->next_pc);
+    } else {
+        // Predicate is false: skip the next instruction
+        context->next_pc = context->pc + 2;
+        context->trace_status(ptxsim::log_level::debug, "predicate",
+                              "AT: predicate=false, skipping to PC=%d", 
+                              context->next_pc);
+    }
 }
