@@ -30,7 +30,7 @@ public:
     // Instruction category visitors
 #define X(stmt_type, op_kind, op_name, op_count, struct_kind) \
     std::any visit##op_kind##Inst(PtxParser::op_kind##InstContext *ctx) override;
-#include "ptx_op.def"
+#include "ptx_ir/ptx_op.def"
 #undef X
 
     // Operand visitors
