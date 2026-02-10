@@ -732,14 +732,408 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
     return nullptr;                                                            \
 }
 
-// 对于不需要特殊处理的指令类型，使用空定义
-#define VISITOR_OPERAND_REG(opstr, opname, opcount)
-#define VISITOR_OPERAND_CONST(opstr, opname, opcount)
-#define VISITOR_OPERAND_MEMORY(opstr, opname, opcount)
-#define VISITOR_SIMPLE_NAME(opstr, opname, opcount)
-#define VISITOR_SIMPLE_STRING(opstr, opname, opcount)
-#define VISITOR_VOID_INSTR(opstr, opname, opcount)
-#define VISITOR_PREDICATE_PREFIX(opstr, opname, opcount)
+// 对于不需要特殊处理的指令类型，使用默认实现
+#define VISITOR_OPERAND_REG(opstr, opname, opcount)                             \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    DeclarationInstr decl;                                                     \
+    decl.kind = DeclarationInstr::Kind::REG;                                   \
+    decl.name = "";                                                            \
+    stmtCtx.data = decl;                                                       \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
+
+#define VISITOR_OPERAND_CONST(opstr, opname, opcount)                          \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    DeclarationInstr decl;                                                     \
+    decl.kind = DeclarationInstr::Kind::CONST;                                 \
+    decl.name = "";                                                            \
+    stmtCtx.data = decl;                                                       \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
+
+#define VISITOR_OPERAND_MEMORY(opstr, opname, opcount)                         \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    DeclarationInstr decl;                                                     \
+    if (opstr == "SHARED") decl.kind = DeclarationInstr::Kind::SHARED;         \
+    else if (opstr == "LOCAL") decl.kind = DeclarationInstr::Kind::LOCAL;      \
+    else if (opstr == "GLOBAL") decl.kind = DeclarationInstr::Kind::GLOBAL;    \
+    else if (opstr == "PARAM") decl.kind = DeclarationInstr::Kind::PARAM;      \
+    else decl.kind = DeclarationInstr::Kind::GLOBAL;                           \
+    decl.name = "";                                                            \
+    stmtCtx.data = decl;                                                       \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
+
+#define VISITOR_SIMPLE_NAME(opstr, opname, opcount)                            \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    DollarNameInstr dollar;                                                    \
+    dollar.name = "";                                                          \
+    stmtCtx.data = dollar;                                                     \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
+
+#define VISITOR_SIMPLE_STRING(opstr, opname, opcount)                          \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    PragmaInstr pragma;                                                        \
+    pragma.content = "";                                                       \
+    stmtCtx.data = pragma;                                                     \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
+
+#define VISITOR_VOID_INSTR(opstr, opname, opcount)                             \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    VoidInstr voidInstr;                                                       \
+    stmtCtx.data = voidInstr;                                                  \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
+
+#define VISITOR_PREDICATE_PREFIX(opstr, opname, opcount)                       \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    PredicatePrefix pred;                                                      \
+    auto qualifiers = extractQualifiersFromContext(ctx);                       \
+    pred.qualifiers = qualifiers;                                              \
+    auto operands = ctx->operand();                                            \
+    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+        auto oc = createOperandFromContext(operands[i]);                       \
+        pred.operands.push_back(oc);                                           \
+    }                                                                          \
+    pred.target = "";                                                          \
+    stmtCtx.data = pred;                                                       \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
+
+// 添加其他缺失的指令类型访问器
+#define VISITOR_MEMBAR_INSTR(opstr, opname, opcount)                           \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    MembarInstr membar;                                                        \
+    auto qualifiers = extractQualifiersFromContext(ctx);                       \
+    membar.qualifiers = qualifiers;                                            \
+    membar.scope = "";                                                         \
+    stmtCtx.data = membar;                                                     \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
+
+#define VISITOR_FENCE_INSTR(opstr, opname, opcount)                            \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    FenceInstr fence;                                                          \
+    auto qualifiers = extractQualifiersFromContext(ctx);                       \
+    fence.qualifiers = qualifiers;                                             \
+    fence.memoryOrder = "";                                                    \
+    fence.scope = "";                                                          \
+    stmtCtx.data = fence;                                                      \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
+
+#define VISITOR_REDUX_INSTR(opstr, opname, opcount)                            \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    ReduxSyncInstr redux;                                                      \
+    auto qualifiers = extractQualifiersFromContext(ctx);                       \
+    redux.qualifiers = qualifiers;                                             \
+    redux.operation = "";                                                      \
+    auto operands = ctx->operand();                                            \
+    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+        auto oc = createOperandFromContext(operands[i]);                       \
+        redux.operands.push_back(oc);                                          \
+    }                                                                          \
+    stmtCtx.data = redux;                                                      \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
+
+#define VISITOR_MBARRIER_INSTR(opstr, opname, opcount)                         \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    MbarrierInstr mbarrier;                                                    \
+    auto qualifiers = extractQualifiersFromContext(ctx);                       \
+    mbarrier.qualifiers = qualifiers;                                          \
+    mbarrier.operation = "";                                                   \
+    auto operands = ctx->operand();                                            \
+    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+        auto oc = createOperandFromContext(operands[i]);                       \
+        mbarrier.operands.push_back(oc);                                       \
+    }                                                                          \
+    stmtCtx.data = mbarrier;                                                   \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
+
+#define VISITOR_VOTE_INSTR(opstr, opname, opcount)                             \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    VoteInstr vote;                                                            \
+    auto qualifiers = extractQualifiersFromContext(ctx);                       \
+    vote.qualifiers = qualifiers;                                              \
+    vote.mode = "";                                                            \
+    auto operands = ctx->operand();                                            \
+    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+        auto oc = createOperandFromContext(operands[i]);                       \
+        vote.operands.push_back(oc);                                           \
+    }                                                                          \
+    stmtCtx.data = vote;                                                       \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
+
+#define VISITOR_SHFL_INSTR(opstr, opname, opcount)                             \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    ShflInstr shfl;                                                            \
+    auto qualifiers = extractQualifiersFromContext(ctx);                       \
+    shfl.qualifiers = qualifiers;                                              \
+    shfl.mode = "";                                                            \
+    auto operands = ctx->operand();                                            \
+    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+        auto oc = createOperandFromContext(operands[i]);                       \
+        shfl.operands.push_back(oc);                                           \
+    }                                                                          \
+    stmtCtx.data = shfl;                                                       \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
+
+#define VISITOR_TEXTURE_INSTR(opstr, opname, opcount)                          \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    TextureInstr tex;                                                          \
+    auto qualifiers = extractQualifiersFromContext(ctx);                       \
+    tex.qualifiers = qualifiers;                                               \
+    auto operands = ctx->operand();                                            \
+    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+        auto oc = createOperandFromContext(operands[i]);                       \
+        tex.operands.push_back(oc);                                            \
+    }                                                                          \
+    stmtCtx.data = tex;                                                        \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
+
+#define VISITOR_SURFACE_INSTR(opstr, opname, opcount)                          \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    SurfaceInstr surf;                                                         \
+    auto qualifiers = extractQualifiersFromContext(ctx);                       \
+    surf.qualifiers = qualifiers;                                              \
+    auto operands = ctx->operand();                                            \
+    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+        auto oc = createOperandFromContext(operands[i]);                       \
+        surf.operands.push_back(oc);                                           \
+    }                                                                          \
+    stmtCtx.data = surf;                                                       \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
+
+#define VISITOR_REDUCTION_INSTR(opstr, opname, opcount)                        \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    ReductionInstr red;                                                        \
+    auto qualifiers = extractQualifiersFromContext(ctx);                       \
+    red.qualifiers = qualifiers;                                               \
+    red.operation = "";                                                        \
+    auto operands = ctx->operand();                                            \
+    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+        auto oc = createOperandFromContext(operands[i]);                       \
+        red.operands.push_back(oc);                                            \
+    }                                                                          \
+    stmtCtx.data = red;                                                        \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
+
+#define VISITOR_PREFETCH_INSTR(opstr, opname, opcount)                         \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    PrefetchInstr prefetch;                                                    \
+    auto qualifiers = extractQualifiersFromContext(ctx);                       \
+    prefetch.qualifiers = qualifiers;                                          \
+    auto operands = ctx->operand();                                            \
+    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+        auto oc = createOperandFromContext(operands[i]);                       \
+        prefetch.operands.push_back(oc);                                       \
+    }                                                                          \
+    stmtCtx.data = prefetch;                                                   \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
+
+#define VISITOR_CP_ASYNC_INSTR(opstr, opname, opcount)                         \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    CpAsyncInstr cpAsync;                                                      \
+    auto qualifiers = extractQualifiersFromContext(ctx);                       \
+    cpAsync.qualifiers = qualifiers;                                           \
+    auto operands = ctx->operand();                                            \
+    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+        auto oc = createOperandFromContext(operands[i]);                       \
+        cpAsync.operands.push_back(oc);                                        \
+    }                                                                          \
+    stmtCtx.data = cpAsync;                                                    \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
+
+#define VISITOR_ASYNC_STORE(opstr, opname, opcount)                            \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    AsyncStoreInstr asyncStore;                                                \
+    auto qualifiers = extractQualifiersFromContext(ctx);                       \
+    asyncStore.qualifiers = qualifiers;                                        \
+    auto operands = ctx->operand();                                            \
+    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+        auto oc = createOperandFromContext(operands[i]);                       \
+        asyncStore.operands.push_back(oc);                                     \
+    }                                                                          \
+    stmtCtx.data = asyncStore;                                                 \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
+
+#define VISITOR_ASYNC_REDUCE(opstr, opname, opcount)                           \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    AsyncReduceInstr asyncReduce;                                              \
+    auto qualifiers = extractQualifiersFromContext(ctx);                       \
+    asyncReduce.qualifiers = qualifiers;                                       \
+    auto operands = ctx->operand();                                            \
+    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+        auto oc = createOperandFromContext(operands[i]);                       \
+        asyncReduce.operands.push_back(oc);                                    \
+    }                                                                          \
+    stmtCtx.data = asyncReduce;                                                \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
+
+#define VISITOR_TCGEN_INSTR(opstr, opname, opcount)                            \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    TcgenInstr tcgen;                                                          \
+    tcgen.opName = #opstr;                                                     \
+    auto qualifiers = extractQualifiersFromContext(ctx);                       \
+    tcgen.qualifiers = qualifiers;                                             \
+    auto operands = ctx->operand();                                            \
+    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+        auto oc = createOperandFromContext(operands[i]);                       \
+        tcgen.operands.push_back(oc);                                          \
+    }                                                                          \
+    stmtCtx.data = tcgen;                                                      \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
+
+#define VISITOR_TENSORMAP_INSTR(opstr, opname, opcount)                        \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    TensormapInstr tensormap;                                                  \
+    auto qualifiers = extractQualifiersFromContext(ctx);                       \
+    tensormap.qualifiers = qualifiers;                                         \
+    auto operands = ctx->operand();                                            \
+    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+        auto oc = createOperandFromContext(operands[i]);                       \
+        tensormap.operands.push_back(oc);                                      \
+    }                                                                          \
+    stmtCtx.data = tensormap;                                                  \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
+
+#define VISITOR_ABI_DIRECTIVE(opstr, opname, opcount)                          \
+std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = S_##opname;                                                 \
+    AbiDirective abiDir;                                                       \
+    abiDir.regNumber = 0;                                                      \
+    stmtCtx.data = abiDir;                                                     \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
 
 // 使用宏生成所有指令的访问器
 #define X(openum, opname, opstr, opcount, struct_kind)                         \
