@@ -317,7 +317,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
                                                                                \
     /* 提取操作数 */                                                           \
     auto operands = ctx->operand();                                            \
-    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+    for (int i = 0; i < std::min((int)operands.size(), (int)opcount); ++i) {   \
         auto oc = createOperandFromContext(operands[i]);                       \
         instr.operands.push_back(oc);                                          \
     }                                                                          \
@@ -344,11 +344,11 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
                                                                                \
     /* 提取操作数 */                                                           \
     auto operands = ctx->operand();                                            \
-    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+    for (int i = 0; i < std::min((int)operands.size(), (int)opcount); ++i) {   \
         auto oc = createOperandFromContext(operands[i]);                       \
         instr.operands.push_back(oc);                                          \
     }                                                                          \
-    instr.operandNum = std::min((int)operands.size(), opcount);                \
+    instr.operandNum = std::min((int)operands.size(), (int)opcount);           \
                                                                                \
     stmtCtx.data = instr;                                                      \
     currentKernel->kernelStatements.push_back(stmtCtx);                        \
@@ -372,7 +372,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
                                                                                \
     /* 提取操作数 */                                                           \
     auto operands = ctx->operand();                                            \
-    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+    for (int i = 0; i < std::min((int)operands.size(), (int)opcount); ++i) {   \
         auto oc = createOperandFromContext(operands[i]);                       \
         instr.operands.push_back(oc);                                          \
     }                                                                          \
@@ -408,7 +408,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
                                                                                \
     /* 提取操作数 */                                                           \
     auto operands = ctx->operand();                                            \
-    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+    for (int i = 0; i < std::min((int)operands.size(), (int)opcount); ++i) {   \
         auto oc = createOperandFromContext(operands[i]);                       \
         instr.operands.push_back(oc);                                          \
     }                                                                          \

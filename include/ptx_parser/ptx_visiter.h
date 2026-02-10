@@ -31,8 +31,8 @@ public:
     std::any visitInstruction(PtxParser::InstructionContext *ctx) override;
     
     // Instruction category visitors
-#define X(stmt_type, op_kind, op_name, op_count, struct_kind) \
-    std::any visit##op_kind##Inst(PtxParser::op_kind##InstContext *ctx) override;
+#define X(openum, opname, opstr, opcount, struct_kind) \
+    std::any visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) override;
 #include "ptx_ir/ptx_op.def"
 #undef X
 
