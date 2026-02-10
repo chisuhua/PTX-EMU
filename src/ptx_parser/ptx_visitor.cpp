@@ -1,10 +1,13 @@
 #include "ptx_parser/ptx_visiter.h"
 #include "ptx_ir/ptx_types.h"
 #include "ptx_ir/ptx_context.h"
+#include "ptx_ir/operand_context.h"
+#include "ptx_ir/statement_context.h"
 #include "utils/logger.h"
 #include <cassert>
 #include <sstream>
 #include <string>
+#include <algorithm>
 
 // 定义通用的日志宏
 #define PTX_ERROR(fmt, ...) PTX_ERROR_EMU(fmt, ##__VA_ARGS__)
@@ -49,122 +52,28 @@ std::vector<Qualifier> PtxVisitor::extractQualifiersFromContext(antlr4::ParserRu
     return qualifiers;
 }
 
-OperandContext PtxVisitor::createOperandFromContext(PtxParser::OperandContext *ctx) {
+OperandContext PtxVisitor::createOperandFromContext(ptxParser::OperandContext *ctx) {
     OperandContext oc;
     
     if (!ctx) return oc;
     
-    // 检查不同类型的操作数
-    if (ctx->register_()) {
-        auto regCtx = ctx->register_();
-        oc.operandType = O_REG;
-        auto reg = new OperandContext::REG();
-        
-        std::string regName = regCtx->ID()->getText();
-        if (regCtx->DOLLAR()) {
-            regName = "$" + regName;
-        } else if (regCtx->PERCENT()) {
-            regName = "%" + regName;
-        }
-        
-        extractREG(regName, reg->regIdx, reg->regName);
-        oc.operand = reg;
-    }
-    else if (ctx->immediate()) {
-        auto immCtx = ctx->immediate();
-        oc.operandType = O_IMM;
-        auto imm = new OperandContext::IMM();
-        
-        std::string immVal = immCtx->IMMEDIATE()->getText();
-        if (immCtx->MINUS()) {
-            immVal = "-" + immVal;
-        }
-        imm->immVal = immVal;
-        oc.operand = imm;
-    }
-    else if (ctx->specialRegister()) {
-        auto specRegCtx = ctx->specialRegister();
-        oc.operandType = O_REG;
-        auto reg = new OperandContext::REG();
-        
-        // 构建特殊寄存器名称
-        std::string regName;
-        if (specRegCtx->TID()) regName = "%tid";
-        else if (specRegCtx->NTID()) regName = "%ntid";
-        else if (specRegCtx->CTAID()) regName = "%ctaid";
-        else if (specRegCtx->NCTAID()) regName = "%nctaid";
-        else if (specRegCtx->LANEID()) regName = "%laneid";
-        else if (specRegCtx->CLOCK()) regName = "%clock";
-        else if (specRegCtx->CLOCK64()) regName = "%clock64";
-        else if (specRegCtx->LANEMASK_EQ()) regName = "%lanemask_eq";
-        else if (specRegCtx->LANEMASK_LE()) regName = "%lanemask_le";
-        else if (specRegCtx->LANEMASK_LT()) regName = "%lanemask_lt";
-        else if (specRegCtx->LANEMASK_GE()) regName = "%lanemask_ge";
-        else if (specRegCtx->LANEMASK_GT()) regName = "%lanemask_gt";
-        else if (specRegCtx->PM0()) regName = "%pm0";
-        else if (specRegCtx->PM1()) regName = "%pm1";
-        else if (specRegCtx->PM2()) regName = "%pm2";
-        else if (specRegCtx->PM3()) regName = "%pm3";
-        else if (specRegCtx->PM4()) regName = "%pm4";
-        else if (specRegCtx->PM5()) regName = "%pm5";
-        else if (specRegCtx->PM6()) regName = "%pm6";
-        else if (specRegCtx->PM7()) regName = "%pm7";
-        else if (specRegCtx->SP()) regName = "%sp";
-        
-        // 添加组件后缀
-        if (specRegCtx->component()) {
-            auto compCtx = specRegCtx->component();
-            if (compCtx->X_COMP()) regName += ".x";
-            else if (compCtx->Y_COMP()) regName += ".y";
-            else if (compCtx->Z_COMP()) regName += ".z";
-            else if (compCtx->W_COMP()) regName += ".w";
-        }
-        
-        extractREG(regName, reg->regIdx, reg->regName);
-        oc.operand = reg;
-    }
-    else if (ctx->address()) {
-        auto addrCtx = ctx->address();
-        oc.operandType = O_FA;
-        auto fa = new OperandContext::FA();
-        
-        // 这里简化处理，实际需要解析地址表达式
-        fa->ID = "TODO"; // 需要从addressExpr中提取
-        fa->offsetVal = "0";
-        oc.operand = fa;
-    }
-    else if (ctx->ID()) {
-        oc.operandType = O_VAR;
-        auto var = new OperandContext::VAR();
-        var->varName = ctx->ID()->getText();
-        oc.operand = var;
-    }
+    // TODO: Implement proper operand creation based on new grammar
+    // For now, create a simple placeholder
+    oc.operandType = O_REG;
+    auto reg = new OperandContext::REG();
+    reg->regName = "TODO";
+    reg->regIdx = 0;
+    oc.operand = reg;
     
     return oc;
 }
 
-void PtxVisitor::processFunctionAttributes(PtxParser::FunctionAttributeContext *ctx) {
+void PtxVisitor::processFunctionAttributes(ptxParser::FunctionAttributeContext *ctx) {
     if (!ctx || !currentKernel) return;
     
-    if (ctx->MAXNREG()) {
-        currentKernel->maxRegisters = extractIntFromToken(ctx->IMMEDIATE()->getSymbol());
-    }
-    else if (ctx->REQNTID()) {
-        auto threadDimCtx = ctx->threadDim();
-        auto digits = threadDimCtx->IMMEDIATE();
-        if (digits.size() >= 1) {
-            currentKernel->reqntid.x = extractIntFromToken(digits[0]->getSymbol());
-        }
-        if (digits.size() >= 2) {
-            currentKernel->reqntid.y = extractIntFromToken(digits[1]->getSymbol());
-        }
-        if (digits.size() >= 3) {
-            currentKernel->reqntid.z = extractIntFromToken(digits[2]->getSymbol());
-        }
-    }
-    else if (ctx->MINNCTAPERSM()) {
-        currentKernel->minnctapersm = extractIntFromToken(ctx->IMMEDIATE()->getSymbol());
-    }
+    // TODO: Implement based on new grammar
+    // For now, just log
+    PTX_DEBUG("Processing function attributes");
 }
 
 int PtxVisitor::extractIntFromToken(antlr4::Token *token) {
@@ -176,11 +85,21 @@ int PtxVisitor::extractIntFromToken(antlr4::Token *token) {
     }
 }
 
+std::string PtxVisitor::extractStringFromToken(antlr4::Token *token) {
+    if (!token) return "";
+    return token->getText();
+}
+
+size_t PtxVisitor::calculateTypeSize(const std::vector<Qualifier> &types) {
+    // TODO: Implement proper type size calculation
+    return 4; // Default to 4 bytes for now
+}
+
 // ============================================================================
 // Top-level Visitors
 // ============================================================================
 
-std::any PtxVisitor::visitPtxFile(PtxParser::PtxFileContext *ctx) {
+std::any PtxVisitor::visitPtxFile(ptxParser::PtxFileContext *ctx) {
     PTX_DEBUG("Visiting PTX file");
     
     // 访问所有声明
@@ -191,7 +110,7 @@ std::any PtxVisitor::visitPtxFile(PtxParser::PtxFileContext *ctx) {
     return nullptr;
 }
 
-std::any PtxVisitor::visitDeclaration(PtxParser::DeclarationContext *ctx) {
+std::any PtxVisitor::visitDeclaration(ptxParser::DeclarationContext *ctx) {
     // 根据声明类型分发到具体的访问器
     if (ctx->versionDirective()) {
         return visitVersionDirective(ctx->versionDirective());
@@ -211,11 +130,12 @@ std::any PtxVisitor::visitDeclaration(PtxParser::DeclarationContext *ctx) {
     else if (ctx->abiPreserveDirective()) {
         return visitAbiPreserveDirective(ctx->abiPreserveDirective());
     }
+    // TODO: Add extern function declaration handling
     
     return nullptr;
 }
 
-std::any PtxVisitor::visitVersionDirective(PtxParser::VersionDirectiveContext *ctx) {
+std::any PtxVisitor::visitVersionDirective(ptxParser::VersionDirectiveContext *ctx) {
     if (ctx->IMMEDIATE().size() >= 2) {
         this->ctx.ptxMajorVersion = extractIntFromToken(ctx->IMMEDIATE(0)->getSymbol());
         this->ctx.ptxMinorVersion = extractIntFromToken(ctx->IMMEDIATE(1)->getSymbol());
@@ -224,7 +144,7 @@ std::any PtxVisitor::visitVersionDirective(PtxParser::VersionDirectiveContext *c
     return nullptr;
 }
 
-std::any PtxVisitor::visitTargetDirective(PtxParser::TargetDirectiveContext *ctx) {
+std::any PtxVisitor::visitTargetDirective(ptxParser::TargetDirectiveContext *ctx) {
     if (!ctx->SM_TARGET().empty()) {
         std::string target = ctx->SM_TARGET(0)->getText();
         // 提取sm_后面的数字
@@ -240,7 +160,7 @@ std::any PtxVisitor::visitTargetDirective(PtxParser::TargetDirectiveContext *ctx
     return nullptr;
 }
 
-std::any PtxVisitor::visitAddressSizeDirective(PtxParser::AddressSizeDirectiveContext *ctx) {
+std::any PtxVisitor::visitAddressSizeDirective(ptxParser::AddressSizeDirectiveContext *ctx) {
     if (ctx->IMMEDIATE()) {
         this->ctx.ptxAddressSize = extractIntFromToken(ctx->IMMEDIATE()->getSymbol());
         PTX_DEBUG("Address size: %d", this->ctx.ptxAddressSize);
@@ -248,194 +168,20 @@ std::any PtxVisitor::visitAddressSizeDirective(PtxParser::AddressSizeDirectiveCo
     return nullptr;
 }
 
-std::any PtxVisitor::visitVariableDecl(PtxParser::VariableDeclContext *ctx) {
+std::any PtxVisitor::visitVariableDecl(ptxParser::VariableDeclContext *ctx) {
     StatementContext stmtCtx;
     stmtCtx.instructionText = ctx->getText();
     
-    // 确定变量类型
-    if (ctx->storageClass()->REG()) {
-        stmtCtx.type = S_REG;
-        DeclarationInstr decl;
-        decl.kind = DeclarationInstr::Kind::REG;
-        decl.name = ctx->ID()->getText();
-        
-        // 提取数据类型限定符
-        if (ctx->typeSpecifier()) {
-            auto qualifiers = extractQualifiersFromContext(ctx->typeSpecifier());
-            if (!qualifiers.empty()) {
-                decl.dataType = qualifiers[0]; // 取第一个作为数据类型
-            }
-        }
-        
-        // 对齐
-        if (ctx->alignClause()) {
-            decl.alignment = extractIntFromToken(ctx->alignClause()->IMMEDIATE()->getSymbol());
-        }
-        
-        // 数组大小
-        if (ctx->arraySize()) {
-            auto sizes = ctx->arraySize()->IMMEDIATE();
-            if (!sizes.empty()) {
-                decl.array_size = extractIntFromToken(sizes[0]->getSymbol());
-            }
-        } else {
-            decl.array_size = 1;
-        }
-        
-        stmtCtx.data = decl;
-    }
-    else if (ctx->storageClass()->SHARED()) {
-        stmtCtx.type = S_SHARED;
-        DeclarationInstr decl;
-        decl.kind = DeclarationInstr::Kind::SHARED;
-        decl.name = ctx->ID()->getText();
-        
-        // 对齐
-        if (ctx->alignClause()) {
-            decl.alignment = extractIntFromToken(ctx->alignClause()->IMMEDIATE()->getSymbol());
-        }
-        
-        // 数据类型
-        if (ctx->typeSpecifier()) {
-            auto qualifiers = extractQualifiersFromContext(ctx->typeSpecifier());
-            if (!qualifiers.empty()) {
-                decl.dataType = qualifiers[0];
-            }
-        }
-        
-        // 数组大小
-        if (ctx->arraySize()) {
-            auto sizes = ctx->arraySize()->IMMEDIATE();
-            if (!sizes.empty()) {
-                decl.array_size = extractIntFromToken(sizes[0]->getSymbol());
-            }
-        } else {
-            decl.array_size = 1;
-        }
-        
-        stmtCtx.data = decl;
-    }
-    else if (ctx->storageClass()->CONST()) {
-        stmtCtx.type = S_CONST;
-        DeclarationInstr decl;
-        decl.kind = DeclarationInstr::Kind::CONST;
-        decl.name = ctx->ID()->getText();
-        
-        // 对齐
-        if (ctx->alignClause()) {
-            decl.alignment = extractIntFromToken(ctx->alignClause()->IMMEDIATE()->getSymbol());
-        }
-        
-        // 数据类型
-        if (ctx->typeSpecifier()) {
-            auto qualifiers = extractQualifiersFromContext(ctx->typeSpecifier());
-            if (!qualifiers.empty()) {
-                decl.dataType = qualifiers[0];
-            }
-        }
-        
-        // 数组大小
-        if (ctx->arraySize()) {
-            auto sizes = ctx->arraySize()->IMMEDIATE();
-            if (!sizes.empty()) {
-                decl.array_size = extractIntFromToken(sizes[0]->getSymbol());
-            }
-        } else {
-            decl.array_size = 1;
-        }
-        
-        stmtCtx.data = decl;
-    }
-    else if (ctx->storageClass()->GLOBAL()) {
-        stmtCtx.type = S_GLOBAL;
-        DeclarationInstr decl;
-        decl.kind = DeclarationInstr::Kind::GLOBAL;
-        decl.name = ctx->ID()->getText();
-        
-        // 对齐
-        if (ctx->alignClause()) {
-            decl.alignment = extractIntFromToken(ctx->alignClause()->IMMEDIATE()->getSymbol());
-        } else {
-            decl.alignment = 1;
-        }
-        
-        // 数据类型
-        if (ctx->typeSpecifier()) {
-            auto qualifiers = extractQualifiersFromContext(ctx->typeSpecifier());
-            if (!qualifiers.empty()) {
-                decl.dataType = qualifiers[0];
-            }
-        }
-        
-        // 数组大小
-        if (ctx->arraySize()) {
-            auto sizes = ctx->arraySize()->IMMEDIATE();
-            if (!sizes.empty()) {
-                decl.array_size = extractIntFromToken(sizes[0]->getSymbol());
-            }
-        } else {
-            decl.array_size = 1;
-        }
-        
-        stmtCtx.data = decl;
-    }
-    else if (ctx->storageClass()->LOCAL()) {
-        stmtCtx.type = S_LOCAL;
-        DeclarationInstr decl;
-        decl.kind = DeclarationInstr::Kind::LOCAL;
-        decl.name = ctx->ID()->getText();
-        
-        // 对齐
-        if (ctx->alignClause()) {
-            decl.alignment = extractIntFromToken(ctx->alignClause()->IMMEDIATE()->getSymbol());
-        }
-        
-        // 数据类型
-        if (ctx->typeSpecifier()) {
-            auto qualifiers = extractQualifiersFromContext(ctx->typeSpecifier());
-            if (!qualifiers.empty()) {
-                decl.dataType = qualifiers[0];
-            }
-        }
-        
-        // 数组大小
-        if (ctx->arraySize()) {
-            auto sizes = ctx->arraySize()->IMMEDIATE();
-            if (!sizes.empty()) {
-                decl.array_size = extractIntFromToken(sizes[0]->getSymbol());
-            }
-        } else {
-            decl.array_size = 1;
-        }
-        
-        stmtCtx.data = decl;
-    }
-    else if (ctx->storageClass()->PARAM()) {
-        stmtCtx.type = S_PARAM;
-        DeclarationInstr decl;
-        decl.kind = DeclarationInstr::Kind::PARAM;
-        decl.name = ctx->ID()->getText();
-        
-        // 数据类型
-        if (ctx->typeSpecifier()) {
-            auto qualifiers = extractQualifiersFromContext(ctx->typeSpecifier());
-            if (!qualifiers.empty()) {
-                decl.dataType = qualifiers[0];
-            }
-        }
-        
-        // 数组大小
-        if (ctx->arraySize()) {
-            auto sizes = ctx->arraySize()->IMMEDIATE();
-            if (!sizes.empty()) {
-                decl.array_size = extractIntFromToken(sizes[0]->getSymbol());
-            }
-        } else {
-            decl.array_size = 1;
-        }
-        
-        stmtCtx.data = decl;
-    }
+    // TODO: Implement proper variable declaration parsing based on new grammar
+    // For now, create a simple placeholder
+    stmtCtx.type = S_REG;
+    DeclarationInstr decl;
+    decl.kind = DeclarationInstr::Kind::REG;
+    decl.name = "TODO";
+    decl.dataType = Qualifier::Q_U32;
+    decl.array_size = 1;
+    
+    stmtCtx.data = decl;
     
     // 添加到适当的上下文
     if (currentKernel) {
@@ -447,12 +193,14 @@ std::any PtxVisitor::visitVariableDecl(PtxParser::VariableDeclContext *ctx) {
     return nullptr;
 }
 
-std::any PtxVisitor::visitFunctionDecl(PtxParser::FunctionDeclContext *ctx) {
+std::any PtxVisitor::visitFunctionDecl(ptxParser::FunctionDeclContext *ctx) {
     // 创建新的kernel上下文
     currentKernel = new KernelContext();
     
     // 函数名
-    currentKernel->kernelName = ctx->functionHeader()->ID()->getText();
+    if (ctx->functionHeader()->ID()) {
+        currentKernel->kernelName = ctx->functionHeader()->ID()->getText();
+    }
     
     // 可见性
     if (ctx->visibility()) {
@@ -470,27 +218,9 @@ std::any PtxVisitor::visitFunctionDecl(PtxParser::FunctionDeclContext *ctx) {
         currentKernel->ifEntryKernel = false;
     }
     
-    // 处理参数
-    if (ctx->functionHeader()->paramList()) {
-        auto paramList = ctx->functionHeader()->paramList();
-        for (auto paramCtx : paramList->paramDecl()) {
-            ParamContext param;
-            param.paramName = paramCtx->ID()->getText();
-            
-            // 提取参数类型
-            if (paramCtx->typeSpecifier()) {
-                auto qualifiers = extractQualifiersFromContext(paramCtx->typeSpecifier());
-                param.paramTypes = qualifiers;
-            }
-            
-            currentKernel->kernelParams.push_back(param);
-        }
-    }
+    // TODO: Process parameters based on new grammar
     
-    // 处理函数属性
-    for (auto attrCtx : ctx->functionHeader()->functionAttribute()) {
-        processFunctionAttributes(attrCtx);
-    }
+    // TODO: Process function attributes
     
     // 访问函数体
     if (ctx->funcBody()) {
@@ -507,19 +237,10 @@ std::any PtxVisitor::visitFunctionDecl(PtxParser::FunctionDeclContext *ctx) {
     return nullptr;
 }
 
-std::any PtxVisitor::visitAbiPreserveDirective(PtxParser::AbiPreserveDirectiveContext *ctx) {
+std::any PtxVisitor::visitAbiPreserveDirective(ptxParser::AbiPreserveDirectiveContext *ctx) {
     // ABI保留指令
     AbiDirective abiDir;
-    std::string regName = ctx->ID()->getText();
-    
-    // 提取寄存器编号
-    if (regName.find("r") == 0) {
-        try {
-            abiDir.regNumber = std::stoi(regName.substr(1));
-        } catch (...) {
-            abiDir.regNumber = 0;
-        }
-    }
+    abiDir.regNumber = 0; // TODO: Extract from context
     
     StatementContext stmtCtx;
     stmtCtx.type = S_ABI_PRESERVE;
@@ -536,7 +257,7 @@ std::any PtxVisitor::visitAbiPreserveDirective(PtxParser::AbiPreserveDirectiveCo
     return nullptr;
 }
 
-std::any PtxVisitor::visitInstructionList(PtxParser::InstructionListContext *ctx) {
+std::any PtxVisitor::visitInstructionList(ptxParser::InstructionListContext *ctx) {
     // 访问所有指令
     for (auto instr : ctx->instruction()) {
         visit(instr);
@@ -544,7 +265,7 @@ std::any PtxVisitor::visitInstructionList(PtxParser::InstructionListContext *ctx
     return nullptr;
 }
 
-std::any PtxVisitor::visitInstruction(PtxParser::InstructionContext *ctx) {
+std::any PtxVisitor::visitInstruction(ptxParser::InstructionContext *ctx) {
     // 根据指令类型分发到具体的访问器
     // 这里使用宏来减少重复代码
     
@@ -556,6 +277,22 @@ std::any PtxVisitor::visitInstruction(PtxParser::InstructionContext *ctx) {
 #include "ptx_ir/ptx_op.def"
 #undef X
     
+    // TODO: Handle label instructions
+    if (ctx->label()) {
+        // Handle label
+        StatementContext stmtCtx;
+        stmtCtx.type = S_LABEL;
+        LabelInstr label;
+        label.labelName = ctx->label()->ID()->getText();
+        stmtCtx.data = label;
+        stmtCtx.instructionText = ctx->getText();
+        
+        if (currentKernel) {
+            currentKernel->kernelStatements.push_back(stmtCtx);
+        }
+        return nullptr;
+    }
+    
     return nullptr;
 }
 
@@ -565,7 +302,7 @@ std::any PtxVisitor::visitInstruction(PtxParser::InstructionContext *ctx) {
 
 // 定义通用指令访问器的宏
 #define VISITOR_GENERIC_INSTR(opstr, opname, opcount)                          \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
                                                                                \
     StatementContext stmtCtx;                                                  \
@@ -592,7 +329,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_ATOM_INSTR(opstr, opname, opcount)                             \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
                                                                                \
     StatementContext stmtCtx;                                                  \
@@ -620,7 +357,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_CALL_INSTR(opstr, opname, opcount)                             \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
                                                                                \
     StatementContext stmtCtx;                                                  \
@@ -647,7 +384,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_WMMA_INSTR(opstr, opname, opcount)                             \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
                                                                                \
     StatementContext stmtCtx;                                                  \
@@ -683,7 +420,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_BRANCH(opstr, opname, opcount)                                 \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
                                                                                \
     StatementContext stmtCtx;                                                  \
@@ -708,7 +445,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_BARRIER(opstr, opname, opcount)                                \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
                                                                                \
     StatementContext stmtCtx;                                                  \
@@ -733,8 +470,8 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 // 对于不需要特殊处理的指令类型，使用默认实现
-#define VISITOR_OPERAND_REG(opstr, opname, opcount)                             \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+#define VISITOR_OPERAND_REG(opstr, opname, opcount)                            \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -748,7 +485,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_OPERAND_CONST(opstr, opname, opcount)                          \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -762,7 +499,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_OPERAND_MEMORY(opstr, opname, opcount)                         \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -780,7 +517,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_SIMPLE_NAME(opstr, opname, opcount)                            \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -793,7 +530,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_SIMPLE_STRING(opstr, opname, opcount)                          \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -806,7 +543,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_VOID_INSTR(opstr, opname, opcount)                             \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -818,7 +555,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_PREDICATE_PREFIX(opstr, opname, opcount)                       \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -839,7 +576,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 
 // 添加其他缺失的指令类型访问器
 #define VISITOR_MEMBAR_INSTR(opstr, opname, opcount)                           \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -854,7 +591,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_FENCE_INSTR(opstr, opname, opcount)                            \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -870,7 +607,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_REDUX_INSTR(opstr, opname, opcount)                            \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -890,7 +627,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_MBARRIER_INSTR(opstr, opname, opcount)                         \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -910,7 +647,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_VOTE_INSTR(opstr, opname, opcount)                             \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -930,7 +667,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_SHFL_INSTR(opstr, opname, opcount)                             \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -950,7 +687,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_TEXTURE_INSTR(opstr, opname, opcount)                          \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -969,7 +706,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_SURFACE_INSTR(opstr, opname, opcount)                          \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -988,7 +725,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_REDUCTION_INSTR(opstr, opname, opcount)                        \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -1008,7 +745,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_PREFETCH_INSTR(opstr, opname, opcount)                         \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -1027,7 +764,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_CP_ASYNC_INSTR(opstr, opname, opcount)                         \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -1046,7 +783,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_ASYNC_STORE(opstr, opname, opcount)                            \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -1065,7 +802,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_ASYNC_REDUCE(opstr, opname, opcount)                           \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -1084,7 +821,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_TCGEN_INSTR(opstr, opname, opcount)                            \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -1104,7 +841,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_TENSORMAP_INSTR(opstr, opname, opcount)                        \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -1123,7 +860,7 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_ABI_DIRECTIVE(opstr, opname, opcount)                          \
-std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -1145,22 +882,22 @@ std::any PtxVisitor::visit##opstr##Inst(PtxParser::opstr##InstContext *ctx) {  \
 // Operand Visitors
 // ============================================================================
 
-std::any PtxVisitor::visitOperand(PtxParser::OperandContext *ctx) {
+std::any PtxVisitor::visitOperand(ptxParser::OperandContext *ctx) {
     return nullptr;
 }
 
-std::any PtxVisitor::visitSpecialRegister(PtxParser::SpecialRegisterContext *ctx) {
+std::any PtxVisitor::visitSpecialRegister(ptxParser::SpecialRegisterContext *ctx) {
     return nullptr;
 }
 
-std::any PtxVisitor::visitRegister(PtxParser::RegisterContext *ctx) {
+std::any PtxVisitor::visitRegister(ptxParser::RegisterContext *ctx) {
     return nullptr;
 }
 
-std::any PtxVisitor::visitImmediate(PtxParser::ImmediateContext *ctx) {
+std::any PtxVisitor::visitImmediate(ptxParser::ImmediateContext *ctx) {
     return nullptr;
 }
 
-std::any PtxVisitor::visitAddress(PtxParser::AddressContext *ctx) {
+std::any PtxVisitor::visitAddress(ptxParser::AddressContext *ctx) {
     return nullptr;
 }

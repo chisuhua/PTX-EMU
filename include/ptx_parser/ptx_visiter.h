@@ -4,10 +4,13 @@
 #include "ptxParser.h"
 #include "ptxParserBaseVisitor.h"
 #include "ptx_ir/ptx_context.h"
+#include "ptx_ir/ptx_types.h"
+#include "ptx_ir/operand_context.h"
+#include "ptx_ir/statement_context.h"
 #include <memory>
 #include <vector>
 
-class PtxVisitor : public PtxParserBaseVisitor {
+class PtxVisitor : public ptxParserBaseVisitor {
 public:
     explicit PtxVisitor(PtxContext &context) : ctx(context) {}
 
