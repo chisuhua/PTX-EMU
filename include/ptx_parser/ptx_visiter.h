@@ -51,7 +51,7 @@ private:
     // Helper methods
     Qualifier tokenToQualifier(antlr4::Token *token);
     std::vector<Qualifier> extractQualifiersFromContext(antlr4::ParserRuleContext *ctx);
-    OperandContext createOperandFromContext(PtxParser::OperandContext *ctx);
+    OperandContext createOperandFromContext(ptxParser::OperandContext *ctx);
     void processFunctionAttributes(PtxParser::FunctionAttributeContext *ctx);
     size_t calculateTypeSize(const std::vector<Qualifier> &types);
     int extractIntFromToken(antlr4::Token *token);

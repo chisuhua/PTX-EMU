@@ -564,7 +564,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     auto qualifiers = extractQualifiersFromContext(ctx);                       \
     pred.qualifiers = qualifiers;                                              \
     auto operands = ctx->operand();                                            \
-    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+    for (int i = 0; i < std::min((int)operands.size(), (int)opcount); ++i) {   \
         auto oc = createOperandFromContext(operands[i]);                       \
         pred.operands.push_back(oc);                                           \
     }                                                                          \
@@ -617,7 +617,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     redux.qualifiers = qualifiers;                                             \
     redux.operation = "";                                                      \
     auto operands = ctx->operand();                                            \
-    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+    for (int i = 0; i < std::min((int)operands.size(), (int)opcount); ++i) {   \
         auto oc = createOperandFromContext(operands[i]);                       \
         redux.operands.push_back(oc);                                          \
     }                                                                          \
@@ -637,7 +637,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     mbarrier.qualifiers = qualifiers;                                          \
     mbarrier.operation = "";                                                   \
     auto operands = ctx->operand();                                            \
-    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+    for (int i = 0; i < std::min((int)operands.size(), (int)opcount); ++i) {   \
         auto oc = createOperandFromContext(operands[i]);                       \
         mbarrier.operands.push_back(oc);                                       \
     }                                                                          \
@@ -657,7 +657,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     vote.qualifiers = qualifiers;                                              \
     vote.mode = "";                                                            \
     auto operands = ctx->operand();                                            \
-    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+    for (int i = 0; i < std::min((int)operands.size(), (int)opcount); ++i) {   \
         auto oc = createOperandFromContext(operands[i]);                       \
         vote.operands.push_back(oc);                                           \
     }                                                                          \
@@ -677,7 +677,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     shfl.qualifiers = qualifiers;                                              \
     shfl.mode = "";                                                            \
     auto operands = ctx->operand();                                            \
-    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+    for (int i = 0; i < std::min((int)operands.size(), (int)opcount); ++i) {   \
         auto oc = createOperandFromContext(operands[i]);                       \
         shfl.operands.push_back(oc);                                           \
     }                                                                          \
@@ -696,7 +696,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     auto qualifiers = extractQualifiersFromContext(ctx);                       \
     tex.qualifiers = qualifiers;                                               \
     auto operands = ctx->operand();                                            \
-    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+    for (int i = 0; i < std::min((int)operands.size(), (int)opcount); ++i) {   \
         auto oc = createOperandFromContext(operands[i]);                       \
         tex.operands.push_back(oc);                                            \
     }                                                                          \
@@ -715,7 +715,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     auto qualifiers = extractQualifiersFromContext(ctx);                       \
     surf.qualifiers = qualifiers;                                              \
     auto operands = ctx->operand();                                            \
-    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+    for (int i = 0; i < std::min((int)operands.size(), (int)opcount); ++i) {   \
         auto oc = createOperandFromContext(operands[i]);                       \
         surf.operands.push_back(oc);                                           \
     }                                                                          \
@@ -735,7 +735,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     red.qualifiers = qualifiers;                                               \
     red.operation = "";                                                        \
     auto operands = ctx->operand();                                            \
-    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+    for (int i = 0; i < std::min((int)operands.size(), (int)opcount); ++i) {   \
         auto oc = createOperandFromContext(operands[i]);                       \
         red.operands.push_back(oc);                                            \
     }                                                                          \
@@ -754,7 +754,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     auto qualifiers = extractQualifiersFromContext(ctx);                       \
     prefetch.qualifiers = qualifiers;                                          \
     auto operands = ctx->operand();                                            \
-    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+    for (int i = 0; i < std::min((int)operands.size(), (int)opcount); ++i) {   \
         auto oc = createOperandFromContext(operands[i]);                       \
         prefetch.operands.push_back(oc);                                       \
     }                                                                          \
@@ -773,7 +773,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     auto qualifiers = extractQualifiersFromContext(ctx);                       \
     cpAsync.qualifiers = qualifiers;                                           \
     auto operands = ctx->operand();                                            \
-    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+    for (int i = 0; i < std::min((int)operands.size(), (int)opcount); ++i) {   \
         auto oc = createOperandFromContext(operands[i]);                       \
         cpAsync.operands.push_back(oc);                                        \
     }                                                                          \
@@ -792,7 +792,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     auto qualifiers = extractQualifiersFromContext(ctx);                       \
     asyncStore.qualifiers = qualifiers;                                        \
     auto operands = ctx->operand();                                            \
-    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+    for (int i = 0; i < std::min((int)operands.size(), (int)opcount); ++i) {   \
         auto oc = createOperandFromContext(operands[i]);                       \
         asyncStore.operands.push_back(oc);                                     \
     }                                                                          \
@@ -811,7 +811,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     auto qualifiers = extractQualifiersFromContext(ctx);                       \
     asyncReduce.qualifiers = qualifiers;                                       \
     auto operands = ctx->operand();                                            \
-    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+    for (int i = 0; i < std::min((int)operands.size(), (int)opcount); ++i) {   \
         auto oc = createOperandFromContext(operands[i]);                       \
         asyncReduce.operands.push_back(oc);                                    \
     }                                                                          \
@@ -831,7 +831,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     auto qualifiers = extractQualifiersFromContext(ctx);                       \
     tcgen.qualifiers = qualifiers;                                             \
     auto operands = ctx->operand();                                            \
-    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+    for (int i = 0; i < std::min((int)operands.size(), (int)opcount); ++i) {   \
         auto oc = createOperandFromContext(operands[i]);                       \
         tcgen.operands.push_back(oc);                                          \
     }                                                                          \
@@ -850,7 +850,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     auto qualifiers = extractQualifiersFromContext(ctx);                       \
     tensormap.qualifiers = qualifiers;                                         \
     auto operands = ctx->operand();                                            \
-    for (int i = 0; i < std::min((int)operands.size(), opcount); ++i) {        \
+    for (int i = 0; i < std::min((int)operands.size(), (int)opcount); ++i) {   \
         auto oc = createOperandFromContext(operands[i]);                       \
         tensormap.operands.push_back(oc);                                      \
     }                                                                          \
