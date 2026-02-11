@@ -104,17 +104,61 @@ shiftMode : LEFT_SHIFT | RIGHT_SHIFT | WRAP | CLAMP ;
 compareOp : EQ | NE | LT | LE | GT | GE | LTU | LEU | GTU | GEU | FEQ | FNE | FLT | FLE | FGT | FGE ;
 
 dataMovementInst
+    : movInst
+    | ldInst
+    | stInst
+    | cvtInst
+    | cvtaInst
+    | rcpInst
+    | prmtInst
+    | isspacepInst
+    | mapaInst
+    | allocaInst
+    | cpAsyncInst
+    ;
+
+movInst
     : MOV typeSpecifier vectorSpec? operand COMMA operand SEMI
-    | LD ldQualifiers typeSpecifier vectorSpec? operand COMMA addressExpr SEMI
-    | ST stQualifiers typeSpecifier vectorSpec? addressExpr COMMA operand SEMI
-    | CVT roundingMode? satFlag? ftzFlag? typeSpecifier vectorSpec? operand COMMA typeSpecifier vectorSpec? operand SEMI
-    | CVTA genericOrSpecificSpace? toAddrSpace? operand COMMA operand SEMI
-    | RCP roundingMode? ftzFlag? approxFlag? typeSpecifier vectorSpec? operand COMMA operand SEMI
-    | PRMT typeSpecifier vectorSpec? operand COMMA operand COMMA operand COMMA operand SEMI
-    | ISSPACEP addrSpaceQuery? typeSpecifier vectorSpec? operand COMMA operand SEMI
-    | MAPA typeSpecifier vectorSpec? operand COMMA operand COMMA operand SEMI
-    | ALLOCA alignClause? typeSpecifier vectorSpec? operand COMMA operand SEMI
-    | CP_ASYNC cpAsyncSpace? cacheOperator* typeSpecifier vectorSpec? addressExpr COMMA addressExpr (COMMA operand)? SEMI
+    ;
+
+ldInst
+    : LD ldQualifiers typeSpecifier vectorSpec? operand COMMA addressExpr SEMI
+    ;
+
+stInst
+    : ST stQualifiers typeSpecifier vectorSpec? addressExpr COMMA operand SEMI
+    ;
+
+cvtInst
+    : CVT roundingMode? satFlag? ftzFlag? typeSpecifier vectorSpec? operand COMMA typeSpecifier vectorSpec? operand SEMI
+    ;
+
+cvtaInst
+    : CVTA genericOrSpecificSpace? toAddrSpace? operand COMMA operand SEMI
+    ;
+
+rcpInst
+    : RCP roundingMode? ftzFlag? approxFlag? typeSpecifier vectorSpec? operand COMMA operand SEMI
+    ;
+
+prmtInst
+    : PRMT typeSpecifier vectorSpec? operand COMMA operand COMMA operand COMMA operand SEMI
+    ;
+
+isspacepInst
+    : ISSPACEP addrSpaceQuery? typeSpecifier vectorSpec? operand COMMA operand SEMI
+    ;
+
+mapaInst
+    : MAPA typeSpecifier vectorSpec? operand COMMA operand COMMA operand SEMI
+    ;
+
+allocaInst
+    : ALLOCA alignClause? typeSpecifier vectorSpec? operand COMMA operand SEMI
+    ;
+
+cpAsyncInst
+    : CP_ASYNC cpAsyncSpace? cacheOperator* typeSpecifier vectorSpec? addressExpr COMMA addressExpr (COMMA operand)? SEMI
     ;
 
 ldQualifiers
