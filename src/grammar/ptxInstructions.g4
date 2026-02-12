@@ -29,15 +29,47 @@ instruction
     | SEMI
     ;
 
-controlFlowInst
+braInst
     : BRA (UNI | voteMode)? labelOperand SEMI
-    | BRX (UNI | voteMode)? addressExpr COMMA labelOperand SEMI
-    | CALL callParams? labelOperand callArgs? SEMI
-    | RET SEMI
-    | EXIT SEMI
-    | TRAP SEMI
-    | BRK (DECIMAL_INT)? SEMI
-    | BRKPT SEMI
+    ;
+
+brxInst
+    : BRX (UNI | voteMode)? addressExpr COMMA labelOperand SEMI
+    ;
+
+callInst
+    : CALL callParams? labelOperand callArgs? SEMI
+    ;
+
+retInst
+    : RET SEMI
+    ;
+
+exitInst
+    : EXIT SEMI
+    ;
+
+trapInst
+    : TRAP SEMI
+    ;
+
+brkInst
+    : BRK (DECIMAL_INT)? SEMI
+    ;
+
+brkptInst
+    : BRKPT SEMI
+    ;
+
+controlFlowInst
+    : braInst
+    | brxInst
+    | callInst
+    | retInst
+    | exitInst
+    | trapInst
+    | brkInst
+    | brkptInst
     ;
 
 labelOperand : ID ;
