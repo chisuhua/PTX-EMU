@@ -5,7 +5,7 @@
 #include <iostream>
 
 // RET is a VOID_INSTR handler
-void RET_Handler::processOperation(ThreadContext *context, StatementContext &stmt) {
+void RetHandler::processOperation(ThreadContext *context, StatementContext &stmt) {
     // Implementation for RET instruction
     // This is a simplified version of the original process_operation
     if (context->call_stack.empty()) {
@@ -19,7 +19,7 @@ void RET_Handler::processOperation(ThreadContext *context, StatementContext &stm
 }
 
 // CALL is a CALL_INSTR handler
-void CALL_Handler::executeCall(ThreadContext *context, const CallInstr &instr) {
+void CallHandler::executeCall(ThreadContext *context, const CallInstr &instr) {
     // Implementation for CALL instruction
     // This needs to be adapted from the original process_operation
     // For now, implement a placeholder
@@ -28,7 +28,7 @@ void CALL_Handler::executeCall(ThreadContext *context, const CallInstr &instr) {
     // TODO: Implement actual call logic
 }
 
-void CALL_Handler::handlePrintf(ThreadContext *context, const CallInstr &instr) {
+void CallHandler::handlePrintf(ThreadContext *context, const CallInstr &instr) {
     if (instr.operands.size() < 1) {
         return;
     }
@@ -59,7 +59,7 @@ void CALL_Handler::handlePrintf(ThreadContext *context, const CallInstr &instr) 
     parseAndPrintFormat(context, formatStr, args);
 }
 
-void CALL_Handler::parseAndPrintFormat(ThreadContext *context,
+void CallHandler::parseAndPrintFormat(ThreadContext *context,
                                        const std::string &format,
                                        const std::vector<void *> &args) {
     // Keep the original implementation

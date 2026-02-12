@@ -4,7 +4,7 @@
 #include "ptxsim/utils/type_utils.h"
 #include <iostream>
 
-void MOV_Handler::processOperation(ThreadContext *context, void **operands,
+void MovHandler::processOperation(ThreadContext *context, void **operands,
                                    const std::vector<Qualifier> &qualifiers) {
     void *dst = operands[0];
     void *src = operands[1];
@@ -12,7 +12,7 @@ void MOV_Handler::processOperation(ThreadContext *context, void **operands,
     context->mov(src, dst, qualifiers);
 }
 
-void CVTA_Handler::processOperation(ThreadContext *context, void **operands,
+void CvtaHandler::processOperation(ThreadContext *context, void **operands,
                                     const std::vector<Qualifier> &qualifiers) {
     void *to = operands[0];
     void *from = operands[1];
