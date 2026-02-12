@@ -62,7 +62,7 @@ public:
     }
 };
 
-class CallHandler : public InstructionHandler {
+class CallBaseHandler : public InstructionHandler {
 public:
     void ExecPipe(ThreadContext *context, StatementContext &stmt) override;
     virtual void executeCall(ThreadContext *context, const CallInstr &instr) {
