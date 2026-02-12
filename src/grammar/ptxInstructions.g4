@@ -30,8 +30,7 @@ instruction
     ;
 
 predicate
-    : AT operand
-    | BANG operand
+    : AT (BANG)? operand
     ;
 
 braInst
