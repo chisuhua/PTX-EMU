@@ -69,25 +69,49 @@ OperandContext PtxVisitor::createOperandFromContext(ptxparser::ptxParser::Operan
     // 首先检查register
     if (ctx->register_()) {
         auto regCtx = ctx->register_();
-        return visitRegister(regCtx).as<OperandContext>();
+        auto anyResult = visitRegister(regCtx);
+        try {
+            return std::any_cast<OperandContext>(anyResult);
+        } catch (const std::bad_any_cast& e) {
+            PTX_ERROR("Failed to cast register operand: %s", e.what());
+            return OperandContext{ImmOperand{"0"}};
+        }
     }
     
     // 检查immediate
     if (ctx->immediate()) {
         auto immCtx = ctx->immediate();
-        return visitImmediate(immCtx).as<OperandContext>();
+        auto anyResult = visitImmediate(immCtx);
+        try {
+            return std::any_cast<OperandContext>(anyResult);
+        } catch (const std::bad_any_cast& e) {
+            PTX_ERROR("Failed to cast immediate operand: %s", e.what());
+            return OperandContext{ImmOperand{"0"}};
+        }
     }
     
     // 检查address
     if (ctx->address()) {
         auto addrCtx = ctx->address();
-        return visitAddress(addrCtx).as<OperandContext>();
+        auto anyResult = visitAddress(addrCtx);
+        try {
+            return std::any_cast<OperandContext>(anyResult);
+        } catch (const std::bad_any_cast& e) {
+            PTX_ERROR("Failed to cast address operand: %s", e.what());
+            return OperandContext{ImmOperand{"0"}};
+        }
     }
     
     // 检查specialRegister
     if (ctx->specialRegister()) {
         auto specRegCtx = ctx->specialRegister();
-        return visitSpecialRegister(specRegCtx).as<OperandContext>();
+        auto anyResult = visitSpecialRegister(specRegCtx);
+        try {
+            return std::any_cast<OperandContext>(anyResult);
+        } catch (const std::bad_any_cast& e) {
+            PTX_ERROR("Failed to cast special register operand: %s", e.what());
+            return OperandContext{ImmOperand{"0"}};
+        }
     }
     
     // 检查ID（变量名）
