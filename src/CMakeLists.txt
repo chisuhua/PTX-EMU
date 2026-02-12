@@ -103,6 +103,7 @@ add_library(ptx_parser SHARED
     ptx_parser/ptx_visitor.cpp
 )
 target_link_libraries(ptx_parser ptx_ir)
+add_dependencies(ptx_parser GenerateParser)
 
 # 创建共享库
 add_library(cudart SHARED ${SOURCES})
