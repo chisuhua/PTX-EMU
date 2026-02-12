@@ -7,7 +7,7 @@
 #include <string>
 
 // BRA is a BRANCH handler
-void BRA_Handler::executeBranch(ThreadContext *context, const BranchInstr &instr) {
+void BraHandler::executeBranch(ThreadContext *context, const BranchInstr &instr) {
     // Look up the label in the label-to-PC map
     auto it = context->label2pc.find(instr.target);
     if (it != context->label2pc.end()) {
@@ -32,7 +32,7 @@ void BRA_Handler::executeBranch(ThreadContext *context, const BranchInstr &instr
 }
 
 // AT is now a BRANCH handler (conditional execution based on predicate)
-void AT_Handler::executeBranch(ThreadContext *context, const BranchInstr &instr) {
+void AtHandler::executeBranch(ThreadContext *context, const BranchInstr &instr) {
     // AT instruction: predicate prefix that determines whether to execute the next instruction
     // In PTX, @p or @!p modifies whether the next instruction executes
     
