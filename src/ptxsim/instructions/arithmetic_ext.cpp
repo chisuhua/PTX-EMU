@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <cstring>
 
-void ADDC_Handler::processOperation(ThreadContext *context, void **operands,
+void AddcHandler::processOperation(ThreadContext *context, void **operands,
                                     const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -238,7 +238,7 @@ void ADDC_Handler::processOperation(ThreadContext *context, void **operands,
     }
 }
 
-void SUBC_Handler::processOperation(ThreadContext *context, void **operands,
+void SubcHandler::processOperation(ThreadContext *context, void **operands,
                                     const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -459,7 +459,7 @@ void SUBC_Handler::processOperation(ThreadContext *context, void **operands,
     }
 }
 
-void MUL24_Handler::processOperation(ThreadContext *context, void **operands,
+void Mul24Handler::processOperation(ThreadContext *context, void **operands,
                                      const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -503,7 +503,7 @@ void MUL24_Handler::processOperation(ThreadContext *context, void **operands,
     }
 }
 
-void MAD24_Handler::processOperation(ThreadContext *context, void **operands,
+void Mad24Handler::processOperation(ThreadContext *context, void **operands,
                                      const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -552,7 +552,7 @@ void MAD24_Handler::processOperation(ThreadContext *context, void **operands,
     }
 }
 
-void FMA_Handler::processOperation(ThreadContext *context, void **operands,
+void FmaHandler::processOperation(ThreadContext *context, void **operands,
                                    const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);

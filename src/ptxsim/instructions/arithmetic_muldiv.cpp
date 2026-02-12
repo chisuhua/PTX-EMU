@@ -9,7 +9,7 @@
 #include <cstring>
 #include <type_traits>
 
-void MUL_Handler::processOperation(ThreadContext *context, void **operands,
+void MulHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
     // === 解析类型和修饰符 ===
     int bytes = getBytes(qualifiers);
@@ -169,7 +169,7 @@ void MUL_Handler::processOperation(ThreadContext *context, void **operands,
     }
 }
 
-void DIV_Handler::processOperation(ThreadContext *context, void **operands,
+void DivHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -187,7 +187,7 @@ void DIV_Handler::processOperation(ThreadContext *context, void **operands,
                               [](auto a, auto b) { return a / b; });
 }
 
-void MAD_Handler::processOperation(ThreadContext *context, void **operands,
+void MadHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -398,7 +398,7 @@ void MAD_Handler::processOperation(ThreadContext *context, void **operands,
     }
 }
 
-void MIN_Handler::processOperation(ThreadContext *context, void **operands,
+void MinHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -422,7 +422,7 @@ void MIN_Handler::processOperation(ThreadContext *context, void **operands,
         });
 }
 
-void MAX_Handler::processOperation(ThreadContext *context, void **operands,
+void MaxHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -446,7 +446,7 @@ void MAX_Handler::processOperation(ThreadContext *context, void **operands,
         });
 }
 
-void REM_Handler::processOperation(ThreadContext *context, void **operands,
+void RemHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);

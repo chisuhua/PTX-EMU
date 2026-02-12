@@ -397,7 +397,7 @@
 //     }
 // }
 
-void ADD_Handler::processOperation(ThreadContext *context, void **operands,
+void AddHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -416,7 +416,7 @@ void ADD_Handler::processOperation(ThreadContext *context, void **operands,
                               [](auto a, auto b) { return a + b; });
 }
 
-void SUB_Handler::processOperation(ThreadContext *context, void **operands,
+void SubHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -435,7 +435,7 @@ void SUB_Handler::processOperation(ThreadContext *context, void **operands,
                               [](auto a, auto b) { return a - b; });
 }
 
-void NEG_Handler::processOperation(ThreadContext *context, void **operands,
+void NegHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -452,7 +452,7 @@ void NEG_Handler::processOperation(ThreadContext *context, void **operands,
                              update_cc, [](auto val) { return -val; });
 }
 
-void ABS_Handler::processOperation(ThreadContext *context, void **operands,
+void AbsHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);

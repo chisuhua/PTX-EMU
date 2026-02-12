@@ -25,7 +25,7 @@ void process_binary_bitwise(void *dst, void *src1, void *src2, int bytes, OpFunc
     }
 }
 
-void AND_Handler::processOperation(ThreadContext *context, void **operands,
+void AndHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
     int bytes = getBytes(qualifiers);
     void *dst = operands[0];
@@ -35,7 +35,7 @@ void AND_Handler::processOperation(ThreadContext *context, void **operands,
     process_binary_bitwise(dst, src1, src2, bytes, [](uint64_t a, uint64_t b) { return a & b; });
 }
 
-void OR_Handler::processOperation(ThreadContext *context, void **operands,
+void OrHandler::processOperation(ThreadContext *context, void **operands,
                            const std::vector<Qualifier> &qualifiers) {
     void *dst = operands[0];
     void *src1 = operands[1];
@@ -45,7 +45,7 @@ void OR_Handler::processOperation(ThreadContext *context, void **operands,
     process_binary_bitwise(dst, src1, src2, bytes, [](uint64_t a, uint64_t b) { return a | b; });
 }
 
-void XOR_Handler::processOperation(ThreadContext *context, void **operands,
+void XorHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
     void *dst = operands[0];
     void *src1 = operands[1];
@@ -80,7 +80,7 @@ void process_shift_operation(void *dst, void *src1, void *src2, int bytes, OpFun
     }
 }
 
-void SHL_Handler::processOperation(ThreadContext *context, void **operands,
+void ShlHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
     void *dst = operands[0];
     void *src1 = operands[1];
@@ -91,7 +91,7 @@ void SHL_Handler::processOperation(ThreadContext *context, void **operands,
         [](uint64_t a, uint64_t b) { return a << b; });
 }
 
-void SHR_Handler::processOperation(ThreadContext *context, void **operands,
+void ShrHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
     void *dst = operands[0];
     void *src1 = operands[1];
@@ -131,7 +131,7 @@ inline uint32_t popcount_u64(uint64_t x) {
 #endif
 }
 
-void POPC_Handler::processOperation(ThreadContext *context, void **operands,
+void PopcHandler::processOperation(ThreadContext *context, void **operands,
                              const std::vector<Qualifier> &qualifiers) {
     void *dst = operands[0];
     void *src1 = operands[1];
@@ -186,7 +186,7 @@ inline uint32_t clz_u64(uint64_t x, size_t width) {
 #endif
 }
 
-void CLZ_Handler::processOperation(ThreadContext *context, void **operands,
+void ClzHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
     void *dst = operands[0];
     void *src1 = operands[1];
@@ -228,7 +228,7 @@ void process_unary_bitwise(void *dst, void *src, int bytes, OpFunc op) {
     }
 }
 
-void NOT_Handler::processOperation(ThreadContext *context, void **operands,
+void NotHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
     void *dst = operands[0];
     void *src = operands[1];
