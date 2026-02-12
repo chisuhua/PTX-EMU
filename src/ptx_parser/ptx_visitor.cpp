@@ -56,7 +56,7 @@ std::vector<Qualifier> PtxVisitor::extractQualifiersFromContext(antlr4::ParserRu
     return qualifiers;
 }
 
-OperandContext PtxVisitor::createOperandFromContext(ptx::ptxParser::OperandContext *ctx) {
+OperandContext PtxVisitor::createOperandFromContext(ptxparser::ptxParser::OperandContext *ctx) {
     if (!ctx) {
         // Return an empty OperandContext
         return OperandContext{ImmOperand{"0"}};
@@ -101,7 +101,7 @@ OperandContext PtxVisitor::createOperandFromContext(ptx::ptxParser::OperandConte
     return OperandContext{ImmOperand{"0"}};
 }
 
-void PtxVisitor::processFunctionAttributes(ptxParser::FunctionAttributeContext *ctx) {
+void PtxVisitor::processFunctionAttributes(ptxparser::ptxParser::FunctionAttributeContext *ctx) {
     if (!ctx || !currentKernel) return;
     
     // TODO: Implement based on new grammar
@@ -132,7 +132,7 @@ size_t PtxVisitor::calculateTypeSize(const std::vector<Qualifier> &types) {
 // Top-level Visitors
 // ============================================================================
 
-std::any PtxVisitor::visitPtxFile(ptx::ptxParser::PtxFileContext *ctx) {
+std::any PtxVisitor::visitPtxFile(ptxparser::ptxParser::PtxFileContext *ctx) {
     PTX_DEBUG("Visiting PTX file");
     
     // 访问所有声明
@@ -143,7 +143,7 @@ std::any PtxVisitor::visitPtxFile(ptx::ptxParser::PtxFileContext *ctx) {
     return nullptr;
 }
 
-std::any PtxVisitor::visitDeclaration(ptx::ptxParser::DeclarationContext *ctx) {
+std::any PtxVisitor::visitDeclaration(ptxparser::ptxParser::DeclarationContext *ctx) {
     // 根据声明类型分发到具体的访问器
     if (ctx->versionDirective()) {
         return visitVersionDirective(ctx->versionDirective());
@@ -168,7 +168,7 @@ std::any PtxVisitor::visitDeclaration(ptx::ptxParser::DeclarationContext *ctx) {
     return nullptr;
 }
 
-std::any PtxVisitor::visitVersionDirective(ptxParser::VersionDirectiveContext *ctx) {
+std::any PtxVisitor::visitVersionDirective(ptxparser::ptxParser::VersionDirectiveContext *ctx) {
     if (ctx->IMMEDIATE().size() >= 2) {
         this->ctx.ptxMajorVersion = extractIntFromToken(ctx->IMMEDIATE(0)->getSymbol());
         this->ctx.ptxMinorVersion = extractIntFromToken(ctx->IMMEDIATE(1)->getSymbol());
@@ -177,7 +177,7 @@ std::any PtxVisitor::visitVersionDirective(ptxParser::VersionDirectiveContext *c
     return nullptr;
 }
 
-std::any PtxVisitor::visitTargetDirective(ptxParser::TargetDirectiveContext *ctx) {
+std::any PtxVisitor::visitTargetDirective(ptxparser::ptxParser::TargetDirectiveContext *ctx) {
     if (!ctx->SM_TARGET().empty()) {
         std::string target = ctx->SM_TARGET(0)->getText();
         // 提取sm_后面的数字
@@ -193,7 +193,7 @@ std::any PtxVisitor::visitTargetDirective(ptxParser::TargetDirectiveContext *ctx
     return nullptr;
 }
 
-std::any PtxVisitor::visitAddressSizeDirective(ptxParser::AddressSizeDirectiveContext *ctx) {
+std::any PtxVisitor::visitAddressSizeDirective(ptxparser::ptxParser::AddressSizeDirectiveContext *ctx) {
     if (ctx->IMMEDIATE()) {
         this->ctx.ptxAddressSize = extractIntFromToken(ctx->IMMEDIATE()->getSymbol());
         PTX_DEBUG("Address size: %d", this->ctx.ptxAddressSize);
@@ -201,7 +201,7 @@ std::any PtxVisitor::visitAddressSizeDirective(ptxParser::AddressSizeDirectiveCo
     return nullptr;
 }
 
-std::any PtxVisitor::visitVariableDecl(ptxParser::VariableDeclContext *ctx) {
+std::any PtxVisitor::visitVariableDecl(ptxparser::ptxParser::VariableDeclContext *ctx) {
     StatementContext stmtCtx;
     stmtCtx.instructionText = ctx->getText();
     
@@ -226,7 +226,7 @@ std::any PtxVisitor::visitVariableDecl(ptxParser::VariableDeclContext *ctx) {
     return nullptr;
 }
 
-std::any PtxVisitor::visitFunctionDecl(ptxParser::FunctionDeclContext *ctx) {
+std::any PtxVisitor::visitFunctionDecl(ptxparser::ptxParser::FunctionDeclContext *ctx) {
     // 创建新的kernel上下文
     currentKernel = new KernelContext();
     
@@ -270,7 +270,7 @@ std::any PtxVisitor::visitFunctionDecl(ptxParser::FunctionDeclContext *ctx) {
     return nullptr;
 }
 
-std::any PtxVisitor::visitAbiPreserveDirective(ptxParser::AbiPreserveDirectiveContext *ctx) {
+std::any PtxVisitor::visitAbiPreserveDirective(ptxparser::ptxParser::AbiPreserveDirectiveContext *ctx) {
     // ABI保留指令
     AbiDirective abiDir;
     abiDir.regNumber = 0; // TODO: Extract from context
@@ -376,11 +376,11 @@ std::any PtxVisitor::visitInstruction(ptxParser::InstructionContext *ctx) {
 // Operand Visitors
 // ============================================================================
 
-std::any PtxVisitor::visitOperand(ptx::ptxParser::OperandContext *ctx) {
+std::any PtxVisitor::visitOperand(ptxparser::ptxParser::OperandContext *ctx) {
     return createOperandFromContext(ctx);
 }
 
-std::any PtxVisitor::visitSpecialRegister(ptx::ptxParser::SpecialRegisterContext *ctx) {
+std::any PtxVisitor::visitSpecialRegister(ptxparser::ptxParser::SpecialRegisterContext *ctx) {
     // 特殊寄存器可以视为一种特殊的寄存器
     RegOperand reg;
     reg.name = ctx->getText();
@@ -389,7 +389,7 @@ std::any PtxVisitor::visitSpecialRegister(ptx::ptxParser::SpecialRegisterContext
     return std::any{OperandContext{reg}};
 }
 
-std::any PtxVisitor::visitRegister(ptx::ptxParser::RegisterContext *ctx) {
+std::any PtxVisitor::visitRegister(ptxparser::ptxParser::RegisterContext *ctx) {
     RegOperand reg;
     
     // 寄存器名称：去掉$或%前缀
@@ -428,7 +428,7 @@ std::any PtxVisitor::visitRegister(ptx::ptxParser::RegisterContext *ctx) {
     return std::any{OperandContext{reg}};
 }
 
-std::any PtxVisitor::visitImmediate(ptx::ptxParser::ImmediateContext *ctx) {
+std::any PtxVisitor::visitImmediate(ptxparser::ptxParser::ImmediateContext *ctx) {
     ImmOperand imm;
     if (ctx->MINUS()) {
         imm.value = "-" + ctx->IMMEDIATE()->getText();
@@ -438,7 +438,7 @@ std::any PtxVisitor::visitImmediate(ptx::ptxParser::ImmediateContext *ctx) {
     return std::any{OperandContext{imm}};
 }
 
-std::any PtxVisitor::visitAddress(ptx::ptxParser::AddressContext *ctx) {
+std::any PtxVisitor::visitAddress(ptxparser::ptxParser::AddressContext *ctx) {
     AddrOperand addr;
     
     // 默认空间
