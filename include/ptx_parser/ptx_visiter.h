@@ -1,41 +1,40 @@
 #ifndef PTX_VISITOR_H
 #define PTX_VISITOR_H
 
-// #include "ptxParser.h"
+#include "ptxParser.h"
 #include "ptxParserBaseVisitor.h"
 #include "ptx_ir/ptx_context.h"
 #include "ptx_ir/ptx_types.h"
 #include "ptx_ir/operand_context.h"
+#include <any>
+#include <vector>
 
-using namespace ptxparser;
-
-class PtxVisitor : public ptxParserBaseVisitor {
-  std::vector<int> v;
+// 移除using namespace，使用完全限定名
+class PtxVisitor : public ptxparser::ptxParserBaseVisitor {
 public:
     explicit PtxVisitor(PtxContext &context) : ctx(context) {}
 
     // Top-level entry point
-    std::any visitPtxFile(ptxParser::PtxFileContext *ctx) override;
+    std::any visitPtxFile(ptxparser::ptxParser::PtxFileContext *ctx) override;
     
     // Declaration visitors
-    std::any visitDeclaration(ptxParser::DeclarationContext *ctx) override;
-    std::any visitVersionDirective(ptxParser::VersionDirectiveContext *ctx) override;
-    std::any visitTargetDirective(ptxParser::TargetDirectiveContext *ctx) override;
-    std::any visitAddressSizeDirective(ptxParser::AddressSizeDirectiveContext *ctx) override;
-    std::any visitVariableDecl(ptxParser::VariableDeclContext *ctx) override;
-    std::any visitFunctionDecl(ptxParser::FunctionDeclContext *ctx) override;
-    std::any visitAbiPreserveDirective(ptxParser::AbiPreserveDirectiveContext *ctx) override;
+    std::any visitDeclaration(ptxparser::ptxParser::DeclarationContext *ctx) override;
+    std::any visitVersionDirective(ptxparser::ptxParser::VersionDirectiveContext *ctx) override;
+    std::any visitTargetDirective(ptxparser::ptxParser::TargetDirectiveContext *ctx) override;
+    std::any visitAddressSizeDirective(ptxparser::ptxParser::AddressSizeDirectiveContext *ctx) override;
+    std::any visitVariableDecl(ptxparser::ptxParser::VariableDeclContext *ctx) override;
+    std::any visitFunctionDecl(ptxparser::ptxParser::FunctionDeclContext *ctx) override;
+    std::any visitAbiPreserveDirective(ptxparser::ptxParser::AbiPreserveDirectiveContext *ctx) override;
     
     // Function body visitors
-    std::any visitInstructionList(ptxParser::InstructionListContext *ctx) override;
-    std::any visitInstruction(ptxParser::InstructionContext *ctx) override;
+    std::any visitInstructionList(ptxparser::ptxParser::InstructionListContext *ctx) override;
+    std::any visitInstruction(ptxparser::ptxParser::InstructionContext *ctx) override;
     
     // Instruction category visitors
 #define  VISIT_ABI_DIRECTIVE(opstr)
 #define  VISIT_OPERAND_REG(opstr)
 #define  VISIT_OPERAND_CONST(opstr)
 #define  VISIT_OPERAND_MEMORY(opstr)
-#define  VISIT_SIMPLE_NAME(opstr)
 #define  VISIT_SIMPLE_NAME(opstr)
 #define  VISIT_SIMPLE_STRING(opstr)
 #define  VISIT_VOID_INSTR(opstr)
@@ -63,10 +62,10 @@ public:
 #define  VISIT_TENSORMAP_INSTR(opstr)
 
 #define  VISIT_GENERIC_INSTR(opstr) \
-    std::any visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) override;
+    std::any visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *ctx) override;
 
 #define  VISIT_CP_ASYNC_INSTR(opstr) \
-    std::any visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) override;
+    std::any visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *ctx) override;
 
 #define X(openum, opname, opstr, opcount, struct_kind) \
     VISIT_##struct_kind(opstr)
@@ -74,14 +73,11 @@ public:
 #undef X
 
     // Operand visitors
-    std::any visitOperand(ptxParser::OperandContext *ctx) override;
-    std::any visitSpecialRegister(ptxParser::SpecialRegisterContext *ctx) override;
-    std::any visitRegister(ptxParser::RegisterContext *ctx) override;
-    std::any visitImmediate(ptxParser::ImmediateContext *ctx) override;
-    std::any visitAddress(ptxParser::AddressContext *ctx) override;
-    
-    // Helper method for creating operands
-    OperandContext createOperandFromContext(ptxParser::OperandContext *ctx);
+    std::any visitOperand(ptxparser::ptxParser::OperandContext *ctx) override;
+    std::any visitSpecialRegister(ptxparser::ptxParser::SpecialRegisterContext *ctx) override;
+    std::any visitRegister(ptxparser::ptxParser::RegisterContext *ctx) override;
+    std::any visitImmediate(ptxparser::ptxParser::ImmediateContext *ctx) override;
+    std::any visitAddress(ptxparser::ptxParser::AddressContext *ctx) override;
 
 private:
     PtxContext &ctx;
@@ -91,8 +87,8 @@ private:
     // Helper methods
     Qualifier tokenToQualifier(antlr4::Token *token);
     std::vector<Qualifier> extractQualifiersFromContext(antlr4::ParserRuleContext *ctx);
-    OperandContext createOperandFromContext(ptxParser::OperandContext *ctx);
-    void processFunctionAttributes(ptxParser::FunctionAttributeContext *ctx);
+    OperandContext createOperandFromContext(ptxparser::ptxParser::OperandContext *ctx);
+    void processFunctionAttributes(ptxparser::ptxParser::FunctionAttributeContext *ctx);
     size_t calculateTypeSize(const std::vector<Qualifier> &types);
     int extractIntFromToken(antlr4::Token *token);
     std::string extractStringFromToken(antlr4::Token *token);

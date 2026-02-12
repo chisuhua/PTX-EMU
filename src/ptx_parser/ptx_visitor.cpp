@@ -8,10 +8,14 @@
 #include <sstream>
 #include <string>
 #include <algorithm>
+#include <any>
 
 // 定义通用的日志宏
 #define PTX_ERROR(fmt, ...) PTX_ERROR_EMU(fmt, ##__VA_ARGS__)
 #define PTX_DEBUG(fmt, ...) PTX_DEBUG_EMU(fmt, ##__VA_ARGS__)
+
+// 添加命名空间别名以简化代码
+namespace ptx = ptxparser;
 
 // ============================================================================
 // Helper Methods Implementation
@@ -52,7 +56,7 @@ std::vector<Qualifier> PtxVisitor::extractQualifiersFromContext(antlr4::ParserRu
     return qualifiers;
 }
 
-OperandContext PtxVisitor::createOperandFromContext(ptxParser::OperandContext *ctx) {
+OperandContext PtxVisitor::createOperandFromContext(ptx::ptxParser::OperandContext *ctx) {
     if (!ctx) {
         // Return an empty OperandContext
         return OperandContext{ImmOperand{"0"}};
@@ -128,7 +132,7 @@ size_t PtxVisitor::calculateTypeSize(const std::vector<Qualifier> &types) {
 // Top-level Visitors
 // ============================================================================
 
-std::any PtxVisitor::visitPtxFile(ptxParser::PtxFileContext *ctx) {
+std::any PtxVisitor::visitPtxFile(ptx::ptxParser::PtxFileContext *ctx) {
     PTX_DEBUG("Visiting PTX file");
     
     // 访问所有声明
@@ -139,7 +143,7 @@ std::any PtxVisitor::visitPtxFile(ptxParser::PtxFileContext *ctx) {
     return nullptr;
 }
 
-std::any PtxVisitor::visitDeclaration(ptxParser::DeclarationContext *ctx) {
+std::any PtxVisitor::visitDeclaration(ptx::ptxParser::DeclarationContext *ctx) {
     // 根据声明类型分发到具体的访问器
     if (ctx->versionDirective()) {
         return visitVersionDirective(ctx->versionDirective());
@@ -372,11 +376,11 @@ std::any PtxVisitor::visitInstruction(ptxParser::InstructionContext *ctx) {
 // Operand Visitors
 // ============================================================================
 
-std::any PtxVisitor::visitOperand(ptxParser::OperandContext *ctx) {
+std::any PtxVisitor::visitOperand(ptx::ptxParser::OperandContext *ctx) {
     return createOperandFromContext(ctx);
 }
 
-std::any PtxVisitor::visitSpecialRegister(ptxParser::SpecialRegisterContext *ctx) {
+std::any PtxVisitor::visitSpecialRegister(ptx::ptxParser::SpecialRegisterContext *ctx) {
     // 特殊寄存器可以视为一种特殊的寄存器
     RegOperand reg;
     reg.name = ctx->getText();
@@ -385,7 +389,7 @@ std::any PtxVisitor::visitSpecialRegister(ptxParser::SpecialRegisterContext *ctx
     return std::any{OperandContext{reg}};
 }
 
-std::any PtxVisitor::visitRegister(ptxParser::RegisterContext *ctx) {
+std::any PtxVisitor::visitRegister(ptx::ptxParser::RegisterContext *ctx) {
     RegOperand reg;
     
     // 寄存器名称：去掉$或%前缀
@@ -424,7 +428,7 @@ std::any PtxVisitor::visitRegister(ptxParser::RegisterContext *ctx) {
     return std::any{OperandContext{reg}};
 }
 
-std::any PtxVisitor::visitImmediate(ptxParser::ImmediateContext *ctx) {
+std::any PtxVisitor::visitImmediate(ptx::ptxParser::ImmediateContext *ctx) {
     ImmOperand imm;
     if (ctx->MINUS()) {
         imm.value = "-" + ctx->IMMEDIATE()->getText();
@@ -434,7 +438,7 @@ std::any PtxVisitor::visitImmediate(ptxParser::ImmediateContext *ctx) {
     return std::any{OperandContext{imm}};
 }
 
-std::any PtxVisitor::visitAddress(ptxParser::AddressContext *ctx) {
+std::any PtxVisitor::visitAddress(ptx::ptxParser::AddressContext *ctx) {
     AddrOperand addr;
     
     // 默认空间
@@ -444,16 +448,23 @@ std::any PtxVisitor::visitAddress(ptxParser::AddressContext *ctx) {
     auto addrExprCtx = ctx->addressExpr();
     if (addrExprCtx) {
         // 获取基址操作数
-        auto baseOperand = visitOperand(addrExprCtx->operand()).as<OperandContext>();
-        
-        // 检查基址操作数的类型
-        if (baseOperand.kind() == OperandKind::VAR) {
-            const auto& var = std::get<VariableOperand>(baseOperand.data);
-            addr.baseSymbol = var.name;
-        } else if (baseOperand.kind() == OperandKind::REG) {
-            const auto& reg = std::get<RegOperand>(baseOperand.data);
-            addr.baseSymbol = reg.fullName();
+        auto baseAny = visitOperand(addrExprCtx->operand());
+        // 安全地提取OperandContext
+        try {
+            auto baseOperand = std::any_cast<OperandContext>(baseAny);
+            // 检查基址操作数的类型
+            if (baseOperand.kind() == OperandKind::VAR) {
+                const auto& var = std::get<VariableOperand>(baseOperand.data);
+                addr.baseSymbol = var.name;
+            } else if (baseOperand.kind() == OperandKind::REG) {
+                const auto& reg = std::get<RegOperand>(baseOperand.data);
+                addr.baseSymbol = reg.fullName();
+            }
+        } catch (const std::bad_any_cast& e) {
+            // 处理转换失败的情况
+            PTX_ERROR("Failed to cast operand in address expression: %s", e.what());
         }
+        
         
         // 检查是否有偏移量
         if (addrExprCtx->immediate()) {
