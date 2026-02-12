@@ -31,6 +31,7 @@ public:
     std::any visitInstruction(ptxParser::InstructionContext *ctx) override;
     
     // Instruction category visitors
+#define  VISIT_ABI_DIRECTIVE(opstr)
 #define  VISIT_OPERAND_REG(opstr)
 #define  VISIT_OPERAND_CONST(opstr)
 #define  VISIT_OPERAND_MEMORY(opstr)
@@ -49,6 +50,17 @@ public:
 #define  VISIT_MBARRIER_INSTR(opstr)
 #define  VISIT_FENCE_INSTR(opstr)
 #define  VISIT_REDUX_INSTR(opstr)
+#define  VISIT_VOTE_INSTR(opstr)
+#define  VISIT_SHFL_INSTR(opstr)
+#define  VISIT_TEXTURE_INSTR(opstr)
+#define  VISIT_SURFACE_INSTR(opstr)
+#define  VISIT_REDUCTION_INSTR(opstr)
+#define  VISIT_PREFETCH_INSTR(opstr)
+#define  VISIT_ASYNC_INSTR(opstr)
+#define  VISIT_ASYNC_STORE(opstr)
+#define  VISIT_ASYNC_REDUCE(opstr)
+#define  VISIT_TCGEN_INSTR(opstr)
+#define  VISIT_TENSORMAP_INSTR(opstr)
 
 #define  VISIT_GENERIC_INSTR(opstr) \
     std::any visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) override;
