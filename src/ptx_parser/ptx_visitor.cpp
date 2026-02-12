@@ -53,19 +53,48 @@ std::vector<Qualifier> PtxVisitor::extractQualifiersFromContext(antlr4::ParserRu
 }
 
 OperandContext PtxVisitor::createOperandFromContext(ptxParser::OperandContext *ctx) {
-    OperandContext oc;
+    if (!ctx) {
+        // Return an empty OperandContext
+        return OperandContext{ImmOperand{"0"}};
+    }
     
-    if (!ctx) return oc;
+    // 根据语法规则，operand可以是register, immediate, address, specialRegister, 或ID
+    // 我们需要检查ctx中的具体内容
+    // 由于ANTLR生成的代码，我们可以通过检查各个子规则来确定类型
     
-    // TODO: Implement proper operand creation based on new grammar
-    // For now, create a simple placeholder
-    oc.operandType = O_REG;
-    auto reg = new OperandContext::REG();
-    reg->regName = "TODO";
-    reg->regIdx = 0;
-    oc.operand = reg;
+    // 首先检查register
+    if (ctx->register_()) {
+        auto regCtx = ctx->register_();
+        return visitRegister(regCtx).as<OperandContext>();
+    }
     
-    return oc;
+    // 检查immediate
+    if (ctx->immediate()) {
+        auto immCtx = ctx->immediate();
+        return visitImmediate(immCtx).as<OperandContext>();
+    }
+    
+    // 检查address
+    if (ctx->address()) {
+        auto addrCtx = ctx->address();
+        return visitAddress(addrCtx).as<OperandContext>();
+    }
+    
+    // 检查specialRegister
+    if (ctx->specialRegister()) {
+        auto specRegCtx = ctx->specialRegister();
+        return visitSpecialRegister(specRegCtx).as<OperandContext>();
+    }
+    
+    // 检查ID（变量名）
+    if (ctx->ID()) {
+        VariableOperand var;
+        var.name = ctx->ID()->getText();
+        return OperandContext{var};
+    }
+    
+    // 默认返回一个立即数0
+    return OperandContext{ImmOperand{"0"}};
 }
 
 void PtxVisitor::processFunctionAttributes(ptxParser::FunctionAttributeContext *ctx) {
@@ -344,21 +373,107 @@ std::any PtxVisitor::visitInstruction(ptxParser::InstructionContext *ctx) {
 // ============================================================================
 
 std::any PtxVisitor::visitOperand(ptxParser::OperandContext *ctx) {
-    return nullptr;
+    return createOperandFromContext(ctx);
 }
 
 std::any PtxVisitor::visitSpecialRegister(ptxParser::SpecialRegisterContext *ctx) {
-    return nullptr;
+    // 特殊寄存器可以视为一种特殊的寄存器
+    RegOperand reg;
+    reg.name = ctx->getText();
+    // 特殊寄存器通常没有索引
+    reg.index = -1;
+    return std::any{OperandContext{reg}};
 }
 
 std::any PtxVisitor::visitRegister(ptxParser::RegisterContext *ctx) {
-    return nullptr;
+    RegOperand reg;
+    
+    // 寄存器名称：去掉$或%前缀
+    std::string fullName = ctx->ID()->getText();
+    
+    // 提取寄存器类型和索引
+    // 寄存器格式通常是：r0, pred0, %r1, $p2等
+    // 首先去掉前缀字符
+    std::string namePart = fullName;
+    if (!namePart.empty() && (namePart[0] == '$' || namePart[0] == '%')) {
+        namePart = namePart.substr(1);
+    }
+    
+    // 分离字母部分和数字部分
+    size_t i = 0;
+    while (i < namePart.length() && std::isalpha(namePart[i])) {
+        i++;
+    }
+    
+    if (i > 0) {
+        reg.name = namePart.substr(0, i);
+        if (i < namePart.length()) {
+            try {
+                reg.index = std::stoi(namePart.substr(i));
+            } catch (...) {
+                reg.index = -1;
+            }
+        } else {
+            reg.index = -1;
+        }
+    } else {
+        reg.name = namePart;
+        reg.index = -1;
+    }
+    
+    return std::any{OperandContext{reg}};
 }
 
 std::any PtxVisitor::visitImmediate(ptxParser::ImmediateContext *ctx) {
-    return nullptr;
+    ImmOperand imm;
+    if (ctx->MINUS()) {
+        imm.value = "-" + ctx->IMMEDIATE()->getText();
+    } else {
+        imm.value = ctx->IMMEDIATE()->getText();
+    }
+    return std::any{OperandContext{imm}};
 }
 
 std::any PtxVisitor::visitAddress(ptxParser::AddressContext *ctx) {
-    return nullptr;
+    AddrOperand addr;
+    
+    // 默认空间
+    addr.space = AddrOperand::Space::GLOBAL;
+    
+    // 获取地址表达式
+    auto addrExprCtx = ctx->addressExpr();
+    if (addrExprCtx) {
+        // 获取基址操作数
+        auto baseOperand = visitOperand(addrExprCtx->operand()).as<OperandContext>();
+        
+        // 检查基址操作数的类型
+        if (baseOperand.kind() == OperandKind::VAR) {
+            const auto& var = std::get<VariableOperand>(baseOperand.data);
+            addr.baseSymbol = var.name;
+        } else if (baseOperand.kind() == OperandKind::REG) {
+            const auto& reg = std::get<RegOperand>(baseOperand.data);
+            addr.baseSymbol = reg.fullName();
+        }
+        
+        // 检查是否有偏移量
+        if (addrExprCtx->immediate()) {
+            addr.offsetType = AddrOperand::OffsetType::IMMEDIATE;
+            auto immCtx = addrExprCtx->immediate();
+            if (immCtx->MINUS()) {
+                addr.immediateOffset = "-" + immCtx->IMMEDIATE()->getText();
+            } else {
+                addr.immediateOffset = immCtx->IMMEDIATE()->getText();
+            }
+        } else if (addrExprCtx->PLUS()) {
+            // 如果有PLUS但没有immediate，可能语法有变化
+            // 这里简单处理
+            addr.offsetType = AddrOperand::OffsetType::IMMEDIATE;
+            addr.immediateOffset = "0";
+        } else {
+            addr.offsetType = AddrOperand::OffsetType::IMMEDIATE;
+            addr.immediateOffset = "0";
+        }
+    }
+    
+    return std::any{OperandContext{addr}};
 }

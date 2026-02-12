@@ -79,6 +79,9 @@ public:
     std::any visitRegister(ptxParser::RegisterContext *ctx) override;
     std::any visitImmediate(ptxParser::ImmediateContext *ctx) override;
     std::any visitAddress(ptxParser::AddressContext *ctx) override;
+    
+    // Helper method for creating operands
+    OperandContext createOperandFromContext(ptxParser::OperandContext *ctx);
 
 private:
     PtxContext &ctx;
