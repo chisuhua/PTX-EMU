@@ -29,36 +29,41 @@ instruction
     | SEMI
     ;
 
+predicate
+    : AT operand
+    | BANG operand
+    ;
+
 braInst
-    : BRA (UNI | voteMode)? labelOperand SEMI
+    : predicate? BRA (UNI | voteMode)? labelOperand SEMI
     ;
 
 brxInst
-    : BRX (UNI | voteMode)? addressExpr COMMA labelOperand SEMI
+    : predicate? BRX (UNI | voteMode)? addressExpr COMMA labelOperand SEMI
     ;
 
 callInst
-    : CALL callParams? labelOperand callArgs? SEMI
+    : predicate? CALL callParams? labelOperand callArgs? SEMI
     ;
 
 retInst
-    : RET SEMI
+    : predicate? RET SEMI
     ;
 
 exitInst
-    : EXIT SEMI
+    : predicate? EXIT SEMI
     ;
 
 trapInst
-    : TRAP SEMI
+    : predicate? TRAP SEMI
     ;
 
 brkInst
-    : BRK (DECIMAL_INT)? SEMI
+    : predicate? BRK (DECIMAL_INT)? SEMI
     ;
 
 brkptInst
-    : BRKPT SEMI
+    : predicate? BRKPT SEMI
     ;
 
 controlFlowInst
