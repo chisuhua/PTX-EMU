@@ -47,7 +47,7 @@ void process_unary_math(void *dst, void *src, int bytes, bool is_float, OpFunc o
 }
 
 // Math instruction handlers - must be class methods
-void SQRT_Handler::processOperation(ThreadContext *context, void **operands,
+void SqrtHandler::processOperation(ThreadContext *context, void **operands,
                                     const std::vector<Qualifier> &qualifiers) {
     void *dst = operands[0];
     void *src = operands[1];
@@ -57,7 +57,7 @@ void SQRT_Handler::processOperation(ThreadContext *context, void **operands,
     process_unary_math(dst, src, bytes, is_float, [](auto x) { return std::sqrt(x); });
 }
 
-void SIN_Handler::processOperation(ThreadContext *context, void **operands,
+void SinHandler::processOperation(ThreadContext *context, void **operands,
                                    const std::vector<Qualifier> &qualifiers) {
     void *dst = operands[0];
     void *src = operands[1];
@@ -67,7 +67,7 @@ void SIN_Handler::processOperation(ThreadContext *context, void **operands,
     process_unary_math(dst, src, bytes, is_float, [](auto x) { return std::sin(x); });
 }
 
-void COS_Handler::processOperation(ThreadContext *context, void **operands,
+void CosHandler::processOperation(ThreadContext *context, void **operands,
                                    const std::vector<Qualifier> &qualifiers) {
     void *dst = operands[0];
     void *src = operands[1];
@@ -77,7 +77,7 @@ void COS_Handler::processOperation(ThreadContext *context, void **operands,
     process_unary_math(dst, src, bytes, is_float, [](auto x) { return std::cos(x); });
 }
 
-void RCP_Handler::processOperation(ThreadContext *context, void **operands,
+void RcpHandler::processOperation(ThreadContext *context, void **operands,
                                    const std::vector<Qualifier> &qualifiers) {
     void *dst = operands[0];
     void *src = operands[1];
@@ -89,7 +89,7 @@ void RCP_Handler::processOperation(ThreadContext *context, void **operands,
     process_unary_math(dst, src, bytes, is_float, [](auto x) { return 1.0 / x; });
 }
 
-void LG2_Handler::processOperation(ThreadContext *context, void **operands,
+void Lg2Handler::processOperation(ThreadContext *context, void **operands,
                                    const std::vector<Qualifier> &qualifiers) {
     void *dst = operands[0];
     void *src = operands[1];
@@ -100,7 +100,7 @@ void LG2_Handler::processOperation(ThreadContext *context, void **operands,
     process_unary_math(dst, src, bytes, is_float, [](auto x) { return std::log2(x); });
 }
 
-void EX2_Handler::processOperation(ThreadContext *context, void **operands,
+void Ex2Handler::processOperation(ThreadContext *context, void **operands,
                                    const std::vector<Qualifier> &qualifiers) {
     void *dst = operands[0];
     void *src = operands[1];
@@ -111,7 +111,7 @@ void EX2_Handler::processOperation(ThreadContext *context, void **operands,
     process_unary_math(dst, src, bytes, is_float, [](auto x) { return std::exp2(x); });
 }
 
-void RSQRT_Handler::processOperation(ThreadContext *context, void **operands,
+void RsqrtHandler::processOperation(ThreadContext *context, void **operands,
                                      const std::vector<Qualifier> &qualifiers) {
     void *dst = operands[0];
     void *src = operands[1];
