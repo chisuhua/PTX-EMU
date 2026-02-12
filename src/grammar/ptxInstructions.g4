@@ -25,7 +25,7 @@ instruction
     | reductionPrefetchInst
     | matrixInst
     | videoSimdInst
-    | newInst
+    | tcgenInst
     | SEMI
     ;
 
@@ -379,7 +379,7 @@ tcgenCommitInst: TCGEN_COMMIT tcgenSpace typeSpecifier vectorSpec? operand SEMI;
 tensormapReplaceInst: TENSORMAP_REPLACE tensormapSpace typeSpecifier vectorSpec? operand COMMA operand SEMI;
 stBulkInst: ST_BULK stBulkQualifiers typeSpecifier vectorSpec? addressExpr COMMA operand SEMI;
 
-newInst
+tcgenInst
     : stAsyncInst
     | redAsyncInst
     | tcgenAllocInst
