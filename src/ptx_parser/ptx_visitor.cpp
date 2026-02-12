@@ -290,7 +290,7 @@ std::any PtxVisitor::visitAbiPreserveDirective(ptxparser::ptxParser::AbiPreserve
     return nullptr;
 }
 
-std::any PtxVisitor::visitInstructionList(ptxParser::InstructionListContext *ctx) {
+std::any PtxVisitor::visitInstructionList(ptxparser::ptxParser::InstructionListContext *ctx) {
     // 访问所有指令
     for (auto instr : ctx->instruction()) {
         visit(instr);
@@ -298,7 +298,7 @@ std::any PtxVisitor::visitInstructionList(ptxParser::InstructionListContext *ctx
     return nullptr;
 }
 
-std::any PtxVisitor::visitInstruction(ptxParser::InstructionContext *ctx) {
+std::any PtxVisitor::visitInstruction(ptxparser::ptxParser::InstructionContext *ctx) {
     // 根据指令类型分发到具体的访问器
     // 这里使用宏来减少重复代码
     
