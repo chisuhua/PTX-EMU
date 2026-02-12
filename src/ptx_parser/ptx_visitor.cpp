@@ -489,7 +489,6 @@ std::any PtxVisitor::visitAddress(ptxparser::ptxParser::AddressContext *ctx) {
             PTX_ERROR("Failed to cast operand in address expression: %s", e.what());
         }
         
-        
         // 检查是否有偏移量
         if (addrExprCtx->immediate()) {
             addr.offsetType = AddrOperand::OffsetType::IMMEDIATE;
