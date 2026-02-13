@@ -5,7 +5,7 @@
 #include "ptxsim/utils/type_utils.h"
 #include <cmath>
 
-void WMMA_Handler::processWmmaOperation(ThreadContext *context, void **operands,
+void WmmaHandler::processWmmaOperation(ThreadContext *context, void **operands,
                                         const std::vector<Qualifier> &qualifiers) {
     void *dst = operands[0];
     void *src1 = operands[1];

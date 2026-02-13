@@ -32,29 +32,29 @@ void BraHandler::executeBranch(ThreadContext *context, const BranchInstr &instr)
 }
 
 // AT is now a BRANCH handler (conditional execution based on predicate)
-void AtHandler::executeBranch(ThreadContext *context, const BranchInstr &instr) {
-    // AT instruction: predicate prefix that determines whether to execute the next instruction
-    // In PTX, @p or @!p modifies whether the next instruction executes
-    
-    // TODO: Need to parse the actual predicate value from the instruction
-    // For now, we'll assume predicate is true (execute next instruction)
-    bool predicate_value = true;
-    
-    // Check if the predicate is negated (e.g., @!p)
-    // This information should be in the instruction qualifiers or operands
-    // For now, we'll assume it's not negated
-    
-    if (predicate_value) {
-        // Predicate is true: execute the next instruction
-        context->next_pc = context->pc + 1;
-        context->trace_status(ptxsim::log_level::debug, "predicate",
-                              "AT: predicate=true, executing next instruction at PC=%d", 
-                              context->next_pc);
-    } else {
-        // Predicate is false: skip the next instruction
-        context->next_pc = context->pc + 2;
-        context->trace_status(ptxsim::log_level::debug, "predicate",
-                              "AT: predicate=false, skipping to PC=%d", 
-                              context->next_pc);
-    }
-}
+// void AtHandler::executeBranch(ThreadContext *context, const BranchInstr &instr) {
+//     // AT instruction: predicate prefix that determines whether to execute the next instruction
+//     // In PTX, @p or @!p modifies whether the next instruction executes
+//     
+//     // TODO: Need to parse the actual predicate value from the instruction
+//     // For now, we'll assume predicate is true (execute next instruction)
+//     bool predicate_value = true;
+//     
+//     // Check if the predicate is negated (e.g., @!p)
+//     // This information should be in the instruction qualifiers or operands
+//     // For now, we'll assume it's not negated
+//     
+//     if (predicate_value) {
+//         // Predicate is true: execute the next instruction
+//         context->next_pc = context->pc + 1;
+//         context->trace_status(ptxsim::log_level::debug, "predicate",
+//                               "AT: predicate=true, executing next instruction at PC=%d", 
+//                               context->next_pc);
+//     } else {
+//         // Predicate is false: skip the next instruction
+//         context->next_pc = context->pc + 2;
+//         context->trace_status(ptxsim::log_level::debug, "predicate",
+//                               "AT: predicate=false, skipping to PC=%d", 
+//                               context->next_pc);
+//     }
+// }

@@ -8,7 +8,7 @@
 
 std::string S2s(StatementType s) {
     switch (s) {
-#define X(stype, opkind, opname, count, struct_kind)                           \
+#define X(stype, opkind, opname, count, struct_kind, instr_kind)                           \
     case stype:                                                                \
         return #opname;
 #include "ptx_ir/ptx_op.def"
@@ -50,16 +50,17 @@ std::string StatementContext::toString() const {
     std::ostringstream oss;
 
     // Special: Predicate prefix (@%p1)
-    if (type == S_AT) {
-        const auto &pred = get<PredicatePrefix>();
-        oss << "@";
-        if (!pred.operands.empty()) {
-            oss << "(" << operandsToString(pred.operands) << ")";
-        }
-        oss << pred.target;
-
-        return oss.str();
-    }
+    // if (type == S_AT) {
+    //     const auto &pred = get<PredicatePrefix>();
+    //     oss << "@";
+    //     if (!pred.operands.empty()) {
+    //         oss << "(" << operandsToString(pred.operands) << ")";
+    //     }
+    //     oss << pred.target;
+    //
+    //     return oss.str();
+    // }
+    //
 
     // Special: Dollar name ( $ r1)
     if (type == S_DOLLOR) {

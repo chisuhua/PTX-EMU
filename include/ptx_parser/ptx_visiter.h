@@ -31,44 +31,44 @@ public:
     std::any visitInstruction(ptxparser::ptxParser::InstructionContext *ctx) override;
     
     // Instruction category visitors
-#define  VISIT_ABI_DIRECTIVE(opstr)
-#define  VISIT_OPERAND_REG(opstr)
-#define  VISIT_OPERAND_CONST(opstr)
-#define  VISIT_OPERAND_MEMORY(opstr)
-#define  VISIT_SIMPLE_NAME(opstr)
-#define  VISIT_SIMPLE_STRING(opstr)
-#define  VISIT_VOID_INSTR(opstr)
-#define  VISIT_PREDICATE_PREFIX(opstr)
-#define  VISIT_BRANCH(opstr)
-#define  VISIT_ATOM_INSTR(opstr)
-#define  VISIT_WMMA_INSTR(opstr)
-#define  VISIT_BARRIER(opstr)
-#define  VISIT_CALL_INSTR(opstr)
-#define  VISIT_LABEL_INSTR(opstr)
-#define  VISIT_MEMBAR_INSTR(opstr)
-#define  VISIT_MBARRIER_INSTR(opstr)
-#define  VISIT_FENCE_INSTR(opstr)
-#define  VISIT_REDUX_INSTR(opstr)
-#define  VISIT_VOTE_INSTR(opstr)
-#define  VISIT_SHFL_INSTR(opstr)
-#define  VISIT_TEXTURE_INSTR(opstr)
-#define  VISIT_SURFACE_INSTR(opstr)
-#define  VISIT_REDUCTION_INSTR(opstr)
-#define  VISIT_PREFETCH_INSTR(opstr)
-#define  VISIT_ASYNC_INSTR(opstr)
-#define  VISIT_ASYNC_STORE(opstr)
-#define  VISIT_ASYNC_REDUCE(opstr)
-#define  VISIT_TCGEN_INSTR(opstr)
-#define  VISIT_TENSORMAP_INSTR(opstr)
+#define  VISITOR_DECL_ABI_DIRECTIVE(opstr)
+#define  VISITOR_DECL_OPERAND_REG(opstr)
+#define  VISITOR_DECL_OPERAND_CONST(opstr)
+#define  VISITOR_DECL_OPERAND_MEMORY(opstr)
+#define  VISITOR_DECL_SIMPLE_NAME(opstr)
+#define  VISITOR_DECL_SIMPLE_STRING(opstr)
+#define  VISITOR_DECL_VOID_INSTR(opstr)
+#define  VISITOR_DECL_PREDICATE_PREFIX(opstr)
+#define  VISITOR_DECL_BRANCH(opstr)
+#define  VISITOR_DECL_ATOM_INSTR(opstr)
+#define  VISITOR_DECL_WMMA_INSTR(opstr)
+#define  VISITOR_DECL_BARRIER(opstr)
+#define  VISITOR_DECL_CALL_INSTR(opstr)
+#define  VISITOR_DECL_LABEL_INSTR(opstr)
+#define  VISITOR_DECL_MEMBAR_INSTR(opstr)
+#define  VISITOR_DECL_MBARRIER_INSTR(opstr)
+#define  VISITOR_DECL_FENCE_INSTR(opstr)
+#define  VISITOR_DECL_REDUX_INSTR(opstr)
+#define  VISITOR_DECL_VOTE_INSTR(opstr)
+#define  VISITOR_DECL_SHFL_INSTR(opstr)
+#define  VISITOR_DECL_TEXTURE_INSTR(opstr)
+#define  VISITOR_DECL_SURFACE_INSTR(opstr)
+#define  VISITOR_DECL_REDUCTION_INSTR(opstr)
+#define  VISITOR_DECL_PREFETCH_INSTR(opstr)
+#define  VISITOR_DECL_ASYNC_INSTR(opstr)
+#define  VISITOR_DECL_ASYNC_STORE(opstr)
+#define  VISITOR_DECL_ASYNC_REDUCE(opstr)
+#define  VISITOR_DECL_TCGEN_INSTR(opstr)
+#define  VISITOR_DECL_TENSORMAP_INSTR(opstr)
 
-#define  VISIT_GENERIC_INSTR(opstr) \
+#define  VISITOR_DECL_GENERIC_INSTR(opstr) \
     std::any visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *ctx) override;
 
-#define  VISIT_CP_ASYNC_INSTR(opstr) \
+#define  VISITOR_DECL_CP_ASYNC_INSTR(opstr) \
     std::any visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *ctx) override;
 
-#define X(openum, opname, opstr, opcount, struct_kind) \
-    VISIT_##struct_kind(opstr)
+#define X(openum, opname, opstr, opcount, struct_kind, instr_kind) \
+    VISITOR_DECL_##struct_kind(opstr)
 #include "ptx_ir/ptx_op.def"
 #undef X
 

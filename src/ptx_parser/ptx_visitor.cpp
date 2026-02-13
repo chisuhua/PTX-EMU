@@ -325,11 +325,49 @@ std::any PtxVisitor::visitInstructionList(ptxparser::ptxParser::InstructionListC
 std::any PtxVisitor::visitInstruction(ptxparser::ptxParser::InstructionContext *ctx) {
     // 根据指令类型分发到具体的访问器
     // 这里使用宏来减少重复代码
-    
-#define X(openum, opname, opstr, opcount, struct_kind)                         \
-    if (ctx->opstr##Inst()) {                                                  \
-        return visit##opstr##Inst(ctx->opstr##Inst());                         \
+    //
+#define  VISITOR_IMPL_ABI_DIRECTIVE(opstr, opname, instr_kind)
+
+#define  VISITOR_IMPL_structure(opstr, opname, instr_kind)
+
+#define  VISITOR_IMPL_OPERAND_CONST(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_OPERAND_MEMORY(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_SIMPLE_NAME(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_SIMPLE_STRING(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_VOID_INSTR(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_PREDICATE_PREFIX(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_BRANCH(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_ATOM_INSTR(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_WMMA_INSTR(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_BARRIER(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_CALL_INSTR(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_LABEL_INSTR(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_MEMBAR_INSTR(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_MBARRIER_INSTR(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_FENCE_INSTR(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_REDUX_INSTR(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_VOTE_INSTR(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_SHFL_INSTR(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_TEXTURE_INSTR(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_SURFACE_INSTR(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_REDUCTION_INSTR(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_PREFETCH_INSTR(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_ASYNC_INSTR(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_ASYNC_STORE(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_ASYNC_REDUCE(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_TCGEN_INSTR(opstr, opname, instr_kind)
+#define  VISITOR_IMPL_TENSORMAP_INSTR(opstr, opname, instr_kind)
+
+#define  VISITOR_IMPL_DataMovement(opstr, opname, instr_kind) \
+    if (ctx->instr_kind##Inst()->opstr##Inst()) {                                                  \
+        return visit##opname##Inst(ctx->instr_kind##Inst()->opstr##Inst());                         \
     }
+
+#define  VISITOR_IMPL_CP_ASYNC_INSTR(opstr, opname, instr_kind) 
+
+
+#define X(openum, opstr, opname, opcount, _, instr_kind)                         \
+    VISITOR_IMPL_##instr_kind(opstr, opname, instr_kind)
     
 #include "ptx_ir/ptx_op.def"
 #undef X
