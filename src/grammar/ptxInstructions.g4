@@ -124,6 +124,7 @@ arithmeticInst
     | sinInst
     | cosInst
     | lg2Inst
+    | rcpInst
     | ex2Inst
     | popcInst
     | clzInst
@@ -190,7 +191,6 @@ dataMovementInst
     | stInst
     | cvtInst
     | cvtaInst
-    | rcpInst
     | prmtInst
     | isspacepInst
     | mapaInst
