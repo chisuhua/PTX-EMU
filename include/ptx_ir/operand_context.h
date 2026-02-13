@@ -59,7 +59,8 @@ public:
     mutable void *operand_phy_addr = nullptr;
 
     // Constructors
-    template <typename T> OperandContext(T &&t) : data(std::forward<T>(t)) {}
+    template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, OperandContext>>>
+    OperandContext(T &&t) : data(std::forward<T>(t)) {}
     OperandContext(const OperandContext &) = default;
     OperandContext &operator=(const OperandContext &) = default;
     OperandContext(OperandContext &&) = default;

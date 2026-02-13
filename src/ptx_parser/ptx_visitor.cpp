@@ -307,6 +307,11 @@ std::any PtxVisitor::visitAbiPreserveDirective(ptxparser::ptxParser::AbiPreserve
     // 添加到全局语句或当前kernel
     if (currentKernel) {
         currentKernel->kernelStatements.push_back(stmtCtx);
+        
+        // 同时添加到 KernelContext 的 abiPreservedRegisters
+        // 解析寄存器名称: .abi_preserve %r15
+        std::string regName = ctx->ID()->getText();
+        currentKernel->addAbiPreservedRegister(regName, 32); // 默认32位，可后续改进
     } else {
         this->ctx.ptxStatements.push_back(stmtCtx);
     }
@@ -400,9 +405,6 @@ std::any PtxVisitor::visitInstruction(ptxparser::ptxParser::InstructionContext *
     }
 
 #define  VISITOR_IMPL_Abi(opstr, opname, instr_kind) \
-    if (ctx->instr_kind##Inst()->opstr##Inst()) { \
-        return visit##opname##Inst(ctx->instr_kind##Inst()->opstr##Inst()); \
-    }
 
 #define  VISITOR_IMPL_parallelSync(opstr, opname, instr_kind) \
     if (ctx->instr_kind##Inst()->opstr##Inst()) { \
@@ -422,21 +424,9 @@ std::any PtxVisitor::visitInstruction(ptxparser::ptxParser::InstructionContext *
 #include "ptx_ir/ptx_op.def"
 #undef X
     
-    // TODO: Handle label instructions
-    if (ctx->label()) {
-        // Handle label
-        StatementContext stmtCtx;
-        stmtCtx.type = S_LABEL;
-        LabelInstr label;
-        label.labelName = ctx->label()->ID()->getText();
-        stmtCtx.data = label;
-        stmtCtx.instructionText = ctx->getText();
-        
-        if (currentKernel) {
-            currentKernel->kernelStatements.push_back(stmtCtx);
-        }
-        return nullptr;
-    }
+    // Note: Labels are handled as part of other instructions (bra, call, etc.)
+    // The label target is stored in BranchInstr/CallInstr, not as separate S_LABEL
+    // After all statements are built, labels can be extracted from branch targets
     
     return nullptr;
 }
