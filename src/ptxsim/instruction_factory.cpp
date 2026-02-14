@@ -10,9 +10,9 @@ void InstructionFactory::initialize() {
         return;
 
     // 为每种指令类型注册对应的 Handler 实例
-    // 注意：Handler 类名为 type_name##_Handler
-#define X(enum_val, type_name, str, op_count, struct_kind) \
-    handler_map[enum_val] = new type_name##_Handler();
+    // 注意：Handler 类名为 type_name##Handler
+#define X(enum_val, op_name, opstr, op_count, struct_kind, instr_kind) \
+    handler_map[enum_val] = new opstr##Handler();
 #include "ptx_ir/ptx_op.def"
 #undef X
 

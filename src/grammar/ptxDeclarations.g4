@@ -22,7 +22,7 @@ declaration
 
 // --- Version ---
 versionDirective
-    : VERSION DECIMAL_INT DOT DECIMAL_INT SEMI
+    : VERSION IMMEDIATE DOT IMMEDIATE SEMI
     ;
 
 // --- Target ---
@@ -32,7 +32,7 @@ targetDirective
 
 // --- Address Size ---
 addressSizeDirective
-    : ADDRESS_SIZE DECIMAL_INT SEMI
+    : ADDRESS_SIZE IMMEDIATE SEMI
     ;
 
 // --- File ---
@@ -96,7 +96,7 @@ arraySize
 
 // Align value must be power-of-two (validated in semantic analysis)
 alignClause
-    : ALIGN DECIMAL_INT
+    : ALIGN IMMEDIATE
     ;
 
 initializer
@@ -136,12 +136,12 @@ paramDecl
 
 // Function attributes (PTX §6.1)
 functionAttribute
-    : MAXNREG DECIMAL_INT
+    : MAXNREG IMMEDIATE
     | REQNTID threadDim
-    | MINNCTAPERSM DECIMAL_INT
+    | MINNCTAPERSM IMMEDIATE
     ;
 
 threadDim
-    : DECIMAL_INT (COMMA DECIMAL_INT (COMMA DECIMAL_INT)?)?
+    : IMMEDIATE (COMMA IMMEDIATE (COMMA IMMEDIATE)?)?
     ;
 

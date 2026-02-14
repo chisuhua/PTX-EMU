@@ -12,183 +12,183 @@
 // But to keep consistency, we assign minimal op_count=1 (just for structure).
 // In practice, they should NOT be registered as InstructionHandler.
 // -----------------------------------------------------------------------------
-X(S_REG,     REG,     Reg,     0, OPERAND_REG)      // Register reference
-X(S_CONST,   CONST,   Const,   0, OPERAND_CONST)      // Constant value
-X(S_SHARED,  SHARED,  Shared,  0, OPERAND_MEMORY)      // Shared memory address
-X(S_LOCAL,   LOCAL,   Local,   0, OPERAND_MEMORY)      // Local memory address
-X(S_GLOBAL,  GLOBAL,  Global,  0, OPERAND_MEMORY)      // Global memory address
-X(S_PARAM,  PARAM,  Param,  0, OPERAND_MEMORY)      // Param memory address
-X(S_DOLLOR,  DOLLOR,  Dollar,  0, SIMPLE_NAME)      // Inline register ($r1)
+X(S_REG,     reg,     Reg,     0, OPERAND_REG, structure)      // Register reference
+X(S_CONST,   const,   Const,   0, OPERAND_CONST, structure)      // Constant value
+X(S_SHARED,  shared,  Shared,  0, OPERAND_MEMORY, structure)      // Shared memory address
+X(S_LOCAL,   local,   Local,   0, OPERAND_MEMORY, structure)      // Local memory address
+X(S_GLOBAL,  global,  Global,  0, OPERAND_MEMORY, structure)      // Global memory address
+X(S_PARAM,   param,  Param,  0, OPERAND_MEMORY, structure)      // Param memory address
+X(S_DOLLOR,  dollor,  Dollar,  0, SIMPLE_NAME, structure)      // Inline register ($r1)
 
 // -----------------------------------------------------------------------------
 // 1. 特殊指令
 // -----------------------------------------------------------------------------
-X(S_AT,      AT,      At,      0, PREDICATE_PREFIX)      // Predicate prefix (not a full instruction)
-X(S_PRAGMA,  PRAGMA,  Pragma,  0, SIMPLE_STRING)      // Pragma: no operands in PTX sense
-X(S_LABEL,   LABEL,   Label,   1, LABEL_INSTR)      // Label definition: name:
+// X(S_AT,   at,      At,      0, BRANCH)      // Predicate prefix - conditional execution
+X(S_PRAGMA,  pragma,  Pragma,  0, SIMPLE_STRING, structure)      // Pragma: no operands in PTX sense
+X(S_LABEL,   label,   Label,   1, LABEL_INSTR, structure)      // Label definition: name:
 
 // -----------------------------------------------------------------------------
 // 2. 控制指令（Control Flow）
 // -----------------------------------------------------------------------------
-X(S_RET,     RET,     Ret,     0, VOID_INSTR)      // Return: no operands
-X(S_EXIT,    EXIT,    Exit,    0, VOID_INSTR)      // Exit: terminate kernel
-X(S_BRA,     BRA,     Bra,     1, BRANCH)      // Branch: target label
-X(S_BRX,     BRX,     Brx,     2, BRANCH)      // Indirect branch: address, target
-X(S_CALL,    CALL,    Call,    3, CALL_INSTR)      // Call: function name, args, return addr
-X(S_TRAP,    TRAP,    Trap,    0, VOID_INSTR)      // Trap: debug breakpoint
-X(S_BRK,     BRK,     Brk,     1, VOID_INSTR)      // Break: with optional number
-X(S_BRKPT,   BRKPT,   Brkpt,   0, VOID_INSTR)      // Breakpoint
+X(S_RET,     ret,     Ret,     0, VOID_INSTR, controlFlow)      // Return: no operands
+X(S_EXIT,    exit,    Exit,    0, VOID_INSTR, controlFlow)      // Exit: terminate kernel
+X(S_BRA,     bra,     Bra,     1, BRANCH, controlFlow)      // Branch: target label
+X(S_BRX,     brx,     Brx,     2, BRANCH, controlFlow)      // Indirect branch: address, target
+X(S_CALL,    call,    Call,    3, CALL_INSTR, controlFlow)      // Call: function name, args, return addr
+X(S_TRAP,    trap,    Trap,    0, VOID_INSTR, controlFlow)      // Trap: debug breakpoint
+X(S_BRK,     brk,     Brk,     1, VOID_INSTR, controlFlow)      // Break: with optional number
+X(S_BRKPT,   brkpt,   Brkpt,   0, VOID_INSTR, controlFlow)      // Breakpoint
 
 // -----------------------------------------------------------------------------
 // 3. 同步指令
 // -----------------------------------------------------------------------------
-X(S_BAR,     BAR,     Bar,     2, BARRIER)      // barrier: sync/arrive/red, bar_id
-X(S_MEMBAR,  MEMBAR,  Membar,  1, MEMBAR_INSTR)      // membar: scope
-X(S_FENCE,   FENCE,   Fence,   1, FENCE_INSTR)      // fence: memory order + scope
-X(S_REDUX_SYNC, REDUX_SYNC, ReduxSync, 2, REDUX_INSTR)      // redux.sync: op, dst, src
-X(S_MBARRIER_INIT, MBARRIER_INIT, MbarrierInit, 2, MBARRIER_INSTR)      // mbarrier.init
-X(S_MBARRIER_ARRIVE, MBARRIER_ARRIVE, MbarrierArrive, 2, MBARRIER_INSTR)      // mbarrier.arrive
-X(S_MBARRIER_TRY_WAIT, MBARRIER_TRY_WAIT, MbarrierTryWait, 3, MBARRIER_INSTR)      // mbarrier.try_wait
+X(S_BAR,     bar,     Bar,     2, BARRIER, parallelSync)      // barrier: sync/arrive/red, bar_id
+X(S_MEMBAR,  membar,  Membar,  1, MEMBAR_INSTR, parallelSync)      // membar: scope
+X(S_FENCE,   fence,   Fence,   1, FENCE_INSTR, parallelSync)      // fence: memory order + scope
+X(S_REDUX_SYNC, reduxSync, ReduxSync, 2, REDUX_INSTR, parallelSync)      // redux.sync: op, dst, src
+X(S_MBARRIER_INIT, mbarrierInit, MbarrierInit, 2, MBARRIER_INSTR, parallelSync)      // mbarrier.init
+X(S_MBARRIER_ARRIVE, mbarrierArrive, MbarrierArrive, 2, MBARRIER_INSTR, parallelSync)      // mbarrier.arrive
+X(S_MBARRIER_TRY_WAIT, mbarrierTryWait, MbarrierTryWait, 3, MBARRIER_INSTR, parallelSync)      // mbarrier.try_wait
 
 // -----------------------------------------------------------------------------
 // 3. 数据移动与转换（Data Movement & Conversion）
 // -----------------------------------------------------------------------------
-X(S_LD,      LD,      Ld,      2, GENERIC_INSTR)      // ld: dst, src_addr
-X(S_ST,      ST,      St,      2, GENERIC_INSTR)      // st: dst_addr, src
-X(S_MOV,     MOV,     Mov,     2, GENERIC_INSTR)      // mov: dst, src
-X(S_CVT,     CVT,     Cvt,     2, GENERIC_INSTR)      // cvt: dst, src
-X(S_CVTA,    CVTA,    Cvta,    2, GENERIC_INSTR)      // cvta: dst, src
-X(S_PRMT,    PRMT,    Prmt,    4, GENERIC_INSTR)      // prmt: dst, src1, src2, src3
-X(S_ISSPACEP, ISSPACEP, Isspacep, 2, GENERIC_INSTR)      // isspacep: dst, src
-X(S_MAPA,    MAPA,    Mapa,    3, GENERIC_INSTR)      // mapa: dst, src1, src2
-X(S_ALLOCA,  ALLOCA, Alloca,  2, GENERIC_INSTR)      // alloca: dst, size
-X(S_CP_ASYNC, CP_ASYNC, CpAsync, 3, CP_ASYNC_INSTR)      // cp.async: dst, src, size
+X(S_LD,      ld,      Ld,      2, GENERIC_INSTR, dataMovement)      // ld: dst, src_addr
+X(S_ST,      st,      St,      2, GENERIC_INSTR, dataMovement)      // st: dst_addr, src
+X(S_MOV,     mov,     Mov,     2, GENERIC_INSTR, dataMovement)      // mov: dst, src
+X(S_CVT,     cvt,     Cvt,     2, GENERIC_INSTR, dataMovement)      // cvt: dst, src
+X(S_CVTA,    cvta,    Cvta,    2, GENERIC_INSTR, dataMovement)      // cvta: dst, src
+X(S_PRMT,    prmt,    Prmt,    4, GENERIC_INSTR, dataMovement)      // prmt: dst, src1, src2, src3
+X(S_ISSPACEP, isspacep, Isspacep, 2, GENERIC_INSTR, dataMovement)      // isspacep: dst, src
+X(S_MAPA,    mapa,    Mapa,    3, GENERIC_INSTR, dataMovement)      // mapa: dst, src1, src2
+X(S_ALLOCA,  alloca, Alloca,  2, GENERIC_INSTR, dataMovement)      // alloca: dst, size
+X(S_CP_ASYNC, cpAsync, CpAsync, 3, CP_ASYNC_INSTR, dataMovement)      // cp.async: dst, src, size
 
 // -----------------------------------------------------------------------------
 // 4. 算术运算（Arithmetic Instructions）
 // -----------------------------------------------------------------------------
-X(S_ADD,     ADD,     Add,     3, GENERIC_INSTR)      // add: dst, src1, src2
-X(S_SUB,     SUB,     Sub,     3, GENERIC_INSTR)      // sub: dst, src1, src2
-X(S_MUL,     MUL,     Mul,     3, GENERIC_INSTR)      // mul: dst, src1, src2
-X(S_MUL24,   MUL24,   Mul24,   3, GENERIC_INSTR)      // mul24: dst, src1, src2
-X(S_DIV,     DIV,     Div,     3, GENERIC_INSTR)      // div: dst, src1, src2
-X(S_REM,     REM,     Rem,     3, GENERIC_INSTR)      // rem: dst, src1, src2
-X(S_MIN,     MIN,     Min,     3, GENERIC_INSTR)      // min: dst, src1, src2
-X(S_MAX,     MAX,     Max,     3, GENERIC_INSTR)      // max: dst, src1, src2
-X(S_NEG,     NEG,     Neg,     2, GENERIC_INSTR)      // neg: dst, src
-X(S_ABS,     ABS,     Abs,     2, GENERIC_INSTR)      // abs: dst, src
-X(S_MAD,     MAD,     Mad,     4, GENERIC_INSTR)      // mad: dst, src1, src2, src3 (a*b + c)
-X(S_MAD24,   MAD24,   Mad24,   4, GENERIC_INSTR)      // mad24: dst, src1, src2, src3
-X(S_FMA,     FMA,     Fma,     4, GENERIC_INSTR)      // fma: dst, src1, src2, src3
-X(S_ADDC,    ADDC,    Addc,    3, GENERIC_INSTR)      // addc: dst, src1, src2 (with carry)
-X(S_SUBC,    SUBC,    Subc,    3, GENERIC_INSTR)      // subc: dst, src1, src2 (with borrow)
-X(S_SAD,     SAD,     Sad,     4, GENERIC_INSTR)      // sad: dst, src1, src2, src3 (sum of absolute differences)
-X(S_COPYSIGN, COPYSIGN, Copysign, 3, GENERIC_INSTR)      // copysign: dst, src1, src2
-X(S_TESTP,   TESTP,   Testp,   2, GENERIC_INSTR)      // testp: dst, src
-X(S_TANH,    TANH,    Tanh,    2, GENERIC_INSTR)      // tanh: dst, src
+X(S_ADD,     add,     Add,     3, GENERIC_INSTR, arithmetic)      // add: dst, src1, src2
+X(S_SUB,     sub,     Sub,     3, GENERIC_INSTR, arithmetic)      // sub: dst, src1, src2
+X(S_MUL,     mul,     Mul,     3, GENERIC_INSTR, arithmetic)      // mul: dst, src1, src2
+X(S_MUL24,   mul24,   Mul24,   3, GENERIC_INSTR, arithmetic)      // mul24: dst, src1, src2
+X(S_DIV,     div,     Div,     3, GENERIC_INSTR, arithmetic)      // div: dst, src1, src2
+X(S_REM,     rem,     Rem,     3, GENERIC_INSTR, arithmetic)      // rem: dst, src1, src2
+X(S_MIN,     min,     Min,     3, GENERIC_INSTR, arithmetic)      // min: dst, src1, src2
+X(S_MAX,     max,     Max,     3, GENERIC_INSTR, arithmetic)      // max: dst, src1, src2
+X(S_NEG,     neg,     Neg,     2, GENERIC_INSTR, arithmetic)      // neg: dst, src
+X(S_ABS,     abs,     Abs,     2, GENERIC_INSTR, arithmetic)      // abs: dst, src
+X(S_MAD,     mad,     Mad,     4, GENERIC_INSTR, arithmetic)      // mad: dst, src1, src2, src3 (a*b + c)
+X(S_MAD24,   mad24,   Mad24,   4, GENERIC_INSTR, arithmetic)      // mad24: dst, src1, src2, src3
+X(S_FMA,     fma,     Fma,     4, GENERIC_INSTR, arithmetic)      // fma: dst, src1, src2, src3
+X(S_ADDC,    addc,    Addc,    3, GENERIC_INSTR, arithmetic)      // addc: dst, src1, src2 (with carry)
+X(S_SUBC,    subc,    Subc,    3, GENERIC_INSTR, arithmetic)      // subc: dst, src1, src2 (with borrow)
+X(S_SAD,     sad,     Sad,     4, GENERIC_INSTR, arithmetic)      // sad: dst, src1, src2, src3 (sum of absolute differences)
+X(S_COPYSIGN, copysign, Copysign, 3, GENERIC_INSTR, arithmetic)      // copysign: dst, src1, src2
+X(S_TESTP,   testp,   Testp,   2, GENERIC_INSTR, arithmetic)      // testp: dst, src
+X(S_TANH,    tanh,    Tanh,    2, GENERIC_INSTR, arithmetic)      // tanh: dst, src
 
 // -----------------------------------------------------------------------------
 // 5. 位运算（Bitwise Instructions）
 // -----------------------------------------------------------------------------
-X(S_AND,     AND,     And,     3, GENERIC_INSTR)      // and: dst, src1, src2
-X(S_OR,      OR,      Or,      3, GENERIC_INSTR)      // or: dst, src1, src2
-X(S_XOR,     XOR,     Xor,     3, GENERIC_INSTR)      // xor: dst, src1, src2
-X(S_NOT,     NOT,     Not,     2, GENERIC_INSTR)      // not: dst, src
-X(S_SHL,     SHL,     Shl,     3, GENERIC_INSTR)      // shl: dst, src, shift_amount
-X(S_SHR,     SHR,     Shr,     3, GENERIC_INSTR)      // shr: dst, src, shift_amount
-X(S_SHF,     SHF,     Shf,     4, GENERIC_INSTR)      // shf: dst, src1, src2, shift_amount
-X(S_LOP3,    LOP3,    Lop3,    5, GENERIC_INSTR)      // lop3: dst, src1, src2, src3, imm
+X(S_AND,     and,     And,     3, GENERIC_INSTR, logical)      // and: dst, src1, src2
+X(S_OR,      or,      Or,      3, GENERIC_INSTR, logical)      // or: dst, src1, src2
+X(S_XOR,     xor,     Xor,     3, GENERIC_INSTR, logical)      // xor: dst, src1, src2
+X(S_NOT,     not,     Not,     2, GENERIC_INSTR, logical)      // not: dst, src
+X(S_SHL,     shl,     Shl,     3, GENERIC_INSTR, logical)      // shl: dst, src, shift_amount
+X(S_SHR,     shr,     Shr,     3, GENERIC_INSTR, logical)      // shr: dst, src, shift_amount
+X(S_SHF,     shf,     Shf,     4, GENERIC_INSTR, logical)      // shf: dst, src1, src2, shift_amount
+X(S_LOP3,    lop3,    Lop3,    5, GENERIC_INSTR, logical)      // lop3: dst, src1, src2, src3, imm
 
 // -----------------------------------------------------------------------------
 // 6. 比较与选择（Comparison & Selection）
 // -----------------------------------------------------------------------------
-X(S_SETP,    SETP,    Setp,    3, GENERIC_INSTR)      // setp: pred, src1, src2
-X(S_SET,     SET,     Set,     3, GENERIC_INSTR)      // set: dst, src1, src2
-X(S_SELP,    SELP,    Selp,    4, GENERIC_INSTR)      // selp: dst, src1, src2, pred
-X(S_SLCT,    SLCT,    Slct,    4, GENERIC_INSTR)      // slct: dst, src1, src2, pred
-X(S_CNOT,    CNOT,    Cnot,    2, GENERIC_INSTR)      // cnot: dst, src
+X(S_SETP,    setp,    Setp,    3, GENERIC_INSTR, logical)      // setp: pred, src1, src2
+X(S_SET,     set,     Set,     3, GENERIC_INSTR, logical)      // set: dst, src1, src2
+X(S_SELP,    selp,    Selp,    4, GENERIC_INSTR, logical)      // selp: dst, src1, src2, pred
+X(S_SLCT,    slct,    Slct,    4, GENERIC_INSTR, logical)      // slct: dst, src1, src2, pred
+X(S_CNOT,    cnot,    Cnot,    2, GENERIC_INSTR, logical)      // cnot: dst, src
 
 // -----------------------------------------------------------------------------
 // 7. 数学函数（Mathematical Functions）
 // -----------------------------------------------------------------------------
-X(S_SIN,     SIN,     Sin,     2, GENERIC_INSTR)      // sin: dst, src
-X(S_COS,     COS,     Cos,     2, GENERIC_INSTR)      // cos: dst, src
-X(S_LG2,     LG2,     Lg2,     2, GENERIC_INSTR)      // lg2: dst, src
-X(S_EX2,     EX2,     Ex2,     2, GENERIC_INSTR)      // ex2: dst, src
-X(S_RCP,     RCP,     Rcp,     2, GENERIC_INSTR)      // rcp: dst, src
-X(S_RSQRT,   RSQRT,   Rsqrt,   2, GENERIC_INSTR)      // rsqrt: dst, src
-X(S_SQRT,    SQRT,    Sqrt,    2, GENERIC_INSTR)      // sqrt: dst, src
+X(S_SIN,     sin,     Sin,     2, GENERIC_INSTR, arithmetic)      // sin: dst, src
+X(S_COS,     cos,     Cos,     2, GENERIC_INSTR, arithmetic)      // cos: dst, src
+X(S_LG2,     lg2,     Lg2,     2, GENERIC_INSTR, arithmetic)      // lg2: dst, src
+X(S_EX2,     ex2,     Ex2,     2, GENERIC_INSTR, arithmetic)      // ex2: dst, src
+X(S_RCP,     rcp,     Rcp,     2, GENERIC_INSTR, arithmetic)      // rcp: dst, src
+X(S_RSQRT,   rsqrt,   Rsqrt,   2, GENERIC_INSTR, arithmetic)      // rsqrt: dst, src
+X(S_SQRT,    sqrt,    Sqrt,    2, GENERIC_INSTR, arithmetic)      // sqrt: dst, src
 
 // -----------------------------------------------------------------------------
 // 8. 原子操作与特殊指令（Atomic & Special Operations）
 // -----------------------------------------------------------------------------
-X(S_ATOM,    ATOM,    Atom,    3, ATOM_INSTR)      // atom: dst_addr, src, [optional op] → simplified as 3
-X(S_WMMA,    WMMA,    Wmma,    4, WMMA_INSTR)      // wmma: dst, src_a, src_b, src_c (or more, simplified)
+X(S_ATOM,    atom,    Atom,    3, ATOM_INSTR, atomic)      // atom: dst_addr, src, [optional op] → simplified as 3
+X(S_WMMA,    wmma,    Wmma,    4, WMMA_INSTR, matrix)      // wmma: dst, src_a, src_b, src_c (or more, simplified)
 
 // -----------------------------------------------------------------------------
 // 9. 位计数与前导零（Bit Manipulation Utilities）
 // -----------------------------------------------------------------------------
-X(S_POPC,    POPC,    Popc,    2, GENERIC_INSTR)      // popc: dst, src
-X(S_CLZ,     CLZ,     Clz,     2, GENERIC_INSTR)      // clz: dst, src
+X(S_POPC,    popc,    Popc,    2, GENERIC_INSTR, arithmetic)      // popc: dst, src
+X(S_CLZ,     clz,     Clz,     2, GENERIC_INSTR, arithmetic)      // clz: dst, src
 
 // -----------------------------------------------------------------------------
 // 10. Warp-level Instructions
 // -----------------------------------------------------------------------------
-X(S_VOTE,    VOTE,    Vote,    2, VOTE_INSTR)      // vote: mode, pred
-X(S_SHFL,    SHFL,    Shfl,    4, SHFL_INSTR)      // shfl: mode, dst, src, offset
+X(S_VOTE,    vote,    Vote,    2, VOTE_INSTR, warpLevel)      // vote: mode, pred
+X(S_SHFL,    shfl,    Shfl,    4, SHFL_INSTR, warpLevel)      // shfl: mode, dst, src, offset
 
 // -----------------------------------------------------------------------------
 // 11. Texture / Surface Instructions
 // -----------------------------------------------------------------------------
-X(S_TEX,     TEX,     Tex,     2, TEXTURE_INSTR)      // tex: dst, sampler
-X(S_SURF,    SURF,    Surf,    2, SURFACE_INSTR)      // surf: dst, surface
-X(S_TEX_LDG, TEX_LDG, TexLdg,  2, TEXTURE_INSTR)      // tex.ldg: dst, coord
-X(S_TEX_GRAD, TEX_GRAD, TexGrad, 3, TEXTURE_INSTR)      // tex.grad: dst, coord, grad
-X(S_TEX_LOD, TEX_LOD, TexLod,  2, TEXTURE_INSTR)      // tex.lod: dst, coord
-X(S_TXQ,     TXQ,     Txq,     2, TEXTURE_INSTR)      // txq: dst, query
-X(S_SULD,    SULD,    Suld,    2, SURFACE_INSTR)      // suld: dst, addr
-X(S_SUST,    SUST,    Sust,    2, SURFACE_INSTR)      // sust: addr, src
-X(S_SUQ,     SUQ,     Suq,     2, SURFACE_INSTR)      // suq: dst, query
+X(S_TEX,     tex,     Tex,     2, TEXTURE_INSTR, textureSurface)      // tex: dst, sampler
+X(S_SURF,    surf,    Surf,    2, SURFACE_INSTR, textureSurface)      // surf: dst, surface
+X(S_TEX_LDG, texLdg,  TexLdg,  2, TEXTURE_INSTR, textureSurface)      // tex.ldg: dst, coord
+X(S_TEX_GRAD,texGrad, TexGrad, 3, TEXTURE_INSTR, textureSurface)      // tex.grad: dst, coord, grad
+X(S_TEX_LOD, texLod, TexLod,   2, TEXTURE_INSTR, textureSurface)      // tex.lod: dst, coord
+X(S_TXQ,     txq,     Txq,     2, TEXTURE_INSTR, textureSurface)      // txq: dst, query
+X(S_SULD,    suld,    Suld,    2, SURFACE_INSTR, textureSurface)      // suld: dst, addr
+X(S_SUST,    sust,    Sust,    2, SURFACE_INSTR, textureSurface)      // sust: addr, src
+X(S_SUQ,     suq,     Suq,     2, SURFACE_INSTR, textureSurface)      // suq: dst, query
 
 // -----------------------------------------------------------------------------
 // 12. Reduction & Prefetch Instructions
 // -----------------------------------------------------------------------------
-X(S_RED,     RED,     Red,     3, REDUCTION_INSTR)      // red: op, addr, val
-X(S_PREFETCH, PREFETCH, Prefetch, 1, PREFETCH_INSTR)      // prefetch: addr
-X(S_PREFETCHU, PREFETCHU, Prefetchu, 1, PREFETCH_INSTR)      // prefetchu: addr
+X(S_RED,       red,       Red,     3, REDUCTION_INSTR,  reductionPrefetch)      // red: op, addr, val
+X(S_PREFETCH,  prefetch,  Prefetch, 1, PREFETCH_INSTR,  reductionPrefetch)      // prefetch: addr
+X(S_PREFETCHU, prefetchu, Prefetchu, 1, PREFETCH_INSTR, reductionPrefetch)      // prefetchu: addr
 
 // -----------------------------------------------------------------------------
 // 13. 异步内存指令（PTX 8.7+）
 // -----------------------------------------------------------------------------
-X(S_ST_ASYNC,   ST_ASYNC,   StAsync,   2, ASYNC_STORE)      // st.async space.type [qualifiers] addr, val
-X(S_RED_ASYNC,  RED_ASYNC,  RedAsync,  3, ASYNC_REDUCE)     // red.async space.op.type [qualifiers] addr, val[, old]
+X(S_ST_ASYNC,   stAsync,   StAsync,   2, ASYNC_STORE, tcgen)      // st.async space.type [qualifiers] addr, val
+X(S_RED_ASYNC,  redAsync,  RedAsync,  3, ASYNC_REDUCE, tcgen)     // red.async space.op.type [qualifiers] addr, val[, old]
 
 // -----------------------------------------------------------------------------
 // 14. Tensor Core Generator (Hopper+, PTX 8.7+)
 // -----------------------------------------------------------------------------
-X(S_TCGEN_ALLOC,        TCGEN_ALLOC,        TcgenAlloc,        1, TCGEN_INSTR)
-X(S_TCGEN_DEALLOC,      TCGEN_DEALLOC,      TcgenDealloc,      1, TCGEN_INSTR)
-X(S_TCGEN_RELINQUISH,   TCGEN_RELINQUISH,   TcgenRelinquish,   1, TCGEN_INSTR)
-X(S_TCGEN_CP,           TCGEN_CP,           TcgenCp,           2, TCGEN_INSTR)
-X(S_TCGEN_SHIFT,        TCGEN_SHIFT,        TcgenShift,        2, TCGEN_INSTR)
-X(S_TCGEN_MMA,          TCGEN_MMA,          TcgenMma,          4, TCGEN_INSTR)
-X(S_TCGEN_COMMIT,       TCGEN_COMMIT,       TcgenCommit,       2, TCGEN_INSTR)
+X(S_TCGEN_ALLOC,        tcgenAlloc,        TcgenAlloc,        1, TCGEN_INSTR, tcgen)
+X(S_TCGEN_DEALLOC,      tcgenDealloc,      TcgenDealloc,      1, TCGEN_INSTR, tcgen)
+X(S_TCGEN_RELINQUISH,   tcgenRelinquish,   TcgenRelinquish,   1, TCGEN_INSTR, tcgen)
+X(S_TCGEN_CP,           tcgenCp,           TcgenCp,           2, TCGEN_INSTR, tcgen)
+X(S_TCGEN_SHIFT,        tcgenShift,        TcgenShift,        2, TCGEN_INSTR, tcgen)
+X(S_TCGEN_MMA,          tcgenMma,          TcgenMma,          4, TCGEN_INSTR, tcgen)
+X(S_TCGEN_COMMIT,       tcgenCommit,       TcgenCommit,       2, TCGEN_INSTR, tcgen)
 
 // -----------------------------------------------------------------------------
 // 15. Tensor Map Instructions (PTX 8.7+)
 // -----------------------------------------------------------------------------
-X(S_TENSORMAP_REPLACE, TENSORMAP_REPLACE, TensormapReplace, 3, TENSORMAP_INSTR)
+X(S_TENSORMAP_REPLACE, tensormapReplace, TensormapReplace, 3, TENSORMAP_INSTR, tcgen)
 
 // -----------------------------------------------------------------------------
 // 16. Bulk Store (PTX 9.0+)
 // -----------------------------------------------------------------------------
-X(S_ST_BULK, ST_BULK, StBulk, 3, GENERIC_INSTR)
+X(S_ST_BULK, stBulk, StBulk, 3, GENERIC_INSTR, tcgen)
 
 // -----------------------------------------------------------------------------
 // 17. ABI Preserve Directives (Global or in func body)
 // Note: We treat as statement for uniformity, though usually global
 // -----------------------------------------------------------------------------
-X(S_ABI_PRESERVE, ABI_PRESERVE, AbiPreserve, 1, ABI_DIRECTIVE)
+X(S_ABI_PRESERVE, abiPreserve, AbiPreserve, 1, ABI_DIRECTIVE, Abi)
 
 // =============================================================================
 // End of ptx_op.def

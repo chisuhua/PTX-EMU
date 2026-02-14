@@ -41,7 +41,7 @@ specialRegister
     ;
 
 component
-    : DOT ('x' | 'y' | 'z' | 'w')
+    : DOT (X_COMP | Y_COMP | Z_COMP | W_COMP)
     ;
 
 address

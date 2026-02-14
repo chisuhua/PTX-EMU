@@ -15,90 +15,117 @@
 
 // Declaration handlers (for .reg, .const, etc.)
 #define IMPLEMENT_DECLARATION_HANDLER(Name) \
-    void Name##_Handler::ExecPipe(ThreadContext *context, StatementContext &stmt) { \
+    void Name##Handler::ExecPipe(ThreadContext *context, StatementContext &stmt) { \
         DeclarationHandler::ExecPipe(context, stmt); \
     }
 
 // Simple handlers (labels, pragmas, dollar names, membar, fence, etc.)
 #define IMPLEMENT_SIMPLE_HANDLER(Name) \
-    void Name##_Handler::ExecPipe(ThreadContext *context, StatementContext &stmt) { \
+    void Name##Handler::ExecPipe(ThreadContext *context, StatementContext &stmt) { \
         SimpleHandler::ExecPipe(context, stmt); \
     }
 
 // Void handlers (ret, exit, trap, etc.)
 #define IMPLEMENT_VOID_HANDLER(Name) \
-    void Name##_Handler::ExecPipe(ThreadContext *context, StatementContext &stmt) { \
+    void Name##Handler::ExecPipe(ThreadContext *context, StatementContext &stmt) { \
         VoidHandler::ExecPipe(context, stmt); \
-    }
+    } \
+    __attribute__((weak)) void Name##Handler::processOperation(ThreadContext *context, StatementContext &stmt) { \
+        /* Default implementation does nothing */ \
+        (void)context; \
+        (void)stmt; \
+    };
 
 // Branch handlers
+// These are implemented in separate .cpp files
 #define IMPLEMENT_BRANCH_HANDLER(Name) \
-    void Name##_Handler::executeBranch(ThreadContext *context, const BranchInstr &instr) { \
-        auto iter = context->label2pc.find(instr.target); \
-        if (iter != context->label2pc.end()) { \
-            context->next_pc = iter->second; \
-        } else { \
-            PTX_DEBUG_EMU("Label %s not found", instr.target.c_str()); \
-            context->next_pc = context->pc + 1; \
-        } \
-    }
+    __attribute__((weak)) void Name##Handler::executeBranch(ThreadContext *context, const BranchInstr &instr) { \
+        /* Implementation is in separate .cpp file */ \
+        (void)context; \
+        (void)instr; \
+        return; \
+    };
 
 // Barrier handlers
+// These are implemented in separate .cpp files
 #define IMPLEMENT_BARRIER_HANDLER(Name) \
-    void Name##_Handler::executeBarrier(ThreadContext *context, const BarrierInstr &instr) { \
-        context->state = BAR_SYNC; \
-        context->next_pc = context->pc + 1; \
-    }
+    __attribute__((weak)) void Name##Handler::executeBarrier(ThreadContext *context, const BarrierInstr &instr) { \
+        /* Implementation is in separate .cpp file */ \
+        (void)context; \
+        (void)instr; \
+        return; \
+    };
 
 // Call handlers
+// These are implemented in separate .cpp files
 #define IMPLEMENT_CALL_INSTR_HANDLER(Name) \
-    void Name##_Handler::executeCall(ThreadContext *context, const CallInstr &instr) { \
-        if (instr.funcName == "printf" || instr.funcName == "_printf") { \
-            handlePrintf(context, instr); \
-        } \
-        context->next_pc = context->pc + 1; \
-    } \
-    void Name##_Handler::handlePrintf(ThreadContext *context, const CallInstr &instr) { \
-        /* TODO: Implement printf handling */ \
-    } \
-    void Name##_Handler::parseAndPrintFormat(ThreadContext *context, const std::string &format, \
+    __attribute__((weak)) void Name##Handler::executeCall(ThreadContext *context, const CallInstr &instr) { \
+        /* Implementation is in separate .cpp file */ \
+        (void)context; \
+        (void)instr; \
+        return; \
+    }; \
+    __attribute__((weak)) void Name##Handler::handlePrintf(ThreadContext *context, const CallInstr &instr) { \
+        /* Implementation is in separate .cpp file */ \
+        (void)context; \
+        (void)instr; \
+        return; \
+    }; \
+    __attribute__((weak)) void Name##Handler::parseAndPrintFormat(ThreadContext *context, const std::string &format, \
                                            const std::vector<void *> &args) { \
-        /* TODO: Implement format parsing */ \
-    }
+        /* Implementation is in separate .cpp file */ \
+        (void)context; \
+        (void)format; \
+        (void)args; \
+        return; \
+    };
 
 // Generic instruction handlers (add, ld, st, mov, etc.)
+// These are implemented in separate .cpp files
 #define IMPLEMENT_GENERIC_INSTR_HANDLER(Name) \
-    void Name##_Handler::processOperation(ThreadContext *context, void **operands, \
+    __attribute__((weak)) void Name##Handler::processOperation(ThreadContext *context, void **operands, \
                                         const std::vector<Qualifier> &qualifiers) { \
-        PTX_DEBUG_EMU("Executing generic instruction: " #Name); \
-        /* TODO: Implement actual operation logic */ \
-    }
+        /* Implementation is in separate .cpp file */ \
+        (void)context; \
+        (void)operands; \
+        (void)qualifiers; \
+        return; \
+    };
 
 // Atomic instruction handlers
+// These are implemented in separate .cpp files
 #define IMPLEMENT_ATOM_INSTR_HANDLER(Name) \
-    void Name##_Handler::processAtomicOperation(ThreadContext *context, void **operands, \
+    __attribute__((weak)) void Name##Handler::processAtomicOperation(ThreadContext *context, void **operands, \
                                               const std::vector<Qualifier> &qualifiers) { \
-        PTX_DEBUG_EMU("Executing atomic instruction: " #Name); \
-        /* TODO: Implement atomic operation */ \
-    }
+        /* Implementation is in separate .cpp file */ \
+        (void)context; \
+        (void)operands; \
+        (void)qualifiers; \
+        return; \
+    };
 
 // WMMA instruction handlers
+// These are implemented in separate .cpp files
 #define IMPLEMENT_WMMA_INSTR_HANDLER(Name) \
-    void Name##_Handler::processWmmaOperation(ThreadContext *context, void **operands, \
+    __attribute__((weak)) void Name##Handler::processWmmaOperation(ThreadContext *context, void **operands, \
                                             const std::vector<Qualifier> &qualifiers) { \
-        PTX_DEBUG_EMU("Executing WMMA instruction: " #Name); \
-        /* TODO: Implement WMMA operation */ \
-    }
+        /* Implementation is in separate .cpp file */ \
+        (void)context; \
+        (void)operands; \
+        (void)qualifiers; \
+        return; \
+    };
 
 // CP_ASYNC handler (currently treated as simple, but can be extended)
 #define IMPLEMENT_CP_ASYNC_INSTR_HANDLER(Name) \
-    void Name##_Handler::executeAsyncCopy(ThreadContext *context, const CpAsyncInstr &instr) { \
+    __attribute__((weak)) void Name##Handler::executeAsyncCopy(ThreadContext *context, const CpAsyncInstr &instr) { \
         PTX_DEBUG_EMU("Enqueuing async copy: dst=%p, src=%p, size=%d", \
                       instr.operands[0].operand_phy_addr, \
                       instr.operands[1].operand_phy_addr, \
                       *(int*)instr.operands[2].operand_phy_addr); \
         /* TODO: integrate with async copy engine */ \
-    }
+        return; \
+    };
 
 // All other instruction types map to SimpleHandler
 #define IMPLEMENT_MEMBAR_INSTR_HANDLER(Name)     IMPLEMENT_SIMPLE_HANDLER(Name)
@@ -129,7 +156,7 @@
 
 // Generate all handler implementations from ptx_op.def
 #undef X
-#define X(enum_val, type_name, str, op_count, struct_kind) \
-    IMPLEMENT_##struct_kind##_HANDLER(type_name)
+#define X(enum_val, op_name, op_str, op_count, struct_kind, instr_kind) \
+    IMPLEMENT_##struct_kind##_HANDLER(op_str)
 #include "ptx_ir/ptx_op.def"
 #undef X

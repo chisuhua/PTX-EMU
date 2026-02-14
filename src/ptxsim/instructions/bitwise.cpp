@@ -25,31 +25,31 @@ void process_binary_bitwise(void *dst, void *src1, void *src2, int bytes, OpFunc
     }
 }
 
-void AND::process_operation(ThreadContext *context, void *op[3],
+void AndHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
     int bytes = getBytes(qualifiers);
-    void *dst = op[0];
-    void *src1 = op[1];
-    void *src2 = op[2];
+    void *dst = operands[0];
+    void *src1 = operands[1];
+    void *src2 = operands[2];
 
     process_binary_bitwise(dst, src1, src2, bytes, [](uint64_t a, uint64_t b) { return a & b; });
 }
 
-void OR::process_operation(ThreadContext *context, void *op[3],
+void OrHandler::processOperation(ThreadContext *context, void **operands,
                            const std::vector<Qualifier> &qualifiers) {
-    void *dst = op[0];
-    void *src1 = op[1];
-    void *src2 = op[2];
+    void *dst = operands[0];
+    void *src1 = operands[1];
+    void *src2 = operands[2];
     int bytes = getBytes(qualifiers);
 
     process_binary_bitwise(dst, src1, src2, bytes, [](uint64_t a, uint64_t b) { return a | b; });
 }
 
-void XOR::process_operation(ThreadContext *context, void *op[3],
+void XorHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
-    void *dst = op[0];
-    void *src1 = op[1];
-    void *src2 = op[2];
+    void *dst = operands[0];
+    void *src1 = operands[1];
+    void *src2 = operands[2];
     int bytes = getBytes(qualifiers);
 
     process_binary_bitwise(dst, src1, src2, bytes, [](uint64_t a, uint64_t b) { return a ^ b; });
@@ -80,22 +80,22 @@ void process_shift_operation(void *dst, void *src1, void *src2, int bytes, OpFun
     }
 }
 
-void SHL::process_operation(ThreadContext *context, void *op[3],
+void ShlHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
-    void *dst = op[0];
-    void *src1 = op[1];
-    void *src2 = op[2];
+    void *dst = operands[0];
+    void *src1 = operands[1];
+    void *src2 = operands[2];
     int bytes = getBytes(qualifiers);
 
     process_shift_operation(dst, src1, src2, bytes, 
         [](uint64_t a, uint64_t b) { return a << b; });
 }
 
-void SHR::process_operation(ThreadContext *context, void *op[3],
+void ShrHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
-    void *dst = op[0];
-    void *src1 = op[1];
-    void *src2 = op[2];
+    void *dst = operands[0];
+    void *src1 = operands[1];
+    void *src2 = operands[2];
     int bytes = getBytes(qualifiers);
 
     process_shift_operation(dst, src1, src2, bytes, 
@@ -131,10 +131,10 @@ inline uint32_t popcount_u64(uint64_t x) {
 #endif
 }
 
-void POPC::process_operation(ThreadContext *context, void *op[2],
+void PopcHandler::processOperation(ThreadContext *context, void **operands,
                              const std::vector<Qualifier> &qualifiers) {
-    void *dst = op[0];
-    void *src1 = op[1];
+    void *dst = operands[0];
+    void *src1 = operands[1];
     int bytes = getBytes(qualifiers);
 
     // PTX popc 仅定义于整数/位类型（B* / U* / S*）
@@ -186,10 +186,10 @@ inline uint32_t clz_u64(uint64_t x, size_t width) {
 #endif
 }
 
-void CLZ::process_operation(ThreadContext *context, void *op[2],
+void ClzHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
-    void *dst = op[0];
-    void *src1 = op[1];
+    void *dst = operands[0];
+    void *src1 = operands[1];
     int bytes = getBytes(qualifiers);
     if (bytes == 0 || bytes > 8) {
         std::memset(dst, 0, 8); // 安全清零
@@ -228,10 +228,10 @@ void process_unary_bitwise(void *dst, void *src, int bytes, OpFunc op) {
     }
 }
 
-void NOT::process_operation(ThreadContext *context, void *op[2],
+void NotHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
-    void *dst = op[0];
-    void *src = op[1];
+    void *dst = operands[0];
+    void *src = operands[1];
     int bytes = getBytes(qualifiers);
 
     process_unary_bitwise(dst, src, bytes, [](uint64_t x) { return ~x; });

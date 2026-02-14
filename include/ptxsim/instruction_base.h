@@ -35,6 +35,11 @@ public:
 class VoidHandler : public InstructionHandler {
 public:
     void ExecPipe(ThreadContext *context, StatementContext &stmt) override;
+    virtual void processOperation(ThreadContext *context, StatementContext &stmt) {
+        // Default implementation does nothing
+        (void)context;
+        (void)stmt;
+    }
 };
 
 class BranchHandler : public InstructionHandler {
@@ -57,7 +62,7 @@ public:
     }
 };
 
-class CallHandler : public InstructionHandler {
+class CallBaseHandler : public InstructionHandler {
 public:
     void ExecPipe(ThreadContext *context, StatementContext &stmt) override;
     virtual void executeCall(ThreadContext *context, const CallInstr &instr) {

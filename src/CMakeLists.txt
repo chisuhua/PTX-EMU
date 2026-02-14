@@ -43,6 +43,7 @@ set(SOURCES
     cudart/cuda_driver.cpp  # 添加新的驱动内存管理器
     cudart/simple_memory_allocator.cpp
     cudart/cudart_sim.cpp
+    utils/cubin_utils.cpp
     ${ANTLR4_GENERATED_SOURCES}
 )
 
@@ -103,6 +104,7 @@ add_library(ptx_parser SHARED
     ptx_parser/ptx_visitor.cpp
 )
 target_link_libraries(ptx_parser ptx_ir)
+add_dependencies(ptx_parser GenerateParser)
 
 # 创建共享库
 add_library(cudart SHARED ${SOURCES})

@@ -4,7 +4,7 @@
 #include <streambuf>
 
 #include "ptxLexer.h"
-#include "ptx_parser/ptx_parser.h"
+// #include "ptx_parser/ptx_parser.h"
 
 using namespace antlr4;
 using namespace ptxparser;

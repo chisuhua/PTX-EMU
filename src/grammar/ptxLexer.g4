@@ -413,6 +413,23 @@ STRING
     ;
 
 // ============================================================================
+// MISSING TOKENS (referenced in parser)
+// ============================================================================
+// Component tokens for special registers
+X_COMP  : 'x';
+Y_COMP  : 'y';
+Z_COMP  : 'z';
+W_COMP  : 'w';
+
+// Instruction/modifier tokens
+ARRIVE  : 'arrive';
+STATE   : 'state';
+MMA     : 'mma';
+LOAD    : 'load';
+STORE   : 'store';
+FILL    : 'fill';
+
+// ============================================================================
 // IDENTIFIERS (labels, variable names, function names)
 // ============================================================================
 ID

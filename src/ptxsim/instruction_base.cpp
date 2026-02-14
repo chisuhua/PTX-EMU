@@ -36,6 +36,7 @@ void VoidHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
     context->trace_status(ptxsim::log_level::debug, "thread", 
                           "PC=%x VOID_INSTR: %s", context->pc, 
                           stmt.instructionText.c_str());
+    processOperation(context, stmt);
     context->next_pc = context->pc + 1;
 }
 
@@ -58,12 +59,15 @@ void BarrierHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
 }
 
 // Call instructions
-void CallHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
+void CallBaseHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
     context->trace_status(ptxsim::log_level::debug, "thread", 
                           "PC=%x CALL: %s", context->pc, 
                           stmt.instructionText.c_str());
     const CallInstr &callInstr = std::get<CallInstr>(stmt.data);
     executeCall(context, callInstr);
+    // Default behavior: advance to next instruction
+    // Derived classes may override this to set next_pc to target address
+    context->next_pc = context->pc + 1;
 }
 
 // Pipeline Handler Implementation

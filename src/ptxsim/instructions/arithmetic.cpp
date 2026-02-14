@@ -397,15 +397,15 @@
 //     }
 // }
 
-void ADD::process_operation(ThreadContext *context, void *op[3],
+void AddHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
-    void *dst = op[0];
-    void *src1 = op[1];
-    void *src2 = op[2];
+    void *dst = operands[0];
+    void *src1 = operands[1];
+    void *src2 = operands[2];
 
     // 检查是否存在.cc修饰符，决定是否更新条件码寄存器
     bool update_cc = hasCCQualifier(qualifiers);
@@ -416,15 +416,15 @@ void ADD::process_operation(ThreadContext *context, void *op[3],
                               [](auto a, auto b) { return a + b; });
 }
 
-void SUB::process_operation(ThreadContext *context, void *op[3],
+void SubHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
-    void *dst = op[0];
-    void *src1 = op[1];
-    void *src2 = op[2];
+    void *dst = operands[0];
+    void *src1 = operands[1];
+    void *src2 = operands[2];
 
     // 检查是否存在.cc修饰符，决定是否更新条件码寄存器
     bool update_cc = hasCCQualifier(qualifiers);
@@ -435,14 +435,14 @@ void SUB::process_operation(ThreadContext *context, void *op[3],
                               [](auto a, auto b) { return a - b; });
 }
 
-void NEG::process_operation(ThreadContext *context, void *op[2],
+void NegHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
-    void *dst = op[0];
-    void *src = op[1];
+    void *dst = operands[0];
+    void *src = operands[1];
 
     // 检查是否存在.cc修饰符，决定是否更新条件码寄存器
     bool update_cc = hasCCQualifier(qualifiers);
@@ -452,14 +452,14 @@ void NEG::process_operation(ThreadContext *context, void *op[2],
                              update_cc, [](auto val) { return -val; });
 }
 
-void ABS::process_operation(ThreadContext *context, void *op[2],
+void AbsHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
-    void *dst = op[0];
-    void *src = op[1];
+    void *dst = operands[0];
+    void *src = operands[1];
 
     // 检查是否存在.cc修饰符，决定是否更新条件码寄存器
     bool update_cc = hasCCQualifier(qualifiers);

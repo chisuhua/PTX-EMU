@@ -5,10 +5,10 @@
 #include "ptxsim/utils/type_utils.h"
 #include <cmath>
 
-void ATOM::process_operation(ThreadContext *context, void *op[3],
-                             const std::vector<Qualifier> &qualifiers) {
-    void *dst = op[0];
-    void *src1 = op[1];
-    void *src2 = op[2];
-    // TODO
+void AtomHandler::processAtomicOperation(ThreadContext *context, void **operands,
+                                 const std::vector<Qualifier> &qualifiers) {
+    void *dst = operands[0];
+    void *src1 = operands[1];
+    void *src2 = operands[2];
+    // TODO: 实现原子操作逻辑
 }

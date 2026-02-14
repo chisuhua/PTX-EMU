@@ -50,6 +50,20 @@ public:
     // 32}, {"%rd7", 64}
     std::unordered_map<std::string, int> abiPreservedRegisters;
 
+    // === Label Information ===
+    // Labels for branch target resolution
+    std::unordered_map<std::string, uint64_t> labelAddressMap; // label name -> PC address
+    std::vector<std::string> labelList;                       // labels in order
+
+    // === Storage Symbol Tables ===
+    // Quick lookup for memory declarations
+    std::unordered_map<std::string, DeclarationInstr> globalSymbols;
+    std::unordered_map<std::string, DeclarationInstr> sharedSymbols;
+    std::unordered_map<std::string, DeclarationInstr> constSymbols;
+    std::unordered_map<std::string, DeclarationInstr> localSymbols;
+    std::unordered_map<std::string, DeclarationInstr> paramSymbols;
+    std::unordered_map<std::string, DeclarationInstr> regSymbols;
+
     // === NEW: Cluster-scoped resources (Hopper+) ===
     // For kernels using cluster grid (sm_90+), used in async/atom/red.scope
     bool usesClusterScope = false;
@@ -95,6 +109,32 @@ public:
     // Helper: Record ABI-preserved register
     void addAbiPreservedRegister(const std::string &regName, int bitWidth) {
         abiPreservedRegisters[regName] = bitWidth;
+    }
+
+    // Helper: Add label (called after all statements are built, PC is known)
+    void addLabel(const std::string &name, uint64_t pc) {
+        labelAddressMap[name] = pc;
+        labelList.push_back(name);
+    }
+
+    // Helper: Add storage symbol
+    void addGlobalSymbol(const std::string &name, const DeclarationInstr &decl) {
+        globalSymbols[name] = decl;
+    }
+    void addSharedSymbol(const std::string &name, const DeclarationInstr &decl) {
+        sharedSymbols[name] = decl;
+    }
+    void addConstSymbol(const std::string &name, const DeclarationInstr &decl) {
+        constSymbols[name] = decl;
+    }
+    void addLocalSymbol(const std::string &name, const DeclarationInstr &decl) {
+        localSymbols[name] = decl;
+    }
+    void addParamSymbol(const std::string &name, const DeclarationInstr &decl) {
+        paramSymbols[name] = decl;
+    }
+    void addRegSymbol(const std::string &name, const DeclarationInstr &decl) {
+        regSymbols[name] = decl;
     }
 
     // Helper: Mark use of cluster scope

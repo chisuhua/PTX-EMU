@@ -5,11 +5,11 @@
 #include "ptxsim/utils/type_utils.h"
 #include <cmath>
 
-void WMMA::process_operation(ThreadContext *context, void *op[4],
-                             const std::vector<Qualifier> &qualifiers) {
-    void *dst = op[0];
-    void *src1 = op[1];
-    void *src2 = op[2];
-    void *src3 = op[3];
-    // TODO
+void WmmaHandler::processWmmaOperation(ThreadContext *context, void **operands,
+                                        const std::vector<Qualifier> &qualifiers) {
+    void *dst = operands[0];
+    void *src1 = operands[1];
+    void *src2 = operands[2];
+    void *src3 = operands[3];
+    // TODO: 实现WMMA操作逻辑
 }
