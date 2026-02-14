@@ -31,7 +31,7 @@ std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
     std::string ptx_file;
     while (std::getline(ptx_list_file, ptx_file)) {
         char extract_cmd[1024];
-        snprintf(extract_cmd, 1024, "cuobjdump -ptx -arch %s %s > __ptx_temp__",
+        snprintf(extract_cmd, 1024, "cuobjdump -xptx %s %s >/dev/null",
                  ptx_file.c_str(), executable_path.c_str());
 
         if (system(extract_cmd) != 0) {
@@ -39,33 +39,26 @@ std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
             continue;
         }
 
-        std::ifstream ptx_temp_file("__ptx_temp__");
-        if (!ptx_temp_file.is_open()) {
-            PTX_ERROR("Failed to open PTX temp file");
+        std::ifstream extracted_ptx_file(ptx_file);
+        if (!extracted_ptx_file.is_open()) {
+            PTX_ERROR("Failed to open extracted PTX file: %s", ptx_file.c_str());
             continue;
         }
 
         std::string line;
-        bool in_ptx_section = false;
-        while (std::getline(ptx_temp_file, line)) {
-            if (line.find("PTX") != std::string::npos) {
-                in_ptx_section = true;
-                continue;
-            }
-            if (in_ptx_section) {
-                if (line.empty() || line[0] == '.') {
-                    if (line == "")
-                        break;
-                }
-                ptx_codes += line;
-                ptx_codes += "\n";
-            }
+        while (std::getline(extracted_ptx_file, line)) {
+            ptx_codes += line;
+            ptx_codes += "\n";
         }
-        ptx_temp_file.close();
+        extracted_ptx_file.close();
+
+        char cleanup_cmd[1024];
+        snprintf(cleanup_cmd, 1024, "rm %s", ptx_file.c_str());
+        system(cleanup_cmd);
     }
     ptx_list_file.close();
 
-    system("rm __ptx_list_temp__ __ptx_temp__");
+    system("rm __ptx_list_temp__");
     return ptx_codes;
 }
 
