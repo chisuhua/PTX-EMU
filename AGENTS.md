@@ -106,10 +106,6 @@ find src include -name "*.cpp" -o -name "*.h" | xargs clang-format -i
 3. Update grammar in `src/ptxParser.g4` if needed
 4. Regenerate parser: `cmake --build build --target GenerateParser`
 
-### Adding Qualifiers
-1. Update `include/ptx_ir/ptx_qualifier.def`
-2. Used to generate `Qualifier` enum in `ptx_types.h`
-
 ### X-Macro Pattern
 The project uses X-Macros for code generation:
 ```cpp
@@ -118,22 +114,49 @@ The project uses X-Macros for code generation:
 #undef X
 ```
 
-### Testing CUDA Code
-- Tests use Catch2 framework (`catch_amalgamated.cpp`)
-- CUDA files use `.cu` extension and compile to PTX
-- Tests link against fake `libcudart.so` (built as `cudart` target)
-- Set `LD_LIBRARY_PATH` to include project `lib/` directory
+### Testing
+- Tests use Catch2 framework
+- Run specific test: `ctest -R test_name -V`
+- Labels: `ctest -L mini` (mini tests), `ctest -L ptx` (PTX instruction tests)
+- CUDA files use `.cu` extension, link against fake `libcudart.so`
 
-### GPU Architecture
-- GPU configs in `configs/*.json` (e.g., `ampere_a100.json`)
-- Debug/logging controlled via `configs/config.ini`
-- See `docs/gpgpu_arch.md` for architecture details
+### Adding CUDA API
+- Add implementation in `src/cudart/` directory
+- Ensure function signature matches CUDA runtime API
+- Rebuild `cudart` target
+
+## Architecture Overview
+- **PTX Simulator**: C++/CUDA emulator in `src/` (ptx_ir/, ptxsim/, cudart/)
+- **Parser**: ANTLR4-based, grammar in `src/ptxLexer.g4` / `src/ptxParser.g4`
+- **Execution**: GPUContext → SMContext → CTAContext → WarpContext → ThreadContext
+
+## Debugging & Logging
+- Controlled via `configs/config.ini`
+- Component logs: `emu`, `exec`, `mem`, `reg`, `thread`, `func`
+- See `docs/debugging_guide.md` for details
+
+## Common Workflows
+
+```bash
+# Full rebuild after major changes
+. env.sh && cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build
+
+# Run single test with verbose output
+cd build && ctest -R test_name -V
+
+# Rebuild specific target (faster iteration)
+cmake --build build --target ptxsim
+
+# Regenerate ANTLR parser (after grammar changes)
+cmake --build build --target GenerateParser
+
+# Run benchmark
+make -C build RAY
+```
 
 ## Important Files
-
 - `include/ptx_ir/ptx_op.def` - Instruction definitions (X-Macro)
-- `include/ptx_ir/ptx_qualifier.def` - Qualifier definitions
-- `src/ptxLexer.g4` / `ptxParser.g4` - ANTLR grammar
+- `src/ptxLexer.g4` / `src/ptxParser.g4` - ANTLR grammar
 - `src/cudart/cudart_sim.cpp` - Main CUDA runtime entry point
 - `src/ptxsim/instruction_handlers.h` - Instruction handler declarations
 - `docs/debugging_guide.md` - Debugging and logging setup
