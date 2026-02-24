@@ -31,8 +31,8 @@
     ],
     "cmake.useCMakePresets": "always",
     "files.associations": {
-        "*.cu": "cuda-cpp",
-        "*.cuh": "cuda-cpp",
+        "*.cu": "cpp",
+        "*.cuh": "cpp",
         "cstdlib": "cpp",
         "fstream": "cpp",
         "map": "cpp",

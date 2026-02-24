@@ -27,7 +27,6 @@ cmake --build build
 ```bash
 # Run all tests (from build directory)
 cd build && ctest
-# Or: make test
 
 # Run specific test by name
 ctest -R test_memory_manager
@@ -73,7 +72,7 @@ find src include -name "*.cpp" -o -name "*.h" | xargs clang-format -i
 ### Types & Includes
 - **Standard**: C++20 (CUDA code uses C++17)
 - **Headers**: Use `#ifndef`/`#define`/`#endif` guards
-- **Include order**: 
+- **Include order**:
   1. Generated ANTLR headers (if needed)
   2. Project headers (e.g., `"ptxsim/..."`)
   3. Standard library (e.g., `<vector>`, `<string>`)
@@ -85,29 +84,31 @@ find src include -name "*.cpp" -o -name "*.h" | xargs clang-format -i
 - Use logging macros: `PTX_ERROR()`, `PTX_WARN()`, `PTX_INFO()`
 - Fatal errors: print message and exit or throw
 
-### Project Structure
+## Project Structure
+
 - **src/ptx_ir/**: IR types and semantic context
 - **src/ptx_parser/**: ANTLR-based PTX parser (PtxListener)
 - **src/ptxsim/**: Execution engine (GPU/SM/CTA/Warp/Thread context)
 - **src/ptxsim/instructions/**: PTX instruction implementations
+- **src/ptxsim/core/**: Core execution logic
+- **src/ptxsim/memory/**: Memory abstractions
+- **src/ptxsim/register/**: Register abstractions
 - **src/cudart/**: CUDA runtime API replacement (fake libcudart.so)
-- **src/memory/**: Memory abstractions
-- **src/register/**: Register abstractions
+- **src/grammar/**: ANTLR4 grammar files (ptxLexer.g4, ptxParser.g4)
 - **include/**: Public headers
-- **tests/**: Catch2 + CUDA PTX tests
+- **tests/**: Catch2 + CUDA PTX tests (forces PTX compilation mode)
 - **bench/**: Benchmark programs
-- **configs/**: GPU architecture JSON configs
+- **configs/**: GPU architecture JSON configs and debug INI files
 
 ## Key Conventions
 
 ### Adding PTX Instructions
 1. Update `include/ptx_ir/ptx_op.def` (X-Macro pattern)
 2. Implement handler in `src/ptxsim/instructions/`
-3. Update grammar in `src/ptxParser.g4` if needed
+3. Update grammar in `src/grammar/ptxParser.g4` if needed
 4. Regenerate parser: `cmake --build build --target GenerateParser`
 
 ### X-Macro Pattern
-The project uses X-Macros for code generation:
 ```cpp
 #define X(name, ...) process_##name(__VA_ARGS__);
 #include "ptx_op.def"
@@ -126,14 +127,18 @@ The project uses X-Macros for code generation:
 - Rebuild `cudart` target
 
 ## Architecture Overview
+
 - **PTX Simulator**: C++/CUDA emulator in `src/` (ptx_ir/, ptxsim/, cudart/)
-- **Parser**: ANTLR4-based, grammar in `src/ptxLexer.g4` / `src/ptxParser.g4`
-- **Execution**: GPUContext → SMContext → CTAContext → WarpContext → ThreadContext
+- **Parser**: ANTLR4-based (v4.13.1), grammar in `src/grammar/`
+- **Execution hierarchy**: GPUContext → SMContext → CTAContext → WarpContext → ThreadContext
+- **ANTLR runtime**: antlr4/antlr4-cpp-runtime-4.13.1-source
 
 ## Debugging & Logging
-- Controlled via `configs/config.ini`
+
+- Configured via INI files: `configs/config.ini` or `configs/debug_config.ini`
 - Component logs: `emu`, `exec`, `mem`, `reg`, `thread`, `func`
-- See `docs/debugging_guide.md` for details
+- Log levels: trace, debug, info, warning, error, fatal
+- See `docs/debugging_guide.md` for detailed setup
 
 ## Common Workflows
 
@@ -155,8 +160,18 @@ make -C build RAY
 ```
 
 ## Important Files
-- `include/ptx_ir/ptx_op.def` - Instruction definitions (X-Macro)
-- `src/ptxLexer.g4` / `src/ptxParser.g4` - ANTLR grammar
-- `src/cudart/cudart_sim.cpp` - Main CUDA runtime entry point
-- `src/ptxsim/instruction_handlers.h` - Instruction handler declarations
+
+| File | Description |
+|------|-------------|
+| `include/ptx_ir/ptx_op.def` | Instruction definitions (X-Macro) |
+| `src/grammar/ptxLexer.g4` / `ptxParser.g4` | ANTLR grammar |
+| `src/cudart/cudart_sim.cpp` | Main CUDA runtime entry point |
+| `src/ptxsim/instruction_handlers.h` | Instruction handler declarations |
+| `configs/*.json` | GPU architecture configs (ampere_a100.json, hopper_h100.json) |
+
+## Reference Documentation
+
+- `docs/gpgpu_arch.md` - GPU architecture details
 - `docs/debugging_guide.md` - Debugging and logging setup
+- `docs/arch.md` - System architecture
+- `docs/sm90_100.md` - Hopper/Blackwell GPU specifics

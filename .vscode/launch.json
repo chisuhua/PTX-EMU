@@ -37,7 +37,7 @@
         },
         {
             "name": "Debug Active File",
-            "type": "cppdbg",
+            "type": "cpp",
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/${fileBasenameNoExtension}",
             "args": [],
@@ -67,12 +67,16 @@
         },
         {
             "name": "Debug Active File without Build",
-            "type": "cppdbg",
+            "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/${fileBasenameNoExtension}",
             "args": [],
             "stopAtEntry": true,
             "cwd": "${workspaceFolder}/build",
+            "terminal": "integrated",
+            "sourceFileMap": {
+                "/home/dev/workspace/PTX-EMU": "${workspaceFolder}"
+            },
             "environment": [
                 {
                     "name": "LD_LIBRARY_PATH",
@@ -82,17 +86,7 @@
                     "name": "PTX_EMU_PATH",
                     "value": "${workspaceFolder}"
                 }
-            ],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ],
-            "miDebuggerPath": "/usr/bin/gdb"
+            ]
         },
         {
             "name": "调试活动测试文件 without Build",
