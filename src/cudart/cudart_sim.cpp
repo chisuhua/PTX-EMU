@@ -6,6 +6,7 @@
 #include "antlr4-runtime.h"
 #include "ptxLexer.h"
 #include "ptxParser.h"
+#include "ptx_parser/ptx_visiter.h"
 #include "cudart/cuda_driver.h"       // 替换为新的驱动内存管理器
 #include "cudart/cudart_intrinsics.h" // 添加缺失的CUDA类型定义
 #include "cudart/ptx_interpreter.h"
@@ -150,15 +151,21 @@ void **__cudaRegisterFatBinary(void **fatCubinHandle, void *fat_bin,
     CudaDriver::instance().set_simple_memory(simple_mem);
 
     // 3. 解析PTX代码
-    // FIXME: This code is incomplete - ptxListener is commented out
-    // ANTLRInputStream input(ptx_code);
-    // ptxLexer lexer(&input);
-    // CommonTokenStream tokens(&lexer);
-    // tokens.fill();
-    // ptxParser parser(&tokens);
+    ANTLRInputStream input(ptx_code);
+    ptxLexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    tokens.fill();
+    ptxParser parser(&tokens);
 
-    // 4. 初始化PtxInterpreter - 现在会拷贝ptxContext以避免悬垂引用
-    // g_ptx_interpreter->set_ptx_context(ptxListener.ptxContext);
+    // 创建PtxContext和PtxVisitor
+    PtxContext ptxContext;
+    PtxVisitor visitor(ptxContext);
+
+    // 访问解析树
+    visitor.visit(parser.ptxFile());
+
+    // 4. 初始化PtxInterpreter - 使用拷贝避免悬垂引用
+    g_ptx_interpreter->set_ptx_context(ptxContext);
 
     // 5. 返回虚拟句柄
     static int dummy_handle = 0;
