@@ -1,7 +1,7 @@
 // Tensor相关指令的实现（TCGEN_INSTR, TENSORMAP_INSTR）
 
 #define VISITOR_TCGEN_INSTR(opstr, opname, opcount)                            \
-std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -21,7 +21,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_TENSORMAP_INSTR(opstr, opname, opcount)                        \
-std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -38,3 +38,5 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     currentKernel->kernelStatements.push_back(stmtCtx);                        \
     return nullptr;                                                            \
 }
+
+// X-Macro展开

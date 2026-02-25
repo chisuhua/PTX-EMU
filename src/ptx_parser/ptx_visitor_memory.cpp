@@ -1,7 +1,7 @@
 // 内存相关指令的实现（TEXTURE_INSTR, SURFACE_INSTR, REDUCTION_INSTR, PREFETCH_INSTR, CP_ASYNC_INSTR）
 
 #define VISITOR_TEXTURE_INSTR(opstr, opname, opcount)                          \
-std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -20,7 +20,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_SURFACE_INSTR(opstr, opname, opcount)                          \
-std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -39,7 +39,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_REDUCTION_INSTR(opstr, opname, opcount)                        \
-std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -59,7 +59,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_PREFETCH_INSTR(opstr, opname, opcount)                         \
-std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -78,7 +78,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_CP_ASYNC_INSTR(opstr, opname, opcount)                         \
-std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -95,3 +95,5 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     currentKernel->kernelStatements.push_back(stmtCtx);                        \
     return nullptr;                                                            \
 }
+
+// X-Macro展开

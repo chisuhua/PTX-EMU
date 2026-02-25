@@ -1,7 +1,7 @@
 // 异步指令的实现（ASYNC_STORE, ASYNC_REDUCE）
 
 #define VISITOR_ASYNC_STORE(opstr, opname, opcount)                            \
-std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -20,7 +20,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_ASYNC_REDUCE(opstr, opname, opcount)                           \
-std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -33,7 +33,9 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
         auto oc = createOperandFromContext(operands[i]);                       \
         asyncReduce.operands.push_back(oc);                                    \
     }                                                                          \
-    stmtCtx.data = asyncReduce;                                                \
+    stmtCtx.data = asyncReduce;                                                 \
     currentKernel->kernelStatements.push_back(stmtCtx);                        \
     return nullptr;                                                            \
 }
+
+// X-Macro展开

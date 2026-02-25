@@ -1,7 +1,7 @@
 // Warp相关指令的实现（VOTE_INSTR, SHFL_INSTR）
 
 #define VISITOR_VOTE_INSTR(opstr, opname, opcount)                             \
-std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -21,7 +21,7 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
 }
 
 #define VISITOR_SHFL_INSTR(opstr, opname, opcount)                             \
-std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
@@ -39,3 +39,5 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     currentKernel->kernelStatements.push_back(stmtCtx);                        \
     return nullptr;                                                            \
 }
+
+// X-Macro展开

@@ -1,6 +1,6 @@
 // GENERIC_INSTR 类别的实现
 #define VISITOR_GENERIC_INSTR(opstr, opname, opcount)                          \
-std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *c) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *c) {  \
     if (!currentKernel) return nullptr;                                        \
                                                                                 \
     StatementContext stmtCtx;                                                  \
@@ -26,7 +26,4 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *c) {  \
     return nullptr;                                                            \
 }
 
-// X-Macro passes 6 params, we need to map to our 3-param macro
-#define X(a, b, c, d, e, f) VISITOR_GENERIC_INSTR(c, b, d)
-#include "ptx_ir/ptx_op.def"
-#undef X
+// X-Macro展开

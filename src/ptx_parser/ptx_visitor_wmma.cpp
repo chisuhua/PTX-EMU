@@ -1,6 +1,6 @@
 // WMMA_INSTR 类别的实现
 #define VISITOR_WMMA_INSTR(opstr, opname, opcount)                             \
-std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
+std::any PtxVisitor::visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) {  \
     if (!currentKernel) return nullptr;                                        \
                                                                                \
     StatementContext stmtCtx;                                                  \
@@ -31,6 +31,8 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
                                                                                \
     stmtCtx.data = instr;                                                      \
     currentKernel->kernelStatements.push_back(stmtCtx);                        \
-                                                                               \
+                                                                                \
     return nullptr;                                                            \
 }
+
+// X-Macro展开
