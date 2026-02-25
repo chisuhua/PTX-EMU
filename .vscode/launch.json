@@ -3,12 +3,13 @@
     "configurations": [
         {
             "name": "Debug PTX Parser Test",
-            "type": "cppdbg",
+            "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/test-ptx",
             "args": [],
-            "stopAtEntry": false,
+            "stopAtEntry": true,
             "cwd": "${workspaceFolder}",
+            "terminal": "integrated",
             "environment": [
                 {
                     "name": "LD_LIBRARY_PATH",
@@ -18,22 +19,7 @@
                     "name": "PTX_EMU_PATH",
                     "value": "${workspaceFolder}"
                 }
-            ],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                },
-                {
-                    "description": "Set Disassembly Flavor to Intel",
-                    "text": "-gdb-set disassembly-flavor intel",
-                    "ignoreFailures": true
-                }
-            ],
-            "miDebuggerPath": "/usr/bin/gdb"
+            ]
         },
         {
             "name": "Debug Active File",
