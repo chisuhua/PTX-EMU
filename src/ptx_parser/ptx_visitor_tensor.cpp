@@ -1,17 +1,17 @@
 // Tensor相关指令的实现（TCGEN_INSTR, TENSORMAP_INSTR）
 
-#define VISITOR_TCGEN_INSTR(opstr, opname, opcount)                            \
-std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
+#define VISITOR_TCGEN_INSTR(openum, opstr, opname, opcount)                            \
+std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
-    stmtCtx.type = S_##opname;                                                 \
+    stmtCtx.type = openum;                                                 \
     TcgenInstr tcgen;                                                          \
     tcgen.opName = #opstr;                                                     \
     auto qualifiers = extractQualifiersFromContext(ctx);                       \
     tcgen.qualifiers = qualifiers;                                             \
-    auto operands = ctx->operand();                                            \
-    for (int i = 0; i < std::min((int)operands.size(), (int)opcount); ++i) {   \
+    auto operands = ctx->getRuleContexts<ptxparser::ptxParser::OperandContext>();     \
+    for (size_t i = 0; i < std::min(operands.size(), (size_t)opcount); ++i) {   \
         auto oc = createOperandFromContext(operands[i]);                       \
         tcgen.operands.push_back(oc);                                          \
     }                                                                          \
@@ -20,17 +20,17 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     return nullptr;                                                            \
 }
 
-#define VISITOR_TENSORMAP_INSTR(opstr, opname, opcount)                        \
-std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
+#define VISITOR_TENSORMAP_INSTR(openum, opstr, opname, opcount)                        \
+std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
-    stmtCtx.type = S_##opname;                                                 \
+    stmtCtx.type = openum;                                                 \
     TensormapInstr tensormap;                                                  \
     auto qualifiers = extractQualifiersFromContext(ctx);                       \
     tensormap.qualifiers = qualifiers;                                         \
-    auto operands = ctx->operand();                                            \
-    for (int i = 0; i < std::min((int)operands.size(), (int)opcount); ++i) {   \
+    auto operands = ctx->getRuleContexts<ptxparser::ptxParser::OperandContext>();     \
+    for (size_t i = 0; i < std::min(operands.size(), (size_t)opcount); ++i) {   \
         auto oc = createOperandFromContext(operands[i]);                       \
         tensormap.operands.push_back(oc);                                      \
     }                                                                          \
@@ -38,3 +38,5 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx) {  \
     currentKernel->kernelStatements.push_back(stmtCtx);                        \
     return nullptr;                                                            \
 }
+
+// X-Macro展开
