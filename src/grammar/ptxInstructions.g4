@@ -7,8 +7,15 @@ options {
 import ptxOperands;
 
 funcBody
-    : LEFT_BRACE instructionList RIGHT_BRACE
+    : LEFT_BRACE (regDecl | instruction)* RIGHT_BRACE
     ;
+
+// Register declaration inside function: .reg .b32 %r<2>;
+regDecl
+    : REG typeSpecifier PERCENT ID LESS IMMEDIATE GREATER SEMI
+    | REG typeSpecifier PERCENT ID SEMI
+    ;
+
 instructionList
     : instruction*
     ;
@@ -243,13 +250,13 @@ cpAsyncInst
     ;
 
 ldQualifiers
-    : spaceQualifier cacheOperator* VOLATILE?
-    | VOLATILE spaceQualifier cacheOperator*
+    : spaceQualifier? cacheOperator* VOLATILE?
+    | VOLATILE spaceQualifier? cacheOperator*
     ;
 
 stQualifiers
-    : spaceQualifier cacheOperator* VOLATILE?
-    | VOLATILE spaceQualifier cacheOperator*
+    : spaceQualifier? cacheOperator* VOLATILE?
+    | VOLATILE spaceQualifier? cacheOperator*
     ;
 
 spaceQualifier
@@ -263,7 +270,7 @@ cacheOperator
 
 cpAsyncSpace : GLOBAL | SHARED ;
 genericOrSpecificSpace : GENERIC_SPACE | GLOBAL | SHARED | CONST ;
-toAddrSpace : (GLOBAL | SHARED)? ;
+toAddrSpace : (TO (GLOBAL | SHARED))? ;
 addrSpaceQuery : GENERIC_SPACE | GLOBAL | SHARED | CONST | LOCAL ;
 
 // Parallel sync instruction rules

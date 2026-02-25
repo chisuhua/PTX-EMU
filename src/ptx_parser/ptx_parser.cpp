@@ -17,12 +17,16 @@
 
 // 实现extract_ptx_with_cuobjdump函数
 std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
+    fprintf(stderr, "DEBUG: extract_ptx_with_cuobjdump called with: %s\n", executable_path.c_str());
+    fflush(stderr);
     // 创建临时文件存储PTX列表
     char ptx_list_cmd[1024];
     snprintf(ptx_list_cmd, 1024,
              "cuobjdump -lptx %s | cut -d : -f 2 | awk '{$1=$1}1' > "
              "__ptx_list_temp__",
              executable_path.c_str());
+    fprintf(stderr, "DEBUG: running: %s\n", ptx_list_cmd);
+    fflush(stderr);
 
     if (system(ptx_list_cmd) != 0) {
         PTX_ERROR("Failed to execute: %s", ptx_list_cmd);
@@ -37,6 +41,7 @@ std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
 
     while (std::getline(infile, ptx_file)) {
         PTX_DEBUG("Extracting PTX file: %s", ptx_file.c_str());
+        fprintf(stderr, "DEBUG: Extracting PTX file: %s\n", ptx_file.c_str());
 
         snprintf(cmd, 1024, "cuobjdump -xptx %s %s >/dev/null",
                  ptx_file.c_str(), executable_path.c_str());
@@ -55,13 +60,18 @@ std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
         // ptx_code += of_ptx.str(); // 累加所有PTX代码
         ptx_code = of_ptx.str(); // 累加所有PTX代码
 
+        // Save PTX to file for debugging
+        std::ofstream out_debug("extracted.ptx");
+        out_debug << ptx_code;
+        out_debug.close();
+
         // 清理临时PTX文件
-        snprintf(cmd, 1024, "rm %s", ptx_file.c_str());
-        system(cmd);
+        // snprintf(cmd, 1024, "rm %s", ptx_file.c_str());
+        // system(cmd);
     }
 
     // 清理临时文件列表
-    system("rm __ptx_list_temp__");
+    // system("rm __ptx_list_temp__");
 
     return ptx_code;
 }

@@ -193,11 +193,33 @@ std::any PtxVisitor::visitDeclaration(ptxparser::ptxParser::DeclarationContext *
 }
 
 std::any PtxVisitor::visitVersionDirective(ptxparser::ptxParser::VersionDirectiveContext *ctx) {
-    if (ctx->IMMEDIATE().size() >= 2) {
-        this->ctx.ptxMajorVersion = extractIntFromToken(ctx->IMMEDIATE(0)->getSymbol());
-        this->ctx.ptxMinorVersion = extractIntFromToken(ctx->IMMEDIATE(1)->getSymbol());
-        PTX_DEBUG("PTX version: %d.%d", this->ctx.ptxMajorVersion, this->ctx.ptxMinorVersion);
+    std::string ver = ctx->getText();
+    // Remove "VERSION" and semicolon, parse the version number
+    size_t start = 0;
+    while (start < ver.size() && !isdigit(ver[start])) start++;
+    size_t end = start;
+    while (end < ver.size() && (isdigit(ver[end]) || ver[end] == '.')) end++;
+    std::string verNum = ver.substr(start, end - start);
+    
+    size_t dotPos = verNum.find('.');
+    if (dotPos != std::string::npos) {
+        try {
+            this->ctx.ptxMajorVersion = std::stoi(verNum.substr(0, dotPos));
+            this->ctx.ptxMinorVersion = std::stoi(verNum.substr(dotPos + 1));
+        } catch (...) {
+            this->ctx.ptxMajorVersion = 7;
+            this->ctx.ptxMinorVersion = 0;
+        }
+    } else {
+        try {
+            this->ctx.ptxMajorVersion = std::stoi(verNum);
+            this->ctx.ptxMinorVersion = 0;
+        } catch (...) {
+            this->ctx.ptxMajorVersion = 7;
+            this->ctx.ptxMinorVersion = 0;
+        }
     }
+    PTX_DEBUG("PTX version: %d.%d", this->ctx.ptxMajorVersion, this->ctx.ptxMinorVersion);
     return nullptr;
 }
 

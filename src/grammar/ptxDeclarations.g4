@@ -22,17 +22,23 @@ declaration
 
 // --- Version ---
 versionDirective
-    : VERSION IMMEDIATE DOT IMMEDIATE SEMI
+    : VERSION anyVersion SEMI?
+    ;
+
+anyVersion
+    : IMMEDIATE DOT IMMEDIATE
+    | IMMEDIATE
+    | ID
     ;
 
 // --- Target ---
 targetDirective
-    : TARGET SM_TARGET (COMMA SM_TARGET)* SEMI
+    : TARGET SM_TARGET (COMMA SM_TARGET)* SEMI?
     ;
 
 // --- Address Size ---
 addressSizeDirective
-    : ADDRESS_SIZE IMMEDIATE SEMI
+    : ADDRESS_SIZE IMMEDIATE SEMI?
     ;
 
 // --- File ---
@@ -119,6 +125,7 @@ initializerList
 functionDecl
     : visibility? FUNC functionHeader funcBody
     | visibility? ENTRY functionHeader funcBody
+    | VISIBLE ENTRY functionHeader funcBody
     ;
 
 functionHeader
@@ -126,12 +133,17 @@ functionHeader
     ;
 
 paramList
-    : LEFT_PAREN paramDecl (COMMA paramDecl)* RIGHT_PAREN
+    : LEFT_PAREN paramDecl (paramDecl)* RIGHT_PAREN
+    | LEFT_PAREN RIGHT_PAREN
     ;
 
-// NOTE: Parameters are implicitly in .param space; no PARAM token here
 paramDecl
-    : typeSpecifier? vectorSpec? ID
+    : PARAM paramTokens
+    | typeSpecifier? vectorSpec? ID
+    ;
+
+paramTokens
+    : (typeSpecifier | PTR | ALIGN | IMMEDIATE | ID)+
     ;
 
 // Function attributes (PTX §6.1)

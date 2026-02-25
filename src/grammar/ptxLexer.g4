@@ -64,6 +64,8 @@ MINNCTAPERSM    : '.minnctapersm'; // MUST come before .min
 REQNTID         : '.reqntid';
 PRAGMA          : '.pragma';
 BRANCHTARGETS   : '.branchtargets';
+PTR             : '.ptr';
+TO              : '.to';
 
 // ABI directives (PTX 9.0+)
 ABI_PRESERVE       : '.abi_preserve';
