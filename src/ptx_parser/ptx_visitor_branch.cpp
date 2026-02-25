@@ -1,11 +1,11 @@
 // BRANCH 类别的实现
-#define VISITOR_BRANCH(opstr, opname, opcount)                                 \
-std::any PtxVisitor::visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) {  \
+#define VISITOR_BRANCH(openum, opstr, opname, opcount)                                 \
+std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstContext *pCtx) {  \
     if (!currentKernel) return nullptr;                                        \
                                                                                 \
     StatementContext stmtCtx;                                                  \
     stmtCtx.instructionText = ctx->getText();                                  \
-    stmtCtx.type = S_##opname;                                                 \
+    stmtCtx.type = #openum;                                                 \
                                                                                 \
     BranchInstr instr;                                                         \
                                                                                 \
