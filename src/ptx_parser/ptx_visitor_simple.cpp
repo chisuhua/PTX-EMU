@@ -72,25 +72,24 @@
 //     currentKernel->kernelStatements.push_back(stmtCtx);                        \
 //     return nullptr;                                                            \
 // }
-//
-// #define VISITOR_VOID_INSTR(opstr, opname, opcount)                             \
-// std::any PtxVisitor::visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) {  \
-//     if (!currentKernel) return nullptr;                                        \
-//     StatementContext stmtCtx;                                                  \
-//     stmtCtx.instructionText = ctx->getText();                                  \
-//     stmtCtx.type = S_##opname;                                                 \
-//     VoidInstr voidInstr;                                                       \
-//     stmtCtx.data = voidInstr;                                                  \
-//     currentKernel->kernelStatements.push_back(stmtCtx);                        \
-//     return nullptr;                                                            \
-// }
+
+#define VISITOR_VOID_INSTR(openum, opstr, opname, opcount)                             \
+std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstContext *ctx) {  \
+    if (!currentKernel) return nullptr;                                        \
+    StatementContext stmtCtx;                                                  \
+    stmtCtx.instructionText = ctx->getText();                                  \
+    stmtCtx.type = openum;                                                 \
+    VoidInstr voidInstr;                                                       \
+    stmtCtx.data = voidInstr;                                                  \
+    currentKernel->kernelStatements.push_back(stmtCtx);                        \
+    return nullptr;                                                            \
+}
 
 #define VISITOR_OPERAND_REG(openum, opstr, opname, opcount)
 #define VISITOR_OPERAND_CONST(openum, opstr, opname, opcount)                        
 #define VISITOR_OPERAND_MEMORY(openum, opstr, opname, opcount)                         
 #define VISITOR_SIMPLE_NAME(openum, opstr, opname, opcount)                            
 #define VISITOR_SIMPLE_STRING(openum, opstr, opname, opcount)                          
-#define VISITOR_VOID_INSTR(openum, opstr, opname, opcount)                             
 #define VISITOR_LABEL_INSTR(openum, opstr, opname, opcount)                             
 
 // X-Macro展开: 根据struct_kind调用对应的VISITOR_*宏

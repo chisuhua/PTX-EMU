@@ -73,11 +73,16 @@ public:
     std::any visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) override;
 #define  VISITOR_DECL_PREFETCH_INSTR(opstr) \
     std::any visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) override;
-#define  VISITOR_DECL_ASYNC_INSTR(opstr)
-#define  VISITOR_DECL_ASYNC_STORE(opstr)
-#define  VISITOR_DECL_ASYNC_REDUCE(opstr)
-#define  VISITOR_DECL_TCGEN_INSTR(opstr)
-#define  VISITOR_DECL_TENSORMAP_INSTR(opstr)
+#define  VISITOR_DECL_ASYNC_INSTR(opstr) \
+    std::any visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) override;
+#define  VISITOR_DECL_ASYNC_STORE(opstr) \
+    std::any visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) override;
+#define  VISITOR_DECL_ASYNC_REDUCE(opstr) \
+    std::any visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) override;
+#define  VISITOR_DECL_TCGEN_INSTR(opstr) \
+    std::any visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) override;
+#define  VISITOR_DECL_TENSORMAP_INSTR(opstr) \
+    std::any visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) override;
 
 #define  VISITOR_DECL_GENERIC_INSTR(opstr) \
     std::any visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) override;

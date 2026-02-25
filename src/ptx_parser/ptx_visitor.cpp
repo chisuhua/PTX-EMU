@@ -475,7 +475,7 @@ std::any PtxVisitor::visitInstruction(ptxparser::ptxParser::InstructionContext *
 #include "ptx_visitor_abi.cpp"
 
 #define X(openum, opstr, opname, opcount, struct_kind, instr_kind)                         \
-    VISITOR_##struct_kind(openun, opstr, opname, opcount);
+    VISITOR_##struct_kind(openum, opstr, opname, opcount);
     
 #include "ptx_ir/ptx_op.def"
 #undef X
