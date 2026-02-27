@@ -175,3 +175,29 @@ make -C build RAY
 - `docs/debugging_guide.md` - Debugging and logging setup
 - `docs/arch.md` - System architecture
 - `docs/sm90_100.md` - Hopper/Blackwell GPU specifics
+
+
+
+## ANTI-PATTERNS (THIS PROJECT)
+
+### Critical Limitations (Silent Failures)
+- **WMMA/Tensor Core**: Instructions are parsed but implementations are empty stubs — silently do nothing
+- **Atomic operations**: No actual atomicity guarantees — stubs return immediately
+- **Function calls in PTX**: Call logic not fully implemented
+- **Multi-PTX cubins**: Only first PTX extracted (FIXME in ptx_parser.cpp:59)
+
+### Architecture Constraints
+- **Hopper (sm_90+) NOT supported**: Thread block cluster abstraction missing
+- **Tensor Core (wmma, mma) NOT implemented**: Stubs only
+- **Event/Stream APIs**: Fake implementations that log but don't synchronize
+
+### Development Gotchas
+- `assert(false)` in multiple places — crashes on unhandled code paths
+- TODO/FIXME comments indicate incomplete implementations
+- PTX opcode parsing in `ptx_visitor.cpp` has many unimplemented paths
+
+### Safe Assumptions
+- Basic PTX arithmetic/logic instructions work
+- Memory operations (ld/st) work for global/shared/local
+- Control flow (bra, ret) works
+- Ampere (sm_80) and earlier architectures supported
