@@ -4,16 +4,14 @@ options {
     tokenVocab = ptxLexer;
 }
 
-import ptxOperands;
+import ptxOperands, ptxDeclarations;
 
 funcBody
     : LEFT_BRACE (regDecl | instruction)* RIGHT_BRACE
     ;
 
-// Register declaration inside function: .reg .b32 %r<2>;
 regDecl
-    : REG typeSpecifier PERCENT ID LESS IMMEDIATE GREATER SEMI
-    | REG typeSpecifier PERCENT ID SEMI
+    : REG typeSpecifier PERCENT ID arraySize? SEMI
     ;
 
 instructionList
@@ -222,7 +220,7 @@ cvtInst
     ;
 
 cvtaInst
-    : CVTA genericOrSpecificSpace? toAddrSpace? operand COMMA operand SEMI
+    : CVTA genericOrSpecificSpace? toAddrSpace? typeSpecifier? operand COMMA operand SEMI
     ;
 
 rcpInst

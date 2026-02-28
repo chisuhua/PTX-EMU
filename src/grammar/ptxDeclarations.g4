@@ -20,9 +20,9 @@ declaration
     | abiPreserveDirective
     ;
 
-// --- Version ---
+// ---
 versionDirective
-    : VERSION anyVersion SEMI?
+    : VERSION anyVersion SEMI
     ;
 
 anyVersion
@@ -31,15 +31,16 @@ anyVersion
     | ID
     ;
 
-// --- Target ---
+// ---
 targetDirective
-    : TARGET SM_TARGET (COMMA SM_TARGET)* SEMI?
+    : TARGET SM_TARGET (COMMA SM_TARGET)* SEMI
     ;
 
-// --- Address Size ---
+// ---
 addressSizeDirective
-    : ADDRESS_SIZE IMMEDIATE SEMI?
+    : ADDRESS_SIZE IMMEDIATE SEMI
     ;
+
 
 // --- File ---
 fileDirective
@@ -95,10 +96,11 @@ vectorSpec
     : V2 | V4
     ;
 
-// Support multi-dimensional arrays: [10][20]
 arraySize
     : (LEFT_BRACK IMMEDIATE RIGHT_BRACK)+
+    | (LESS IMMEDIATE GREATER)+
     ;
+
 
 // Align value must be power-of-two (validated in semantic analysis)
 alignClause
@@ -133,18 +135,20 @@ functionHeader
     ;
 
 paramList
-    : LEFT_PAREN paramDecl (paramDecl)* RIGHT_PAREN
+    : LEFT_PAREN paramDecl (COMMA paramDecl)* RIGHT_PAREN
     | LEFT_PAREN RIGHT_PAREN
     ;
 
 paramDecl
-    : PARAM paramTokens
+    : PARAM paramTypeSpec ID
     | typeSpecifier? vectorSpec? ID
     ;
 
-paramTokens
-    : (typeSpecifier | PTR | ALIGN | IMMEDIATE | ID)+
+paramTypeSpec
+    : typeSpecifier PTR? alignClause?
+    | PTR alignClause? typeSpecifier?
     ;
+
 
 // Function attributes (PTX §6.1)
 functionAttribute
