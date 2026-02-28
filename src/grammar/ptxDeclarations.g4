@@ -22,7 +22,7 @@ declaration
 
 // ---
 versionDirective
-    : VERSION anyVersion SEMI
+    : VERSION anyVersion SEMI?
     ;
 
 anyVersion
@@ -33,12 +33,12 @@ anyVersion
 
 // ---
 targetDirective
-    : TARGET SM_TARGET (COMMA SM_TARGET)* SEMI
+    : TARGET SM_TARGET (COMMA SM_TARGET)* SEMI?
     ;
 
 // ---
 addressSizeDirective
-    : ADDRESS_SIZE IMMEDIATE SEMI
+    : ADDRESS_SIZE IMMEDIATE SEMI?
     ;
 
 
@@ -160,4 +160,3 @@ functionAttribute
 threadDim
     : IMMEDIATE (COMMA IMMEDIATE (COMMA IMMEDIATE)?)?
     ;
-
