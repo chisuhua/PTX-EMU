@@ -32,7 +32,7 @@ if command -v nvcc &> /dev/null; then
     
     # 可选：将CUDA的库和bin目录添加到相应环境变量
     #export LD_LIBRARY_PATH=$CUDA_PATH/lib64:$CUDA_PATH/lib:$LD_LIBRARY_PATH
-    #export PATH=$CUDA_PATH/bin:$PATH
+    export PATH=$CUDA_PATH/bin:$PATH
     
     echo "CUDA环境变量设置成功。"
 else
@@ -63,7 +63,7 @@ alias grun='java -Xmx500M -cp "$CLASSPATH" org.antlr.v4.gui.TestRig'
 
 # 设置PTX-EMU相关环境变量
 export PTX_EMU_PATH=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-#export PATH=$CUDA_PATH/bin:$PATH
+export PATH=$CUDA_PATH/bin:$PATH
 export LD_LIBRARY_PATH=$PTX_EMU_PATH/lib:${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
 
 # 创建输出目录
