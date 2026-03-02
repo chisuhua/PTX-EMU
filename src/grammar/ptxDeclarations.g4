@@ -20,20 +20,27 @@ declaration
     | abiPreserveDirective
     ;
 
-// --- Version ---
+// ---
 versionDirective
-    : VERSION IMMEDIATE DOT IMMEDIATE SEMI
+    : VERSION anyVersion SEMI?
     ;
 
-// --- Target ---
+anyVersion
+    : IMMEDIATE DOT IMMEDIATE
+    | IMMEDIATE
+    | ID
+    ;
+
+// ---
 targetDirective
-    : TARGET SM_TARGET (COMMA SM_TARGET)* SEMI
+    : TARGET SM_TARGET (COMMA SM_TARGET)* SEMI?
     ;
 
-// --- Address Size ---
+// ---
 addressSizeDirective
-    : ADDRESS_SIZE IMMEDIATE SEMI
+    : ADDRESS_SIZE IMMEDIATE SEMI?
     ;
+
 
 // --- File ---
 fileDirective
@@ -89,10 +96,11 @@ vectorSpec
     : V2 | V4
     ;
 
-// Support multi-dimensional arrays: [10][20]
 arraySize
     : (LEFT_BRACK IMMEDIATE RIGHT_BRACK)+
+    | (LESS IMMEDIATE GREATER)+
     ;
+
 
 // Align value must be power-of-two (validated in semantic analysis)
 alignClause
@@ -119,6 +127,7 @@ initializerList
 functionDecl
     : visibility? FUNC functionHeader funcBody
     | visibility? ENTRY functionHeader funcBody
+    | VISIBLE ENTRY functionHeader funcBody
     ;
 
 functionHeader
@@ -127,12 +136,19 @@ functionHeader
 
 paramList
     : LEFT_PAREN paramDecl (COMMA paramDecl)* RIGHT_PAREN
+    | LEFT_PAREN RIGHT_PAREN
     ;
 
-// NOTE: Parameters are implicitly in .param space; no PARAM token here
 paramDecl
-    : typeSpecifier? vectorSpec? ID
+    : PARAM paramTypeSpec ID
+    | typeSpecifier? vectorSpec? ID
     ;
+
+paramTypeSpec
+    : typeSpecifier PTR? alignClause?
+    | PTR alignClause? typeSpecifier?
+    ;
+
 
 // Function attributes (PTX §6.1)
 functionAttribute
@@ -144,4 +160,3 @@ functionAttribute
 threadDim
     : IMMEDIATE (COMMA IMMEDIATE (COMMA IMMEDIATE)?)?
     ;
-

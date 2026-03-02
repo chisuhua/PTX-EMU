@@ -22,9 +22,11 @@ int main(int argc, const char *argv[]) {
         if (ptx_emu_path == nullptr) {
             std::cerr << "Error: PTX_EMU_PATH environment variable not set"
                       << std::endl;
-            return 1;
+            filename = "./tests/ptx/dummy.1.sm_100.ptx";
+            // return 1;
+        } else {
+            filename = std::string(ptx_emu_path) + "/tests/ptx/dummy.1.sm_100.ptx";
         }
-        filename = std::string(ptx_emu_path) + "/tests/ptx/dummy.1.sm_75.ptx";
     }
 
     std::ifstream stream;

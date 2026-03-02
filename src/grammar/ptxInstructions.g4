@@ -4,11 +4,16 @@ options {
     tokenVocab = ptxLexer;
 }
 
-import ptxOperands;
+import ptxOperands, ptxDeclarations;
 
 funcBody
-    : LEFT_BRACE instructionList RIGHT_BRACE
+    : LEFT_BRACE (regDecl | instruction)* RIGHT_BRACE
     ;
+
+regDecl
+    : REG typeSpecifier PERCENT ID arraySize? SEMI
+    ;
+
 instructionList
     : instruction*
     ;
@@ -215,7 +220,7 @@ cvtInst
     ;
 
 cvtaInst
-    : CVTA genericOrSpecificSpace? toAddrSpace? operand COMMA operand SEMI
+    : CVTA genericOrSpecificSpace? toAddrSpace? typeSpecifier? operand COMMA operand SEMI
     ;
 
 rcpInst
@@ -243,13 +248,13 @@ cpAsyncInst
     ;
 
 ldQualifiers
-    : spaceQualifier cacheOperator* VOLATILE?
-    | VOLATILE spaceQualifier cacheOperator*
+    : spaceQualifier? cacheOperator* VOLATILE?
+    | VOLATILE spaceQualifier? cacheOperator*
     ;
 
 stQualifiers
-    : spaceQualifier cacheOperator* VOLATILE?
-    | VOLATILE spaceQualifier cacheOperator*
+    : spaceQualifier? cacheOperator* VOLATILE?
+    | VOLATILE spaceQualifier? cacheOperator*
     ;
 
 spaceQualifier
@@ -263,7 +268,7 @@ cacheOperator
 
 cpAsyncSpace : GLOBAL | SHARED ;
 genericOrSpecificSpace : GENERIC_SPACE | GLOBAL | SHARED | CONST ;
-toAddrSpace : (GLOBAL | SHARED)? ;
+toAddrSpace : (TO (GLOBAL | SHARED))? ;
 addrSpaceQuery : GENERIC_SPACE | GLOBAL | SHARED | CONST | LOCAL ;
 
 // Parallel sync instruction rules
