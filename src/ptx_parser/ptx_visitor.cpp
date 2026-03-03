@@ -385,56 +385,56 @@ std::any PtxVisitor::visitInstruction(ptxparser::ptxParser::InstructionContext *
 #define  VISITOR_IMPL_TENSORMAP_INSTR(opstr, opname, instr_kind)
 
 #define  VISITOR_IMPL_dataMovement(opstr, opname, instr_kind) \
-    if (ctx->instr_kind##Inst()->opstr##Inst()) {                                                  \
+    if (ctx->instr_kind##Inst() && ctx->instr_kind##Inst()->opstr##Inst()) {                                                  \
         return visit##opname##Inst(ctx->instr_kind##Inst()->opstr##Inst());                         \
     }
 
 #define  VISITOR_IMPL_CP_ASYNC_INSTR(opstr, opname, instr_kind)
 
 #define  VISITOR_IMPL_controlFlow(opstr, opname, instr_kind) \
-    if (ctx->instr_kind##Inst()->opstr##Inst()) { \
+    if (ctx->instr_kind##Inst() && ctx->instr_kind##Inst()->opstr##Inst()) { \
         return visit##opname##Inst(ctx->instr_kind##Inst()->opstr##Inst()); \
     }
 
 #define  VISITOR_IMPL_arithmetic(opstr, opname, instr_kind) \
-    if (ctx->instr_kind##Inst()->opstr##Inst()) { \
+    if (ctx->instr_kind##Inst() && ctx->instr_kind##Inst()->opstr##Inst()) { \
         return visit##opname##Inst(ctx->instr_kind##Inst()->opstr##Inst()); \
     }
 
 #define  VISITOR_IMPL_logical(opstr, opname, instr_kind) \
-    if (ctx->instr_kind##Inst()->opstr##Inst()) { \
+    if (ctx->instr_kind##Inst() && ctx->instr_kind##Inst()->opstr##Inst()) { \
         return visit##opname##Inst(ctx->instr_kind##Inst()->opstr##Inst()); \
     }
 
 #define  VISITOR_IMPL_warpLevel(opstr, opname, instr_kind) \
-    if (ctx->instr_kind##Inst()->opstr##Inst()) { \
+    if (ctx->instr_kind##Inst() && ctx->instr_kind##Inst()->opstr##Inst()) { \
         return visit##opname##Inst(ctx->instr_kind##Inst()->opstr##Inst()); \
     }
 
 #define  VISITOR_IMPL_textureSurface(opstr, opname, instr_kind) \
-    if (ctx->instr_kind##Inst()->opstr##Inst()) { \
+    if (ctx->instr_kind##Inst() && ctx->instr_kind##Inst()->opstr##Inst()) { \
         return visit##opname##Inst(ctx->instr_kind##Inst()->opstr##Inst()); \
     }
 
 #define  VISITOR_IMPL_reductionPrefetch(opstr, opname, instr_kind) \
-    if (ctx->instr_kind##Inst()->opstr##Inst()) { \
+    if (ctx->instr_kind##Inst() && ctx->instr_kind##Inst()->opstr##Inst()) { \
         return visit##opname##Inst(ctx->instr_kind##Inst()->opstr##Inst()); \
     }
 
 #define  VISITOR_IMPL_tcgen(opstr, opname, instr_kind) \
-    if (ctx->instr_kind##Inst()->opstr##Inst()) { \
+    if (ctx->instr_kind##Inst() && ctx->instr_kind##Inst()->opstr##Inst()) { \
         return visit##opname##Inst(ctx->instr_kind##Inst()->opstr##Inst()); \
     }
 
 #define  VISITOR_IMPL_Abi(opstr, opname, instr_kind) \
 
 #define  VISITOR_IMPL_parallelSync(opstr, opname, instr_kind) \
-    if (ctx->instr_kind##Inst()->opstr##Inst()) { \
+    if (ctx->instr_kind##Inst() && ctx->instr_kind##Inst()->opstr##Inst()) { \
         return visit##opname##Inst(ctx->instr_kind##Inst()->opstr##Inst()); \
     } 
 
 #define  VISITOR_IMPL_atomic(opstr, opname, instr_kind) \
-    if (ctx->instr_kind##Inst()->opstr##Inst()) { \
+    if (ctx->instr_kind##Inst() && ctx->instr_kind##Inst()->opstr##Inst()) { \
         return visit##opname##Inst(ctx->instr_kind##Inst()->opstr##Inst()); \
     } 
 
