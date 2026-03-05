@@ -253,7 +253,7 @@ std::any PtxVisitor::visitVariableDecl(ptxparser::ptxParser::VariableDeclContext
     
     // TODO: Implement proper variable declaration parsing based on new grammar
     // For now, create a simple placeholder
-    stmtCtx.type = S_REG;
+    stmtCtx.type = (ctx->getText().find(".param") != std::string::npos) ? S_PARAM : S_REG;
     DeclarationInstr decl;
     decl.kind = DeclarationInstr::Kind::REG;
     decl.name = "TODO";
