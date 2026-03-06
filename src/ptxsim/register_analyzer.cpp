@@ -48,56 +48,54 @@ void RegisterAnalyzer::extract_registers_from_statement(
     }
 
     // 然后处理所有语句中的操作数，提取实际使用的寄存器
+    extract_registers_from_all_operands(stmt, registers);
     // extract_registers_from_all_operands(stmt, registers);
 }
-
 void RegisterAnalyzer::extract_registers_from_all_operands(
     const StatementContext &stmt,
     std::unordered_set<RegisterInfo, RegisterInfoHash> &registers) {
-    // 根据语句类型获取操作数数组和数量
-    //     void *stmt_ptr = stmt.data;
-    //     if (!stmt_ptr)
-    //         return;
-
-    //     // 通用处理：遍历所有可能的操作数
-    //     switch (stmt.type) {
-
-    // #define REG_EXTRACT_BRANCH(enum_val, type_name, opcount)
-    // #define REG_EXTRACT_BARRIER(enum_val, type_name, opcount)
-    // #define REG_EXTRACT_VOID_INSTR(enum_val, type_name, opcount)
-    // #define REG_EXTRACT_PREDICATE_PREFIX(enum_val, type_name, opcount)
-    // #define REG_EXTRACT_SIMPLE_STRING(enum_val, type_name, opcount)
-    // #define REG_EXTRACT_SIMPLE_NAME(enum_val, type_name, opcount)
-    // #define REG_EXTRACT_OPERAND_REG(enum_val, type_name, opcount)
-    // #define REG_EXTRACT_OPERAND_CONST(enum_val, type_name, opcount)
-    // #define REG_EXTRACT_OPERAND_MEMORY(enum_val, type_name, opcount)
-
-    // #define REG_EXTRACT_ATOM_INSTR(enum_val, type_name, opcount)
-    // #define REG_EXTRACT_WMMA_INSTR(enum_val, type_name, opcount)
-    // #define REG_EXTRACT_CALL_INSTR(enum_val, type_name, opcount)
-
-    // #define REG_EXTRACT_GENERIC_INSTR(enum_val, type_name, opcount)                \
-//     case enum_val: {                                                           \
-//         if (auto *typed_stmt =                                                 \
-//                 static_cast<StatementContext::type_name *>(stmt_ptr)) {        \
-//             const BarrierInstr &ss = std::get<BarrierInstr>(stmt.data);        \
-//             for (int i = 0; i < opcount; ++i) {                                \
-//                 extract_registers_from_operand(typed_stmt->operands[i],        \
-//                                                typed_stmt->qualifier,          \
-//                                                registers);                     \
-//             }                                                                  \
-//         }                                                                      \
-//         break;                                                                 \
-//     }
-    // #define X(enum_val, type_name, str, opcount, struct_kind)                      \
-//     REG_EXTRACT_##struct_kind(enum_val, type_name, opcount)
-
-    // #include "ptx_ir/ptx_op.def"
-    // #undef X
-    //     default:
-    //         break;
-    // }
+    // 使用visit来访问不同类型的指令并提取操作数中的寄存器
+    stmt.visit([&registers](const auto &instr) {
+        using T = std::decay_t<decltype(instr)>;
+        
+        // 检查是否有operands成员
+        if constexpr (requires { instr.operands; }) {
+            for (const auto &op : instr.operands) {
+                extract_register_from_operand(op, registers);
+            }
+        }
+    });
 }
+
+void RegisterAnalyzer::extract_register_from_operand(
+    const OperandContext &op,
+    std::unordered_set<RegisterInfo, RegisterInfoHash> &registers) {
+    // 检查操作数是否为寄存器类型
+    if (std::holds_alternative<RegOperand>(op.data)) {
+        const auto &reg = std::get<RegOperand>(op.data);
+        std::string full_name = reg.fullName();
+        
+        // 根据寄存器名称前缀确定大小
+        size_t reg_size = 4; // 默认32位
+        if (full_name.rfind("rd", 0) == 0 || full_name.rfind("dp", 0) == 0) {
+            reg_size = 8; // 64位寄存器
+        } else if (full_name.rfind("p", 0) == 0) {
+            reg_size = 1; // predicate is 1 bit but usually stored as 8 bits
+        }
+        
+        registers.insert(RegisterInfo(full_name, -1, reg_size));
+    } else if (std::holds_alternative<VecOperand>(op.data)) {
+        // 对于向量操作数，递归处理其中的每个元素
+        const auto &vec = std::get<VecOperand>(op.data);
+        for (const auto &elem : vec.elements) {
+            extract_register_from_operand(elem, registers);
+        }
+
+}
+
+// void RegisterAnalyzer::extract_register_from_operand(
+    }
+
 
 // void RegisterAnalyzer::extract_registers_from_operand(
 //     const OperandContext &op, const std::vector<Qualifier> &qualifiers,
