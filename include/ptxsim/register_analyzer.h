@@ -48,14 +48,8 @@ private:
         std::unordered_set<RegisterInfo, RegisterInfoHash> &registers);
 
     // 从操作数中提取寄存器信息
-    static void extract_registers_from_operand(
-        const OperandContext &op, const std::vector<Qualifier> &qualifiers,
-        std::unordered_set<RegisterInfo, RegisterInfoHash> &registers);
-
-    // 从语句结构体中提取寄存器信息
-    template <typename StmtType>
-    static void extract_registers_from_struct(
-        const StmtType &stmt,
+    static void extract_register_from_operand(
+        const OperandContext &op,
         std::unordered_set<RegisterInfo, RegisterInfoHash> &registers);
 };
 
