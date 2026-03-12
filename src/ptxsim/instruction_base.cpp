@@ -95,7 +95,9 @@ void PipelineHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
         return;
     }
 
-    stmt.state = InstructionState::READY;
+    // stmt.state is shared across all threads in a CTA; do not write to it
+    // here to avoid a data race. The state begins as READY and need not be
+    // reset—each thread drives its own pipeline atomically per ExecPipe call.
     context->next_pc = context->pc + 1;
 }
 

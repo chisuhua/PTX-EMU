@@ -446,8 +446,14 @@ std::any PtxVisitor::visitFunctionDecl(ptxparser::ptxParser::FunctionDeclContext
                 }
             }
 
+            // If byteSize is still 0 here, the parameter size is unknown.
+            // Leave it as 0 so setupKernelArguments() can detect and reject it.
             if (param.byteSize == 0) {
-                param.byteSize = 4;
+                PTX_WARN("visitFunctionDecl: unknown byte size for param '%s'; "
+                         "leaving as 0 for runtime rejection. "
+                         "Ensure the parameter has an explicit type with a "
+                         "known size (e.g. .u32, .u64, .b64).",
+                         param.paramName.c_str());
             }
             param.paramAlign = static_cast<int>(param.effectiveAlignment());
             currentKernel->kernelParams.push_back(param);
