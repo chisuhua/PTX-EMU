@@ -78,26 +78,20 @@ void PipelineHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
     // mismatches. Execute full pipeline atomically per call to avoid
     // inter-thread state interference.
     if (!prepareOperands(context, stmt)) {
-        std::fprintf(stderr,
-                     "[PTX_PIPELINE_ERROR] stage=prepare pc=%d instr=%s\n",
-                     context->pc, stmt.instructionText.c_str());
-        context->set_state(EXIT);
+        PTX_DEBUG_EMU("[PTX_PIPELINE_RETRY] stage=prepare pc=%d instr=%s",
+                      context->pc, stmt.instructionText.c_str());
         return;
     }
 
     if (!executeOperation(context, stmt)) {
-        std::fprintf(stderr,
-                     "[PTX_PIPELINE_ERROR] stage=execute pc=%d instr=%s\n",
-                     context->pc, stmt.instructionText.c_str());
-        context->set_state(EXIT);
+        PTX_DEBUG_EMU("[PTX_PIPELINE_RETRY] stage=execute pc=%d instr=%s",
+                      context->pc, stmt.instructionText.c_str());
         return;
     }
 
     if (!commitResults(context, stmt)) {
-        std::fprintf(stderr,
-                     "[PTX_PIPELINE_ERROR] stage=commit pc=%d instr=%s\n",
-                     context->pc, stmt.instructionText.c_str());
-        context->set_state(EXIT);
+        PTX_DEBUG_EMU("[PTX_PIPELINE_RETRY] stage=commit pc=%d instr=%s",
+                      context->pc, stmt.instructionText.c_str());
         return;
     }
 
