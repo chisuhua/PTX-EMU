@@ -147,10 +147,10 @@ int main(int argc, const char *argv[]) {
     } else {
         const char *ptx_emu_path = std::getenv("PTX_EMU_PATH");
         if (ptx_emu_path == nullptr) {
-            std::cerr << "Error: PTX_EMU_PATH environment variable not set"
+            std::cerr << "Warning: PTX_EMU_PATH not set; "
+                      << "using default path ./tests/ptx/dummy.1.sm_80.ptx"
                       << std::endl;
             filename = "./tests/ptx/dummy.1.sm_80.ptx";
-            // return 1;
         } else {
             filename = std::string(ptx_emu_path) + "/tests/ptx/dummy.1.sm_80.ptx";
         }
@@ -172,13 +172,6 @@ int main(int argc, const char *argv[]) {
 
     tokens.fill();
 
-//#define TOKEN
-#ifdef TOKEN
-    for (auto token : tokens.getTokens()) {
-        std::cout << token->toString() << std::endl;
-    }
-#endif
-
     ptxParser parser(&tokens);
 
     ptxParser::PtxFileContext *tree = parser.ptxFile();
@@ -186,11 +179,6 @@ int main(int argc, const char *argv[]) {
     PtxContext ptxContext;
     PtxVisitor visitor(ptxContext);
     visitor.visit(tree);
-
-// #define TREE
-#ifdef TREE
-    std::cout << tree->toStringTree(&parser) << std::endl << std::endl;
-#endif
 
     dumpPtxContext(ptxContext, std::cout);
     dumpParamAndRegFromTree(tree, std::cout);

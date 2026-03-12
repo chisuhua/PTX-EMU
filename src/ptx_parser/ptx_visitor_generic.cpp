@@ -34,26 +34,9 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
     };                                                                         \
                                                                                \
     auto parseRegFromText = [&](const std::string &raw, RegOperand &regOut) { \
-        std::string name = normalizeBaseText(raw);                             \
-        if (name.empty()) {                                                    \
-            return false;                                                      \
-        }                                                                      \
-        size_t pos = 0;                                                        \
-        while (pos < name.size() &&                                            \
-               std::isalpha(static_cast<unsigned char>(name[pos]))) {          \
-            ++pos;                                                             \
-        }                                                                      \
-        if (pos == 0 || pos >= name.size()) {                                  \
-            return false;                                                      \
-        }                                                                      \
-        for (size_t i = pos; i < name.size(); ++i) {                           \
-            if (!std::isdigit(static_cast<unsigned char>(name[i]))) {          \
-                return false;                                                  \
-            }                                                                  \
-        }                                                                      \
-        regOut.name = name.substr(0, pos);                                     \
-        regOut.index = std::stoi(name.substr(pos));                            \
-        return true;                                                           \
+        /* Delegate to the shared register parser, which knows valid PTX       \
+         * register families and avoids misclassifying symbols like foo1. */   \
+        return ::parseRegisterFromText(raw, regOut);                           \
     };                                                                         \
                                                                                \
     auto buildAddrFromExpr =                                                   \
