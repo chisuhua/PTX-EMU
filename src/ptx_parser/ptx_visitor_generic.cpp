@@ -36,7 +36,7 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
     auto parseRegFromText = [&](const std::string &raw, RegOperand &regOut) { \
         /* Delegate to the shared register parser, which knows valid PTX       \
          * register families and avoids misclassifying symbols like foo1. */   \
-        return ::parseRegisterFromText(raw, regOut);                           \
+        return parseRegisterFromText(raw, regOut);                            \
     };                                                                         \
                                                                                \
     auto buildAddrFromExpr =                                                   \

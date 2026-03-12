@@ -453,7 +453,7 @@ std::any PtxVisitor::visitFunctionDecl(ptxparser::ptxParser::FunctionDeclContext
                          "leaving as 0 for runtime rejection. "
                          "Ensure the parameter has an explicit type with a "
                          "known size (e.g. .u32, .u64, .b64).",
-                         param.name.c_str());
+                         param.paramName.c_str());
             }
             param.paramAlign = static_cast<int>(param.effectiveAlignment());
             currentKernel->kernelParams.push_back(param);
