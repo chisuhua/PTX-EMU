@@ -1,0 +1,31 @@
+{
+  "name": "C++ Dev Container",
+  "image": "mcr.microsoft.com/devcontainers/cpp:0-ubuntu-24.04",
+
+  // 安装额外工具（可选）
+  "features": {
+    "ghcr.io/devcontainers/features/cmake:1": {},
+    "ghcr.io/devcontainers/features/gcc:1": {}
+  },
+
+  // 启动后执行命令（如需要）
+  // "postCreateCommand": "echo 'Ready for C++ development!'",
+
+  // 自动安装推荐的 VS Code 扩展（在容器内）
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",           // C/C++ 智能感知与调试
+        "ms-vscode.cmake-tools",        // CMake 集成（可选但推荐）
+        "ms-vscode.cpptools-extension-pack" // C++ 扩展包（含调试、CMake 等）
+      ]
+    }
+  },
+
+  // 将工作区挂载到容器中的 /workspaces（默认行为）
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace/${localWorkspaceFolderBasename},type=bind",
+  "workspaceFolder": "/workspace/${localWorkspaceFolderBasename}",
+
+  // 如果需要图形化调试（如使用 GDB GUI），可启用（一般不需要）
+  // "runArgs": ["--privileged"]
+}

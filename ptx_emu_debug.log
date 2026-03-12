@@ -1,0 +1,342 @@
+[CLK:0] [emu] Initialized ResourceManager with 1 SMs, each with 163840 bytes shared memory
+[CLK:0] [emu] Configuration loaded from config.ini
+[CLK:0] [emu] Called __cudaRegisterFatBinary(0x63e758ae6018, 0x7fffdb06ea18, 140736868051496, 1487822016)
+[CLK:0] [emu] Visiting PTX file
+[CLK:0] [emu] PTX version: 9.0
+[CLK:0] [emu] PTX target: sm_80
+[CLK:0] [emu] Address size: 64
+[CLK:0] [emu] Called __cudaRegisterFunction(0x63e758ae6018, Û˙UHâÂHÉÏHâ}¯HçE¯Hâ«Ë˛˛ˇˇê…√êÛ˙UHâÂHâ}¯âuÙâUâMÏHãE¯ãUÙâHãE¯ãUâPHãE¯ãUÏâPê]√f.Ñ, 0x63e758ae4026, _Z7dummy_dIiEvPT_)
+[CLK:0] [emu] Called __cudaRegisterFatBinaryEnd(0x63e758ae6018)
+[CLK:0] [emu] Called cudaMalloc(0x7fffdb06e8c0, 256)
+[CLK:0] [mem] Memory allocated: offset=0, size=256
+[CLK:0] [mem] GLOBAL memory allocated: devptr=0x77730b200000, size=256
+[CLK:0] [emu] Called cudaMemcpy(0x77730b200000, 0x63e776d978b0, 256, 1)
+[CLK:0] [emu] Called __cudaPushCallConfiguration(grid=(1,1,1), block=(64,1,1), sharedMem=0, stream=(nil))
+[CLK:0] [emu] Called __cudaGetKernel(0x63e758ae6060, 0x63e758ae39bc)
+[CLK:0] [emu] Called __cudaPopCallConfiguration(0x7fffdb06e818, 0x7fffdb06e824, 0x7fffdb06e808, 0x7fffdb06e810)
+[CLK:0] [emu] Called cudaLaunchKernel(func=0x63e758ae39bc, grid=(1,1,1), block=(64,1,1), args=0x7fffdb06e830, sharedMem=0, stream=0x77730b200000)
+[CLK:0] [emu] cudaLaunchKernel args array address: 0x7fffdb06e830
+[CLK:0] [emu] deviceFunName _Z7dummy_dIiEvPT_
+[CLK:0] [emu] gridDim(1,1,1)
+[CLK:0] [emu] blockDim(64,1,1)
+[CLK:0] [emu] Setting up 1 kernel arguments
+[CLK:0] [mem] Memory allocated: offset=256, size=8
+[CLK:0] [mem] GLOBAL memory allocated: devptr=0x77730b200100, size=8
+[CLK:0] [emu] Allocated PARAM space of size 8 at 0x77730b200100
+[CLK:0] [emu] Added kernel argument to name2Sym: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry = 0x63e776bcd3a0, stored_value = 0x77730b200100,first_8_bytes_of_data = 0x77730b200000, param_size=8, param_bytes=8 
+[CLK:0] [emu] setupKernelArguments completed: symbol_count=1
+[CLK:0] [emu] Calculated shared memory size needed: 0 bytes
+[CLK:0] [emu] Calculated local memory size needed per thread: 0 bytes
+[CLK:0] [emu] Successfully added block with 0 shared memory bytes, 2 warps to SM 0
+[CLK:0] [emu] --- SM 0 Warp Status ---
+[CLK:0] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=Yes
+[CLK:0] [emu]   PC[0x0]: .reg.b32%r<2>; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:0] [emu] === SM 0 All 2 Warps Status ===
+[CLK:0] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:0] [emu]   PC[0x1]: .reg.b64%rd<5>; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:0] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:0] [emu]   PC[0x0]: .reg.b32%r<2>; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:1] [emu] --- SM 0 Warp Status ---
+[CLK:1] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=Yes
+[CLK:1] [emu]   PC[0x0]: .reg.b32%r<2>; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:1] [emu] === SM 0 All 2 Warps Status ===
+[CLK:1] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:1] [emu]   PC[0x1]: .reg.b64%rd<5>; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:1] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:1] [emu]   PC[0x1]: .reg.b64%rd<5>; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:2] [emu] --- SM 0 Warp Status ---
+[CLK:2] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=Yes
+[CLK:2] [emu]   PC[0x1]: .reg.b64%rd<5>; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:2] [emu] === SM 0 All 2 Warps Status ===
+[CLK:2] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:2] [emu]   PC[0x2]: ld.param.u64%rd1,[_Z7dummy_dIiEvPT__param_0]; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:2] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:2] [emu]   PC[0x1]: .reg.b64%rd<5>; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:3] [emu] --- SM 0 Warp Status ---
+[CLK:3] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=Yes
+[CLK:3] [emu]   PC[0x1]: .reg.b64%rd<5>; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:3] [emu] === SM 0 All 2 Warps Status ===
+[CLK:3] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:3] [emu]   PC[0x2]: ld.param.u64%rd1,[_Z7dummy_dIiEvPT__param_0]; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:3] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:3] [emu]   PC[0x2]: ld.param.u64%rd1,[_Z7dummy_dIiEvPT__param_0]; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:4] [emu] --- SM 0 Warp Status ---
+[CLK:4] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=Yes
+[CLK:4] [emu]   PC[0x2]: ld.param.u64%rd1,[_Z7dummy_dIiEvPT__param_0]; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [thread] [0,0,0][0,0,0][0,0] Collect: %rd1 phy_addr:0x63e776d832c0 value:0x0000000000000000 
+[CLK:4] [thread] [0,0,0][0,0,0][0,0] Collect: [global::_Z7dummy_dIiEvPT__param_0 + 0] phy_addr:0x77730b200100 value:0x000077730b200000 
+[CLK:4] [thread] [0,0,0][0,0,0][0,0] Commit:  %rd1 phy_addr:0x63e776d832c0 value:0x000077730b200000 
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:4] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:4] [emu] === SM 0 All 2 Warps Status ===
+[CLK:4] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:4] [emu]   PC[0x3]: cvta.to.global.u64%rd2,%rd1; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:4] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:4] [emu]   PC[0x2]: ld.param.u64%rd1,[_Z7dummy_dIiEvPT__param_0]; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:5] [emu] --- SM 0 Warp Status ---
+[CLK:5] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=Yes
+[CLK:5] [emu]   PC[0x2]: ld.param.u64%rd1,[_Z7dummy_dIiEvPT__param_0]; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [thread] [0,0,0][32,0,0][1,0] Collect: %rd1 phy_addr:0x63e776d87da0 value:0x0000000000000000 
+[CLK:5] [thread] [0,0,0][32,0,0][1,0] Collect: [global::_Z7dummy_dIiEvPT__param_0 + 0] phy_addr:0x77730b200100 value:0x000077730b200000 
+[CLK:5] [thread] [0,0,0][32,0,0][1,0] Commit:  %rd1 phy_addr:0x63e776d87da0 value:0x000077730b200000 
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] get_memory_addr lookup: id=_Z7dummy_dIiEvPT__param_0 base=_Z7dummy_dIiEvPT__param_0 lookup=_Z7dummy_dIiEvPT__param_0 qualifiers=2
+[CLK:5] [emu] Reading kernel argument from name2Sym in get_memory_addr: name=_Z7dummy_dIiEvPT__param_0, symbol_table_entry=0x63e776bcd3a0, stored_value=0x77730b200100
+[CLK:5] [emu] === SM 0 All 2 Warps Status ===
+[CLK:5] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:5] [emu]   PC[0x3]: cvta.to.global.u64%rd2,%rd1; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:5] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:5] [emu]   PC[0x3]: cvta.to.global.u64%rd2,%rd1; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:6] [emu] --- SM 0 Warp Status ---
+[CLK:6] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=Yes
+[CLK:6] [emu]   PC[0x3]: cvta.to.global.u64%rd2,%rd1; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:6] [thread] [0,0,0][0,0,0][0,0] Collect: %rd2 phy_addr:0x63e776d9cd20 value:0x0000000000000000 
+[CLK:6] [thread] [0,0,0][0,0,0][0,0] Collect: %rd1 phy_addr:0x63e776d832c0 value:0x000077730b200000 
+[CLK:6] [thread] [0,0,0][0,0,0][0,0] Commit:  %rd2 phy_addr:0x63e776d9cd20 value:0x000077730b200000 
+[CLK:6] [emu] === SM 0 All 2 Warps Status ===
+[CLK:6] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:6] [emu]   PC[0x4]: mov.u32%r1,%tid.x; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:6] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:6] [emu]   PC[0x3]: cvta.to.global.u64%rd2,%rd1; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:7] [emu] --- SM 0 Warp Status ---
+[CLK:7] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=Yes
+[CLK:7] [emu]   PC[0x3]: cvta.to.global.u64%rd2,%rd1; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:7] [thread] [0,0,0][32,0,0][1,0] Collect: %rd2 phy_addr:0x63e776d9d430 value:0x0000000000000000 
+[CLK:7] [thread] [0,0,0][32,0,0][1,0] Collect: %rd1 phy_addr:0x63e776d87da0 value:0x000077730b200000 
+[CLK:7] [thread] [0,0,0][32,0,0][1,0] Commit:  %rd2 phy_addr:0x63e776d9d430 value:0x000077730b200000 
+[CLK:7] [emu] === SM 0 All 2 Warps Status ===
+[CLK:7] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:7] [emu]   PC[0x4]: mov.u32%r1,%tid.x; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:7] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:7] [emu]   PC[0x4]: mov.u32%r1,%tid.x; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:8] [emu] --- SM 0 Warp Status ---
+[CLK:8] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=Yes
+[CLK:8] [emu]   PC[0x4]: mov.u32%r1,%tid.x; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:8] [thread] [0,0,0][0,0,0][0,0] Collect: %r1 phy_addr:0x63e776d98900 value:0x00000000 
+[CLK:8] [thread] [0,0,0][0,0,0][0,0] Collect: %tid.x phy_addr:0x63e776d90fc4 value:0x00000000 
+[CLK:8] [thread] [0,0,0][0,0,0][0,0] Commit:  %r1 phy_addr:0x63e776d98900 value:0x00000000 
+[CLK:8] [emu] === SM 0 All 2 Warps Status ===
+[CLK:8] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:8] [emu]   PC[0x5]: mul.wide.s32%rd3,%r1,4; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:8] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:8] [emu]   PC[0x4]: mov.u32%r1,%tid.x; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:9] [emu] --- SM 0 Warp Status ---
+[CLK:9] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=Yes
+[CLK:9] [emu]   PC[0x4]: mov.u32%r1,%tid.x; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:9] [thread] [0,0,0][32,0,0][1,0] Collect: %r1 phy_addr:0x63e776d99010 value:0x00000000 
+[CLK:9] [thread] [0,0,0][32,0,0][1,0] Collect: %tid.x phy_addr:0x63e776dacdd4 value:0x00000020 
+[CLK:9] [thread] [0,0,0][32,0,0][1,0] Commit:  %r1 phy_addr:0x63e776d99010 value:0x00000020 
+[CLK:9] [emu] === SM 0 All 2 Warps Status ===
+[CLK:9] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:9] [emu]   PC[0x5]: mul.wide.s32%rd3,%r1,4; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:9] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:9] [emu]   PC[0x5]: mul.wide.s32%rd3,%r1,4; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:10] [emu] --- SM 0 Warp Status ---
+[CLK:10] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=Yes
+[CLK:10] [emu]   PC[0x5]: mul.wide.s32%rd3,%r1,4; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:10] [thread] [0,0,0][0,0,0][0,0] Collect: %rd3 phy_addr:0x63e776d9b710 value:0x00000000 
+[CLK:10] [thread] [0,0,0][0,0,0][0,0] Collect: %r1 phy_addr:0x63e776d98900 value:0x00000000 
+[CLK:10] [thread] [0,0,0][0,0,0][0,0] Collect: 4 phy_addr:0x77740c617688 value:0x00000004 
+[CLK:10] [thread] [0,0,0][0,0,0][0,0] Commit:  %rd3 phy_addr:0x63e776d9b710 value:0x00000000 
+[CLK:10] [emu] === SM 0 All 2 Warps Status ===
+[CLK:10] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:10] [emu]   PC[0x6]: add.s64%rd4,%rd2,%rd3; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:10] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:10] [emu]   PC[0x5]: mul.wide.s32%rd3,%r1,4; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:11] [emu] --- SM 0 Warp Status ---
+[CLK:11] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=Yes
+[CLK:11] [emu]   PC[0x5]: mul.wide.s32%rd3,%r1,4; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:11] [thread] [0,0,0][32,0,0][1,0] Collect: %rd3 phy_addr:0x63e776d9be20 value:0x00000000 
+[CLK:11] [thread] [0,0,0][32,0,0][1,0] Collect: %r1 phy_addr:0x63e776d99010 value:0x00000020 
+[CLK:11] [thread] [0,0,0][32,0,0][1,0] Collect: 4 phy_addr:0x77740c617788 value:0x00000004 
+[CLK:11] [thread] [0,0,0][32,0,0][1,0] Commit:  %rd3 phy_addr:0x63e776d9be20 value:0x00000080 
+[CLK:11] [emu] === SM 0 All 2 Warps Status ===
+[CLK:11] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:11] [emu]   PC[0x6]: add.s64%rd4,%rd2,%rd3; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:11] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:11] [emu]   PC[0x6]: add.s64%rd4,%rd2,%rd3; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:12] [emu] --- SM 0 Warp Status ---
+[CLK:12] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=Yes
+[CLK:12] [emu]   PC[0x6]: add.s64%rd4,%rd2,%rd3; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:12] [thread] [0,0,0][0,0,0][0,0] Collect: %rd4 phy_addr:0x63e776d892d0 value:0x0000000000000000 
+[CLK:12] [thread] [0,0,0][0,0,0][0,0] Collect: %rd2 phy_addr:0x63e776d9cd20 value:0x000077730b200000 
+[CLK:12] [thread] [0,0,0][0,0,0][0,0] Collect: %rd3 phy_addr:0x63e776d9b710 value:0x0000000000000000 
+[CLK:12] [thread] [0,0,0][0,0,0][0,0] Commit:  %rd4 phy_addr:0x63e776d892d0 value:0x000077730b200000 
+[CLK:12] [emu] === SM 0 All 2 Warps Status ===
+[CLK:12] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:12] [emu]   PC[0x7]: st.global.u32[%rd4],%r1; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:12] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:12] [emu]   PC[0x6]: add.s64%rd4,%rd2,%rd3; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:13] [emu] --- SM 0 Warp Status ---
+[CLK:13] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=Yes
+[CLK:13] [emu]   PC[0x6]: add.s64%rd4,%rd2,%rd3; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:13] [thread] [0,0,0][32,0,0][1,0] Collect: %rd4 phy_addr:0x63e776d981f0 value:0x0000000000000000 
+[CLK:13] [thread] [0,0,0][32,0,0][1,0] Collect: %rd2 phy_addr:0x63e776d9d430 value:0x000077730b200000 
+[CLK:13] [thread] [0,0,0][32,0,0][1,0] Collect: %rd3 phy_addr:0x63e776d9be20 value:0x0000000000000080 
+[CLK:13] [thread] [0,0,0][32,0,0][1,0] Commit:  %rd4 phy_addr:0x63e776d981f0 value:0x000077730b200080 
+[CLK:13] [emu] === SM 0 All 2 Warps Status ===
+[CLK:13] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:13] [emu]   PC[0x7]: st.global.u32[%rd4],%r1; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:13] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:13] [emu]   PC[0x7]: st.global.u32[%rd4],%r1; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:14] [emu] --- SM 0 Warp Status ---
+[CLK:14] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=Yes
+[CLK:14] [emu]   PC[0x7]: st.global.u32[%rd4],%r1; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:14] [thread] [0,0,0][0,0,0][0,0] Collect: [global::rd4 + %rd4] phy_addr:0x77730b200000 value:0x00000000 
+[CLK:14] [thread] [0,0,0][0,0,0][0,0] Collect: %r1 phy_addr:0x63e776d98900 value:0x00000000 
+[CLK:14] [thread] [0,0,0][0,0,0][0,0] Commit:  [global::rd4 + %rd4] phy_addr:0x77730b200000 value:0x00000000 
+[CLK:14] [emu] === SM 0 All 2 Warps Status ===
+[CLK:14] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:14] [emu]   PC[0x8]: ret; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:14] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:14] [emu]   PC[0x7]: st.global.u32[%rd4],%r1; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:15] [emu] --- SM 0 Warp Status ---
+[CLK:15] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=Yes
+[CLK:15] [emu]   PC[0x7]: st.global.u32[%rd4],%r1; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:15] [thread] [0,0,0][32,0,0][1,0] Collect: [global::rd4 + %rd4] phy_addr:0x77730b200080 value:0x00000000 
+[CLK:15] [thread] [0,0,0][32,0,0][1,0] Collect: %r1 phy_addr:0x63e776d99010 value:0x00000020 
+[CLK:15] [thread] [0,0,0][32,0,0][1,0] Commit:  [global::rd4 + %rd4] phy_addr:0x77730b200080 value:0x00000020 
+[CLK:15] [emu] === SM 0 All 2 Warps Status ===
+[CLK:15] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:15] [emu]   PC[0x8]: ret; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:15] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:15] [emu]   PC[0x8]: ret; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:16] [emu] --- SM 0 Warp Status ---
+[CLK:16] [emu] Warp ID=0, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=Yes
+[CLK:16] [emu]   PC[0x8]: ret; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:16] [thread] [0,0,0][0,0,0][0,0] PC=8 VOID_INSTR: ret;
+[CLK:16] [emu] === SM 0 All 1 Warps Status ===
+[CLK:16] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=No
+[CLK:16] [emu]   PC[0x8]: ret; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:17] [emu] --- SM 0 Warp Status ---
+[CLK:17] [emu] Warp ID=1, Active Threads=32, IsFinished=No, AllExited=No, Scheduled=Yes
+[CLK:17] [emu]   PC[0x8]: ret; | Lane States: RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+[CLK:17] [thread] [0,0,0][32,0,0][1,0] PC=8 VOID_INSTR: ret;
+[CLK:17] [emu] === SM 0 All 0 Warps Status ===
+[CLK:19] [emu] Called cudaMemcpy(0x63e776d978b0, 0x77730b200000, 256, 2)
+[CLK:19] [emu] Called cudaFree(0x77730b200000)
+[CLK:19] [mem] Memory freed: offset=0, size=256
+[CLK:19] [emu] Called __cudaUnregisterFatBinary(0x63e758ae6018)

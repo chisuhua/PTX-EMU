@@ -72,34 +72,37 @@ void CallBaseHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
 
 // Pipeline Handler Implementation
 void PipelineHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
-    switch (stmt.state) {
-        case InstructionState::READY:
-            if (!prepareOperands(context, stmt)) {
-                return;
-            }
-            stmt.state = InstructionState::PREPARE;
-            break;
-            
-        case InstructionState::PREPARE:
-            if (!executeOperation(context, stmt)) {
-                return;
-            }
-            stmt.state = InstructionState::EXECUTE;
-            break;
-            
-        case InstructionState::EXECUTE:
-            if (!commitResults(context, stmt)) {
-                return;
-            }
-            stmt.state = InstructionState::COMMIT;
-            context->next_pc = context->pc + 1;
-            break;
-            
-        case InstructionState::COMMIT:
-            // Should not reach here in normal flow
-            stmt.state = InstructionState::READY;
-            break;
+    // StatementContext is shared by all threads in a CTA. If we use stmt.state
+    // as a cross-call pipeline state machine, different threads can observe and
+    // mutate the same state, causing operand acquisition/execution phase
+    // mismatches. Execute full pipeline atomically per call to avoid
+    // inter-thread state interference.
+    if (!prepareOperands(context, stmt)) {
+        std::fprintf(stderr,
+                     "[PTX_PIPELINE_ERROR] stage=prepare pc=%d instr=%s\n",
+                     context->pc, stmt.instructionText.c_str());
+        context->set_state(EXIT);
+        return;
     }
+
+    if (!executeOperation(context, stmt)) {
+        std::fprintf(stderr,
+                     "[PTX_PIPELINE_ERROR] stage=execute pc=%d instr=%s\n",
+                     context->pc, stmt.instructionText.c_str());
+        context->set_state(EXIT);
+        return;
+    }
+
+    if (!commitResults(context, stmt)) {
+        std::fprintf(stderr,
+                     "[PTX_PIPELINE_ERROR] stage=commit pc=%d instr=%s\n",
+                     context->pc, stmt.instructionText.c_str());
+        context->set_state(EXIT);
+        return;
+    }
+
+    stmt.state = InstructionState::READY;
+    context->next_pc = context->pc + 1;
 }
 
 bool PipelineHandler::acquireAllOperands(ThreadContext *context, 
@@ -111,6 +114,23 @@ bool PipelineHandler::acquireAllOperands(ThreadContext *context,
             void *result = context->acquire_operand(operands[i], qualifiers);
             if (!result) {
                 PTX_DEBUG_EMU("Failed to get operand address for op[%d]", i);
+                PTX_DEBUG_EMU("  pc=%d op=%s", context->pc,
+                              operands[i].toString().c_str());
+                if (operands[i].kind() == OperandKind::ADDR) {
+                    const auto &addr = std::get<AddrOperand>(operands[i].data);
+                    const char *offsetType =
+                        addr.offsetType == AddrOperand::OffsetType::REGISTER
+                            ? "REGISTER"
+                            : "IMMEDIATE";
+                    std::string regText = "<null>";
+                    if (addr.registerOffset) {
+                        regText = addr.registerOffset->toString();
+                    }
+                    PTX_DEBUG_EMU(
+                        "  addr_fields: id=%s base=%s offsetType=%s imm=%s regOffset=%s",
+                        addr.id.c_str(), addr.baseSymbol.c_str(), offsetType,
+                        addr.immediateOffset.c_str(), regText.c_str());
+                }
                 return false;
             }
             operands[i].setPhyAddr(result);

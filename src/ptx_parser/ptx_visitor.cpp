@@ -5,10 +5,77 @@
 #include "ptx_ir/statement_context.h"
 #include "utils/logger.h"
 #include <cassert>
+#include <cctype>
 #include <sstream>
 #include <string>
 #include <algorithm>
 #include <any>
+#include <functional>
+
+namespace {
+
+Qualifier qualifierFromText(const std::string &text) {
+#define X(enum_val, enum_name, str_val)                                        \
+    if (text == str_val || text == std::string(str_val).substr(1)) {          \
+        return Qualifier::enum_val;                                            \
+    }
+#include "ptx_ir/ptx_qualifier.def"
+#undef X
+    return Qualifier::Q_UNKNOWN;
+}
+
+int parseArraySizeFromRegDecl(
+    ptxparser::ptxParser::RegDeclContext *regDeclCtx) {
+    if (!regDeclCtx || !regDeclCtx->arraySize() ||
+        regDeclCtx->arraySize()->IMMEDIATE().empty()) {
+        return -1;
+    }
+
+    try {
+        return std::stoi(regDeclCtx->arraySize()->IMMEDIATE(0)->getText());
+    } catch (...) {
+        return -1;
+    }
+}
+
+bool parseRegisterFromText(const std::string &raw, RegOperand &regOut) {
+    if (raw.empty()) {
+        return false;
+    }
+
+    std::string text = raw;
+    if (!text.empty() && (text.front() == '%' || text.front() == '$')) {
+        text.erase(text.begin());
+    }
+
+    size_t split = 0;
+    while (split < text.size() &&
+           std::isalpha(static_cast<unsigned char>(text[split]))) {
+        ++split;
+    }
+    if (split == 0 || split >= text.size()) {
+        return false;
+    }
+
+    for (size_t i = split; i < text.size(); ++i) {
+        if (!std::isdigit(static_cast<unsigned char>(text[i]))) {
+            return false;
+        }
+    }
+
+    const std::string prefix = text.substr(0, split);
+    // Restrict to known PTX register families to avoid misclassifying symbols.
+    if (prefix != "r" && prefix != "rd" && prefix != "rs" && prefix != "f" &&
+        prefix != "fd" && prefix != "p" && prefix != "b" && prefix != "h") {
+        return false;
+    }
+
+    regOut.name = prefix;
+    regOut.index = std::stoi(text.substr(split));
+    return true;
+}
+
+} // namespace
 
 // 定义通用的日志宏
 #define PTX_ERROR(fmt, ...) PTX_ERROR_EMU(fmt, ##__VA_ARGS__)
@@ -28,7 +95,7 @@ Qualifier PtxVisitor::tokenToQualifier(antlr4::Token *token) {
     
     // 使用宏来处理各种情况
 #define X(enum_val, enum_name, str_val)                                        \
-    if (text == std::string(str_val).substr(1)) {                              \
+    if (text == str_val || text == std::string(str_val).substr(1)) {           \
         return Qualifier::enum_val;                                            \
     }
     
@@ -41,17 +108,29 @@ Qualifier PtxVisitor::tokenToQualifier(antlr4::Token *token) {
 std::vector<Qualifier> PtxVisitor::extractQualifiersFromContext(antlr4::ParserRuleContext *ctx) {
     std::vector<Qualifier> qualifiers;
     if (!ctx) return qualifiers;
-    
-    // 遍历所有子节点，提取token
-    for (auto child : ctx->children) {
-        auto terminal = dynamic_cast<antlr4::tree::TerminalNode*>(child);
-        if (terminal) {
-            auto qual = tokenToQualifier(terminal->getSymbol());
-            if (qual != Qualifier::Q_UNKNOWN) {
-                qualifiers.push_back(qual);
+
+    std::function<void(antlr4::tree::ParseTree *)> visitNode =
+        [&](antlr4::tree::ParseTree *node) {
+            if (!node) {
+                return;
             }
-        }
-    }
+
+            auto *terminal = dynamic_cast<antlr4::tree::TerminalNode *>(node);
+            if (terminal) {
+                auto qual = tokenToQualifier(terminal->getSymbol());
+                if (qual != Qualifier::Q_UNKNOWN) {
+                    qualifiers.push_back(qual);
+                }
+                return;
+            }
+
+            const size_t childCount = node->children.size();
+            for (size_t i = 0; i < childCount; ++i) {
+                visitNode(node->children[i]);
+            }
+        };
+
+    visitNode(ctx);
     
     return qualifiers;
 }
@@ -116,11 +195,25 @@ OperandContext PtxVisitor::createOperandFromContext(ptxparser::ptxParser::Operan
     
     // 检查ID（变量名）
     if (ctx->ID()) {
+        const std::string text = ctx->ID()->getText();
+        RegOperand reg;
+        if (parseRegisterFromText(text, reg)) {
+            return OperandContext{reg};
+        }
+
         VariableOperand var;
-        var.name = ctx->ID()->getText();
+        var.name = text;
         return OperandContext{var};
     }
     
+    // 兜底：尽量保留原始文本，避免把符号名误降级为立即数0
+    std::string raw = ctx->getText();
+    if (!raw.empty()) {
+        VariableOperand var;
+        var.name = raw;
+        return OperandContext{var};
+    }
+
     // 默认返回一个立即数0
     return OperandContext{ImmOperand{"0"}};
 }
@@ -297,13 +390,101 @@ std::any PtxVisitor::visitFunctionDecl(ptxparser::ptxParser::FunctionDeclContext
         currentKernel->ifEntryKernel = false;
     }
     
-    // TODO: Process parameters based on new grammar
-    
+    if (ctx->functionHeader() && ctx->functionHeader()->paramList()) {
+        for (auto *paramDecl : ctx->functionHeader()->paramList()->paramDecl()) {
+            if (!paramDecl) {
+                continue;
+            }
+
+            ParamContext param;
+            if (paramDecl->ID()) {
+                param.paramName = paramDecl->ID()->getText();
+            }
+
+            if (paramDecl->paramTypeSpec() &&
+                paramDecl->paramTypeSpec()->typeSpecifier()) {
+                auto q = qualifierFromText(
+                    paramDecl->paramTypeSpec()->typeSpecifier()->getText());
+                if (q != Qualifier::Q_UNKNOWN) {
+                    param.paramTypes.push_back(q);
+                    param.byteSize = Q2bytes(q);
+                }
+
+                if (paramDecl->paramTypeSpec()->PTR()) {
+                    param.isPtr = true;
+                    param.paramTypes.push_back(Qualifier::Q_PTR);
+                    param.byteSize = this->ctx.ptxAddressSize == 32 ? 4 : 8;
+                }
+
+                if (paramDecl->paramTypeSpec()->alignClause() &&
+                    paramDecl->paramTypeSpec()->alignClause()->IMMEDIATE()) {
+                    try {
+                        size_t alignValue = static_cast<size_t>(std::stoi(
+                            paramDecl->paramTypeSpec()->alignClause()->IMMEDIATE()->getText()));
+                        param.align = alignValue;
+                    } catch (...) {
+                    }
+                }
+            } else if (paramDecl->typeSpecifier()) {
+                auto q = qualifierFromText(paramDecl->typeSpecifier()->getText());
+                if (q != Qualifier::Q_UNKNOWN) {
+                    param.paramTypes.push_back(q);
+                    param.byteSize = Q2bytes(q);
+                }
+            }
+
+            if (paramDecl->vectorSpec()) {
+                std::string v = paramDecl->vectorSpec()->getText();
+                if (v == ".v2") {
+                    param.paramNum = 2;
+                } else if (v == ".v4") {
+                    param.paramNum = 4;
+                }
+            }
+
+            if (param.byteSize == 0) {
+                param.byteSize = 4;
+            }
+            param.paramAlign = static_cast<int>(param.effectiveAlignment());
+            currentKernel->kernelParams.push_back(param);
+        }
+    }
+
     // TODO: Process function attributes
-    
-    // 访问函数体
+
+    // 访问函数体：先处理寄存器声明，再处理指令，保证寄存器可预分配
     if (ctx->funcBody()) {
-        visit(ctx->funcBody());
+        for (auto *regDeclCtx : ctx->funcBody()->regDecl()) {
+            if (!regDeclCtx) {
+                continue;
+            }
+
+            StatementContext stmtCtx;
+            stmtCtx.type = S_REG;
+            stmtCtx.instructionText = regDeclCtx->getText();
+
+            DeclarationInstr decl;
+            decl.kind = DeclarationInstr::Kind::REG;
+            decl.name = regDeclCtx->ID() ? regDeclCtx->ID()->getText() : "";
+            decl.array_size = parseArraySizeFromRegDecl(regDeclCtx);
+            decl.dataType = Qualifier::Q_U32;
+
+            if (regDeclCtx->typeSpecifier()) {
+                auto q = qualifierFromText(regDeclCtx->typeSpecifier()->getText());
+                if (q != Qualifier::Q_UNKNOWN) {
+                    decl.dataType = q;
+                }
+            }
+
+            stmtCtx.data = decl;
+            currentKernel->kernelStatements.push_back(stmtCtx);
+        }
+
+        for (auto *instrCtx : ctx->funcBody()->instruction()) {
+            if (instrCtx) {
+                visit(instrCtx);
+            }
+        }
     }
     
     // 将kernel添加到上下文
@@ -514,6 +695,9 @@ std::any PtxVisitor::visitSpecialRegister(ptxparser::ptxParser::SpecialRegisterC
     // 特殊寄存器可以视为一种特殊的寄存器
     RegOperand reg;
     reg.name = ctx->getText();
+    if (!reg.name.empty() && reg.name.front() == '%') {
+        reg.name.erase(0, 1);
+    }
     // 特殊寄存器通常没有索引
     reg.index = -1;
     return std::any{OperandContext{reg}};
@@ -574,6 +758,9 @@ std::any PtxVisitor::visitAddress(ptxparser::ptxParser::AddressContext *ctx) {
     // 默认空间
     addr.space = AddrOperand::Space::GLOBAL;
     
+    addr.offsetType = AddrOperand::OffsetType::IMMEDIATE;
+    addr.immediateOffset = "0";
+
     // 获取地址表达式
     auto addrExprCtx = ctx->addressExpr();
     if (addrExprCtx) {
@@ -585,10 +772,31 @@ std::any PtxVisitor::visitAddress(ptxparser::ptxParser::AddressContext *ctx) {
             // 检查基址操作数的类型
             if (baseOperand.kind() == OperandKind::VAR) {
                 const auto& var = std::get<VariableOperand>(baseOperand.data);
-                addr.baseSymbol = var.name;
+                RegOperand reg;
+                if (parseRegisterFromText(var.name, reg)) {
+                    addr.baseSymbol = reg.fullName();
+                    addr.id = reg.fullName();
+                    addr.offsetType = AddrOperand::OffsetType::REGISTER;
+                    addr.registerOffset =
+                        std::make_shared<OperandContext>(OperandContext{reg});
+                } else {
+                    addr.baseSymbol = var.name;
+                    addr.id = var.name;
+                }
             } else if (baseOperand.kind() == OperandKind::REG) {
                 const auto& reg = std::get<RegOperand>(baseOperand.data);
                 addr.baseSymbol = reg.fullName();
+                addr.id = reg.fullName();
+                addr.offsetType = AddrOperand::OffsetType::REGISTER;
+                addr.registerOffset =
+                    std::make_shared<OperandContext>(baseOperand);
+            } else if (baseOperand.kind() == OperandKind::ADDR) {
+                const auto &inner = std::get<AddrOperand>(baseOperand.data);
+                addr.baseSymbol = inner.baseSymbol;
+                addr.id = inner.id.empty() ? inner.baseSymbol : inner.id;
+                addr.offsetType = inner.offsetType;
+                addr.immediateOffset = inner.immediateOffset;
+                addr.registerOffset = inner.registerOffset;
             }
         } catch (const std::bad_any_cast& e) {
             // 处理转换失败的情况
@@ -598,20 +806,13 @@ std::any PtxVisitor::visitAddress(ptxparser::ptxParser::AddressContext *ctx) {
         // 检查是否有偏移量
         if (addrExprCtx->immediate()) {
             addr.offsetType = AddrOperand::OffsetType::IMMEDIATE;
+            addr.registerOffset.reset();
             auto immCtx = addrExprCtx->immediate();
             if (immCtx->MINUS()) {
                 addr.immediateOffset = "-" + immCtx->IMMEDIATE()->getText();
             } else {
                 addr.immediateOffset = immCtx->IMMEDIATE()->getText();
             }
-        } else if (addrExprCtx->PLUS()) {
-            // 如果有PLUS但没有immediate，可能语法有变化
-            // 这里简单处理
-            addr.offsetType = AddrOperand::OffsetType::IMMEDIATE;
-            addr.immediateOffset = "0";
-        } else {
-            addr.offsetType = AddrOperand::OffsetType::IMMEDIATE;
-            addr.immediateOffset = "0";
         }
     }
     

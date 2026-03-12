@@ -401,14 +401,32 @@ void PtxInterpreter::setupKernelArguments(
     PTX_DEBUG_EMU("Setting up %zu kernel arguments",
                   kernelContext->kernelParams.size());
 
+    auto get_param_bytes = [](const ParamContext &p) -> size_t {
+        if (p.byteSize > 0) {
+            return p.byteSize;
+        }
+        if (!p.paramTypes.empty()) {
+            int b = Q2bytes(p.paramTypes[0]);
+            if (b > 0) {
+                return static_cast<size_t>(b);
+            }
+        }
+        // Fallback for pointer-like kernel arguments.
+        return 8;
+    };
+
+    auto get_param_type = [](const ParamContext &p) -> Qualifier {
+        if (!p.paramTypes.empty()) {
+            return p.paramTypes[0];
+        }
+        return Qualifier::Q_U64;
+    };
+
     // 计算参数总大小
     size_t total_param_size = 0;
     for (int i = 0; i < kernelContext->kernelParams.size(); i++) {
         auto e = kernelContext->kernelParams[i];
-        if (e.paramTypes.empty())
-            continue;
-        total_param_size +=
-            Q2bytes(e.paramTypes[0]) * (e.paramNum ? e.paramNum : 1);
+        total_param_size += get_param_bytes(e) * (e.paramNum ? e.paramNum : 1);
     }
 
     // 申请PARAM空间，使用 CudaDriver 提供的 malloc_param 函数
@@ -431,13 +449,11 @@ void PtxInterpreter::setupKernelArguments(
     size_t offset = 0;
     for (int i = 0; i < kernelContext->kernelParams.size(); i++) {
         auto e = kernelContext->kernelParams[i];
-        if (e.paramTypes.empty())
-            continue;
         Symtable *s = new Symtable();
         s->name = e.paramName;
         s->elementNum = e.paramNum;
-        s->symType = e.paramTypes[0];
-        s->byteNum = Q2bytes(e.paramTypes[0]);
+        s->symType = get_param_type(e);
+        s->byteNum = static_cast<int>(get_param_bytes(e));
 
         // 计算当前参数大小
         size_t param_size = s->byteNum * (e.paramNum ? e.paramNum : 1);
@@ -461,6 +477,9 @@ void PtxInterpreter::setupKernelArguments(
             s->name.c_str(), s, s->val, *(uint64_t *)(s->val), param_size,
             s->byteNum);
     }
+
+    PTX_DEBUG_EMU("setupKernelArguments completed: symbol_count=%zu",
+                  name2Sym.size());
 }
 
 void PtxInterpreter::setupLabels(std::map<std::string, int> &label2pc) {

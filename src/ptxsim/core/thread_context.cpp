@@ -463,22 +463,30 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
             ret = (void *)reg_value;
         }
     } else {
-        // 直接通过ID查找符号表或共享内存
-        auto sym_it = name2Sym->find(fa.id);
+        // 直接通过ID查找符号表或共享内存；如果ID为空，回退到baseSymbol
+        const std::string &lookupName =
+            fa.id.empty() ? fa.baseSymbol : fa.id;
+
+        PTX_DEBUG_EMU("get_memory_addr lookup: id=%s base=%s lookup=%s qualifiers=%zu",
+                      fa.id.c_str(), fa.baseSymbol.c_str(),
+                      lookupName.c_str(), qualifiers.size());
+
+        auto sym_it = name2Sym->find(lookupName);
         if (sym_it != name2Sym->end()) {
             PTX_DEBUG_EMU("Reading kernel argument from name2Sym in "
                           "get_memory_addr: name=%s, "
                           "symbol_table_entry=%p, stored_value=0x%lx",
-                          fa.id.c_str(), sym_it->second, sym_it->second->val);
+                          lookupName.c_str(), sym_it->second,
+                          sym_it->second->val);
             ret = (void *)sym_it->second->val;
         } else if (name2Share != nullptr) {
             // 如果在name2Sym中没找到，继续在name2Share中查找
-            auto share_it = name2Share->find(fa.id);
+            auto share_it = name2Share->find(lookupName);
             if (share_it != name2Share->end()) {
                 PTX_DEBUG_EMU("Reading shared memory from name2Share in "
                               "get_memory_addr: name=%s, "
                               "symbol_table_entry=%p, stored_value=0x%lx",
-                              fa.id.c_str(), share_it->second,
+                              lookupName.c_str(), share_it->second,
                               share_it->second->val);
 
                 // 修正：对于共享内存变量，应该返回相对于共享内存空间的绝对地址
@@ -491,7 +499,7 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
                 }
             } else {
                 // 检查是否是本地内存变量
-                auto local_it = cta_context_->name2Local.find(fa.id);
+                auto local_it = cta_context_->name2Local.find(lookupName);
                 if (local_it != cta_context_->name2Local.end()) {
                     // 对于本地内存变量，应该返回相对于当前线程本地内存空间的绝对地址
                     // 直接使用当前线程的本地内存空间（已经通过set_local_memory_space设置）
@@ -506,18 +514,21 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
                                   "get_memory_addr: name=%s, "
                                   "symbol_table_entry=%p, stored_value=0x%lx, "
                                   "local_mem_space=0x%lx",
-                                  fa.id.c_str(), local_it->second, ret,
+                                  lookupName.c_str(), local_it->second, ret,
                                   local_mem_space);
 
                 } else {
                     // 对于本地内存访问，如果在name2Local中没找到，说明可能尚未初始化
                     PTX_DEBUG_EMU(
                         "Local memory variable not found in name2Local: %s",
-                        fa.id.c_str());
+                        lookupName.c_str());
+                    return nullptr;
                 }
             }
         } else {
             // 如果都没找到，返回nullptr
+            PTX_DEBUG_EMU("get_memory_addr symbol lookup failed: lookup=%s",
+                          lookupName.c_str());
             return nullptr;
         }
     }
