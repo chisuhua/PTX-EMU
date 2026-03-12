@@ -401,18 +401,35 @@ void PtxInterpreter::setupKernelArguments(
     PTX_DEBUG_EMU("Setting up %zu kernel arguments",
                   kernelContext->kernelParams.size());
 
-    auto get_param_bytes = [](const ParamContext &p) -> size_t {
+    const size_t pointerBytes =
+        (this->ptxContext != nullptr && this->ptxContext->ptxAddressSize == 32)
+            ? 4
+            : 8;
+
+    auto get_param_bytes = [pointerBytes](const ParamContext &p) -> size_t {
         if (p.byteSize > 0) {
             return p.byteSize;
         }
         if (!p.paramTypes.empty()) {
-            int b = Q2bytes(p.paramTypes[0]);
-            if (b > 0) {
-                return static_cast<size_t>(b);
+            bool hasPtrType = false;
+            for (auto q : p.paramTypes) {
+                if (q == Qualifier::Q_PTR) {
+                    hasPtrType = true;
+                    continue;
+                }
+                int b = Q2bytes(q);
+                if (b > 0) {
+                    return static_cast<size_t>(b);
+                }
+            }
+            if (hasPtrType) {
+                return pointerBytes;
             }
         }
-        // Fallback for pointer-like kernel arguments.
-        return 8;
+        if (p.isPtr) {
+            return pointerBytes;
+        }
+        return 0;
     };
 
     auto get_param_type = [](const ParamContext &p) -> Qualifier {
@@ -426,7 +443,15 @@ void PtxInterpreter::setupKernelArguments(
     size_t total_param_size = 0;
     for (int i = 0; i < kernelContext->kernelParams.size(); i++) {
         auto e = kernelContext->kernelParams[i];
-        total_param_size += get_param_bytes(e) * (e.paramNum ? e.paramNum : 1);
+        size_t paramBytes = get_param_bytes(e);
+        if (paramBytes == 0) {
+            PTX_ERROR_EMU(
+                "Cannot infer kernel parameter byte size: index=%d name=%s",
+                i, e.paramName.c_str());
+            this->param_space = nullptr;
+            return;
+        }
+        total_param_size += paramBytes * (e.paramNum ? e.paramNum : 1);
     }
 
     // 申请PARAM空间，使用 CudaDriver 提供的 malloc_param 函数
@@ -453,7 +478,16 @@ void PtxInterpreter::setupKernelArguments(
         s->name = e.paramName;
         s->elementNum = e.paramNum;
         s->symType = get_param_type(e);
-        s->byteNum = static_cast<int>(get_param_bytes(e));
+        size_t param_bytes = get_param_bytes(e);
+        if (param_bytes == 0) {
+            PTX_ERROR_EMU(
+                "Cannot infer kernel parameter byte size during mapping: "
+                "index=%d name=%s",
+                i, e.paramName.c_str());
+            delete s;
+            return;
+        }
+        s->byteNum = static_cast<int>(param_bytes);
 
         // 计算当前参数大小
         size_t param_size = s->byteNum * (e.paramNum ? e.paramNum : 1);
@@ -470,11 +504,17 @@ void PtxInterpreter::setupKernelArguments(
 
         name2Sym[s->name] = s;
         offset += param_size;
+        uint64_t first8Bytes = 0;
+        if (param_size > 0 && s->val != 0) {
+            size_t previewSize = std::min(param_size, sizeof(first8Bytes));
+            memcpy(&first8Bytes, reinterpret_cast<void *>(s->val), previewSize);
+        }
+
         PTX_DEBUG_EMU(
             "Added kernel argument to name2Sym: name=%s, "
             "symbol_table_entry = %p, stored_value = 0x%llx,"
             "first_8_bytes_of_data = 0x%llx, param_size=%d, param_bytes=%d ",
-            s->name.c_str(), s, s->val, *(uint64_t *)(s->val), param_size,
+            s->name.c_str(), s, s->val, first8Bytes, param_size,
             s->byteNum);
     }
 
