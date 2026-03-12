@@ -79,6 +79,7 @@ bool parseRegisterFromText(const std::string &raw, RegOperand &regOut) {
 
 // 定义通用的日志宏
 #define PTX_ERROR(fmt, ...) PTX_ERROR_EMU(fmt, ##__VA_ARGS__)
+#define PTX_WARN(fmt, ...) PTX_WARN_EMU(fmt, ##__VA_ARGS__)
 #define PTX_DEBUG(fmt, ...) PTX_DEBUG_EMU(fmt, ##__VA_ARGS__)
 
 // 添加命名空间别名以简化代码
@@ -137,6 +138,7 @@ std::vector<Qualifier> PtxVisitor::extractQualifiersFromContext(antlr4::ParserRu
 
 OperandContext PtxVisitor::createOperandFromContext(ptxparser::ptxParser::OperandContext *ctx) {
     if (!ctx) {
+        PTX_WARN("createOperandFromContext received null context; defaulting to immediate 0");
         // Return an empty OperandContext
         return OperandContext{ImmOperand{"0"}};
     }
@@ -209,12 +211,14 @@ OperandContext PtxVisitor::createOperandFromContext(ptxparser::ptxParser::Operan
     // 兜底：尽量保留原始文本，避免把符号名误降级为立即数0
     std::string raw = ctx->getText();
     if (!raw.empty()) {
+        PTX_WARN("Fallback operand parsing path hit: raw=%s", raw.c_str());
         VariableOperand var;
         var.name = raw;
         return OperandContext{var};
     }
 
     // 默认返回一个立即数0
+    PTX_WARN("Fallback operand parsing produced empty raw text; defaulting to immediate 0");
     return OperandContext{ImmOperand{"0"}};
 }
 
