@@ -96,12 +96,13 @@ void dumpParamAndRegFromTree(ptxparser::ptxParser::PtxFileContext *tree,
     }
 
     os << "=== Parse Tree Param/Reg Dump ===" << std::endl;
-    for (auto *decl : tree->declaration()) {
-        if (!decl || !decl->functionDecl()) {
+    
+    // Process function declarations from ptxFile directly
+    for (auto *funcDecl : tree->functionDecl()) {
+        if (!funcDecl) {
             continue;
         }
-
-        auto *funcDecl = decl->functionDecl();
+        
         auto *funcHeader = funcDecl->functionHeader();
         auto *funcBody = funcDecl->funcBody();
 
