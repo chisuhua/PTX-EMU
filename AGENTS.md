@@ -165,7 +165,36 @@ cmake --build build --target GenerateParser
 
 # Run benchmark
 make -C build RAY
+
+# Run PTX syntax tests (from project root)
+./tests/ptx/test_all_ptx.sh
 ```
+
+## PTX Syntax Development Workflow (MANDATORY)
+
+When working on PTX syntax parsing code changes:
+
+1. **Before code changes**: Read corresponding chapter in `docs/ptx/` directory
+   - Understand the PTX syntax specification first
+   - Reference: `docs/ptx/README.md` for chapter organization
+
+2. **Verification**: Run `tests/ptx/test_all_ptx.sh` to quickly validate parsing
+
+3. **Debug flow** (when tests fail):
+   ```bash
+   # 1. Dump PTX from binary using cuobjdump
+   cuobjdump -xptx <binary_file> > /tmp/dumped.ptx
+   
+   # 2. Copy to tests/ptx/ directory
+   cp /tmp/dumped.ptx tests/ptx/<test_name>.ptx
+   
+   # 3. Add new test case to test_all_ptx.sh
+   
+   # 4. Run test script to iterate on parser fixes
+   ./tests/ptx/test_all_ptx.sh
+   ```
+
+**Core principle**: Test-driven development. Extract real PTX code with cuobjdump first, then fix the parser.
 
 ## Important Files
 
