@@ -1,5 +1,13 @@
 # PTX-EMU Agent Instructions
 
+> **开发流程**: 本项目遵循 [文档驱动开发流程](~/.config/opencode/docs/dev-process/README.md)  
+> **快速参考**: [quick-reference.md](~/.config/opencode/docs/dev-process/quick-reference.md)  
+> **核心规则**: 
+> - 🚫 NO IMPLEMENTATION WITHOUT APPROVED DESIGN
+> - 🚫 NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
+
+---
+
 ## Build Commands
 
 ```bash
