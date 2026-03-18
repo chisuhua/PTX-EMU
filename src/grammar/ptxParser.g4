@@ -7,5 +7,5 @@ options {
 import ptxDeclarations, ptxInstructions;
 
 ptxFile
-    : declaration* EOF
+    : (declaration | functionDecl)* EOF
     ;

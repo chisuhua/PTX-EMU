@@ -7,7 +7,7 @@ options {
 import ptxOperands, ptxDeclarations;
 
 funcBody
-    : LEFT_BRACE (regDecl | instruction)* RIGHT_BRACE
+    : LEFT_BRACE regDecl* instruction* RIGHT_BRACE
     ;
 
 regDecl
@@ -19,7 +19,8 @@ instructionList
     ;
 
 instruction
-    : controlFlowInst
+    : cvtInst
+    | controlFlowInst
     | arithmeticInst
     | logicalInst
     | dataMovementInst
@@ -63,7 +64,7 @@ trapInst
     ;
 
 brkInst
-    : predicate? BRK (DECIMAL_INT)? SEMI
+    : predicate? BRK (IMMEDIATE)? SEMI
     ;
 
 brkptInst
@@ -194,7 +195,6 @@ dataMovementInst
     : movInst
     | ldInst
     | stInst
-    | cvtInst
     | cvtaInst
     | prmtInst
     | isspacepInst
@@ -215,8 +215,17 @@ stInst
     : ST stQualifiers typeSpecifier vectorSpec? addressExpr COMMA operand SEMI
     ;
 
+// CVT instruction: cvt[.rnd][.sat][.ftz].dstType.srcType dest, source;
 cvtInst
-    : CVT roundingMode? satFlag? ftzFlag? typeSpecifier vectorSpec? operand COMMA typeSpecifier vectorSpec? operand SEMI
+    : CVT roundingMode? satFlag? ftzFlag? cvtDstType operand COMMA cvtSrcType operand SEMI
+    ;
+
+cvtDstType
+    : U8 | U16 | U32 | U64 | S8 | S16 | S32 | S64 | F16 | F32 | F64 | BF16 | B8 | B16 | B32 | B64 | B128 | PRED | E4M3 | E5M2 | E3M2 | E2M3 | E2M1
+    ;
+
+cvtSrcType
+    : U8 | U16 | U32 | U64 | S8 | S16 | S32 | S64 | F16 | F32 | F64 | BF16 | B8 | B16 | B32 | B64 | B128 | PRED | E4M3 | E5M2 | E3M2 | E2M3 | E2M1
     ;
 
 cvtaInst
@@ -272,7 +281,9 @@ toAddrSpace : (TO (GLOBAL | SHARED))? ;
 addrSpaceQuery : GENERIC_SPACE | GLOBAL | SHARED | CONST | LOCAL ;
 
 // Parallel sync instruction rules
-barInst: BAR barrierOp? (DECIMAL_INT operand?)? SEMI;
+barInst
+    : predicate? BAR barrierOp? (IMMEDIATE operand?)? SEMI
+    ;
 membarInst: MEMBAR membarScope? SEMI;
 fenceInst: FENCE fenceQualifiers? SEMI;
 reduxSyncInst: REDUX_SYNC reduxOp typeSpecifier vectorSpec? operand COMMA operand SEMI;
@@ -445,3 +456,52 @@ redAsyncQualifiers
 tcgenSpace : GLOBAL | SHARED ;
 tensormapSpace : GLOBAL ;
 stBulkQualifiers : spaceQualifier? cacheOperator* ;
+
+// ============================================================================
+// Function Declarations (moved from ptxDeclarations.g4 to avoid circular import)
+// ============================================================================
+
+// Add functionDecl to declaration alternatives in ptxDeclarations.g4
+// NOTE: This rule should be referenced from ptxDeclarations.declaration
+
+functionDecl
+    : visibility? FUNC functionHeader funcBody
+    | visibility? ENTRY functionHeader funcBody
+    | VISIBLE ENTRY functionHeader funcBody
+    ;
+
+functionHeader
+    : ID paramList? functionAttribute*
+    ;
+
+paramList
+    : LEFT_PAREN paramDecl (COMMA paramDecl)* RIGHT_PAREN
+    | LEFT_PAREN RIGHT_PAREN
+    ;
+
+paramDecl
+    : PARAM paramTypeSpec ID
+    | typeSpecifier? vectorSpec? ID
+    ;
+
+paramTypeSpec
+    : typeSpecifier PTR? alignClause?
+    | PTR alignClause? typeSpecifier?
+    ;
+
+// Function attributes (PTX §6.1)
+functionAttribute
+    : MAXNREG IMMEDIATE
+    | REQNTID threadDim
+    | MINNCTAPERSM IMMEDIATE
+    ;
+
+threadDim
+    : IMMEDIATE (COMMA IMMEDIATE (COMMA IMMEDIATE)?)?
+    ;
+
+// Visibility must be defined here as it's used by functionDecl
+visibility
+    : VISIBLE
+    | EXTERN
+    ;

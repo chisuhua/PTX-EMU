@@ -4,8 +4,9 @@ options {
     tokenVocab = ptxLexer;
 }
 
-// Import instruction grammar to access instructionList (used in function bodies)
-import ptxOperands, ptxInstructions;
+// Import ONLY ptxOperands (NOT ptxInstructions to avoid circular dependency)
+// funcBody and functionDecl are now defined in ptxInstructions.g4
+import ptxOperands;
 
 // --- Top-level declarations ---
 declaration
@@ -15,7 +16,6 @@ declaration
     | fileDirective
     | sectionDirective
     | variableDecl
-    | functionDecl
     | pragmaDirective
     | abiPreserveDirective
     ;
@@ -44,7 +44,7 @@ addressSizeDirective
 
 // --- File ---
 fileDirective
-    : FILE DECIMAL_INT STRING SEMI
+    : FILE IMMEDIATE STRING SEMI
     ;
 
 // --- Section ---
@@ -124,39 +124,6 @@ initializerList
     ;
 
 // --- Function Declarations ---
-functionDecl
-    : visibility? FUNC functionHeader funcBody
-    | visibility? ENTRY functionHeader funcBody
-    | VISIBLE ENTRY functionHeader funcBody
-    ;
-
-functionHeader
-    : ID paramList? functionAttribute*
-    ;
-
-paramList
-    : LEFT_PAREN paramDecl (COMMA paramDecl)* RIGHT_PAREN
-    | LEFT_PAREN RIGHT_PAREN
-    ;
-
-paramDecl
-    : PARAM paramTypeSpec ID
-    | typeSpecifier? vectorSpec? ID
-    ;
-
-paramTypeSpec
-    : typeSpecifier PTR? alignClause?
-    | PTR alignClause? typeSpecifier?
-    ;
-
-
-// Function attributes (PTX §6.1)
-functionAttribute
-    : MAXNREG IMMEDIATE
-    | REQNTID threadDim
-    | MINNCTAPERSM IMMEDIATE
-    ;
-
 threadDim
     : IMMEDIATE (COMMA IMMEDIATE (COMMA IMMEDIATE)?)?
     ;

@@ -1,0 +1,13 @@
+// CVT instruction - explicit format
+cvtInst
+    : CVT DOT cvtType DOT cvtType operand COMMA operand SEMI
+    ;
+
+cvtType
+    : U8 | U16 | U32 | U64
+    | S8 | S16 | S32 | S64
+    | F16 | F32 | F64
+    | BF16
+    | B8 | B16 | B32 | B64 | B128
+    | PRED
+    ;
