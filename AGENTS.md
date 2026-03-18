@@ -8,6 +8,35 @@
 
 ---
 
+## ⚠️ PTX 语法解析错误识别（IMPORTANT）
+
+**如果你看到以下任何一种情况，必须立即遵循 [PTX 语法修改流程](docs/skills/ptx-grammar-modification.md)**：
+
+| 错误模式 | 示例 | 行动 |
+|---------|------|------|
+| **ANTLR 解析错误** | `no viable alternative at input '...'` | 🛑 停止修改 → 阅读流程 → 运行测试 |
+| **意外 Token** | `mismatched input 'X' expecting Y` | 🛑 停止修改 → 阅读流程 → 运行测试 |
+| **PTX 文件解析失败** | `Failed to parse PTX file: ...` | 🛑 停止修改 → 阅读流程 → 运行测试 |
+| **测试用例解析崩溃** | `Segmentation fault` 在 parser 阶段 | 🛑 停止修改 → 阅读流程 → 运行测试 |
+| **修改了语法文件** | 改动 `src/grammar/*.g4` | 🛑 停止修改 → 阅读流程 → 运行测试 |
+
+**必须遵循的流程**（TDD 原则）：
+
+```
+1. 阅读文档 → docs/ptx/ 对应章节（修改前必读）
+2. 运行测试 → ./tests/ptx/test_all_ptx.sh（验证当前状态）
+3. 提取 PTX → cuobjdump -xptx <binary>（如果有真实用例）
+4. 添加测试 → cp dumped.ptx tests/ptx/（创建测试用例）
+5. 修复语法 → 修改 .g4 文件 + GenerateParser
+6. 验证通过 → ./tests/ptx/test_all_ptx.sh（必须全部通过）
+```
+
+**完整流程文档**: [docs/skills/ptx-grammar-modification.md](docs/skills/ptx-grammar-modification.md)
+
+**违反此流程 = 违反核心规则** 🚫
+
+---
+
 ## Build Commands
 
 ```bash
