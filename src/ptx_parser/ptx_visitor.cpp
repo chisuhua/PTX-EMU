@@ -261,6 +261,10 @@ std::any PtxVisitor::visitPtxFile(ptxparser::ptxParser::PtxFileContext *ctx) {
         visit(decl);
     }
     
+    for (auto funcDecl : ctx->functionDecl()) {
+        visitFunctionDecl(funcDecl);
+    }
+    
     return nullptr;
 }
 
@@ -277,9 +281,6 @@ std::any PtxVisitor::visitDeclaration(ptxparser::ptxParser::DeclarationContext *
     }
     else if (ctx->variableDecl()) {
         return visitVariableDecl(ctx->variableDecl());
-    }
-    else if (ctx->functionDecl()) {
-        return visitFunctionDecl(ctx->functionDecl());
     }
     else if (ctx->abiPreserveDirective()) {
         return visitAbiPreserveDirective(ctx->abiPreserveDirective());

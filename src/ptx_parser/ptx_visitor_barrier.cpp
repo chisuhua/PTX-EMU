@@ -14,8 +14,8 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
     instr.qualifiers = qualifiers;                                             \
                                                                                  \
     /* 提取barrier ID */                                                       \
-    if (ctx->DECIMAL_INT()) {                                                    \
-        instr.barId = extractIntFromToken(ctx->DECIMAL_INT()->getSymbol());      \
+    if (ctx->IMMEDIATE()) {                                                    \
+        instr.barId = extractIntFromToken(ctx->IMMEDIATE()->getSymbol());      \
     }                                                                          \
                                                                                  \
     stmtCtx.data = instr;                                                      \
