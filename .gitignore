@@ -24,3 +24,6 @@ bin/
 *.ptx
 .aider*
 ptx_emu*.log
+
+# 缓存目录
+.cache/

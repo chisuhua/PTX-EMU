@@ -8,6 +8,48 @@
 
 ---
 
+## 🔍 LSP 自动触发规则 (C++/CUDA 分析)
+
+**当分析 C++/CUDA 文件时 (.cpp, .h, .cu, .cuh)**:
+
+### 自动触发场景
+
+| 场景 | 自动调用工具 | 说明 |
+|------|------------|------|
+| 读取文件后 | `lsp_diagnostics` | 检查编译错误/警告 |
+| 询问"有哪些函数/类" | `lsp_symbols` | 获取符号列表 |
+| 询问"X 在哪里定义" | `lsp_goto_definition` | 跳转到定义 |
+| 询问"X 在哪里使用" | `lsp_find_references` | 查找所有引用 |
+| 重命名变量/函数 | `lsp_prepare_rename` → `lsp_rename` | 安全重命名 |
+
+### 工作流程示例
+
+```
+1. 用户："看一下 src/cudart/cudart_sim.cpp"
+   → read(filePath="...")
+   → 自动触发 → lsp_diagnostics(filePath="...")
+
+2. 用户："这个文件有哪些函数？"
+   → 自动触发 → lsp_symbols(filePath="...", scope="document")
+
+3. 用户："GPUContext 在哪里定义？"
+   → 自动触发 → lsp_goto_definition(filePath="...", line=N, character=N)
+```
+
+### 降级策略
+
+如果 LSP 不可用 (超时/未响应):
+1. 使用 `grep` 文本搜索
+2. 使用 `ast_grep` AST 搜索
+3. 使用 `glob` 文件匹配
+
+### 预热提示
+
+首次使用或 clangd 重启后，LSP 可能需要 30-60 秒预热。
+如遇超时，等待后重试或使用降级策略。
+
+---
+
 ## ⚠️ PTX 语法解析错误识别（IMPORTANT）
 
 **如果你看到以下任何一种情况，必须立即遵循 [PTX 语法修改流程](docs/skills/ptx-grammar-modification.md)**：
