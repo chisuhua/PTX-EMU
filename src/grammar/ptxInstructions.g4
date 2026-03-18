@@ -19,8 +19,7 @@ instructionList
     ;
 
 instruction
-    : cvtInst
-    | controlFlowInst
+    : controlFlowInst
     | arithmeticInst
     | logicalInst
     | dataMovementInst
@@ -195,6 +194,7 @@ dataMovementInst
     : movInst
     | ldInst
     | stInst
+    | cvtInst
     | cvtaInst
     | prmtInst
     | isspacepInst
@@ -215,17 +215,15 @@ stInst
     : ST stQualifiers typeSpecifier vectorSpec? addressExpr COMMA operand SEMI
     ;
 
-// CVT instruction: cvt[.rnd][.sat][.ftz].dstType.srcType dest, source;
+// CVT instruction: cvt[.rnd].dstType.srcType[.sat][.ftz] dest, source;
+// Reference: PTX ISA 9.1 Section 9.7.9
+// Examples:
+//   cvt.u16.u32 %rs1, %r1;
+//   cvt.s8.s16.sat %rs1, %rs2;
+//   cvt.rni.s32.f32 %r1, %f1;
+// Note: Use typeSpecifier which is defined in ptxDeclarations.g4
 cvtInst
-    : CVT roundingMode? satFlag? ftzFlag? cvtDstType operand COMMA cvtSrcType operand SEMI
-    ;
-
-cvtDstType
-    : U8 | U16 | U32 | U64 | S8 | S16 | S32 | S64 | F16 | F32 | F64 | BF16 | B8 | B16 | B32 | B64 | B128 | PRED | E4M3 | E5M2 | E3M2 | E2M3 | E2M1
-    ;
-
-cvtSrcType
-    : U8 | U16 | U32 | U64 | S8 | S16 | S32 | S64 | F16 | F32 | F64 | BF16 | B8 | B16 | B32 | B64 | B128 | PRED | E4M3 | E5M2 | E3M2 | E2M3 | E2M1
+    : CVT roundingMode? typeSpecifier typeSpecifier satFlag? ftzFlag? operand COMMA operand SEMI
     ;
 
 cvtaInst
