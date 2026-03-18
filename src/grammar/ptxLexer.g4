@@ -406,7 +406,8 @@ IMMEDIATE
     : DIGIT+ '.' DIGIT* ([eE] [+-]? DIGIT+)? [fF]?   // 1.0, 1., 1.0e10, 1.0f
     | '.' DIGIT+ ([eE] [+-]? DIGIT+)? [fF]?          // .5, .5e10, .5F
     | DIGIT+ [eE] [+-]? DIGIT+ [fF]?                 // 1e10, 1e+10f
-    | '0x' HEX_DIGIT+                                // 0x1a, 0XFF
+    | '0x' HEX_DIGIT+                                // 0x1a, 0XFF (hex integer)
+    | '0d' HEX_DIGIT+                                // 0d40286B851EB851EC (hex double-precision float)
     | DIGIT+                                         // 123, 0
     ;
 
