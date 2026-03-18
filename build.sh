@@ -29,7 +29,7 @@ cd build
 
 # 配置项目
 echo "配置项目..."
-cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake .. -DCMAKE_BUILD_TYPE=Debug
 
 # 构建项目
 echo "构建项目..."
