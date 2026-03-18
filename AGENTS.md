@@ -170,31 +170,16 @@ make -C build RAY
 ./tests/ptx/test_all_ptx.sh
 ```
 
-## PTX Syntax Development Workflow (MANDATORY)
+## PTX Grammar Modification
 
-When working on PTX syntax parsing code changes:
+**For detailed workflow**: See [docs/skills/ptx-grammar-modification.md](docs/skills/ptx-grammar-modification.md)
 
-1. **Before code changes**: Read corresponding chapter in `docs/ptx/` directory
-   - Understand the PTX syntax specification first
-   - Reference: `docs/ptx/README.md` for chapter organization
+**Quick reference**:
+1. **Before changes**: Read corresponding chapter in `docs/ptx/`
+2. **Verify**: Run `./tests/ptx/test_all_ptx.sh`
+3. **Debug** (if tests fail): Extract PTX with `cuobjdump`, add test case, fix parser
 
-2. **Verification**: Run `tests/ptx/test_all_ptx.sh` to quickly validate parsing
-
-3. **Debug flow** (when tests fail):
-   ```bash
-   # 1. Dump PTX from binary using cuobjdump
-   cuobjdump -xptx <binary_file> > /tmp/dumped.ptx
-   
-   # 2. Copy to tests/ptx/ directory
-   cp /tmp/dumped.ptx tests/ptx/<test_name>.ptx
-   
-   # 3. Add new test case to test_all_ptx.sh
-   
-   # 4. Run test script to iterate on parser fixes
-   ./tests/ptx/test_all_ptx.sh
-   ```
-
-**Core principle**: Test-driven development. Extract real PTX code with cuobjdump first, then fix the parser.
+**Core principle**: Test-driven development. Read docs first, then fix.
 
 ## Important Files
 
@@ -212,6 +197,7 @@ When working on PTX syntax parsing code changes:
 - `docs/debugging_guide.md` - Debugging and logging setup
 - `docs/arch.md` - System architecture
 - `docs/sm90_100.md` - Hopper/Blackwell GPU specifics
+- `docs/skills/ptx-grammar-modification.md` - PTX grammar modification skill (TDD workflow)
 
 
 
