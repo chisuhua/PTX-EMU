@@ -492,6 +492,7 @@ paramDecl
 paramTypeSpec
     : typeSpecifier PTR? alignClause?
     | PTR alignClause? typeSpecifier?
+    | typeSpecifier PTR alignClause
     ;
 
 // Function attributes (PTX §6.1)

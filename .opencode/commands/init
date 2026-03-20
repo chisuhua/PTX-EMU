@@ -1,0 +1,26 @@
+# /init - 项目初始化命令
+
+**用途**: 设置开发环境，生成 clangd 索引
+
+**执行**:
+```bash
+./init.sh
+```
+
+**或全局命令**:
+```bash
+~/.config/opencode/scripts/init-clangd.sh .
+```
+
+**执行操作**:
+1. 检查 clangd 安装
+2. 设置环境变量 (`. env.sh`)
+3. 生成 `compile_commands.json`
+4. 创建符号链接
+5. 触发 clangd 索引
+
+**首次使用**: 克隆项目后必须运行
+
+**后续使用**: 
+- 重新生成索引：`./init.sh`
+- 代码变化自动更新，无需手动运行
