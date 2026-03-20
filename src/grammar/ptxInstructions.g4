@@ -485,14 +485,19 @@ paramList
     ;
 
 paramDecl
-    : PARAM paramTypeSpec ID
+    : PARAM paramTypeSpec ID arraySize?
     | typeSpecifier? vectorSpec? ID
     ;
 
 paramTypeSpec
-    : typeSpecifier PTR? alignClause?
-    | PTR alignClause? typeSpecifier?
+    : alignClause typeSpecifier PTR
+    | alignClause typeSpecifier
     | typeSpecifier PTR alignClause
+    | typeSpecifier PTR
+    | typeSpecifier alignClause
+    | typeSpecifier
+    | PTR alignClause
+    | PTR
     ;
 
 // Function attributes (PTX §6.1)
