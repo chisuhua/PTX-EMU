@@ -64,7 +64,7 @@ abiPreserveDirective
 
 // --- Variable Declarations ---
 variableDecl
-    : visibility? storageClass typeSpecifier? vectorSpec? ID arraySize? alignClause? initializer? SEMI
+    : visibility? storageClass alignClause? typeSpecifier? vectorSpec? ID arraySize? initializer? SEMI
     ;
 
 visibility

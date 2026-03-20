@@ -50,32 +50,71 @@
 
 ---
 
-## ⚠️ PTX 语法解析错误识别（IMPORTANT）
+## 🛑 PTX 语法修改流程（最高优先级）
 
-**如果你看到以下任何一种情况，必须立即遵循 [PTX 语法修改流程](docs/skills/ptx-grammar-modification.md)**：
+> **⚠️ 重要**: 本流程**优先于所有其他操作**。违反此流程 = 违反核心规则 🚫
 
-| 错误模式 | 示例 | 行动 |
-|---------|------|------|
-| **ANTLR 解析错误** | `no viable alternative at input '...'` | 🛑 停止修改 → 阅读流程 → 运行测试 |
-| **意外 Token** | `mismatched input 'X' expecting Y` | 🛑 停止修改 → 阅读流程 → 运行测试 |
-| **PTX 文件解析失败** | `Failed to parse PTX file: ...` | 🛑 停止修改 → 阅读流程 → 运行测试 |
-| **测试用例解析崩溃** | `Segmentation fault` 在 parser 阶段 | 🛑 停止修改 → 阅读流程 → 运行测试 |
-| **修改了语法文件** | 改动 `src/grammar/*.g4` | 🛑 停止修改 → 阅读流程 → 运行测试 |
+### 触发条件（满足任一即🛑停止）
 
-**必须遵循的流程**（TDD 原则）：
+**当任务涉及 PTX 语法解析问题时，必须首先执行以下步骤**：
+
+| 触发场景 | 关键词/错误 | 立即行动 |
+|---------|------------|---------|
+| **用户请求修复解析错误** | "PTX 解析错误", "语法错误", "ANTLR 错误" | 🛑 → 加载技能 → 运行测试 |
+| **ANTLR 解析错误** | `no viable alternative at input` | 🛑 → 加载技能 → 运行测试 |
+| **意外 Token** | `mismatched input 'X' expecting Y` | 🛑 → 加载技能 → 运行测试 |
+| **修改语法文件** | 改动 `src/grammar/*.g4` | 🛑 → 加载技能 → 运行测试 |
+| **解析阶段崩溃** | `Segmentation fault` 在 parser 阶段 | 🛑 → 加载技能 → 运行测试 |
+
+### 📋 强制检查清单（执行前必读）
+
+**在写任何代码之前，必须按顺序完成以下步骤**：
 
 ```
-1. 阅读文档 → docs/ptx/ 对应章节（修改前必读）
-2. 运行测试 → ./tests/ptx/test_all_ptx.sh（验证当前状态）
-3. 提取 PTX → cuobjdump -xptx <binary>（如果有真实用例）
-4. 添加测试 → cp dumped.ptx tests/ptx/（创建测试用例）
-5. 修复语法 → 修改 .g4 文件 + GenerateParser
-6. 验证通过 → ./tests/ptx/test_all_ptx.sh（必须全部通过）
+□ 步骤 1: 加载技能
+   → 使用 skill 工具加载 "ptx-grammar-modification"
+
+□ 步骤 2: 阅读文档
+   → 阅读 docs/ptx/ 对应章节（了解 PTX 语法规范）
+   
+□ 步骤 3: 运行基线测试
+   → 执行 ./tests/ptx/test_all_ptx.sh（不是 ctest！）
+   → 记录当前失败状态
+
+□ 步骤 4: 准备测试用例
+   → 如果有真实 binary，使用 cuobjdump -xptx 提取 PTX
+   → 复制到 tests/ptx/ 目录
+
+□ 步骤 5: 修复语法
+   → 修改 .g4 文件
+   → cmake --build build --target GenerateParser
+
+□ 步骤 6: 验证通过
+   → ./tests/ptx/test_all_ptx.sh 必须全部通过
+   → 否则回到步骤 3
+```
+
+### ❌ 禁止行为
+
+- 🚫 **禁止**使用 `ctest` 代替 `./tests/ptx/test_all_ptx.sh`
+- 🚫 **禁止**在未阅读 docs/ptx/ 文档前修改语法
+- 🚫 **禁止**在未添加测试用例前修复语法
+- 🚫 **禁止**在测试未全部通过前标记任务完成
+
+### ✅ 正确示例
+
+```
+用户："列出所有因为 PTX 解析错误的单元测试，并一一修复"
+
+正确流程：
+1. 🛑 识别为 PTX 语法问题
+2. 加载 skill: ptx-grammar-modification
+3. 运行 ./tests/ptx/test_all_ptx.sh 确定失败用例
+4. 对每个失败用例：分析错误 → 添加测试 → 修复语法 → 验证
+5. 确保所有测试通过后才交付
 ```
 
 **完整流程文档**: [docs/skills/ptx-grammar-modification.md](docs/skills/ptx-grammar-modification.md)
-
-**违反此流程 = 违反核心规则** 🚫
 
 ---
 

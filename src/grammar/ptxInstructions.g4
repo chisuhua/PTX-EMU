@@ -7,7 +7,7 @@ options {
 import ptxOperands, ptxDeclarations;
 
 funcBody
-    : LEFT_BRACE regDecl* instruction* RIGHT_BRACE
+    : LEFT_BRACE (regDecl | variableDecl | instruction)* RIGHT_BRACE
     ;
 
 regDecl
@@ -31,7 +31,12 @@ instruction
     | matrixInst
     | videoSimdInst
     | tcgenInst
+    | label
     | SEMI
+    ;
+
+label
+    : DOLLAR ID COLON SEMI?
     ;
 
 predicate
@@ -87,8 +92,8 @@ callParams : paramList ;
 callArgs : LEFT_PAREN operand (COMMA operand)* RIGHT_PAREN ;
 
 // Arithmetic instruction rules
-addInst: ADD roundingMode? satFlag? typeSpecifier vectorSpec? operand COMMA operand COMMA operand SEMI;
-subInst: SUB roundingMode? satFlag? typeSpecifier vectorSpec? operand COMMA operand COMMA operand SEMI;
+addInst: ADD roundingMode? satFlag? ccFlag? typeSpecifier vectorSpec? operand COMMA operand COMMA operand SEMI;
+subInst: SUB roundingMode? satFlag? ccFlag? typeSpecifier vectorSpec? operand COMMA operand COMMA operand SEMI;
 mulInst: MUL roundingMode? satFlag? ftzFlag? hiLoWide? typeSpecifier vectorSpec? operand COMMA operand COMMA operand SEMI;
 divInst: DIV roundingMode? ftzFlag? approxFlag? typeSpecifier vectorSpec? operand COMMA operand COMMA operand SEMI;
 remInst: REM roundingMode? typeSpecifier vectorSpec? operand COMMA operand COMMA operand SEMI;
@@ -102,12 +107,12 @@ lg2Inst: LG2 roundingMode? ftzFlag? approxFlag? typeSpecifier vectorSpec? operan
 ex2Inst: EX2 roundingMode? ftzFlag? approxFlag? typeSpecifier vectorSpec? operand COMMA operand SEMI;
 popcInst: POPC typeSpecifier vectorSpec? operand COMMA operand SEMI;
 clzInst: CLZ typeSpecifier vectorSpec? operand COMMA operand SEMI;
-madInst: MAD roundingMode? satFlag? ftzFlag? typeSpecifier vectorSpec? operand COMMA operand COMMA operand COMMA operand SEMI;
+madInst: MAD roundingMode? satFlag? ftzFlag? hiLoWide? typeSpecifier vectorSpec? operand COMMA operand COMMA operand COMMA operand SEMI;
 fmaInst: FMA roundingMode? ftzFlag? typeSpecifier vectorSpec? operand COMMA operand COMMA operand COMMA operand SEMI;
-addcInst: ADDC roundingMode? satFlag? ftzFlag? typeSpecifier vectorSpec? operand COMMA operand COMMA operand SEMI;
-subcInst: SUBC roundingMode? satFlag? ftzFlag? typeSpecifier vectorSpec? operand COMMA operand COMMA operand SEMI;
-mul24Inst: MUL24 typeSpecifier vectorSpec? operand COMMA operand COMMA operand SEMI;
-mad24Inst: MAD24 roundingMode? satFlag? typeSpecifier vectorSpec? operand COMMA operand COMMA operand COMMA operand SEMI;
+addcInst: ADDC roundingMode? satFlag? ccFlag? ftzFlag? typeSpecifier vectorSpec? operand COMMA operand COMMA operand SEMI;
+subcInst: SUBC roundingMode? satFlag? ccFlag? ftzFlag? typeSpecifier vectorSpec? operand COMMA operand COMMA operand SEMI;
+mul24Inst: MUL24 hiLoWide? typeSpecifier vectorSpec? operand COMMA operand COMMA operand SEMI;
+mad24Inst: MAD24 roundingMode? satFlag? hiLoWide? typeSpecifier vectorSpec? operand COMMA operand COMMA operand COMMA operand SEMI;
 madcInst: MADC roundingMode? satFlag? ftzFlag? typeSpecifier vectorSpec? operand COMMA operand COMMA operand COMMA operand SEMI;
 minInst: MIN ftzFlag? typeSpecifier vectorSpec? operand COMMA operand COMMA operand SEMI;
 maxInst: MAX ftzFlag? typeSpecifier vectorSpec? operand COMMA operand COMMA operand SEMI;
@@ -151,6 +156,7 @@ arithmeticInst
 roundingMode : RN | RZ | RM | RP | RS | RNI | RZI | RMI | RPI ;
 satFlag : SAT ;
 ftzFlag : FTZ ;
+ccFlag : CC ;
 approxFlag : APPROX ;
 hiLoWide : HI | LO | WIDE ;
 testProperty : NAN | FINITE | INFINITY | NUMBER | NORMAL | SUBNORMAL ;
@@ -221,9 +227,10 @@ stInst
 //   cvt.u16.u32 %rs1, %r1;
 //   cvt.s8.s16.sat %rs1, %rs2;
 //   cvt.rni.s32.f32 %r1, %f1;
+//   cvt.f32.u64.rn %r1, %fd1;
 // Note: Use typeSpecifier which is defined in ptxDeclarations.g4
 cvtInst
-    : CVT roundingMode? typeSpecifier typeSpecifier satFlag? ftzFlag? operand COMMA operand SEMI
+    : CVT roundingMode? satFlag? typeSpecifier typeSpecifier satFlag? roundingMode? ftzFlag? operand COMMA operand SEMI
     ;
 
 cvtaInst
@@ -275,7 +282,7 @@ cacheOperator
 
 cpAsyncSpace : GLOBAL | SHARED ;
 genericOrSpecificSpace : GENERIC_SPACE | GLOBAL | SHARED | CONST ;
-toAddrSpace : (TO (GLOBAL | SHARED))? ;
+toAddrSpace : (TO (GLOBAL | SHARED | LOCAL | PARAM))? ;
 addrSpaceQuery : GENERIC_SPACE | GLOBAL | SHARED | CONST | LOCAL ;
 
 // Parallel sync instruction rules
