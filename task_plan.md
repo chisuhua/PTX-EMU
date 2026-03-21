@@ -32,19 +32,37 @@
 - 现在已阅读 docs/ptx/9.7.9_datatransfer_cvtx.md
 - 现在已运行 ./tests/ptx/test_all_ptx.sh
 
-## 剩余失败测试分析
+## 剩余失败测试分析 (已更新)
 
-### 失败模式
-11 个失败测试集中在：
-- `cvt.s8.s16 overflow` - 符号扩展问题
-- `cvt.s8.s32 overflow` - 符号扩展问题
-- `cvt.s8.s64 overflow` - 符号扩展问题
-- `cvt.f32.f16` - 半精度转换精度问题
+### 失败模式分类
 
-### 根本原因
-这些是**指令语义实现问题**，不是语法解析问题。需要检查：
-- `src/ptxsim/instructions/` 中的 cvt 指令实现
-- `ptx_visitor.cpp` 中的语义处理逻辑
+**类别 1: 整数截断 overflow 测试 (5 个)** - ⚠️ **测试代码问题**
+- `cvt.s8.s16 overflow` - 期望 200→-56，得到 127
+- `cvt.s8.s32 overflow` - 期望 300→44，得到 127
+- `cvt.s8.s64 overflow` - 期望 258→2，得到 127
+- `cvt.u8.u16 overflow` - 期望 300→44，得到 255
+- `cvt.u8.u64 overflow` - 期望 355→99，得到 255
+
+**根本原因**: 测试代码使用 `cvt.s8.s16.sat` (饱和)，但测试期望截断行为。
+- 测试注释说 "200 = 0xC8 → sign extended = -56" (截断)
+- 但 PTX 指令是 `cvt.s8.s16.sat` (应饱和到 127)
+- **我们的实现正确执行了饱和**，测试期望与实际 PTX 指令矛盾
+
+**类别 2: 舍入模式测试 (5 个)** - 🔧 **需要修复**
+- `cvt.rni.u8.f32` - Round to nearest even 失败
+- `cvt.rni.u16.f32` - Round to nearest even 失败
+- `cvt.rni.u32.f32` - Round to nearest even 失败
+- `cvt.rzi.u32.f32` - Round toward zero 失败
+- `cvt.rmi.u32.f32` - Round toward minus infinity 失败
+
+**类别 3: 半精度转换 (1 个)** - 🔧 **需要修复**
+- `cvt.f32.f16` - float 到 half 转换精度失败
+
+### 行动计划
+
+1. **类别 1 (测试问题)**: 需要修改测试代码移除 `.sat` 或修改期望值
+2. **类别 2 (舍入模式)**: 检查 visitor 是否正确传递舍入修饰符
+3. **类别 3 (半精度)**: 检查 half_to_float/float_to_half 实现
 
 ## 下一步计划
 

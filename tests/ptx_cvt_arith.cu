@@ -24,7 +24,7 @@ void test_ptx_cvt_s8_s16(int16_t a, int8_t* result) {
 
 __device__ int8_t ptx_cvt_s8_s16(int16_t a) {
     short result;
-    asm("cvt.s8.s16.sat %0, %1;" : "=h"(result) : "h"(a));
+    asm("cvt.s8.s16 %0, %1;" : "=h"(result) : "h"(a));
     return (int8_t)result;
 }
 
@@ -43,7 +43,7 @@ void test_ptx_cvt_s8_s32(int32_t a, int8_t* result) {
 
 __device__ int8_t ptx_cvt_s8_s32(int32_t a) {
     short result;
-    asm("cvt.s8.s32.sat %0, %1;" : "=h"(result) : "r"(a));
+    asm("cvt.s8.s32 %0, %1;" : "=h"(result) : "r"(a));
     return result;
 }
 
@@ -62,7 +62,7 @@ void test_ptx_cvt_s8_s64(int64_t a, int8_t* result) {
 
 __device__ int8_t ptx_cvt_s8_s64(int64_t a) {
     short result;
-    asm("cvt.s8.s64.sat %0, %1;" : "=h"(result) : "l"(a));
+    asm("cvt.s8.s64 %0, %1;" : "=h"(result) : "l"(a));
     return (int8_t)result;
 }
 
@@ -81,7 +81,7 @@ void test_ptx_cvt_u8_u16(uint16_t a, uint8_t* result) {
 
 __device__ uint8_t ptx_cvt_u8_u16(uint16_t a) {
     uint16_t result;
-    asm("cvt.u8.u16.sat %0, %1;" : "=h"(result) : "h"(a));
+    asm("cvt.u8.u16 %0, %1;" : "=h"(result) : "h"(a));
     return (uint8_t)result;
 }
 
@@ -119,7 +119,7 @@ void test_ptx_cvt_u8_u64(uint64_t a, uint8_t* result) {
 
 __device__ uint8_t ptx_cvt_u8_u64(uint64_t a) {
     uint16_t result;
-    asm("cvt.u8.u64.sat %0, %1;" : "=h"(result) : "l"(a));
+    asm("cvt.u8.u64 %0, %1;" : "=h"(result) : "l"(a));
     return (uint8_t)result;
 }
 

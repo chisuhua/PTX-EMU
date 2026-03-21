@@ -6,6 +6,22 @@
 #include <cmath>
 #include <limits>
 
+
+// 银行家舍入法（Round half to even）- 用于 RNI 修饰符
+inline float round_half_to_even(float x) {
+    float rounded = std::round(x);
+    float diff = std::abs(x - rounded);
+    
+    // 如果正好是 0.5，使用 ties to even
+    if (diff == 0.5f) {
+        // 如果结果是奇数，调整到偶数
+        if (std::fmod(std::abs(rounded), 2.0f) == 1.0f) {
+            return rounded - (x > 0 ? 1.0f : -1.0f);
+        }
+    }
+    return rounded;
+}
+
 // 自定义half到float的转换函数
 inline float half_to_float(uint16_t h) {
     uint32_t sign = ((h >> 15) & 0x1);
@@ -279,7 +295,7 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
                     if (has_rni ||
                         has_rn) { // 使用RNI或RN进行四舍五入（用于整数转换）
                         *(uint8_t *)dst =
-                            static_cast<uint8_t>(std::round(temp));
+                            static_cast<uint8_t>(round_half_to_even(temp));
                     } else if (
                         has_rzi ||
                         has_rz) { // 使用RZI或RZ进行向零舍入（用于整数转换）
@@ -348,7 +364,7 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
                                 }
                             } else if (has_rni || has_rn) {
                                 *(int8_t *)dst = static_cast<int8_t>(
-                                    std::round(static_cast<float>(src_val)));
+                                    round_half_to_even(static_cast<float>(src_val)));
                             } else if (has_rzi || has_rz) {
                                 *(int8_t *)dst = static_cast<int8_t>(
                                     std::trunc(static_cast<float>(src_val)));
@@ -625,7 +641,7 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
                     if (has_rni ||
                         has_rn) { // 使用RNI或RN进行四舍五入（用于整数转换）
                         *(uint16_t *)dst =
-                            static_cast<uint16_t>(std::round(temp));
+                            static_cast<uint16_t>(round_half_to_even(temp));
                     } else if (
                         has_rzi ||
                         has_rz) { // 使用RZI或RZ进行向零舍入（用于整数转换）
@@ -887,7 +903,7 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
                     if (has_rni ||
                         has_rn) { // 使用RNI或RN进行四舍五入（用于整数转换）
                         *(uint32_t *)dst =
-                            static_cast<uint32_t>(std::round(temp));
+                            static_cast<uint32_t>(round_half_to_even(temp));
                     } else if (
                         has_rzi ||
                         has_rz) { // 使用RZI或RZ进行向零舍入（用于整数转换）
@@ -1108,7 +1124,7 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
                     if (has_rni ||
                         has_rn) { // 使用RNI或RN进行四舍五入（用于整数转换）
                         *(uint64_t *)dst =
-                            static_cast<uint64_t>(std::round(temp));
+                            static_cast<uint64_t>(round_half_to_even(temp));
                     } else if (
                         has_rzi ||
                         has_rz) { // 使用RZI或RZ进行向零舍入（用于整数转换）
