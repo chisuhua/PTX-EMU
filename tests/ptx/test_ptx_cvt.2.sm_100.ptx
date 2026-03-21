@@ -1,0 +1,1091 @@
+
+
+
+
+
+
+
+
+.version 9.0
+.target sm_100
+.address_size 64
+
+
+
+.visible .entry _Z22test_cvt_s8_s16_kernelsPa(
+.param .u16 _Z22test_cvt_s8_s16_kernelsPa_param_0,
+.param .u64 .ptr .align 1 _Z22test_cvt_s8_s16_kernelsPa_param_1
+)
+{
+.reg .b16 %rs<3>;
+.reg .b64 %rd<3>;
+
+ld.param.u16 %rs2, [_Z22test_cvt_s8_s16_kernelsPa_param_0];
+ld.param.u64 %rd1, [_Z22test_cvt_s8_s16_kernelsPa_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.s8.s16 %rs1, %rs2;
+
+st.global.u8 [%rd2], %rs1;
+ret;
+
+}
+
+.visible .entry _Z22test_cvt_s8_s32_kerneliPa(
+.param .u32 _Z22test_cvt_s8_s32_kerneliPa_param_0,
+.param .u64 .ptr .align 1 _Z22test_cvt_s8_s32_kerneliPa_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b32 %r<2>;
+.reg .b64 %rd<3>;
+
+ld.param.u32 %r1, [_Z22test_cvt_s8_s32_kerneliPa_param_0];
+ld.param.u64 %rd1, [_Z22test_cvt_s8_s32_kerneliPa_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.s8.s32 %rs1, %r1;
+
+st.global.u8 [%rd2], %rs1;
+ret;
+
+}
+
+.visible .entry _Z22test_cvt_s8_s64_kernellPa(
+.param .u64 _Z22test_cvt_s8_s64_kernellPa_param_0,
+.param .u64 .ptr .align 1 _Z22test_cvt_s8_s64_kernellPa_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b64 %rd<4>;
+
+ld.param.u64 %rd1, [_Z22test_cvt_s8_s64_kernellPa_param_0];
+ld.param.u64 %rd2, [_Z22test_cvt_s8_s64_kernellPa_param_1];
+cvta.to.global.u64 %rd3, %rd2;
+
+cvt.s8.s64 %rs1, %rd1;
+
+st.global.u8 [%rd3], %rs1;
+ret;
+
+}
+
+.visible .entry _Z22test_cvt_u8_u16_kerneltPh(
+.param .u16 _Z22test_cvt_u8_u16_kerneltPh_param_0,
+.param .u64 .ptr .align 1 _Z22test_cvt_u8_u16_kerneltPh_param_1
+)
+{
+.reg .b16 %rs<3>;
+.reg .b64 %rd<3>;
+
+ld.param.u16 %rs2, [_Z22test_cvt_u8_u16_kerneltPh_param_0];
+ld.param.u64 %rd1, [_Z22test_cvt_u8_u16_kerneltPh_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.u8.u16 %rs1, %rs2;
+
+st.global.u8 [%rd2], %rs1;
+ret;
+
+}
+
+.visible .entry _Z22test_cvt_u8_u32_kerneljPh(
+.param .u32 _Z22test_cvt_u8_u32_kerneljPh_param_0,
+.param .u64 .ptr .align 1 _Z22test_cvt_u8_u32_kerneljPh_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b32 %r<2>;
+.reg .b64 %rd<3>;
+
+ld.param.u32 %r1, [_Z22test_cvt_u8_u32_kerneljPh_param_0];
+ld.param.u64 %rd1, [_Z22test_cvt_u8_u32_kerneljPh_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.u8.u32.sat %rs1, %r1;
+
+st.global.u8 [%rd2], %rs1;
+ret;
+
+}
+
+.visible .entry _Z22test_cvt_u8_u64_kernelmPh(
+.param .u64 _Z22test_cvt_u8_u64_kernelmPh_param_0,
+.param .u64 .ptr .align 1 _Z22test_cvt_u8_u64_kernelmPh_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b64 %rd<4>;
+
+ld.param.u64 %rd1, [_Z22test_cvt_u8_u64_kernelmPh_param_0];
+ld.param.u64 %rd2, [_Z22test_cvt_u8_u64_kernelmPh_param_1];
+cvta.to.global.u64 %rd3, %rd2;
+
+cvt.u8.u64 %rs1, %rd1;
+
+st.global.u8 [%rd3], %rs1;
+ret;
+
+}
+
+.visible .entry _Z22test_cvt_s16_s8_kernelaPs(
+.param .u8 _Z22test_cvt_s16_s8_kernelaPs_param_0,
+.param .u64 .ptr .align 1 _Z22test_cvt_s16_s8_kernelaPs_param_1
+)
+{
+.reg .b16 %rs<3>;
+.reg .b64 %rd<3>;
+
+ld.param.s8 %rs2, [_Z22test_cvt_s16_s8_kernelaPs_param_0];
+ld.param.u64 %rd1, [_Z22test_cvt_s16_s8_kernelaPs_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.s16.s8 %rs1, %rs2;
+
+st.global.u16 [%rd2], %rs1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_s16_s32_kerneliPs(
+.param .u32 _Z23test_cvt_s16_s32_kerneliPs_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_s16_s32_kerneliPs_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b32 %r<2>;
+.reg .b64 %rd<3>;
+
+ld.param.u32 %r1, [_Z23test_cvt_s16_s32_kerneliPs_param_0];
+ld.param.u64 %rd1, [_Z23test_cvt_s16_s32_kerneliPs_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.s16.s32 %rs1, %r1;
+
+st.global.u16 [%rd2], %rs1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_s16_s64_kernellPs(
+.param .u64 _Z23test_cvt_s16_s64_kernellPs_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_s16_s64_kernellPs_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b64 %rd<4>;
+
+ld.param.u64 %rd1, [_Z23test_cvt_s16_s64_kernellPs_param_0];
+ld.param.u64 %rd2, [_Z23test_cvt_s16_s64_kernellPs_param_1];
+cvta.to.global.u64 %rd3, %rd2;
+
+cvt.s16.s64 %rs1, %rd1;
+
+st.global.u16 [%rd3], %rs1;
+ret;
+
+}
+
+.visible .entry _Z22test_cvt_u16_u8_kernelhPt(
+.param .u8 _Z22test_cvt_u16_u8_kernelhPt_param_0,
+.param .u64 .ptr .align 1 _Z22test_cvt_u16_u8_kernelhPt_param_1
+)
+{
+.reg .b16 %rs<3>;
+.reg .b64 %rd<3>;
+
+ld.param.u8 %rs2, [_Z22test_cvt_u16_u8_kernelhPt_param_0];
+ld.param.u64 %rd1, [_Z22test_cvt_u16_u8_kernelhPt_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.u16.u8 %rs1, %rs2;
+
+st.global.u16 [%rd2], %rs1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_u16_u32_kerneljPt(
+.param .u32 _Z23test_cvt_u16_u32_kerneljPt_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_u16_u32_kerneljPt_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b32 %r<2>;
+.reg .b64 %rd<3>;
+
+ld.param.u32 %r1, [_Z23test_cvt_u16_u32_kerneljPt_param_0];
+ld.param.u64 %rd1, [_Z23test_cvt_u16_u32_kerneljPt_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.u16.u32 %rs1, %r1;
+
+st.global.u16 [%rd2], %rs1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_u16_u64_kernelmPt(
+.param .u64 _Z23test_cvt_u16_u64_kernelmPt_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_u16_u64_kernelmPt_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b64 %rd<4>;
+
+ld.param.u64 %rd1, [_Z23test_cvt_u16_u64_kernelmPt_param_0];
+ld.param.u64 %rd2, [_Z23test_cvt_u16_u64_kernelmPt_param_1];
+cvta.to.global.u64 %rd3, %rd2;
+
+cvt.u16.u64 %rs1, %rd1;
+
+st.global.u16 [%rd3], %rs1;
+ret;
+
+}
+
+.visible .entry _Z22test_cvt_s32_s8_kernelaPi(
+.param .u8 _Z22test_cvt_s32_s8_kernelaPi_param_0,
+.param .u64 .ptr .align 1 _Z22test_cvt_s32_s8_kernelaPi_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b32 %r<2>;
+.reg .b64 %rd<3>;
+
+ld.param.s8 %rs1, [_Z22test_cvt_s32_s8_kernelaPi_param_0];
+ld.param.u64 %rd1, [_Z22test_cvt_s32_s8_kernelaPi_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.s32.s8 %r1, %rs1;
+
+st.global.u32 [%rd2], %r1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_s32_s16_kernelsPi(
+.param .u16 _Z23test_cvt_s32_s16_kernelsPi_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_s32_s16_kernelsPi_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b32 %r<2>;
+.reg .b64 %rd<3>;
+
+ld.param.u16 %rs1, [_Z23test_cvt_s32_s16_kernelsPi_param_0];
+ld.param.u64 %rd1, [_Z23test_cvt_s32_s16_kernelsPi_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.s32.s16 %r1, %rs1;
+
+st.global.u32 [%rd2], %r1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_s32_s64_kernellPi(
+.param .u64 _Z23test_cvt_s32_s64_kernellPi_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_s32_s64_kernellPi_param_1
+)
+{
+.reg .b32 %r<2>;
+.reg .b64 %rd<4>;
+
+ld.param.u64 %rd1, [_Z23test_cvt_s32_s64_kernellPi_param_0];
+ld.param.u64 %rd2, [_Z23test_cvt_s32_s64_kernellPi_param_1];
+cvta.to.global.u64 %rd3, %rd2;
+
+cvt.s32.s64 %r1, %rd1;
+
+st.global.u32 [%rd3], %r1;
+ret;
+
+}
+
+.visible .entry _Z22test_cvt_u32_u8_kernelhPj(
+.param .u8 _Z22test_cvt_u32_u8_kernelhPj_param_0,
+.param .u64 .ptr .align 1 _Z22test_cvt_u32_u8_kernelhPj_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b32 %r<2>;
+.reg .b64 %rd<3>;
+
+ld.param.u8 %rs1, [_Z22test_cvt_u32_u8_kernelhPj_param_0];
+ld.param.u64 %rd1, [_Z22test_cvt_u32_u8_kernelhPj_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.u32.u8 %r1, %rs1;
+
+st.global.u32 [%rd2], %r1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_u32_u16_kerneltPj(
+.param .u16 _Z23test_cvt_u32_u16_kerneltPj_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_u32_u16_kerneltPj_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b32 %r<2>;
+.reg .b64 %rd<3>;
+
+ld.param.u16 %rs1, [_Z23test_cvt_u32_u16_kerneltPj_param_0];
+ld.param.u64 %rd1, [_Z23test_cvt_u32_u16_kerneltPj_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.u32.u16 %r1, %rs1;
+
+st.global.u32 [%rd2], %r1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_u32_u64_kernelmPj(
+.param .u64 _Z23test_cvt_u32_u64_kernelmPj_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_u32_u64_kernelmPj_param_1
+)
+{
+.reg .b32 %r<2>;
+.reg .b64 %rd<4>;
+
+ld.param.u64 %rd1, [_Z23test_cvt_u32_u64_kernelmPj_param_0];
+ld.param.u64 %rd2, [_Z23test_cvt_u32_u64_kernelmPj_param_1];
+cvta.to.global.u64 %rd3, %rd2;
+
+cvt.u32.u64 %r1, %rd1;
+
+st.global.u32 [%rd3], %r1;
+ret;
+
+}
+
+.visible .entry _Z22test_cvt_s64_s8_kernelaPl(
+.param .u8 _Z22test_cvt_s64_s8_kernelaPl_param_0,
+.param .u64 .ptr .align 1 _Z22test_cvt_s64_s8_kernelaPl_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b64 %rd<4>;
+
+ld.param.s8 %rs1, [_Z22test_cvt_s64_s8_kernelaPl_param_0];
+ld.param.u64 %rd2, [_Z22test_cvt_s64_s8_kernelaPl_param_1];
+cvta.to.global.u64 %rd3, %rd2;
+
+cvt.s64.s8 %rd1, %rs1;
+
+st.global.u64 [%rd3], %rd1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_s64_s16_kernelsPl(
+.param .u16 _Z23test_cvt_s64_s16_kernelsPl_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_s64_s16_kernelsPl_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b64 %rd<4>;
+
+ld.param.u16 %rs1, [_Z23test_cvt_s64_s16_kernelsPl_param_0];
+ld.param.u64 %rd2, [_Z23test_cvt_s64_s16_kernelsPl_param_1];
+cvta.to.global.u64 %rd3, %rd2;
+
+cvt.s64.s16 %rd1, %rs1;
+
+st.global.u64 [%rd3], %rd1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_s64_s32_kerneliPl(
+.param .u32 _Z23test_cvt_s64_s32_kerneliPl_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_s64_s32_kerneliPl_param_1
+)
+{
+.reg .b32 %r<2>;
+.reg .b64 %rd<4>;
+
+ld.param.u32 %r1, [_Z23test_cvt_s64_s32_kerneliPl_param_0];
+ld.param.u64 %rd2, [_Z23test_cvt_s64_s32_kerneliPl_param_1];
+cvta.to.global.u64 %rd3, %rd2;
+
+cvt.s64.s32 %rd1, %r1;
+
+st.global.u64 [%rd3], %rd1;
+ret;
+
+}
+
+.visible .entry _Z22test_cvt_u64_u8_kernelhPm(
+.param .u8 _Z22test_cvt_u64_u8_kernelhPm_param_0,
+.param .u64 .ptr .align 1 _Z22test_cvt_u64_u8_kernelhPm_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b64 %rd<4>;
+
+ld.param.u8 %rs1, [_Z22test_cvt_u64_u8_kernelhPm_param_0];
+ld.param.u64 %rd2, [_Z22test_cvt_u64_u8_kernelhPm_param_1];
+cvta.to.global.u64 %rd3, %rd2;
+
+cvt.u64.u8 %rd1, %rs1;
+
+st.global.u64 [%rd3], %rd1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_u64_u16_kerneltPm(
+.param .u16 _Z23test_cvt_u64_u16_kerneltPm_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_u64_u16_kerneltPm_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b64 %rd<4>;
+
+ld.param.u16 %rs1, [_Z23test_cvt_u64_u16_kerneltPm_param_0];
+ld.param.u64 %rd2, [_Z23test_cvt_u64_u16_kerneltPm_param_1];
+cvta.to.global.u64 %rd3, %rd2;
+
+cvt.u64.u16 %rd1, %rs1;
+
+st.global.u64 [%rd3], %rd1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_u64_u32_kerneljPm(
+.param .u32 _Z23test_cvt_u64_u32_kerneljPm_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_u64_u32_kerneljPm_param_1
+)
+{
+.reg .b32 %r<2>;
+.reg .b64 %rd<4>;
+
+ld.param.u32 %r1, [_Z23test_cvt_u64_u32_kerneljPm_param_0];
+ld.param.u64 %rd2, [_Z23test_cvt_u64_u32_kerneljPm_param_1];
+cvta.to.global.u64 %rd3, %rd2;
+
+cvt.u64.u32 %rd1, %r1;
+
+st.global.u64 [%rd3], %rd1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_s32_f32_kernelfPi(
+.param .f32 _Z23test_cvt_s32_f32_kernelfPi_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_s32_f32_kernelfPi_param_1
+)
+{
+.reg .b32 %r<2>;
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+
+ld.param.f32 %f1, [_Z23test_cvt_s32_f32_kernelfPi_param_0];
+ld.param.u64 %rd1, [_Z23test_cvt_s32_f32_kernelfPi_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.rni.s32.f32 %r1, %f1;
+
+st.global.u32 [%rd2], %r1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_u32_f32_kernelfPj(
+.param .f32 _Z23test_cvt_u32_f32_kernelfPj_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_u32_f32_kernelfPj_param_1
+)
+{
+.reg .b32 %r<2>;
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+
+ld.param.f32 %f1, [_Z23test_cvt_u32_f32_kernelfPj_param_0];
+ld.param.u64 %rd1, [_Z23test_cvt_u32_f32_kernelfPj_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.rni.u32.f32 %r1, %f1;
+
+st.global.u32 [%rd2], %r1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_s64_f64_kerneldPl(
+.param .f64 _Z23test_cvt_s64_f64_kerneldPl_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_s64_f64_kerneldPl_param_1
+)
+{
+.reg .b64 %rd<4>;
+.reg .b64 %fd<2>;
+
+ld.param.f64 %fd1, [_Z23test_cvt_s64_f64_kerneldPl_param_0];
+ld.param.u64 %rd2, [_Z23test_cvt_s64_f64_kerneldPl_param_1];
+cvta.to.global.u64 %rd3, %rd2;
+
+cvt.rni.s64.f64 %rd1, %fd1;
+
+st.global.u64 [%rd3], %rd1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_u64_f64_kerneldPm(
+.param .f64 _Z23test_cvt_u64_f64_kerneldPm_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_u64_f64_kerneldPm_param_1
+)
+{
+.reg .b64 %rd<4>;
+.reg .b64 %fd<2>;
+
+ld.param.f64 %fd1, [_Z23test_cvt_u64_f64_kerneldPm_param_0];
+ld.param.u64 %rd2, [_Z23test_cvt_u64_f64_kerneldPm_param_1];
+cvta.to.global.u64 %rd3, %rd2;
+
+cvt.rni.u64.f64 %rd1, %fd1;
+
+st.global.u64 [%rd3], %rd1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_s32_f64_kerneldPi(
+.param .f64 _Z23test_cvt_s32_f64_kerneldPi_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_s32_f64_kerneldPi_param_1
+)
+{
+.reg .b32 %r<2>;
+.reg .b64 %rd<3>;
+.reg .b64 %fd<2>;
+
+ld.param.f64 %fd1, [_Z23test_cvt_s32_f64_kerneldPi_param_0];
+ld.param.u64 %rd1, [_Z23test_cvt_s32_f64_kerneldPi_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.rni.s32.f64 %r1, %fd1;
+
+st.global.u32 [%rd2], %r1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_u32_f64_kerneldPj(
+.param .f64 _Z23test_cvt_u32_f64_kerneldPj_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_u32_f64_kerneldPj_param_1
+)
+{
+.reg .b32 %r<2>;
+.reg .b64 %rd<3>;
+.reg .b64 %fd<2>;
+
+ld.param.f64 %fd1, [_Z23test_cvt_u32_f64_kerneldPj_param_0];
+ld.param.u64 %rd1, [_Z23test_cvt_u32_f64_kerneldPj_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.rni.u32.f64 %r1, %fd1;
+
+st.global.u32 [%rd2], %r1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_f32_s32_kerneliPf(
+.param .u32 _Z23test_cvt_f32_s32_kerneliPf_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_f32_s32_kerneliPf_param_1
+)
+{
+.reg .b32 %r<2>;
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+
+ld.param.u32 %r1, [_Z23test_cvt_f32_s32_kerneliPf_param_0];
+ld.param.u64 %rd1, [_Z23test_cvt_f32_s32_kerneliPf_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.f32.s32.rn %f1, %r1;
+
+st.global.f32 [%rd2], %f1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_f32_u32_kerneljPf(
+.param .u32 _Z23test_cvt_f32_u32_kerneljPf_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_f32_u32_kerneljPf_param_1
+)
+{
+.reg .b32 %r<2>;
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+
+ld.param.u32 %r1, [_Z23test_cvt_f32_u32_kerneljPf_param_0];
+ld.param.u64 %rd1, [_Z23test_cvt_f32_u32_kerneljPf_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.f32.u32.rn %f1, %r1;
+
+st.global.f32 [%rd2], %f1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_f64_s64_kernellPd(
+.param .u64 _Z23test_cvt_f64_s64_kernellPd_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_f64_s64_kernellPd_param_1
+)
+{
+.reg .b64 %rd<4>;
+.reg .b64 %fd<2>;
+
+ld.param.u64 %rd1, [_Z23test_cvt_f64_s64_kernellPd_param_0];
+ld.param.u64 %rd2, [_Z23test_cvt_f64_s64_kernellPd_param_1];
+cvta.to.global.u64 %rd3, %rd2;
+
+cvt.f64.s64.rn %fd1, %rd1;
+
+st.global.f64 [%rd3], %fd1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_f64_u64_kernelmPd(
+.param .u64 _Z23test_cvt_f64_u64_kernelmPd_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_f64_u64_kernelmPd_param_1
+)
+{
+.reg .b64 %rd<4>;
+.reg .b64 %fd<2>;
+
+ld.param.u64 %rd1, [_Z23test_cvt_f64_u64_kernelmPd_param_0];
+ld.param.u64 %rd2, [_Z23test_cvt_f64_u64_kernelmPd_param_1];
+cvta.to.global.u64 %rd3, %rd2;
+
+cvt.f64.u64.rn %fd1, %rd1;
+
+st.global.f64 [%rd3], %fd1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_f32_s64_kernellPf(
+.param .u64 _Z23test_cvt_f32_s64_kernellPf_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_f32_s64_kernellPf_param_1
+)
+{
+.reg .b32 %f<2>;
+.reg .b64 %rd<4>;
+
+ld.param.u64 %rd1, [_Z23test_cvt_f32_s64_kernellPf_param_0];
+ld.param.u64 %rd2, [_Z23test_cvt_f32_s64_kernellPf_param_1];
+cvta.to.global.u64 %rd3, %rd2;
+
+cvt.f32.s64.rn %f1, %rd1;
+
+st.global.f32 [%rd3], %f1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_f32_u64_kernelmPf(
+.param .u64 _Z23test_cvt_f32_u64_kernelmPf_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_f32_u64_kernelmPf_param_1
+)
+{
+.reg .b32 %f<2>;
+.reg .b64 %rd<4>;
+
+ld.param.u64 %rd1, [_Z23test_cvt_f32_u64_kernelmPf_param_0];
+ld.param.u64 %rd2, [_Z23test_cvt_f32_u64_kernelmPf_param_1];
+cvta.to.global.u64 %rd3, %rd2;
+
+cvt.f32.u64.rn %f1, %rd1;
+
+st.global.f32 [%rd3], %f1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_f32_f64_kerneldPf(
+.param .f64 _Z23test_cvt_f32_f64_kerneldPf_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_f32_f64_kerneldPf_param_1
+)
+{
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+.reg .b64 %fd<2>;
+
+ld.param.f64 %fd1, [_Z23test_cvt_f32_f64_kerneldPf_param_0];
+ld.param.u64 %rd1, [_Z23test_cvt_f32_f64_kerneldPf_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.f32.f64.rn %f1, %fd1;
+
+st.global.f32 [%rd2], %f1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_f64_f32_kernelfPd(
+.param .f32 _Z23test_cvt_f64_f32_kernelfPd_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_f64_f32_kernelfPd_param_1
+)
+{
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+.reg .b64 %fd<2>;
+
+ld.param.f32 %f1, [_Z23test_cvt_f64_f32_kernelfPd_param_0];
+ld.param.u64 %rd1, [_Z23test_cvt_f64_f32_kernelfPd_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.f64.f32 %fd1, %f1;
+
+st.global.f64 [%rd2], %fd1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_f32_f16_kernel6__halfPf(
+.param .align 2 .b8 _Z23test_cvt_f32_f16_kernel6__halfPf_param_0[2],
+.param .u64 .ptr .align 1 _Z23test_cvt_f32_f16_kernel6__halfPf_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+
+ld.param.u16 %rs1, [_Z23test_cvt_f32_f16_kernel6__halfPf_param_0];
+ld.param.u64 %rd1, [_Z23test_cvt_f32_f16_kernel6__halfPf_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.f32.f16 %f1, %rs1;
+
+st.global.f32 [%rd2], %f1;
+ret;
+
+}
+
+.visible .entry _Z23test_cvt_f16_f32_kernelfP6__half(
+.param .f32 _Z23test_cvt_f16_f32_kernelfP6__half_param_0,
+.param .u64 .ptr .align 1 _Z23test_cvt_f16_f32_kernelfP6__half_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+
+ld.param.f32 %f1, [_Z23test_cvt_f16_f32_kernelfP6__half_param_0];
+ld.param.u64 %rd1, [_Z23test_cvt_f16_f32_kernelfP6__half_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.rn.f16.f32 %rs1, %f1;
+
+st.global.u16 [%rd2], %rs1;
+ret;
+
+}
+
+.visible .entry _Z25test_cvt_satu8_f32_kernelfPh(
+.param .f32 _Z25test_cvt_satu8_f32_kernelfPh_param_0,
+.param .u64 .ptr .align 1 _Z25test_cvt_satu8_f32_kernelfPh_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+
+ld.param.f32 %f1, [_Z25test_cvt_satu8_f32_kernelfPh_param_0];
+ld.param.u64 %rd1, [_Z25test_cvt_satu8_f32_kernelfPh_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.rzi.sat.u8.f32 %rs1, %f1;
+
+st.global.u8 [%rd2], %rs1;
+ret;
+
+}
+
+.visible .entry _Z26test_cvt_satu16_f32_kernelfPt(
+.param .f32 _Z26test_cvt_satu16_f32_kernelfPt_param_0,
+.param .u64 .ptr .align 1 _Z26test_cvt_satu16_f32_kernelfPt_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+
+ld.param.f32 %f1, [_Z26test_cvt_satu16_f32_kernelfPt_param_0];
+ld.param.u64 %rd1, [_Z26test_cvt_satu16_f32_kernelfPt_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.rzi.sat.u16.f32 %rs1, %f1;
+
+st.global.u16 [%rd2], %rs1;
+ret;
+
+}
+
+.visible .entry _Z26test_cvt_satu32_f32_kernelfPj(
+.param .f32 _Z26test_cvt_satu32_f32_kernelfPj_param_0,
+.param .u64 .ptr .align 1 _Z26test_cvt_satu32_f32_kernelfPj_param_1
+)
+{
+.reg .b32 %r<2>;
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+
+ld.param.f32 %f1, [_Z26test_cvt_satu32_f32_kernelfPj_param_0];
+ld.param.u64 %rd1, [_Z26test_cvt_satu32_f32_kernelfPj_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.rzi.sat.u32.f32 %r1, %f1;
+
+st.global.u32 [%rd2], %r1;
+ret;
+
+}
+
+.visible .entry _Z26test_cvt_u8_f32_rni_kernelfPh(
+.param .f32 _Z26test_cvt_u8_f32_rni_kernelfPh_param_0,
+.param .u64 .ptr .align 1 _Z26test_cvt_u8_f32_rni_kernelfPh_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+
+ld.param.f32 %f1, [_Z26test_cvt_u8_f32_rni_kernelfPh_param_0];
+ld.param.u64 %rd1, [_Z26test_cvt_u8_f32_rni_kernelfPh_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.rni.u8.f32 %rs1, %f1;
+
+st.global.u8 [%rd2], %rs1;
+ret;
+
+}
+
+.visible .entry _Z26test_cvt_u8_f32_rzi_kernelfPh(
+.param .f32 _Z26test_cvt_u8_f32_rzi_kernelfPh_param_0,
+.param .u64 .ptr .align 1 _Z26test_cvt_u8_f32_rzi_kernelfPh_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+
+ld.param.f32 %f1, [_Z26test_cvt_u8_f32_rzi_kernelfPh_param_0];
+ld.param.u64 %rd1, [_Z26test_cvt_u8_f32_rzi_kernelfPh_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.rzi.u8.f32 %rs1, %f1;
+
+st.global.u8 [%rd2], %rs1;
+ret;
+
+}
+
+.visible .entry _Z26test_cvt_u8_f32_rmi_kernelfPh(
+.param .f32 _Z26test_cvt_u8_f32_rmi_kernelfPh_param_0,
+.param .u64 .ptr .align 1 _Z26test_cvt_u8_f32_rmi_kernelfPh_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+
+ld.param.f32 %f1, [_Z26test_cvt_u8_f32_rmi_kernelfPh_param_0];
+ld.param.u64 %rd1, [_Z26test_cvt_u8_f32_rmi_kernelfPh_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.rmi.u8.f32 %rs1, %f1;
+
+st.global.u8 [%rd2], %rs1;
+ret;
+
+}
+
+.visible .entry _Z26test_cvt_u8_f32_rpi_kernelfPh(
+.param .f32 _Z26test_cvt_u8_f32_rpi_kernelfPh_param_0,
+.param .u64 .ptr .align 1 _Z26test_cvt_u8_f32_rpi_kernelfPh_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+
+ld.param.f32 %f1, [_Z26test_cvt_u8_f32_rpi_kernelfPh_param_0];
+ld.param.u64 %rd1, [_Z26test_cvt_u8_f32_rpi_kernelfPh_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.rpi.u8.f32 %rs1, %f1;
+
+st.global.u8 [%rd2], %rs1;
+ret;
+
+}
+
+.visible .entry _Z27test_cvt_u16_f32_rni_kernelfPt(
+.param .f32 _Z27test_cvt_u16_f32_rni_kernelfPt_param_0,
+.param .u64 .ptr .align 1 _Z27test_cvt_u16_f32_rni_kernelfPt_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+
+ld.param.f32 %f1, [_Z27test_cvt_u16_f32_rni_kernelfPt_param_0];
+ld.param.u64 %rd1, [_Z27test_cvt_u16_f32_rni_kernelfPt_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.rni.u16.f32 %rs1, %f1;
+
+st.global.u16 [%rd2], %rs1;
+ret;
+
+}
+
+.visible .entry _Z27test_cvt_u16_f32_rzi_kernelfPt(
+.param .f32 _Z27test_cvt_u16_f32_rzi_kernelfPt_param_0,
+.param .u64 .ptr .align 1 _Z27test_cvt_u16_f32_rzi_kernelfPt_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+
+ld.param.f32 %f1, [_Z27test_cvt_u16_f32_rzi_kernelfPt_param_0];
+ld.param.u64 %rd1, [_Z27test_cvt_u16_f32_rzi_kernelfPt_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.rzi.u16.f32 %rs1, %f1;
+
+st.global.u16 [%rd2], %rs1;
+ret;
+
+}
+
+.visible .entry _Z27test_cvt_u16_f32_rmi_kernelfPt(
+.param .f32 _Z27test_cvt_u16_f32_rmi_kernelfPt_param_0,
+.param .u64 .ptr .align 1 _Z27test_cvt_u16_f32_rmi_kernelfPt_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+
+ld.param.f32 %f1, [_Z27test_cvt_u16_f32_rmi_kernelfPt_param_0];
+ld.param.u64 %rd1, [_Z27test_cvt_u16_f32_rmi_kernelfPt_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.rmi.u16.f32 %rs1, %f1;
+
+st.global.u16 [%rd2], %rs1;
+ret;
+
+}
+
+.visible .entry _Z27test_cvt_u16_f32_rpi_kernelfPt(
+.param .f32 _Z27test_cvt_u16_f32_rpi_kernelfPt_param_0,
+.param .u64 .ptr .align 1 _Z27test_cvt_u16_f32_rpi_kernelfPt_param_1
+)
+{
+.reg .b16 %rs<2>;
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+
+ld.param.f32 %f1, [_Z27test_cvt_u16_f32_rpi_kernelfPt_param_0];
+ld.param.u64 %rd1, [_Z27test_cvt_u16_f32_rpi_kernelfPt_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.rpi.u16.f32 %rs1, %f1;
+
+st.global.u16 [%rd2], %rs1;
+ret;
+
+}
+
+.visible .entry _Z27test_cvt_u32_f32_rni_kernelfPj(
+.param .f32 _Z27test_cvt_u32_f32_rni_kernelfPj_param_0,
+.param .u64 .ptr .align 1 _Z27test_cvt_u32_f32_rni_kernelfPj_param_1
+)
+{
+.reg .b32 %r<2>;
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+
+ld.param.f32 %f1, [_Z27test_cvt_u32_f32_rni_kernelfPj_param_0];
+ld.param.u64 %rd1, [_Z27test_cvt_u32_f32_rni_kernelfPj_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.rni.u32.f32 %r1, %f1;
+
+st.global.u32 [%rd2], %r1;
+ret;
+
+}
+
+.visible .entry _Z27test_cvt_u32_f32_rzi_kernelfPj(
+.param .f32 _Z27test_cvt_u32_f32_rzi_kernelfPj_param_0,
+.param .u64 .ptr .align 1 _Z27test_cvt_u32_f32_rzi_kernelfPj_param_1
+)
+{
+.reg .b32 %r<2>;
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+
+ld.param.f32 %f1, [_Z27test_cvt_u32_f32_rzi_kernelfPj_param_0];
+ld.param.u64 %rd1, [_Z27test_cvt_u32_f32_rzi_kernelfPj_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.rzi.u32.f32 %r1, %f1;
+
+st.global.u32 [%rd2], %r1;
+ret;
+
+}
+
+.visible .entry _Z27test_cvt_u32_f32_rmi_kernelfPj(
+.param .f32 _Z27test_cvt_u32_f32_rmi_kernelfPj_param_0,
+.param .u64 .ptr .align 1 _Z27test_cvt_u32_f32_rmi_kernelfPj_param_1
+)
+{
+.reg .b32 %r<2>;
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+
+ld.param.f32 %f1, [_Z27test_cvt_u32_f32_rmi_kernelfPj_param_0];
+ld.param.u64 %rd1, [_Z27test_cvt_u32_f32_rmi_kernelfPj_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.rmi.u32.f32 %r1, %f1;
+
+st.global.u32 [%rd2], %r1;
+ret;
+
+}
+
+.visible .entry _Z27test_cvt_u32_f32_rpi_kernelfPj(
+.param .f32 _Z27test_cvt_u32_f32_rpi_kernelfPj_param_0,
+.param .u64 .ptr .align 1 _Z27test_cvt_u32_f32_rpi_kernelfPj_param_1
+)
+{
+.reg .b32 %r<2>;
+.reg .b32 %f<2>;
+.reg .b64 %rd<3>;
+
+ld.param.f32 %f1, [_Z27test_cvt_u32_f32_rpi_kernelfPj_param_0];
+ld.param.u64 %rd1, [_Z27test_cvt_u32_f32_rpi_kernelfPj_param_1];
+cvta.to.global.u64 %rd2, %rd1;
+
+cvt.rpi.u32.f32 %r1, %f1;
+
+st.global.u32 [%rd2], %r1;
+ret;
+
+}
