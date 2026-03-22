@@ -89,9 +89,9 @@ public:
     virtual void
     exitGlobalStatement(ptxParser::GlobalStatementContext *ctx) override;
     virtual void
-    enterDollorStatement(ptxParser::DollorStatementContext *ctx) override;
+    enterLabel(ptxParser::LabelContext *ctx) override;
     virtual void
-    exitDollorStatement(ptxParser::DollorStatementContext *ctx) override;
+    exitLabel(ptxParser::LabelContext *ctx) override;
     virtual void enterAtStatement(ptxParser::AtStatementContext *ctx) override;
     virtual void exitAtStatement(ptxParser::AtStatementContext *ctx) override;
     virtual void

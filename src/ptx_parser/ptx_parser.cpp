@@ -602,13 +602,13 @@ void PtxListener::exitGlobalStatement(ptxParser::GlobalStatementContext *ctx) {
 #endif
 }
 
-void PtxListener::enterDollorStatement(ptxParser::DollorStatementContext *ctx) {
+void PtxListener::enterLabel(ptxParser::LabelContext *ctx) {
     statement = new StatementContext::DOLLOR();
 #ifdef LOG
     std::cout << __func__ << std::endl;
 #endif
 }
-void PtxListener::exitDollorStatement(ptxParser::DollorStatementContext *ctx) {
+void PtxListener::exitLabel(ptxParser::LabelContext *ctx) {
     auto st = (StatementContext::DOLLOR *)statement;
 
     /* ID */
@@ -616,6 +616,7 @@ void PtxListener::exitDollorStatement(ptxParser::DollorStatementContext *ctx) {
 
     /* end */
     statementType = S_DOLLOR;
+    printf("DEBUG: Label parsed: '%s', statementType=%d\n", st->dollorName.c_str(), statementType);
 #ifdef LOG
     std::cout << __func__ << std::endl;
 #endif

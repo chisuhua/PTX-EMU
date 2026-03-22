@@ -44,7 +44,12 @@ predicate
     ;
 
 braInst
-    : predicate? BRA (UNI | voteMode)? labelOperand SEMI
+    : predicate? BRA labelOperand SEMI
+    | predicate? BRA UNI labelOperand SEMI
+    | predicate? BRA BALLOT labelOperand SEMI
+    | predicate? BRA ANY labelOperand SEMI
+    | predicate? BRA ALL labelOperand SEMI
+    | predicate? BRA EQV labelOperand SEMI
     ;
 
 brxInst
@@ -86,7 +91,7 @@ controlFlowInst
     | brkptInst
     ;
 
-labelOperand : ID ;
+labelOperand : DOLLAR ID ;
 voteMode : BALLOT | ANY | ALL | UNI | EQV ;
 callParams : paramList ;
 callArgs : LEFT_PAREN operand (COMMA operand)* RIGHT_PAREN ;

@@ -15,7 +15,11 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
                                                                                  \
     /* 提取跳转目标 */                                                         \
     if (ctx->labelOperand()) {                                                           \
-        instr.target = ctx->labelOperand()->getText();                                   \
+        std::string labelName = ctx->labelOperand()->getText();                          \
+        if (!labelName.empty() && labelName[0] == '$') {                                 \
+            labelName = labelName.substr(1);                                             \
+        }                                                                                \
+        instr.target = labelName;                                                        \
     }                                                                          \
                                                                                  \
     stmtCtx.data = instr;                                                      \

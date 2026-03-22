@@ -628,9 +628,20 @@ std::any PtxVisitor::visitInstruction(ptxparser::ptxParser::InstructionContext *
 #include "ptx_ir/ptx_op.def"
 #undef X
     
-    // Note: Labels are handled as part of other instructions (bra, call, etc.)
-    // The label target is stored in BranchInstr/CallInstr, not as separate S_LABEL
-    // After all statements are built, labels can be extracted from branch targets
+    if (ctx->label()) {
+        if (!currentKernel) return nullptr;
+        
+        StatementContext stmtCtx;
+        stmtCtx.instructionText = ctx->getText();
+        stmtCtx.type = S_DOLLOR;
+        
+        DollarNameInstr dollar;
+        dollar.name = ctx->label()->ID()->getText();
+        stmtCtx.data = dollar;
+        
+        currentKernel->kernelStatements.push_back(stmtCtx);
+        return nullptr;
+    }
     
     return nullptr;
 }
