@@ -57,6 +57,7 @@ add_library(ptx_ir SHARED
     ptx_ir/ptx_types.cpp
     ptx_ir/operand_context.cpp
     ptx_ir/statement_context.cpp
+    ptx_ir/ptx_syntax_utils.cpp
 )
 target_include_directories(ptx_ir PUBLIC ${PROJECT_SOURCE_DIR}/include)
 

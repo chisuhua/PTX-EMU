@@ -1,25 +1,26 @@
 #include "ptxsim/thread_context.h"
 #include "ptx_ir/ptx_types.h"
+#include "ptx_ir/ptx_syntax_utils.h"
 #include "ptx_ir/statement_context.h"
-#include "ptxsim/cta_context.h" // 添加CTAContext头文件包含
+#include "ptxsim/cta_context.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/instruction_factory.h"
 #include "ptxsim/ptx_debug.h"
 #include "ptxsim/register_analyzer.h"
 #include "ptxsim/utils/qualifier_utils.h"
-#include "ptxsim/warp_context.h" // 添加WarpContext头文件包含
+#include "ptxsim/warp_context.h"
 #include "utils/logger.h"
 #include <algorithm>
 #include <any>
 #include <cassert>
 #include <cmath>
-#include <cstdint> // 添加此行以支持uint64_t
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <iostream>
 #include <queue>
 
-// 添加SHMEMADDR变量定义，用于处理shared memory地址
+// 添加 SHMEMADDR 变量定义，用于处理 shared memory 地址
 static uint64_t SHMEMADDR = 0;
 
 #ifdef DEBUGINTE
@@ -471,6 +472,44 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
                       fa.id.c_str(), fa.baseSymbol.c_str(),
                       lookupName.c_str(), qualifiers.size());
 
+        // [FIX] Check if lookupName is a register name (for handling [%rd4+4] register base + immediate offset)
+        RegOperand regOp;
+        if (ptx::syntax::parseRegisterFromText(lookupName, regOp)) {
+            // lookupName is a register, read base address from register bank
+            PTX_DEBUG_EMU("Address base is a register: %s, fetching from register bank", lookupName.c_str());
+            
+            // Determine qualifier for register data type
+            Qualifier mem_qualifier = Qualifier::Q_UNKNOWN;
+            for (const auto &q : qualifiers) {
+                if (q == Qualifier::Q_SHARED) {
+                    mem_qualifier = Qualifier::Q_U32;
+                } else if (q == Qualifier::Q_GLOBAL || q == Qualifier::Q_PARAM ||
+                           q == Qualifier::Q_LOCAL) {
+                    mem_qualifier = Qualifier::Q_U64;
+                }
+            }
+            if (mem_qualifier == Qualifier::Q_UNKNOWN) {
+                mem_qualifier = Qualifier::Q_U64; // default to 64-bit
+            }
+            
+            void *regAddr = acquire_register(regOp, {mem_qualifier});
+            if (!regAddr) {
+                PTX_DEBUG_EMU("Failed to acquire register: %s", lookupName.c_str());
+                return nullptr;
+            }
+            
+            // Read register value as base address
+            uint64_t base_value = (mem_qualifier == Qualifier::Q_U32) 
+                ? *(uint32_t *)regAddr 
+                : *(uint64_t *)regAddr;
+            
+            ret = (void *)base_value;
+            PTX_DEBUG_EMU("Register %s contains base address: 0x%lx", lookupName.c_str(), base_value);
+            
+            // Skip symbol table lookup, jump directly to offset handling
+            goto handle_offset;
+        }
+
         auto sym_it = name2Sym->find(lookupName);
         if (sym_it != name2Sym->end()) {
             PTX_DEBUG_EMU("Reading kernel argument from name2Sym in "
@@ -540,6 +579,7 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
         // 对于本地内存，地址也已经在上面的逻辑中正确处理了
     }
 
+    handle_offset:
     // 处理偏移量
     if (!fa.immediateOffset.empty()) {
         // 直接解析偏移量字符串，避免创建临时立即数操作数
