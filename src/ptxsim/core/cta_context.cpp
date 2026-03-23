@@ -47,7 +47,7 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
                 std::get<DeclarationInstr>(stmt.data);
             // 计算变量大小
             size_t element_size = Q2bytes(sharedStmt.dataType);
-            size_t var_size = element_size * (*sharedStmt.size);
+            size_t var_size = element_size * sharedStmt.array_size;
             sharedMemBytes += var_size;
         }
     }

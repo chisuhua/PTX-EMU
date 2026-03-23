@@ -349,18 +349,79 @@ std::any PtxVisitor::visitVariableDecl(ptxparser::ptxParser::VariableDeclContext
     StatementContext stmtCtx;
     stmtCtx.instructionText = ctx->getText();
     
-    // TODO: Implement proper variable declaration parsing based on new grammar
-    // For now, create a simple placeholder
-    stmtCtx.type = (ctx->getText().find(".param") != std::string::npos) ? S_PARAM : S_REG;
+    std::string text = ctx->getText();
+    
+    if (text.find(".param") != std::string::npos) {
+        stmtCtx.type = S_PARAM;
+    } else if (text.find(".shared") != std::string::npos) {
+        stmtCtx.type = S_SHARED;
+    } else if (text.find(".const") != std::string::npos) {
+        stmtCtx.type = S_CONST;
+    } else if (text.find(".local") != std::string::npos) {
+        stmtCtx.type = S_LOCAL;
+    } else if (text.find(".global") != std::string::npos) {
+        stmtCtx.type = S_GLOBAL;
+    } else {
+        stmtCtx.type = S_REG;
+    }
+    
     DeclarationInstr decl;
     decl.kind = DeclarationInstr::Kind::REG;
-    decl.name = "TODO";
+    
+    if (ctx->ID()) {
+        decl.name = ctx->ID()->getText();
+    }
+    if (decl.name.empty()) {
+        decl.name = "TODO";
+    }
+    
     decl.dataType = Qualifier::Q_U32;
+    if (text.find(".b8") != std::string::npos) {
+        decl.dataType = Qualifier::Q_B8;
+    } else if (text.find(".b16") != std::string::npos) {
+        decl.dataType = Qualifier::Q_B16;
+    } else if (text.find(".b32") != std::string::npos) {
+        decl.dataType = Qualifier::Q_B32;
+    } else if (text.find(".b64") != std::string::npos) {
+        decl.dataType = Qualifier::Q_B64;
+    } else if (text.find(".u8") != std::string::npos) {
+        decl.dataType = Qualifier::Q_U8;
+    } else if (text.find(".u16") != std::string::npos) {
+        decl.dataType = Qualifier::Q_U16;
+    } else if (text.find(".u32") != std::string::npos) {
+        decl.dataType = Qualifier::Q_U32;
+    } else if (text.find(".u64") != std::string::npos) {
+        decl.dataType = Qualifier::Q_U64;
+    } else if (text.find(".s8") != std::string::npos) {
+        decl.dataType = Qualifier::Q_S8;
+    } else if (text.find(".s16") != std::string::npos) {
+        decl.dataType = Qualifier::Q_S16;
+    } else if (text.find(".s32") != std::string::npos) {
+        decl.dataType = Qualifier::Q_S32;
+    } else if (text.find(".s64") != std::string::npos) {
+        decl.dataType = Qualifier::Q_S64;
+    } else if (text.find(".f32") != std::string::npos) {
+        decl.dataType = Qualifier::Q_F32;
+    } else if (text.find(".f64") != std::string::npos) {
+        decl.dataType = Qualifier::Q_F64;
+    }
+    
     decl.array_size = 1;
+    size_t bracketPos = text.find('[');
+    if (bracketPos != std::string::npos) {
+        size_t closeBracket = text.find(']', bracketPos);
+        if (closeBracket != std::string::npos) {
+            std::string sizeStr = text.substr(bracketPos + 1, closeBracket - bracketPos - 1);
+            try {
+                decl.array_size = std::stoi(sizeStr);
+            } catch (...) {
+                decl.array_size = 1;
+            }
+        }
+    }
     
     stmtCtx.data = decl;
     
-    // 添加到适当的上下文
     if (currentKernel) {
         currentKernel->kernelStatements.push_back(stmtCtx);
     } else {
@@ -471,8 +532,23 @@ std::any PtxVisitor::visitFunctionDecl(ptxparser::ptxParser::FunctionDeclContext
             }
 
             StatementContext stmtCtx;
-            stmtCtx.type = S_REG;
             stmtCtx.instructionText = regDeclCtx->getText();
+            
+            std::string text = regDeclCtx->getText();
+            
+            if (text.find(".param") != std::string::npos) {
+                stmtCtx.type = S_PARAM;
+            } else if (text.find(".shared") != std::string::npos) {
+                stmtCtx.type = S_SHARED;
+            } else if (text.find(".const") != std::string::npos) {
+                stmtCtx.type = S_CONST;
+            } else if (text.find(".local") != std::string::npos) {
+                stmtCtx.type = S_LOCAL;
+            } else if (text.find(".global") != std::string::npos) {
+                stmtCtx.type = S_GLOBAL;
+            } else {
+                stmtCtx.type = S_REG;
+            }
 
             DeclarationInstr decl;
             decl.kind = DeclarationInstr::Kind::REG;
@@ -482,6 +558,67 @@ std::any PtxVisitor::visitFunctionDecl(ptxparser::ptxParser::FunctionDeclContext
 
             if (regDeclCtx->typeSpecifier()) {
                 auto q = qualifierFromText(regDeclCtx->typeSpecifier()->getText());
+                if (q != Qualifier::Q_UNKNOWN) {
+                    decl.dataType = q;
+                }
+            }
+
+            stmtCtx.data = decl;
+            currentKernel->kernelStatements.push_back(stmtCtx);
+        }
+        
+        for (auto *varDeclCtx : ctx->funcBody()->variableDecl()) {
+            if (!varDeclCtx) {
+                continue;
+            }
+
+            StatementContext stmtCtx;
+            stmtCtx.instructionText = varDeclCtx->getText();
+            
+            std::string text = varDeclCtx->getText();
+            
+            if (varDeclCtx->storageClass()) {
+                if (text.find(".param") != std::string::npos) {
+                    stmtCtx.type = S_PARAM;
+                } else if (text.find(".shared") != std::string::npos) {
+                    stmtCtx.type = S_SHARED;
+                } else if (text.find(".const") != std::string::npos) {
+                    stmtCtx.type = S_CONST;
+                } else if (text.find(".local") != std::string::npos) {
+                    stmtCtx.type = S_LOCAL;
+                } else if (text.find(".global") != std::string::npos) {
+                    stmtCtx.type = S_GLOBAL;
+                } else {
+                    stmtCtx.type = S_REG;
+                }
+            } else {
+                stmtCtx.type = S_REG;
+            }
+
+            DeclarationInstr decl;
+            decl.kind = DeclarationInstr::Kind::REG;
+            
+            if (varDeclCtx->ID()) {
+                decl.name = varDeclCtx->ID()->getText();
+            }
+            
+            decl.array_size = 1;
+            if (varDeclCtx->arraySize()) {
+                for (auto *sizeCtx : varDeclCtx->arraySize()->IMMEDIATE()) {
+                    if (sizeCtx) {
+                        try {
+                            decl.array_size = std::stoi(sizeCtx->getText());
+                        } catch (...) {
+                            decl.array_size = 1;
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            decl.dataType = Qualifier::Q_U32;
+            if (varDeclCtx->typeSpecifier()) {
+                auto q = qualifierFromText(varDeclCtx->typeSpecifier()->getText());
                 if (q != Qualifier::Q_UNKNOWN) {
                     decl.dataType = q;
                 }
