@@ -97,6 +97,7 @@ add_library(ptxsim SHARED
     ptxsim/instructions/arithmetic_conversion.cpp
     ptxsim/instructions/data_transfer.cpp
     ptxsim/instructions/call.cpp
+    ptxsim/instructions/barrier.cpp
 )
 target_link_libraries(ptxsim ptx_ir)
 
