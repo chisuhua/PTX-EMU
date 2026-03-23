@@ -52,19 +52,19 @@
 
 ## 🛑 PTX 语法修改流程（最高优先级）
 
-> **⚠️ 重要**: 本流程**优先于所有其他操作**。违反此流程 = 违反核心规则 🚫
+> **⚠️ 重要**: 本流程**优先于所有其他操作**。违反此流程 = 违反核心规则 🛫
 
-### 触发条件（满足任一即🛑停止）
+### 触发条件（满足任一即🛫停止）
 
 **当任务涉及 PTX 语法解析问题时，必须首先执行以下步骤**：
 
 | 触发场景 | 关键词/错误 | 立即行动 |
 |---------|------------|---------|
-| **用户请求修复解析错误** | "PTX 解析错误", "语法错误", "ANTLR 错误" | 🛑 → 加载技能 → 运行测试 |
-| **ANTLR 解析错误** | `no viable alternative at input` | 🛑 → 加载技能 → 运行测试 |
-| **意外 Token** | `mismatched input 'X' expecting Y` | 🛑 → 加载技能 → 运行测试 |
-| **修改语法文件** | 改动 `src/grammar/*.g4` | 🛑 → 加载技能 → 运行测试 |
-| **解析阶段崩溃** | `Segmentation fault` 在 parser 阶段 | 🛑 → 加载技能 → 运行测试 |
+| **用户请求修复解析错误** | "PTX 解析错误", "语法错误", "ANTLR 错误" | 🛫 → 加载技能 → 运行测试 |
+| **ANTLR 解析错误** | `no viable alternative at input` | 🛫 → 加载技能 → 运行测试 |
+| **意外 Token** | `mismatched input 'X' expecting Y` | 🛫 → 加载技能 → 运行测试 |
+| **修改语法文件** | 改动 `src/grammar/*.g4` | 🛫 → 加载技能 → 运行测试 |
+| **解析阶段崩溃** | `Segmentation fault` 在 parser 阶段 | 🛫 → 加载技能 → 运行测试 |
 
 ### 📋 强制检查清单（执行前必读）
 
@@ -72,11 +72,12 @@
 
 ```
 □ 步骤 1: 加载技能
-   → 使用 skill 工具加载 "ptx-grammar-modification"
+   → 加载项目技能：ptx-grammar-modification
+   → 位置：docs/skills/ptx-grammar-modification.md
 
 □ 步骤 2: 阅读文档
    → 阅读 docs/ptx/ 对应章节（了解 PTX 语法规范）
-   
+    
 □ 步骤 3: 运行基线测试
    → 执行 ./tests/ptx/test_all_ptx.sh（不是 ctest！）
    → 记录当前失败状态
@@ -96,10 +97,10 @@
 
 ### ❌ 禁止行为
 
-- 🚫 **禁止**使用 `ctest` 代替 `./tests/ptx/test_all_ptx.sh`
-- 🚫 **禁止**在未阅读 docs/ptx/ 文档前修改语法
-- 🚫 **禁止**在未添加测试用例前修复语法
-- 🚫 **禁止**在测试未全部通过前标记任务完成
+- 🛫 **禁止**使用 `ctest` 代替 `./tests/ptx/test_all_ptx.sh`
+- 🛫 **禁止**在未阅读 docs/ptx/ 文档前修改语法
+- 🛫 **禁止**在未添加测试用例前修复语法
+- 🛫 **禁止**在测试未全部通过前标记任务完成
 
 ### ✅ 正确示例
 
@@ -107,14 +108,15 @@
 用户："列出所有因为 PTX 解析错误的单元测试，并一一修复"
 
 正确流程：
-1. 🛑 识别为 PTX 语法问题
-2. 加载 skill: ptx-grammar-modification
+1. 🛫 识别为 PTX 语法问题
+2. 加载技能：ptx-grammar-modification（docs/skills/）
 3. 运行 ./tests/ptx/test_all_ptx.sh 确定失败用例
 4. 对每个失败用例：分析错误 → 添加测试 → 修复语法 → 验证
 5. 确保所有测试通过后才交付
 ```
 
 **完整流程文档**: [docs/skills/ptx-grammar-modification.md](docs/skills/ptx-grammar-modification.md)
+**项目技能总览**: [docs/skills/README.md](docs/skills/README.md)
 
 ---
 
