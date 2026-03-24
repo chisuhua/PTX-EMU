@@ -1,6 +1,6 @@
 #include<cstdio>
-#define SIZE 32
-#define BLOCK_DIM 32
+#define SIZE 1024
+#define BLOCK_DIM 128
 
 template<typename T>
 __global__ void dummy_d(T *arr){
