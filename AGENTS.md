@@ -8,6 +8,70 @@
 
 ---
 
+## 🎯 项目技能自动触发
+
+### 项目技能位置
+
+**项目技能目录**: `docs/skills/`
+
+| 技能 | 文件 | 触发方式 |
+|------|------|---------|
+| **ptx-grammar-modification** | `docs/skills/ptx-grammar-modification.md` | 自动触发（见下方 PTX 语法修改流程） |
+| **ptx-debug** | `docs/skills/ptx-debug/SKILL.md` | 关键词触发或手动加载 |
+
+### ptx-debug 技能触发关键词
+
+当用户提到以下关键词时，**自动加载 ptx-debug 技能**：
+
+**问题类型触发**:
+- "测试失败", "ctest 不通过", "单元测试失败"
+- "程序崩溃", "segfault", "SIGSEGV", "core dumped"
+- "内存错误", "非法访问", "越界", "内存泄漏"
+- "指令错误", "执行结果不对", "结果不对"
+- "性能慢", "性能优化", "benchmark"
+- "调试这个", "分析一下问题", "查看日志"
+
+**场景触发**:
+- 运行测试后失败
+- 查看日志文件
+- 使用调试配置
+- 分析内存访问
+- 跟踪指令执行
+
+**触发示例**:
+```
+用户："test_memory 测试失败了"
+→ 自动加载 ptx-debug 技能
+→ 选择 debug_config.ini
+→ 运行测试收集日志
+
+用户："程序崩溃了，帮我分析"
+→ 自动加载 ptx-debug 技能
+→ 选择 verbose_trace.ini
+→ 收集崩溃前日志
+
+用户："这个内存访问有问题"
+→ 自动加载 ptx-debug 技能
+→ 选择 memory_debug.ini
+→ 跟踪内存操作
+```
+
+### 手动加载技能
+
+**明确要求加载技能**:
+```
+"请加载 ptx-debug 技能分析这个问题"
+"使用 ptx-debug 技能调试这个测试"
+```
+
+**使用 skill 工具**:
+```bash
+# 在对话中要求
+skill name="ptx-debug"
+```
+
+---
+
 ## 🔍 LSP 自动触发规则 (C++/CUDA 分析)
 
 **当分析 C++/CUDA 文件时 (.cpp, .h, .cu, .cuh)**:
