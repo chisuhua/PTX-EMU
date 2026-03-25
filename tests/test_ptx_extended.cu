@@ -43,7 +43,7 @@ TEST_CASE("PTX: mul24.lo.u32", "[ptx][extended][mul24][lo][u32]") {
 TEST_CASE("PTX: mul24.hi.u32", "[ptx][extended][mul24][hi][u32]") {
     uint32_t result;
     test_ptx_mul24_hi_u32(0x00000FFF, 0x00000FFF, &result);
-    REQUIRE(result == 0x000000ff);
+    REQUIRE(result == 0xFF);
 }
 
 TEST_CASE("PTX: mul.lo.u32", "[ptx][extended][mul][lo][u32]") {
