@@ -508,6 +508,19 @@ std::any PtxVisitor::visitFunctionDecl(ptxparser::ptxParser::FunctionDeclContext
                 }
             }
 
+            // Handle array size in parameter declaration (e.g., .param .b8 x[2])
+            if (paramDecl->arraySize() && !paramDecl->arraySize()->IMMEDIATE().empty()) {
+                try {
+                    int array_size = std::stoi(paramDecl->arraySize()->IMMEDIATE(0)->getText());
+                    if (param.byteSize > 0) {
+                        param.byteSize *= array_size;
+                    }
+                    param.paramNum = array_size;
+                } catch (...) {
+                    // Failed to parse array size, keep default
+                }
+            }
+
             // If byteSize is still 0 here, the parameter size is unknown.
             // Leave it as 0 so setupKernelArguments() can detect and reject it.
             if (param.byteSize == 0) {

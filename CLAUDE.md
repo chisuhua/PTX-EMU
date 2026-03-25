@@ -8,6 +8,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Setup environment (required before building)
 . env.sh
 
+# Alternative: use the build script (Debug mode by default)
+./build.sh
+
 # Configure and build (Release)
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
@@ -26,6 +29,11 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo
 cmake --build build
 ```
 
+### ANTLR Grammar Development
+After sourcing `env.sh`, these aliases are available:
+- `antlr4` — runs ANTLR4 tool (java -Xmx500M -cp "$CLASSPATH" org.antlr.v4.Tool)
+- `grun` — runs TestRig for grammar debugging
+
 ## Test Commands
 
 ```bash
@@ -40,7 +48,6 @@ ctest -L mini      # Mini tests
 ctest -L ptx       # PTX instruction tests
 
 # Run single benchmark
-make -C build dummy
 make -C build RAY
 ```
 
@@ -112,6 +119,11 @@ GPUContext (top-level, global memory, SM list)
 - Add/edit implementation in `src/cudart/`
 - Ensure signature matches CUDA runtime API
 - Rebuild: `cmake --build build --target cudart`
+
+### Build Output
+- Executables: `build/bin/`
+- Fake libcudart.so: symlinked to `lib/` (also at `build/lib/`)
+- ANTLR generated sources: `build/antlr4_generated_src/`
 
 ### Debugging
 - Configure via `configs/config.ini` or `configs/debug_config.ini`
