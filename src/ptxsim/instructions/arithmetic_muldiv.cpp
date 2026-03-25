@@ -136,20 +136,27 @@ void MulHandler::processOperation(ThreadContext *context, void **operands,
 
     } else if (has_hi) {
         // hi: 取高半部分
+        // 注意：对于.mul.hi，即使操作数是.s32，也使用无符号乘法取高32位
+        // 然后将结果作为有符号整数返回
+        // 首先确保 u1 和 u2 被正确初始化为无符号值
         uint64_t full;
-        if (is_signed) {
-            // 有符号高32位：需算术右移
-            full = static_cast<uint64_t>(s1 * s2);
+        if (bytes == 4 && is_signed) {
+            // 对于 32 位有符号操作数，使用无符号乘法
+            uint32_t a, b;
+            std::memcpy(&a, operands[1], 4);
+            std::memcpy(&b, operands[2], 4);
+            full = static_cast<uint64_t>(a) * static_cast<uint64_t>(b);
         } else {
             full = u1 * u2;
         }
-
-        uint64_t hi = (bytes == 4)   ? (full >> 32)
-                      : (bytes == 2) ? (full >> 16)
-                      : (bytes == 1) ? (full >> 8)
-                                     : 0;
-
-        std::memcpy(dst, &hi, bytes);
+        uint32_t hi = full >> 32;
+        if (is_signed) {
+            // 有符号返回：将无符号高位作为有符号整数解释
+            int32_t hi_signed = static_cast<int32_t>(hi);
+            std::memcpy(dst, &hi_signed, 4);
+        } else {
+            std::memcpy(dst, &hi, 4);
+        }
 
     } else { // Q_LO or Q_NONE
         // lo: 取低半部分（普通乘法）
