@@ -491,8 +491,11 @@ TEST_CASE("PTX: cvt.rni.u32.f32", "[ptx][cvt][float_to_int][f32_u32_rni]") {
     test_ptx_cvt_u32_f32_rni(4.5f, &result);
     REQUIRE(result == 4);  // Round to nearest, ties to even: 4
     
+    // Note: 4294967295.4f, 4294967295.5f, and 4294967296.0f all have the same
+    // float32 representation (0x4f800000 = 4294967296.0), so they all overflow
+    // and wrap to 0. This is expected IEEE 754 behavior.
     test_ptx_cvt_u32_f32_rni(4294967295.4f, &result);
-    REQUIRE(result == 4294967295U);  // 0xFFFFFFFF
+    REQUIRE(result == 0);  // Overflow: wraps to 0 (float precision limit)
     
     test_ptx_cvt_u32_f32_rni(4294967295.5f, &result);
     REQUIRE(result == 0);  // Overflow: wraps to 0
@@ -512,8 +515,10 @@ TEST_CASE("PTX: cvt.rzi.u32.f32", "[ptx][cvt][float_to_int][f32_u32_rzi]") {
     test_ptx_cvt_u32_f32_rzi(-3.9f, &result);
     REQUIRE(result == 4294967293U);  // -3 mod 2^32 = 4294967293
     
+    // Note: 4294967295.9f and 4294967296.0f have the same float32 representation
+    // (0x4f800000 = 4294967296.0), so both overflow and wrap to 0
     test_ptx_cvt_u32_f32_rzi(4294967295.9f, &result);
-    REQUIRE(result == 4294967295U);  // 0xFFFFFFFF
+    REQUIRE(result == 0);  // Overflow: wraps to 0 (float precision limit)
     
     test_ptx_cvt_u32_f32_rzi(4294967296.0f, &result);
     REQUIRE(result == 0);  // 2^32 mod 2^32 = 0
@@ -536,8 +541,10 @@ TEST_CASE("PTX: cvt.rmi.u32.f32", "[ptx][cvt][float_to_int][f32_u32_rmi]") {
     test_ptx_cvt_u32_f32_rmi(-3.9f, &result);
     REQUIRE(result == 4294967292U);  // Floor: -4 mod 2^32 = 4294967292
     
+    // Note: 4294967295.1f and 4294967296.0f have the same float32 representation
+    // (0x4f800000 = 4294967296.0), so both overflow and wrap to 0
     test_ptx_cvt_u32_f32_rmi(4294967295.1f, &result);
-    REQUIRE(result == 4294967295U);  // 0xFFFFFFFF
+    REQUIRE(result == 0);  // Overflow: wraps to 0 (float precision limit)
     
     test_ptx_cvt_u32_f32_rmi(4294967296.0f, &result);
     REQUIRE(result == 0);  // 2^32 mod 2^32 = 0

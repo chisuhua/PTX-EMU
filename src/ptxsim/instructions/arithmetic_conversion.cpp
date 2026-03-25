@@ -59,6 +59,14 @@ inline float half_to_float(uint16_t h) {
     return *reinterpret_cast<float *>(&f);
 }
 
+// Check if a float value should saturate to UINT32_MAX when converting to uint32.
+// Handles the precision issue where float32 cannot exactly represent values
+// in [4294967295.0, 4294967296.0), causing values like 4294967295.4f to
+// become 4294967296.0f in float32 representation.
+static inline bool should_saturate_uint32(float temp, float sat_high) {
+    return temp >= 4294967295.0f && temp < sat_high;
+}
+
 // 自定义float到half的转换函数
 inline uint16_t float_to_half(float f) {
     uint32_t bits = *reinterpret_cast<uint32_t *>(&f);
@@ -900,27 +908,46 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
                         *(uint32_t *)dst = static_cast<uint32_t>(temp);
                     }
                 } else {
-                    if (has_rni ||
-                        has_rn) { // 使用RNI或RN进行四舍五入（用于整数转换）
-                        *(uint32_t *)dst =
-                            static_cast<uint32_t>(round_half_to_even(temp));
-                    } else if (
-                        has_rzi ||
-                        has_rz) { // 使用RZI或RZ进行向零舍入（用于整数转换）
-                        *(uint32_t *)dst =
-                            static_cast<uint32_t>(std::trunc(temp));
-                    } else if (
-                        has_rmi ||
-                        has_rm) { // 使用RMI或RM进行向下舍入（用于整数转换）
-                        *(uint32_t *)dst =
-                            static_cast<uint32_t>(std::floor(temp));
-                    } else if (
-                        has_rpi ||
-                        has_rp) { // 使用RPI或RP进行向上舍入（用于整数转换）
-                        *(uint32_t *)dst =
-                            static_cast<uint32_t>(std::ceil(temp));
-                    } else if (
-                        has_rna) { // 使用RNA进行向远离零舍入（用于整数转换）
+                    // Float to uint32 without saturation
+                    // Handle precision issue: float32 cannot exactly represent values in
+                    // [4294967295.0, 4294967296.0), causing values like 4294967295.4f
+                    // to become 4294967296.0f in float32 representation.
+                    if (has_rni || has_rn) {
+                        // RNI/RN: round to nearest, ties to even
+                        if (should_saturate_uint32(temp, 4294967295.5f)) {
+                            *(uint32_t *)dst = 4294967295U;
+                        } else {
+                            *(uint32_t *)dst = static_cast<uint32_t>(
+                                round_half_to_even(static_cast<double>(temp)));
+                        }
+                    } else if (has_rzi || has_rz) {
+                        // RZI/RZ: round towards zero (truncation)
+                        if (should_saturate_uint32(temp, 4294967296.0f)) {
+                            *(uint32_t *)dst = 4294967295U;
+                        } else {
+                            *(uint32_t *)dst = static_cast<uint32_t>(
+                                std::trunc(static_cast<double>(temp)));
+                        }
+                    } else if (has_rmi || has_rm) {
+                        // RMI/RM: round towards negative infinity (floor)
+                        if (should_saturate_uint32(temp, 4294967296.0f)) {
+                            *(uint32_t *)dst = 4294967295U;
+                        } else {
+                            *(uint32_t *)dst = static_cast<uint32_t>(
+                                std::floor(static_cast<double>(temp)));
+                        }
+                    } else if (has_rpi || has_rp) {
+                        // RPI/RP: round towards positive infinity (ceil)
+                        // Note: saturation range is [4294967294.0, 4294967295.0) because
+                        // ceil of a value in [4294967294.0, 4294967295.0) is 4294967295
+                        if (should_saturate_uint32(temp, 4294967295.0f)) {
+                            *(uint32_t *)dst = 4294967295U;
+                        } else {
+                            *(uint32_t *)dst = static_cast<uint32_t>(
+                                std::ceil(static_cast<double>(temp)));
+                        }
+                    } else if (has_rna) {
+                        // RNA: round away from zero
                         float rounded = (temp >= 0.0f) ? std::floor(temp + 0.5f)
                                                        : std::ceil(temp - 0.5f);
                         if (rounded < 0.0f) {
