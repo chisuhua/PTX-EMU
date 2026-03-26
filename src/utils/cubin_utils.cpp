@@ -5,9 +5,84 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <regex>
 
 #define PTX_ERROR(fmt, ...) PTX_ERROR_EMU(fmt, ##__VA_ARGS__)
 #define PTX_DEBUG(fmt, ...) PTX_DEBUG_EMU(fmt, ##__VA_ARGS__)
+
+// 移除PTX中的内联汇编块
+// NVVM生成PTX时会在内联汇编周围插入 "// begin inline asm" 和 "// end inline asm" 注释
+// 或者直接输出 {} 包裹的内联汇编块，解析器无法处理这些语法
+//
+// 内联汇编块的特征：
+// 1. 以 // begin inline asm 注释开始（如果有）
+// 2. 或者 { 出现在独立行，前面是 ; (指令结束)
+// 3. 块内包含PTX指令如 mov.s32, add.s32 等
+static std::string strip_inline_asm(const std::string& ptx_code) {
+    std::string result;
+    std::istringstream stream(ptx_code);
+    std::string line;
+    bool in_inline_asm = false;
+    bool in_brace_block = false;
+    // 跟踪上一个非空行是否以 ; 结尾
+    bool last_nonempty_ends_with_semi = false;
+
+    while (std::getline(stream, line)) {
+        // 移除前后空白进行检测
+        std::string trimmed = line;
+        // 去除前导空白
+        size_t start = 0;
+        while (start < trimmed.size() && (trimmed[start] == ' ' || trimmed[start] == '\t')) {
+            start++;
+        }
+        if (start > 0) {
+            trimmed = trimmed.substr(start);
+        }
+        // 去除尾部空白
+        while (!trimmed.empty() && (trimmed.back() == ' ' || trimmed.back() == '\t')) {
+            trimmed.pop_back();
+        }
+
+        // 跟踪非空行是否以 ; 结尾
+        if (!trimmed.empty()) {
+            last_nonempty_ends_with_semi = (trimmed.back() == ';');
+        }
+
+        // 检查内联汇编开始标记 (带注释的格式)
+        if (line.find("// begin inline asm") != std::string::npos) {
+            in_inline_asm = true;
+            continue;
+        }
+        // 检查内联汇编结束标记 (带注释的格式)
+        if (line.find("// end inline asm") != std::string::npos) {
+            in_inline_asm = false;
+            continue;
+        }
+
+        // 检查裸的大括号块 (无注释的格式)
+        // 只有当行只包含 { 且上一个非空行以 ; 结束时，才认为是内联汇编块
+        // 函数体的 { 前面是 ) 而不是 ;
+        if (trimmed == "{") {
+            if (last_nonempty_ends_with_semi) {
+                in_brace_block = true;
+                continue;  // 跳过内联汇编的 {
+            }
+            // 否则这是函数体的 {，继续正常处理（下面会添加到结果）
+        }
+        if (trimmed == "}" && in_brace_block) {
+            // 只有在 brace_block 内才跳过 }
+            in_brace_block = false;
+            continue;
+        }
+
+        // 如果不在内联汇编块中，保留该行
+        if (!in_inline_asm && !in_brace_block) {
+            result += line;
+            result += "\n";
+        }
+    }
+    return result;
+}
 
 std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
     char ptx_list_cmd[1024];
@@ -59,7 +134,9 @@ std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
     ptx_list_file.close();
 
     system("rm __ptx_list_temp__");
-    return ptx_codes;
+
+    // 移除内联汇编块，避免解析错误
+    return strip_inline_asm(ptx_codes);
 }
 
 std::vector<uint8_t> parse_cubin(const std::string &cubin_path) {

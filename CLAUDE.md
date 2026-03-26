@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 技能触发规则
+
+**重要**：本项目的自动技能触发规则定义在 [AGENTS.md](AGENTS.md) 中。在处理以下类型的任务时，必须先加载对应技能：
+
+| 任务类型 | 触发关键词 | 应加载技能 |
+|---------|-----------|----------|
+| PTX 语法解析错误 | `no viable alternative`, `ANTLR 错误`, `mismatched input` | ptx-grammar-modification |
+| 调试/测试失败 | `segfault`, `测试失败`, `ctest 不通过` | ptx-debug |
+
 ## Build Commands
 
 ```bash
