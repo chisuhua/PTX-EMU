@@ -55,26 +55,23 @@ inline bool compare(const T &a, const T &b, Qualifier op) {
 template <>
 inline bool compare<uint16_t>(const uint16_t &a, const uint16_t &b,
                               Qualifier op) {
-    if (is_nan(a) || is_nan(b)) {
-        return (op == Qualifier::Q_NE);
+    // uint16_t 应作为无符号整数进行比较，不转换为 float
+    switch (op) {
+    case Qualifier::Q_EQ:
+        return a == b;
+    case Qualifier::Q_NE:
+        return a != b;
+    case Qualifier::Q_LT:
+        return a < b; // 无符号比较
+    case Qualifier::Q_LE:
+        return a <= b;
+    case Qualifier::Q_GT:
+        return a > b;
+    case Qualifier::Q_GE:
+        return a >= b;
+    default:
+        return false;
     }
-    auto to_f32 = [](uint16_t h) -> float {
-        uint32_t sign = (static_cast<uint32_t>(h) >> 15) & 1;
-        uint32_t exp = (static_cast<uint32_t>(h) >> 10) & 0x1F;
-        uint32_t mant = h & 0x3FF;
-        uint32_t f32;
-        if (exp == 0x1F) {
-            f32 = (sign << 31) | (0xFFU << 23) | (mant << 13);
-        } else {
-            f32 = (sign << 31) | ((exp + 112) << 23) | (mant << 13);
-        }
-        float res;
-        std::memcpy(&res, &f32, 4);
-        return res;
-    };
-    float fa = to_f32(a), fb = to_f32(b);
-    // 复用 float 比较逻辑（需定义 _do_compare<float, OP>）
-    return compare(fa, fb, op);
 }
 
 #define DISPATCH(Q, T, op)                                                     \
