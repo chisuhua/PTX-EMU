@@ -472,12 +472,13 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
                       fa.id.c_str(), fa.baseSymbol.c_str(),
                       lookupName.c_str(), qualifiers.size());
 
-        // [FIX] Check if lookupName is a register name (for handling [%rd4+4] register base + immediate offset)
+        // [REFACT] Check if lookupName is a register name (for handling [%rd4+4] register base + immediate offset)
+        // NOTE: This assumes register names do not conflict with symbol names in name2Sym/name2Share
         RegOperand regOp;
         if (ptx::syntax::parseRegisterFromText(lookupName, regOp)) {
             // lookupName is a register, read base address from register bank
             PTX_DEBUG_EMU("Address base is a register: %s, fetching from register bank", lookupName.c_str());
-            
+
             // Determine qualifier for register data type
             Qualifier mem_qualifier = Qualifier::Q_UNKNOWN;
             for (const auto &q : qualifiers) {
@@ -491,21 +492,30 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
             if (mem_qualifier == Qualifier::Q_UNKNOWN) {
                 mem_qualifier = Qualifier::Q_U64; // default to 64-bit
             }
-            
+
             void *regAddr = acquire_register(regOp, {mem_qualifier});
             if (!regAddr) {
                 PTX_DEBUG_EMU("Failed to acquire register: %s", lookupName.c_str());
                 return nullptr;
             }
-            
+
+            // Infer expected register size from name prefix (rd=64-bit, others=32-bit)
+            // Note: This is a heuristic; actual size depends on SSA form and context
+            size_t expectedSize = (regOp.name == "rd") ? 8 : 4;
+            size_t actualSize = (mem_qualifier == Qualifier::Q_U32) ? 4 : 8;
+            if (expectedSize != actualSize) {
+                PTX_WARN_EMU("Register %s name prefix suggests %zu-bit but qualifier implies %zu-bit",
+                              lookupName.c_str(), expectedSize * 8, actualSize * 8);
+            }
+
             // Read register value as base address
-            uint64_t base_value = (mem_qualifier == Qualifier::Q_U32) 
-                ? *(uint32_t *)regAddr 
+            uint64_t base_value = (mem_qualifier == Qualifier::Q_U32)
+                ? *(uint32_t *)regAddr
                 : *(uint64_t *)regAddr;
-            
+
             ret = (void *)base_value;
             PTX_DEBUG_EMU("Register %s contains base address: 0x%lx", lookupName.c_str(), base_value);
-            
+
             // Skip symbol table lookup, jump directly to offset handling
             goto handle_offset;
         }
