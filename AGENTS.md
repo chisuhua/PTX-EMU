@@ -10,6 +10,12 @@
 
 ## 🎯 项目技能自动触发
 
+### 全局技能（~/.config/opencode/skills/）
+
+| 技能 | 触发词 | 适用场景 |
+|------|--------|---------|
+| **git-commit-review** | `/commit-review` | 审查最近 N 个 commit 的代码变更 |
+
 ### 项目技能位置
 
 **项目技能目录**: `docs/skills/`
