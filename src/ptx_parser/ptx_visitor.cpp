@@ -758,15 +758,19 @@ std::any PtxVisitor::visitInstruction(ptxparser::ptxParser::InstructionContext *
     
     if (ctx->label()) {
         if (!currentKernel) return nullptr;
-        
+
         StatementContext stmtCtx;
         stmtCtx.instructionText = ctx->getText();
         stmtCtx.type = S_DOLLOR;
-        
+
         DollarNameInstr dollar;
-        dollar.name = ctx->label()->ID()->getText();
+        if (ctx->label()->ID()) {
+            dollar.name = ctx->label()->ID()->getText();
+        } else {
+            return nullptr;
+        }
         stmtCtx.data = dollar;
-        
+
         currentKernel->kernelStatements.push_back(stmtCtx);
         return nullptr;
     }

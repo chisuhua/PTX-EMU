@@ -616,7 +616,6 @@ void PtxListener::exitLabel(ptxParser::LabelContext *ctx) {
 
     /* end */
     statementType = S_DOLLOR;
-    printf("DEBUG: Label parsed: '%s', statementType=%d\n", st->dollorName.c_str(), statementType);
 #ifdef LOG
     std::cout << __func__ << std::endl;
 #endif

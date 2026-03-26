@@ -527,11 +527,11 @@ void PtxInterpreter::setupLabels(std::map<std::string, int> &label2pc) {
         const auto &e = kernelContext->kernelStatements[i];
         if (e.type == S_DOLLOR) {
             const auto &s = std::get<DollarNameInstr>(e.data);
-            PTX_DEBUG_EMU("Registering label: '%s' at PC=%d", s.name.c_str(), i);
+            PTX_INFO_EMU("Registering label: '%s' at PC=%d", s.name.c_str(), i);
             label2pc[s.name] = i;
         }
     }
-    PTX_DEBUG_EMU("Total labels registered: %zu", label2pc.size());
+    PTX_INFO_EMU("Total labels registered: %zu", label2pc.size());
 }
 
 void PtxInterpreter::set_ptx_context(const PtxContext &ptx) {
