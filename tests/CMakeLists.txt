@@ -202,6 +202,7 @@ set_tests_properties(test_ptx_cvta PROPERTIES LABELS "ptx;cvta")
 
 add_standalone_test(test-ptx.cpp)
 add_standalone_test(test_printf.cu)
+add_standalone_test(test_addc_subc_handler.cpp)
 # add_standalone_test(test_wmma.cpp)
 # add_standalone_test(test_cc_register.cpp)
 # add_standalone_test(instructions/test_ptx_bra.cu)
