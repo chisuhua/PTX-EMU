@@ -12,9 +12,16 @@
 
 ### 全局技能（~/.config/opencode/skills/）
 
-| 技能 | 触发词 | 适用场景 |
-|------|--------|---------|
-| **git-commit-review** | `/commit-review` | 审查最近 N 个 commit 的代码变更 |
+| 技能 | 触发关键词/命令 | 适用场景 |
+|------|-----------------|---------|
+| **cmake-manage** | `CMakeLists.txt`, `add_executable`, `target_link_libraries`, `link error`, `undefined reference`, `vcpkg`, `conan` | CMake 构建系统、依赖管理 |
+| **cpp-architecture** | `模块依赖`, `架构图`, `类在哪里被使用` | C++ 架构分析 |
+| **cpp-debug** | `segfault`, `SIGSEGV`, `core dumped`, `死锁`, `hang`, `内存泄漏`, `valgrind`, `asan` | C++ 运行时故障排查 |
+| **cpp-modernize** | `现代 C++`, `智能指针`, `new/delete` | C++ 代码现代化重构 |
+| **cuda-ptx** | `CUDA`, `GPU`, `kernel`, `nsys`, `ncu`, `cuda-gdb`, `compute-sanitizer`, `PTX` | CUDA 开发与优化 |
+| **git-commit-review** | `/commit-review` | Git Commit 代码审查 |
+| **obsidian-markdown** | `wikilink`, `callout`, `frontmatter`, `Obsidian` | Obsidian 笔记编辑 |
+| **planning-with-files** | 复杂多步骤任务、研究项目 | 文件规划任务 |
 
 ### 项目技能位置
 
