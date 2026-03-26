@@ -22,6 +22,17 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
         instr.target = labelName;                                                        \
     }                                                                          \
                                                                                  \
+    /* 提取谓词条件 (可选) */                                                 \
+    if (ctx->predicate()) {                                                           \
+        if (ctx->predicate()->BANG()) {                                              \
+            instr.predicate_negated = true;                                          \
+        }                                                                              \
+        if (ctx->predicate()->operand()) {                                           \
+            std::string predName = ctx->predicate()->operand()->getText();            \
+            instr.predicate = predName;                                              \
+        }                                                                              \
+    }                                                                          \
+                                                                                 \
     stmtCtx.data = instr;                                                      \
     currentKernel->kernelStatements.push_back(stmtCtx);                        \
                                                                                  \
