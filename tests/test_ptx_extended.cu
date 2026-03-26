@@ -30,7 +30,7 @@ TEST_CASE("PTX: subc.b32 with borrow", "[ptx][extended][subc][b32]") {
     uint32_t result;
     bool borrow_out;
     test_ptx_subc_u32(0, 1, true, &result, &borrow_out);
-    REQUIRE(result == 0xFFFFFFFF);
+    REQUIRE(result == 0xFFFFFFFE);  // 0 - 1 - 1 = -2 = 0xFFFFFFFE
     REQUIRE(borrow_out == true);
 }
 
