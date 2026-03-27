@@ -232,7 +232,9 @@ set(PTX_BASIC_TESTS
     # aligned-types all-pairs-distance bitonic bfs backprop RAY cfd)
 
 set(PTX_EXTRA_TESTS
-    dummy-wmma)
+    dummy-wmma
+    test_syncthreads
+    test_warp_divergence)
 
 # 定义全部测试 (包含基础测试和其他复杂测试)
 set(PTX_ALL_TESTS 
@@ -333,8 +335,9 @@ foreach(TEST_NAME ${PTX_ALL_TESTS})
 
     # 设置工作目录和GPU配置环境变量
     list(FIND PTX_BASIC_TESTS ${TEST_NAME} IS_BASIC_TEST)
-    if(NOT IS_BASIC_TEST EQUAL -1)
-        # 基础测试（simpleGEMM等）需要A100配置和工作目录为项目根目录
+    list(FIND PTX_EXTRA_TESTS ${TEST_NAME} IS_EXTRA_TEST)
+    if((NOT IS_BASIC_TEST EQUAL -1) OR (NOT IS_EXTRA_TEST EQUAL -1))
+        # 基础测试和额外测试需要A100配置和工作目录为项目根目录
         set_tests_properties(${TEST_NAME} PROPERTIES
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             ENVIRONMENT "PTX_EMU_GPU_CONFIG=ampere_a100.json")
