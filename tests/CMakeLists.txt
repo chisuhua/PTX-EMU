@@ -234,7 +234,8 @@ set(PTX_BASIC_TESTS
 set(PTX_EXTRA_TESTS
     dummy-wmma
     test_syncthreads
-    test_warp_divergence)
+    test_warp_divergence
+    test_shared_memory)
 
 # 定义全部测试 (包含基础测试和其他复杂测试)
 set(PTX_ALL_TESTS 
