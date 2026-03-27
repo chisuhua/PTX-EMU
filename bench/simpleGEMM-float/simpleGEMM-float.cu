@@ -1,5 +1,7 @@
 #include <cassert>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <functional>
 #include <vector>
 
@@ -208,5 +210,17 @@ bool benchmark(int M,int N,int K){
 }
 
 int main(){
-    return !benchmark<float,float>(128,128,K_DEFAULT);
+    // 检查是否使用小GridDim模式（用于快速功能测试）
+    // 小模式: M=N=32 -> GridDim=4 blocks
+    // 大模式: M=N=128 -> GridDim=64 blocks
+    const char* test_mode = std::getenv("PTX_EMU_GEMM_TEST_MODE");
+    bool small_mode = (test_mode == nullptr) || (strcmp(test_mode, "small") == 0);
+
+    if (small_mode) {
+        printf("[TEST MODE: small GridDim]\n");
+        return !benchmark<float,float>(16, 16, K_DEFAULT);
+    } else {
+        printf("[TEST MODE: large GridDim]\n");
+        return !benchmark<float,float>(128, 128, K_DEFAULT);
+    }
 }
