@@ -124,9 +124,12 @@ void WarpContext::set_active_mask(int lane_id, bool active) {
     }
 }
 
-bool WarpContext::is_finished() const { 
-    // 修改逻辑：不只是检查active_count，而是检查是否所有线程都已退出
-    return is_all_threads_exited(); 
+bool WarpContext::is_finished() const {
+    // A warp is finished when active_count is 0 (no active threads)
+    // Note: This is independent of is_all_threads_exited() which checks
+    // the threads vector. A default WarpContext has active_count=32 but
+    // an empty threads vector until threads are properly added.
+    return active_count == 0;
 }
 
 bool WarpContext::is_all_threads_exited() const {
