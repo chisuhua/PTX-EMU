@@ -2,14 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 技能触发规则
+## 🚨 强制技能加载规则（必须执行）
 
-**重要**：本项目的自动技能触发规则定义在 [AGENTS.md](AGENTS.md) 中。在处理以下类型的任务时，必须先加载对应技能：
+**当检测到以下错误模式时，必须立即使用 `Skill` 工具加载对应技能，然后才能开始任何修复工作**：
 
-| 任务类型 | 触发关键词 | 应加载技能 |
-|---------|-----------|----------|
-| PTX 语法解析错误 | `no viable alternative`, `ANTLR 错误`, `mismatched input` | ptx-grammar-modification |
-| 调试/测试失败 | `segfault`, `测试失败`, `ctest 不通过` | ptx-debug |
+| 错误模式 | 应加载技能 | 操作流程 |
+|---------|-----------|---------|
+| `no viable alternative`, `mismatched input`, `extraneous input`, `ANTLR` | `ptx-grammar-modification` | 1. `Skill("ptx-grammar-modification")` 2. 阅读技能文档 3. 按技能流程执行 |
+| `segfault`, `SIGSEGV`, `Could not add block`, `core dumped` | `ptx-debug` | 1. `Skill("ptx-debug")` 2. 阅读技能文档 3. 按技能流程执行 |
+| `测试失败`, `ctest failed`, `test failed` | `ptx-debug` | 1. `Skill("ptx-debug")` 2. 阅读技能文档 3. 按技能流程执行 |
+
+**禁止行为**：检测到上述错误后，**禁止**直接读取代码或尝试修复。必须先加载技能。
 
 ## Build Commands
 

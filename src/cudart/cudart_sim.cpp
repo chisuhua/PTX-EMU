@@ -76,9 +76,17 @@ void initialize_environment() {
         ptxsim::DebugConfig::get().load_from_ini_section(debugger_section);
 
         // 从INI配置文件中读取GPU配置文件路径
+        // 环境变量 PTX_EMU_GPU_CONFIG 可覆盖配置文件设置
         std::string gpu_config_filename;
         auto gpu_section = ini.sections["gpu"];
         inipp::get_value(gpu_section, "gpu_config_file", gpu_config_filename);
+
+        // 检查环境变量覆盖
+        const char* env_config = std::getenv("PTX_EMU_GPU_CONFIG");
+        if (env_config != nullptr && strlen(env_config) > 0) {
+            gpu_config_filename = env_config;
+            PTX_INFO_EMU("GPU config overridden by PTX_EMU_GPU_CONFIG=%s", gpu_config_filename.c_str());
+        }
         if (!gpu_config_filename.empty()) {
             // 创建GPUContext并直接加载JSON配置
             g_gpu_context =

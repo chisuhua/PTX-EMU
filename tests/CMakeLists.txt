@@ -123,6 +123,7 @@ function(add_standalone_test TEST_NAME)
     set_tests_properties(${TEST_TARGET_NAME} PROPERTIES
         PASS_REGULAR_EXPRESSION "PASS"
         FAIL_REGULAR_EXPRESSION "Error|Failed"
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
 endfunction()
 
@@ -329,6 +330,15 @@ foreach(TEST_NAME ${PTX_ALL_TESTS})
         
     # 添加测试
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+
+    # 设置工作目录和GPU配置环境变量
+    list(FIND PTX_BASIC_TESTS ${TEST_NAME} IS_BASIC_TEST)
+    if(NOT IS_BASIC_TEST EQUAL -1)
+        # 基础测试（simpleGEMM等）需要A100配置和工作目录为项目根目录
+        set_tests_properties(${TEST_NAME} PROPERTIES
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            ENVIRONMENT "PTX_EMU_GPU_CONFIG=ampere_a100.json")
+    endif()
         
     # 设置属性，标记哪些是基础测试
     list(FIND PTX_MINI_TESTS ${TEST_NAME} IS_MINI_TEST)

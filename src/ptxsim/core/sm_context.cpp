@@ -61,7 +61,11 @@ bool SMContext::add_block(std::unique_ptr<CTAContext> block) {
     size_t required_shared_mem = block->get_shared_memory_requirement();
     int required_warps = block->get_warp_count();
 
-    // 2. 检查资源是否足够
+    // 2. 分配reservation_id并设置到CTAContext
+    int reservation_id = current_reservation_id_++;
+    block->set_reservation_id(reservation_id);
+
+    // 3. 检查资源是否足够
     if (!reserve_resources(required_shared_mem, required_warps)) {
         PTX_DEBUG_EMU("Failed to reserve resources for block: "
                       "shared_mem=%zu, warps=%d",
@@ -358,12 +362,6 @@ bool SMContext::reserve_resources(size_t shared_mem_size, int warp_count) {
         return false;
     }
 
-    // 分配预留ID
-    int reservation_id = current_reservation_id_++;
-
-    // 更新CTAContext的预留ID
-    // 注意：block参数是CTAContext指针，但我们不能直接访问其reservation_id_成员
-    // 因为这是私有成员，所以我们需要在调用reserve_resources之前设置reservation_id
     return true;
 }
 

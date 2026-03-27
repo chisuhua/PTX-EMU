@@ -150,10 +150,17 @@ bool GPUContext::execute_kernel_internal(
         // 尝试将CTA添加到一个可用的SM
         bool added = false;
         for (auto &sm : sms) {
-            if (sm->add_block(std::move(cta))) { // 使用std::move转移所有权
-                added = true;
+            // 创建临时unique_ptr来接收add_block的结果
+            // 如果add_block返回false，临时变量会在循环结束时自动释放
+            std::unique_ptr<CTAContext> block_to_add(std::move(cta));
+            added = sm->add_block(std::move(block_to_add));
+            if (added) {
                 break;
             }
+            // add_block失败，需要重新创建cta并继续尝试下一个SM
+            cta = std::make_unique<CTAContext>();
+            cta->init(gridDim, blockDim, blockIdx, statements, &name2Sym, label2pc,
+                      request.local_memory_base, request.local_mem_per_thread);
         }
 
         if (!added) {

@@ -408,6 +408,7 @@ IMMEDIATE
     | DIGIT+ [eE] [+-]? DIGIT+ [fF]?                 // 1e10, 1e+10f
     | '0x' HEX_DIGIT+                                // 0x1a, 0XFF (hex integer)
     | '0d' HEX_DIGIT+                                // 0d40286B851EB851EC (hex double-precision float)
+    | '0f' HEX_DIGIT+                                // 0f1a2b3c4d (hex single-precision float)
     | DIGIT+                                         // 123, 0
     ;
 

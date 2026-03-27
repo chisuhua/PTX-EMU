@@ -54,7 +54,7 @@ sectionDirective
 
 // --- Pragma ---
 pragmaDirective
-    : PRAGMA ID (ASSIGN STRING)? SEMI
+    : PRAGMA (ID | STRING) (ASSIGN (ID | STRING))* SEMI
     ;
 
 // --- ABI Preserve (PTX 9.0+) ---

@@ -7,7 +7,7 @@ options {
 import ptxOperands, ptxDeclarations;
 
 funcBody
-    : LEFT_BRACE (regDecl | variableDecl | instruction)* RIGHT_BRACE
+    : LEFT_BRACE (pragmaDirective | regDecl | variableDecl | instruction)* RIGHT_BRACE
     ;
 
 regDecl
