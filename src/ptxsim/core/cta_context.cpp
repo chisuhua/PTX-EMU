@@ -23,7 +23,8 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
                       std::vector<StatementContext> &statements,
                       std::map<std::string, Symtable *> *name2Sym,
                       std::map<std::string, int> &label2pc,
-                      void *local_memory_base, size_t local_mem_per_thread) {
+                      void *local_memory_base, size_t local_mem_per_thread,
+                      size_t dynamic_shared_mem_size) {
 
     threadNum = BlockDim.x * BlockDim.y * BlockDim.z;
     curExeWarpId = 0;
@@ -35,24 +36,29 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
     this->BlockDim = BlockDim;
     this->blockIdx = blockIdx;
 
-    // 保存statements引用，用于后续构建共享内存符号表
     this->init_statements = &statements;
 
-    // 计算共享内存大小，遍历PTX语句查找.shared声明
+    // 计算静态共享内存大小（从 PTX 声明）
     sharedMemBytes = 0;
 
     for (const auto &stmt : statements) {
         if (stmt.type == S_SHARED) {
             const DeclarationInstr &sharedStmt =
                 std::get<DeclarationInstr>(stmt.data);
-            // 计算变量大小
             size_t element_size = Q2bytes(sharedStmt.dataType);
             size_t var_size = element_size * sharedStmt.array_size;
             sharedMemBytes += var_size;
         }
     }
 
-    // 使用从SMContext传入的本地内存大小信息
+    // 添加动态共享内存
+    if (dynamic_shared_mem_size > 0) {
+        sharedMemBytes += dynamic_shared_mem_size;
+        PTX_DEBUG_EMU("Dynamic shared memory: +%zu bytes (static=%zu, total=%zu)",
+                      dynamic_shared_mem_size, sharedMemBytes - dynamic_shared_mem_size,
+                      sharedMemBytes);
+    }
+
     this->localMemBytesPerThread = local_mem_per_thread;
 
     // 预先创建共享内存符号表的结构，但不分配实际内存空间

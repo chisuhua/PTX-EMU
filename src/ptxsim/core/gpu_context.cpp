@@ -145,7 +145,7 @@ bool GPUContext::execute_kernel_internal(
         // 创建CTAContext
         auto cta = std::make_unique<CTAContext>();
         cta->init(gridDim, blockDim, blockIdx, statements, &name2Sym, label2pc,
-                  request.local_memory_base, request.local_mem_per_thread);
+                  request.local_memory_base, request.local_mem_per_thread, request.shared_mem_size);
 
         // 尝试将CTA添加到一个可用的SM
         bool added = false;
@@ -160,7 +160,7 @@ bool GPUContext::execute_kernel_internal(
             // add_block失败，需要重新创建cta并继续尝试下一个SM
             cta = std::make_unique<CTAContext>();
             cta->init(gridDim, blockDim, blockIdx, statements, &name2Sym, label2pc,
-                      request.local_memory_base, request.local_mem_per_thread);
+                      request.local_memory_base, request.local_mem_per_thread, request.shared_mem_size);
         }
 
         if (!added) {

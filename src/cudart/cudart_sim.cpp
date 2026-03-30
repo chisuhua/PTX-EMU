@@ -280,7 +280,15 @@ cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim, dim3 blockDim,
     Dim3 gridDim3(gridDim.x, gridDim.y, gridDim.z);
     Dim3 blockDim3(blockDim.x, blockDim.y, blockDim.z);
 
-    // 调用PtxInterpreter的launch函数，传递sharedMem参数
+    // 验证共享内存大小是否超出硬件限制
+    const size_t MAX_SHARED_MEM = 49152; // 48KB 默认限制
+    if (sharedMem > MAX_SHARED_MEM) {
+        std::cerr << "Warning: cudaLaunchKernel: sharedMem " << sharedMem 
+                  << " exceeds limit " << MAX_SHARED_MEM << ", truncating" << std::endl;
+        sharedMem = MAX_SHARED_MEM;
+    }
+
+    // 调用 PtxInterpreter 的 launch 函数，传递 sharedMem 参数
     g_ptx_interpreter->launchPtxInterpreter(
         g_ptx_interpreter->get_ptx_context(), func2name[(uint64_t)func], args,
         gridDim3, blockDim3, sharedMem);
