@@ -82,7 +82,8 @@
     class Name##Handler : public AtomicPipelineHandler { \
     public: \
         void processAtomicOperation(ThreadContext *context, void **operands, \
-                                   const std::vector<Qualifier> &qualifiers) override; \
+                                   const std::vector<Qualifier> &qualifiers, \
+                                   const std::vector<char> *operand_is_immediate = nullptr) override; \
     };
 
 // WMMA instruction handlers — RECOMMENDED
