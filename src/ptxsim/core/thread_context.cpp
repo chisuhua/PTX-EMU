@@ -49,6 +49,7 @@ void ThreadContext::init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim,
     this->next_pc = 0;
     this->state = RUN;
     operand_collected.resize(4); // max operands perf instruction reserved is 4
+    operand_is_immediate_.resize(4);
 
     // 计算并设置warp_id和lane_id
     int thread_id = ThreadIdx.x + ThreadIdx.y * BlockDim.x +
@@ -210,6 +211,8 @@ void ThreadContext::reset() {
     clear_temporaries();
     operand_collected.clear();
     operand_collected.resize(4);
+    operand_is_immediate_.clear();
+    operand_is_immediate_.resize(4);
 }
 
 // 添加新的执行方法
@@ -335,6 +338,7 @@ void ThreadContext::collect_operands(
     // 扩展operand_collected向量以容纳所有操作数
     if (operand_collected.size() < operands.size()) {
         operand_collected.resize(operands.size());
+        operand_is_immediate_.resize(operands.size());
     }
 
     for (int i = 0; i < operands.size(); i++) {
@@ -345,6 +349,11 @@ void ThreadContext::collect_operands(
 
         trace_status(ptxsim::log_level::debug, "thread", "Collect: %s ",
                      operands[i].toString(bytes).c_str());
+
+        // Track whether this operand is immediate
+        // For immediate operands: operand_collected[i] is a pointer to the immediate value
+        // For register/variable operands: operand_collected[i] is the actual value/address
+        operand_is_immediate_[i] = (operands[i].kind() == OperandKind::IMM);
 
         // 获取当前操作数的物理地址
         operand_collected[i] = operands[i].operand_phy_addr;

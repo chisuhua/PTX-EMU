@@ -119,6 +119,11 @@ public:
     std::vector<void *>
         operand_collected; // collect operand addr  from BASE_INSTR operands
 
+    // Track which operands are immediate (vs register/variable)
+    // For immediate operands, operand_collected[i] is a pointer to the immediate value
+    // For register/variable operands, operand_collected[i] is the actual value/address
+    std::vector<bool> operand_is_immediate_;
+
     // 新增：打印指令状态
     void print_instruction_status(StatementContext &stmt);
 
