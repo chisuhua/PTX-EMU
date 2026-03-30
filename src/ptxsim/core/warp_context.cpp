@@ -57,9 +57,13 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt) {
                 thread->set_pc(pc_stacks[i].back());
             }
 
-            // 检查线程状态，如果是BAR_SYNC状态，说明线程在等待barrier，跳过执行
+            // 检查线程状态，如果是BAR_SYNC状态，说明线程在等待barrier
             if (thread->get_state() == BAR_SYNC) {
-                continue; // 跳过处于barrier同步状态的线程
+                // 仍然需要检查barrier是否已满足（可能有其他线程已到达）
+                if (sm_context_ != nullptr) {
+                    sm_context_->synchronize_barrier(thread->bar_id, thread);
+                }
+                continue; // 跳过指令执行，继续下一个线程
             }
 
             // 检查当前lane是否启用trace，以及trace_instruction_status是否启用
