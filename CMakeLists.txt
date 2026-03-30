@@ -42,6 +42,12 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 find_package(Java COMPONENTS Runtime REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 
+find_program(CCACHE_FOUND ccache)
+if(CCACHE_FOUND)
+    set(CMAKE_C_COMPILER_LAUNCHER "ccache")
+    set(CMAKE_CXX_COMPILER_LAUNCHER "ccache")
+endif()
+
 # CUDA 架构（可选）
 set(DEFAULT_CUDA_ARCH "100" CACHE STRING "Default CUDA architecture")
 
