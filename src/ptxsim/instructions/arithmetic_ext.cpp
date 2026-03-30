@@ -10,7 +10,7 @@
 
 void AddcHandler::processOperation(ThreadContext *context, void **operands,
                                     const std::vector<Qualifier> &qualifiers,
-                                    const std::vector<bool> *operand_is_immediate) {
+                                    const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
@@ -241,7 +241,7 @@ void AddcHandler::processOperation(ThreadContext *context, void **operands,
 
 void SubcHandler::processOperation(ThreadContext *context, void **operands,
                                     const std::vector<Qualifier> &qualifiers,
-                                    const std::vector<bool> *operand_is_immediate) {
+                                    const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
@@ -463,7 +463,7 @@ void SubcHandler::processOperation(ThreadContext *context, void **operands,
 
 void Mul24Handler::processOperation(ThreadContext *context, void **operands,
                                      const std::vector<Qualifier> &qualifiers,
-                                     const std::vector<bool> *operand_is_immediate) {
+                                     const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
@@ -508,7 +508,7 @@ void Mul24Handler::processOperation(ThreadContext *context, void **operands,
 
 void Mad24Handler::processOperation(ThreadContext *context, void **operands,
                                      const std::vector<Qualifier> &qualifiers,
-                                     const std::vector<bool> *operand_is_immediate) {
+                                     const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_signed = TypeUtils::is_signed_type(qualifiers);
@@ -558,7 +558,7 @@ void Mad24Handler::processOperation(ThreadContext *context, void **operands,
 
 void FmaHandler::processOperation(ThreadContext *context, void **operands,
                                    const std::vector<Qualifier> &qualifiers,
-                                   const std::vector<bool> *operand_is_immediate) {
+                                   const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);

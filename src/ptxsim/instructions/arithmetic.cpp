@@ -399,7 +399,7 @@
 
 void AddHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers,
-                            const std::vector<bool> *operand_is_immediate) {
+                            const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
@@ -419,7 +419,7 @@ void AddHandler::processOperation(ThreadContext *context, void **operands,
 
 void SubHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers,
-                            const std::vector<bool> *operand_is_immediate) {
+                            const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
@@ -439,7 +439,7 @@ void SubHandler::processOperation(ThreadContext *context, void **operands,
 
 void NegHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers,
-                            const std::vector<bool> *operand_is_immediate) {
+                            const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
@@ -457,7 +457,7 @@ void NegHandler::processOperation(ThreadContext *context, void **operands,
 
 void AbsHandler::processOperation(ThreadContext *context, void **operands,
                             const std::vector<Qualifier> &qualifiers,
-                            const std::vector<bool> *operand_is_immediate) {
+                            const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);

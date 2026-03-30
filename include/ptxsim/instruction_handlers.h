@@ -74,7 +74,7 @@
     public: \
         void processOperation(ThreadContext *context, void **operands, \
                              const std::vector<Qualifier> &qualifiers, \
-                             const std::vector<bool> *operand_is_immediate = nullptr) override; \
+                             const std::vector<char> *operand_is_immediate = nullptr) override; \
     };
 
 // Atomic instruction handlers — RECOMMENDED

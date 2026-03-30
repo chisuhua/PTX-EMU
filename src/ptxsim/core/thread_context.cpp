@@ -48,8 +48,8 @@ void ThreadContext::init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim,
     this->pc = 0;
     this->next_pc = 0;
     this->state = RUN;
-    operand_collected.resize(4); // max operands perf instruction reserved is 4
-    operand_is_immediate_.resize(4);
+    operand_collected.resize(ThreadContext::MAX_OPERANDS_PER_INSTR);
+    operand_is_immediate_.resize(ThreadContext::MAX_OPERANDS_PER_INSTR);
 
     // 计算并设置warp_id和lane_id
     int thread_id = ThreadIdx.x + ThreadIdx.y * BlockDim.x +
@@ -210,9 +210,9 @@ void ThreadContext::reset() {
     // 清空临时数据（寄存器管理由RegisterBankManager负责，无需本地重置）
     clear_temporaries();
     operand_collected.clear();
-    operand_collected.resize(4);
+    operand_collected.resize(ThreadContext::MAX_OPERANDS_PER_INSTR);
     operand_is_immediate_.clear();
-    operand_is_immediate_.resize(4);
+    operand_is_immediate_.resize(ThreadContext::MAX_OPERANDS_PER_INSTR);
 }
 
 // 添加新的执行方法

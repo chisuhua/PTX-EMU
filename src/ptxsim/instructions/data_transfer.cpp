@@ -6,7 +6,7 @@
 
 void MovHandler::processOperation(ThreadContext *context, void **operands,
                                    const std::vector<Qualifier> &qualifiers,
-                                   const std::vector<bool> *operand_is_immediate) {
+                                   const std::vector<char> *operand_is_immediate) {
     void *dst = operands[0];
     void *src = operands[1];
 
@@ -16,7 +16,7 @@ void MovHandler::processOperation(ThreadContext *context, void **operands,
 
 void CvtaHandler::processOperation(ThreadContext *context, void **operands,
                                     const std::vector<Qualifier> &qualifiers,
-                                    const std::vector<bool> *operand_is_immediate) {
+                                    const std::vector<char> *operand_is_immediate) {
     void *to = operands[0];
     void *from = operands[1];
 
