@@ -95,12 +95,14 @@ protected:
     bool executeOperation(ThreadContext *context, StatementContext &stmt) override;
     bool commitResults(ThreadContext *context, StatementContext &stmt) override;
     
-    virtual void processOperation(ThreadContext *context, void **operands, 
-                                const std::vector<Qualifier> &qualifiers) {
+    virtual void processOperation(ThreadContext *context, void **operands,
+                                const std::vector<Qualifier> &qualifiers,
+                                const std::vector<bool> *operand_is_immediate = nullptr) {
         // Default implementation does nothing
         (void)context;
         (void)operands;
         (void)qualifiers;
+        (void)operand_is_immediate;
     }
 };
 

@@ -154,7 +154,8 @@ bool GenericPipelineHandler::prepareOperands(ThreadContext *context, StatementCo
 
 bool GenericPipelineHandler::executeOperation(ThreadContext *context, StatementContext &stmt) {
     const GenericInstr &instr = std::get<GenericInstr>(stmt.data);
-    processOperation(context, &(context->operand_collected[0]), instr.qualifiers);
+    processOperation(context, &(context->operand_collected[0]), instr.qualifiers,
+                     &context->operand_is_immediate_);
     return true;
 }
 

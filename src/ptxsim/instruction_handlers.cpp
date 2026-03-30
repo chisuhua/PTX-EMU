@@ -84,11 +84,13 @@
 // These are implemented in separate .cpp files
 #define IMPLEMENT_GENERIC_INSTR_HANDLER(Name) \
     __attribute__((weak)) void Name##Handler::processOperation(ThreadContext *context, void **operands, \
-                                        const std::vector<Qualifier> &qualifiers) { \
+                                        const std::vector<Qualifier> &qualifiers, \
+                                        const std::vector<bool> *operand_is_immediate) { \
         /* Implementation is in separate .cpp file */ \
         (void)context; \
         (void)operands; \
         (void)qualifiers; \
+        (void)operand_is_immediate; \
         return; \
     };
 

@@ -10,7 +10,8 @@
 #include <type_traits>
 
 void MulHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<bool> *operand_is_immediate) {
     // === 解析类型和修饰符 ===
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
@@ -177,7 +178,8 @@ void MulHandler::processOperation(ThreadContext *context, void **operands,
 }
 
 void DivHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<bool> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
@@ -195,7 +197,8 @@ void DivHandler::processOperation(ThreadContext *context, void **operands,
 }
 
 void MadHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<bool> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
@@ -406,7 +409,8 @@ void MadHandler::processOperation(ThreadContext *context, void **operands,
 }
 
 void MinHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<bool> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
@@ -430,7 +434,8 @@ void MinHandler::processOperation(ThreadContext *context, void **operands,
 }
 
 void MaxHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<bool> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);
@@ -454,7 +459,8 @@ void MaxHandler::processOperation(ThreadContext *context, void **operands,
 }
 
 void RemHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers) {
+                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<bool> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
     bool is_float = TypeUtils::is_float_type(qualifiers);

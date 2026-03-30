@@ -73,7 +73,8 @@
     class Name##Handler : public GenericPipelineHandler { \
     public: \
         void processOperation(ThreadContext *context, void **operands, \
-                             const std::vector<Qualifier> &qualifiers) override; \
+                             const std::vector<Qualifier> &qualifiers, \
+                             const std::vector<bool> *operand_is_immediate = nullptr) override; \
     };
 
 // Atomic instruction handlers — RECOMMENDED

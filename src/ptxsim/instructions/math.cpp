@@ -48,7 +48,8 @@ void process_unary_math(void *dst, void *src, int bytes, bool is_float, OpFunc o
 
 // Math instruction handlers - must be class methods
 void SqrtHandler::processOperation(ThreadContext *context, void **operands,
-                                    const std::vector<Qualifier> &qualifiers) {
+                                    const std::vector<Qualifier> &qualifiers,
+                                    const std::vector<bool> *operand_is_immediate) {
     void *dst = operands[0];
     void *src = operands[1];
     int bytes = getBytes(qualifiers);
@@ -58,7 +59,8 @@ void SqrtHandler::processOperation(ThreadContext *context, void **operands,
 }
 
 void SinHandler::processOperation(ThreadContext *context, void **operands,
-                                   const std::vector<Qualifier> &qualifiers) {
+                                   const std::vector<Qualifier> &qualifiers,
+                                   const std::vector<bool> *operand_is_immediate) {
     void *dst = operands[0];
     void *src = operands[1];
     int bytes = getBytes(qualifiers);
@@ -68,7 +70,8 @@ void SinHandler::processOperation(ThreadContext *context, void **operands,
 }
 
 void CosHandler::processOperation(ThreadContext *context, void **operands,
-                                   const std::vector<Qualifier> &qualifiers) {
+                                   const std::vector<Qualifier> &qualifiers,
+                                   const std::vector<bool> *operand_is_immediate) {
     void *dst = operands[0];
     void *src = operands[1];
     int bytes = getBytes(qualifiers);
@@ -78,7 +81,8 @@ void CosHandler::processOperation(ThreadContext *context, void **operands,
 }
 
 void RcpHandler::processOperation(ThreadContext *context, void **operands,
-                                   const std::vector<Qualifier> &qualifiers) {
+                                   const std::vector<Qualifier> &qualifiers,
+                                   const std::vector<bool> *operand_is_immediate) {
     void *dst = operands[0];
     void *src = operands[1];
     int bytes = getBytes(qualifiers);
@@ -90,7 +94,8 @@ void RcpHandler::processOperation(ThreadContext *context, void **operands,
 }
 
 void Lg2Handler::processOperation(ThreadContext *context, void **operands,
-                                   const std::vector<Qualifier> &qualifiers) {
+                                   const std::vector<Qualifier> &qualifiers,
+                                   const std::vector<bool> *operand_is_immediate) {
     void *dst = operands[0];
     void *src = operands[1];
     int bytes = getBytes(qualifiers);
@@ -101,7 +106,8 @@ void Lg2Handler::processOperation(ThreadContext *context, void **operands,
 }
 
 void Ex2Handler::processOperation(ThreadContext *context, void **operands,
-                                   const std::vector<Qualifier> &qualifiers) {
+                                   const std::vector<Qualifier> &qualifiers,
+                                   const std::vector<bool> *operand_is_immediate) {
     void *dst = operands[0];
     void *src = operands[1];
     int bytes = getBytes(qualifiers);
@@ -112,7 +118,8 @@ void Ex2Handler::processOperation(ThreadContext *context, void **operands,
 }
 
 void RsqrtHandler::processOperation(ThreadContext *context, void **operands,
-                                     const std::vector<Qualifier> &qualifiers) {
+                                     const std::vector<Qualifier> &qualifiers,
+                                     const std::vector<bool> *operand_is_immediate) {
     void *dst = operands[0];
     void *src = operands[1];
     int bytes = getBytes(qualifiers);

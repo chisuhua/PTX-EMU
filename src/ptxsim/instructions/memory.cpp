@@ -5,7 +5,8 @@
 #include <iostream>
 
 void LdHandler::processOperation(ThreadContext *context, void *op[2],
-                           const std::vector<Qualifier> &qualifier) {
+                           const std::vector<Qualifier> &qualifier,
+                           const std::vector<bool> *operand_is_immediate) {
   void *dst = op[0];
   void *host_ptr = op[1]; // ← 这是 cudaMalloc 返回的主机指针
 
@@ -58,7 +59,8 @@ void LdHandler::processOperation(ThreadContext *context, void *op[2],
 }
 
 void StHandler::processOperation(ThreadContext *context, void *op[2],
-                           const std::vector<Qualifier> &qualifiers) {
+                           const std::vector<Qualifier> &qualifiers,
+                           const std::vector<bool> *operand_is_immediate) {
   void *host_ptr = op[0]; // ← 目标地址：cudaMalloc 返回的主机指针
   void *src = op[1];      // ← 源数据：寄存器或立即数地址
 
