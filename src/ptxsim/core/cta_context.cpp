@@ -62,8 +62,8 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
             const DeclarationInstr &ss = std::get<DeclarationInstr>(stmt.data);
             // 使用new操作符创建Symtable实例
             Symtable *s = new Symtable();
-            s->byteNum = Q2bytes(ss.dataType) * (*ss.size);
-            s->elementNum = *ss.size;
+            s->byteNum = Q2bytes(ss.dataType) * ss.array_size;
+            s->elementNum = ss.array_size;
             s->name = ss.name;
             s->symType = ss.dataType; // 假设dataType[0]是元素类型
 
@@ -276,7 +276,7 @@ void CTAContext::build_shared_memory_symbol_table(void *shared_mem_space) {
             if (it != name2Share.end()) {
                 Symtable *s = it->second;
 
-                size_t var_size = s->byteNum * s->elementNum;
+                size_t var_size = s->byteNum;  // byteNum already includes array_size
 
                 // 设置符号表中的地址为相对于共享内存基地址的偏移量
                 s->val = shared_offset;
