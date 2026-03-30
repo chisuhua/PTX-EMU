@@ -51,16 +51,20 @@ struct KernelLaunchRequest {
     std::shared_ptr<std::map<std::string, int>> label2pc;
     int request_id; // 添加请求ID以追踪任务状态
     std::function<void()> on_complete; // 任务完成时的回调函数
-    
+
     // 本地内存信息
     void *local_memory_base = nullptr;
     size_t local_mem_per_thread = 0;
+
+    // 共享内存大小（动态共享内存，由cudaLaunchKernel的sharedMem参数指定）
+    size_t shared_mem_size = 0;
 
     // 默认构造函数
     KernelLaunchRequest() : args(nullptr), gridDim(), blockDim(),
                             statements(nullptr), name2Sym(nullptr), label2pc(nullptr),
                             request_id(0), on_complete(nullptr),
-                            local_memory_base(nullptr), local_mem_per_thread(0) {}
+                            local_memory_base(nullptr), local_mem_per_thread(0),
+                            shared_mem_size(0) {}
 
     KernelLaunchRequest(
         void **_args, Dim3 &_gridDim, Dim3 &_blockDim,
@@ -71,8 +75,9 @@ struct KernelLaunchRequest {
         : args(_args), gridDim(_gridDim), blockDim(_blockDim),
           statements(_stmts), name2Sym(_name2Sym), label2pc(_label2pc),
           request_id(_request_id), on_complete(_on_complete),
-          local_memory_base(nullptr), local_mem_per_thread(0) {}
-          
+          local_memory_base(nullptr), local_mem_per_thread(0),
+          shared_mem_size(0) {}
+
     // 设置本地内存信息
     void set_local_memory_info(void *base, size_t per_thread) {
         local_memory_base = base;

@@ -33,13 +33,13 @@ public:
     void *param_space;
 
     void launchPtxInterpreter(PtxContext &ptx, std::string &kernel, void **args,
-                              Dim3 &gridDim, Dim3 &blockDim);
+                              Dim3 &gridDim, Dim3 &blockDim, size_t sharedMem = 0);
 
     // 内部方法，接收必要的参数用于构建KernelLaunchRequest
     void funcInterpreter(std::map<std::string, Symtable *> &name2Sym,
                          std::map<std::string, int> &label2pc, PtxContext &ptx,
                          std::string &kernel, void **args, Dim3 &gridDim,
-                         Dim3 &blockDim);
+                         Dim3 &blockDim, size_t sharedMem = 0);
     void set_ptx_context(const PtxContext &ptx);
     PtxContext &get_ptx_context();
 

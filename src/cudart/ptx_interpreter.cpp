@@ -23,7 +23,7 @@ PtxInterpreter::PtxInterpreter()
 
 void PtxInterpreter::launchPtxInterpreter(PtxContext &ptx, std::string &kernel,
                                           void **args, Dim3 &gridDim,
-                                          Dim3 &blockDim) {
+                                          Dim3 &blockDim, size_t sharedMem) {
     // 初始化指令工厂，注册所有指令处理器
     InstructionFactory::initialize();
 
@@ -45,7 +45,7 @@ void PtxInterpreter::launchPtxInterpreter(PtxContext &ptx, std::string &kernel,
     std::map<std::string, Symtable *> name2Sym;
     std::map<std::string, int> label2pc;
 
-    funcInterpreter(name2Sym, label2pc, ptx, kernel, args, gridDim, blockDim);
+    funcInterpreter(name2Sym, label2pc, ptx, kernel, args, gridDim, blockDim, sharedMem);
 
     // 内核执行结束后，不再立即释放参数空间，而是通过回调机制在任务完成后释放
 }
@@ -53,7 +53,7 @@ void PtxInterpreter::launchPtxInterpreter(PtxContext &ptx, std::string &kernel,
 void PtxInterpreter::funcInterpreter(
     std::map<std::string, Symtable *> &name2Sym,
     std::map<std::string, int> &label2pc, PtxContext &ptx, std::string &kernel,
-    void **args, Dim3 &gridDim, Dim3 &blockDim) {
+    void **args, Dim3 &gridDim, Dim3 &blockDim, size_t sharedMem) {
     // Setup symbols
     setupConstantSymbols(name2Sym);
     setupKernelArguments(name2Sym);
@@ -363,6 +363,9 @@ void PtxInterpreter::funcInterpreter(
 
         // 设置本地内存信息到请求中
         request.set_local_memory_info(local_memory_base, local_mem_per_thread);
+
+        // 设置动态共享内存大小
+        request.shared_mem_size = sharedMem;
 
         // 提交请求
         g_gpu_context->submit_kernel_request(std::move(request));

@@ -280,10 +280,10 @@ cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim, dim3 blockDim,
     Dim3 gridDim3(gridDim.x, gridDim.y, gridDim.z);
     Dim3 blockDim3(blockDim.x, blockDim.y, blockDim.z);
 
-    // 调用PtxInterpreter的launch函数
+    // 调用PtxInterpreter的launch函数，传递sharedMem参数
     g_ptx_interpreter->launchPtxInterpreter(
         g_ptx_interpreter->get_ptx_context(), func2name[(uint64_t)func], args,
-        gridDim3, blockDim3);
+        gridDim3, blockDim3, sharedMem);
 
     // 等待kernel执行完成
     g_gpu_context->wait_for_completion();
