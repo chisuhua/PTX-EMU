@@ -96,8 +96,8 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
             const DeclarationInstr &ls = std::get<DeclarationInstr>(stmt.data);
             // 使用new操作符创建Symtable实例
             Symtable *s = new Symtable();
-            s->byteNum = Q2bytes(ls.dataType) * (*ls.size);
-            s->elementNum = *ls.size;
+            s->byteNum = Q2bytes(ls.dataType) * ls.array_size;
+            s->elementNum = ls.array_size;
             s->name = ls.name;
             s->symType = ls.dataType; // 假设dataType[0]是元素类型
 
