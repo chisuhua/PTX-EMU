@@ -447,6 +447,8 @@ bool SMContext::synchronize_barrier(int barId, ThreadContext *thread) {
 
         // 清空barrier等待队列
         barrier_waiting_threads[barId].clear();
+        // 同时清空计数，防止已释放的线程被重复加入后又被阻塞
+        barrier_thread_counts.erase(barId);
 
         return true; // 表示同步完成
     }
