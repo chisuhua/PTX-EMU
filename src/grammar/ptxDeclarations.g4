@@ -97,7 +97,7 @@ vectorSpec
     ;
 
 arraySize
-    : (LEFT_BRACK IMMEDIATE RIGHT_BRACK)+
+    : (LEFT_BRACK (IMMEDIATE)? RIGHT_BRACK)+
     | (LESS IMMEDIATE GREATER)+
     ;
 

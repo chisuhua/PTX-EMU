@@ -591,11 +591,14 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
         }
     }
 
-    // 如果是shared memory访问，需要特殊处理
+    // 对于 shared memory 访问，需要加上共享内存基地址
     if (QvecHasQ(qualifiers, Qualifier::Q_SHARED)) {
-        // 对于共享内存，地址已经在上面的逻辑中正确处理了
+        if (shared_mem_space != nullptr) {
+            ret = (void *)((uint64_t)shared_mem_space + (uint64_t)ret);
+        }
+        // 否则：ret 保持不变（只有偏移量的情况）
     } else if (QvecHasQ(qualifiers, Qualifier::Q_LOCAL)) {
-        // 对于本地内存，地址也已经在上面的逻辑中正确处理了
+        // 对于本地内存，地址已经在上面的逻辑中正确处理了
     }
 
     handle_offset:
