@@ -410,18 +410,29 @@ std::any PtxVisitor::visitVariableDecl(ptxparser::ptxParser::VariableDeclContext
         decl.dataType = Qualifier::Q_U32;
     }
 
+    // 默认数组大小为 1
     decl.array_size = 1;
+    
+    // 检测是否为.extern 声明（动态共享内存等）
+    bool is_extern = (text.find(".extern") != std::string::npos);
+    
     size_t bracketPos = text.find('[');
     if (bracketPos != std::string::npos) {
         size_t closeBracket = text.find(']', bracketPos);
         if (closeBracket != std::string::npos) {
             std::string sizeStr = text.substr(bracketPos + 1, closeBracket - bracketPos - 1);
-            try {
-                decl.array_size = std::stoi(sizeStr);
-            } catch (const std::invalid_argument&) {
-                decl.array_size = 1;
-            } catch (const std::out_of_range&) {
-                decl.array_size = 1;
+            
+            // 对于空数组 [] 或.extern 声明，设置 array_size = 0 表示动态大小
+            if (sizeStr.empty() || is_extern) {
+                decl.array_size = 0; // 动态大小
+            } else {
+                try {
+                    decl.array_size = std::stoi(sizeStr);
+                } catch (const std::invalid_argument&) {
+                    decl.array_size = 0; // 解析失败也设为动态大小
+                } catch (const std::out_of_range&) {
+                    decl.array_size = 0;
+                }
             }
         }
     }
