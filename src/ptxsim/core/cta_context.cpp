@@ -68,7 +68,7 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
             const DeclarationInstr &ss = std::get<DeclarationInstr>(stmt.data);
             // 使用new操作符创建Symtable实例
             Symtable *s = new Symtable();
-            s->byteNum = Q2bytes(ss.dataType) * ss.array_size;
+            s->byteNum = (ss.array_size > 0) ? (Q2bytes(ss.dataType) * ss.array_size) : 0;
             s->elementNum = ss.array_size;
             s->name = ss.name;
             s->symType = ss.dataType; // 假设dataType[0]是元素类型
@@ -85,7 +85,9 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
                           shared_offset);
 
             name2Share[s->name] = s;
-            shared_offset += var_size;
+            if (ss.array_size > 0) {
+                shared_offset += var_size;
+            }
         }
     }
 
