@@ -235,6 +235,7 @@ set(PTX_EXTRA_TESTS
     dummy-wmma
     test_syncthreads
     test_warp_divergence
+    
     test_shared_memory)
 
 # 定义全部测试 (包含基础测试和其他复杂测试)
@@ -363,3 +364,6 @@ foreach(TEST_NAME ${PTX_ALL_TESTS})
         set_tests_properties(${TEST_NAME} PROPERTIES LABELS "mma")
     endif()
 endforeach()
+
+# Add external test subdirectories
+add_subdirectory(../bench/test_extern_shared CMakeFiles.test_extern_shared.dir)
