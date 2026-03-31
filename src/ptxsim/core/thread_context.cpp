@@ -234,12 +234,22 @@ void *ThreadContext::acquire_operand(const OperandContext &operand,
         if (name2Share != nullptr) {
             auto share_it = name2Share->find(varOp.name);
             if (share_it != name2Share->end()) {
-                // 对于共享内存变量，返回实际的内存地址值，而不是地址的地址
-                PTX_DEBUG_EMU("Reading shared memory from name2Share: name=%s, "
-                              "symbol_table_entry=%p, stored_value=0x%lx",
-                              varOp.name.c_str(), share_it->second,
-                              share_it->second->val);
-                return &(share_it->second->val);
+                if (shared_mem_space != nullptr) {
+                    uint64_t actual_address = (uint64_t)shared_mem_space + share_it->second->val;
+                    PTX_DEBUG_EMU("Reading dynamic shared memory: name=%s, "
+                                  "symbol_table_entry=%p, stored_offset=0x%lx, "
+                                  "base=%p, actual_address=%p",
+                                  varOp.name.c_str(), share_it->second,
+                                  share_it->second->val, shared_mem_space,
+                                  (void*)actual_address);
+                    return (void*)actual_address;
+                } else {
+                    PTX_DEBUG_EMU("Reading static shared memory from name2Share: name=%s, "
+                                  "symbol_table_entry=%p, stored_value=0x%lx",
+                                  varOp.name.c_str(), share_it->second,
+                                  share_it->second->val);
+                    return &(share_it->second->val);
+                }
             }
         }
 
@@ -508,22 +518,31 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
                 return nullptr;
             }
 
-            // Infer expected register size from name prefix (rd=64-bit, others=32-bit)
-            // Note: This is a heuristic; actual size depends on SSA form and context
-            size_t expectedSize = (regOp.name == "rd") ? 8 : 4;
-            size_t actualSize = (mem_qualifier == Qualifier::Q_U32) ? 4 : 8;
-            if (expectedSize != actualSize) {
-                PTX_WARN_EMU("Register %s name prefix suggests %zu-bit but qualifier implies %zu-bit",
-                              lookupName.c_str(), expectedSize * 8, actualSize * 8);
+            // For shared memory address calculation, we need to handle signed offsets correctly.
+            // PTX allows negative offsets in address expressions like [%r5+124] where %r5 can be negative.
+            // Read register value as signed 32-bit for shared memory, then sign-extend to 64-bit.
+            int64_t base_value;
+            if (QvecHasQ(qualifiers, Qualifier::Q_SHARED) && mem_qualifier == Qualifier::Q_U32) {
+                // For shared memory with 32-bit registers, read as signed to support negative offsets
+                base_value = (int64_t)*(int32_t *)regAddr;
+            } else {
+                base_value = (mem_qualifier == Qualifier::Q_U32)
+                    ? (int64_t)*(uint32_t *)regAddr
+                    : (int64_t)*(uint64_t *)regAddr;
             }
 
-            // Read register value as base address
-            uint64_t base_value = (mem_qualifier == Qualifier::Q_U32)
-                ? *(uint32_t *)regAddr
-                : *(uint64_t *)regAddr;
-
-            ret = (void *)base_value;
-            PTX_DEBUG_EMU("Register %s contains base address: 0x%lx", lookupName.c_str(), base_value);
+            // For shared memory, add shared_mem_space to the base value
+            if (QvecHasQ(qualifiers, Qualifier::Q_SHARED)) {
+                if (shared_mem_space != nullptr) {
+                    ret = (void *)((uint64_t)shared_mem_space + base_value);
+                } else {
+                    PTX_DEBUG_EMU("get_memory_addr: Q_SHARED but shared_mem_space is null!");
+                    return nullptr;
+                }
+            } else {
+                ret = (void *)base_value;
+            }
+            PTX_DEBUG_EMU("Register %s contains base value: 0x%lx, final ret: %p", lookupName.c_str(), base_value, ret);
 
             // Skip symbol table lookup, jump directly to offset handling
             goto handle_offset;
@@ -591,14 +610,11 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
         }
     }
 
-    // 对于 shared memory 访问，需要加上共享内存基地址
+    // 如果是shared memory访问，需要特殊处理
     if (QvecHasQ(qualifiers, Qualifier::Q_SHARED)) {
-        if (shared_mem_space != nullptr) {
-            ret = (void *)((uint64_t)shared_mem_space + (uint64_t)ret);
-        }
-        // 否则：ret 保持不变（只有偏移量的情况）
+        // 对于共享内存，地址已经在上面的逻辑中正确处理了
     } else if (QvecHasQ(qualifiers, Qualifier::Q_LOCAL)) {
-        // 对于本地内存，地址已经在上面的逻辑中正确处理了
+        // 对于本地内存，地址也已经在上面的逻辑中正确处理了
     }
 
     handle_offset:
