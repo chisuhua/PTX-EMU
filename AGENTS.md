@@ -32,20 +32,68 @@
 | **ptx-grammar-modification** | `docs/skills/ptx-grammar-modification.md` | 自动触发（见下方 PTX 语法修改流程） |
 | **ptx-debug** | `docs/skills/ptx-debug/SKILL.md` | 关键词触发或手动加载 |
 
+---
+
+### 🚨 测试问题处理流程（优先于技能触发）
+
+**⚠️ 关键提醒**：当用户说"修复测试"或类似请求时：
+
+1. 🛑 **不要立即加载技能**
+2. **先运行测试**查看实际错误输出
+3. **根据错误类型**选择技能：
+
+| 错误类型 | 错误示例 | 选择技能 |
+|---------|---------|---------|
+| **ANTLR 解析错误** | `missing IMMEDIATE`, `no viable alternative`, `mismatched input` | `ptx-grammar-modification` |
+| **SegFault/崩溃** | `Segmentation fault`, `SIGSEGV`, core dump | `ptx-debug` + `cpp-debug` |
+| **逻辑错误/结果不对** | 测试断言失败、期望值≠实际值 | `ptx-debug` |
+| **编译错误** | C++ 编译错误、链接错误 | `cmake-manage` + `cpp-debug` |
+
+**决策流程**：
+
+```
+用户："修复 test_X" / "test_X 失败了"
+    ↓
+🛑 停止 → 先运行测试
+    ↓
+查看错误输出
+    ↓
+包含 ANTLR 关键词？─是─→ 加载 ptx-grammar-modification
+    │                      → 运行 ./tests/ptx/test_all_ptx.sh
+    │                      → 遵循 TDD 流程
+   否
+    ↓
+包含 SegFault？─────是─→ 加载 ptx-debug + cpp-debug
+    │                      → 使用 gdb 获取堆栈
+    │
+   否
+    ↓
+逻辑错误/断言失败──→ 加载 ptx-debug
+                       → 分析日志定位问题
+```
+
+---
+
 ### ptx-debug 技能触发关键词
 
-当用户提到以下关键词时，**自动加载 ptx-debug 技能**：
+**重要**：以下关键词触发前，**必须先运行测试确认错误类型**。
+如果测试输出包含 ANTLR 解析错误，优先使用 `ptx-grammar-modification`。
 
 **问题类型触发**:
-- "测试失败", "ctest 不通过", "单元测试失败"
-- "程序崩溃", "segfault", "SIGSEGV", "core dumped"
-- "内存错误", "非法访问", "越界", "内存泄漏"
-- "指令错误", "执行结果不对", "结果不对"
-- "性能慢", "性能优化", "benchmark"
-- "调试这个", "分析一下问题", "查看日志"
+- ✅ "测试失败" + **非**解析错误输出
+- ✅ "ctest 不通过" + **非**解析错误输出
+- ✅ "程序崩溃", "segfault", "SIGSEGV", "core dumped"
+- ✅ "内存错误", "非法访问", "越界", "内存泄漏"
+- ✅ "指令错误", "执行结果不对", "结果不对"
+- ✅ "性能慢", "性能优化", "benchmark"
+- ✅ "调试这个", "分析一下问题", "查看日志"
+
+**❌ 不触发 ptx-debug 的情况**（应切换到语法修复流程）:
+- "修复测试" + `missing IMMEDIATE` / `no viable alternative` / `mismatched input`
+- 测试输出包含 ANTLR 解析错误关键词
 
 **场景触发**:
-- 运行测试后失败
+- 运行测试后失败（**确认非解析错误后**）
 - 查看日志文件
 - 使用调试配置
 - 分析内存访问
@@ -53,20 +101,25 @@
 
 **触发示例**:
 ```
+✅ 正确触发 - 运行时错误：
 用户："test_memory 测试失败了"
+→ 运行测试确认错误类型
+→ 发现 SegFault（非解析错误）
 → 自动加载 ptx-debug 技能
 → 选择 debug_config.ini
-→ 运行测试收集日志
+→ 使用 gdb 获取堆栈
 
-用户："程序崩溃了，帮我分析"
-→ 自动加载 ptx-debug 技能
-→ 选择 verbose_trace.ini
-→ 收集崩溃前日志
+✅ 正确识别 - 语法错误：
+用户："test_memory 测试失败了"
+→ 运行测试确认错误类型
+→ 发现 "line 23:42 missing IMMEDIATE at ']'"
+→ 🛑 这是 ANTLR 解析错误
+→ 切换到 ptx-grammar-modification 流程
+→ 运行 ./tests/ptx/test_all_ptx.sh
 
-用户："这个内存访问有问题"
-→ 自动加载 ptx-debug 技能
-→ 选择 memory_debug.ini
-→ 跟踪内存操作
+❌ 错误触发 - 应避免：
+用户："修复 test_X"
+→ 直接加载 ptx-debug（错误！没有先运行测试）
 ```
 
 ### 手动加载技能
@@ -139,9 +192,33 @@ skill name="ptx-debug"
 |---------|------------|---------|
 | **用户请求修复解析错误** | "PTX 解析错误", "语法错误", "ANTLR 错误" | 🛫 → 加载技能 → 运行测试 |
 | **ANTLR 解析错误** | `no viable alternative at input` | 🛫 → 加载技能 → 运行测试 |
+| **缺少 Token** | `missing IMMEDIATE at 'X'` | 🛫 → 加载技能 → 运行测试 |
 | **意外 Token** | `mismatched input 'X' expecting Y` | 🛫 → 加载技能 → 运行测试 |
+| **多余 Token** | `extraneous input 'X' expecting EOF` | 🛫 → 加载技能 → 运行测试 |
 | **修改语法文件** | 改动 `src/grammar/*.g4` | 🛫 → 加载技能 → 运行测试 |
 | **解析阶段崩溃** | `Segmentation fault` 在 parser 阶段 | 🛫 → 加载技能 → 运行测试 |
+| **运行时发现的解析错误** | 测试失败 + `missing IMMEDIATE`/`no viable alternative` 输出 | 🛫 → 立即停止 → 加载技能 → 运行 test_all_ptx.sh |
+
+### 📋 错误类型识别（执行前第一步）
+
+**在加载任何技能之前，先识别错误类型**：
+
+```bash
+# 步骤 1: 运行测试获取错误输出
+cd build && ctest -R <test_name> -V 2>&1 | tail -50
+
+# 步骤 2: 检查错误类型
+echo <错误输出> | grep -E "missing|mismatched|no viable|extraneous|ANTLR"
+
+# 步骤 3: 决策
+# - 如果 grep 有输出 → ANTLR 解析错误 → 🛑 跳转到 PTX 语法修改流程
+# - 如果 grep 无输出 → 运行时错误 → 使用 ptx-debug 技能
+```
+
+**关键原则**：
+> "修复测试" ≠ 直接调试。先分类，后行动。
+
+---
 
 ### 📋 强制检查清单（执行前必读）
 
@@ -194,6 +271,40 @@ skill name="ptx-debug"
 
 **完整流程文档**: [docs/skills/ptx-grammar-modification.md](docs/skills/ptx-grammar-modification.md)
 **项目技能总览**: [docs/skills/README.md](docs/skills/README.md)
+
+---
+
+## 🔑 关键决策树
+
+```
+用户请求（"修复 test_X"）
+        │
+        ▼
+┌───────────────────┐
+│  🛑 先运行测试     │ ← 不要直接加载技能！
+└───────────────────┘
+        │
+        ▼
+┌───────────────────┐
+│  查看错误输出     │
+└───────────────────┘
+        │
+        ├──────────┬─────────────┬────────────┐
+        │          │             │            │
+        ▼          ▼             ▼            ▼
+┌───────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
+│ ANTLR 错误 │ │ SegFault │ │ 逻辑错误 │ │ 编译错误 │
+│ missing   │ │ 崩溃     │ │ 断言失败 │ │ 链接失败 │
+│ no viable │ │ core dump│ │ 结果不对 │ │          │
+└───────────┘ └──────────┘ └──────────┘ └──────────┘
+        │          │             │            │
+        ▼          ▼             ▼            ▼
+   ptx-grammar  ptx-debug    ptx-debug   cmake-manage
+   -modification + cpp-debug
+        │
+        ▼
+   运行 ./tests/ptx/test_all_ptx.sh
+```
 
 ---
 
