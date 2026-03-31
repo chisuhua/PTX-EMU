@@ -419,10 +419,12 @@ bool SMContext::synchronize_barrier(int barId, ThreadContext *thread) {
     CTAContext *cta_ctx = block_it->second.get();
     int total_threads_in_block = cta_ctx->get_thread_count();
 
-    // 更新该barrier的线程计数
-    barrier_thread_counts[barId] = total_threads_in_block;
+    // 只在第一次有线程到达时设置线程总数，避免重复覆盖导致计数错误
+    if (barrier_thread_counts.find(barId) == barrier_thread_counts.end()) {
+        barrier_thread_counts[barId] = total_threads_in_block;
+    }
 
-    // 将当前线程加入到barrier等待队列
+    // 将当前线程加入到 barrier 等待队列
     barrier_waiting_threads[barId].insert(thread);
 
     PTX_DEBUG_EMU("Thread in block %d waiting at barrier %d, %zu threads "
