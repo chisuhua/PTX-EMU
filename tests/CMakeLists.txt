@@ -231,16 +231,19 @@ set(PTX_BASIC_TESTS
     aligned-types all-pairs-distance bitonic bfs )
     # aligned-types all-pairs-distance bitonic bfs backprop RAY cfd)
 
-set(PTX_EXTRA_TESTS
-    dummy-wmma
+set(PTX_SYNC_TESTS
     test_syncthreads
     test_warp_divergence
-    
-    test_shared_memory)
+    test_shared_memory
+    test_divergence_sync_standalone)
+
+set(PTX_EXTRA_TESTS
+    dummy-wmma)
 
 # 定义全部测试 (包含基础测试和其他复杂测试)
 set(PTX_ALL_TESTS 
     ${PTX_MINI_TESTS} 
+    ${PTX_SYNC_TESTS}
     ${PTX_BASIC_TESTS}
     ${PTX_EXTRA_TESTS}
     ${PTX_MMA_TESTS})
