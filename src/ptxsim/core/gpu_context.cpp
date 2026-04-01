@@ -256,6 +256,15 @@ EXE_STATE GPUContext::exe_once() {
                 it->second.on_complete();
             }
 
+            // 清理 Symtable 内存泄漏
+            // name2Sym 中的 Symtable* 是裸指针，需要手动释放
+            if (it->second.name2Sym) {
+                for (auto &kv : *it->second.name2Sym) {
+                    delete kv.second;
+                }
+                it->second.name2Sym->clear();
+            }
+
             // 请求已完成，从执行映射中移除
             it = executing_requests.erase(it);
         } else {

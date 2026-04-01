@@ -354,6 +354,15 @@ void PtxInterpreter::funcInterpreter(
             }
         };
 
+        // 将ptxStatements中的S_SHARED全局声明合并到kernelStatements
+        // 这些是extern __shared__声明，需要在函数执行前可用
+        for (const auto &stmt : ptx.ptxStatements) {
+            if (stmt.type == S_SHARED) {
+                kernelContext->kernelStatements.insert(
+                    kernelContext->kernelStatements.begin(), stmt);
+            }
+        }
+
         // 构建请求，statements由ptxContext持有，不转移所有权
         KernelLaunchRequest request(
             args, gridDim, blockDim,
@@ -380,22 +389,33 @@ void PtxInterpreter::setupConstantSymbols(
     }
 
     for (const auto &e : ptxContext->ptxStatements) {
-        if (e.type != S_CONST)
-            continue;
+        if (e.type == S_CONST) {
+            Symtable *s = new Symtable();
+            const auto &decl = std::get<DeclarationInstr>(e.data);
 
-        Symtable *s = new Symtable();
-        const auto &decl = std::get<DeclarationInstr>(e.data);
+            s->name = decl.name;
+            s->symType = decl.dataType;
+            s->elementNum = decl.size ? *decl.size : 1;
+            s->byteNum = Q2bytes(decl.dataType);
+            s->val = constName2addr[s->name];
+            if (!s->val) {
+                delete s;
+                continue;
+            }
+            name2Sym[s->name] = s;
+        } else if (e.type == S_SHARED) {
+            // 处理全局S_SHARED声明（如.extern __shared__）
+            // 这些符号的地址将由CTAContext在运行时设置（动态共享内存）
+            Symtable *s = new Symtable();
+            const auto &decl = std::get<DeclarationInstr>(e.data);
 
-        s->name = decl.name;
-        s->symType = decl.dataType;
-        s->elementNum = decl.size ? *decl.size : 1;
-        s->byteNum = Q2bytes(decl.dataType);
-        s->val = constName2addr[s->name];
-        if (!s->val) {
-            delete s;
-            continue;
+            s->name = decl.name;
+            s->symType = decl.dataType;
+            s->elementNum = decl.array_size;  // 对于extern shared为0
+            s->byteNum = Q2bytes(decl.dataType) * (decl.array_size > 0 ? decl.array_size : 1);
+            s->val = 0;  // 动态共享内存地址在CTAContext中设置
+            name2Sym[s->name] = s;
         }
-        name2Sym[s->name] = s;
     }
 }
 

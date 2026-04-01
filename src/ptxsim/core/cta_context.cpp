@@ -274,6 +274,23 @@ void CTAContext::build_shared_memory_symbol_table(void *shared_mem_space) {
     }
 
     // 填充name2Share中的地址信息
+    // 第一步：计算静态共享内存的总大小（array_size > 0）
+    size_t static_shared_mem_size = 0;
+    for (const auto &stmt : *init_statements) {
+        if (stmt.type == S_SHARED) {
+            const DeclarationInstr &ss = std::get<DeclarationInstr>(stmt.data);
+            auto it = name2Share.find(ss.name);
+            if (it != name2Share.end()) {
+                Symtable *s = it->second;
+                if (s->elementNum > 0) {  // 静态共享内存
+                    static_shared_mem_size += s->byteNum;
+                }
+            }
+        }
+    }
+
+    // 第二步：设置所有共享内存变量的偏移量
+    // 静态共享内存从0开始，动态共享内存从静态共享内存之后开始
     size_t shared_offset = 0;
     for (const auto &stmt : *init_statements) {
         if (stmt.type == S_SHARED) {
@@ -287,7 +304,15 @@ void CTAContext::build_shared_memory_symbol_table(void *shared_mem_space) {
                 size_t var_size = s->byteNum;  // byteNum already includes array_size
 
                 // 设置符号表中的地址为相对于共享内存基地址的偏移量
-                s->val = shared_offset;
+                // 动态共享内存(array_size=0)应该分配在静态共享内存之后
+                if (s->elementNum == 0 && var_size == 0) {
+                    // 动态共享内存：偏移量 = 静态共享内存大小
+                    s->val = static_shared_mem_size;
+                } else {
+                    // 静态共享内存：偏移量 = 当前偏移量
+                    s->val = shared_offset;
+                    shared_offset += var_size;
+                }
 
                 PTX_DEBUG_EMU(
                     "Updated shared memory variable: name=%s, elementNum=%d, "
@@ -295,11 +320,10 @@ void CTAContext::build_shared_memory_symbol_table(void *shared_mem_space) {
                     "var_size=%zu, shared_mem_offset=%zu, stored_offset=%zu",
                     s->name.c_str(), s->elementNum, s->byteNum, var_size,
                     shared_offset, s->val);
-
-                shared_offset += var_size;
             }
         }
     }
+
 
     // 将共享内存基地址传递给所有线程
     for (auto &warp : warps) {
