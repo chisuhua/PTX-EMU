@@ -4,6 +4,8 @@
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/common_types.h"
 #include "ptxsim/execution_types.h"
+#include "ptxsim/thread_state.h"
+#include "ptxsim/warp_state.h"
 #include "register/register_bank_manager.h"
 #include <array>
 #include <memory>
@@ -12,7 +14,7 @@
 
 // Forward declarations to avoid circular includes
 class SMContext;
-class ThreadContext;  // 添加ThreadContext的前向声明
+class ThreadContext;  // 添加 ThreadContext 的前向声明
 
 class WarpContext {
 public:
@@ -21,13 +23,13 @@ public:
     WarpContext();
     virtual ~WarpContext() = default;
 
-    // 添加线程到warp
+    // 添加线程到 warp
     void add_thread(std::unique_ptr<ThreadContext> thread, int lane_id);
 
-    // 执行warp的一条指令
+    // 执行 warp 的一条指令
     void execute_warp_instruction(StatementContext &stmt);
 
-    // 获取warp中的线程
+    // 获取 warp 中的线程
     ThreadContext *get_thread(int lane_id) const {
         if (lane_id >= 0 && lane_id < threads.size()) {
             return threads[lane_id].get();
@@ -35,17 +37,52 @@ public:
         return nullptr;
     }
 
-    // 检查warp是否活跃
+    // 检查 warp 是否活跃
     bool is_active() const { return active_count > 0; }
 
     // 获取活跃线程数量
     int get_active_count() const { return active_count; }
 
-    // 获取PC值
+    // 获取 PC 值（向后兼容，返回 warp 级 PC）
     int get_pc() const { return pc; }
 
-    // 设置PC值
+    // 设置 PC 值（向后兼容）
     void set_pc(int new_pc) { pc = new_pc; }
+
+    // 【NEW】获取每线程 PC
+    uint32_t get_thread_pc(int lane_id) const {
+        if (lane_id >= 0 && lane_id < WARP_SIZE) {
+            return warp_state.threads[lane_id].pc;
+        }
+        return 0;
+    }
+
+    // 【NEW】设置每线程 PC
+    void set_thread_pc(int lane_id, uint32_t new_pc) {
+        if (lane_id >= 0 && lane_id < WARP_SIZE) {
+            warp_state.threads[lane_id].pc = new_pc;
+            warp_state.threads[lane_id].next_pc = new_pc;
+        }
+    }
+
+    // 【NEW】获取执行掩码
+    uint32_t get_exec_mask() const { return warp_state.exec_mask; }
+
+    // 【NEW】设置执行掩码
+    void set_exec_mask(uint32_t mask) { warp_state.exec_mask = mask; }
+
+    // 【NEW】检查 lane 是否可调度
+    bool is_lane_schedulable(int lane_id) const {
+        if (lane_id >= 0 && lane_id < WARP_SIZE) {
+            return warp_state.threads[lane_id].is_schedulable();
+        }
+        return false;
+    }
+
+    // 【NEW】获取可调度 lane 数量
+    int count_schedulable_lanes() const {
+        return warp_state.count_schedulable_lanes();
+    }
 
     // 更新活跃掩码（例如，遇到分支指令时）
     void update_active_mask();
@@ -53,32 +90,32 @@ public:
     // 设置活跃掩码
     void set_active_mask(int lane_id, bool active);
 
-    // 检查特定lane是否活跃
+    // 检查特定 lane 是否活跃
     bool is_lane_active(int lane_id) const {
         return lane_id >= 0 && lane_id < WARP_SIZE && active_mask[lane_id];
     }
 
-    // 获取warp内线程ID
+    // 获取 warp 内线程 ID
     int get_warp_thread_id(int lane_id) const {
         return lane_id < WARP_SIZE ? warp_thread_ids[lane_id] : -1;
     }
 
-    // 获取warp索引
+    // 获取 warp 索引
     int get_warp_id() const { return warp_id; }
 
-    // 设置warp索引
+    // 设置 warp 索引
     void set_warp_id(int id) { warp_id = id; }
 
-    // 重置warp状态
+    // 重置 warp 状态
     void reset();
 
-    // 检查warp是否完成 - 现在检查是否所有线程都已退出
+    // 检查 warp 是否完成 - 现在检查是否所有线程都已退出
     bool is_finished() const;
 
-    // 检查warp是否真正完成（所有线程都已退出），而不是仅活跃计数为0
+    // 检查 warp 是否真正完成（所有线程都已退出），而不是仅活跃计数为 0
     bool is_all_threads_exited() const;
 
-    // 同步warp内所有线程
+    // 同步 warp 内所有线程
     void sync_threads();
 
     // 处理分支分歧
@@ -87,10 +124,10 @@ public:
     // 检查是否有分歧
     bool has_divergence() const { return divergence_detected; }
 
-    // 获取活跃掩码（32位）
+    // 获取活跃掩码（32 位）
     uint32_t get_active_mask() const;
 
-    // 设置活跃掩码（32位）
+    // 设置活跃掩码（32 位）
     void set_active_mask(uint32_t mask);
 
     // 设置寄存器银行管理器
@@ -99,7 +136,7 @@ public:
         register_bank_manager_ = manager;
     }
 
-    // 获取warp中所有线程的引用
+    // 获取 warp 中所有线程的引用
     const std::vector<std::unique_ptr<ThreadContext>>& get_threads() const {
         return threads;
     }
@@ -115,25 +152,37 @@ public:
         return active_threads;
     }
 
-    // 设置SM Context
+    // 设置 SM Context
     void set_sm_context(SMContext *sm_ctx) { sm_context_ = sm_ctx; }
     
-    // 获取SM Context
+    // 获取 SM Context
     SMContext *get_sm_context() const { return sm_context_; }
+
+    // 【NEW】获取 warp state 引用
+    ptxsim::WarpState& get_warp_state() { return warp_state; }
+    const ptxsim::WarpState& get_warp_state() const { return warp_state; }
+
+    // 【NEW】Warp 级屏障访问
+    ptxsim::Wbar& get_wbar(int wbar_id) {
+        if (wbar_id >= 0 && wbar_id < 4) {
+            return warp_state.wbars[wbar_id];
+        }
+        return warp_state.wbars[0];
+    }
 
 private:
     std::vector<std::unique_ptr<ThreadContext>>
-        threads;                                // warp中的线程unique_ptr
+        threads;                                // warp 中的线程 unique_ptr
     std::array<bool, WARP_SIZE> active_mask;    // 活跃掩码
-    std::array<int, WARP_SIZE> warp_thread_ids; // 对应的线程ID
+    std::array<int, WARP_SIZE> warp_thread_ids; // 对应的线程 ID
     int active_count;                           // 活跃线程数量
-    int pc;                                     // warp级PC
+    int pc;                                     // warp 级 PC (向后兼容)
     int warp_id;                                // warp ID
-    int physical_warp_id;                       // 物理warp ID
-    int physical_block_id;                      // 物理warp ID
+    int physical_warp_id;                       // 物理 warp ID
+    int physical_block_id;                      // 物理 block ID
 
     bool divergence_detected;              // 分歧检测标志
-    std::vector<int> pc_stacks[WARP_SIZE]; // 每个线程的PC栈，用于分支重新合并
+    std::vector<int> pc_stacks[WARP_SIZE]; // 每个线程的 PC 栈，用于分支重新合并
 
     // 寄存器银行管理器
     std::shared_ptr<RegisterBankManager> register_bank_manager_;
@@ -141,18 +190,21 @@ private:
     // 单步执行模式
     bool single_step_mode;
 
-    // 指向SMContext的指针
+    // 指向 SMContext 的指针
     SMContext *sm_context_ = nullptr;
 
     // 调度状态
-    bool is_scheduled_{false}; // 表示warp是否被调度执行
+    bool is_scheduled_{false}; // 表示 warp 是否被调度执行
+
+    // 【NEW】SIMT 架构升级：每线程状态
+    ptxsim::WarpState warp_state;
 
 public:
     // 调度状态相关方法
     void set_scheduled(bool scheduled) { is_scheduled_ = scheduled; }
     bool is_scheduled() const { return is_scheduled_; }
 
-    // 物理ID管理方法
+    // 物理 ID 管理方法
     void set_physical_warp_id(int id) { physical_warp_id = id; }
     int get_physical_warp_id() const { return physical_warp_id; }
 

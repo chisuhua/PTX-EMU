@@ -8,19 +8,31 @@
 WarpContext::WarpContext()
     : active_count(0), pc(0), warp_id(-1), single_step_mode(false),
       divergence_detected(false), sm_context_(nullptr) {
-    // 初始化warp线程ID和活跃掩码
+    // 初始化 warp 线程 ID 和活跃掩码
     for (int i = 0; i < WARP_SIZE; i++) {
         warp_thread_ids[i] = -1;
         active_mask[i] = false;
-        pc_stacks[i] = std::vector<int>(); // 初始化PC栈
+        pc_stacks[i] = std::vector<int>(); // 初始化 PC 栈
     }
 
     // 默认激活所有线程
     for (int i = 0; i < WARP_SIZE; i++) {
         active_mask[i] = true;
         warp_thread_ids[i] = i;
-        pc_stacks[i].push_back(0); // 初始PC
+        pc_stacks[i].push_back(0); // 初始 PC
+        
+        // 【SIMT Upgrade】初始化每线程状态
+        warp_state.threads[i].pc = 0;
+        warp_state.threads[i].next_pc = 0;
+        warp_state.threads[i].is_active = true;
+        warp_state.threads[i].is_exited = false;
+        warp_state.threads[i].is_blocked = false;
+        warp_state.threads[i].status = ptxsim::ThreadStatus::Active;
     }
+    
+    // 初始化执行掩码
+    warp_state.exec_mask = 0xFFFFFFFF;
+    
     active_count = WARP_SIZE;
 }
 
@@ -47,57 +59,41 @@ void WarpContext::add_thread(std::unique_ptr<ThreadContext> thread,
 }
 
 void WarpContext::execute_warp_instruction(StatementContext &stmt) {
-    // 根据活跃掩码执行指令
+    // Execute each lane's own instruction based on its PC from pc_stack (divergence support)
     for (int i = 0; i < WARP_SIZE; i++) {
         if (is_lane_active(i) && i < threads.size() && threads[i] != nullptr) {
             ThreadContext *thread = threads[i].get();
-
-            // 设置线程的PC为当前warp的PC或线程自己的PC（用于处理分歧）
+            
+            // Get thread's PC from its own pc_stack
             if (!pc_stacks[i].empty()) {
                 thread->set_pc(pc_stacks[i].back());
             }
-
-            // 检查线程状态，如果是BAR_SYNC状态，说明线程在等待barrier
+            
+            // Check thread state - if BAR_SYNC, thread is waiting at barrier
             if (thread->get_state() == BAR_SYNC) {
-                // 仍然需要检查barrier是否已满足（可能有其他线程已到达）
                 if (sm_context_ != nullptr) {
                     sm_context_->synchronize_barrier(thread->bar_id, thread);
                 }
-                continue; // 跳过指令执行，继续下一个线程
+                continue;
             }
-
-            // 检查当前lane是否启用trace，以及trace_instruction_status是否启用
-            if (ptxsim::DebugConfig::get().is_lane_traced(i) && 
-                ptxsim::DebugConfig::get().is_trace_instruction_status_enabled()) {
-                thread->print_instruction_status(stmt);
-            }
-
-            // 执行指令
+            
+            // Execute the instruction at thread's current PC
             thread->execute_thread_instruction();
-
-            // 检查线程状态，如果是BAR_SYNC状态，说明遇到了barrier指令
-            if (thread->get_state() == BAR_SYNC && sm_context_ != nullptr) {
-                // 在这里处理barrier同步
-                // 遍历所有属于相同block的线程，执行同步
-                sm_context_->synchronize_barrier(thread->bar_id,
-                                                 thread); // 默认使用barrier 0
-            }
-
-            // 更新PC栈
+            
+            // Update PC stack with thread's new PC
             if (!pc_stacks[i].empty()) {
                 pc_stacks[i].back() = thread->get_pc();
             } else {
                 pc_stacks[i].push_back(thread->get_pc());
             }
-
-            // 更新warp的PC为第一个活跃线程的PC（在SIMT模型中，所有活跃线程应该执行相同指令）
-            if (i == 0 || pc == 0) {
-                pc = thread->get_pc();
+            
+            // Check barrier after execution
+            if (thread->get_state() == BAR_SYNC && sm_context_ != nullptr) {
+                sm_context_->synchronize_barrier(thread->bar_id, thread);
             }
         }
     }
-
-    // 更新活跃掩码（例如，遇到分支指令时）
+    
     update_active_mask();
 }
 
