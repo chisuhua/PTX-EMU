@@ -349,6 +349,8 @@ ATOM    : 'atom';   // Renamed from ATOM_ATOM
 // Warp-level
 VOTE    : 'vote';   // Renamed from VOTE_WARP
 SHFL    : 'shfl';
+WARP    : 'warp';
+ACTIVEMASK : 'activemask';
 
 // Texture / Surface
 TEX     : 'tex';    // Renamed from TEX_TEX

@@ -1,27 +1,51 @@
 // BARRIER 类别的实现
-#define VISITOR_BARRIER(openum, opstr, opname, opcount)                                \
-std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstContext *ctx) {  \
-    if (!currentKernel) return nullptr;                                        \
-                                                                                 \
-    StatementContext stmtCtx;                                                  \
-    stmtCtx.instructionText = ctx->getText();                                  \
-    stmtCtx.type = openum;                                                 \
-                                                                                 \
-    BarrierInstr instr;                                                        \
-                                                                                 \
-    /* 提取限定符 */                                                           \
-    auto qualifiers = extractQualifiersFromContext(ctx);                       \
-    instr.qualifiers = qualifiers;                                             \
-                                                                                 \
-    /* 提取barrier ID */                                                       \
-    if (ctx->IMMEDIATE()) {                                                    \
-        instr.barId = extractIntFromToken(ctx->IMMEDIATE()->getSymbol());      \
-    }                                                                          \
-                                                                                 \
-    stmtCtx.data = instr;                                                      \
-    currentKernel->kernelStatements.push_back(stmtCtx);                        \
-                                                                                 \
-    return nullptr;                                                            \
+
+// VISITOR_BARRIER macro for X-macro in ptx_visitor.cpp (handles regular bar.sync, bar.arrive, etc.)
+#define VISITOR_BARRIER(openum, opstr, opname, opcount) \
+std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstContext *ctx) { \
+    if (!currentKernel) return nullptr; \
+    \
+    StatementContext stmtCtx; \
+    stmtCtx.instructionText = ctx->getText(); \
+    stmtCtx.type = openum; \
+    \
+    BarrierInstr instr; \
+    instr.qualifiers = extractQualifiersFromContext(ctx); \
+    \
+    if (ctx->IMMEDIATE()) { \
+        instr.barId = extractIntFromToken(ctx->IMMEDIATE()->getSymbol()); \
+    } \
+    \
+    stmtCtx.data = instr; \
+    currentKernel->kernelStatements.push_back(stmtCtx); \
+    \
+    return nullptr; \
 }
 
-// X-Macro展开
+// VISITOR_WARP_BARRIER: Manual implementation of bar.warp.sync instruction
+std::any PtxVisitor::visitBarWarpSyncInst(ptxparser::ptxParser::BarWarpSyncInstContext *ctx) {
+    if (!currentKernel) return nullptr;
+    
+    StatementContext stmtCtx;
+    stmtCtx.instructionText = ctx->getText();
+    stmtCtx.type = S_BAR_WARP_SYNC;
+    
+    BarWarpSyncInstr instr;
+    instr.qualifiers = extractQualifiersFromContext(ctx);
+    
+    // Parse participation mask operand
+    auto operands = ctx->getRuleContexts<ptxparser::ptxParser::OperandContext>();
+    if (!operands.empty()) {
+        instr.operands.push_back(createOperandFromContext(operands[0]));
+    }
+    
+    // Parse reconvergence label
+    if (ctx->labelOperand()) {
+        instr.reconvergenceLabel = ctx->labelOperand()->ID()->getText();
+    }
+    
+    stmtCtx.data = instr;
+    currentKernel->kernelStatements.push_back(stmtCtx);
+    
+    return nullptr;
+}

@@ -92,6 +92,10 @@ public:
 
 #define X(enum_val, type_name, opstr, op_count, struct_kind, instr_kind) \
     VISITOR_DECL_##struct_kind(opstr)
+
+// Stage 2b: NEW - Warp-level synchronization visitor declaration
+#define  VISITOR_DECL_WARP_BARRIER(opstr) \
+    std::any visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) override;
 #include "ptx_ir/ptx_op.def"
 #undef X
 

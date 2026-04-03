@@ -133,6 +133,20 @@
 
 // All other instruction types map to SimpleHandler
 #define IMPLEMENT_MEMBAR_INSTR_HANDLER(Name)     IMPLEMENT_SIMPLE_HANDLER(Name)
+
+// WARP_BARRIER handlers - use GenericPipelineHandler pattern
+#define IMPLEMENT_WARP_BARRIER_HANDLER(Name) \
+    __attribute__((weak)) void Name##Handler::processOperation(ThreadContext *context, void **operands, \
+                                        const std::vector<Qualifier> &qualifiers, \
+                                        const std::vector<char> *operand_is_immediate) { \
+        /* Implementation is in src/ptxsim/instructions/barrier.cpp */ \
+        (void)context; \
+        (void)operands; \
+        (void)qualifiers; \
+        (void)operand_is_immediate; \
+        return; \
+    };
+
 #define IMPLEMENT_FENCE_INSTR_HANDLER(Name)      IMPLEMENT_SIMPLE_HANDLER(Name)
 #define IMPLEMENT_REDUX_INSTR_HANDLER(Name)      IMPLEMENT_SIMPLE_HANDLER(Name)
 #define IMPLEMENT_MBARRIER_INSTR_HANDLER(Name)   IMPLEMENT_SIMPLE_HANDLER(Name)

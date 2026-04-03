@@ -828,8 +828,9 @@ std::any PtxVisitor::visitInstruction(ptxparser::ptxParser::InstructionContext *
 
 // 包含Tensor相关指令实现
 #include "ptx_visitor_tensor.cpp"
+#include "ptx_visitor_warp.cpp"
 
-// 包含ABI指令实现
+// 包含 ABI 指令实现
 #include "ptx_visitor_abi.cpp"
 
 #define X(openum, opstr, opname, opcount, struct_kind, instr_kind)                         \

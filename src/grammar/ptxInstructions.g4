@@ -292,7 +292,7 @@ addrSpaceQuery : GENERIC_SPACE | GLOBAL | SHARED | CONST | LOCAL ;
 
 // Parallel sync instruction rules
 barInst
-    : predicate? BAR barrierOp? (IMMEDIATE operand?)? SEMI
+    : predicate? BAR barrierOp? (IMMEDIATE COMMA operand?)? SEMI
     ;
 membarInst: MEMBAR membarScope? SEMI;
 fenceInst: FENCE fenceQualifiers? SEMI;
@@ -339,10 +339,14 @@ atomOp
 // Warp level instruction rules
 voteInst: VOTE voteMode PRED? operand (COMMA operand)? SEMI;
 shflInst: SHFL shuffleMode PRED? typeSpecifier vectorSpec? operand COMMA operand COMMA operand (COMMA operand)? SEMI;
+barWarpSyncInst: BAR DOT WARP DOT SYNC typeSpecifier vectorSpec? operand COMMA labelOperand SEMI;
+activemaskInst: ACTIVEMASK typeSpecifier operand SEMI;
 
 warpLevelInst
     : voteInst
     | shflInst
+    | barWarpSyncInst
+    | activemaskInst
     ;
 
 shuffleMode : UP | DOWN | BFLY | IDX ;

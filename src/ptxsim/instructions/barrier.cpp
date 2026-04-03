@@ -1,15 +1,176 @@
+// =============================================================================
+// barrier.cpp - Warp-level Barrier Instruction Handlers
+// =============================================================================
+// @file barrier.cpp
+// @brief Stage 3: bar.warp.sync 和 activemask 指令的实现
+// @details 实现 PTX ISA v6.0+ 的 warp 级收敛屏障机制
+//          使用 Wbar 数据结构实现线程同步
+// @author PTX-EMU Team
+// @date 2026-04-03
+// 
+// Stage 3 TODO:
+// 1. ✅ BarWarpSyncHandler::processOperation() - 实现 warp 级屏障同步
+// 2. ✅ ActivemaskHandler::processOperation() - 读取执行掩码
+// =============================================================================
+
 #include "ptxsim/instruction_handlers.h"
 #include "ptxsim/thread_context.h"
-#include "ptxsim/execution_types.h"
+#include "ptxsim/warp_context.h"
+#include "ptxsim/warp_state.h"
+#include "ptxsim/wbar.h"
+#include "ptx_ir/statement_context.h"
 #include "utils/logger.h"
+#include <cstdint>
 
-void BarHandler::executeBarrier(ThreadContext *context, const BarrierInstr &instr) {
-    int bar_id = instr.barId.has_value() ? instr.barId.value() : 0;
-    context->bar_id = bar_id;
-    context->state = BAR_SYNC;
-    context->next_pc = context->pc + 1;
+// Note: Handlers are defined in global namespace, not ptxsim namespace
+// (to match the declarations in instruction_handlers.h)
+
+// =============================================================================
+// BarWarpSyncHandler Implementation
+// =============================================================================
+// PTX Syntax: bar.warp.sync mask, reconvergence_pc;
+// 
+// Purpose: Synchronize divergent threads within a warp
+// 
+// Operation:
+// 1. Extract participation mask from operand[0]
+// 2. Get reconvergence PC from operand[1] (label)
+// 3. Mark current thread as arrived using Wbar::arrive()
+// 4. Check if all participants have arrived using Wbar::is_complete()
+// 5. If complete:
+//    - Update all participating threads' PC to reconvergence_pc
+//    - Clear barrier for next use
+// 6. If not complete:
+//    - Mark thread as blocked (waiting at barrier)
+// =============================================================================
+
+void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operands,
+                                          const std::vector<Qualifier>& qualifiers,
+                                          const std::vector<char>* operand_is_immediate) {
+    // Validate: bar.warp.sync should have 2 operands
+    // Note: operands[] contains void* pointers to register/memory locations
+    // For immediate operands, operand_is_immediate[i] is true and operands[i] points to the immediate value
     
-    PTX_DEBUG_EMU("Thread (%d,%d,%d) waiting at bar.sync %d, state=BAR_SYNC, next_pc=%d",
-                  context->ThreadIdx.x, context->ThreadIdx.y, context->ThreadIdx.z,
-                  bar_id, context->next_pc);
+    if (!operands || !operands[0] || !operands[1]) {
+        PTX_ERROR_EMU("bar.warp.sync requires 2 operands");
+        return;
+    }
+    
+    // Step 1: Extract participation mask from operand[0]
+    uint32_t participation_mask = 0;
+    if (operand_is_immediate && (*operand_is_immediate)[0]) {
+        // Immediate operand
+        participation_mask = *static_cast<uint32_t*>(operands[0]);
+    } else {
+        // Register operand - operands[0] is the register address
+        participation_mask = *static_cast<uint32_t*>(operands[0]);
+    }
+    
+    // Step 2: Extract reconvergence PC from operand[1]
+    // For bar.warp.sync, operand[1] is typically a label which has been resolved to PC
+    int reconvergence_pc = -1;
+    if (operand_is_immediate && (*operand_is_immediate)[1]) {
+        // Immediate PC value
+        reconvergence_pc = *static_cast<int*>(operands[1]);
+    } else {
+        // Label was resolved to PC during parsing
+        reconvergence_pc = *static_cast<int*>(operands[1]);
+    }
+    
+    // Step 3: Access WarpContext and WarpState
+    WarpContext* warp_ctx = context->warp_context_;
+    if (!warp_ctx) {
+        PTX_ERROR_EMU("WarpContext is null in BarWarpSyncHandler");
+        return;
+    }
+    
+    ptxsim::WarpState& warp_state = warp_ctx->get_warp_state();
+    int lane_id = context->lane_id_;
+    
+    // Step 4: Find or allocate a Wbar register
+    // For now, use wbar_id = 0 (can be extended to support multiple barriers)
+    int wbar_id = 0;
+    ptxsim::Wbar& wbar = warp_state.wbars[wbar_id];
+    
+    // Step 5: Initialize barrier if not already initialized
+    // Check if this is a new barrier by comparing participation masks
+    if (!wbar.is_initialized || wbar.participation_mask != participation_mask) {
+        // New barrier: initialize
+        wbar.init(participation_mask, reconvergence_pc);
+        warp_state.current_wbar_id = wbar_id;
+        PTX_DEBUG_EMU("bar.warp.sync: Initialized wbar[%d] with mask=0x%X, reconvergence_pc=%d",
+                      wbar_id, participation_mask, reconvergence_pc);
+    }
+    
+    // Step 6: Mark current thread as arrived
+    wbar.arrive(lane_id);
+    PTX_DEBUG_THREAD("Lane %d arrived at bar.warp.sync (mask=0x%X, pc=%d)",
+                     lane_id, participation_mask, reconvergence_pc);
+    
+    // Step 7: Check if all participants have arrived
+    if (wbar.is_complete()) {
+        // All threads have arrived: update PCs and release
+        PTX_DEBUG_EMU("bar.warp.sync: Barrier complete, releasing %d threads to PC=%d",
+                      wbar.count_participants(), reconvergence_pc);
+        
+        // Update PC for all participating threads
+        for (int i = 0; i < 32; ++i) {
+            if (participation_mask & (1u << i)) {
+                warp_ctx->set_thread_pc(i, reconvergence_pc);
+                // Clear blocked state
+                warp_state.threads[i].is_blocked = false;
+                warp_state.threads[i].status = ptxsim::ThreadStatus::Active;
+            }
+        }
+        
+        // Reset barrier for next use
+        wbar.reset();
+        warp_state.current_wbar_id = -1;
+    } else {
+        // Not complete: mark current thread as blocked
+        warp_state.threads[lane_id].is_blocked = true;
+        warp_state.threads[lane_id].status = ptxsim::ThreadStatus::Blocked;
+        PTX_DEBUG_THREAD("Lane %d blocked at bar.warp.sync (arrived=%d/%d)",
+                         lane_id, wbar.count_arrived(), wbar.count_participants());
+    }
 }
+
+// =============================================================================
+// ActivemaskHandler Implementation
+// =============================================================================
+// PTX Syntax: activemask.b32 dst;
+// 
+// Purpose: Read the current active lane mask into a destination register
+// 
+// Operation:
+// 1. Access WarpContext to get exec_mask
+// 2. Write exec_mask to destination register
+// =============================================================================
+
+void ActivemaskHandler::processOperation(ThreadContext* context, void** operands,
+                                         const std::vector<Qualifier>& qualifiers,
+                                         const std::vector<char>* operand_is_immediate) {
+    // Activemask has 1 operand: destination register
+    
+    if (!operands || !operands[0]) {
+        PTX_ERROR_EMU("Activemask: null operands");
+        return;
+    }
+    
+    // Access WarpContext to get exec_mask
+    WarpContext* warp_ctx = context->warp_context_;
+    if (!warp_ctx) {
+        PTX_ERROR_EMU("WarpContext is null in ActivemaskHandler");
+        return;
+    }
+    
+    // Read current exec_mask from WarpState
+    uint32_t exec_mask = warp_ctx->get_exec_mask();
+    
+    // Write to destination register
+    uint32_t* dst_reg = static_cast<uint32_t*>(operands[0]);
+    *dst_reg = exec_mask;
+    
+    PTX_DEBUG_THREAD("activemask.b32: read exec_mask=0x%X to reg=%p", exec_mask, dst_reg);
+}
+

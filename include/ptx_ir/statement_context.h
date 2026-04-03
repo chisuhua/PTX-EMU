@@ -171,6 +171,19 @@ struct ShflInstr {
     std::vector<OperandContext> operands;
 };
 
+// Stage 2b: NEW - Warp-level synchronization instructions
+struct ActivemaskInstr {
+    std::vector<Qualifier> qualifiers;
+    std::vector<OperandContext> operands;
+};
+
+struct BarWarpSyncInstr {
+    std::vector<Qualifier> qualifiers;
+    std::vector<OperandContext> operands;
+    std::string reconvergenceLabel;
+};
+
+// Stage 2b: NEW - Warp-level synchronization
 // -----------------------------------------------------------------------------
 // Texture/Surface instructions (S_TEX, S_SURF → TEXTURE_INSTR, SURFACE_INSTR)
 // -----------------------------------------------------------------------------
@@ -263,7 +276,8 @@ using InstrVariant =
                  MbarrierInstr,        // MBARRIER_INSTR
                  CallInstr,            // CALL_INSTR
                  PredicatePrefix,      // PREDICATE_PREFIX
-                 GenericInstr,         // GENERIC_INSTR
+                 GenericInstr,         // GENERIC_INSTR - includes S_ACTIVEMASK
+                 BarWarpSyncInstr,     // WARP_BARRIER - S_BAR_WARP_SYNC
                  WmmaInstr,            // WMMA_INSTR
                  AtomInstr,            // ATOM_INSTR
                  VoteInstr,            // VOTE_INSTR
@@ -272,13 +286,13 @@ using InstrVariant =
                  SurfaceInstr,         // SURFACE_INSTR
                  ReductionInstr,       // REDUCTION_INSTR
                  PrefetchInstr,        // PREFETCH_INSTR
-                 CpAsyncInstr,         // CP_ASYNC_INSTR  // Add this!
-                 AsyncStoreInstr, 
-                 AsyncReduceInstr, 
-                 TcgenInstr, 
-                 TensormapInstr,
-                 AbiDirective>;
-
+                 CpAsyncInstr,         // CP_ASYNC_INSTR
+                 AsyncStoreInstr,      // ASYNC_STORE
+                 AsyncReduceInstr,     // ASYNC_REDUCE
+                 TcgenInstr,           // TCGEN_INSTR
+                 TensormapInstr,       // TENSORMAP_INSTR
+                 AbiDirective          // ABI_DIRECTIVE
+                 >;
 class StatementContext {
 public:
     StatementType type;

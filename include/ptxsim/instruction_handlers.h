@@ -58,6 +58,15 @@
         void executeBarrier(ThreadContext *context, const BarrierInstr &instr) override; \
     };
 
+// Warp barrier handlers - use GenericPipelineHandler for access to operands
+#define DECLARE_WARP_BARRIER_HANDLER(Name) \
+    class Name##Handler : public GenericPipelineHandler { \
+    public: \
+        void processOperation(ThreadContext *context, void **operands, \
+                             const std::vector<Qualifier> &qualifiers, \
+                             const std::vector<char> *operand_is_immediate = nullptr) override; \
+    };
+
 // Call handlers — FIXED: declare all used methods
 #define DECLARE_CALL_INSTR_HANDLER(Name) \
     class Name##Handler : public CallBaseHandler { \
@@ -107,6 +116,7 @@
 #define DECLARE_MBARRIER_INSTR_HANDLER(Name)   DECLARE_SIMPLE_HANDLER(Name)
 #define DECLARE_PREDICATE_PREFIX_HANDLER(Name) DECLARE_SIMPLE_HANDLER(Name)
 #define DECLARE_VOTE_INSTR_HANDLER(Name)       DECLARE_SIMPLE_HANDLER(Name)
+// DECLARE_WARP_BARRIER_HANDLER is defined separately above (line 62-68) - uses GenericPipelineHandler
 #define DECLARE_SHFL_INSTR_HANDLER(Name)       DECLARE_SIMPLE_HANDLER(Name)
 #define DECLARE_TEXTURE_INSTR_HANDLER(Name)    DECLARE_SIMPLE_HANDLER(Name)
 #define DECLARE_SURFACE_INSTR_HANDLER(Name)    DECLARE_SIMPLE_HANDLER(Name)

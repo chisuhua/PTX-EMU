@@ -136,6 +136,8 @@ X(S_CLZ,     clz,     Clz,     2, GENERIC_INSTR, arithmetic)      // clz: dst, s
 // -----------------------------------------------------------------------------
 X(S_VOTE,    vote,    Vote,    2, VOTE_INSTR, warpLevel)      // vote: mode, pred
 X(S_SHFL,    shfl,    Shfl,    4, SHFL_INSTR, warpLevel)      // shfl: mode, dst, src, offset
+X(S_BAR_WARP_SYNC, barWarpSync, BarWarpSync, 2, WARP_BARRIER, warpLevel)      // bar.warp.sync: mask, reconvergence_pc
+X(S_ACTIVEMASK, activemask, Activemask, 1, GENERIC_INSTR, warpLevel)      // activemask.b32: dst
 
 // -----------------------------------------------------------------------------
 // 11. Texture / Surface Instructions

@@ -27,3 +27,22 @@ ptx_emu*.log
 
 # 缓存目录
 .cache/
+
+# Git commit review temporaries
+*.bak
+*.orig
+*.rej
+2.log
+tmp_fix.txt
+validation_test.txt
+config.ini.bak
+
+# Build directories
+build_release/
+build/
+
+# Testing temporary files
+Testing/Temporary/
+
+# Mini test config (temporary)
+configs/mini_test.ini
