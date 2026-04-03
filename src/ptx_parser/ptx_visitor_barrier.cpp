@@ -12,8 +12,9 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
     BarrierInstr instr; \
     instr.qualifiers = extractQualifiersFromContext(ctx); \
     \
-    if (ctx->IMMEDIATE()) { \
-        instr.barId = extractIntFromToken(ctx->IMMEDIATE()->getSymbol()); \
+    /* Extract bar ID from barrierOperands if present */ \
+    if (ctx->barrierOperands() && ctx->barrierOperands()->IMMEDIATE()) { \
+        instr.barId = extractIntFromToken(ctx->barrierOperands()->IMMEDIATE()->getSymbol()); \
     } \
     \
     stmtCtx.data = instr; \

@@ -292,7 +292,12 @@ addrSpaceQuery : GENERIC_SPACE | GLOBAL | SHARED | CONST | LOCAL ;
 
 // Parallel sync instruction rules
 barInst
-    : predicate? BAR barrierOp? (IMMEDIATE COMMA operand?)? SEMI
+    : predicate? BAR barrierOp? barrierOperands? SEMI
+    ;
+
+barrierOperands
+    : IMMEDIATE COMMA operand?  // bar.sync 0, count  (CTA-level barrier with optional count)
+    | IMMEDIATE                 // bar.sync 0  (simple CTA barrier)
     ;
 membarInst: MEMBAR membarScope? SEMI;
 fenceInst: FENCE fenceQualifiers? SEMI;
@@ -498,14 +503,24 @@ paramDecl
     | typeSpecifier? vectorSpec? ID
     ;
 
+// Parameter declaration in function headers
+// Format 1: .param <type> [.ptr] [.align N] <id>
+// Format 2: <type> [<vector>] <id>  (for register declarations)
+paramDecl
+    : PARAM paramTypeSpec ID arraySize?
+    | (REG | LOCAL | PARAM | CONST | SHARED | GLOBAL)? typeSpecifier vectorSpec? ID arraySize?
+    ;
+
+// Parameter type specifier with flexible order for type, PTR, and align
+// Supports: .param .u64 .ptr .align 1, .param .u64 .ptr, .param .u64 .align 1, etc.
 paramTypeSpec
-    : alignClause typeSpecifier PTR
-    | alignClause typeSpecifier
-    | typeSpecifier PTR alignClause
+    : typeSpecifier PTR alignClause
     | typeSpecifier PTR
+    | alignClause typeSpecifier PTR
     | typeSpecifier alignClause
-    | typeSpecifier
+    | alignClause typeSpecifier
     | PTR alignClause
+    | typeSpecifier
     | PTR
     ;
 

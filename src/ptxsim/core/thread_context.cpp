@@ -93,6 +93,10 @@ void ThreadContext::_execute_once() {
     // 跟踪指令
     StatementContext &statement = (*statements)[pc];
 
+    // 【Stage 4 Fix】设置默认 next_pc 为 pc+1（顺序执行）
+    // 分支指令处理器可以覆盖这个值
+    next_pc = pc + 1;
+
     // if (statement.state == InstructionState::READY) {
     //     trace_instruction(statement);
     // }
