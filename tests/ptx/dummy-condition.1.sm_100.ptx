@@ -1,3 +1,9 @@
+arch = sm_100
+code version = [9,0]
+host = linux
+compile_size = 64bit
+compressed
+ptxasOptions = 
 
 
 
@@ -35,3 +41,4 @@ st.global.u32 [%rd4], %r3;
 ret;
 
 }
+

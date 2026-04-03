@@ -370,3 +370,19 @@ endforeach()
 
 # Add external test subdirectories
 add_subdirectory(../bench/test_extern_shared CMakeFiles.test_extern_shared.dir)
+
+# Additional comprehensive SIMT tests (wbar and spinlock)
+# Added 2026-04-02 for extended coverage
+
+# Register SIMT architecture tests (Stages 1-3)
+add_catch_test(test_simt_thread_pc
+    test_simt_thread_pc.cpp
+)
+
+add_catch_test(test_warp_barrier_extended
+    test_warp_barrier.cpp
+)
+
+add_catch_test(test_scheduler_config
+    test_scheduler_config.cpp
+)
