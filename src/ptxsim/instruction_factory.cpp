@@ -10,7 +10,7 @@ void InstructionFactory::initialize() {
         return;
 
     // 为每种指令类型注册对应的 Handler 实例
-    // 注意：Handler 类名为 type_name##Handler
+    // 注意：Handler 类名为 opstr##Handler（使用 opstr 字符串）
 #define X(enum_val, op_name, opstr, op_count, struct_kind, instr_kind) \
     handler_map[enum_val] = new opstr##Handler();
 #include "ptx_ir/ptx_op.def"

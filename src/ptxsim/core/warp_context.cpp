@@ -59,8 +59,12 @@ void WarpContext::add_thread(std::unique_ptr<ThreadContext> thread,
 }
 
 void WarpContext::execute_warp_instruction(StatementContext &stmt) {
-    // Execute each lane's own instruction based on its PC from pc_stack (divergence support)
+    // DEBUG: Log warp-level state at start of each instruction execution
+    PTX_INFO_EMU("=== execute_warp_instruction: threads.size()=%zu active_count=%d ===",
+                  threads.size(), active_count);
     for (int i = 0; i < WARP_SIZE; i++) {
+        PTX_INFO_EMU("  lane=%d active_mask=%d threads_idx=%d",
+                      i, active_mask[i], (int)(i < threads.size()));
         if (is_lane_active(i) && i < threads.size() && threads[i] != nullptr) {
             ThreadContext *thread = threads[i].get();
             
@@ -77,6 +81,17 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt) {
                 continue;
             }
             
+            // DEBUG: Log lane execution details to diagnose why only 16 threads reach barrier
+            const char* state_str = "UNKNOWN";
+            switch (thread->get_state()) {
+                case IDLE: state_str = "IDLE"; break;
+                case RUN: state_str = "RUN"; break;
+                case EXIT: state_str = "EXIT"; break;
+                case BAR_SYNC: state_str = "BAR_SYNC"; break;
+            }
+            PTX_INFO_EMU("lane=%d is_lane_active=%d thread=0x%llx state=%s pc=%d",
+                         i, is_lane_active(i), (unsigned long long)(uintptr_t)thread, state_str, thread->get_pc());
+
             // Execute the instruction at thread's current PC
             thread->execute_thread_instruction();
             
@@ -85,11 +100,6 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt) {
                 pc_stacks[i].back() = thread->get_pc();
             } else {
                 pc_stacks[i].push_back(thread->get_pc());
-            }
-            
-            // Check barrier after execution
-            if (thread->get_state() == BAR_SYNC && sm_context_ != nullptr) {
-                sm_context_->synchronize_barrier(thread->bar_id, thread);
             }
         }
     }

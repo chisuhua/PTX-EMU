@@ -159,6 +159,7 @@ EXE_STATE SMContext::exe_once() {
                             // 设置所有等待线程的状态为RUN
                             for (auto waiting_thread : waiting_threads) {
                                 waiting_thread->set_state(RUN);
+                                waiting_thread->set_next_pc(waiting_thread->get_pc() + 1);
                             }
 
                             // 清空barrier等待队列
@@ -402,8 +403,11 @@ bool SMContext::synchronize_barrier(int barId, ThreadContext *thread) {
             ? thread->get_warp_context()->get_physical_block_id()
             : -1;
 
+    // Log physical_block_id before the check at line 405
+    PTX_INFO_EMU("INFO: synchronize_barrier called - thread at barrier, physical_block_id=%d", physical_block_id);
+
     if (physical_block_id == -1) {
-        PTX_DEBUG_EMU("Error: Could not determine physical block ID for thread "
+        PTX_WARN_EMU("Error: Could not determine physical block ID for thread "
                       "at barrier");
         return false;
     }
@@ -411,13 +415,15 @@ bool SMContext::synchronize_barrier(int barId, ThreadContext *thread) {
     // 获取该block的CTAContext来获取block维度信息
     auto block_it = managed_blocks.find(physical_block_id);
     if (block_it == managed_blocks.end()) {
-        PTX_DEBUG_EMU("Error: Could not find block %d for barrier sync",
-                      physical_block_id);
+        // Log when managed_blocks.find() fails (block not found)
+        PTX_WARN_EMU("Error: Could not find block %d for barrier sync", physical_block_id);
         return false;
     }
 
     CTAContext *cta_ctx = block_it->second.get();
+    // Log total_threads_in_block read from CTAContext
     int total_threads_in_block = cta_ctx->get_thread_count();
+    PTX_INFO_EMU("DEBUG: total_threads_in_block=%d from CTAContext", total_threads_in_block);
 
     // 只在第一次有线程到达时设置线程总数，避免重复覆盖导致计数错误
     if (barrier_thread_counts.find(barId) == barrier_thread_counts.end()) {
@@ -427,22 +433,27 @@ bool SMContext::synchronize_barrier(int barId, ThreadContext *thread) {
     // 将当前线程加入到 barrier 等待队列
     barrier_waiting_threads[barId].insert(thread);
 
-    PTX_DEBUG_EMU("Thread in block %d waiting at barrier %d, %zu threads "
+    PTX_INFO_EMU("Thread in block %d waiting at barrier %d, %zu threads "
                   "waiting, need %d",
                   physical_block_id, barId,
                   barrier_waiting_threads[barId].size(),
                   total_threads_in_block);
 
+    // Log barrier_waiting_threads[barId].size() and barrier_thread_counts[barId] before the completion check at line 437
+    PTX_INFO_EMU("Before completion check - waiting threads: %zu, required threads: %d",
+                 barrier_waiting_threads[barId].size(), barrier_thread_counts[barId]);
+
     // 检查是否所有线程都已经到达barrier
     if (barrier_waiting_threads[barId].size() >=
         static_cast<size_t>(barrier_thread_counts[barId])) {
         // 所有线程都到达了barrier，释放所有等待的线程
-        PTX_DEBUG_EMU("All threads reached barrier %d, releasing %zu threads",
-                      barId, barrier_waiting_threads[barId].size());
+        PTX_INFO_EMU("All threads reached barrier %d, releasing %zu threads",
+                     barId, barrier_waiting_threads[barId].size());
 
         // 设置所有等待线程的状态为RUN
         for (auto waiting_thread : barrier_waiting_threads[barId]) {
             waiting_thread->set_state(RUN);
+            waiting_thread->set_next_pc(waiting_thread->get_pc() + 1);
         }
 
         // 清空barrier等待队列
