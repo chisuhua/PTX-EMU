@@ -133,6 +133,9 @@ EXE_STATE SMContext::exe_once() {
         return sm_state;
     }
 
+    // 获取 barrier 锁保护并发访问
+    std::lock_guard<std::mutex> lock(barrier_mutex_);
+
     // 检查barrier等待的线程，如果有线程在等待barrier且已满足同步条件，需要更新它们的状态
     for (auto &[barId, waiting_threads] : barrier_waiting_threads) {
         if (!waiting_threads.empty()) {
@@ -398,6 +401,9 @@ void SMContext::print_resource_usage() const {
 
 bool SMContext::synchronize_barrier(int barId, ThreadContext *thread) {
     // 获取线程所在的物理block ID
+    // 获取 barrier 锁保护并发访问
+    std::lock_guard<std::mutex> lock(barrier_mutex_);
+
     int physical_block_id =
         thread->get_warp_context()
             ? thread->get_warp_context()->get_physical_block_id()

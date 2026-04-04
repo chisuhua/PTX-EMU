@@ -153,6 +153,8 @@ private:
     // 新增：barrier同步数据结构
     std::map<int, std::set<ThreadContext *>> barrier_waiting_threads;
     std::map<int, int> barrier_thread_counts; // 每个barrier需要等待的线程数
+    // 保护 barrier 数据结构的 mutex
+    mutable std::mutex barrier_mutex_;
 };
 
 #endif // SM_CONTEXT_H
