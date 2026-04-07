@@ -1,7 +1,9 @@
 #include "ptxsim/gpu_context.h"
+#include "cudart/cuda_driver.h"
 #include "memory/hardware_memory_manager.h" // 添加硬件内存管理器头文件
 #include "memory/resource_manager.h"
 #include "memory/simple_memory.h" // 添加SimpleMemory头文件
+#include "cudart/cuda_driver.h" // 添加 CudaDriver 头文件
 #include <fstream>
 #include <future>
 #include <inipp/inipp.h>
@@ -34,6 +36,9 @@ void GPUContext::init() {
 
     // 设置HardwareMemoryManager使用的SimpleMemory实例
     HardwareMemoryManager::instance().set_simple_memory(device_memory.get());
+    
+    // 设置 CudaDriver 使用的 SimpleMemory 实例（用于 cudaMalloc 等）
+    CudaDriver::instance().set_simple_memory(device_memory.get());
 
     // 初始化 ResourceManager
     ResourceManager::instance().initialize(config.num_sms,

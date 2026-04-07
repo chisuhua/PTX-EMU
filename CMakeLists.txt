@@ -42,6 +42,15 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 find_package(Java COMPONENTS Runtime REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 
+# 查找 cuobjdump 工具路径
+find_program(CUOBJDUMP_EXECUTABLE cuobjdump HINTS ${CUDAToolkit_BIN_DIR} ${CUDAToolkit_BIN_DIRS} ENV CUDA_PATH ENV PATH)
+if(CUOBJDUMP_EXECUTABLE)
+    message(STATUS "Found cuobjdump: ${CUOBJDUMP_EXECUTABLE}")
+    add_compile_definitions(CUOBJDUMP_PATH="${CUOBJDUMP_EXECUTABLE}")
+else()
+    message(WARNING "cuobjdump not found - PTX extraction from CUDA binaries will fail")
+endif()
+
 find_program(CCACHE_FOUND ccache)
 if(CCACHE_FOUND)
     set(CMAKE_C_COMPILER_LAUNCHER "ccache")

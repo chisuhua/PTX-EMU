@@ -47,6 +47,7 @@ void ThreadContext::init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim,
     this->label2pc = label2pc;
     this->pc = 0;
     this->next_pc = 0;
+    this->bar_id = 0;  // Initialize barrier ID to default
     this->state = RUN;
     operand_collected.resize(ThreadContext::MAX_OPERANDS_PER_INSTR);
     operand_is_immediate_.resize(ThreadContext::MAX_OPERANDS_PER_INSTR);
@@ -72,7 +73,7 @@ void ThreadContext::set_local_memory_space(void *local_mem_space) {
 }
 
 void ThreadContext::_execute_once() {
-    assert(state == RUN);
+    // assert(state == RUN); // Allow BAR_SYNC threads to retry barrier
     // 使用安全的PC检查
     assert(is_valid_pc());
 
@@ -208,6 +209,7 @@ void ThreadContext::dump_state(std::ostream &os) const {
 void ThreadContext::reset() {
     pc = 0;
     next_pc = 0;
+    bar_id = 0;  // Reset barrier ID
     state = RUN;
     cc_reg = ConditionCodeRegister{}; // 重置条件码寄存器
 

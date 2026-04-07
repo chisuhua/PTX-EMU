@@ -64,7 +64,7 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt) {
     PTX_INFO_EMU("=== execute_warp_instruction: threads.size()=%zu active_count=%d ===",
                   threads.size(), active_count);
 #endif
-    for (int i = 0; i < WARP_SIZE; i++) {
+        for (int i = 0; i < WARP_SIZE; i++) {
         if (is_lane_active(i) && i < threads.size() && threads[i] != nullptr) {
             ThreadContext *thread = threads[i].get();
             
@@ -106,17 +106,17 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt) {
         }
     }
     
-    update_active_mask();
+        update_active_mask();
 }
 
 void WarpContext::update_active_mask() {
     active_count = 0;
     for (int i = 0; i < WARP_SIZE; i++) {
         if (i < threads.size() && threads[i] != nullptr) {
-            // 检查线程状态，如果线程已退出则不再活跃
             if (threads[i]->is_exited()) {
                 active_mask[i] = false;
-            } else if (threads[i]->is_active()) {
+            } else {
+                active_mask[i] = true;
                 active_count++;
             }
         }

@@ -10,6 +10,11 @@
 #define PTX_ERROR(fmt, ...) PTX_ERROR_EMU(fmt, ##__VA_ARGS__)
 #define PTX_DEBUG(fmt, ...) PTX_DEBUG_EMU(fmt, ##__VA_ARGS__)
 
+// 使用编译时定义的 cuobjdump 路径，如果未定义则使用默认命令
+#ifndef CUOBJDUMP_PATH
+#define CUOBJDUMP_PATH "cuobjdump"
+#endif
+
 // 移除PTX中的内联汇编块
 // NVVM生成PTX时会在内联汇编周围插入 "// begin inline asm" 和 "// end inline asm" 注释
 // 或者直接输出 {} 包裹的内联汇编块，解析器无法处理这些语法
@@ -87,7 +92,7 @@ static std::string strip_inline_asm(const std::string& ptx_code) {
 std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
     char ptx_list_cmd[1024];
     snprintf(ptx_list_cmd, 1024,
-             "cuobjdump -lptx %s | cut -d : -f 2 | awk '{$1=$1}1' > "
+             CUOBJDUMP_PATH " -lptx %s | cut -d : -f 2 | awk '{$1=$1}1' > "
              "__ptx_list_temp__",
              executable_path.c_str());
 
@@ -106,7 +111,7 @@ std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
     std::string ptx_file;
     while (std::getline(ptx_list_file, ptx_file)) {
         char extract_cmd[1024];
-        snprintf(extract_cmd, 1024, "cuobjdump -xptx %s %s >/dev/null",
+        snprintf(extract_cmd, 1024, CUOBJDUMP_PATH " -xptx %s %s >/dev/null",
                  ptx_file.c_str(), executable_path.c_str());
 
         if (system(extract_cmd) != 0) {
@@ -159,7 +164,7 @@ std::vector<uint8_t> parse_cubin(const std::string &cubin_path) {
 }
 
 std::string cubin_to_ptx(const std::string &cubin_path) {
-    std::string extract_cmd = "cuobjdump -ptx " + cubin_path + " > __cubin_temp__";
+    std::string extract_cmd = CUOBJDUMP_PATH " -ptx " + cubin_path + " > __cubin_temp__";
     if (system(extract_cmd.c_str()) != 0) {
         PTX_ERROR("Failed to extract PTX from cubin");
         return "";
