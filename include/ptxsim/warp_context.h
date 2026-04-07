@@ -65,6 +65,13 @@ public:
         }
     }
 
+    // 【NEW】更新 PC 栈（用于 barrier 释放后设置正确的继续执行位置）
+    void update_pc_stack(int lane_id, uint32_t new_pc) {
+        if (lane_id >= 0 && lane_id < WARP_SIZE && !pc_stacks[lane_id].empty()) {
+            pc_stacks[lane_id].back() = new_pc;
+        }
+    }
+
     // 【NEW】获取执行掩码
     uint32_t get_exec_mask() const { return warp_state.exec_mask; }
 
