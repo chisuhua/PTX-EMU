@@ -48,6 +48,50 @@
 //    - Mark thread as blocked (waiting at barrier)
 // =============================================================================
 
+// Override prepareOperands to use BarWarpSyncInstr instead of GenericInstr
+bool BarWarpSyncHandler::prepareOperands(ThreadContext* context, StatementContext& stmt) {
+    BarWarpSyncInstr& instr = std::get<BarWarpSyncInstr>(stmt.data);
+    
+    // Defensive: ensure we have a data type qualifier
+    // bar.warp.sync requires a data type (typically .b32 for the participation mask)
+    // Check if qualifiers contains a data type qualifier (Q2bytes > 0)
+    bool hasDataType = false;
+    for (auto q : instr.qualifiers) {
+        if (Q2bytes(q) > 0) {
+            hasDataType = true;
+            break;
+        }
+    }
+    if (!hasDataType) {
+        instr.qualifiers = {Qualifier::Q_B32};
+    }
+    
+    if (!acquireAllOperands(context, instr.operands, instr.qualifiers, 
+                           static_cast<int>(instr.operands.size()))) {
+        return false;
+    }
+    context->collect_operands(stmt, instr.operands, &(instr.qualifiers));
+    return true;
+}
+
+// Override executeOperation to use BarWarpSyncInstr
+bool BarWarpSyncHandler::executeOperation(ThreadContext* context, StatementContext& stmt) {
+    const BarWarpSyncInstr& instr = std::get<BarWarpSyncInstr>(stmt.data);
+    processOperation(context, &(context->operand_collected[0]), instr.qualifiers,
+                     &context->operand_is_immediate_);
+    return true;
+}
+
+// Override commitResults to use BarWarpSyncInstr
+bool BarWarpSyncHandler::commitResults(ThreadContext* context, StatementContext& stmt) {
+    BarWarpSyncInstr& instr = std::get<BarWarpSyncInstr>(stmt.data);
+    if (!instr.operands.empty()) {
+        context->commit_operand(stmt, instr.operands[0], instr.qualifiers);
+    }
+    releaseAllOperands(instr.operands, static_cast<int>(instr.operands.size()));
+    return true;
+}
+
 void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operands,
                                           const std::vector<Qualifier>& qualifiers,
                                           const std::vector<char>* operand_is_immediate) {
@@ -121,6 +165,8 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
         for (int i = 0; i < 32; ++i) {
             if (participation_mask & (1u << i)) {
                 warp_ctx->set_thread_pc(i, reconvergence_pc);
+                // Also update pc_stack so execute_warp_instruction uses correct PC
+                warp_ctx->update_pc_stack(i, reconvergence_pc);
                 // Clear blocked state
                 warp_state.threads[i].is_blocked = false;
                 warp_state.threads[i].status = ptxsim::ThreadStatus::Active;
