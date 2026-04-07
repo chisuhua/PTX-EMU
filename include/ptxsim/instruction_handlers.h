@@ -58,10 +58,13 @@
         void executeBarrier(ThreadContext *context, const BarrierInstr &instr) override; \
     };
 
-// Warp barrier handlers - use GenericPipelineHandler for access to operands
+// Warp barrier handlers - need to override prepare/execute/commit for BarWarpSyncInstr
 #define DECLARE_WARP_BARRIER_HANDLER(Name) \
     class Name##Handler : public GenericPipelineHandler { \
     public: \
+        bool prepareOperands(ThreadContext *context, StatementContext &stmt) override; \
+        bool executeOperation(ThreadContext *context, StatementContext &stmt) override; \
+        bool commitResults(ThreadContext *context, StatementContext &stmt) override; \
         void processOperation(ThreadContext *context, void **operands, \
                              const std::vector<Qualifier> &qualifiers, \
                              const std::vector<char> *operand_is_immediate = nullptr) override; \
