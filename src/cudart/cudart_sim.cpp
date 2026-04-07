@@ -153,10 +153,10 @@ void **__cudaRegisterFatBinary(void **fatCubinHandle, void *fat_bin,
     }
 
     // 使用g_gpu_context的get_device_memory函数获取SimpleMemory实例
-    SimpleMemory *simple_mem = g_gpu_context->get_device_memory();
-
-    // 设置CudaDriver使用的SimpleMemory实例
-    CudaDriver::instance().set_simple_memory(simple_mem);
+    // SimpleMemory *simple_mem = g_gpu_context->get_device_memory();
+    //
+    // // 设置CudaDriver使用的SimpleMemory实例
+    // CudaDriver::instance().set_simple_memory(simple_mem);
 
     // 3. 解析PTX代码
     ANTLRInputStream input(ptx_code);
