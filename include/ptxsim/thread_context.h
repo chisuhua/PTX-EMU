@@ -236,6 +236,12 @@ public:
     // 获取warp上下文
     WarpContext *get_warp_context() const { return warp_context_; }
 
+    // 【Stage 4】从 warp_state 同步 PC 和状态到 ThreadContext
+    void sync_from_warp_state();
+
+    // 【Stage 4】将 ThreadContext 的 PC 和状态同步到 warp_state
+    void sync_to_warp_state();
+
 private:
     void _execute_once();
     bool is_immediate_or_vector(OperandContext &op);

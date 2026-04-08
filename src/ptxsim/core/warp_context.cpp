@@ -67,20 +67,20 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt) {
         for (int i = 0; i < WARP_SIZE; i++) {
         if (is_lane_active(i) && i < threads.size() && threads[i] != nullptr) {
             ThreadContext *thread = threads[i].get();
-            
-            // Get thread's PC from its own pc_stack
-            if (!pc_stacks[i].empty()) {
-                thread->set_pc(pc_stacks[i].back());
-            }
-            
+
+            // 【Stage 4】从 warp_state 同步 PC 和状态
+            thread->sync_from_warp_state();
+
             // Check thread state - if BAR_SYNC, thread is waiting at barrier
             if (thread->get_state() == BAR_SYNC) {
                 if (sm_context_ != nullptr) {
                     sm_context_->synchronize_barrier(thread->bar_id, thread);
                 }
+                // 【Stage 4】同步状态回 warp_state
+                thread->sync_to_warp_state();
                 continue;
             }
-            
+
 #ifdef PTX_DEBUG_WARP_VERBOSE
             // DEBUG: Log lane execution details
             const char* state_str = "UNKNOWN";
@@ -96,16 +96,12 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt) {
 
             // Execute the instruction at thread's current PC
             thread->execute_thread_instruction();
-            
-            // Update PC stack with thread's new PC
-            if (!pc_stacks[i].empty()) {
-                pc_stacks[i].back() = thread->get_pc();
-            } else {
-                pc_stacks[i].push_back(thread->get_pc());
-            }
+
+            // 【Stage 4】同步执行后的 PC 和状态回 warp_state
+            thread->sync_to_warp_state();
         }
     }
-    
+
         update_active_mask();
 }
 

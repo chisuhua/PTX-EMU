@@ -682,3 +682,67 @@ void ThreadContext::print_instruction_status(StatementContext &stmt) {
     trace_status(ptxsim::log_level::trace, "instr", "PC[0x%x] %s %s", pc,
                  opcode_str.c_str(), operands_str.c_str());
 }
+
+// 【Stage 4】从 warp_state 同步 PC 和状态到 ThreadContext
+void ThreadContext::sync_from_warp_state() {
+    if (!warp_context_) return;
+
+    int lane_id = lane_id_;
+    if (lane_id < 0 || lane_id >= WarpContext::WARP_SIZE) return;
+
+    ptxsim::ThreadState& thread_state = warp_context_->get_warp_state().threads[lane_id];
+
+    // 同步 PC
+    pc = thread_state.pc;
+    next_pc = thread_state.next_pc;
+
+    // 同步状态
+    switch (thread_state.status) {
+        case ptxsim::ThreadStatus::Active:
+            state = RUN;
+            break;
+        case ptxsim::ThreadStatus::Blocked:
+            state = BAR_SYNC;
+            break;
+        case ptxsim::ThreadStatus::Exited:
+            state = EXIT;
+            break;
+        case ptxsim::ThreadStatus::Yielded:
+            // Yielded 状态暂时映射到 RUN
+            state = RUN;
+            break;
+    }
+}
+
+// 【Stage 4】将 ThreadContext 的 PC 和状态同步到 warp_state
+void ThreadContext::sync_to_warp_state() {
+    if (!warp_context_) return;
+
+    int lane_id = lane_id_;
+    if (lane_id < 0 || lane_id >= WarpContext::WARP_SIZE) return;
+
+    ptxsim::ThreadState& thread_state = warp_context_->get_warp_state().threads[lane_id];
+
+    // 同步 PC
+    thread_state.pc = pc;
+    thread_state.next_pc = next_pc;
+
+    // 同步状态
+    switch (state) {
+        case RUN:
+            thread_state.status = ptxsim::ThreadStatus::Active;
+            thread_state.is_blocked = false;
+            break;
+        case BAR_SYNC:
+            thread_state.status = ptxsim::ThreadStatus::Blocked;
+            thread_state.is_blocked = true;
+            break;
+        case EXIT:
+            thread_state.status = ptxsim::ThreadStatus::Exited;
+            thread_state.is_exited = true;
+            thread_state.is_blocked = false;
+            break;
+        default:
+            break;
+    }
+}
