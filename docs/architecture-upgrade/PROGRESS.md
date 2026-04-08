@@ -1,142 +1,176 @@
-# SIMT 集成进度追踪
+# SIMT v2.0 架构升级进度追踪
 
-**Created**: 2026-04-03  
-**Current Phase**: Stage 3 - Instruction Execution ✅ COMPLETED  
-**Last Updated**: 2026-04-03 16:45
+**创建**: 2026-04-09 (SIMT v2.0)  
+**当前 Phase**: Phase 1 - CFG 分析基础设施 🔄 **IN PROGRESS**  
+**最后更新**: 2026-04-09 16:00  
+**分支**: `feature/simt-v2-phase1`
 
 ---
 
 ## 📊 总体进度
 
+### SIMT v2.0 (当前)
+
 ```
-[████████████████████████████████░░░░░░░░] 75% - Stage 3 完成，准备 Stage 4
+[███░░░░░░░░░░░░░░░░░░░░░░░░░] 11% - Phase 1 进行中
+```
+
+| Phase | 状态 | 进度 | 预计完成 |
+|-------|------|------|---------|
+| Phase 0: 设计与规划 | ✅ 完成 | 100% | 2026-04-09 |
+| **Phase 1: CFG 分析** | 🔄 **进行中** | 0% | 2026-04-11 |
+| Phase 2: SIMT Stack | ⏳ 待开始 | 0% | 2026-04-13 |
+| Phase 3: Per-Thread PC | ⏳ 待开始 | 0% | 2026-04-15 |
+| Phase 4: Barrier 增强 | ⏳ 待开始 | 0% | 2026-04-16 |
+| Phase 5: 测试验证 | ⏳ 待开始 | 0% | 2026-04-18 |
+
+### v1.0 历史进度（参考）
+
+```
+[████████████████████████████████░░░░░░░░] 75% - Stage 3 完成
+```
+
+**注意**: v1.0 Stage 4-5 被 v2.0 替代
+
+---
+
+## ✅ Phase 0: 设计与规划 (100% ✅ 完成)
+
+- [x] 文献研究
+  - [x] PTX ISA 9.1 规范分析
+  - [x] GPGPU-Sim 实现研究
+  - [x] SIMT 控制流论文收集
+- [x] 架构设计文档 (`SIMT-ARCHITECTURE-V2.md`)
+- [x] 实施计划文档 (`SIMT-IMPLEMENTATION-PLAN.md`)
+- [x] 批准请求文档 (`SIMT-V2-APPROVAL-REQUEST.md`)
+- [x] 备份分支创建 (`backup/pre-simt-v2`)
+- [x] **架构评审委员会批准** ✅ (2026-04-09)
+
+---
+
+## 🔄 Phase 1: CFG 分析基础设施 (0% 🔄 进行中)
+
+**预计**: 2 天 (2026-04-09 ~ 2026-04-11)  
+**分支**: `feature/simt-v2-phase1`  
+**状态**: 已开始
+
+### 任务分解
+
+| ID | 任务 | 文件 | 预计 | 状态 |
+|----|------|------|------|------|
+| **1.1.1** | **基本块识别算法** | `src/ptx_parser/cfg_builder.h` | 4h | ⏳ **未开始** |
+| **1.1.2** | **控制流图构建** | `src/ptx_parser/cfg_builder.cpp` | 4h | ⏳ **未开始** |
+| **1.1.3** | **Post-Dominator 计算** | `src/ptx_parser/cfg_builder.cpp` | 4h | ⏳ **未开始** |
+| **1.1.4** | **单元测试** | `tests/test_cfg_analysis.cpp` | 4h | ⏳ **未开始** |
+
+### 验收标准
+
+```bash
+# 1. 编译成功
+cmake --build build --target ptx_parser
+
+# 2. 单元测试通过
+ctest -R cfg_analysis -V
+
+# 3. 测试覆盖率 > 80%
+lcov --summary coverage.info
+```
+
+### 回滚策略
+
+```bash
+# 如果 Phase 1 失败
+git checkout main
+git branch -D feature/simt-v2-phase1
 ```
 
 ---
 
-## ✅ 已完成
+## ⏳ Phase 2-5: 待开始
 
-### Stage 1: 数据结构 (100%)
-- [x] ThreadState (per-thread PC)
-- [x] WarpState (32-thread array)
-- [x] ExecMask (active lane tracking)
-- [x] Wbar (convergence barrier)
-- [x] SchedulerConfig (INI parser)
-- [x] 单元测试 (32 tests, 619 assertions - ALL PASS)
+### Phase 2: SIMT Stack 实现 (2 天)
+- SIMTStackEntry 数据结构
+- Stack 操作（push/pop）
+- Reconvergence 检查
+- WarpContext 集成
+- 单元测试
 
-### Stage 2a: 语法扩展 (100%)
-- [x] bar.warp.sync 语法
-- [x] activemask.b32 语法
-- [x] S_BAR_WARP_SYNC opcode
-- [x] S_ACTIVEMASK opcode
+### Phase 3: Per-Thread PC 集成 (2 天)
+- ThreadState 重构
+- WarpContext 执行逻辑更新
+- 调度器适配
+- Branch 指令处理
+- 集成测试
 
-### Stage 2b: Parser Visitor (100%)
-- [x] visitBarWarpSyncInst 实现
-- [x] visitActivemaskInst 实现
-- [x] 更新 ptx_op.def 添加新 opcodes
-- [x] 更新 ptxLexer.g4 添加新 keywords (WARP, ACTIVEMASK)
-- [x] 更新 ptxInstructions.g4 添加 grammar rules
+### Phase 4: Barrier 增强 (1 天)
+- Wbar 与 SIMT stack 集成
+- Memory fence 验证
+- Debug 模式支持
+- Barrier 测试
 
-### Stage 2c: ANTLR Parser 生成 (100%)
-- [x] 重新运行 CMake 生成 parser
-- [x] 验证生成成功
-- [x] 编译通过
-
-### Stage 3: Instruction Execution (100% - ✅ 刚刚完成)
-- [x] BarWarpSyncHandler::processOperation() 实现
-  - 提取参与掩码 (operand[0])
-  - 提取汇合点 PC (operand[1])
-  - 初始化 Wbar
-  - 标记线程到达
-  - 检查收敛状态
-  - 更新 per-thread PC
-  - 清除 blocked 状态
-- [x] ActivemaskHandler::processOperation() 实现
-  - 读取 exec_mask
-  - 写入目标寄存器
-- [x] 更新 DECLARE_WARP_BARRIER_HANDLER 使用 GenericPipelineHandler
-- [x] 更新 IMPLEMENT_WARP_BARRIER_HANDLER 宏
-- [x] 编译验证：0 errors, 0 warnings
-- [x] PTX 语法测试：24/24 PASS (100%)
-
----
-
-## ⏹️ 待开始
-
-### Stage 4: Scheduler Integration (0%)
-- [ ] WarpContext::execute_warp_instruction 使用 per-thread PC
-- [ ] 实现基于 priority 的调度
-- [ ] Anti-starvation 机制
-- [ ] __syncthreads() → bar.warp.sync 翻译层
-
-### Stage 5: Testing (0%)
-- [ ] test_warp_divergence 完整执行测试
-- [ ] 结果分析
-- [ ] 性能基准测试 (可选)
+### Phase 5: 测试与验证 (2 天)
+- 单元测试完善
+- 集成测试
+- 性能基准
+- 回归测试
 
 ---
 
 ## 📝 会话记录
 
-### Session 3: 2026-04-03 16:45 (Stage 3 完成)
-- ✅ 编译验证：cmake --build build --target cudart → SUCCESS
-- ✅ PTX 语法测试：24/24 PASS (100%)
-- ✅ BarWarpSyncHandler 完整实现
-- ✅ ActivemaskHandler 完整实现
-- ✅ Wbar 机制集成
-- ✅ Per-thread PC 更新逻辑
-- ✅ Thread blocked/clear 状态管理
+### Session 1: 2026-04-09 (Phase 1 开始)
 
-### Session 2: 2026-04-03 16:40 (分批提交)
-- ✅ 清理临时文件和备份
-- ✅ 分 3 批提交所有变更：
-  1. 核心代码 (Grammar + Parser + IR + Handler)
-  2. 测试文件 (Unit tests + PTX tests)
-  3. 文档 (Design docs + Test reports + Benchmark)
-- ✅ 更新 .gitignore
+**时间**: 16:00  
+**状态**: Phase 1 正式开始
 
-### Session 1: 2026-04-03
-- ✅ 创建 INTEGRATION-PLAN.md
-- ✅ 创建 PROGRESS.md (本文件)
-- ✅ 确认当前状态：Stage 1-2 完成，数据结构已测试
-- ✅ 验证：32 个单元测试全部通过
-- ✅ 实现 Stage 2b - Parser Visitor
-  - ✅ 更新 ptx_op.def 添加 S_BAR_WARP_SYNC, S_ACTIVEMASK
-  - ✅ 更新 ptxLexer.g4 添加 WARP, ACTIVEMASK keywords
-  - ✅ 更新 ptxInstructions.g4 添加 barWarpSyncInst, activemaskInst
-  - ✅ 实现 visitBarWarpSyncInst 和 visitActivemaskInst
-- ✅ 重新生成 ANTLR parser 并编译测试
+- ✅ 架构评审委员会批准
+- ✅ 创建 `feature/simt-v2-phase1` 分支
+- ✅ 更新 PROGRESS.md
+- ⏳ 准备开始任务 1.1.1
+
+**下一步**:
+1. 实现基本块识别算法
+2. 构建控制流图
+3. 计算 Post-Dominator
+4. 编写单元测试
 
 ---
 
 ## 🚧 遇到的问题
 
-暂无。所有阶段按计划完成。
+暂无。Phase 1 刚刚开始。
 
 ---
 
 ## 📋 验证清单
 
-在标记阶段完成前，必须验证：
-- [x] 编译无错误 ✅
-- [x] 编译无警告 (-Wall -Wextra) ✅
-- [ ] LSP 诊断 clean (indexing delays, not blocking)
-- [x] PTX 语法测试通过 (24/24) ✅
-- [x] 单元测试通过 (32 tests) ✅
+Phase 1 完成前必须验证：
+- [ ] 编译无错误
+- [ ] 编译无警告 (-Wall -Wextra)
+- [ ] LSP 诊断 clean
+- [ ] 单元测试通过 (>80% 覆盖率)
+- [ ] 文档已更新
 
 ---
 
 ## 🎯 下一步计划
 
-**Stage 4: Scheduler Integration**
-1. 修改 WarpContext::execute_warp_instruction() 使用 per-thread PC
-2. 从 scheduler_config.ini 读取调度权重
-3. 实现 anti-starvation 机制
-4. 创建 __syncthreads() 翻译层
-5. 运行 test_warp_divergence 验证
+**今天 (2026-04-09)**:
+1. 实现基本块识别算法 (1.1.1)
+2. 开始控制流图构建 (1.1.2)
 
-**预计完成时间**: 2-3 个工作日
+**明天 (2026-04-10)**:
+1. 完成 CFG 构建
+2. 实现 Post-Dominator 计算 (1.1.3)
+3. 编写单元测试 (1.1.4)
+
+**后天 (2026-04-11)**:
+1. 完成单元测试
+2. 验证测试覆盖率
+3. 提交 Phase 1
 
 ---
 
-**Next Update**: After Stage 4 completion
+**下次更新**: Phase 1 任务 1.1.1 完成后  
+**当前负责人**: PTX-EMU Architecture Team  
+**分支状态**: `feature/simt-v2-phase1` (active)
