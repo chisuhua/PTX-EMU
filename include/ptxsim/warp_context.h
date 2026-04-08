@@ -30,6 +30,12 @@ public:
     // 执行 warp 的一条指令
     void execute_warp_instruction(StatementContext &stmt);
 
+    // 【SIMT v2.0】处理分支指令 (warp 级操作)
+    void handle_branch(const std::string& predicate,
+                       bool predicate_negated,
+                       int target_pc,
+                       int reconvergence_pc);
+
     // 获取 warp 中的线程
     ThreadContext *get_thread(int lane_id) const {
         if (lane_id >= 0 && lane_id < threads.size()) {

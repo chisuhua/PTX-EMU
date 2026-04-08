@@ -5,6 +5,73 @@
 #include <cassert>
 #include <cstring>
 
+void WarpContext::handle_branch(const std::string& predicate,
+                                 bool predicate_negated,
+                                 int target_pc,
+                                 int reconvergence_pc) {
+    uint32_t taken_mask = 0;
+    uint32_t not_taken_mask = 0;
+    
+    for (int i = 0; i < 32; i++) {
+        bool should_branch = true;
+        
+        if (!predicate.empty()) {
+            std::string pred_name = predicate;
+            if (!pred_name.empty() && pred_name[0] == '%') {
+                pred_name = pred_name.substr(1);
+            }
+            
+            auto it = warp_state.thread_predicates.find(pred_name);
+            if (it != warp_state.thread_predicates.end()) {
+                bool pred_value = it->second[i];
+                should_branch = predicate_negated ? !pred_value : pred_value;
+            } else {
+                should_branch = !predicate_negated;
+            }
+        }
+        
+        if (should_branch) {
+            taken_mask |= (1u << i);
+        } else {
+            not_taken_mask |= (1u << i);
+        }
+    }
+    
+    bool is_divergent = (taken_mask != 0) && (not_taken_mask != 0);
+    
+    if (is_divergent) {
+        SIMTStackEntry entry;
+        entry.branch_pc = pc;
+        entry.reconvergence_pc = reconvergence_pc;
+        entry.active_mask = taken_mask;
+        entry.return_mask = warp_state.exec_mask;
+        entry.return_pc = reconvergence_pc;
+        
+        simt_stack.push(entry);
+        
+        for (int i = 0; i < 32; i++) {
+            if (taken_mask & (1u << i)) {
+                warp_state.threads[i].pc = target_pc;
+                warp_state.threads[i].next_pc = target_pc;
+            } else if (not_taken_mask & (1u << i)) {
+                warp_state.threads[i].pc = pc + 1;
+                warp_state.threads[i].next_pc = pc + 1;
+            }
+        }
+        
+        warp_state.exec_mask = taken_mask;
+    } else {
+        int next_pc = (taken_mask != 0) ? target_pc : pc + 1;
+        
+        for (int i = 0; i < 32; i++) {
+            if (warp_state.threads[i].is_active) {
+                warp_state.threads[i].pc = next_pc;
+                warp_state.threads[i].next_pc = next_pc;
+            }
+        }
+    }
+}
+
 WarpContext::WarpContext()
     : active_count(0), pc(0), warp_id(-1), single_step_mode(false),
       divergence_detected(false), sm_context_(nullptr) {
