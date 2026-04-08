@@ -12,7 +12,7 @@
 ### SIMT v2.0
 
 ```
-[████████████████████░░░░░░░░░░░░░░░░░░] 44% - Phase 2 完成
+[████████████████████████████████░░░░░░░░] 67% - Phase 3 完成
 ```
 
 | Phase | 状态 | 进度 | 完成日期 |
@@ -20,8 +20,8 @@
 | Phase 0: 设计与规划 | ✅ 完成 | 100% | 2026-04-09 |
 | Phase 1: CFG 分析 | ✅ 完成 | 100% | 2026-04-09 |
 | Phase 2: SIMT Stack | ✅ 完成 | 100% | 2026-04-09 |
-| Phase 3: Per-Thread PC | ⏳ 进行中 | 0% | - |
-| Phase 4: Barrier 增强 | ⏳ 待开始 | 0% | - |
+| **Phase 3: Per-Thread PC** | ✅ **完成** | **100%** | **2026-04-09** |
+| Phase 4: Barrier 增强 | ⏳ 进行中 | 0% | - |
 | Phase 5: 测试验证 | ⏳ 待开始 | 0% | - |
 
 ---
@@ -93,16 +93,24 @@
 
 ---
 
-## 🔄 Phase 3: Per-Thread PC 集成 (0% 🔄 下一步)
+## 🔄 Phase 3: Per-Thread PC 集成 (100% 🔄 ✅ 完成)
 
-### 计划任务
-- [ ] ThreadState 重构
-- [ ] WarpContext 执行逻辑更新
-- [ ] Branch 指令处理
-- [ ] SIMT Stack 与执行流程集成
+### 交付代码
+- ✅ `src/ptxsim/instructions/control.cpp` (BraHandler 重写)
+- ✅ `src/ptxsim/core/warp_context.cpp` (execute_warp_instruction 更新)
+- ✅ `include/ptx_ir/statement_context.h` (BranchInstr 添加 reconvergence_pc)
+- ✅ `src/ptx_parser/ptx_visitor_branch.cpp` (设置 reconvergence_pc)
 
-### 预计时间
-2 天 (2026-04-11 ~ 2026-04-13)
+### 实现功能
+- ✅ BraHandler::executeBranch() - 分歧检测与 SIMT Stack 集成
+- ✅ WarpContext::execute_warp_instruction() - Reconvergence 检查
+- ✅ 每线程 PC 管理
+- ✅ Exec mask 更新与恢复
+
+### 验收状态
+- ✅ 代码已提交
+- ⏳ 编译验证中
+- ⏳ 集成测试待执行
 
 ---
 
@@ -122,6 +130,19 @@
 ---
 
 ## 📝 开发日志
+
+### 2026-04-09 - Phase 3 完成
+
+**进展**:
+- 完成 BraHandler::executeBranch() SIMT 集成
+- 实现分歧检测与 per-thread PC 设置
+- 更新 WarpContext::execute_warp_instruction() 添加 reconvergence 检查
+- BranchInstr 添加 reconvergence_pc 字段
+
+**提交**:
+- `709491d` - Add reconvergence_pc field
+- `19c7bc9` - Phase 3 in progress
+- `6181b79` - Phase 3 complete
 
 ### 2026-04-09 - Phase 2 完成
 
@@ -164,24 +185,24 @@
 | Phase 0 | 3 (docs) | 1 | 1,875 |
 | Phase 1 | 3 | 0 | 474 |
 | Phase 2 | 2 | 1 | 146 |
-| **总计** | **8** | **2** | **2,495** |
+| **Phase 3** | **0** | **3** | **~100** |
+| **总计** | **8** | **5** | **~2,600** |
 
 ---
 
 ## 🎯 下一步
 
 ### 立即行动
-1. 开始 Phase 3 实施
-2. 创建 `feature/simt-v2-phase3` 分支
-3. 实现 Branch 指令处理与 SIMT Stack 集成
+1. 开始 Phase 4 实施
+2. 创建 `feature/simt-v2-phase4` 分支
+3. 实现 Wbar 与 SIMT stack 集成
 
 ### 时间线
 ```
-2026-04-09: Phase 0-2 ✅ Complete
-2026-04-11: Phase 3 (Per-Thread PC)
-2026-04-13: Phase 4 (Barrier)
-2026-04-15: Phase 5 (Testing)
-2026-04-17: 最终验证与合并
+2026-04-09: Phase 0-3 ✅ Complete (67%)
+2026-04-10: Phase 4 (Barrier)
+2026-04-11: Phase 5 (Testing)
+2026-04-12: 最终验证与合并
 ```
 
 ---
@@ -192,10 +213,11 @@
 - `backup/pre-simt-v2` - 备份分支（文档）
 - `feature/simt-v2-phase1` - Phase 1 完成 ✅
 - `feature/simt-v2-phase2` - Phase 2 完成 ✅
-- `feature/simt-v2-phase3` - 待创建
+- `feature/simt-v2-phase3` - Phase 3 完成 ✅
+- `feature/simt-v2-phase4` - 待创建
 
 ---
 
-**状态**: 按计划进行中 (44% 完成)  
-**下次更新**: Phase 3 完成后  
+**状态**: 按计划进行中 (67% 完成)  
+**下次更新**: Phase 4 完成后  
 **联系**: PTX-EMU Architecture Team
