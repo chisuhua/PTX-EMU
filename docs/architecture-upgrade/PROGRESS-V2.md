@@ -221,3 +221,33 @@
 **状态**: 按计划进行中 (67% 完成)  
 **下次更新**: Phase 4 完成后  
 **联系**: PTX-EMU Architecture Team
+
+---
+
+## 🔄 Phase 4: Barrier 增强 (0% 🔄 进行中)
+
+**预计**: 1 天 (2026-04-10)  
+**分支**: `feature/simt-v2-phase4`  
+**状态**: 已开始
+
+### 任务分解
+
+| ID | 任务 | 文件 | 预计 | 状态 |
+|----|------|------|------|------|
+| **4.1.1** | **Memory fence 验证接口** | `include/ptxsim/wbar.h` | 2h | ⏳ 未开始 |
+| **4.1.2** | **Pre-barrier store 追踪** | `src/ptxsim/instructions/barrier.cpp` | 4h | ⏳ 未开始 |
+| **4.1.3** | **Debug 模式开关** | `configs/debug_config.ini` | 2h | ⏳ 未开始 |
+| **4.1.4** | **Barrier 验证测试** | `tests/test_barrier_verification.cpp` | 4h | ⏳ 未开始 |
+
+### 验收标准
+
+```bash
+# Debug 模式启用验证
+PTX_DEBUG=1 ctest -R barrier -V
+
+# 验证 barrier 语义
+./tests/test_barrier_verification
+
+# 性能验证（无 regression）
+./bench/test_syncthreads/test_syncthreads
+```

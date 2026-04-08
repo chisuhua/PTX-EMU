@@ -1,4 +1,3 @@
-// BRANCH 类别的实现
 #define VISITOR_BRANCH(openum, opstr, opname, opcount)                                 \
 std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
@@ -9,11 +8,9 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
                                                                                  \
     BranchInstr instr;                                                         \
                                                                                  \
-    /* 提取限定符 */                                                           \
     auto qualifiers = extractQualifiersFromContext(ctx);                       \
     instr.qualifiers = qualifiers;                                             \
                                                                                  \
-    /* 提取跳转目标 */                                                         \
     if (ctx->labelOperand()) {                                                           \
         std::string labelName = ctx->labelOperand()->getText();                          \
         if (!labelName.empty() && labelName[0] == '$') {                                 \
@@ -22,7 +19,6 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
         instr.target = labelName;                                                        \
     }                                                                          \
                                                                                  \
-    /* 提取谓词条件 (可选) */                                                 \
     if (ctx->predicate()) {                                                           \
         if (ctx->predicate()->BANG()) {                                              \
             instr.predicate_negated = true;                                          \
@@ -33,8 +29,7 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
         }                                                                              \
     }                                                                          \
                                                                                  \
-    /* 设置 reconvergence PC（占位符，后续 CFG 分析会更新） */                   \
-    instr.reconvergence_pc = -1;  /* 待 CFG 分析填充 */
+    instr.reconvergence_pc = -1;                                                 \
                                                                                  \
     stmtCtx.data = instr;                                                      \
     currentKernel->kernelStatements.push_back(stmtCtx);                        \
@@ -42,4 +37,3 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
     return nullptr;                                                            \
 }
 
-// X-Macro展开
