@@ -1,0 +1,40 @@
+#pragma once
+
+#include <vector>
+#include <cstdint>
+#include <string>
+
+#include "ptxsim/thread_context.h"
+
+namespace ptxsim {
+
+struct SIMTStackEntry {
+    int branch_pc;
+    int reconvergence_pc;
+    uint32_t active_mask;
+    uint32_t return_mask;
+    int return_pc;
+    
+    bool is_converged(const std::vector<ThreadState>& threads) const;
+    std::string toString() const;
+};
+
+class SIMTStack {
+public:
+    void push(const SIMTStackEntry& entry);
+    SIMTStackEntry pop();
+    SIMTStackEntry& top();
+    const SIMTStackEntry& top() const;
+    
+    bool empty() const;
+    size_t depth() const;
+    void clear();
+    
+    bool check_reconvergence(const std::vector<ThreadState>& threads);
+    void print() const;
+    
+private:
+    std::vector<SIMTStackEntry> entries_;
+};
+
+}
