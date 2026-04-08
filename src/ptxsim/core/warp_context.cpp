@@ -74,7 +74,15 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt) {
             // Check thread state - if BAR_SYNC, thread is waiting at barrier
             if (thread->get_state() == BAR_SYNC) {
                 if (sm_context_ != nullptr) {
-                    sm_context_->synchronize_barrier(thread->bar_id, thread);
+                    // 【Stage 4d】For warp-level barriers, check if Wbar is complete
+                    // If complete, threads should continue (skip synchronize_barrier)
+                    bool is_warp_barrier = (warp_state.current_wbar_id >= 0);
+                    bool warp_barrier_complete = is_warp_barrier &&
+                        warp_state.wbars[warp_state.current_wbar_id].is_complete();
+
+                    if (!warp_barrier_complete) {
+                        sm_context_->synchronize_barrier(thread->bar_id, thread);
+                    }
                 }
                 // 【Stage 4】同步状态回 warp_state
                 thread->sync_to_warp_state();
