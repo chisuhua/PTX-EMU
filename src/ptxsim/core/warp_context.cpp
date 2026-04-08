@@ -59,58 +59,46 @@ void WarpContext::add_thread(std::unique_ptr<ThreadContext> thread,
 }
 
 void WarpContext::execute_warp_instruction(StatementContext &stmt) {
-#ifdef PTX_DEBUG_WARP_VERBOSE
-    // DEBUG: Log warp-level state at start of each instruction execution
-    PTX_INFO_EMU("=== execute_warp_instruction: threads.size()=%zu active_count=%d ===",
-                  threads.size(), active_count);
-#endif
+    if (stmt.type == S_BRA) {
         for (int i = 0; i < WARP_SIZE; i++) {
-        if (is_lane_active(i) && i < threads.size() && threads[i] != nullptr) {
-            ThreadContext *thread = threads[i].get();
-
-            // 【Stage 4】从 warp_state 同步 PC 和状态
-            thread->sync_from_warp_state();
-
-            // Check thread state - if BAR_SYNC, thread is waiting at barrier
-            if (thread->get_state() == BAR_SYNC) {
-                if (sm_context_ != nullptr) {
-                    // 【Stage 4d】For warp-level barriers, check if Wbar is complete
-                    // If complete, threads should continue (skip synchronize_barrier)
-                    bool is_warp_barrier = (warp_state.current_wbar_id >= 0);
-                    bool warp_barrier_complete = is_warp_barrier &&
-                        warp_state.wbars[warp_state.current_wbar_id].is_complete();
-
-                    if (!warp_barrier_complete) {
-                        sm_context_->synchronize_barrier(thread->bar_id, thread);
-                    }
-                }
-                // 【Stage 4】同步状态回 warp_state
+            if (is_lane_active(i) && i < threads.size() && threads[i] != nullptr) {
+                ThreadContext *thread = threads[i].get();
+                thread->sync_from_warp_state();
+                thread->execute_thread_instruction();
                 thread->sync_to_warp_state();
-                continue;
             }
+        }
+    } else {
+        if (!simt_stack.empty()) {
+            simt_stack.check_reconvergence(warp_state.threads);
+        }
+        
+        for (int i = 0; i < WARP_SIZE; i++) {
+            if (is_lane_active(i) && i < threads.size() && threads[i] != nullptr) {
+                ThreadContext *thread = threads[i].get();
+                thread->sync_from_warp_state();
+                
+                if (thread->get_state() == BAR_SYNC) {
+                    if (sm_context_ != nullptr) {
+                        bool is_warp_barrier = (warp_state.current_wbar_id >= 0);
+                        bool warp_barrier_complete = is_warp_barrier &&
+                            warp_state.wbars[warp_state.current_wbar_id].is_complete();
 
-#ifdef PTX_DEBUG_WARP_VERBOSE
-            // DEBUG: Log lane execution details
-            const char* state_str = "UNKNOWN";
-            switch (thread->get_state()) {
-                case IDLE: state_str = "IDLE"; break;
-                case RUN: state_str = "RUN"; break;
-                case EXIT: state_str = "EXIT"; break;
-                case BAR_SYNC: state_str = "BAR_SYNC"; break;
+                        if (!warp_barrier_complete) {
+                            sm_context_->synchronize_barrier(thread->bar_id, thread);
+                        }
+                    }
+                    thread->sync_to_warp_state();
+                    continue;
+                }
+                
+                thread->execute_thread_instruction();
+                thread->sync_to_warp_state();
             }
-            PTX_INFO_EMU("lane=%d is_lane_active=%d thread=0x%llx state=%s pc=%d",
-                         i, is_lane_active(i), (unsigned long long)(uintptr_t)thread, state_str, thread->get_pc());
-#endif
-
-            // Execute the instruction at thread's current PC
-            thread->execute_thread_instruction();
-
-            // 【Stage 4】同步执行后的 PC 和状态回 warp_state
-            thread->sync_to_warp_state();
         }
     }
-
-        update_active_mask();
+    
+    update_active_mask();
 }
 
 void WarpContext::update_active_mask() {
