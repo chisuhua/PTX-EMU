@@ -40,7 +40,7 @@ void WarpContext::handle_branch(const std::string& predicate,
     bool is_divergent = (taken_mask != 0) && (not_taken_mask != 0);
     
     if (is_divergent) {
-        SIMTStackEntry entry;
+        ptxsim::SIMTStackEntry entry;
         entry.branch_pc = pc;
         entry.reconvergence_pc = reconvergence_pc;
         entry.active_mask = taken_mask;
@@ -137,7 +137,7 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt) {
         }
     } else {
         if (!simt_stack.empty()) {
-            simt_stack.check_reconvergence(warp_state.threads);
+            { std::vector<ptxsim::ThreadState> threads_vec(simt_stack_check.begin(), simt_stack_check.end()); simt_stack.check_reconvergence(threads_vec); } /* fix: pass array */;
         }
         
         for (int i = 0; i < WARP_SIZE; i++) {
