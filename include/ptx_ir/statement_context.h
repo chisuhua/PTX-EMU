@@ -59,9 +59,10 @@ struct VoidInstr {
 // -----------------------------------------------------------------------------
 struct BranchInstr {
     std::vector<Qualifier> qualifiers;
-    std::string target; // label name, e.g., "L_123"
-    std::string predicate;  // predicate register name, e.g., "%p1" (empty = unconditional)
-    bool predicate_negated = false; // true if @!p (not predicate)
+    std::string target;
+    std::string predicate;
+    bool predicate_negated = false;
+    int reconvergence_pc = -1;
 };
 
 // -----------------------------------------------------------------------------

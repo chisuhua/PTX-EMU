@@ -33,6 +33,9 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
         }                                                                              \
     }                                                                          \
                                                                                  \
+    /* 设置 reconvergence PC（占位符，后续 CFG 分析会更新） */                   \
+    instr.reconvergence_pc = -1;  /* 待 CFG 分析填充 */
+                                                                                 \
     stmtCtx.data = instr;                                                      \
     currentKernel->kernelStatements.push_back(stmtCtx);                        \
                                                                                  \
