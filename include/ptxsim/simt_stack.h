@@ -3,8 +3,9 @@
 #include <vector>
 #include <cstdint>
 #include <string>
+#include <array>
 
-#include "ptxsim/thread_context.h"
+#include "ptxsim/thread_state.h"
 
 namespace ptxsim {
 
@@ -15,7 +16,7 @@ struct SIMTStackEntry {
     uint32_t return_mask;
     int return_pc;
     
-    bool is_converged(const std::vector<ThreadState>& threads) const;
+    bool is_converged(const std::array<ThreadState, 32>& threads) const;
     std::string toString() const;
 };
 
@@ -30,7 +31,7 @@ public:
     size_t depth() const;
     void clear();
     
-    bool check_reconvergence(const std::vector<ThreadState>& threads);
+    bool check_reconvergence(const std::array<ThreadState, 32>& threads);
     void print() const;
     
 private:

@@ -4,8 +4,8 @@
 
 namespace ptxsim {
 
-bool SIMTStackEntry::is_converged(const std::vector<ThreadState>& threads) const {
-    for (size_t i = 0; i < threads.size() && i < 32; i++) {
+bool SIMTStackEntry::is_converged(const std::array<ThreadState, 32>& threads) const {
+    for (size_t i = 0; i < 32; i++) {
         if (return_mask & (1u << i)) {
             if ((int)threads[i].pc != reconvergence_pc) {
                 return false;
@@ -63,12 +63,12 @@ void SIMTStack::clear() {
     entries_.clear();
 }
 
-bool SIMTStack::check_reconvergence(const std::vector<ThreadState>& threads) {
+bool SIMTStack::check_reconvergence(const std::array<ThreadState, 32>& threads) {
     if (entries_.empty()) {
         return true;
     }
     
-    SIMTStackEntry& top = entries_.back();
+    ptxsim::SIMTStackEntry& top = entries_.back();
     
     if (top.is_converged(threads)) {
         entries_.pop_back();

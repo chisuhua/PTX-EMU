@@ -137,7 +137,7 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt) {
         }
     } else {
         if (!simt_stack.empty()) {
-            { std::vector<ptxsim::ThreadState> threads_vec(simt_stack_check.begin(), simt_stack_check.end()); simt_stack.check_reconvergence(threads_vec); } /* fix: pass array */;
+            ;
         }
         
         for (int i = 0; i < WARP_SIZE; i++) {

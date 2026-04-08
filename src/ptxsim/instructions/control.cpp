@@ -1,5 +1,6 @@
 #include "ptxsim/instruction_handlers.h"
 #include "ptxsim/thread_context.h"
+#include "ptxsim/warp_context.h"
 #include <string>
 
 void BraHandler::executeBranch(ThreadContext *context, const BranchInstr &instr) {
