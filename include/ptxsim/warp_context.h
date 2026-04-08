@@ -6,6 +6,7 @@
 #include "ptxsim/execution_types.h"
 #include "ptxsim/thread_state.h"
 #include "ptxsim/warp_state.h"
+#include "ptxsim/simt_stack.h"
 #include "register/register_bank_manager.h"
 #include <array>
 #include <memory>
@@ -169,6 +170,10 @@ public:
     ptxsim::WarpState& get_warp_state() { return warp_state; }
     const ptxsim::WarpState& get_warp_state() const { return warp_state; }
 
+    // 【NEW】SIMT Stack 访问
+    ptxsim::SIMTStack& get_simt_stack() { return simt_stack; }
+    const ptxsim::SIMTStack& get_simt_stack() const { return simt_stack; }
+
     // 【NEW】Warp 级屏障访问
     ptxsim::Wbar& get_wbar(int wbar_id) {
         if (wbar_id >= 0 && wbar_id < 4) {
@@ -205,6 +210,7 @@ private:
 
     // 【NEW】SIMT 架构升级：每线程状态
     ptxsim::WarpState warp_state;
+    ptxsim::SIMTStack simt_stack;  // SIMT control flow stack
 
 public:
     // 调度状态相关方法
