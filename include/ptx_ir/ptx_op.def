@@ -12,20 +12,20 @@
 // But to keep consistency, we assign minimal op_count=1 (just for structure).
 // In practice, they should NOT be registered as InstructionHandler.
 // -----------------------------------------------------------------------------
-X(S_REG,     reg,     Reg,     0, OPERAND_REG)      // Register reference
-X(S_CONST,   const,   Const,   0, OPERAND_CONST)      // Constant value
-X(S_SHARED,  shared,  Shared,  0, OPERAND_MEMORY)      // Shared memory address
-X(S_LOCAL,   local,   Local,   0, OPERAND_MEMORY)      // Local memory address
-X(S_GLOBAL,  global,  Global,  0, OPERAND_MEMORY)      // Global memory address
-X(S_PARAM,   param,  Param,  0, OPERAND_MEMORY)      // Param memory address
-X(S_DOLLOR,  dollor,  Dollar,  0, SIMPLE_NAME)      // Inline register ($r1)
+X(S_REG,     reg,     Reg,     0, OPERAND_REG, structure)      // Register reference
+X(S_CONST,   const,   Const,   0, OPERAND_CONST, structure)      // Constant value
+X(S_SHARED,  shared,  Shared,  0, OPERAND_MEMORY, structure)      // Shared memory address
+X(S_LOCAL,   local,   Local,   0, OPERAND_MEMORY, structure)      // Local memory address
+X(S_GLOBAL,  global,  Global,  0, OPERAND_MEMORY, structure)      // Global memory address
+X(S_PARAM,   param,  Param,  0, OPERAND_MEMORY, structure)      // Param memory address
+X(S_DOLLOR,  dollor,  Dollar,  0, SIMPLE_NAME, structure)      // Inline register ($r1)
 
 // -----------------------------------------------------------------------------
 // 1. 特殊指令
 // -----------------------------------------------------------------------------
 // X(S_AT,   at,      At,      0, BRANCH)      // Predicate prefix - conditional execution
-X(S_PRAGMA,  pragma,  Pragma,  0, SIMPLE_STRING)      // Pragma: no operands in PTX sense
-X(S_LABEL,   label,   Label,   1, LABEL_INSTR)      // Label definition: name:
+X(S_PRAGMA,  pragma,  Pragma,  0, SIMPLE_STRING, structure)      // Pragma: no operands in PTX sense
+X(S_LABEL,   label,   Label,   1, LABEL_INSTR, structure)      // Label definition: name:
 
 // -----------------------------------------------------------------------------
 // 2. 控制指令（Control Flow）
