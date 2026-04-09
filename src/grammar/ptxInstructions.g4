@@ -7,7 +7,18 @@ options {
 import ptxOperands, ptxDeclarations;
 
 funcBody
-    : LEFT_BRACE (pragmaDirective | regDecl | variableDecl | instruction)* RIGHT_BRACE
+    : LEFT_BRACE (pragmaDirective | regDecl | variableDecl | instruction | paramDecl)* RIGHT_BRACE
+    | LEFT_BRACE compoundStmt RIGHT_BRACE
+    ;
+
+// Compound statement block (e.g., { .param ...; st.param ...; call ...; })
+compoundStmt
+    : statement+
+    ;
+
+statement
+    : paramDecl
+    | instruction
     ;
 
 regDecl
@@ -61,7 +72,11 @@ brxInst
     ;
 
 callInst
-    : predicate? CALL callParams? labelOperand callArgs? SEMI
+    : predicate? CALL callQualifier? callParams? labelOperand callArgs? SEMI
+    ;
+
+callQualifier
+    : UNI
     ;
 
 retInst

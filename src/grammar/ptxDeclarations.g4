@@ -18,6 +18,30 @@ declaration
     | variableDecl
     | pragmaDirective
     | abiPreserveDirective
+    | externFuncDecl
+    ;
+
+// External function declaration (e.g., .extern .func (.param .b32 retval0) vprintf(...))
+externFuncDecl
+    : EXTERN FUNC externFuncSignature SEMI
+    ;
+
+externFuncSignature
+    : LEFT_PAREN externFuncParams RIGHT_PAREN funcName funcParamList?
+    ;
+
+funcName : ID ;
+
+funcParamList
+    : LEFT_PAREN funcParamDecl (COMMA funcParamDecl)* RIGHT_PAREN
+    ;
+
+funcParamDecl
+    : storageClass typeSpecifier ID
+    ;
+
+externFuncParams
+    : funcParamDecl (COMMA funcParamDecl)*
     ;
 
 // ---
