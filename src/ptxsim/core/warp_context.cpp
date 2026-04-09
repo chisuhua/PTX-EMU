@@ -16,18 +16,23 @@ void WarpContext::handle_branch(const std::string& predicate,
         bool should_branch = true;
         
         if (!predicate.empty()) {
+            // Read predicate value from thread's register file
             std::string pred_name = predicate;
             if (!pred_name.empty() && pred_name[0] == '%') {
                 pred_name = pred_name.substr(1);
             }
             
-            auto it = warp_state.thread_predicates.find(pred_name);
-            if (it != warp_state.thread_predicates.end()) {
-                bool pred_value = it->second[i];
-                should_branch = predicate_negated ? !pred_value : pred_value;
-            } else {
-                should_branch = !predicate_negated;
+            // Get predicate register value from register bank
+            if (register_bank_manager_) {
+                void *reg_addr = register_bank_manager_->get_register(pred_name, warp_id, i);
+                if (reg_addr) {
+                    // Predicate registers store uint8_t values (0 or 1)
+                    uint8_t pred_value = *static_cast<uint8_t*>(reg_addr);
+                    bool pred_bool = (pred_value != 0);
+                    should_branch = predicate_negated ? !pred_bool : pred_bool;
+                }
             }
+            // If register bank not available or register not found, assume true
         }
         
         if (should_branch) {
