@@ -414,10 +414,11 @@ add_test(NAME test_reconvergence_parser
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
-set_tests_properties(test_reconvergence_parser PROPERTIES
-    LABELS "simt;phase5;cfg"
+add_executable(test_cfg_edge_cases
+    ptx/test_cfg_edge_cases.cpp
 )
-add_executable(test_cfg_builder ptx/test_cfg_builder.cpp)
-target_link_libraries(test_cfg_builder ptx_parser)
-add_test(NAME test_cfg_builder COMMAND test_cfg_builder)
-set_tests_properties(test_cfg_builder PROPERTIES LABELS "cfg;phase5")
+
+target_link_libraries(test_cfg_edge_cases ptx_parser ptx_ir antlr4_static)
+
+add_test(NAME test_cfg_edge_cases COMMAND test_cfg_edge_cases)
+set_tests_properties(test_cfg_edge_cases PROPERTIES LABELS "cfg;edge;phase5")
