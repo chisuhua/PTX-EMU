@@ -7,6 +7,7 @@
 #include "ptxsim/instruction_factory.h"
 #include "ptxsim/sm_context.h"
 #include "utils/logger.h"
+#include "ptx_parser/cfg_builder.h"  // SIMT v2.0 CFG analysis
 #include <cassert>
 #include <cstdint>
 #include <cstring>
@@ -555,6 +556,32 @@ void PtxInterpreter::setupLabels(std::map<std::string, int> &label2pc) {
         }
     }
     PTX_INFO_EMU("Total labels registered: %zu", label2pc.size());
+    
+    // SIMT v2.0: CFG analysis for reconvergence PC
+    PTX_INFO_EMU("Running CFG analysis...");
+    try {
+        ptx::cfg::CFG cfg = ptx::cfg::CFGBuilder::build(
+            kernelContext->kernelStatements, label2pc);
+        ptx::cfg::PostDominatorMap postDoms = 
+            ptx::cfg::CFGBuilder::computePostDominators(cfg);
+        
+        int updated_count = 0;
+        for (int i = 0; i < kernelContext->kernelStatements.size(); i++) {
+            const auto &stmt = kernelContext->kernelStatements[i];
+            if (stmt.type == S_BRA) {
+                auto &branch = std::get<BranchInstr>(
+                    kernelContext->kernelStatements[i].data);
+                auto it = postDoms.find(i);
+                if (it != postDoms.end() && it->second >= 0) {
+                    branch.reconvergence_pc = it->second;
+                    updated_count++;
+                }
+            }
+        }
+        PTX_INFO_EMU("CFG analysis complete: updated %d branches", updated_count);
+    } catch (const std::exception& e) {
+        PTX_ERROR_EMU("CFG analysis failed: %s", e.what());
+    }
 }
 
 void PtxInterpreter::set_ptx_context(const PtxContext &ptx) {

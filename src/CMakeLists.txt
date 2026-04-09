@@ -78,6 +78,7 @@ add_library(ptxsim SHARED
     memory/resource_manager.cpp
     ptxsim/debug/ptx_config.cpp
     ptxsim/debug/ptx_debugger.cpp
+    ptxsim/core/simt_stack.cpp
     ptxsim/instruction_factory.cpp
     ptxsim/instruction_base.cpp
     ptxsim/instruction_handlers.cpp
@@ -104,6 +105,7 @@ target_link_libraries(ptxsim ptx_ir)
 
 add_library(ptx_parser SHARED
     ptx_parser/ptx_visitor.cpp
+    ptx_parser/cfg_builder.cpp
 )
 target_link_libraries(ptx_parser ptx_ir)
 add_dependencies(ptx_parser GenerateParser)

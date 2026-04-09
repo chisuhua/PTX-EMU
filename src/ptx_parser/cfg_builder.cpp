@@ -1,7 +1,5 @@
-// SIMT v2.0 - Phase 1: CFG Builder Implementation
-// This file intentionally has minimal comments - code is self-documenting
-
 #include "cfg_builder.h"
+#include "ptx_ir/statement_context.h"
 #include <algorithm>
 #include <iostream>
 
@@ -10,15 +8,6 @@ namespace cfg {
 
 BasicBlock* CFG::find_block_by_pc(int pc) {
     for (auto& block : blocks) {
-        if (block.contains(pc)) {
-            return &block;
-        }
-    }
-    return nullptr;
-}
-
-const BasicBlock* CFG::find_block_by_pc(int pc) const {
-    for (const auto& block : blocks) {
         if (block.contains(pc)) {
             return &block;
         }
@@ -35,23 +24,15 @@ BasicBlock* CFG::find_block_by_id(int id) {
     return nullptr;
 }
 
-const BasicBlock* CFG::find_block_by_id(int id) const {
-    for (const auto& block : blocks) {
-        if (block.id == id) {
-            return &block;
-        }
-    }
-    return nullptr;
-}
-
 void CFG::print() const {
-    std::cout << "CFG: " << blocks.size() << " blocks\n";
+    std::cout << "CFG: " << blocks.size() << " blocks, entry=" 
+              << entry_block_id << ", exit=" << exit_block_id << std::endl;
     for (const auto& block : blocks) {
         std::cout << "  Block " << block.id << " [PC=" << block.start_pc 
                   << "-" << block.end_pc << "]";
         if (block.is_branch_target) std::cout << " (branch target)";
         if (block.is_exit) std::cout << " (exit)";
-        std::cout << "\n";
+        std::cout << std::endl;
     }
 }
 
@@ -67,6 +48,9 @@ std::set<int> CFGBuilder::findBranchTargets(
             auto it = label2pc.find(branch.target);
             if (it != label2pc.end()) {
                 targets.insert(it->second);
+            } else {
+                std::cerr << "[CFGBuilder] Warning: Branch target '" 
+                          << branch.target << "' not found" << std::endl;
             }
         }
     }
@@ -85,7 +69,7 @@ std::vector<BasicBlock> CFGBuilder::identifyBasicBlocks(
     auto targets = findBranchTargets(statements, label2pc);
     boundaries.insert(targets.begin(), targets.end());
     
-    for (int i = 0; i < (int)statements.size(); i++) {
+    for (size_t i = 0; i < statements.size(); i++) {
         if (statements[i].type == S_BRA) {
             boundaries.insert(i + 1);
         }
@@ -112,9 +96,9 @@ std::vector<BasicBlock> CFGBuilder::identifyBasicBlocks(
     return blocks;
 }
 
-void CFGBuilder::buildEdges(
-    CFG& cfg,
-    const std::vector<StatementContext>& statements) {
+void CFGBuilder::buildEdges(CFG& cfg,
+                            const std::map<std::string, int>& label2pc,
+                            const std::vector<StatementContext>& statements) {
     
     for (size_t i = 0; i < cfg.blocks.size(); i++) {
         BasicBlock& block = cfg.blocks[i];
@@ -129,11 +113,8 @@ void CFGBuilder::buildEdges(
         if (stmt.type == S_BRA) {
             const auto& branch = std::get<BranchInstr>(stmt.data);
             
+            // 1. Add fall-through edge
             for (auto& other : cfg.blocks) {
-                if (other.contains(last_pc + 1)) {
-                    block.successors.push_back(other.id);
-                    other.predecessors.push_back(block.id);
-                }
                 if (other.start_pc == block.end_pc) {
                     bool found = false;
                     for (int succ : block.successors) {
@@ -142,6 +123,28 @@ void CFGBuilder::buildEdges(
                     if (!found) {
                         block.successors.push_back(other.id);
                         other.predecessors.push_back(block.id);
+                    }
+                }
+            }
+            
+            // 2. Add branch target edge
+            int target_pc = -1;
+            auto it = label2pc.find(branch.target);
+            if (it != label2pc.end()) {
+                target_pc = it->second;
+            }
+            
+            if (target_pc >= 0) {
+                for (auto& other : cfg.blocks) {
+                    if (other.start_pc == target_pc) {
+                        bool found = false;
+                        for (int succ : block.successors) {
+                            if (succ == other.id) { found = true; break; }
+                        }
+                        if (!found) {
+                            block.successors.push_back(other.id);
+                            other.predecessors.push_back(block.id);
+                        }
                     }
                 }
             }
@@ -170,21 +173,14 @@ CFG CFGBuilder::build(
         cfg.blocks.back().is_exit = true;
     }
     
-    buildEdges(cfg, statements);
+    buildEdges(cfg, label2pc, statements);
     
     return cfg;
 }
 
-PostDominatorMap CFGBuilder::computePostDominators(
-    const std::vector<StatementContext>& statements,
-    const std::map<std::string, int>& label2pc) {
-    
-    CFG cfg = build(statements, label2pc);
-    return computePostDominators(cfg);
-}
-
 PostDominatorMap CFGBuilder::computePostDominators(const CFG& cfg) {
     std::map<int, std::set<int>> postDomSets;
+    PostDominatorMap result;
     
     std::set<int> all_block_ids;
     for (const auto& block : cfg.blocks) {
@@ -232,9 +228,9 @@ PostDominatorMap CFGBuilder::computePostDominators(const CFG& cfg) {
         }
     }
     
-    PostDominatorMap result;
     for (const auto& block : cfg.blocks) {
-        result[block.start_pc] = findImmediatePostDominator(block, postDomSets);
+        int ipd = findImmediatePostDominator(block, postDomSets);
+        result[block.start_pc] = ipd >= 0 ? ipd : -1;
     }
     
     return result;
@@ -266,14 +262,6 @@ int CFGBuilder::findImmediatePostDominator(
         }
         
         if (isImmediate) {
-            auto blockIt = postDomSets.find(candidate);
-            if (blockIt != postDomSets.end() && !blockIt->second.empty()) {
-                const BasicBlock* targetBlock = nullptr;
-                for (const auto& b : postDomSets) {
-                    (void)b;
-                }
-                for (size_t i = 0; i < 100; i++) { (void)i; }
-            }
             return candidate;
         }
     }
