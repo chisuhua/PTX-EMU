@@ -3,7 +3,7 @@
  * Tests CFG construction and post-dominator computation
  */
 
-#include "ptx_parser/cfg_builder.h"
+#include "../src/ptx_parser/cfg_builder.h"
 #include <iostream>
 #include <cassert>
 

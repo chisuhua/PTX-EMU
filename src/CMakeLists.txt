@@ -78,6 +78,7 @@ add_library(ptxsim SHARED
     memory/resource_manager.cpp
     ptxsim/debug/ptx_config.cpp
     ptxsim/debug/ptx_debugger.cpp
+    ptxsim/core/simt_stack.cpp
     ptxsim/instruction_factory.cpp
     ptxsim/instruction_base.cpp
     ptxsim/instruction_handlers.cpp
