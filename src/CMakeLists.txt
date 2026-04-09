@@ -104,6 +104,7 @@ target_link_libraries(ptxsim ptx_ir)
 
 add_library(ptx_parser SHARED
     ptx_parser/ptx_visitor.cpp
+    ptx_parser/cfg_builder.cpp
 )
 target_link_libraries(ptx_parser ptx_ir)
 add_dependencies(ptx_parser GenerateParser)

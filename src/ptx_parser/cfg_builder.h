@@ -45,9 +45,6 @@ public:
         const std::map<std::string, int>& label2pc);
     
     static PostDominatorMap computePostDominators(const CFG& cfg);
-    static PostDominatorMap computePostDominators(
-        const std::vector<StatementContext>& statements,
-        const std::map<std::string, int>& label2pc);
     
 private:
     static std::vector<BasicBlock> identifyBasicBlocks(
@@ -58,9 +55,8 @@ private:
         const std::vector<StatementContext>& statements,
         const std::map<std::string, int>& label2pc);
     
-    static void buildEdges(
-        CFG& cfg,
-        const std::vector<StatementContext>& statements);
+    static void buildEdges(CFG& cfg,
+                          const std::vector<StatementContext>& statements);
     
     static int findImmediatePostDominator(
         const BasicBlock& block,

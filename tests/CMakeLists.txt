@@ -386,3 +386,34 @@ add_catch_test(test_warp_barrier_extended
 add_catch_test(test_scheduler_config
     test_scheduler_config.cpp
 )
+
+# ============================================================================
+# SIMT v2.0 Reconvergence PC Parser Test
+# Tests CFG analysis and reconvergence_pc computation during parser phase
+# ============================================================================
+
+add_executable(test_reconvergence_parser
+    ptx/test_reconvergence_parser.cpp
+)
+
+target_include_directories(test_reconvergence_parser PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+    ${ANTLR4_GENERATED_SRC_DIR}
+)
+
+target_link_libraries(test_reconvergence_parser
+    ptx_ir
+    ptx_parser
+    ptxsim
+    ${ANTLR4_LIBRARY}
+)
+
+add_test(NAME test_reconvergence_parser 
+    COMMAND test_reconvergence_parser ${CMAKE_SOURCE_DIR}/tests/ptx/test_reconvergence.ptx
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+set_tests_properties(test_reconvergence_parser PROPERTIES
+    LABELS "simt;phase5;cfg"
+)
