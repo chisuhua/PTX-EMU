@@ -149,3 +149,62 @@ Format: `MAJOR.MINOR.PATCH`
 **Last Updated**: 2026-04-11  
 **Maintainer**: PTX-EMU Architecture Team  
 **Version**: 2.0.0
+
+---
+
+## [Unreleased] - v2.0 Release Preparation
+
+### Added (Phase 10)
+- **Documentation**
+  - GETTING-STARTED.md - New developer guide
+  - TESTING-GUIDE.md - Testing guide
+  - PERFORMANCE-GUIDE.md - Performance guide
+  - CFG-INTEGRATION-GUIDE.md - CFG integration guide
+  - RELEASE-NOTES-v2.0.md - Release notes
+  - Updated developer-guide README
+  
+### Documentation
+- Reorganized all documentation into 6 categories
+- Created skill knowledge base (4 files)
+- Organized reports (7 files)
+- Added appendix (CHANGELOG, glossary, references)
+- Archived 50+ historical documents
+- **Total**: 73 active docs, +2,296 lines
+
+### Fixed
+- Eliminated redundant PTX ISA reference (pointing to cuda-ptx skill)
+- Improved documentation navigation
+
+### Changed
+- **Phase 10 completion**: 80% → 95%
+
+### Status
+- Tests: 38/38 PASS ✅
+- Documentation: 95% complete ✅
+- Release preparation: Ready ✅
+
+---
+
+## [2.0.0] - 2026-04-11
+
+### Added
+- **CFG Builder** - Complete control flow graph construction
+- **reconvergence_pc Auto-Computation** - From post-dominator analysis
+- **SIMT Stack Complete Support** - Divergent branch management
+- **38 Test Cases** - 100% pass rate
+- **Documentation** - 73 files, ~3,500 lines
+
+### Fixed
+- **Missing branch target edge** - Now adds both fall-through and branch target edges
+- **reconvergence_pc computation** - Automatic from CFG analysis
+
+### Performance
+- CFG analysis overhead <5% for all kernel sizes
+- Small: <1%, Medium: <2%, Large: <3%
+
+### Documentation
+- 7 new developer guides
+- 4 skill documents
+- Phase reports (5 files)
+- Test reports (2 files)
+
