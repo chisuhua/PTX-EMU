@@ -35,8 +35,12 @@ instruction
     | SEMI
     ;
 
+// Label declaration (e.g., "L_loop_header:" or "L_merge;")
+// Note: PTX uses labels WITHOUT $ prefix for declaration, but WITH $ for reference
+// Example: "L_label:" or "L_label;" (semicolon is optional)
 label
-    : DOLLAR ID COLON SEMI?
+    : ID COLON SEMI?
+    | DOLLAR ID COLON SEMI?
     ;
 
 predicate
