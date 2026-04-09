@@ -22,9 +22,6 @@ bool load_ptx_file(const std::string& filename, std::string& content) {
     if (!file.is_open()) {
         std::cerr << "Error: Cannot open PTX file: " << filename << std::endl;
         return false;
-    } {
-        std::cerr << "Error: Cannot open file: " << filename << std::endl;
-        return false;
     }
     
     std::stringstream buffer;
@@ -73,10 +70,9 @@ int check_reconvergence_pc(KernelContext* kernel_ctx, const std::string& kernel_
 }
 
 int test_cfg_builder(KernelContext* kernel_ctx) {
-    std::cout << "\n=== Running CFG Builder Test ===" << std::endl;
-    
     try {
-        // Build label2pc map
+        std::cout << "\nRunning CFG Builder..." << std::endl;
+        
         std::map<std::string, int> label2pc;
         for (int i = 0; i < kernel_ctx->kernelStatements.size(); i++) {
             const auto& stmt = kernel_ctx->kernelStatements[i];
@@ -87,22 +83,14 @@ int test_cfg_builder(KernelContext* kernel_ctx) {
         }
         
         std::cout << "Labels found: " << label2pc.size() << std::endl;
-        for (const auto& [name, pc] : label2pc) {
-            std::cout << "  " << name << " -> PC=" << pc << std::endl;
-        }
         
-        // Run CFG analysis
-        std::cout << "\nRunning CFG Builder..." << std::endl;
         ptx::cfg::CFG cfg = ptx::cfg::CFGBuilder::build(kernel_ctx->kernelStatements, label2pc);
-        
         std::cout << "CFG built: " << cfg.blocks.size() << " basic blocks" << std::endl;
         
         std::cout << "Running Post-Dominator analysis..." << std::endl;
         ptx::cfg::PostDominatorMap postDoms = ptx::cfg::CFGBuilder::computePostDominators(cfg);
-        
         std::cout << "Post-Dominators computed for " << postDoms.size() << " PCs" << std::endl;
         
-        // Update BranchInstr with reconvergence_pc
         int updated = 0;
         for (int i = 0; i < kernel_ctx->kernelStatements.size(); i++) {
             auto& stmt = kernel_ctx->kernelStatements[i];
@@ -146,8 +134,7 @@ int main(int argc, char* argv[]) {
     
     std::cout << "PTX code loaded: " << ptx_code.size() << " bytes" << std::endl;
     
-    // Create parser
-    PtxParser parser;
+    ptxparser::PtxParser parser;
     
     std::cout << "Parsing PTX..." << std::endl;
     if (!parser.parse(ptx_code)) {
@@ -156,26 +143,23 @@ int main(int argc, char* argv[]) {
     }
     
     std::cout << "Parsing successful!" << std::endl;
-
-    // Validate CFG structure
+    
     if (parser.kernel_contexts.empty()) {
         std::cerr << "Error: No kernels parsed" << std::endl;
         return 1;
     }
+    
     std::cout << "Kernels found: " << parser.kernel_contexts.size() << std::endl;
     
     int failures = 0;
     
-    // Test each kernel
     for (auto& [name, kernel_ctx] : parser.kernel_contexts) {
-        // First run CFG builder to populate reconvergence_pc
         if (test_cfg_builder(kernel_ctx.get()) != 0) {
             std::cerr << "CFG Builder test failed for " << name << std::endl;
             failures++;
             continue;
         }
         
-        // Then check reconvergence_pc
         if (check_reconvergence_pc(kernel_ctx.get(), name) != 0) {
             std::cerr << "Reconvergence PC check failed for " << name << std::endl;
             failures++;
