@@ -20,6 +20,9 @@ using namespace ptx;
 bool load_ptx_file(const std::string& filename, std::string& content) {
     std::ifstream file(filename);
     if (!file.is_open()) {
+        std::cerr << "Error: Cannot open PTX file: " << filename << std::endl;
+        return false;
+    } {
         std::cerr << "Error: Cannot open file: " << filename << std::endl;
         return false;
     }
@@ -153,6 +156,12 @@ int main(int argc, char* argv[]) {
     }
     
     std::cout << "Parsing successful!" << std::endl;
+
+    // Validate CFG structure
+    if (parser.kernel_contexts.empty()) {
+        std::cerr << "Error: No kernels parsed" << std::endl;
+        return 1;
+    }
     std::cout << "Kernels found: " << parser.kernel_contexts.size() << std::endl;
     
     int failures = 0;

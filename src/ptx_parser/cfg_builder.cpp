@@ -48,6 +48,9 @@ std::set<int> CFGBuilder::findBranchTargets(
             auto it = label2pc.find(branch.target);
             if (it != label2pc.end()) {
                 targets.insert(it->second);
+            } else {
+                std::cerr << "[CFGBuilder] Warning: Branch target '" 
+                          << branch.target << "' not found" << std::endl;
             }
         }
     }
@@ -94,6 +97,7 @@ std::vector<BasicBlock> CFGBuilder::identifyBasicBlocks(
 }
 
 void CFGBuilder::buildEdges(CFG& cfg,
+                            const std::map<std::string, int>& label2pc,
                             const std::vector<StatementContext>& statements) {
     
     for (size_t i = 0; i < cfg.blocks.size(); i++) {
@@ -109,6 +113,7 @@ void CFGBuilder::buildEdges(CFG& cfg,
         if (stmt.type == S_BRA) {
             const auto& branch = std::get<BranchInstr>(stmt.data);
             
+            // 1. Add fall-through edge
             for (auto& other : cfg.blocks) {
                 if (other.start_pc == block.end_pc) {
                     bool found = false;
@@ -118,6 +123,28 @@ void CFGBuilder::buildEdges(CFG& cfg,
                     if (!found) {
                         block.successors.push_back(other.id);
                         other.predecessors.push_back(block.id);
+                    }
+                }
+            }
+            
+            // 2. Add branch target edge
+            int target_pc = -1;
+            auto it = label2pc.find(branch.target);
+            if (it != label2pc.end()) {
+                target_pc = it->second;
+            }
+            
+            if (target_pc >= 0) {
+                for (auto& other : cfg.blocks) {
+                    if (other.start_pc == target_pc) {
+                        bool found = false;
+                        for (int succ : block.successors) {
+                            if (succ == other.id) { found = true; break; }
+                        }
+                        if (!found) {
+                            block.successors.push_back(other.id);
+                            other.predecessors.push_back(block.id);
+                        }
                     }
                 }
             }
@@ -146,7 +173,7 @@ CFG CFGBuilder::build(
         cfg.blocks.back().is_exit = true;
     }
     
-    buildEdges(cfg, statements);
+    buildEdges(cfg, label2pc, statements);
     
     return cfg;
 }
