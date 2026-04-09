@@ -549,10 +549,18 @@ void PtxInterpreter::setupKernelArguments(
 void PtxInterpreter::setupLabels(std::map<std::string, int> &label2pc) {
     for (int i = 0; i < kernelContext->kernelStatements.size(); i++) {
         const auto &e = kernelContext->kernelStatements[i];
-        if (e.type == S_DOLLOR) {
+        // Register label declarations (both S_LABEL and legacy S_DOLLOR formats)
+        if (e.type == S_LABEL) {
+            const auto &s = std::get<LabelInstr>(e.data);
+            PTX_INFO_EMU("Registering label: '%s' at PC=%d", s.labelName.c_str(), i);
+            label2pc[s.labelName] = i;
+        } else if (e.type == S_DOLLOR) {
             const auto &s = std::get<DollarNameInstr>(e.data);
-            PTX_INFO_EMU("Registering label: '%s' at PC=%d", s.name.c_str(), i);
-            label2pc[s.name] = i;
+            // Only register as label if it looks like a label (starts with L_ or has no $ prefix)
+            if (s.name.find('$') != 0) {
+                PTX_INFO_EMU("Registering label: '%s' at PC=%d", s.name.c_str(), i);
+                label2pc[s.name] = i;
+            }
         }
     }
     PTX_INFO_EMU("Total labels registered: %zu", label2pc.size());
