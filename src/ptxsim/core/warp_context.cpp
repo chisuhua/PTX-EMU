@@ -85,27 +85,20 @@ WarpContext::WarpContext()
         warp_thread_ids[i] = -1;
         active_mask[i] = false;
         pc_stacks[i] = std::vector<int>(); // 初始化 PC 栈
-    }
-
-    // 默认激活所有线程
-    for (int i = 0; i < WARP_SIZE; i++) {
-        active_mask[i] = true;
-        warp_thread_ids[i] = i;
-        pc_stacks[i].push_back(0); // 初始 PC
         
-        // 【SIMT Upgrade】初始化每线程状态
+        // 线程状态初始化为非活跃，在 add_thread 时设置
         warp_state.threads[i].pc = 0;
         warp_state.threads[i].next_pc = 0;
-        warp_state.threads[i].is_active = true;
+        warp_state.threads[i].is_active = false;
         warp_state.threads[i].is_exited = false;
         warp_state.threads[i].is_blocked = false;
         warp_state.threads[i].status = ptxsim::ThreadStatus::Active;
     }
     
     // 初始化执行掩码
-    warp_state.exec_mask = 0xFFFFFFFF;
+    warp_state.exec_mask = 0x0;
     
-    active_count = WARP_SIZE;
+    active_count = 0;
 }
 
 void WarpContext::add_thread(std::unique_ptr<ThreadContext> thread,
@@ -124,6 +117,10 @@ void WarpContext::add_thread(std::unique_ptr<ThreadContext> thread,
                 threads[lane_id]->ThreadIdx.y * threads[lane_id]->BlockDim.x +
                 threads[lane_id]->ThreadIdx.z * threads[lane_id]->BlockDim.x *
                     threads[lane_id]->BlockDim.y;
+            
+            warp_state.threads[lane_id].is_active = true;
+            active_mask[lane_id] = true;
+            active_count++;
         } else {
             warp_thread_ids[lane_id] = -1;
         }
@@ -219,16 +216,21 @@ void WarpContext::sync_threads() {
 }
 
 void WarpContext::reset() {
+    active_count = 0;
     for (int i = 0; i < WARP_SIZE; i++) {
-        active_mask[i] = true;
         if (i < threads.size() && threads[i] != nullptr) {
             threads[i]->reset();
+            active_mask[i] = true;
+            warp_state.threads[i].is_active = true;
+            active_count++;
+        } else {
+            active_mask[i] = false;
+            warp_state.threads[i].is_active = false;
         }
         // 重置PC栈
         pc_stacks[i].clear();
         pc_stacks[i].push_back(0);
     }
-    active_count = WARP_SIZE;
     pc = 0;
     divergence_detected = false;
 }
@@ -274,7 +276,8 @@ std::map<int, std::vector<int>> WarpContext::get_lanes_by_pc() const {
     std::map<int, std::vector<int>> pc_to_lanes;
     
     for (int lane = 0; lane < WARP_SIZE; lane++) {
-        if (warp_state.threads[lane].is_active && 
+        if (lane < threads.size() && threads[lane] != nullptr &&
+            warp_state.threads[lane].is_active && 
             !warp_state.threads[lane].is_exited &&
             !warp_state.threads[lane].is_blocked) {
             int pc = warp_state.threads[lane].pc;
