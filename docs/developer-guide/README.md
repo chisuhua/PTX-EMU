@@ -13,6 +13,10 @@
 | [TESTING-GUIDE.md](./TESTING-GUIDE.md) | 测试工程师 | ✅ |
 | [PERFORMANCE-GUIDE.md](./PERFORMANCE-GUIDE.md) | 性能工程师 | ✅ |
 | [CFG-INTEGRATION-GUIDE.md](./CFG-INTEGRATION-GUIDE.md) | 后端开发 | ✅ |
+| [DEBUG-CONFIG-GUIDE.md](./DEBUG-CONFIG-GUIDE.md) | 所有开发者 | ✅ |
+| [DEBUG-QUICK-REFERENCE.md](./DEBUG-QUICK-REFERENCE.md) | 所有开发者 | ✅ |
+| [DEBUGGING-GUIDE.md](./DEBUGGING-GUIDE.md) | 所有开发者 | ✅ |
+| [PTX-DEBUG-SKILL-USAGE.md](./PTX-DEBUG-SKILL-USAGE.md) | 所有开发者 | ✅ |
 
 ---
 
