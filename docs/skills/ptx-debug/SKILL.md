@@ -404,6 +404,23 @@ skills_required: ["cpp-debug", "systematic-debugging"]
 
 ---
 
+### 场景 7.5: Divergent Execution 路径不同步 (高级)
+
+**触发条件**:
+- test_nested_sync 或类似 divergent execution 测试卡住
+- 日志显示不同的 lane 到达不同的 reconvergence_pc
+- arrived 计数停滞 (如 arrived=16/32)
+
+**根因分析**:
+1. **PTX 语法**: `@%p1 bra $L__BB2_2` 创建两条执行路径
+2. **Visitor 翻译**: `bar.sync` → `bar.warp.sync` 时使用固定 `reconvergence_pc = size + 1`
+3. **问题**: 当 divergent 后再次汇合时，不同路径的下一条指令位置不同
+
+**调试步骤**:
+```bash
+# 1. 查看每个 lane 到达的 PC
+grep "arrived at bar.warp.sync" /tmp/test_output.log | 
+  awk -F' '"{print
 ### 场景 8: 数值异常
 
 **触发条件**: 测试报告 Numerical Exception
@@ -821,3 +838,47 @@ include/ptxsim/wbar.h                    - Wbar 数据结构定义
 
 - **2026-03-23**: 初始版本，包含 6 种调试场景的自动化方法
 - 后续更新：根据新场景添加调试配置和方法
+
+### 场景 7.5: Divergent Execution 路径不同步 (高级)
+
+**触发条件**:
+- test_nested_sync 或类似 divergent execution 测试卡住
+- 日志显示不同的 lane 到达不同的 reconvergence_pc
+- arrived 计数停滞 (如 arrived=16/32)
+
+**根因分析**:
+1. **PTX 语法**: `@%p1 bra $L__BB2_2` 创建两条执行路径
+2. **Visitor 翻译**: `bar.sync` → `bar.warp.sync` 时使用固定 `reconvergence_pc = size + 1`
+3. **问题**: 当 divergent 后再次汇合时，不同路径的下一条指令位置不同
+
+**调试步骤**:
+```bash
+# 1. 查看每个 lane 到达的 PC
+grep "arrived at bar.warp.sync" /tmp/test_output.log | \
+  grep -oP 'pc=\K\d+' | sort -n | uniq -c
+
+# 2. 检查是否所有 lane 都到达同一个 barrier
+grep "arrived=" /tmp/test_output.log | \
+  grep -oP 'arrived=\K\d+/\d+' | sort | uniq -c
+
+# 3. 对比 label 注册位置
+grep "Registering label" /tmp/test_output.log
+```
+
+**实际案例 (test_nested_sync)**:
+```
+Lane 13 arrived pc=26  # 在分支路径中
+Lane 14 arrived pc=12  # 直接跳转路径
+arrived=16/32          # 停滞
+```
+
+**问题根因**: threads 16-31 跳转到 L__BB2_2 (PC=23)，然后执行第二个 barrier (PC=25)，但实际到达的 reconvergence_pc=26 不正确。
+
+**修复建议**:
+- 检查 visitor 中的 barrier PC 计算逻辑
+- 确保 divergent 路径正确汇合到同一个 label
+- 使用 CFG analysis 验证 reconvergence 点
+- 查看 `ptx_visitor_barrier.cpp` 中 `next_pc` 的计算
+
+---
+
