@@ -90,18 +90,26 @@ static std::string strip_inline_asm(const std::string& ptx_code) {
 }
 
 std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
+    // Get absolute path to working directory
+    char cwd[1024];
+    if (getcwd(cwd, sizeof(cwd)) == nullptr) {
+        PTX_ERROR("Failed to get current working directory");
+        return "";
+    }
+    
     char ptx_list_cmd[1024];
     snprintf(ptx_list_cmd, 1024,
              CUOBJDUMP_PATH " -lptx %s | cut -d : -f 2 | awk '{$1=$1}1' > "
-             "__ptx_list_temp__",
-             executable_path.c_str());
+             "%s/__ptx_list_temp__",
+             executable_path.c_str(), cwd);
 
     if (system(ptx_list_cmd) != 0) {
         PTX_ERROR("Failed to execute: %s", ptx_list_cmd);
         return "";
     }
 
-    std::ifstream ptx_list_file("__ptx_list_temp__");
+    std::string ptx_list_path = std::string(cwd) + "/__ptx_list_temp__";
+    std::ifstream ptx_list_file(ptx_list_path);
     if (!ptx_list_file.is_open()) {
         PTX_ERROR("Failed to open PTX list file");
         return "";
@@ -111,7 +119,7 @@ std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
     std::string ptx_file;
     while (std::getline(ptx_list_file, ptx_file)) {
         char extract_cmd[1024];
-        snprintf(extract_cmd, 1024, CUOBJDUMP_PATH " -xptx %s %s >/dev/null",
+        snprintf(extract_cmd, 1024, CUOBJDUMP_PATH " -xptx %s %s",
                  ptx_file.c_str(), executable_path.c_str());
 
         if (system(extract_cmd) != 0) {
@@ -119,9 +127,11 @@ std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
             continue;
         }
 
-        std::ifstream extracted_ptx_file(ptx_file);
+        // PTX file is extracted to current directory
+        std::string ptx_file_path = std::string(cwd) + "/" + ptx_file;
+        std::ifstream extracted_ptx_file(ptx_file_path);
         if (!extracted_ptx_file.is_open()) {
-            PTX_ERROR("Failed to open extracted PTX file: %s", ptx_file.c_str());
+            PTX_ERROR("Failed to open extracted PTX file: %s", ptx_file_path.c_str());
             continue;
         }
 
@@ -133,12 +143,14 @@ std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
         extracted_ptx_file.close();
 
         char cleanup_cmd[1024];
-        snprintf(cleanup_cmd, 1024, "rm %s", ptx_file.c_str());
+        snprintf(cleanup_cmd, 1024, "rm %s", ptx_file_path.c_str());
         system(cleanup_cmd);
     }
     ptx_list_file.close();
 
-    system("rm __ptx_list_temp__");
+    char cleanup_cmd[1024];
+    snprintf(cleanup_cmd, 1024, "rm %s", ptx_list_path.c_str());
+    system(cleanup_cmd);
 
     // 移除内联汇编块，避免解析错误
     return strip_inline_asm(ptx_codes);
