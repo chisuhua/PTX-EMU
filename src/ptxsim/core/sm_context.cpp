@@ -180,46 +180,25 @@ EXE_STATE SMContext::exe_once() {
         // 设置warp为被调度状态
         next_warp->set_scheduled(true);
 
-        // 检查warp中是否有活跃线程处于barrier状态
-        bool has_barrier_threads = false;
-        for (int lane = 0; lane < WarpContext::WARP_SIZE; lane++) {
-            ThreadContext *thread = next_warp->get_thread(lane);
-            if (thread && thread->is_at_barrier()) {
-                has_barrier_threads = true;
-                break;
-            }
-        }
-
-        // 如果warp中有线程在barrier等待，则跳过该warp的执行
-        if (!has_barrier_threads) {
-
-            // 获取当前warp中第一个活跃线程的PC作为指令来源
-            ThreadContext *firstActiveThread = nullptr;
-            StatementContext *currentStmt = nullptr;
-
-            for (int lane = 0; lane < WarpContext::WARP_SIZE; lane++) {
-                ThreadContext *thread = next_warp->get_thread(lane);
-                if (thread && thread->is_active() && !thread->is_exited() &&
-                    !thread->is_at_barrier()) {
-                    firstActiveThread = thread;
-                    // 使用安全的PC检查
-                    if (thread->is_valid_pc()) {
-                        currentStmt = thread->get_current_statement();
-                        break; // 找到指令后跳出
+        // [Divergent Execution Fix] Execute instructions for all unique PC groups
+        auto lanes_by_pc = next_warp->get_lanes_by_pc();
+        
+        if (!lanes_by_pc.empty()) {
+            for (const auto& [pc, lanes] : lanes_by_pc) {
+                int sample_lane = lanes[0];
+                ThreadContext* sample_thread = next_warp->get_thread(sample_lane);
+                
+                if (sample_thread && sample_thread->is_valid_pc()) {
+                    StatementContext* stmt = sample_thread->get_current_statement();
+                    
+                    if (stmt) {
+                        if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
+                            print_warp_status(next_warp);
+                        }
+                        
+                        next_warp->execute_warp_instruction(*stmt, pc);
                     }
-                    assert(false);
                 }
-            }
-
-            if (currentStmt) {
-                // 从DebugConfig单例获取warp跟踪配置
-                if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
-                    print_warp_status(
-                        next_warp); // 在执行指令前打印被调度warp的状态
-                }
-
-                // 执行warp指令
-                next_warp->execute_warp_instruction(*currentStmt);
             }
         }
 

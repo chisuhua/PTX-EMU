@@ -161,13 +161,23 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
         PTX_DEBUG_EMU("bar.warp.sync: Barrier complete, releasing %d threads to PC=%d",
                       wbar.count_participants(), reconvergence_pc);
         
-        // Update PC for all participating threads
-        for (int i = 0; i < 32; ++i) {
+        // Get the current barrier PC from the first arrived thread
+        // All threads at this barrier should have the same PC
+        int barrier_pc = -1;
+        for (int i = 0; i < WarpContext::WARP_SIZE; ++i) {
             if (participation_mask & (1u << i)) {
-                warp_ctx->set_thread_pc(i, reconvergence_pc);
-                // Also update pc_stack so execute_warp_instruction uses correct PC
-                warp_ctx->update_pc_stack(i, reconvergence_pc);
-                // Clear blocked state
+                barrier_pc = warp_state.threads[i].pc;
+                break;
+            }
+        }
+        
+        // Release threads to barrier_pc + 1 (next instruction)
+        int release_pc = (barrier_pc >= 0) ? barrier_pc + 1 : reconvergence_pc;
+        
+        for (int i = 0; i < WarpContext::WARP_SIZE; ++i) {
+            if (participation_mask & (1u << i)) {
+                warp_ctx->set_thread_pc(i, release_pc);
+                warp_ctx->update_pc_stack(i, release_pc);
                 warp_state.threads[i].is_blocked = false;
                 warp_state.threads[i].status = ptxsim::ThreadStatus::Active;
             }
