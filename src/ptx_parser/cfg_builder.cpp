@@ -45,6 +45,10 @@ std::set<int> CFGBuilder::findBranchTargets(
     for (const auto& stmt : statements) {
         if (stmt.type == S_BRA) {
             const auto& branch = std::get<BranchInstr>(stmt.data);
+            // Skip branches with empty target (malformed or incomplete PTX)
+            if (branch.target.empty()) {
+                continue;
+            }
             auto it = label2pc.find(branch.target);
             if (it != label2pc.end()) {
                 targets.insert(it->second);
