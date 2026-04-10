@@ -130,44 +130,36 @@ void WarpContext::add_thread(std::unique_ptr<ThreadContext> thread,
     }
 }
 
-void WarpContext::execute_warp_instruction(StatementContext &stmt) {
-    if (stmt.type == S_BRA) {
-        for (int i = 0; i < WARP_SIZE; i++) {
-            if (is_lane_active(i) && i < threads.size() && threads[i] != nullptr) {
-                ThreadContext *thread = threads[i].get();
-                thread->sync_from_warp_state();
-                thread->execute_thread_instruction();
-                thread->sync_to_warp_state();
-            }
-        }
-    } else {
-        if (!simt_stack.empty()) {
-            ;
+void WarpContext::execute_warp_instruction(StatementContext &stmt, int target_pc) {
+    for (int i = 0; i < WARP_SIZE; i++) {
+        if (!is_lane_active(i) || i >= threads.size() || threads[i] == nullptr) {
+            continue;
         }
         
-        for (int i = 0; i < WARP_SIZE; i++) {
-            if (is_lane_active(i) && i < threads.size() && threads[i] != nullptr) {
-                ThreadContext *thread = threads[i].get();
-                thread->sync_from_warp_state();
-                
-                if (thread->get_state() == BAR_SYNC) {
-                    if (sm_context_ != nullptr) {
-                        bool is_warp_barrier = (warp_state.current_wbar_id >= 0);
-                        bool warp_barrier_complete = is_warp_barrier &&
-                            warp_state.wbars[warp_state.current_wbar_id].is_complete();
-
-                        if (!warp_barrier_complete) {
-                            sm_context_->synchronize_barrier(thread->bar_id, thread);
-                        }
-                    }
-                    thread->sync_to_warp_state();
-                    continue;
-                }
-                
-                thread->execute_thread_instruction();
-                thread->sync_to_warp_state();
-            }
+        // Only execute for lanes at the target PC
+        if (warp_state.threads[i].pc != static_cast<uint32_t>(target_pc)) {
+            continue;
         }
+        
+        ThreadContext *thread = threads[i].get();
+        thread->sync_from_warp_state();
+        
+        if (thread->get_state() == BAR_SYNC) {
+            if (sm_context_ != nullptr) {
+                bool is_warp_barrier = (warp_state.current_wbar_id >= 0);
+                bool warp_barrier_complete = is_warp_barrier &&
+                    warp_state.wbars[warp_state.current_wbar_id].is_complete();
+
+                if (!warp_barrier_complete) {
+                    sm_context_->synchronize_barrier(thread->bar_id, thread);
+                }
+            }
+            thread->sync_to_warp_state();
+            continue;
+        }
+        
+        thread->execute_thread_instruction();
+        thread->sync_to_warp_state();
     }
     
     update_active_mask();
@@ -276,4 +268,30 @@ void WarpContext::set_active_mask(uint32_t mask) {
             active_count++;
         }
     }
+}
+
+std::map<int, std::vector<int>> WarpContext::get_lanes_by_pc() const {
+    std::map<int, std::vector<int>> pc_to_lanes;
+    
+    for (int lane = 0; lane < WARP_SIZE; lane++) {
+        if (warp_state.threads[lane].is_active && 
+            !warp_state.threads[lane].is_exited &&
+            !warp_state.threads[lane].is_blocked) {
+            int pc = warp_state.threads[lane].pc;
+            pc_to_lanes[pc].push_back(lane);
+        }
+    }
+    
+    return pc_to_lanes;
+}
+
+std::vector<int> WarpContext::get_unique_pcs() const {
+    std::vector<int> pcs;
+    auto lanes_by_pc = get_lanes_by_pc();
+    
+    for (const auto& [pc, lanes] : lanes_by_pc) {
+        pcs.push_back(pc);
+    }
+    
+    return pcs;
 }
