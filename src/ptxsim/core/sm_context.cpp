@@ -181,21 +181,38 @@ EXE_STATE SMContext::exe_once() {
         next_warp->set_scheduled(true);
 
         // [Divergent Execution Fix] Execute instructions for all unique PC groups
+        // Fast path: if all schedulable lanes share the same PC, use the old path
         auto lanes_by_pc = next_warp->get_lanes_by_pc();
-        
-        if (!lanes_by_pc.empty()) {
+
+        if (lanes_by_pc.size() == 1) {
+            // Fast path: non-divergent, all lanes at same PC
+            auto it = lanes_by_pc.begin();
+            int sample_lane = it->second[0];
+            ThreadContext* sample_thread = next_warp->get_thread(sample_lane);
+
+            if (sample_thread && sample_thread->is_valid_pc()) {
+                StatementContext* stmt = sample_thread->get_current_statement();
+                if (stmt) {
+                    if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
+                        print_warp_status(next_warp);
+                    }
+                    next_warp->execute_warp_instruction(*stmt, it->first);
+                }
+            }
+        } else if (!lanes_by_pc.empty()) {
+            // Divergent path: execute each PC group separately
             for (const auto& [pc, lanes] : lanes_by_pc) {
                 int sample_lane = lanes[0];
                 ThreadContext* sample_thread = next_warp->get_thread(sample_lane);
-                
+
                 if (sample_thread && sample_thread->is_valid_pc()) {
                     StatementContext* stmt = sample_thread->get_current_statement();
-                    
+
                     if (stmt) {
                         if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
                             print_warp_status(next_warp);
                         }
-                        
+
                         next_warp->execute_warp_instruction(*stmt, pc);
                     }
                 }
