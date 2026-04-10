@@ -1,21 +1,20 @@
 #ifndef WARP_CONTEXT_H
 #define WARP_CONTEXT_H
 
-#include "ptx_ir/statement_context.h"
-#include "ptxsim/common_types.h"
-#include "ptxsim/execution_types.h"
-#include "ptxsim/thread_state.h"
-#include "ptxsim/warp_state.h"
-#include "ptxsim/simt_stack.h"
+#include "warp_state.h"
+#include "simt_stack.h"
+#include "thread_context.h"
 #include "register/register_bank_manager.h"
 #include <array>
 #include <memory>
 #include <queue>
 #include <vector>
+#include <map>              // Divergent execution: get_lanes_by_pc()
 
 // Forward declarations to avoid circular includes
 class SMContext;
-class ThreadContext;  // 添加 ThreadContext 的前向声明
+class ThreadContext;
+class WarpScheduler;
 
 class WarpContext {
 public:
@@ -28,7 +27,7 @@ public:
     void add_thread(std::unique_ptr<ThreadContext> thread, int lane_id);
 
     // 执行 warp 的一条指令
-    void execute_warp_instruction(StatementContext &stmt);
+    void execute_warp_instruction(StatementContext &stmt, int target_pc = -1);
 
     // 【SIMT v2.0】处理分支指令 (warp 级操作)
     void handle_branch(const std::string& predicate,
@@ -97,6 +96,10 @@ public:
     int count_schedulable_lanes() const {
         return warp_state.count_schedulable_lanes();
     }
+
+    // Divergent execution support
+    std::map<int, std::vector<int>> get_lanes_by_pc() const;
+    std::vector<int> get_unique_pcs() const;
 
     // 更新活跃掩码（例如，遇到分支指令时）
     void update_active_mask();

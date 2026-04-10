@@ -26,3 +26,20 @@
 
 **维护**: 只保留最新架构文档，旧版本归档到 `../archive/`  
 **最后更新**: 2026-04-11
+
+## 📊 GPGPU-Sim Analysis
+
+| 文档 | 行数 | 说明 |
+|------|------|------|
+| [GPGPU-SIM-SIMT-ANALYSIS.md](./GPGPU-SIM-SIMT-ANALYSIS.md) | 717 | GPGPU-Sim SIMT 实现详细分析 |
+
+### 分析内容
+
+- **SIMT 执行模型**: Warp-level execution with unified PC
+- **SIMT Stack**: Hardware reconvergence stack implementation
+- **Barrier**: __syncthreads() and CTA-level synchronization
+- **PC Management**: Per-thread PC tracking during divergence
+- **Scheduler**: Multiple scheduling policies (LRR, GTO, etc.)
+
+**Source**: GPGPU-Sim v4.x dev branch  
+**Date**: 2026-04-10
