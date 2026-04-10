@@ -110,8 +110,8 @@ PTX-EMU 提供性能分析功能，可以帮助用户了解程序的执行性能
 或者，如果程序支持默认配置文件名：
 
 ```bash
-./your_program
-# 程序将在当前目录查找 ptx_debug.conf 文件
+./scripts/debug-run.sh debug ./your_program
+# 脚本会自动选择 configs/dev_debug_config.ini 配置文件
 ```
 
 ### 4.2 分析日志输出

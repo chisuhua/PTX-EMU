@@ -37,7 +37,7 @@ void initialize_debug_environment(const std::string &config_path = "") {
         }
     } else {
         // 尝试加载默认配置文件
-        bool loaded = logger_config.load_from_file("ptx_debug.conf");
+        bool loaded = logger_config.load_from_file("configs/dev_debug_config.ini");
         if (!loaded) {
             std::cout << "Warning: Failed to load debug configuration file. "
                          "Using default settings.\n";

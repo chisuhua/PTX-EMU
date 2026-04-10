@@ -27,11 +27,11 @@
 ### 手动配置
 
 ```bash
-# 复制配置文件
-cp configs/debug_config.ini ./ptx_debug.conf
+# 直接使用 configs/ 中的配置
+./scripts/debug-run.sh debug ./build/bin/dummy-args
 
-# 运行程序
-./build/bin/dummy-args
+# 或程序直接指定配置路径
+# ./build/bin/dummy-args --config=configs/dev_debug_config.ini
 
 # 查看日志
 tail -f ptx_emu_debug.log
@@ -43,12 +43,12 @@ tail -f ptx_emu_debug.log
 
 | 场景 | 命令 | 配置文件 | 日志文件 |
 |------|------|---------|---------|
-| **日常调试** | `./scripts/debug-run.sh debug ...` | `debug_config.ini` | `ptx_emu_debug.log` |
-| **详细跟踪** | `./scripts/debug-run.sh trace ...` | `verbose_trace.ini` | `ptx_emu_trace.log` |
-| **内存问题** | `./scripts/debug-run.sh memory ...` | `memory_debug.ini` | `ptx_emu_memory_debug.log` |
-| **指令错误** | `./scripts/debug-run.sh instruction ...` | `instruction_debug.ini` | `ptx_emu_instr_debug.log` |
+| **日常调试** | `./scripts/debug-run.sh debug ...` | `dev_debug_config.ini` | `ptx_emu_debug.log` |
+| **详细跟踪** | `./scripts/debug-run.sh trace ...` | `verbose_trace_config.ini` | `ptx_emu_trace.log` |
+| **内存问题** | `./scripts/debug-run.sh memory ...` | `memory_debug_config.ini` | `ptx_emu_memory_debug.log` |
+| **指令错误** | `./scripts/debug-run.sh instruction ...` | `instruction_debug_config.ini` | `ptx_emu_instr_debug.log` |
 | **性能测试** | `./scripts/debug-run.sh perf ...` | `perf_config.ini` | 控制台 |
-| **生产运行** | `./scripts/debug-run.sh release ...` | `release_config.ini` | 控制台 |
+| **生产运行** | `./scripts/debug-run.sh release ...` | `config.ini` | 控制台 |
 
 ---
 

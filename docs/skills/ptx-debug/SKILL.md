@@ -38,14 +38,14 @@ skills_required: ["cpp-debug", "systematic-debugging"]
 
 | 问题类型 | 关键词 | 自动选择配置 | 日志级别 | 输出目标 |
 |---------|--------|-------------|---------|---------|
-| **PTX 解析错误** | "解析错误", "语法错误", "ANTLR", "grammar" | `verbose_trace_config.ini` | trace | file |
-| **测试失败** | "测试失败", "test failed", "ctest" | `debug_config.ini` | debug | both |
-| **程序崩溃** | "崩溃", "segfault", "SIGSEGV", "core" | `verbose_trace_config.ini` | trace | file |
-| **内存问题** | "内存", "memory", "越界", "非法访问" | `memory_debug_config.ini` | debug/trace | both |
-| **指令错误** | "指令", "instruction", "结果不对", "执行错误" | `instruction_debug_config.ini` | info/trace | both |
-| **性能问题** | "性能", "慢", "优化", "benchmark" | `perf_config.ini` | warning | console |
-| **日常调试** | "调试", "debug", "看一下" | `debug_config.ini` | debug | both |
-| **默认/未知** | 其他情况 | `debug_config.ini` | debug | both |
+| **PTX 解析错误** | "解析错误", "语法错误", "ANTLR", "grammar" | `configs/verbose_trace_config.ini` | trace | file |
+| **测试失败** | "测试失败", "test failed", "ctest" | `configs/dev_debug_config.ini` | debug | both |
+| **程序崩溃** | "崩溃", "segfault", "SIGSEGV", "core" | `configs/verbose_trace_config.ini` | trace | file |
+| **内存问题** | "内存", "memory", "越界", "非法访问" | `configs/memory_debug_config.ini` | debug/trace | both |
+| **指令错误** | "指令", "instruction", "结果不对", "执行错误" | `configs/instruction_debug_config.ini` | info/trace | both |
+| **性能问题** | "性能", "慢", "优化", "benchmark" | `configs/perf_config.ini` | warning | console |
+| **日常调试** | "调试", "debug", "看一下" | `configs/dev_debug_config.ini` | debug | both |
+| **默认/未知** | 其他情况 | `configs/dev_debug_config.ini` | debug | both |
 
 ### 自动选择流程
 
@@ -56,7 +56,7 @@ skills_required: ["cpp-debug", "systematic-debugging"]
    ↓
 3. 根据配置选择矩阵确定调试配置
    ↓
-4. 自动复制配置文件到工作目录
+4. 使用 ./scripts/debug-run.sh 选择配置
    ↓
 5. 运行程序收集调试信息
    ↓
@@ -73,15 +73,16 @@ skills_required: ["cpp-debug", "systematic-debugging"]
 
 **自动行动**:
 
-1. **选择配置**: `verbose_trace_config.ini`
-   ```bash
-   cp configs/verbose_trace_config.ini ./ptx_debug.conf
-   ```
+1. **选择配置**: `configs/verbose_trace_config.ini`
+    ```bash
+     ./scripts/debug-run.sh verbose ./build/bin/dummy-args
+    ```
 
-2. **运行解析器**:
-   ```bash
-   ./build/bin/dummy-args  # 或其他触发解析的程序
-   ```
+    2. **运行解析器**:
+    ```bash
+    # 或使用 test-ptx 直接解析
+    ./build/bin/test-ptx source.ptx 2>&1 | grep -E "parser|lexer"
+    ```
 
 3. **收集证据**:
    ```bash
@@ -117,9 +118,9 @@ skills_required: ["cpp-debug", "systematic-debugging"]
 
 **自动行动**:
 
-1. **选择配置**: `debug_config.ini`
+1. **选择配置**: `debug` 配置（`configs/dev_debug_config.ini`）
    ```bash
-   cp configs/debug_config.ini ./ptx_debug.conf
+   ./scripts/debug-run.sh debug ./build/bin/程序
    ```
 
 2. **运行失败测试**:
@@ -153,8 +154,7 @@ skills_required: ["cpp-debug", "systematic-debugging"]
    # 创建最小复现
    cat > debug_test.sh << 'EOF'
    #!/bin/bash
-   cp configs/debug_config.ini ./ptx_debug.conf
-   ./build/bin/测试程序
+./scripts/debug-run.sh debug ./build/bin/测试程序
    EOF
    chmod +x debug_test.sh
    ```
@@ -167,9 +167,9 @@ skills_required: ["cpp-debug", "systematic-debugging"]
 
 **自动行动**:
 
-1. **选择配置**: `verbose_trace_config.ini`
+1. **选择配置**: `verbose` 配置（`configs/verbose_trace_config.ini`）
    ```bash
-   cp configs/verbose_trace_config.ini ./ptx_debug.conf
+   ./scripts/debug-run.sh verbose ./build/bin/程序
    ```
 
 2. **运行程序获取堆栈**:
@@ -220,9 +220,9 @@ skills_required: ["cpp-debug", "systematic-debugging"]
 
 **自动行动**:
 
-1. **选择配置**: `memory_debug_config.ini`
+1. **选择配置**: `memory` 配置（`configs/memory_debug_config.ini`）
    ```bash
-   cp configs/memory_debug_config.ini ./ptx_debug.conf
+   ./scripts/debug-run.sh memory ./build/bin/程序
    ```
 
 2. **运行程序**:
@@ -265,9 +265,9 @@ skills_required: ["cpp-debug", "systematic-debugging"]
 
 **自动行动**:
 
-1. **选择配置**: `instruction_debug_config.ini`
+1. **选择配置**: `instruction` 配置（`configs/instruction_debug_config.ini`）
    ```bash
-   cp configs/instruction_debug_config.ini ./ptx_debug.conf
+   ./scripts/debug-run.sh instruction ./build/bin/程序
    ```
 
 2. **运行程序**:
@@ -313,9 +313,9 @@ skills_required: ["cpp-debug", "systematic-debugging"]
 
 **自动行动**:
 
-1. **选择配置**: `perf_config.ini`
+1. **选择配置**: `perf` 配置（`configs/perf_config.ini`）
    ```bash
-   cp configs/perf_config.ini ./ptx_debug.conf
+   ./scripts/debug-run.sh perf ./build/bin/程序
    ```
 
 2. **性能测量**:
@@ -364,7 +364,7 @@ skills_required: ["cpp-debug", "systematic-debugging"]
 
 2. **启用详细日志**:
    ```bash
-   cp configs/verbose_trace_config.ini ./ptx_debug.conf
+   ./scripts/debug-run.sh verbose ./build/bin/test_xxx
    ```
 
 3. **运行收集日志**:
@@ -427,8 +427,8 @@ grep "arrived at bar.warp.sync" /tmp/test_output.log |
 
 **自动行动**:
 
-1. **选择配置**: `debug_config.ini`
-2. **运行分析**: `grep -E "Numerical|NaN|Inf" test_output.log`
+1. **选择配置**: `configs/dev_debug_config.ini`
+2. **运行分析**: `grep -E "Numerical|NaN|Inf" ptx_emu_debug.log`
 3. **分析重点**: 哪个指令产生异常值，输入操作数是否合法
 
 ---
@@ -448,7 +448,7 @@ grep "arrived at bar.warp.sync" /tmp/test_output.log |
    ↓
 2. 分析问题类型，选择调试配置
    ↓
-3. 复制配置文件：cp configs/{selected}.ini ./ptx_debug.conf
+3. 使用 debug-run.sh 选择配置：./scripts/debug-run.sh {配置名} ./build/bin/{程序}
    ↓
 4. 运行程序收集日志
    ↓
@@ -530,10 +530,10 @@ grep "PC\[" ptx_emu_instr_debug.log | awk '{print $5}'
 
 | 配置文件 | 日志文件 | 用途 |
 |---------|---------|------|
-| `debug_config.ini` | `ptx_emu_debug.log` | 日常调试 |
-| `verbose_trace_config.ini` | `ptx_emu_trace.log` | 详细跟踪 |
-| `memory_debug_config.ini` | `ptx_emu_memory_debug.log` | 内存调试 |
-| `instruction_debug_config.ini` | `ptx_emu_instr_debug.log` | 指令调试 |
+| `configs/dev_debug_config.ini` | `ptx_emu_debug.log` | 日常调试 |
+| `configs/verbose_trace_config.ini` | `ptx_emu_trace.log` | 详细跟踪 |
+| `configs/memory_debug_config.ini` | `ptx_emu_memory_debug.log` | 内存调试 |
+| `configs/instruction_debug_config.ini` | `ptx_emu_instr_debug.log` | 指令调试 |
 
 ### 快速查看
 
@@ -630,8 +630,7 @@ grep "关键词" ptx_emu_debug.log | less
 2. 选择 `verbose_trace_config.ini`
 3. 执行：
    ```bash
-   cp configs/verbose_trace_config.ini ./ptx_debug.conf
-   ./build/bin/dummy-args
+   ./scripts/debug-run.sh verbose ./build/bin/dummy-args
    grep "parser\|lexer" ptx_emu_trace.log
    ```
 4. 分析错误位置
@@ -647,7 +646,7 @@ grep "关键词" ptx_emu_debug.log | less
 2. 选择 `debug_config.ini`
 3. 执行：
    ```bash
-   cp configs/debug_config.ini ./ptx_debug.conf
+   ./scripts/debug-run.sh debug ./build/bin/测试程序
    cd build && ctest -R test_memory_manager -V
    tail -100 ptx_emu_debug.log
    ```
@@ -663,8 +662,7 @@ grep "关键词" ptx_emu_debug.log | less
 2. 选择 `perf_config.ini`
 3. 执行：
    ```bash
-   cp configs/perf_config.ini ./ptx_debug.conf
-   time ./build/bin/RAY 512 512
+   ./scripts/debug-run.sh perf ./build/bin/RAY 512 512
    ```
 4. 分析热点
 5. 提出优化建议

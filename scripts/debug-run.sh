@@ -52,10 +52,10 @@ CONFIGS_DIR="$PROJECT_ROOT/configs"
 # 映射配置名到配置文件
 case $CONFIG_NAME in
     release)
-        CONFIG_FILE="$CONFIGS_DIR/release_config.ini"
+        CONFIG_FILE="$CONFIGS_DIR/config.ini"
         ;;
-    debug)
-        CONFIG_FILE="$CONFIGS_DIR/debug_config.ini"
+    debug|dev)
+        CONFIG_FILE="$CONFIGS_DIR/dev_debug_config.ini"
         ;;
     trace|verbose)
         CONFIG_FILE="$CONFIGS_DIR/verbose_trace_config.ini"
@@ -102,7 +102,7 @@ case $CONFIG_NAME in
     release)
         DESC="生产环境配置 - 最小日志，最佳性能"
         ;;
-    debug)
+    debug|dev)
         DESC="开发调试配置 - 平衡的日志级别"
         ;;
     trace|verbose)
