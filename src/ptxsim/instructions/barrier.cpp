@@ -156,28 +156,29 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
                      lane_id, participation_mask, reconvergence_pc);
     
     // Step 7: Check if all participants have arrived
+    // According to NVIDIA PTX ISA: "bar" instruction affects the entire warp
+    // even if only some threads reach it. If participation_mask includes all lanes
+    // (0xFFFFFFFF), we should mark all lanes as arrived when ANY lane reaches barrier.
+    if (participation_mask == 0xFFFFFFFF && wbar.count_arrived() < WarpContext::WARP_SIZE) {
+        // Mark all lanes as arrived for warp-level barrier
+        for (int i = 0; i < WarpContext::WARP_SIZE; ++i) {
+            if (!(wbar.arrived_mask & (1u << i))) {
+                wbar.arrive(i);
+                // Update thread state
+                warp_state.threads[i].is_blocked = false;
+            }
+        }
+    }
+    
     if (wbar.is_complete()) {
         // All threads have arrived: update PCs and release
         PTX_DEBUG_EMU("bar.warp.sync: Barrier complete, releasing %d threads to PC=%d",
                       wbar.count_participants(), reconvergence_pc);
         
-        // Get the current barrier PC from the first arrived thread
-        // All threads at this barrier should have the same PC
-        int barrier_pc = -1;
         for (int i = 0; i < WarpContext::WARP_SIZE; ++i) {
             if (participation_mask & (1u << i)) {
-                barrier_pc = warp_state.threads[i].pc;
-                break;
-            }
-        }
-        
-        // Release threads to barrier_pc + 1 (next instruction)
-        int release_pc = (barrier_pc >= 0) ? barrier_pc + 1 : reconvergence_pc;
-        
-        for (int i = 0; i < WarpContext::WARP_SIZE; ++i) {
-            if (participation_mask & (1u << i)) {
-                warp_ctx->set_thread_pc(i, release_pc);
-                warp_ctx->update_pc_stack(i, release_pc);
+                warp_ctx->set_thread_pc(i, reconvergence_pc);
+                warp_ctx->update_pc_stack(i, reconvergence_pc);
                 warp_state.threads[i].is_blocked = false;
                 warp_state.threads[i].status = ptxsim::ThreadStatus::Active;
             }
@@ -191,7 +192,7 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
         warp_state.threads[lane_id].is_blocked = true;
         warp_state.threads[lane_id].status = ptxsim::ThreadStatus::Blocked;
         PTX_DEBUG_THREAD("Lane %d blocked at bar.warp.sync (arrived=%d/%d)",
-                         lane_id, wbar.count_arrived(), wbar.count_participants());
+                          lane_id, wbar.count_arrived(), wbar.count_participants());
     }
 }
 
