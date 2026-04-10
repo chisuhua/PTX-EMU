@@ -342,6 +342,80 @@ skills_required: ["cpp-debug", "systematic-debugging"]
 
 4. **分析重点**:
    - 热点函数
+
+---
+
+### 场景 7: Barrier 同步卡住 (SIMT 特定)
+
+**触发条件**:
+- 测试超时或长时间无响应
+- barrier 相关测试卡住 (test_syncthreads, test_warp_divergence 等)
+- 日志显示 threads blocked at barrier
+
+**自动行动**:
+
+1. **快速诊断 (类型 1 - 不需要仿真)**:
+   ```bash
+   # 1. 验证 PTX 解析是否正确
+   /usr/local/cuda/bin/cuobjdump -ptx ./build/bin/test_xxx 2>/dev/null | \
+     tail -n+12 > /tmp/test_xxx.ptx
+   ./build/bin/test-ptx /tmp/test_xxx.ptx 2>&1 | grep "bar.warp.sync"
+   ```
+
+2. **启用详细日志**:
+   ```bash
+   cp configs/verbose_trace_config.ini ./ptx_debug.conf
+   ```
+
+3. **运行收集日志**:
+   ```bash
+   timeout 120 ./build/bin/test_xxx 2>&1 | tee /tmp/test_output.log
+   ```
+
+4. **分析关键模式**:
+   ```bash
+   grep "Initialized wbar" /tmp/test_output.log
+   grep "Barrier complete" /tmp/test_output.log
+   grep "blocked at bar.warp.sync" /tmp/test_output.log | tail -10
+   ```
+
+5. **预期行为**:
+   ```
+   # 正常:
+   bar.warp.sync: Initialized wbar[0] with mask=0xFFFFFFFF, reconvergence_pc=N
+   Lane 0 arrived (arrived=1/32)
+   ...
+   Lane 31 arrived (arrived=32/32)
+   bar.warp.sync: Barrier complete, releasing 32 threads to PC=N
+   
+   # 异常:
+   - 停在 arrived=X/32 (X<32) → 部分线程未到达
+   - Barrier complete 但仍卡住 → PC 更新或调度问题
+   ```
+
+6. **常见问题诊断表**:
+
+| 现象 | 可能原因 | 排查步骤 |
+|------|---------|---------|
+| 一直 blocked | arrive() 未被所有线程调用 | 检查指令调度逻辑 |
+| is_complete 总 false | arrived_mask 未递增 | 检查 lane_id 是否正确 |
+| PC 未更新 | set_thread_pc() 未调用 | 检查 complete 后代码路径 |
+| 唤醒后错误指令 | pc_stack 未同步 | 检查 update_pc_stack() |
+
+---
+
+### 场景 8: 数值异常
+
+**触发条件**: 测试报告 Numerical Exception
+
+**自动行动**:
+
+1. **选择配置**: `debug_config.ini`
+2. **运行分析**: `grep -E "Numerical|NaN|Inf" test_output.log`
+3. **分析重点**: 哪个指令产生异常值，输入操作数是否合法
+
+---
+
    - 内存访问模式
    - 缓存命中率
    - 分支预测
@@ -580,7 +654,161 @@ grep "关键词" ptx_emu_debug.log | less
 
 ---
 
-## 注意事项
+## 诊断方法分类
+
+> **核心原则**: 80% 的问题可以通过**不需要仿真**的快速诊断定位，只在必要时运行完整仿真
+
+### 快速诊断 (<30s) - 不需要仿真
+
+**适用场景**:
+- PTX 语法解析错误
+- Label 注册问题  
+- CFG 分析警告
+- 指令翻译问题 (如 bar.sync → bar.warp.sync)
+
+**验证方法**:
+
+| 方法 | 命令 | 耗时 | 适用 |
+|------|------|------|------|
+| **test-ptx 解析** | `./build/bin/test-ptx tests/ptx/test.ptx` | <1s | 语法、翻译验证 |
+| **手动提取 PTX** | `cuobjdump -ptx binary > test.ptx` | <5s | 检查生成的 PTX |
+| **最小化 PTX** | 手动创建简化 PTX 文件 | <10s | 隔离特定指令 |
+| **CFG 日志** | 添加日志到 cfg_builder.cpp | <30s | 控制流分析 |
+
+**快速验证流程**:
+
+```bash
+# 1. 从二进制提取 PTX
+/usr/local/cuda/bin/cuobjdump -ptx ./build/bin/test_xxx 2>/dev/null | tail -n+12 > /tmp/test.ptx
+
+# 2. 用 test-ptx 验证解析
+./build/bin/test-ptx /tmp/test.ptx 2>&1 | grep -E "bar|bra|label|PASS|FAIL"
+
+# 3. 查看特定指令翻译
+./build/bin/test-ptx /tmp/test.ptx 2>&1 | grep -A2 "bar.warp.sync"
+```
+
+**成功案例**:
+- ✅ PTX label 语法修复：通过 test-ptx 快速验证 33/33 语法测试
+- ✅ bra 指令 predicate: 通过解析输出确认 target 正确注册
+- ✅ CFG 空 target 警告：通过添加日志快速定位并修复
+
+---
+
+### 仿真诊断 (>30s) - 需要完整运行
+
+**适用场景**:
+- Barrier 同步卡住
+- 线程调度问题
+- 内存访问错误
+- 寄存器值错误
+- numerical exception
+
+**验证方法**:
+
+| 方法 | 命令 | 耗时 | 适用 |
+|------|------|------|------|
+| **完整单元测试** | `ctest -R test_xxx -V` | 30-120s | 功能回归 |
+| **日志分析** | 启用 PTX_DEBUG | 30-60s | 执行跟踪 |
+| **GDB 调试** | `gdb --args ./bin/test_xxx` | 5-10min | 崩溃定位 |
+| **ASan/UBSan** | Debug 构建 + sanitizer | 2-5min | 内存错误 |
+
+**调试流程**:
+
+```bash
+# 1. 启用详细日志
+export PTX_LOG_LEVEL=debug
+./build/bin/test_xxx 2>&1 | grep -E "bar|sync|blocked|complete"
+
+# 2. 定位卡住点
+./build/bin/test_xxx 2>&1 | tail -50
+
+# 3. GDB 调试 (如果崩溃)
+gdb --args ./build/bin/test_xxx
+(gdb) run
+(gdb) bt  # 崩溃时获取堆栈
+```
+
+**决策树**:
+
+```
+遇到问题
+    │
+    ├─ 解析错误/语法问题？
+    │   └─→ 使用 test-ptx (1s) ← 优先
+    │
+    ├─ Label/CFG 警告？
+    │   └─→ 添加日志，重解析 (10s) ← 优先
+    │
+    ├─ 指令执行卡住？
+    │   └─→ 启用调试日志 (30s)
+    │       └─ 仍无法定位？
+    │           └─→ GDB 调试 (5min)
+    │
+    └─ 崩溃/SegFault？
+        └─→ GDB + ASan (2min)
+```
+
+---
+
+## Barrier 调试最佳实践
+
+### 屏障调试流程 (类型 2 - 需要仿真)
+
+```bash
+# 1. 验证 PTX 解析 (类型 1 - 快速)
+./build/bin/test-ptx test.ptx | grep "bar.warp.sync"
+
+# 2. 启用 barrier 日志
+grep -r "PTX_DEBUG" src/ptxsim/instructions/barrier.cpp
+# 确保相关日志启用
+
+# 3. 运行测试并抓取日志
+./build/bin/test_xxx 2>&1 | grep -E "arrived|complete|blocked|released"
+
+# 4. 分析关键指标
+# - participation_mask 是否正确？
+# - arrived_mask 是否递增？
+# - is_complete() 何时返回 true？
+# - set_thread_pc() 是否被调用？
+# - update_pc_stack() 是否同步？
+```
+
+**关键日志模式**:
+```
+bar.warp.sync: Initialized wbar[0] with mask=0xFFFFFFFF, reconvergence_pc=N
+Lane X arrived at bar.warp.sync (mask=0xFFFFFFFF, pc=N)
+bar.warp.sync: Barrier complete, releasing N threads to PC=N
+Lane X blocked at bar.warp.sync (arrived=N/32)
+```
+
+**预期行为**:
+1. 初始化 wbar，participation_mask = 0xFFFFFFFF
+2. 每个 lane 调用 arrive()，arrived_mask 递增
+3. 当 arrived_mask == participation_mask 时，barrier complete
+4. 所有参与线程 PC 更新为 reconvergence_pc
+5. is_blocked 清除，status 设为 Active
+
+**常见问题诊断表**:
+
+| 现象 | 可能原因 | 排查步骤 |
+|------|---------|------|
+| 一直 blocked | arrive() 未被调用 | 检查指令调度器是否调度过 Blocked 线程 |
+| is_complete 总 false | arrived_mask 未递增 | 检查 lane_id 是否正确传入 arrive() |
+| PC 未更新 | set_thread_pc() 未被调用 | 检查 is_complete() 返回后的代码路径 |
+| 唤醒后执行错误指令 | pc_stack 未同步 | 检查 update_pc_stack() 调用点 |
+| participation_mask=0 | 指令翻译错误 | 检查 visitor 中 barrier operand 提取 |
+
+**关键代码位置**:
+```
+src/ptx_parser/ptx_visitor_barrier.cpp  - bar.sync → bar.warp.sync 翻译
+src/ptxsim/instructions/barrier.cpp     - Wbar 实现与 arrive()/is_complete()
+include/ptxsim/wbar.h                    - Wbar 数据结构定义
+```
+
+---
+
+##  经验教训
 
 1. **日志文件大小**: trace 级别可能产生数百 MB 日志
 2. **性能影响**: 详细日志会降低 10-100 倍性能
