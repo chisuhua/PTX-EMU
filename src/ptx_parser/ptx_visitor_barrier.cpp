@@ -56,13 +56,13 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
         OperandContext maskOperand{ImmOperand{"0xFFFFFFFF"}}; \
         instr.operands.push_back(maskOperand); \
         \
-        /* Create operand for reconvergence PC (next instruction after barrier) */ \
-        /* Barrier will be added at current size, so next PC is size + 1 */ \
-        int next_pc = currentKernel->kernelStatements.size() + 1; \
-        OperandContext pcOperand{ImmOperand{std::to_string(next_pc)}}; \
+        /* Initialize reconvergence PC to -1 (unknown) - will be updated by CFG analysis */ \
+        /* CFG post-dominator analysis in ptx_interpreter.cpp will set the correct value */ \
+        int placeholder_pc = -1; \
+        OperandContext pcOperand{ImmOperand{std::to_string(placeholder_pc)}}; \
         instr.operands.push_back(pcOperand); \
         \
-        /* Set reconvergence label (not used but kept for consistency) */ \
+        /* Reconvergence label placeholder (actual PC comes from CFG analysis) */ \
         instr.reconvergenceLabel = ""; \
         \
         stmtCtx.data = instr; \

@@ -208,7 +208,8 @@ PostDominatorMap CFGBuilder::computePostDominators(const CFG& cfg) {
         for (const auto& block : cfg.blocks) {
             if (block.id == cfg.exit_block_id) continue;
             
-            std::set<int> newSet = {block.id};
+            // 标准后支配集算法：用全量集合初始化，求后继交集，最后加入自身
+            std::set<int> newSet = all_block_ids;
             
             if (!block.successors.empty()) {
                 for (int succ_id : block.successors) {
@@ -224,6 +225,7 @@ PostDominatorMap CFGBuilder::computePostDominators(const CFG& cfg) {
                     newSet = intersection;
                 }
             }
+            newSet.insert(block.id);
             
             if (newSet != postDomSets[block.id]) {
                 postDomSets[block.id] = newSet;
@@ -232,9 +234,24 @@ PostDominatorMap CFGBuilder::computePostDominators(const CFG& cfg) {
         }
     }
     
+    // Build a map from block ID to start_pc for post-dominator resolution
+    std::map<int, int> blockIdToPC;
     for (const auto& block : cfg.blocks) {
-        int ipd = findImmediatePostDominator(block, postDomSets);
-        result[block.start_pc] = ipd >= 0 ? ipd : -1;
+        blockIdToPC[block.id] = block.start_pc;
+    }
+    
+    for (const auto& block : cfg.blocks) {
+        int ipd_block_id = findImmediatePostDominator(block, postDomSets);
+        int postDomPC = -1;
+        if (ipd_block_id >= 0) {
+            auto it2 = blockIdToPC.find(ipd_block_id);
+            if (it2 != blockIdToPC.end()) {
+                postDomPC = it2->second;
+            }
+        }
+        for (int pc = block.start_pc; pc < block.end_pc; pc++) {
+            result[pc] = postDomPC;
+        }
     }
     
     return result;

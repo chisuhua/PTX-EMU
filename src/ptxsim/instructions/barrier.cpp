@@ -168,6 +168,13 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
     }
     
     if (wbar.is_complete()) {
+        // Safety guard: reconvergence_pc must be valid (non-negative)
+        // -1 would be converted to UINT32_MAX by set_thread_pc (takes uint32_t)
+        if (reconvergence_pc < 0) {
+            PTX_ERROR_EMU("bar.warp.sync: Invalid reconvergence_pc=%d at barrier completion, skipping PC update", reconvergence_pc);
+            return;
+        }
+        
         PTX_DEBUG_EMU("bar.warp.sync: Barrier complete, releasing %d threads to PC=%d",
                       wbar.count_participants(), reconvergence_pc);
         

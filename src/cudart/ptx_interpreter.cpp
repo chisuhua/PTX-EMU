@@ -573,20 +573,55 @@ void PtxInterpreter::setupLabels(std::map<std::string, int> &label2pc) {
         ptx::cfg::PostDominatorMap postDoms = 
             ptx::cfg::CFGBuilder::computePostDominators(cfg);
         
-        int updated_count = 0;
+        int updated_branches = 0;
+        int updated_barriers = 0;
+        int fallback_branches = 0;
+        int fallback_barriers = 0;
         for (int i = 0; i < kernelContext->kernelStatements.size(); i++) {
             const auto &stmt = kernelContext->kernelStatements[i];
+            
+            // Get post-dominator for current PC
+            auto it = postDoms.find(i);
+            int reconvergence_pc = -1;
+            if (it != postDoms.end() && it->second >= 0) {
+                reconvergence_pc = it->second;
+            }
+            
             if (stmt.type == S_BRA) {
                 auto &branch = std::get<BranchInstr>(
                     kernelContext->kernelStatements[i].data);
-                auto it = postDoms.find(i);
-                if (it != postDoms.end() && it->second >= 0) {
-                    branch.reconvergence_pc = it->second;
-                    updated_count++;
+                if (reconvergence_pc >= 0) {
+                    branch.reconvergence_pc = reconvergence_pc;
+                    updated_branches++;
+                } else {
+                    // Fallback: use next instruction as reconvergence point
+                    branch.reconvergence_pc = i + 1;
+                    fallback_branches++;
+                    PTX_WARN_EMU("Branch at PC=%d: no valid post-dominator, using fallback pc=%d", i, i + 1);
                 }
             }
+            else if (stmt.type == S_BAR_WARP_SYNC) {
+                auto &barrier = std::get<BarWarpSyncInstr>(
+                    kernelContext->kernelStatements[i].data);
+                if (reconvergence_pc >= 0 && barrier.operands.size() >= 2) {
+                    // Update operand[1] (reconvergence PC) with computed value
+                    barrier.operands[1] = OperandContext{ImmOperand{std::to_string(reconvergence_pc)}};
+                    updated_barriers++;
+                } else if (reconvergence_pc < 0) {
+                    // Fallback: keep placeholder but log warning
+                    fallback_barriers++;
+                    PTX_WARN_EMU("Barrier at PC=%d: no valid post-dominator, keeping placeholder", i);
+                }
+            }
+            else if (stmt.type == S_BAR) {
+                // Original bar.sync for multi-warp CTAs
+                // Note: bar.sync handles synchronization at CTA level, not warp level
+                // Currently not updating reconvergence for CTA-level barriers
+                (void)i;  // Suppress unused warning
+            }
         }
-        PTX_INFO_EMU("CFG analysis complete: updated %d branches", updated_count);
+        PTX_INFO_EMU("CFG analysis complete: updated %d branches (%d fallback), %d barriers (%d fallback)",
+                     updated_branches, fallback_branches, updated_barriers, fallback_barriers);
     } catch (const std::exception& e) {
         PTX_ERROR_EMU("CFG analysis failed: %s", e.what());
     }

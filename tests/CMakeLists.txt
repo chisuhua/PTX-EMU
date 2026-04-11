@@ -387,17 +387,23 @@ add_catch_test(test_scheduler_config
     test_scheduler_config.cpp
 )
 
-# Developer utility: CFG debug tool (not a test, just a PTX analysis binary)
-add_executable(test-cfg-debug ptx/test_cfg_debug.cpp)
-target_include_directories(test-cfg-debug PRIVATE
-    ${PROJECT_SOURCE_DIR}/include
-    ${PROJECT_SOURCE_DIR}/src
-    ${ANTLR4_INCLUDE_DIR}
-    ${ANTLR4_GENERATED_SRC_DIR}
+# Added 2026-04-12: Barrier reconvergence after divergent branch (reconvergence_pc fix)
+add_catch_test(test_barrier_reconvergence
+    test_barrier_reconvergence.cpp
 )
-target_link_libraries(test-cfg-debug PRIVATE ptx_ir ptx_parser antlr4_shared pthread)
-set_target_properties(test-cfg-debug PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-add_dependencies(test-cfg-debug GenerateParser ptx_parser)
+
+# Developer utility: CFG debug tool (not a test, just a PTX analysis binary)
+# TODO: Fix API mismatch - PtxVisitor requires PtxContext&, no default ctor, no getKernels()
+# add_executable(test-cfg-debug ptx/test_cfg_debug.cpp)
+# target_include_directories(test-cfg-debug PRIVATE
+#     ${PROJECT_SOURCE_DIR}/include
+#     ${PROJECT_SOURCE_DIR}/src
+#     ${ANTLR4_INCLUDE_DIR}
+#     ${ANTLR4_GENERATED_SRC_DIR}
+# )
+# target_link_libraries(test-cfg-debug PRIVATE ptx_ir ptx_parser antlr4_shared pthread)
+# set_target_properties(test-cfg-debug PROPERTIES
+#     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+# add_dependencies(test-cfg-debug GenerateParser ptx_parser)
 
 
