@@ -135,7 +135,8 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt, int target_pc
         }
         
         // Only execute for lanes at the target PC
-        if (warp_state.threads[i].pc != static_cast<uint32_t>(target_pc)) {
+        // Use ThreadContext::pc (direct, always accurate) instead of warp_state
+        if (threads[i]->pc != static_cast<uint32_t>(target_pc)) {
             continue;
         }
         
@@ -277,11 +278,14 @@ std::map<int, std::vector<int>> WarpContext::get_lanes_by_pc() const {
     std::map<int, std::vector<int>> pc_to_lanes;
     
     for (int lane = 0; lane < WARP_SIZE; lane++) {
+        // Use ThreadContext::pc directly - this is the TRUE per-thread PC.
+        // warp_state.threads[lane].pc can be corrupted by sequential lane
+        // execution overwriting the warp_state between lanes.
         if (lane < threads.size() && threads[lane] != nullptr &&
             warp_state.threads[lane].is_active && 
             !warp_state.threads[lane].is_exited &&
             !warp_state.threads[lane].is_blocked) {
-            int pc = warp_state.threads[lane].pc;
+            int pc = threads[lane]->pc;
             pc_to_lanes[pc].push_back(lane);
         }
     }

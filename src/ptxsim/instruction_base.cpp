@@ -106,31 +106,29 @@ bool PipelineHandler::acquireAllOperands(ThreadContext *context,
                                        const std::vector<Qualifier> &qualifiers, 
                                        int opCount) {
     for (int i = 0; i < opCount && i < static_cast<int>(operands.size()); i++) {
-        if (!operands[i].operand_phy_addr) {
-            void *result = context->acquire_operand(operands[i], qualifiers);
-            if (!result) {
-                PTX_DEBUG_EMU("Failed to get operand address for op[%d]", i);
-                PTX_DEBUG_EMU("  pc=%d op=%s", context->pc,
-                              operands[i].toString().c_str());
-                if (operands[i].kind() == OperandKind::ADDR) {
-                    const auto &addr = std::get<AddrOperand>(operands[i].data);
-                    const char *offsetType =
-                        addr.offsetType == AddrOperand::OffsetType::REGISTER
-                            ? "REGISTER"
-                            : "IMMEDIATE";
-                    std::string regText = "<null>";
-                    if (addr.registerOffset) {
-                        regText = addr.registerOffset->toString();
-                    }
-                    PTX_DEBUG_EMU(
-                        "  addr_fields: id=%s base=%s offsetType=%s imm=%s regOffset=%s",
-                        addr.id.c_str(), addr.baseSymbol.c_str(), offsetType,
-                        addr.immediateOffset.c_str(), regText.c_str());
+        void *result = context->acquire_operand(operands[i], qualifiers);
+        if (!result) {
+            PTX_DEBUG_EMU("Failed to get operand address for op[%d]", i);
+            PTX_DEBUG_EMU("  pc=%d op=%s", context->pc,
+                          operands[i].toString().c_str());
+            if (operands[i].kind() == OperandKind::ADDR) {
+                const auto &addr = std::get<AddrOperand>(operands[i].data);
+                const char *offsetType =
+                    addr.offsetType == AddrOperand::OffsetType::REGISTER
+                        ? "REGISTER"
+                        : "IMMEDIATE";
+                std::string regText = "<null>";
+                if (addr.registerOffset) {
+                    regText = addr.registerOffset->toString();
                 }
-                return false;
+                PTX_DEBUG_EMU(
+                    "  addr_fields: id=%s base=%s offsetType=%s imm=%s regOffset=%s",
+                    addr.id.c_str(), addr.baseSymbol.c_str(), offsetType,
+                    addr.immediateOffset.c_str(), regText.c_str());
             }
-            operands[i].setPhyAddr(result);
+            return false;
         }
+        operands[i].setPhyAddr(result);
     }
     return true;
 }

@@ -715,7 +715,7 @@ void ThreadContext::sync_to_warp_state() {
 
     ptxsim::ThreadState& thread_state = warp_context_->get_warp_state().threads[lane_id];
 
-    // 同步 PC
+    // 同步 PC - always sync to keep scheduler informed
     thread_state.pc = pc;
     thread_state.next_pc = next_pc;
 
