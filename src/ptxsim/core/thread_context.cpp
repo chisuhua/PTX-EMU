@@ -237,25 +237,17 @@ void *ThreadContext::acquire_operand(const OperandContext &operand,
         // OperandContext::VAR *varOp = (OperandContext::VAR *)operand.data;
 
         // 优先在name2Share中查找（共享内存变量）
+        // Always return the address of the offset value in the symbol table.
+        // For 'mov %reg, symbol', this copies the offset into the register.
+        // For memory operations, get_memory_addr() adds shared_mem_space.
         if (name2Share != nullptr) {
             auto share_it = name2Share->find(varOp.name);
             if (share_it != name2Share->end()) {
-                if (shared_mem_space != nullptr) {
-                    uint64_t actual_address = (uint64_t)shared_mem_space + share_it->second->val;
-                    PTX_DEBUG_EMU("Reading dynamic shared memory: name=%s, "
-                                  "symbol_table_entry=%p, stored_offset=0x%lx, "
-                                  "base=%p, actual_address=%p",
-                                  varOp.name.c_str(), share_it->second,
-                                  share_it->second->val, shared_mem_space,
-                                  (void*)actual_address);
-                    return (void*)actual_address;
-                } else {
-                    PTX_DEBUG_EMU("Reading static shared memory from name2Share: name=%s, "
-                                  "symbol_table_entry=%p, stored_value=0x%lx",
-                                  varOp.name.c_str(), share_it->second,
-                                  share_it->second->val);
-                    return &(share_it->second->val);
-                }
+                PTX_DEBUG_EMU("Reading shared memory symbol: name=%s, "
+                              "symbol_table_entry=%p, offset=0x%lx",
+                              varOp.name.c_str(), share_it->second,
+                              share_it->second->val);
+                return &(share_it->second->val);
             }
         }
 

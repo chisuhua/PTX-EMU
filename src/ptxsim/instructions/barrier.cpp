@@ -173,7 +173,7 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
         
         // Only update ACTIVE lanes - inactive lanes remain at their current PC
         for (int i = 0; i < WarpContext::WARP_SIZE; ++i) {
-            if ((participation_mask & (1u << i)) && warp_state.threads[i].is_active) {
+            if ((wbar.participation_mask & (1u << i)) && warp_state.threads[i].is_active) {
                 warp_ctx->set_thread_pc(i, reconvergence_pc);
                 warp_ctx->update_pc_stack(i, reconvergence_pc);
                 warp_state.threads[i].is_blocked = false;
