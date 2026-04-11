@@ -1,83 +1,74 @@
 # PTX-EMU SIMT 架构中期改进计划
 
-> **状态**: 🚧 Wave 1 进行中 (Test 3 数据修复)  
+> **状态**: 🔴 Wave 1.4 完成，Test 3 仍需修复  
 > **目标**: 修复 divergent execution、完善 barrier 同步、实现正确的 SIMT 语义  
 > **基于**: GPGPU-Sim 架构分析 + NVIDIA SIMT 论文 (Lindholm 2008, Fung 2007)  
 > **开始日期**: 2026-04-10  
 
 ---
 
-## 📊 当前状态 (2026-04-10 23:15)
+## 📊 当前状态 (2026-04-11 06:00)
 
 | 测试 | 状态 | 说明 |
 |------|------|------|
 | Test 1 (basic barrier) | ✅ PASS | - |
 | Test 2 (multi-block) | ✅ PASS | - |
-| Test 3 (nested sync) | ⚠️ 部分通过 | Barrier 完成 (不再 hang)，但数据结果不对 (expected 3, got 496) |
+| Test 3 (nested sync) | ❌ FAIL | expected 3, got 496 (需要更深入的寄存器追踪) |
 
 ---
 
 ## 🎯 已完成工作
 
-### Wave 1.1: 修复 Barrier PC 计算  
-- **问题**: barrier.cpp 使用 `barrier_pc + 1` 代替 reconvergence_pc
-- **修复**: 恢复使用 reconvergence_pc (由编译器/visitor 设置)
-- **影响**: Test 1, 2 通过
+### Wave 1.1: 修复 Barrier PC 计算 (commit: 84508ec)
+- 恢复使用 reconvergence_pc (由编译器/visitor 设置)
+- Test 1, 2 通过
 
-### Wave 1.2: 实现 warp-level barrier 语义
-- **问题**: Divergent 路径中只有部分线程执行 barrier，barrier 永远不完成
-- **根因**: NVIDIA PTX ISA 规定 `bar` 指令对整个 warp 生效
-- **修复**: 当 participation_mask == 0xFFFFFFFF 时，标记所有 lanes 为到达
-- **影响**: Test 3 不再 hang (barrier 完成)
+### Wave 1.2: 实现 warp-level barrier 语义 (commit: 84508ec)
+- 当 participation_mask == 0xFFFFFFFF 时，标记所有 lanes 为到达
+- 遵循 NVIDIA PTX ISA 规范
+- Test 3 不再 hang (barrier 完成)
 
----
+### Wave 1.3: 正确的活跃线程管理 (commit: 176ddad)
+- 构造函数初始化为非活跃
+- add_thread 时设置活跃
+- 防止 inactive lanes 污染执行
 
-## 🔍 当前问题: Test 3 数据结果不正确
-
-**症状**: `expected 3, got 496`
-
-**可能原因**:
-1. Barrier 完成后 PC 更新导致执行顺序错误
-2. Shared memory 访问在 divergent 路径中不同步
-3. Divergent threads 的数据被覆盖
-
-**分析**:
-- Test 3 使用 `@%p1 bra $L__BB2_2;` 创建 divergent 路径
-- 两个路径都访问 shared memory
-- Barrier 用于同步两个路径
-- 期望：每个 thread 写入 `tid` 到 `data_a[tid]`，从 `data_b[31-tid]` 读取
-- 实际：得到 496 (可能是累积值或地址偏移)
+### Wave 1.4: 共享内存符号解析修复 (commit: 546e167)
+- mov.u32 %reg, symbol 现在正确复制偏移值
+- acquire_operand 始终返回 `&(share_it->second->val)`
+- get_memory_addr 负责添加 shared_mem_space
 
 ---
 
-## 🏗️ 后续计划
+## 🔍 剩余问题: Test 3 数据不正确
 
-### Wave 1.3: 修复 Test 3 数据 (1-2 小时)
-**调查**:
-1. 检查 divergent 路径中的 shared memory 访问顺序
-2. 验证 barrier 后 PC 更新是否正确
-3. 追踪 shared memory 的读写值
+**症状**: `expected 3, got 496` at index 1
 
-### Wave 2: 架构改进 (3-5 天)
-#### 2.1 完善 SIMT Stack
+**496 = 0x1F0 分析**:
+- 非常奇怪的值，不是正常的执行结果
+- 可能来源: 未初始化内存、寄存器泄漏、cudaMemcpy 问题
+
+**建议调试方法**:
+1. 在 HardwareMemoryManager::access 中添加写入日志
+2. 直接打印寄存器值 (使用 printf/PTX_INFO_EMU)
+3. 验证 PTX 指令翻译是否正确
+4. 对比 CUDA 实际硬件的输出
+
+---
+
+## 🏗️ 后续计划 (Wave 2)
+
+### 2.1 完成 Test 3 修复
+- 添加详细寄存器追踪
+- 对比预期和实际寄存器值
+
+### 2.2 SIMT Stack 完善
 - 实现正确的 push/pop 语义
 - 支持 nested divergence
-- 与 barrier 协同工作
 
-#### 2.2 实现指令缓冲区 (IBUFFER)
-- 参考 GPGPU-Sim `shd_warp_t::m_ibuffer[IBUFFER_SIZE]`
-
-#### 2.3 统一 Barrier 模型
-- 整合 SIMT Stack 和 Barrier 状态
+### 2.3 指令缓冲区 (IBUFFER)
+- 参考 GPGPU-Sim 实现
 
 ---
 
-## 📚 参考资料
-
-1. GPGPU-Sim SIMT 分析: `docs/architecture/GPGPU-SIM-SIMT-ANALYSIS.md`
-2. SIMT 论文: Lindholm 2008, Fung 2007, Collange 2011
-3. 架构深度梳理: 2026-04-10 完成
-
----
-
-*最后更新: 2026-04-10 23:15*
+*最后更新: 2026-04-11 06:00*
