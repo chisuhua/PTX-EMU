@@ -402,6 +402,21 @@ add_catch_test(test_exec_layer_e1_e3
     test_exec_layer_e1_e3.cpp
 )
 
+# Added 2026-04-12: Integration PC sync tests (H1-H4 hypotheses for Test 3)
+add_catch_test(test_exec_integration_h1_h4
+    test_exec_integration_h1_h4.cpp
+)
+
+# Added 2026-04-12: Full CFG analysis of test_syncthreads Test 3 PTX
+add_catch_test(test_test3_cfg_full
+    test_test3_cfg_full.cpp
+)
+
+# Added 2026-04-12: Barrier interaction integration tests (I1-I3 hypotheses)
+add_catch_test(test_barrier_interaction_integrated
+    test_barrier_interaction_integrated.cpp
+)
+
 # Developer utility: CFG debug tool (not a test, just a PTX analysis binary)
 # TODO: Fix API mismatch - PtxVisitor requires PtxContext&, no default ctor, no getKernels()
 # add_executable(test-cfg-debug ptx/test_cfg_debug.cpp)
