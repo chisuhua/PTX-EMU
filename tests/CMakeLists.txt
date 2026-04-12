@@ -417,6 +417,13 @@ add_catch_test(test_barrier_interaction_integrated
     test_barrier_interaction_integrated.cpp
 )
 
+# Added 2026-04-12: Targeted unit tests for four specific bugs discovered
+# during Test 3 investigation (sync_to_warp_state, CFG barriers,
+# cudaMemset offset, and predicate register for sub-warp launches)
+add_catch_test(test_specific_bugs_unit
+    test_specific_bugs_unit.cpp
+)
+
 # Developer utility: CFG debug tool (not a test, just a PTX analysis binary)
 # TODO: Fix API mismatch - PtxVisitor requires PtxContext&, no default ctor, no getKernels()
 # add_executable(test-cfg-debug ptx/test_cfg_debug.cpp)
