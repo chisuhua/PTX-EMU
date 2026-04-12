@@ -603,14 +603,24 @@ void PtxInterpreter::setupLabels(std::map<std::string, int> &label2pc) {
             else if (stmt.type == S_BAR_WARP_SYNC) {
                 auto &barrier = std::get<BarWarpSyncInstr>(
                     kernelContext->kernelStatements[i].data);
-                if (reconvergence_pc >= 0 && barrier.operands.size() >= 2) {
-                    // Update operand[1] (reconvergence PC) with computed value
-                    barrier.operands[1] = OperandContext{ImmOperand{std::to_string(reconvergence_pc)}};
-                    updated_barriers++;
-                } else if (reconvergence_pc < 0) {
-                    // Fallback: keep placeholder but log warning
-                    fallback_barriers++;
-                    PTX_WARN_EMU("Barrier at PC=%d: no valid post-dominator, keeping placeholder", i);
+                if (barrier.operands.size() >= 2) {
+                    int total_threads = blockDim.x * blockDim.y * blockDim.z;
+
+                    uint32_t participation_mask;
+                    if (total_threads >= 32) {
+                        participation_mask = 0xFFFFFFFFu;
+                    } else {
+                        participation_mask = (1u << total_threads) - 1;
+                    }
+                    barrier.operands[0] = OperandContext{ImmOperand{std::to_string(participation_mask)}};
+
+                    if (reconvergence_pc >= 0) {
+                        barrier.operands[1] = OperandContext{ImmOperand{std::to_string(reconvergence_pc)}};
+                        updated_barriers++;
+                    } else {
+                        barrier.operands[1] = OperandContext{ImmOperand{std::to_string(i + 1)}};
+                        fallback_barriers++;
+                    }
                 }
             }
             else if (stmt.type == S_BAR) {
