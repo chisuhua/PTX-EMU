@@ -713,17 +713,26 @@ void ThreadContext::sync_to_warp_state() {
     int lane_id = lane_id_;
     if (lane_id < 0 || lane_id >= WarpContext::WARP_SIZE) return;
 
+
     ptxsim::ThreadState& thread_state = warp_context_->get_warp_state().threads[lane_id];
 
-    // 同步 PC - always sync to keep scheduler informed
-    thread_state.pc = pc;
+    // Synchronization barrier completion updates warp_state.pc for all lanes.
+    // Don't overwrite an already-advanced PC with the stale barrier PC.
+    if (thread_state.pc > static_cast<uint32_t>(pc)) {
+        // Completion handler already advanced past barrier — keep it
+    } else {
+        thread_state.pc = pc;
+    }
     thread_state.next_pc = next_pc;
 
     // 同步状态
     switch (state) {
         case RUN:
             thread_state.status = ptxsim::ThreadStatus::Active;
-            thread_state.is_blocked = false;
+            // Barrier handler may have set is_blocked for this lane
+            if (!thread_state.is_blocked) {
+                thread_state.is_blocked = false;
+            }
             break;
         case BAR_SYNC:
             thread_state.status = ptxsim::ThreadStatus::Blocked;

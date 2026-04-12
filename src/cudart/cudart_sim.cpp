@@ -408,19 +408,17 @@ cudaError_t cudaMemcpyAsync(void *dst, const void *src, size_t count,
 
 cudaError_t cudaMemset(void *devPtr, int value, size_t count) {
     PTX_DEBUG_EMU("Called cudaMemset(%p, %d, %zu)", devPtr, value, count);
+    if (!devPtr) return cudaErrorInvalidValue;
 
-    if (!devPtr) {
-        return cudaErrorInvalidValue;
-    }
-
-    // 获取CudaDriver的全局内存池地址
     uint8_t *global_pool = CudaDriver::instance().get_global_pool();
-    if (!global_pool) {
-        return cudaErrorInitializationError;
-    }
+    uint64_t global_size = CudaDriver::instance().get_global_size();
+    if (!global_pool) return cudaErrorInitializationError;
 
     uint64_t device_offset = reinterpret_cast<uint64_t>(devPtr);
-    if (device_offset >= CudaDriver::instance().get_global_size()) {
+    if (device_offset >= (uint64_t)global_pool) {
+        device_offset -= (uint64_t)global_pool;
+    }
+    if (device_offset >= global_size) {
         return cudaErrorInvalidValue;
     }
 

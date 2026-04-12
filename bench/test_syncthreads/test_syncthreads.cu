@@ -130,6 +130,7 @@ bool run_tests() {
     // Test 3: Nested sync
     {
         cudaMalloc(&d_output, 16 * sizeof(T));
+        cudaMemset(d_output, 0, 16 * sizeof(T));  // Clear buffer
         test_nested_sync<T><<<1, 16>>>(d_output);
 
         T h_output[16];

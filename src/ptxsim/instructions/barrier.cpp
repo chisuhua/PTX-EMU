@@ -107,10 +107,8 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
     // Step 1: Extract participation mask from operand[0]
     uint32_t participation_mask = 0;
     if (operand_is_immediate && (*operand_is_immediate)[0]) {
-        // Immediate operand
         participation_mask = *static_cast<uint32_t*>(operands[0]);
     } else {
-        // Register operand - operands[0] is the register address
         participation_mask = *static_cast<uint32_t*>(operands[0]);
     }
     

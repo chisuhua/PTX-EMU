@@ -590,13 +590,18 @@ void PtxInterpreter::setupLabels(std::map<std::string, int> &label2pc) {
             if (stmt.type == S_BRA) {
                 auto &branch = std::get<BranchInstr>(
                     kernelContext->kernelStatements[i].data);
+                int old_reconvergence = branch.reconvergence_pc;
                 if (reconvergence_pc >= 0) {
                     branch.reconvergence_pc = reconvergence_pc;
                     updated_branches++;
+                    PTX_DEBUG_EMU("CFG[PC=%d]: S_BRA updated - old_reconvergence_pc=%d, new_reconvergence_pc=%d",
+                                 i, old_reconvergence, reconvergence_pc);
                 } else {
                     // Fallback: use next instruction as reconvergence point
                     branch.reconvergence_pc = i + 1;
                     fallback_branches++;
+                    PTX_DEBUG_EMU("CFG[PC=%d]: S_BRA FALLBACK - old_reconvergence_pc=%d, new_reconvergence_pc=%d (no post-dominator)",
+                                 i, old_reconvergence, i + 1);
                     PTX_WARN_EMU("Branch at PC=%d: no valid post-dominator, using fallback pc=%d", i, i + 1);
                 }
             }
@@ -614,20 +619,12 @@ void PtxInterpreter::setupLabels(std::map<std::string, int> &label2pc) {
                     }
                     barrier.operands[0] = OperandContext{ImmOperand{std::to_string(participation_mask)}};
 
-                    if (reconvergence_pc >= 0 && reconvergence_pc < (int)kernelContext->kernelStatements.size()) {
-                        barrier.operands[1] = OperandContext{ImmOperand{std::to_string(reconvergence_pc)}};
-                        updated_barriers++;
-                    } else {
-                        barrier.operands[1] = OperandContext{ImmOperand{std::to_string(i + 1)}};
-                        fallback_barriers++;
-                    }
+                    // Barriers always reconverge to the next instruction (i+1).
+                    // Unlike branches, barriers don't redirect control flow —
+                    // after sync, threads continue sequentially.
+                    barrier.operands[1] = OperandContext{ImmOperand{std::to_string(i + 1)}};
+                    updated_barriers++;
                 }
-            }
-            else if (stmt.type == S_BAR) {
-                // Original bar.sync for multi-warp CTAs
-                // Note: bar.sync handles synchronization at CTA level, not warp level
-                // Currently not updating reconvergence for CTA-level barriers
-                (void)i;  // Suppress unused warning
             }
         }
         PTX_INFO_EMU("CFG analysis complete: updated %d branches (%d fallback), %d barriers (%d fallback)",
