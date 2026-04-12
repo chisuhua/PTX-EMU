@@ -242,16 +242,12 @@ PostDominatorMap CFGBuilder::computePostDominators(const CFG& cfg) {
     
     for (const auto& block : cfg.blocks) {
         int ipd_block_id = findImmediatePostDominator(block, postDomSets);
-        int postDomPC;
+        int postDomPC = -1;
         if (ipd_block_id >= 0) {
             auto it2 = blockIdToPC.find(ipd_block_id);
             if (it2 != blockIdToPC.end()) {
                 postDomPC = it2->second;
-            } else {
-                postDomPC = block.end_pc;
             }
-        } else {
-            postDomPC = block.end_pc;
         }
         for (int pc = block.start_pc; pc < block.end_pc; pc++) {
             result[pc] = postDomPC;

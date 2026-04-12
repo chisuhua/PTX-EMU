@@ -614,7 +614,7 @@ void PtxInterpreter::setupLabels(std::map<std::string, int> &label2pc) {
                     }
                     barrier.operands[0] = OperandContext{ImmOperand{std::to_string(participation_mask)}};
 
-                    if (reconvergence_pc >= 0) {
+                    if (reconvergence_pc >= 0 && reconvergence_pc < (int)kernelContext->kernelStatements.size()) {
                         barrier.operands[1] = OperandContext{ImmOperand{std::to_string(reconvergence_pc)}};
                         updated_barriers++;
                     } else {

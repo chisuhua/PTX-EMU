@@ -397,6 +397,11 @@ add_catch_test(test_syncthreads_direction
     test_syncthreads_direction.cpp
 )
 
+# Added 2026-04-12: Execution layer tests (E1-E3 hypotheses for Test 3)
+add_catch_test(test_exec_layer_e1_e3
+    test_exec_layer_e1_e3.cpp
+)
+
 # Developer utility: CFG debug tool (not a test, just a PTX analysis binary)
 # TODO: Fix API mismatch - PtxVisitor requires PtxContext&, no default ctor, no getKernels()
 # add_executable(test-cfg-debug ptx/test_cfg_debug.cpp)
