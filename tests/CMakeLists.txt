@@ -392,6 +392,11 @@ add_catch_test(test_barrier_reconvergence
     test_barrier_reconvergence.cpp
 )
 
+# Added 2026-04-12: Test 3 root cause investigation (3 directions)
+add_catch_test(test_syncthreads_direction
+    test_syncthreads_direction.cpp
+)
+
 # Developer utility: CFG debug tool (not a test, just a PTX analysis binary)
 # TODO: Fix API mismatch - PtxVisitor requires PtxContext&, no default ctor, no getKernels()
 # add_executable(test-cfg-debug ptx/test_cfg_debug.cpp)
