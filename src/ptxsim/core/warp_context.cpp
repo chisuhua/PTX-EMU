@@ -301,8 +301,7 @@ std::map<int, std::vector<int>> WarpContext::get_lanes_by_pc() const {
     for (int lane = 0; lane < WARP_SIZE; lane++) {
         if (lane < (int)threads.size() && threads[lane] != nullptr &&
             warp_state.threads[lane].is_active && 
-            !warp_state.threads[lane].is_exited &&
-            !warp_state.threads[lane].is_blocked) {
+            !warp_state.threads[lane].is_exited) {
             int pc = warp_state.threads[lane].pc;
             pc_to_lanes[pc].push_back(lane);
         }
