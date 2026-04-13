@@ -63,13 +63,23 @@ public:
         return 0;
     }
 
-    // 【NEW】设置每线程 PC
+    // 【NEW】设置每线程 PC (legacy, does NOT sync ThreadContext)
+    // Prefer advance_thread_to() which keeps both sources consistent
     void set_thread_pc(int lane_id, uint32_t new_pc) {
         if (lane_id >= 0 && lane_id < WARP_SIZE) {
             warp_state.threads[lane_id].pc = new_pc;
             warp_state.threads[lane_id].next_pc = new_pc;
         }
     }
+
+    // 【UNIFIED PC】 Advance a single thread's PC, updating both warp_state
+    // and ThreadContext simultaneously to prevent dual-PC inconsistencies.
+    // This is the only approved way to change a thread's PC after initialization.
+    void advance_thread_pc(int lane_id, int new_pc);
+
+    // 【UNIFIED PC】 Advance all active threads to the same PC.
+    // Used for non-divergent branches and barrier reconvergence.
+    void advance_all_threads(int new_pc);
 
     // 【NEW】更新 PC 栈（用于 barrier 释放后设置正确的继续执行位置）
     void update_pc_stack(int lane_id, uint32_t new_pc) {

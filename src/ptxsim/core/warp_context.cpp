@@ -49,9 +49,9 @@ void WarpContext::handle_branch(const std::string& predicate,
         entry.active_mask = taken_mask;
         entry.return_mask = warp_state.exec_mask;
         entry.return_pc = reconvergence_pc;
-        
+
         simt_stack.push(entry);
-        
+
         for (int i = 0; i < 32; i++) {
             if (taken_mask & (1u << i)) {
                 warp_state.threads[i].pc = target_pc;
@@ -61,16 +61,40 @@ void WarpContext::handle_branch(const std::string& predicate,
                 warp_state.threads[i].next_pc = pc + 1;
             }
         }
-        
+
         warp_state.exec_mask = taken_mask;
     } else {
         int next_pc = (taken_mask != 0) ? target_pc : pc + 1;
-        
+
         for (int i = 0; i < 32; i++) {
             if (warp_state.threads[i].is_active) {
                 warp_state.threads[i].pc = next_pc;
                 warp_state.threads[i].next_pc = next_pc;
             }
+        }
+
+        advance_all_threads(next_pc);
+    }
+}
+
+void WarpContext::advance_thread_pc(int lane_id, int new_pc) {
+    if (lane_id < 0 || lane_id >= WARP_SIZE) return;
+    warp_state.threads[lane_id].pc = new_pc;
+    warp_state.threads[lane_id].next_pc = new_pc + 1;
+    if (lane_id < (int)threads.size() && threads[lane_id]) {
+        threads[lane_id]->pc = new_pc;
+        threads[lane_id]->next_pc = new_pc + 1;
+    }
+}
+
+void WarpContext::advance_all_threads(int new_pc) {
+    for (int i = 0; i < WARP_SIZE; i++) {
+        if (!warp_state.threads[i].is_active) continue;
+        warp_state.threads[i].pc = new_pc;
+        warp_state.threads[i].next_pc = new_pc + 1;
+        if (i < (int)threads.size() && threads[i]) {
+            threads[i]->pc = new_pc;
+            threads[i]->next_pc = new_pc + 1;
         }
     }
 }
@@ -131,9 +155,9 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt, int target_pc
             continue;
         }
         
-        // Only execute for lanes at the target PC
-        // Use ThreadContext::pc (direct, always accurate) instead of warp_state
-        if (threads[i]->pc != static_cast<uint32_t>(target_pc)) {
+        // Only execute for lanes at the target PC.
+        // Must use warp_state.pc to match get_lanes_by_pc() source.
+        if (warp_state.threads[i].pc != static_cast<uint32_t>(target_pc)) {
             continue;
         }
         
@@ -273,20 +297,17 @@ void WarpContext::set_active_mask(uint32_t mask) {
 
 std::map<int, std::vector<int>> WarpContext::get_lanes_by_pc() const {
     std::map<int, std::vector<int>> pc_to_lanes;
-    
+
     for (int lane = 0; lane < WARP_SIZE; lane++) {
-        // Use ThreadContext::pc directly - this is the TRUE per-thread PC.
-        // warp_state.threads[lane].pc can be corrupted by sequential lane
-        // execution overwriting the warp_state between lanes.
-        if (lane < threads.size() && threads[lane] != nullptr &&
+        if (lane < (int)threads.size() && threads[lane] != nullptr &&
             warp_state.threads[lane].is_active && 
             !warp_state.threads[lane].is_exited &&
             !warp_state.threads[lane].is_blocked) {
-            int pc = threads[lane]->pc;
+            int pc = warp_state.threads[lane].pc;
             pc_to_lanes[pc].push_back(lane);
         }
     }
-    
+
     return pc_to_lanes;
 }
 
