@@ -150,21 +150,8 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
     
     // Step 6: Mark current thread as arrived
     wbar.arrive(lane_id);
-    PTX_DEBUG_THREAD("Lane %d arrived at bar.warp.sync (mask=0x%X, pc=%d)",
-                     lane_id, participation_mask, reconvergence_pc);
     
     // Step 7: Check if all participants have arrived
-    // For warp-level barriers with full participation mask, mark all lanes as arrived
-    // but only update state for ACTIVE lanes
-    if (participation_mask == 0xFFFFFFFF) {
-        for (int i = 0; i < WarpContext::WARP_SIZE; ++i) {
-            if (!(wbar.arrived_mask & (1u << i))) {
-                wbar.arrive(i);
-                warp_state.threads[i].is_blocked = false;
-            }
-        }
-    }
-    
     if (wbar.is_complete()) {
         // Safety guard: reconvergence_pc must be valid (non-negative)
         // -1 would be converted to UINT32_MAX by set_thread_pc (takes uint32_t)
@@ -176,12 +163,13 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
         PTX_DEBUG_EMU("bar.warp.sync: Barrier complete, releasing %d threads to PC=%d",
                       wbar.count_participants(), reconvergence_pc);
         
-        // Only update ACTIVE lanes - inactive lanes remain at their current PC
+        // Only update lanes that have actually arrived at the barrier
         for (int i = 0; i < WarpContext::WARP_SIZE; ++i) {
-            if ((wbar.participation_mask & (1u << i)) && warp_state.threads[i].is_active) {
+            if ((wbar.arrived_mask & (1u << i)) && warp_state.threads[i].is_active) {
                 warp_ctx->set_thread_pc(i, reconvergence_pc);
                 warp_ctx->update_pc_stack(i, reconvergence_pc);
                 warp_state.threads[i].is_blocked = false;
+                warp_state.threads[i].status = ptxsim::ThreadStatus::Active;
             }
         }
         
