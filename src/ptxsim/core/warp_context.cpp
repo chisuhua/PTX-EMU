@@ -13,10 +13,7 @@ void WarpContext::handle_branch(const std::string& predicate,
     uint32_t not_taken_mask = 0;
     
     for (int i = 0; i < 32; i++) {
-        // Skip inactive lanes - they should not affect branch decisions
-        if (!warp_state.threads[i].is_active) {
-            continue;
-        }
+        if (!warp_state.threads[i].is_active) continue;
         
         bool should_branch = true;
         

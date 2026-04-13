@@ -153,6 +153,10 @@ public:
         register_bank_manager_ = manager;
     }
 
+    std::shared_ptr<RegisterBankManager> get_register_bank_manager() const {
+        return register_bank_manager_;
+    }
+
     // 获取 warp 中所有线程的引用
     const std::vector<std::unique_ptr<ThreadContext>>& get_threads() const {
         return threads;

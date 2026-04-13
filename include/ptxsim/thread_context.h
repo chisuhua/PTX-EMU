@@ -229,6 +229,13 @@ public:
     set_register_bank_manager(std::shared_ptr<RegisterBankManager> manager) {
         register_bank_manager_ = manager;
     }
+    std::shared_ptr<RegisterBankManager> get_register_bank_manager() const {
+        return register_bank_manager_;
+    }
+    int get_warp_id() const { return warp_id_; }
+
+    // Set during collect_operands, read by SetpHandler for predicate writes
+    const std::string& get_dst_operand_reg_name() const { return dst_operand_reg_name_; }
 
     // 设置warp上下文
     void set_warp_context(WarpContext *warp_ctx) { warp_context_ = warp_ctx; }
@@ -250,6 +257,8 @@ private:
 
     // 指向CTAContext的指针，用于访问本地内存符号表
     CTAContext *cta_context_ = nullptr;
+
+    std::string dst_operand_reg_name_;
 };
 
 #endif // THREAD_CONTEXT_H

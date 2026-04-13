@@ -98,7 +98,6 @@ protected:
     virtual void processOperation(ThreadContext *context, void **operands,
                                 const std::vector<Qualifier> &qualifiers,
                                 const std::vector<char> *operand_is_immediate = nullptr) {
-        // Default implementation does nothing
         (void)context;
         (void)operands;
         (void)qualifiers;

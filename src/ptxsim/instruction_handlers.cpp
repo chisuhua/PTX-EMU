@@ -86,12 +86,11 @@
     __attribute__((weak)) void Name##Handler::processOperation(ThreadContext *context, void **operands, \
                                         const std::vector<Qualifier> &qualifiers, \
                                         const std::vector<char> *operand_is_immediate) { \
-        /* Implementation is in separate .cpp file */ \
+        /* Implementation is in separate .cpp file - check if comparison.cpp etc. is linked */ \
         (void)context; \
         (void)operands; \
         (void)qualifiers; \
         (void)operand_is_immediate; \
-        return; \
     };
 
 // Atomic instruction handlers
