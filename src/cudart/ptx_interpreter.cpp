@@ -609,26 +609,13 @@ void PtxInterpreter::setupLabels(std::map<std::string, int> &label2pc) {
                 auto &barrier = std::get<BarWarpSyncInstr>(
                     kernelContext->kernelStatements[i].data);
                 if (barrier.operands.size() >= 2) {
-                    int total_threads = blockDim.x * blockDim.y * blockDim.z;
-
-                    uint32_t participation_mask;
-                    if (total_threads >= 32) {
-                        participation_mask = 0xFFFFFFFFu;
-                    } else {
-                        participation_mask = (1u << total_threads) - 1;
-                    }
-                    barrier.operands[0] = OperandContext{ImmOperand{std::to_string(participation_mask)}};
-
                     // Barriers always reconverge to the next instruction (i+1).
-                    // Unlike branches, barriers don't redirect control flow —
-                    // after sync, threads continue sequentially.
                     barrier.operands[1] = OperandContext{ImmOperand{std::to_string(i + 1)}};
                     updated_barriers++;
-                    PTX_DEBUG_EMU("CFG[PC=%d]: S_BAR_WARP_SYNC updated - reconvergence_pc=%d (was %s)",
-                                  i, i + 1, barrier.operands.size() > 1 ? barrier.operands[1].toString().c_str() : "?");
                 }
             }
         }
+        
         PTX_INFO_EMU("CFG analysis complete: updated %d branches (%d fallback), %d barriers (%d fallback)",
                      updated_branches, fallback_branches, updated_barriers, fallback_barriers);
     } catch (const std::exception& e) {

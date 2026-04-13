@@ -3,8 +3,45 @@
 
 **版本**: 2.0  
 **日期**: 2026-04-09  
-**状态**: 设计评审中  
+**最后同步标注**: 2026-04-14  
+**状态**: 设计评审中 — 已实现 (含标注)  
 **作者**: PTX-EMU Team
+
+---
+
+## 0. 实现状态与文档对齐说明
+
+> ⚠️ **重要提示**: 本文档于 2026-04-09 编写，描述的是设计期望。后续 12 次提交的代码实现有所调整。核心设计决策 (85%) 仍然适用，但部分实现细节已变化。请以**实际代码**为准，本文档提供概念框架。
+
+### 0.1 关键差异速查
+
+| 文档描述 | 实际实现 | 文件/行 |
+|---------|---------|---------|
+| `std::vector<SIMTStackEntry> simt_stack` | `ptxsim::SIMTStack simt_stack` (封装类) | `warp_context.h:235` |
+| `int simt_stack_depth` (ThreadState) | **不存在** — 改用 `pc_stack` (WarpState 内) | `warp_state.h:20` |
+| `std::atomic<bool> memory_fence_complete` (Wbar) | `bool is_initialized` + `bool memory_fence_verification_enabled` | `wbar.h:16-17` |
+| `ThreadState::BLOCKED_BARRIER` | `BAR_SYNC` (+ `ThreadStatus::Blocked`) | `thread_context.h` |
+| `execute_branch_instruction()` | `handle_branch()` | `warp_context.cpp:8` |
+| 从 `ThreadContext::pc` 读取 PC | 从 `warp_state.threads[lane].pc` 读取 (单一权威源) | `warp_context.cpp:298` |
+
+### 0.2 未文档化的关键实现
+
+1. **`advance_thread_pc()` / `advance_all_threads()`** — 统一 PC 更新接口 (`warp_context.cpp:80-99`)
+2. **`get_statement_at(target_pc)`** — 指令按 PC 精确查找，替代 `get_current_statement()` (`sm_context.cpp:196`)
+3. **`sync_from_warp_state()` / `sync_to_warp_state()`** — ThreadContext ↔ WarpState 双同步机制 (`thread_context.cpp:679-748`)
+4. **`is_blocked` 过滤移除** — 防止屏障线程被调度器遗漏 (`warp_context.cpp:298`)
+5. **屏障释放使用 `arrived_mask`** — 只更新已到达线程的 PC (`barrier.cpp:167`)
+6. **屏障完成后重置 `status = Active`** — 防止线程状态泄漏 (`barrier.cpp:172`)
+
+### 0.3 设计决策状态
+
+| 决策 | 文档 (§7) | 实现状态 |
+|------|---------|---------|
+| Per-Thread PC | ✅ 选择 | ✅ 完全实现 |
+| CFG Post-Dominator | ✅ 选择 | ✅ 完全实现 |
+| Debug-Only Barrier 验证 | ✅ 选择 | ✅ 完全实现 |
+| SIMT Stack 显式管理 | ✅ 选择 | ✅ 核心功能 |
+| Warp-Level Divergence | ✅ 选择 | ✅ 完全支持 |
 
 ---
 
