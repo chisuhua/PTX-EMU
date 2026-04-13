@@ -211,6 +211,23 @@ public:
                pc < static_cast<int>(statements->size());
     }
 
+    bool is_valid_pc(int p) const {
+        return statements != nullptr && p >= 0 &&
+               p < static_cast<int>(statements->size());
+    }
+
+    int statements_size() const {
+        return statements ? static_cast<int>(statements->size()) : 0;
+    }
+
+    StatementContext* get_statement_at(int p) {
+        if (statements != nullptr && p >= 0 &&
+            p < static_cast<int>(statements->size())) {
+            return &(*statements)[p];
+        }
+        return nullptr;
+    }
+
     // 获取当前指令
     StatementContext *get_current_statement() {
         if (statements != nullptr && pc >= 0 &&

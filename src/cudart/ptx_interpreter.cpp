@@ -624,6 +624,8 @@ void PtxInterpreter::setupLabels(std::map<std::string, int> &label2pc) {
                     // after sync, threads continue sequentially.
                     barrier.operands[1] = OperandContext{ImmOperand{std::to_string(i + 1)}};
                     updated_barriers++;
+                    PTX_DEBUG_EMU("CFG[PC=%d]: S_BAR_WARP_SYNC updated - reconvergence_pc=%d (was %s)",
+                                  i, i + 1, barrier.operands.size() > 1 ? barrier.operands[1].toString().c_str() : "?");
                 }
             }
         }

@@ -187,16 +187,19 @@ EXE_STATE SMContext::exe_once() {
         if (lanes_by_pc.size() == 1) {
             // Fast path: non-divergent, all lanes at same PC
             auto it = lanes_by_pc.begin();
+            int target_pc = it->first;
             int sample_lane = it->second[0];
             ThreadContext* sample_thread = next_warp->get_thread(sample_lane);
 
-            if (sample_thread && sample_thread->is_valid_pc()) {
-                StatementContext* stmt = sample_thread->get_current_statement();
-                if (stmt) {
-                    if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
-                        print_warp_status(next_warp);
+            if (sample_thread) {
+                if (target_pc >= 0 && target_pc < static_cast<int>(sample_thread->statements_size())) {
+                    StatementContext* stmt = sample_thread->get_statement_at(target_pc);
+                    if (stmt) {
+                        if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
+                            print_warp_status(next_warp);
+                        }
+                        next_warp->execute_warp_instruction(*stmt, target_pc);
                     }
-                    next_warp->execute_warp_instruction(*stmt, it->first);
                 }
             }
         } else if (!lanes_by_pc.empty()) {
@@ -205,8 +208,8 @@ EXE_STATE SMContext::exe_once() {
                 int sample_lane = lanes[0];
                 ThreadContext* sample_thread = next_warp->get_thread(sample_lane);
 
-                if (sample_thread && sample_thread->is_valid_pc()) {
-                    StatementContext* stmt = sample_thread->get_current_statement();
+                if (sample_thread && pc >= 0 && pc < sample_thread->statements_size()) {
+                    StatementContext* stmt = sample_thread->get_statement_at(pc);
 
                     if (stmt) {
                         if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
