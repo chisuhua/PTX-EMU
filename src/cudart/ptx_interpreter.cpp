@@ -60,6 +60,24 @@ void PtxInterpreter::funcInterpreter(
     setupKernelArguments(name2Sym);
     setupLabels(label2pc);
 
+    // Override barrier participation masks with launch-time blockDim.
+    // PTX sources typically lack .reqntid directives, so the parser defaults to
+    // 0xFFFFFFFF. The runtime blockDim is the authoritative thread count.
+    {
+        int total_threads = blockDim.x * blockDim.y * blockDim.z;
+        total_threads = std::min(total_threads, 32);
+        uint32_t mask = (total_threads >= 32) ? 0xFFFFFFFFu : ((1u << total_threads) - 1);
+
+        for (auto &stmt : kernelContext->kernelStatements) {
+            if (stmt.type == S_BAR_WARP_SYNC) {
+                auto &barrier = std::get<BarWarpSyncInstr>(stmt.data);
+                if (!barrier.operands.empty()) {
+                    barrier.operands[0] = OperandContext{ImmOperand{std::to_string(mask)}};
+                }
+            }
+        }
+    }
+
     // 构建KernelLaunchRequest并提交到全局GPUContext
     if (g_gpu_context) {
         // 只传递name2Sym和label2pc的所有权，statements由ptxContext持有

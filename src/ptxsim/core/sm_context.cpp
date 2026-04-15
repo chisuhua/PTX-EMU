@@ -194,12 +194,16 @@ EXE_STATE SMContext::exe_once() {
             if (sample_thread) {
                 if (target_pc >= 0 && target_pc < static_cast<int>(sample_thread->statements_size())) {
                     StatementContext* stmt = sample_thread->get_statement_at(target_pc);
-                    if (stmt) {
-                        if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
-                            print_warp_status(next_warp);
+                        if (stmt) {
+                            if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
+                                print_warp_status(next_warp);
+                            }
+                            next_warp->execute_warp_instruction(*stmt, target_pc);
+                            // Check SIMT stack reconvergence only for branch instructions
+                            if (stmt->type == S_BRA) {
+                                next_warp->check_reconvergence();
+                            }
                         }
-                        next_warp->execute_warp_instruction(*stmt, target_pc);
-                    }
                 }
             }
         } else if (!lanes_by_pc.empty()) {
@@ -219,6 +223,10 @@ EXE_STATE SMContext::exe_once() {
                         next_warp->execute_warp_instruction(*stmt, pc);
                     }
                 }
+            }
+            // Check SIMT stack reconvergence after processing all divergent groups
+            if (next_warp && !next_warp->get_simt_stack().empty()) {
+                next_warp->check_reconvergence();
             }
         }
 

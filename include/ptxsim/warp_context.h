@@ -111,6 +111,9 @@ public:
     std::map<int, std::vector<int>> get_lanes_by_pc() const;
     std::vector<int> get_unique_pcs() const;
 
+    // 【SIMT v2.0】Check if divergent threads have reconverged, pop SIMT stack if so.
+    void check_reconvergence();
+
     // 更新活跃掩码（例如，遇到分支指令时）
     void update_active_mask();
 

@@ -412,6 +412,12 @@ add_catch_test(test_test3_cfg_full
     test_test3_cfg_full.cpp
 )
 
+# Added 2026-04-14: Standalone reproduction of Test 3 deadlock
+# Covers: CFG post-dominator, barrier translation mask, branch divergence, get_lanes_by_pc
+add_catch_test(test3_reproduction
+    test3_reproduction.cpp
+)
+
 # Added 2026-04-12: Barrier interaction integration tests (I1-I3 hypotheses)
 add_catch_test(test_barrier_interaction_integrated
     test_barrier_interaction_integrated.cpp

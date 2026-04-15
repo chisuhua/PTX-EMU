@@ -99,6 +99,11 @@ void WarpContext::advance_all_threads(int new_pc) {
     }
 }
 
+void WarpContext::check_reconvergence() {
+    if (simt_stack.empty()) return;
+    simt_stack.check_reconvergence(warp_state.threads);
+}
+
 WarpContext::WarpContext()
     : active_count(0), pc(0), warp_id(-1), single_step_mode(false),
       divergence_detected(false), sm_context_(nullptr) {
@@ -171,6 +176,8 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt, int target_pc
                     warp_state.wbars[warp_state.current_wbar_id].is_complete();
 
                 if (!warp_barrier_complete) {
+                    PTX_WARN_EMU("Fallback CTA sync: lane %d, wbar %d incomplete",
+                                  thread->lane_id_, warp_state.current_wbar_id);
                     sm_context_->synchronize_barrier(thread->bar_id, thread);
                 }
             }
