@@ -71,16 +71,20 @@ void PtxInterpreter::funcInterpreter(
         for (auto &stmt : kernelContext->kernelStatements) {
             if (stmt.type == S_BAR_WARP_SYNC) {
                 auto &barrier = std::get<BarWarpSyncInstr>(stmt.data);
-                if (!barrier.operands.empty()) {
+                if (barrier.operands.size() >= 2) {
+                    // Safe: operands[1] exists - save old reconvergence_pc before override
                     auto old_reconvergence = std::get<ImmOperand>(barrier.operands[1].data).value;
                     barrier.operands[0] = OperandContext{ImmOperand{std::to_string(mask)}};
                     barrier.operands[0].invalidatePhyAddr();
                     // Restore operands[1] (reconvergence_pc) in case it was set by CFG
-                    if (barrier.operands.size() >= 2) {
-                        barrier.operands[1] = OperandContext{ImmOperand{old_reconvergence}};
-                        barrier.operands[1].invalidatePhyAddr();
-                    }
-                    PTX_INFO_EMU("barrier override: mask=0x%X reconvergence=%s (operands.size=%d)", mask, old_reconvergence.c_str(), (int)barrier.operands.size());
+                    barrier.operands[1] = OperandContext{ImmOperand{old_reconvergence}};
+                    barrier.operands[1].invalidatePhyAddr();
+                    PTX_INFO_EMU("barrier override: mask=0x%X reconvergence=%s", mask, old_reconvergence.c_str());
+                } else if (barrier.operands.size() == 1) {
+                    // Only operands[0] exists (malformed barrier), override mask only
+                    barrier.operands[0] = OperandContext{ImmOperand{std::to_string(mask)}};
+                    barrier.operands[0].invalidatePhyAddr();
+                    PTX_INFO_EMU("barrier override: mask=0x%X (operands.size=1, no reconvergence_pc)", mask);
                 }
             }
         }
