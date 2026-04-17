@@ -423,6 +423,41 @@ add_catch_test(test_barrier_interaction_integrated
     test_barrier_interaction_integrated.cpp
 )
 
+# Added 2026-04-16: Enhanced Test 3 reproduction with direct Wbar manipulation
+add_catch_test(test_syncthreads_test3_repro
+    test_syncthreads_test3_repro.cpp
+)
+
+# Added 2026-04-16: Isolated Test 3 with complete execution environment
+add_catch_test(test_syncthreads_test3_isolated
+    test_syncthreads_test3_isolated.cpp
+)
+
+# Added 2026-04-16: Full pipeline test with SMContext scheduler
+add_catch_test(test_syncthreads_full_pipeline
+    test_syncthreads_full_pipeline.cpp
+)
+
+# Added 2026-04-16: Complete Test3 with SE->BRA predicate evaluation
+add_catch_test(test_syncthreads_test3_full
+    test_syncthreads_test3_full.cpp
+)
+
+# Added 2026-04-16: Full GPU integration test for Test 3
+add_catch_test(test_syncthreads_test3_full_integration
+    test_syncthreads_test3_full_integration.cpp
+)
+
+# Added 2026-04-16: Barrier execution with various thread counts
+add_catch_test(test_full_barrier_execution
+    test_full_barrier_execution.cpp
+)
+
+# Added 2026-04-16: Barrier reconvergence PC tests
+add_catch_test(test_barrier_reconvergence_pc
+    test_barrier_reconvergence_pc.cpp
+)
+
 # Added 2026-04-12: Targeted unit tests for four specific bugs discovered
 # during Test 3 investigation (sync_to_warp_state, CFG barriers,
 # cudaMemset offset, and predicate register for sub-warp launches)
