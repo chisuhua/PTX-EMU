@@ -33,7 +33,8 @@ public:
     void handle_branch(const std::string& predicate,
                        bool predicate_negated,
                        int target_pc,
-                       int reconvergence_pc);
+                       int reconvergence_pc,
+                       int current_inst_pc = -1);
 
     // 获取 warp 中的线程
     ThreadContext *get_thread(int lane_id) const {

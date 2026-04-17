@@ -8,21 +8,23 @@
 void WarpContext::handle_branch(const std::string& predicate,
                                  bool predicate_negated,
                                  int target_pc,
-                                 int reconvergence_pc) {
+                                 int reconvergence_pc,
+                                 int current_inst_pc) {
+    assert(current_inst_pc >= 0 && "handle_branch: current_inst_pc must be non-negative, got default -1");
     uint32_t taken_mask = 0;
     uint32_t not_taken_mask = 0;
     
     for (int i = 0; i < 32; i++) {
         if (!warp_state.threads[i].is_active) continue;
-        
+
         bool should_branch = true;
-        
+
         if (!predicate.empty()) {
             std::string pred_name = predicate;
             if (!pred_name.empty() && pred_name[0] == '%') {
                 pred_name = pred_name.substr(1);
             }
-            
+
             if (register_bank_manager_) {
                 void *reg_addr = register_bank_manager_->get_register(pred_name, warp_id, i);
                 if (reg_addr) {
@@ -32,19 +34,20 @@ void WarpContext::handle_branch(const std::string& predicate,
                 }
             }
         }
-        
+
         if (should_branch) {
             taken_mask |= (1u << i);
         } else {
             not_taken_mask |= (1u << i);
         }
     }
-    
+
     bool is_divergent = (taken_mask != 0) && (not_taken_mask != 0);
-    
+    int fallthrough_pc = current_inst_pc + 1;
+
     if (is_divergent) {
         ptxsim::SIMTStackEntry entry;
-        entry.branch_pc = pc;
+        entry.branch_pc = current_inst_pc;
         entry.reconvergence_pc = reconvergence_pc;
         entry.active_mask = taken_mask;
         entry.return_mask = warp_state.exec_mask;
@@ -57,14 +60,14 @@ void WarpContext::handle_branch(const std::string& predicate,
                 warp_state.threads[i].pc = target_pc;
                 warp_state.threads[i].next_pc = target_pc;
             } else if (not_taken_mask & (1u << i)) {
-                warp_state.threads[i].pc = pc + 1;
-                warp_state.threads[i].next_pc = pc + 1;
+                warp_state.threads[i].pc = fallthrough_pc;
+                warp_state.threads[i].next_pc = fallthrough_pc;
             }
         }
 
         warp_state.exec_mask = taken_mask;
     } else {
-        int next_pc = (taken_mask != 0) ? target_pc : pc + 1;
+        int next_pc = (taken_mask != 0) ? target_pc : fallthrough_pc;
 
         for (int i = 0; i < 32; i++) {
             if (warp_state.threads[i].is_active) {
