@@ -66,6 +66,7 @@ public:
     OperandContext(OperandContext &&) = default;
     OperandContext &operator=(OperandContext &&) = default;
     void setPhyAddr(void *addr) { operand_phy_addr = addr; }
+    void invalidatePhyAddr() { operand_phy_addr = nullptr; }
 
     [[nodiscard]] OperandKind kind() const {
         return std::visit(

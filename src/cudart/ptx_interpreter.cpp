@@ -72,7 +72,15 @@ void PtxInterpreter::funcInterpreter(
             if (stmt.type == S_BAR_WARP_SYNC) {
                 auto &barrier = std::get<BarWarpSyncInstr>(stmt.data);
                 if (!barrier.operands.empty()) {
+                    auto old_reconvergence = std::get<ImmOperand>(barrier.operands[1].data).value;
                     barrier.operands[0] = OperandContext{ImmOperand{std::to_string(mask)}};
+                    barrier.operands[0].invalidatePhyAddr();
+                    // Restore operands[1] (reconvergence_pc) in case it was set by CFG
+                    if (barrier.operands.size() >= 2) {
+                        barrier.operands[1] = OperandContext{ImmOperand{old_reconvergence}};
+                        barrier.operands[1].invalidatePhyAddr();
+                    }
+                    PTX_INFO_EMU("barrier override: mask=0x%X reconvergence=%s (operands.size=%d)", mask, old_reconvergence.c_str(), (int)barrier.operands.size());
                 }
             }
         }
@@ -626,10 +634,15 @@ void PtxInterpreter::setupLabels(std::map<std::string, int> &label2pc) {
             else if (stmt.type == S_BAR_WARP_SYNC) {
                 auto &barrier = std::get<BarWarpSyncInstr>(
                     kernelContext->kernelStatements[i].data);
+                std::string old_reconvergence = (barrier.operands.size() >= 2) 
+                    ? std::get<ImmOperand>(barrier.operands[1].data).value 
+                    : "N/A";
                 if (barrier.operands.size() >= 2) {
                     // Barriers always reconverge to the next instruction (i+1).
                     barrier.operands[1] = OperandContext{ImmOperand{std::to_string(i + 1)}};
                     updated_barriers++;
+                    PTX_INFO_EMU("CFG[PC=%d]: S_BAR_WARP_SYNC updated - old_reconvergence=%s, new_reconvergence_pc=%d",
+                                i, old_reconvergence, i + 1);
                 }
             }
         }
