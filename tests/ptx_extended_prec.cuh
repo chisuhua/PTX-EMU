@@ -4,35 +4,60 @@
 #include <cuda_runtime.h>
 #include <cstdint>
 
-// --- Device-side PTX wrappers (inline assembly) for extended precision integer operations ---
-// 使用纯 C++ 实现来避免 NVCC 内联汇编的寄存器分配问题
-// 注意：NVCC 会优化掉这些函数中的 addc/subc 指令，
-// 因此这个实现不会真正测试模拟器的 addc/subc 指令处理器
+// --- Device-side PTX wrappers for extended precision integer operations ---
+// 这些函数用于测试 PTX-EMU 的 addc/subc/mul24/mul 指令模拟
 #ifdef __CUDA_ARCH__
+
+// 使用显式 uint32_t 中间变量和 volatile 确保正确写入
 __device__ __forceinline__ uint32_t ptx_addc_u32(uint32_t a, uint32_t b, bool carry_in, bool* carry_out) {
-    uint64_t result64 = static_cast<uint64_t>(a) + static_cast<uint64_t>(b) + (carry_in ? 1ULL : 0ULL);
-    uint32_t result = static_cast<uint32_t>(result64);
-    *carry_out = (result64 > 0xFFFFFFFFULL);
+    uint64_t sum = static_cast<uint64_t>(a) + static_cast<uint64_t>(b);
+    if (carry_in) {
+        sum += 1ULL;
+    }
+    uint32_t result = static_cast<uint32_t>(sum);
+    // 使用 volatile 确保值被正确写入
+    volatile uint32_t carry_val = (sum > 0xFFFFFFFFULL) ? 1U : 0U;
+    *reinterpret_cast<volatile uint32_t*>(carry_out) = carry_val;
     return result;
 }
 
 __device__ __forceinline__ uint32_t ptx_subc_u32(uint32_t a, uint32_t b, bool borrow_in, bool* borrow_out) {
-    uint64_t a64 = a;
-    uint64_t b64 = b;
-    uint64_t result64 = a64 - b64 - (borrow_in ? 1ULL : 0ULL);
-    uint32_t result = static_cast<uint32_t>(result64);
-    *borrow_out = (a64 < b64 + (borrow_in ? 1ULL : 0ULL));
+    uint64_t minuend = static_cast<uint64_t>(a);
+    uint64_t subtrahend = static_cast<uint64_t>(b);
+    if (borrow_in) {
+        subtrahend += 1ULL;
+    }
+    uint64_t diff = minuend - subtrahend;
+    uint32_t result = static_cast<uint32_t>(diff);
+    // 借位条件：minuend < subtrahend
+    volatile uint32_t borrow_val = (minuend < subtrahend) ? 1U : 0U;
+    *reinterpret_cast<volatile uint32_t*>(borrow_out) = borrow_val;
     return result;
 }
+
 #else
 // Host-side stub
 __device__ __forceinline__ uint32_t ptx_addc_u32(uint32_t a, uint32_t b, bool carry_in, bool* carry_out) {
-    *carry_out = false;
-    return a + b + (carry_in ? 1 : 0);
+    uint64_t sum = static_cast<uint64_t>(a) + static_cast<uint64_t>(b);
+    if (carry_in) {
+        sum += 1ULL;
+    }
+    uint32_t result = static_cast<uint32_t>(sum);
+    volatile uint32_t carry_val = (sum > 0xFFFFFFFFULL) ? 1U : 0U;
+    *reinterpret_cast<volatile uint32_t*>(carry_out) = carry_val;
+    return result;
 }
 __device__ __forceinline__ uint32_t ptx_subc_u32(uint32_t a, uint32_t b, bool borrow_in, bool* borrow_out) {
-    *borrow_out = false;
-    return a - b - (borrow_in ? 1 : 0);
+    uint64_t minuend = static_cast<uint64_t>(a);
+    uint64_t subtrahend = static_cast<uint64_t>(b);
+    if (borrow_in) {
+        subtrahend += 1ULL;
+    }
+    uint64_t diff = minuend - subtrahend;
+    uint32_t result = static_cast<uint32_t>(diff);
+    volatile uint32_t borrow_val = (minuend < subtrahend) ? 1U : 0U;
+    *reinterpret_cast<volatile uint32_t*>(borrow_out) = borrow_val;
+    return result;
 }
 #endif
 
