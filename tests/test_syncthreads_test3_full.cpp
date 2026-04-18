@@ -74,8 +74,8 @@ static std::vector<StatementContext> build_exact_test3_ptx() {
         ctx.type = S_SETP;
         GenericInstr instr;
         instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_GT};
-        instr.operands.push_back(OperandContext{RegOperand{RegOperand::Kind::REG, "p1"}});  // predicate register
-        instr.operands.push_back(OperandContext{RegOperand{RegOperand::Kind::REG, "r1"}});  // tid
+        instr.operands.push_back(OperandContext{RegOperand{"p1", -1}});  // predicate register
+        instr.operands.push_back(OperandContext{RegOperand{"r", 1}});   // tid
         instr.operands.push_back(OperandContext{ImmOperand{"15"}});
         ctx.data = instr;
         stmts.push_back(ctx);
@@ -161,6 +161,10 @@ TEST_CASE("Test3 Full: SE -> BRA predicate evaluation",
 
     SECTION("WarpContext: SE sets predicate, BRA evaluates") {
         auto register_bank = std::make_shared<RegisterBankManager>(1, 32);
+
+        // Pre-allocate predicate register p1 and source register r1
+        register_bank->create_register("p1", sizeof(uint8_t));
+        register_bank->create_register("r1", sizeof(uint32_t));
 
         WarpContext warp;
         for (int lane = 0; lane < 16; lane++) {
