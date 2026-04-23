@@ -1,0 +1,95 @@
+// E8: Integration-layer divergent barrier execution tests.
+// Runtime PTX tests that exercise the exact thread/warp sync paths.
+
+.version 8.0
+.target sm_100
+.address_size 64
+
+// E8a: All 16 threads hit barrier, single group reconvergence
+.visible .entry e8a_all_reconverge_16() {
+.reg .b32 %r<4>;
+.reg .b64 %rd<2>;
+
+cvta.to.shared.u64 %rd1, 0;
+mov.u32 %r1, %tid.x;
+shl.b32 %r2, %r1, 2;
+add.s64 %rd2, %rd1, %r2;
+
+st.shared.u32 [%rd2], %r1;
+bar.sync 0;
+
+ld.shared.u32 %r3, [%rd2];
+add.u32 %r4, %r3, 1;
+st.shared.u32 [%rd2], %r4;
+bar.sync 0;
+
+ld.shared.u32 %r3, [%rd2];
+ret;
+}
+
+// E8b: Two divergent groups merge at barrier
+// Threads 0-7: PC path A → barrier
+// Threads 8-15: PC path B → barrier
+// All should reconverge after barrier
+.visible .entry e8b_two_groups_merge_barrier() {
+.reg .pred %p<1>;
+.reg .b32 %r<5>;
+.reg .b64 %rd<2>;
+
+cvta.to.shared.u64 %rd1, 0;
+mov.u32 %r1, %tid.x;
+shl.b32 %r2, %r1, 2;
+add.s64 %rd2, %rd1, %r2;
+
+// Phase 1: all write tid
+st.shared.u32 [%rd2], %r1;
+bar.sync 0;
+
+// Phase 2: divergent
+setp.lt.u32 %p1, %r1, 8;
+@%p1 bra $L_group_b;
+
+// Group B (tid >= 8): write 100
+mov.u32 %r3, 100;
+st.shared.u32 [%rd2], %r3;
+bra.uni $L_post_div;
+
+$L_group_b:
+// Group A (tid < 8): write 200
+mov.u32 %r3, 200;
+st.shared.u32 [%rd2], %r3;
+
+$L_post_div:
+bar.sync 0;
+
+ld.shared.u32 %r4, [%rd2];
+ret;
+}
+
+// E8c: Multiple sequential barriers (no divergence)
+// Stresses the wbar reset/re-init path
+.visible .entry e8c_three_sequential_barriers() {
+.reg .b32 %r<6>;
+.reg .b64 %rd<2>;
+
+cvta.to.shared.u64 %rd1, 0;
+mov.u32 %r1, %tid.x;
+shl.b32 %r2, %r1, 2;
+add.s64 %rd2, %rd1, %r2;
+
+st.shared.u32 [%rd2], %r1;
+bar.sync 0;
+
+ld.shared.u32 %r3, [%rd2];
+add.u32 %r4, %r3, 1;
+st.shared.u32 [%rd2], %r4;
+bar.sync 0;
+
+ld.shared.u32 %r5, [%rd2];
+add.u32 %r6, %r5, 100;
+st.shared.u32 [%rd2], %r6;
+bar.sync 0;
+
+ld.shared.u32 %r5, [%rd2];
+ret;
+}

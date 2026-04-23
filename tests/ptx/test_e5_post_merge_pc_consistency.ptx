@@ -1,0 +1,262 @@
+// E5: Post-merge PC consistency tests
+// Isolates divergent path merge correctness at the PC level.
+// Each entry tests one specific post-merge scenario.
+
+.version 8.0
+.target sm_100
+.address_size 64
+
+// E5a: Simple divergent merge WITHOUT barrier
+// Tests: after branch rejoin, all threads share the same PC and resume correctly.
+// Pattern: if (tid < 8) { a = 1 } else { a = 2 }
+// All threads should reach PC after merge point with correct values.
+.visible .entry e5a_simple_merge_no_barrier() {
+.reg .pred %p<1>;
+.reg .b32 %r<4>;
+.reg .b64 %rd<2>;
+
+cvta.to.shared.u64 %rd1, 0;
+mov.u32 %r1, %tid.x;
+
+setp.lt.u32 %p1, %r1, 8;
+@%p1 bra $L_else;
+
+mov.u32 %r2, 2;
+bra.uni $L_merge;
+
+$L_else:
+mov.u32 %r2, 1;
+
+$L_merge:
+shl.b32 %r3, %r1, 2;
+add.s64 %rd2, %rd1, %r3;
+st.shared.u32 [%rd2], %r2;
+ret;
+}
+
+// E5b: Two sequential divergent blocks, no barrier
+// Tests: PC correctly tracks through two divergent sections in sequence.
+// Pattern: if (tid < 8) { a = 1 } else { a = 2 }
+//          if (tid >= 8) { a = a + 100 } else { a = a - 1 }
+.visible .entry e5b_two_sequential_divergent() {
+.reg .pred %p<2>;
+.reg .b32 %r<5>;
+.reg .b64 %rd<2>;
+
+cvta.to.shared.u64 %rd1, 0;
+mov.u32 %r1, %tid.x;
+
+// First divergent section
+setp.lt.u32 %p1, %r1, 8;
+@%p1 bra $L_else1;
+
+mov.u32 %r2, 2;
+bra.uni $L_merge1;
+
+$L_else1:
+mov.u32 %r2, 1;
+
+$L_merge1:
+// Second divergent section
+setp.ge.u32 %p2, %r1, 8;
+@%p2 bra $L_else2;
+
+add.u32 %r3, %r2, 100;
+bra.uni $L_merge2;
+
+$L_else2:
+sub.u32 %r3, %r2, 1;
+
+$L_merge2:
+shl.b32 %r4, %r1, 2;
+add.s64 %rd2, %rd1, %r4;
+st.shared.u32 [%rd2], %r3;
+ret;
+}
+
+// E5c: Divergent merge THEN barrier (write after merge, then sync)
+// Tests: after merging divergent paths, the next instruction executes for ALL threads
+// before barrier sync begins.
+// Pattern: two paths merge → ALL write → bar.sync
+.visible .entry e5c_merge_then_barrier_write() {
+.reg .pred %p<1>;
+.reg .b32 %r<5>;
+.reg .b64 %rd<2>;
+
+cvta.to.shared.u64 %rd1, 0;
+mov.u32 %r1, %tid.x;
+
+setp.lt.u32 %p1, %r1, 8;
+@%p1 bra $L_skip;
+
+mov.u32 %r2, 42;
+bra.uni $L_after;
+
+$L_skip:
+mov.u32 %r2, 99;
+
+$L_after:
+// ALL threads reach here, write, then sync
+shl.b32 %r3, %r1, 2;
+add.s64 %rd2, %rd1, %r3;
+st.shared.u32 [%rd2], %r2;
+bar.sync 0;
+
+ld.shared.u32 %r4, [%rd2];
+ret;
+}
+
+// E5d: Divergent write BEFORE barrier (write on each path, then sync)
+// Tests: both divergent paths correctly execute their shared memory store
+// before any thread reaches the barrier.
+// Pattern: if (tid < 8) { write 42 } else { write 99 } → bar.sync
+.visible .entry e5d_divergent_write_before_barrier() {
+.reg .pred %p<1>;
+.reg .b32 %r<5>;
+.reg .b64 %rd<2>;
+
+cvta.to.shared.u64 %rd1, 0;
+mov.u32 %r1, %tid.x;
+shl.b32 %r2, %r1, 2;
+add.s64 %rd2, %rd1, %r2;
+
+setp.lt.u32 %p1, %r1, 8;
+@%p1 bra $L_else_path;
+
+mov.u32 %r3, 42;
+st.shared.u32 [%rd2], %r3;
+bra.uni $L_merge_point;
+
+$L_else_path:
+mov.u32 %r3, 99;
+st.shared.u32 [%rd2], %r3;
+
+$L_merge_point:
+bar.sync 0;
+
+ld.shared.u32 %r4, [%rd2];
+ret;
+}
+
+// E5e: Barrier in divergent path (barrier AFTER merge) — exact test_nested_sync pattern
+// Tests: the exact sequence that fails in test_nested_sync:
+// write → bar.sync → divergent write → bar.sync → read
+// Simplified: write tid → bar → if(tid<8) write tid+1 → bar → read
+.visible .entry e5e_barrier_divergent_barrier_read() {
+.reg .pred %p<1>;
+.reg .b32 %r<6>;
+.reg .b64 %rd<2>;
+
+cvta.to.shared.u64 %rd1, 0;
+mov.u32 %r1, %tid.x;
+
+// Phase 1: write tid to shared[tid]
+shl.b32 %r2, %r1, 2;
+add.s64 %rd2, %rd1, %r2;
+st.shared.u32 [%rd2], %r1;
+bar.sync 0;
+
+// Phase 2: divergent write — only tid < 8 writes, others skip
+setp.ge.u32 %p1, %r1, 8;
+@%p1 bra $L_skip_write;
+
+add.u32 %r3, %r1, 1;
+st.shared.u32 [%rd2], %r3;
+bra.uni $L_post_write;
+
+$L_skip_write:
+// tid >= 8 skips the write and goes directly here
+$L_post_write:
+
+bar.sync 0;
+
+// Phase 3: read back
+ld.shared.u32 %r4, [%rd2];
+
+// Verify: threads 0-7 should read tid+1, threads 8-15 should read tid
+setp.lt.u32 %p1, %r1, 8;
+@%p1 bra $L_verify_low;
+
+add.u32 %r5, %r1, 1;
+setp.eq.u32 %p1, %r4, %r1;
+@%p1 bra $L_pass;
+mov.u32 %r6, 0xDEAD;
+bra.uni $L_done;
+
+$L_verify_low:
+setp.eq.u32 %p1, %r4, %r5;
+@%p1 bra $L_pass;
+mov.u32 %r6, 0xBEEF;
+bra.uni $L_done;
+
+$L_pass:
+mov.u32 %r6, %r4;
+
+$L_done:
+ret;
+}
+
+// E5f: Multiple barriers with intermediate divergent writes
+// Stress test: write → bar → div-write → bar → write → bar → read
+.visible .entry e5f_multi_barrier_divergent_sequence() {
+.reg .pred %p<1>;
+.reg .b32 %r<6>;
+.reg .b64 %rd<2>;
+
+cvta.to.shared.u64 %rd1, 0;
+mov.u32 %r1, %tid.x;
+shl.b32 %r2, %r1, 2;
+add.s64 %rd2, %rd1, %r2;
+
+st.shared.u32 [%rd2], %r1;
+bar.sync 0;
+
+// Divergent write after first barrier
+setp.lt.u32 %p1, %r1, 8;
+@%p1 bra $L_div_skip1;
+
+add.u32 %r3, %r1, 100;
+st.shared.u32 [%rd2], %r3;
+
+$L_div_skip1:
+bar.sync 0;
+
+// Non-divergent write after second barrier
+ld.shared.u32 %r3, [%rd2];
+add.u32 %r4, %r3, 1000;
+st.shared.u32 [%rd2], %r4;
+bar.sync 0;
+
+ld.shared.u32 %r5, [%rd2];
+ret;
+}
+
+// E5g: bra.uni after divergent merge — ensure no thread gets stuck
+// Tests: a bra.uni instruction after a divergent merge point
+// correctly advances ALL threads past the merge, not just the fall-through ones.
+.visible .entry e5g_bra_uni_after_merge() {
+.reg .pred %p<1>;
+.reg .b32 %r<5>;
+.reg .b64 %rd<2>;
+
+cvta.to.shared.u64 %rd1, 0;
+mov.u32 %r1, %tid.x;
+
+setp.lt.u32 %p1, %r1, 8;
+@%p1 bra $L_then;
+
+mov.u32 %r2, 0;
+bra.uni $L_after_merge;
+
+$L_then:
+mov.u32 %r2, 1;
+
+$L_after_merge:
+shl.b32 %r3, %r1, 2;
+add.s64 %rd2, %rd1, %r3;
+st.shared.u32 [%rd2], %r2;
+bar.sync 0;
+
+ld.shared.u32 %r4, [%rd2];
+ret;
+}

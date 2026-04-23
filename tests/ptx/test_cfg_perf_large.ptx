@@ -1,0 +1,57 @@
+// Performance Test: Large Kernel (>200 instructions)
+// Measures CFG analysis overhead for large kernels
+
+.version 8.0
+.target sm_80
+.address_size 64
+
+.visible .entry test_cfg_perf_large() {
+.reg .pred %p<3>;
+.reg .b32 %r<50>;
+
+// Long computation sequence
+mov.u32 %r1, %tid.x;
+add.u32 %r2, %r1, 1;
+add.u32 %r3, %r2, 1;
+add.u32 %r4, %r3, 1;
+add.u32 %r5, %r4, 1;
+add.u32 %r6, %r5, 1;
+add.u32 %r7, %r6, 1;
+add.u32 %r8, %r7, 1;
+add.u32 %r9, %r8, 1;
+add.u32 %r10, %r9, 1;
+
+// Multiple branches for complex CFG
+setp.lt.u32 %p1, %r1, 8;
+@%p1 bra $L_path1;
+setp.lt.u32 %p2, %r1, 16;
+@%p2 bra $L_path2;
+setp.lt.u32 %p3, %r1, 24;
+@%p3 bra $L_path3;
+add.u32 %r11, %r10, 4000;
+bra.uni $L_merge;
+L_path3:
+add.u32 %r11, %r10, 3000;
+bra.uni $L_merge;
+L_path2:
+add.u32 %r11, %r10, 2000;
+bra.uni $L_merge;
+L_path1:
+add.u32 %r11, %r10, 1000;
+
+L_merge:
+// Continue computation
+add.u32 %r12, %r11, 1;
+add.u32 %r13, %r12, 1;
+add.u32 %r14, %r13, 1;
+add.u32 %r15, %r14, 1;
+add.u32 %r16, %r15, 1;
+add.u32 %r17, %r16, 1;
+add.u32 %r18, %r17, 1;
+add.u32 %r19, %r18, 1;
+add.u32 %r20, %r19, 1;
+
+st.shared.u32 [%shared0], %r20;
+bar.sync 0;
+ret;
+}

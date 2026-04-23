@@ -1,0 +1,58 @@
+// Direction 1: reconvergence_pc fallback for barriers
+// Tests: consecutive barriers without branches between them
+// Verifies: fallback to i+1 correctly advances past barrier instructions
+
+.version 8.0
+.target sm_100
+.address_size 64
+
+// Test A: two consecutive barriers - second barrier's post-dominator should be next instruction
+.visible .entry barrier_consecutive() {
+.reg .b32 %r<3>;
+
+mov.u32 %r1, %tid.x;
+bar.sync 0;
+bar.sync 0;
+add.u32 %r2, %r1, 1;
+st.shared.u32 [%shared0], %r2;
+ret;
+}
+
+// Test B: barrier followed by conditional branch
+.visible .entry barrier_before_branch() {
+.reg .pred %p<1>;
+.reg .b32 %r<3>;
+
+mov.u32 %r1, %tid.x;
+bar.sync 0;
+setp.lt.u32 %p1, %r1, 16;
+@%p1 bra $L_then;
+
+add.u32 %r2, %r1, 100;
+bra.uni $L_merge;
+
+$L_then:
+add.u32 %r2, %r1, 1;
+
+$L_merge:
+st.shared.u32 [%shared0], %r2;
+ret;
+}
+
+// Test C: branch then barrier after merge (original test_nested_sync pattern)
+.visible .entry branch_then_barrier() {
+.reg .pred %p<1>;
+.reg .b32 %r<5>;
+
+mov.u32 %r1, %tid.x;
+bar.sync 0;
+setp.gt.u32 %p1, %r1, 15;
+@%p1 bra $L_skip;
+add.u32 %r2, %r1, 1;
+st.shared.u32 [%shared0], %r2;
+$L_skip:
+bar.sync 0;
+ld.shared.u32 %r3, [%shared0];
+mov.u32 %r4, %r3;
+ret;
+}

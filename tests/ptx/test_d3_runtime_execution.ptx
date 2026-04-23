@@ -1,0 +1,126 @@
+/**
+ * D3 Runtime Execution Tests — test_nested_sync pattern
+ *
+ * Each test is a standalone PTX program that exercises one sub-direction
+ * and is executed through the full PTX-EMU runtime pipeline.
+ * These are PTX parsing tests (pass/fail via test_all_ptx.sh).
+ *
+ * Sub-direction A: Participation mask handling for < 32 threads
+ * Sub-direction B: Barrier completion with divergent paths
+ * Sub-direction C: Shared memory read/write ordering across barriers
+ */
+
+// ============================================================
+// D3a: Participation mask — 16-thread CTA, all lanes hit same barrier
+// No divergence, just verify all 16 threads pass through correctly.
+// ============================================================
+// Expected: parser accepts PTX, no hang, no crash
+// If mask is correct: all 16 lanes pass. If mask is 0xFFFFFFFF: 
+//   emulator waits for lanes 16-31 which don't exist → infinite loop
+// ============================================================
+
+.version 8.0
+.target sm_100
+.address_size 64
+
+.visible .entry d3a_mask_16_no_divergence() {
+.reg .b32 %r<3>;
+.reg .b64 %rd<2>;
+
+cvta.to.shared.u64 %rd1, 0;
+mov.u32 %r1, %tid.x;
+shl.b32 %r2, %r1, 2;
+add.s64 %rd2, %rd1, %r2;
+st.shared.u32 [%rd2], %r1;
+bar.sync 0;
+ld.shared.u32 %r3, [%rd2];
+ret;
+}
+
+// ============================================================
+// D3b: Divergent path + barrier (exact test_nested_sync pattern)
+// Tests: do threads that took the branch reconverge correctly?
+// ============================================================
+// Expected: parser accepts PTX
+// If the CFG reconvergence_pc is wrong for the second barrier:
+//   threads released to wrong PC → wrong results or infinite loop
+// ============================================================
+
+.visible .entry d3b_divergent_path_barrier() {
+.reg .pred %p<2>;
+.reg .b32 %r<10>;
+.reg .b64 %rd<2>;
+
+cvta.to.shared.u64 %rd1, 0;
+mov.u32 %r1, %tid.x;
+shl.b32 %r2, %r1, 2;
+add.s64 %rd2, %rd1, %r2;
+
+// First sync: all threads write tid
+st.shared.u32 [%rd2], %r1;
+bar.sync 0;
+
+// Divergent path: if tid > 15, skip shared memory write
+setp.gt.u32 %p1, %r1, 15;
+@%p1 bra $L_skip_write;
+
+// Only threads 0-15 reach here
+ld.shared.u32 %r3, [%rd2];
+sub.s32 %r4, %r1, 1;
+and.b32 %r4, %r4, 15;
+shl.b32 %r5, %r4, 2;
+add.s64 %rd2, %rd1, %r5;
+st.shared.u32 [%rd2], %r3;
+
+$L_skip_write:
+// All threads should converge here
+bar.sync 0;
+
+ld.shared.u32 %r6, [%rd2];
+sub.s32 %r7, %r1, 1;
+and.b32 %r7, %r7, 15;
+shl.b32 %r8, %r7, 2;
+add.s64 %rd2, %rd1, %r8;
+st.shared.u32 [%rd2], %r6;
+bar.sync 0;
+
+ld.shared.u32 %r9, [%rd2];
+ret;
+}
+
+// ============================================================
+// D3c: Multiple sequential barriers with shared memory
+// Tests: are intermediate barrier results correctly visible?
+// ============================================================
+// Pattern: write → bar → read → write → bar → read → ret
+// If any barrier's reconvergence_pc is wrong: data corruption
+// ============================================================
+
+.visible .entry d3c_sequential_barriers() {
+.reg .b32 %r<6>;
+.reg .b64 %rd<2>;
+
+cvta.to.shared.u64 %rd1, 0;
+mov.u32 %r1, %tid.x;
+shl.b32 %r2, %r1, 2;
+add.s64 %rd2, %rd1, %r2;
+
+// Phase 1: write tid
+st.shared.u32 [%rd2], %r1;
+bar.sync 0;
+
+// Phase 2: read and increment
+ld.shared.u32 %r3, [%rd2];
+add.u32 %r4, %r3, 1;
+st.shared.u32 [%rd2], %r4;
+bar.sync 0;
+
+// Phase 3: read again and write back
+ld.shared.u32 %r5, [%rd2];
+add.u32 %r6, %r5, 100;
+st.shared.u32 [%rd2], %r6;
+bar.sync 0;
+
+ld.shared.u32 %r5, [%rd2];
+ret;
+}

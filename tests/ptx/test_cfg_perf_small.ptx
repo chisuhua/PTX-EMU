@@ -1,0 +1,25 @@
+// Performance Test: Small Kernel (<50 instructions)
+// Measures CFG analysis overhead for small kernels
+
+.version 8.0
+.target sm_80
+.address_size 64
+
+.visible .entry test_cfg_perf_small() {
+.reg .b32 %r<10>;
+
+// Simple arithmetic sequence
+mov.u32 %r1, %tid.x;
+add.u32 %r2, %r1, 1;
+add.u32 %r3, %r2, 1;
+add.u32 %r4, %r3, 1;
+add.u32 %r5, %r4, 1;
+add.u32 %r6, %r5, 1;
+add.u32 %r7, %r6, 1;
+add.u32 %r8, %r7, 1;
+add.u32 %r9, %r8, 1;
+
+st.shared.u32 [%shared0], %r9;
+bar.sync 0;
+ret;
+}

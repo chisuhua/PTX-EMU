@@ -1,0 +1,40 @@
+// Test: Verify reconvergence_pc computation
+// This PTX has clear branch/convergence structure
+
+.version 8.0
+.target sm_80
+.address_size 64
+
+.visible .entry test_branch_verify() {
+.reg .pred %p<1>;
+.reg .b32 %r<3>;
+
+// PC=0: Load thread ID
+mov.u32 %r1, %tid.x;
+
+// PC=1: Compare and set predicate
+setp.lt.u32 %p1, %r1, 16;
+
+// PC=2: Conditional branch
+@%p1 bra $L_then_path;
+
+// PC=3-4: Else path (lanes 16-31)
+add.u32 %r2, %r1, 100;
+bra.uni $L_merge_point;
+
+// PC=5: Then path label
+L_then_path:
+// PC=6-7: Then path (lanes 0-15)
+add.u32 %r2, %r1, 1;
+
+// PC=8: Merge point (all lanes converge here)
+L_merge_point:
+// PC=9: Store result
+st.shared.u32 [%shared0], %r2;
+
+// PC=10: Barrier (all lanes sync)
+bar.sync 0;
+
+// PC=11: Return
+ret;
+}

@@ -1,0 +1,65 @@
+// SIMT v2.0 Reconvergence PC Test
+// Tests CFG analysis and reconvergence_pc computation
+
+.version 8.0
+.target sm_80
+.address_size 64
+
+.visible .entry test_simple_branch() {
+.reg .pred %p<1>;
+.reg .b32 %r<4>;
+
+mov.u32 %r1, %tid.x;
+setp.lt.u32 %p1, %r1, 16;
+@%p1 bra $L_then;      // PC=3, EXPECTED: reconvergence_pc=10
+
+// else path (lanes 16-31)
+add.u32 %r2, %r1, 100;
+bra.uni $L_merge;       // PC=7, EXPECTED: reconvergence_pc=10
+
+$L_then:
+// then path (lanes 0-15)
+add.u32 %r2, %r1, 1;
+
+$L_merge:
+// Convergence point - all lanes reach here
+st.shared.u32 [%shared0], %r2;
+bar.sync 0;
+ret;
+}
+
+.visible .entry test_nested_branch() {
+.reg .pred %p<2>;
+.reg .b32 %r<5>;
+
+mov.u32 %r1, %tid.x;
+setp.lt.u32 %p1, %r1, 8;
+@%p1 bra $L_inner;          // PC=3, EXPECTED: reconvergence_pc=18
+
+// outer else (lanes 8-31)
+add.u32 %r2, %r1, 1000;
+bra.uni $L_outer_merge;     // PC=7, EXPECTED: reconvergence_pc=18
+
+$L_inner:
+// inner branch (lanes 0-7)
+setp.lt.u32 %p2, %r1, 4;
+@%p2 bra $L_inner_then;     // PC=12, EXPECTED: reconvergence_pc=18
+
+// inner else (lanes 4-7)
+add.u32 %r3, %r1, 200;
+bra.uni $L_inner_merge;     // PC=16, EXPECTED: reconvergence_pc=18
+
+$L_inner_then:
+// inner then (lanes 0-3)
+add.u32 %r3, %r1, 10;
+
+$L_inner_merge:
+// Inner convergence (lanes 0-7)
+add.u32 %r2, %r3, 0;
+
+$L_outer_merge:
+// Outer convergence (all lanes 0-31)
+st.shared.u32 [%shared0], %r2;
+bar.sync 0;
+ret;
+}

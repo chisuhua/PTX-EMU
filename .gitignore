@@ -21,9 +21,12 @@ bin/
 
 # 其他临时文件
 *.so*
-*.ptx
 .aider*
 ptx_emu*.log
+
+# PTX 文件（但保留 tests/ptx 目录下的）
+*.ptx
+!tests/ptx/*.ptx
 
 # 缓存目录
 .cache/

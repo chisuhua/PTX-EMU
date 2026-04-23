@@ -1,0 +1,64 @@
+// Test: 3-Level Nested Branches
+// Expected reconvergence points:
+// - outer_bra (PC=2) should reconverge at PC=11 (outer_merge)
+// - inner1_bra (PC=7) should reconverge at PC=9 (inner1_merge)
+// - inner2_bra should reconverge at inner2_merge
+
+.version 8.0
+.target sm_80
+.address_size 64
+
+.visible .entry test_nested_3levels() {
+.reg .pred %p<3>;
+.reg .b32 %r<5>;
+
+// PC=0: Load thread ID
+mov.u32 %r1, %tid.x;
+
+// PC=1-2: Outer branch (tier 1)
+setp.lt.u32 %p1, %r1, 22;
+@%p1 bra $L_outer_true;
+
+// PC=3-4: Outer false path (lanes 22-31)
+add.u32 %r2, %r1, 1000;
+bra.uni $L_outer_merge;
+
+// PC=5: Outer true path label (lanes 0-21)
+L_outer_true:
+// PC=6-7: Inner branch 1 (tier 2)
+setp.lt.u32 %p2, %r1, 11;
+@%p2 bra $L_inner1_true;
+
+// PC=8: Inner1 false path (lanes 11-21)
+add.u32 %r3, %r1, 100;
+// PC=9: Inner1 merge
+L_inner1_merge:
+// PC=10: Continue outer true
+add.u32 %r2, %r3, 0;
+// PC=11: Fall through to outer merge
+bra.uni $L_outer_merge;
+
+// PC=12: Inner1 true path label (lanes 0-10)
+L_inner1_true:
+// PC=13-14: Inner branch 2 (tier 3)
+setp.lt.u32 %p3, %r1, 5;
+@%p3 bra $L_inner2_true;
+
+// PC=15: Inner2 false path (lanes 5-10)
+add.u32 %r4, %r1, 10;
+// PC=16: Inner2 merge
+L_inner2_merge:
+add.u32 %r3, %r4, 0;
+bra.uni $L_inner1_merge;
+
+// PC=17: Inner2 true path label (lanes 0-4)
+L_inner2_true:
+add.u32 %r4, %r1, 1;
+bra.uni $L_inner2_merge;
+
+// PC=18: Outer merge point (all lanes converge)
+L_outer_merge:
+st.shared.u32 [%shared0], %r2;
+bar.sync 0;
+ret;
+}

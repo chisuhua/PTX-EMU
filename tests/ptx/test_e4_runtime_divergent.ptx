@@ -1,0 +1,172 @@
+// E4: Runtime divergent execution + shared memory + barrier
+// Isolates the exact test_nested_sync failure pattern at runtime.
+
+.version 8.0
+.target sm_100
+.address_size 64
+
+// E4a: All threads execute same path (no divergence) - control test
+// If this fails: shared memory fundamentally broken for 16 threads
+.visible .entry e4a_no_divergence() {
+.reg .b32 %r<4>;
+.reg .b64 %rd<2>;
+
+cvta.to.shared.u64 %rd1, 0;
+mov.u32 %r1, %tid.x;
+shl.b32 %r2, %r1, 2;
+add.s64 %rd2, %rd1, %r2;
+
+st.shared.u32 [%rd2], %r1;
+bar.sync 0;
+
+ld.shared.u32 %r3, [%rd2];
+add.u32 %r4, %r3, 1;
+st.shared.u32 [%rd2], %r4;
+bar.sync 0;
+
+ld.shared.u32 %r3, [%rd2];
+ret;
+}
+
+// E4b: Conditional branch — all threads take SAME path (branch condition true for all)
+// Verifies: predicated branch doesn't lose any threads when all should take it
+.visible .entry e4b_branch_all_same() {
+.reg .pred %p<1>;
+.reg .b32 %r<4>;
+.reg .b64 %rd<2>;
+
+cvta.to.shared.u64 %rd1, 0;
+mov.u32 %r1, %tid.x;
+
+// This branch condition is ALWAYS true for any tid < 32
+// (all threads in a 16-thread CTA should take it)
+setp.lt.u32 %p1, %r1, 31;
+@%p1 bra $L_write;
+
+// fall-through (shouldn't reach here for 16 threads)
+mov.u32 %r3, 0xFF;
+bra.uni $L_done;
+
+$L_write:
+shl.b32 %r2, %r1, 2;
+add.s64 %rd2, %rd1, %r2;
+
+// Write: data[0..15] = 1, 2, 3, ..., 16
+add.u32 %r3, %r1, 1;
+st.shared.u32 [%rd2], %r3;
+
+$L_done:
+bar.sync 0;
+ld.shared.u32 %r4, [%rd2];
+ret;
+}
+
+// E4c: Conditional branch — all threads take SAME path (branch condition false for all)
+// Verifies: predicated branch skip works correctly when no thread should take it
+.visible .entry e4c_branch_all_skip() {
+.reg .pred %p<1>;
+.reg .b32 %r<4>;
+.reg .b64 %rd<2>;
+
+mov.u32 %r1, %tid.x;
+shl.b32 %r2, %r1, 2;
+cvta.to.shared.u64 %rd1, 0;
+add.s64 %rd2, %rd1, %r2;
+
+// Initialize with tid
+st.shared.u32 [%rd2], %r1;
+bar.sync 0;
+
+// This branch condition is ALWAYS false (tid >= 31 is never true for 16 threads)
+setp.ge.u32 %p1, %r1, 31;
+@%p1 bra $L_override;
+
+bra.uni $L_read;
+
+$L_override:
+// Should NOT reach here
+mov.u32 %r3, 0xFF;
+st.shared.u32 [%rd2], %r3;
+
+$L_read:
+bar.sync 0;
+// Should still have tid value
+ld.shared.u32 %r4, [%rd2];
+ret;
+}
+
+// E4d: Conditional branch — threads split (some take, some skip)
+// Verifies: divergent execution with shared memory + barrier
+// This is the EXACT pattern from test_nested_sync simplified
+.visible .entry e4d_divergent_write_barrier_read() {
+.reg .pred %p<1>;
+.reg .b32 %r<5>;
+.reg .b64 %rd<2>;
+
+cvta.to.shared.u64 %rd1, 0;
+mov.u32 %r1, %tid.x;
+
+// Phase 1: write data_a[tid] = tid
+shl.b32 %r2, %r1, 2;
+add.s64 %rd2, %rd1, %r2;
+st.shared.u32 [%rd2], %r1;
+bar.sync 0;
+
+// Phase 2: divergent write to data_b
+// For 16 threads: tid 0-15 should ALL reach this (condition is tid < 16)
+setp.ge.u32 %p1, %r1, 16;
+@%p1 bra $L_skip_data_b;
+
+// Only if tid >= 16 reaches here (should be NO lanes in 16-thread CTA!)
+mov.u32 %r3, 0xDEAD;
+bra.uni $L_read_data_b;
+
+$L_skip_data_b:
+// ALL 16 threads reach here in a 16-thread CTA
+// data_b[tid] = data_a[tid] - 1
+cvta.to.shared.u64 %rd1, 0;
+shl.b32 %r2, %r1, 2;
+add.s64 %rd2, %rd1, %r2;
+
+ld.shared.u32 %r3, [%rd2];
+sub.u32 %r3, %r3, 1;
+
+// Store to data_a (reuse since both tests share offset)
+st.shared.u32 [%rd2], %r3;
+
+$L_read_data_b:
+bar.sync 0;
+ld.shared.u32 %r4, [%rd2];
+ret;
+}
+
+// E4e: Branch where some threads jump over shared memory writes, then merge at barrier
+// Simulates: tid 0-7 do write, tid 8-15 skip, then all sync
+.visible .entry e4e_half_write_barrier_read() {
+.reg .pred %p<1>;
+.reg .b32 %r<4>;
+.reg .b64 %rd<2>;
+
+mov.u32 %r1, %tid.x;
+shl.b32 %r2, %r1, 2;
+cvta.to.shared.u64 %rd1, 0;
+add.s64 %rd2, %rd1, %r2;
+
+// All write their tid first
+st.shared.u32 [%rd2], %r1;
+bar.sync 0;
+
+// Divergent: only tid < 8 do extra write
+setp.ge.u32 %p1, %r1, 8;
+@%p1 bra $L_merge;
+
+add.u32 %r3, %r1, 100;
+st.shared.u32 [%rd2], %r3;
+
+$L_merge:
+bar.sync 0;
+
+// Read back - threads 0-7 should see tid+100, threads 8-15 should see tid
+ld.shared.u32 %r4, [%rd2];
+ret;
+}

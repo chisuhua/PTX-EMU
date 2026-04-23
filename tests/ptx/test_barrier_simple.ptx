@@ -1,0 +1,12 @@
+.version 9.0
+.target sm_100
+.address_size 64
+
+.visible .entry test_barrier() {
+.reg .b32 %r<2>;
+
+mov.u32 %r1, %tid.x;
+bar.sync 0;
+add.u32 %r2, %r1, 1;
+ret;
+}

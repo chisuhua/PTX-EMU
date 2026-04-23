@@ -1,0 +1,36 @@
+// Test: While Loop Structure
+// Expected: Loop header reconverges at loop exit
+
+.version 8.0
+.target sm_80
+.address_size 64
+
+.visible .entry test_loop_while() {
+.reg .pred %p<1>;
+.reg .b32 %r<4>;
+
+// PC=0: Initialize counter
+mov.u32 %r1, 0;
+
+// PC=1: Loop header
+L_loop_header:
+// PC=2-3: Loop condition check
+setp.lt.u32 %p1, %r1, 10;
+@%p1 bra $L_loop_body;
+
+// PC=4: Loop exit (when condition false)
+bra.uni $L_loop_exit;
+
+// PC=5: Loop body label
+L_loop_body:
+// PC=6-7: Increment counter
+add.u32 %r1, %r1, 1;
+// PC=8: Back to header
+bra.uni $L_loop_header;
+
+// PC=9: Loop exit (all lanes converge)
+L_loop_exit:
+st.shared.u32 [%shared0], %r1;
+bar.sync 0;
+ret;
+}

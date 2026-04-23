@@ -1,0 +1,23 @@
+.version 8.0
+.target sm_80
+.address_size 64
+
+// Test: Each thread writes its lane ID to shared memory, then reads back
+// Expected: All threads should see their own value after barrier
+
+.visible .entry test_shared_store() {
+.shared .align 4 .b32 shared_array[32];
+
+// Store lane ID to shared memory
+mov.u32 %r1, %laneid;
+st.shared.u32 [shared_array], %r1;
+
+// Synchronize
+bar.sync 0;
+
+// Read back from shared memory
+ld.shared.u32 %r2, [shared_array];
+
+// Write to global for verification
+ret;
+}

@@ -1,0 +1,68 @@
+// Direction 3: shared memory operations with small CTAs
+// Tests: shared memory read/write correctness when thread count < 32
+// Verifies: shared memory symbol resolution and barrier-protected data exchange
+
+.version 8.0
+.target sm_100
+.address_size 64
+
+// Test A: 16-thread basic shared memory swap
+.visible .entry shared_swap_16() {
+.reg .b32 %r<4>;
+.reg .b64 %rd<2>;
+
+cvta.to.shared.u64 %rd1, 0;
+mov.u32 %r1, %tid.x;
+shl.b32 %r2, %r1, 2;
+add.s64 %rd2, %rd1, %r2;
+st.shared.u32 [%rd2], %r1;
+bar.sync 0;
+sub.s32 %r3, %r2, 60;
+add.s64 %rd2, %rd1, %r3;
+ld.shared.u32 %r4, [%rd2];
+ret;
+}
+
+// Test B: 8-thread broadcast-style shared memory (thread 0 writes, all read)
+.visible .entry shared_broadcast_8() {
+.reg .pred %p<1>;
+.reg .b32 %r<4>;
+.reg .b64 %rd<2>;
+
+setp.eq.u32 %p1, %r1, 0;
+@%p1 bra $L_writer;
+
+bar.sync 0;
+ld.shared.u32 %r3, [%shared0];
+bra.uni $L_done;
+
+$L_writer:
+mov.u32 %r3, 42;
+st.shared.u32 [%shared0], %r3;
+bra.uni $L_done;
+
+$L_done:
+ret;
+}
+
+// Test C: 16-thread prefix accumulation with barrier between each stage
+.visible .entry shared_accumulate_16() {
+.reg .b32 %r<6>;
+.reg .b64 %rd<2>;
+
+cvta.to.shared.u64 %rd1, 0;
+mov.u32 %r1, %tid.x;
+shl.b32 %r2, %r1, 2;
+add.s64 %rd2, %rd1, %r2;
+
+st.shared.u32 [%rd2], %r1;
+bar.sync 0;
+
+ld.shared.u32 %r3, [%rd2];
+add.u32 %r4, %r3, 1;
+st.shared.u32 [%rd2], %r4;
+bar.sync 0;
+
+ld.shared.u32 %r5, [%rd2];
+ret;
+}

@@ -1,0 +1,188 @@
+
+Fatbin ptx code:
+================
+arch = sm_100
+code version = [9,0]
+host = linux
+compile_size = 64bit
+compressed
+ptxasOptions = 
+
+
+
+
+
+
+
+
+.version 9.0
+.target sm_100
+.address_size 64
+
+
+
+
+.visible .entry _Z22test_simple_divergenceIiEvPT_(
+.param .u64 .ptr .align 1 _Z22test_simple_divergenceIiEvPT__param_0
+)
+{
+.reg .pred %p<2>;
+.reg .b32 %r<5>;
+.reg .b64 %rd<5>;
+
+ld.param.u64 %rd1, [_Z22test_simple_divergenceIiEvPT__param_0];
+cvta.to.global.u64 %rd2, %rd1;
+mov.u32 %r1, %tid.x;
+setp.lt.u32 %p1, %r1, 16;
+selp.b32 %r2, 1, %r1, %p1;
+mul.lo.s32 %r3, %r1, %r1;
+mul.lo.s32 %r4, %r3, %r2;
+mul.wide.u32 %rd3, %r1, 4;
+add.s64 %rd4, %rd2, %rd3;
+st.global.u32 [%rd4], %r4;
+ret;
+
+}
+
+.visible .entry _Z25test_divergence_with_syncIiEvPT_i(
+.param .u64 .ptr .align 1 _Z25test_divergence_with_syncIiEvPT_i_param_0,
+.param .u32 _Z25test_divergence_with_syncIiEvPT_i_param_1
+)
+{
+.reg .pred %p<4>;
+.reg .b32 %r<88>;
+.reg .b64 %rd<7>;
+
+.shared .align 4 .b8 _ZZ25test_divergence_with_syncIiEvPT_iE11shared_data[128];
+ld.param.u64 %rd2, [_Z25test_divergence_with_syncIiEvPT_i_param_0];
+cvta.to.global.u64 %rd1, %rd2;
+mov.u32 %r1, %tid.x;
+and.b32 %r2, %r1, 31;
+setp.lt.u32 %p1, %r2, 16;
+@%p1 bra $L__BB1_7;
+neg.s32 %r85, %r2;
+mov.b32 %r87, 1;
+mov.b32 %r84, 15;
+$L__BB1_2:
+add.s32 %r14, %r84, -14;
+mul.lo.s32 %r87, %r14, %r87;
+add.s32 %r85, %r85, 1;
+add.s32 %r84, %r84, 1;
+setp.ne.s32 %p2, %r85, -15;
+@%p2 bra $L__BB1_2;
+$L__BB1_3:
+shl.b32 %r17, %r2, 2;
+mov.u32 %r18, _ZZ25test_divergence_with_syncIiEvPT_iE11shared_data;
+add.s32 %r19, %r18, %r17;
+st.shared.u32 [%r19], %r87;
+bar.sync 0;
+setp.ne.s32 %p3, %r1, 0;
+@%p3 bra $L__BB1_5;
+ld.shared.u32 %r21, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data];
+ld.shared.u32 %r22, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+4];
+add.s32 %r23, %r22, %r21;
+ld.shared.u32 %r24, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+8];
+add.s32 %r25, %r24, %r23;
+ld.shared.u32 %r26, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+12];
+add.s32 %r27, %r26, %r25;
+ld.shared.u32 %r28, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+16];
+add.s32 %r29, %r28, %r27;
+ld.shared.u32 %r30, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+20];
+add.s32 %r31, %r30, %r29;
+ld.shared.u32 %r32, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+24];
+add.s32 %r33, %r32, %r31;
+ld.shared.u32 %r34, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+28];
+add.s32 %r35, %r34, %r33;
+ld.shared.u32 %r36, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+32];
+add.s32 %r37, %r36, %r35;
+ld.shared.u32 %r38, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+36];
+add.s32 %r39, %r38, %r37;
+ld.shared.u32 %r40, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+40];
+add.s32 %r41, %r40, %r39;
+ld.shared.u32 %r42, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+44];
+add.s32 %r43, %r42, %r41;
+ld.shared.u32 %r44, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+48];
+add.s32 %r45, %r44, %r43;
+ld.shared.u32 %r46, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+52];
+add.s32 %r47, %r46, %r45;
+ld.shared.u32 %r48, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+56];
+add.s32 %r49, %r48, %r47;
+ld.shared.u32 %r50, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+60];
+add.s32 %r51, %r50, %r49;
+ld.shared.u32 %r52, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+64];
+add.s32 %r53, %r52, %r51;
+ld.shared.u32 %r54, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+68];
+add.s32 %r55, %r54, %r53;
+ld.shared.u32 %r56, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+72];
+add.s32 %r57, %r56, %r55;
+ld.shared.u32 %r58, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+76];
+add.s32 %r59, %r58, %r57;
+ld.shared.u32 %r60, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+80];
+add.s32 %r61, %r60, %r59;
+ld.shared.u32 %r62, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+84];
+add.s32 %r63, %r62, %r61;
+ld.shared.u32 %r64, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+88];
+add.s32 %r65, %r64, %r63;
+ld.shared.u32 %r66, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+92];
+add.s32 %r67, %r66, %r65;
+ld.shared.u32 %r68, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+96];
+add.s32 %r69, %r68, %r67;
+ld.shared.u32 %r70, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+100];
+add.s32 %r71, %r70, %r69;
+ld.shared.u32 %r72, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+104];
+add.s32 %r73, %r72, %r71;
+ld.shared.u32 %r74, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+108];
+add.s32 %r75, %r74, %r73;
+ld.shared.u32 %r76, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+112];
+add.s32 %r77, %r76, %r75;
+ld.shared.u32 %r78, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+116];
+add.s32 %r79, %r78, %r77;
+ld.shared.u32 %r80, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+120];
+add.s32 %r81, %r80, %r79;
+ld.shared.u32 %r82, [_ZZ25test_divergence_with_syncIiEvPT_iE11shared_data+124];
+add.s32 %r83, %r82, %r81;
+st.global.u32 [%rd1], %r83;
+bra.uni $L__BB1_6;
+$L__BB1_5:
+mul.wide.u32 %rd5, %r1, 4;
+add.s64 %rd6, %rd1, %rd5;
+mov.b32 %r20, 0;
+st.global.u32 [%rd6], %r20;
+$L__BB1_6:
+ret;
+$L__BB1_7:
+add.s32 %r15, %r2, -1;
+mul.wide.u32 %rd3, %r15, %r2;
+shr.u64 %rd4, %rd3, 1;
+cvt.u32.u64 %r16, %rd4;
+add.s32 %r87, %r2, %r16;
+bra.uni $L__BB1_3;
+
+}
+
+.visible .entry _Z22test_nested_divergenceIiEvPT_(
+.param .u64 .ptr .align 1 _Z22test_nested_divergenceIiEvPT__param_0
+)
+{
+.reg .pred %p<3>;
+.reg .b32 %r<8>;
+.reg .b64 %rd<5>;
+
+ld.param.u64 %rd1, [_Z22test_nested_divergenceIiEvPT__param_0];
+cvta.to.global.u64 %rd2, %rd1;
+mov.u32 %r1, %tid.x;
+and.b32 %r2, %r1, 1;
+setp.eq.b32 %p1, %r2, 1;
+selp.b32 %r3, 200, 100, %p1;
+add.s32 %r4, %r3, %r1;
+and.b32 %r5, %r1, 2;
+setp.eq.s32 %p2, %r5, 0;
+selp.b32 %r6, 10, 20, %p2;
+add.s32 %r7, %r4, %r6;
+mul.wide.u32 %rd3, %r1, 4;
+add.s64 %rd4, %rd2, %rd3;
+st.global.u32 [%rd4], %r7;
+ret;
+
+}
+

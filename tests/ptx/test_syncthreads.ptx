@@ -1,0 +1,173 @@
+
+
+
+
+
+
+.version 9.0
+.target sm_100
+.address_size 64
+
+
+
+
+
+
+
+.visible .entry _Z19test_shared_barrierIiEvPT_(
+.param .u64 .ptr .align 1 _Z19test_shared_barrierIiEvPT__param_0
+)
+{
+.reg .b32 %r<7>;
+.reg .b64 %rd<5>;
+
+.shared .align 4 .b8 _ZZ19test_shared_barrierIiEvPT_E11shared_data[128];
+ld.param.u64 %rd1, [_Z19test_shared_barrierIiEvPT__param_0];
+cvta.to.global.u64 %rd2, %rd1;
+mov.u32 %r1, %tid.x;
+shl.b32 %r2, %r1, 2;
+mov.u32 %r3, _ZZ19test_shared_barrierIiEvPT_E11shared_data;
+add.s32 %r4, %r3, %r2;
+st.shared.u32 [%r4], %r1;
+bar.sync 0;
+sub.s32 %r5, %r3, %r2;
+ld.shared.u32 %r6, [%r5+124];
+bar.sync 0;
+mul.wide.u32 %rd3, %r1, 4;
+add.s64 %rd4, %rd2, %rd3;
+st.global.u32 [%rd4], %r6;
+ret;
+
+}
+
+.visible .entry _Z24test_multi_block_barrierIiEvPT_(
+.param .u64 .ptr .align 1 _Z24test_multi_block_barrierIiEvPT__param_0
+)
+{
+.reg .b32 %r<72>;
+.reg .b64 %rd<5>;
+
+.shared .align 4 .b8 _ZZ24test_multi_block_barrierIiEvPT_E10block_data[128];
+ld.param.u64 %rd1, [_Z24test_multi_block_barrierIiEvPT__param_0];
+mov.u32 %r1, %tid.x;
+mov.u32 %r2, %ctaid.x;
+mad.lo.s32 %r3, %r2, 100, %r1;
+shl.b32 %r4, %r1, 2;
+mov.u32 %r5, _ZZ24test_multi_block_barrierIiEvPT_E10block_data;
+add.s32 %r6, %r5, %r4;
+st.shared.u32 [%r6], %r3;
+bar.sync 0;
+ld.shared.u32 %r7, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data];
+ld.shared.u32 %r8, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+4];
+add.s32 %r9, %r8, %r7;
+ld.shared.u32 %r10, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+8];
+add.s32 %r11, %r10, %r9;
+ld.shared.u32 %r12, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+12];
+add.s32 %r13, %r12, %r11;
+ld.shared.u32 %r14, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+16];
+add.s32 %r15, %r14, %r13;
+ld.shared.u32 %r16, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+20];
+add.s32 %r17, %r16, %r15;
+ld.shared.u32 %r18, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+24];
+add.s32 %r19, %r18, %r17;
+ld.shared.u32 %r20, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+28];
+add.s32 %r21, %r20, %r19;
+ld.shared.u32 %r22, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+32];
+add.s32 %r23, %r22, %r21;
+ld.shared.u32 %r24, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+36];
+add.s32 %r25, %r24, %r23;
+ld.shared.u32 %r26, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+40];
+add.s32 %r27, %r26, %r25;
+ld.shared.u32 %r28, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+44];
+add.s32 %r29, %r28, %r27;
+ld.shared.u32 %r30, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+48];
+add.s32 %r31, %r30, %r29;
+ld.shared.u32 %r32, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+52];
+add.s32 %r33, %r32, %r31;
+ld.shared.u32 %r34, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+56];
+add.s32 %r35, %r34, %r33;
+ld.shared.u32 %r36, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+60];
+add.s32 %r37, %r36, %r35;
+ld.shared.u32 %r38, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+64];
+add.s32 %r39, %r38, %r37;
+ld.shared.u32 %r40, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+68];
+add.s32 %r41, %r40, %r39;
+ld.shared.u32 %r42, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+72];
+add.s32 %r43, %r42, %r41;
+ld.shared.u32 %r44, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+76];
+add.s32 %r45, %r44, %r43;
+ld.shared.u32 %r46, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+80];
+add.s32 %r47, %r46, %r45;
+ld.shared.u32 %r48, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+84];
+add.s32 %r49, %r48, %r47;
+ld.shared.u32 %r50, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+88];
+add.s32 %r51, %r50, %r49;
+ld.shared.u32 %r52, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+92];
+add.s32 %r53, %r52, %r51;
+ld.shared.u32 %r54, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+96];
+add.s32 %r55, %r54, %r53;
+ld.shared.u32 %r56, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+100];
+add.s32 %r57, %r56, %r55;
+ld.shared.u32 %r58, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+104];
+add.s32 %r59, %r58, %r57;
+ld.shared.u32 %r60, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+108];
+add.s32 %r61, %r60, %r59;
+ld.shared.u32 %r62, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+112];
+add.s32 %r63, %r62, %r61;
+ld.shared.u32 %r64, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+116];
+add.s32 %r65, %r64, %r63;
+ld.shared.u32 %r66, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+120];
+add.s32 %r67, %r66, %r65;
+ld.shared.u32 %r68, [_ZZ24test_multi_block_barrierIiEvPT_E10block_data+124];
+add.s32 %r69, %r68, %r67;
+cvta.to.global.u64 %rd2, %rd1;
+bar.sync 0;
+mov.u32 %r70, %ntid.x;
+mad.lo.s32 %r71, %r2, %r70, %r1;
+mul.wide.u32 %rd3, %r71, 4;
+add.s64 %rd4, %rd2, %rd3;
+st.global.u32 [%rd4], %r69;
+ret;
+
+}
+
+.visible .entry _Z16test_nested_syncIiEvPT_(
+.param .u64 .ptr .align 1 _Z16test_nested_syncIiEvPT__param_0
+)
+{
+.reg .pred %p<2>;
+.reg .b32 %r<16>;
+.reg .b64 %rd<5>;
+
+.shared .align 4 .b8 _ZZ16test_nested_syncIiEvPT_E6data_a[64];
+
+.shared .align 4 .b8 _ZZ16test_nested_syncIiEvPT_E6data_b[64];
+ld.param.u64 %rd1, [_Z16test_nested_syncIiEvPT__param_0];
+mov.u32 %r1, %tid.x;
+shl.b32 %r4, %r1, 2;
+mov.u32 %r5, _ZZ16test_nested_syncIiEvPT_E6data_a;
+add.s32 %r2, %r5, %r4;
+st.shared.u32 [%r2], %r1;
+bar.sync 0;
+setp.gt.u32 %p1, %r1, 15;
+mov.u32 %r6, _ZZ16test_nested_syncIiEvPT_E6data_b;
+add.s32 %r3, %r6, %r4;
+@%p1 bra $L__BB2_2;
+ld.shared.u32 %r7, [%r2];
+add.s32 %r9, %r4, 4;
+and.b32 %r10, %r9, 60;
+add.s32 %r12, %r5, %r10;
+ld.shared.u32 %r13, [%r12];
+add.s32 %r14, %r13, %r7;
+st.shared.u32 [%r3], %r14;
+$L__BB2_2:
+cvta.to.global.u64 %rd2, %rd1;
+bar.sync 0;
+ld.shared.u32 %r15, [%r3];
+mul.wide.u32 %rd3, %r1, 4;
+add.s64 %rd4, %rd2, %rd3;
+st.global.u32 [%rd4], %r15;
+ret;
+
+}
+
