@@ -185,7 +185,7 @@ int main(int argc, const char *argv[]) {
     dumpParamAndRegFromTree(tree, std::cout);
     std::cout << std::endl;
 
-    if (tree != nullptr) {
+    if (tree != nullptr && parser.getNumberOfSyntaxErrors() == 0) {
         std::cout << "PASS" << std::endl;
     } else {
         std::cout << "FAIL" << std::endl;
