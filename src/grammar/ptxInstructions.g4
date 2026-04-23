@@ -62,6 +62,11 @@ brxInst
 
 callInst
     : predicate? CALL callParams? labelOperand callArgs? SEMI
+    | predicate? CALL UNI callParams? labelOperand callArgs? SEMI
+    ;
+
+callUniInst
+    : predicate? CALL UNI LEFT_PAREN ID (COMMA ID)* RIGHT_PAREN COMMA labelOperand COMMA LEFT_PAREN operand (COMMA operand)* RIGHT_PAREN SEMI
     ;
 
 retInst
@@ -88,6 +93,7 @@ controlFlowInst
     : braInst
     | brxInst
     | callInst
+    | callUniInst
     | retInst
     | exitInst
     | trapInst
@@ -95,7 +101,7 @@ controlFlowInst
     | brkptInst
     ;
 
-labelOperand : DOLLAR ID ;
+labelOperand : ID ;
 voteMode : BALLOT | ANY | ALL | UNI | EQV ;
 callParams : paramList ;
 callArgs : LEFT_PAREN operand (COMMA operand)* RIGHT_PAREN ;
@@ -223,11 +229,15 @@ movInst
     ;
 
 ldInst
-    : LD ldQualifiers typeSpecifier vectorSpec? operand COMMA addressExpr SEMI
+    : LD spaceQualifier? cacheOperator* VOLATILE? vectorSpec? typeSpecifier operand COMMA addressExpr SEMI
+    | LD VOLATILE? spaceQualifier? cacheOperator* vectorSpec? typeSpecifier operand COMMA addressExpr SEMI
     ;
 
 stInst
-    : ST stQualifiers typeSpecifier vectorSpec? addressExpr COMMA operand SEMI
+    : ST spaceQualifier? cacheOperator* VOLATILE? vectorSpec? typeSpecifier addressExpr COMMA operand SEMI
+    | ST VOLATILE? spaceQualifier? cacheOperator* vectorSpec? typeSpecifier addressExpr COMMA operand SEMI
+    // For st.local.v2.u32 order: spaceQualifier vectorSpec typeSpecifier
+    | ST spaceQualifier vectorSpec typeSpecifier addressExpr COMMA operand SEMI
     ;
 
 // CVT instruction: cvt[.rnd].dstType.srcType[.sat][.ftz] dest, source;
@@ -290,7 +300,7 @@ cacheOperator
     ;
 
 cpAsyncSpace : GLOBAL | SHARED ;
-genericOrSpecificSpace : GENERIC_SPACE | GLOBAL | SHARED | CONST ;
+genericOrSpecificSpace : GENERIC_SPACE | GLOBAL | SHARED | CONST | LOCAL ;
 toAddrSpace : (TO (GLOBAL | SHARED | LOCAL | PARAM))? ;
 addrSpaceQuery : GENERIC_SPACE | GLOBAL | SHARED | CONST | LOCAL ;
 
@@ -491,10 +501,21 @@ functionDecl
     : visibility? FUNC functionHeader funcBody
     | visibility? ENTRY functionHeader funcBody
     | VISIBLE ENTRY functionHeader funcBody
+    // Extern function declaration: .extern .func (.param ...) funcName (params);
+    | visibility? EXTERN FUNC funcDeclParams ID paramList? SEMI
+    ;
+
+// Extern function declaration parameters (before function name)
+funcDeclParams
+    : LEFT_PAREN paramDecl (COMMA paramDecl)* RIGHT_PAREN
+    | LEFT_PAREN RIGHT_PAREN
     ;
 
 functionHeader
     : ID paramList? functionAttribute*
+    // For .entry _Z11test_kerneli(.param .u32 _Z11test_kerneli_param_0)
+    // where .param declaration is inline after function name
+    | ID LEFT_PAREN paramDecl (COMMA paramDecl)* RIGHT_PAREN functionAttribute*
     ;
 
 paramList
@@ -505,15 +526,10 @@ paramList
 paramDecl
     : PARAM paramTypeSpec ID arraySize?
     | typeSpecifier? vectorSpec? ID
+    | PARAM paramTypeSpec ID
     ;
 
 // Parameter declaration in function headers
-// Format 1: .param <type> [.ptr] [.align N] <id>
-// Format 2: <type> [<vector>] <id>  (for register declarations)
-paramDecl
-    : PARAM paramTypeSpec ID arraySize?
-    | (REG | LOCAL | PARAM | CONST | SHARED | GLOBAL)? typeSpecifier vectorSpec? ID arraySize?
-    ;
 
 // Parameter type specifier with flexible order for type, PTR, and align
 // Supports: .param .u64 .ptr .align 1, .param .u64 .ptr, .param .u64 .align 1, etc.

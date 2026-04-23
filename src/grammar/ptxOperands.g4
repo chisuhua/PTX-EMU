@@ -5,16 +5,22 @@ options {
 }
 
 operand
-    : register
-    | immediate
-    | address
-    | specialRegister
-    | ID
+: register
+| immediate
+| address
+| specialRegister
+| vectorRegister
+| ID
+;
+
+// Vector register pair for store instructions: {%r5, %r1}
+vectorRegister
+    : LEFT_BRACE register COMMA register RIGHT_BRACE
     ;
 
 register
-    : DOLLAR ID
-    | PERCENT ID
+    : PERCENT ID
+    | DOLLAR ID
     ;
 
 // 修正1: 使用统一的 IMMEDIATE token（匹配修正后的 lexer）

@@ -22,6 +22,13 @@ if [ ! -x "${TEST_BIN}" ]; then
     exit 1
 fi
 
+# 检查 preprocessor 是否存在
+PREPROCESSOR="${SCRIPT_DIR}/ptx_preprocess.py"
+if [ ! -x "${PREPROCESSOR}" ]; then
+    echo "[ERROR] ptx_preprocess.py 不存在"
+    exit 1
+fi
+
 # 统计
 TOTAL=0
 PASSED=0
@@ -40,8 +47,14 @@ for ptx_file in "${PTX_DIR}"/*.ptx; do
     
     echo -n "测试 ${filename} ... "
     
+    # 预处理 PTX 文件
+    preprocessed_file=$(mktemp "/tmp/ptx_preprocessed_XXXXXX.ptx")
+    python3 "${PREPROCESSOR}" "${ptx_file}" "${preprocessed_file}" 2>/dev/null
+    
     # 捕获输出以检测 segfault
-    output=$(PTX_EMU_PATH="${PTX_DIR}/.." "${TEST_BIN}" "${ptx_file}" 2>&1) || true
+    output=$(PTX_EMU_PATH="${PTX_DIR}/.." "${TEST_BIN}" "${preprocessed_file}" 2>&1) || true
+    
+    rm -f "${preprocessed_file}"
     
     if echo "${output}" | grep -q "PASS"; then
         echo "[PASS]"

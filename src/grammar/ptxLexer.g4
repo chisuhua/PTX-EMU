@@ -437,8 +437,8 @@ FILL    : 'fill';
 
 // ============================================================================
 // IDENTIFIERS (labels, variable names, function names)
-// NOTE: Cannot start with $ as that is reserved for labels (DOLLAR token)
+// PTX allows $ prefix for labels and string constants (e.g., $str, $Label)
 // ============================================================================
 ID
-    : [a-zA-Z_] [a-zA-Z_0-9$]*
+    : [a-zA-Z_$] [a-zA-Z_0-9$]*
     ;

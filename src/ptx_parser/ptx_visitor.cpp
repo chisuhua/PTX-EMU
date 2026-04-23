@@ -452,9 +452,12 @@ std::any PtxVisitor::visitFunctionDecl(ptxparser::ptxParser::FunctionDeclContext
     // 创建新的kernel上下文
     currentKernel = new KernelContext();
     
-    // 函数名
-    if (ctx->functionHeader()->ID()) {
+    // 函数名 - handle both functionHeader and extern function forms
+    if (ctx->functionHeader() && ctx->functionHeader()->ID()) {
         currentKernel->kernelName = ctx->functionHeader()->ID()->getText();
+    } else if (ctx->ID()) {
+        // extern function form: .extern .func (.param ...) funcName
+        currentKernel->kernelName = ctx->ID()->getText();
     }
     
     // 可见性
