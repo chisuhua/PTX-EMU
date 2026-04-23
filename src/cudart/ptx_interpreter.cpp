@@ -43,6 +43,15 @@ void PtxInterpreter::launchPtxInterpreter(PtxContext &ptx, std::string &kernel,
         }
     }
 
+    // 安全检查：如果未找到kernel，打印调试信息并退出
+    if (!this->kernelContext) {
+        PTX_ERROR_EMU("Kernel not found: %s. Available kernels:", kernel.c_str());
+        for (auto &e : ptx.ptxKernels) {
+            PTX_ERROR_EMU("  - %s", e.kernelName.c_str());
+        }
+        return;
+    }
+
     std::map<std::string, Symtable *> name2Sym;
     std::map<std::string, int> label2pc;
 

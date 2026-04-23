@@ -17,8 +17,8 @@ if(NOT DEFAULT_CUDA_ARCH)
     set(DEFAULT_CUDA_ARCH "100")
 endif()
 
-# 设置CUDA编译选项，保留中间PTX文件
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -keep")
+# 设置CUDA编译选项，保留中间PTX文件，禁用压缩
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -keep --no-compress")
 
 # 设置为只使用sm_100架构（虚拟架构）
 set(CMAKE_CUDA_ARCHITECTURES "100")

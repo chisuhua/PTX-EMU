@@ -1,0 +1,134 @@
+
+
+
+
+
+
+
+
+.version 9.0
+.target sm_100
+.address_size 64
+
+
+.extern .func (.param .b32 func_retval0) vprintf
+(
+.param .b64 vprintf_param_0,
+.param .b64 vprintf_param_1
+)
+;
+.global .align 1 .b8 $str[30] = {72, 101, 108, 108, 111, 32, 102, 114, 111, 109, 32, 116, 104, 114, 101, 97, 100, 32, 37, 100, 44, 32, 97, 114, 103, 32, 37, 100, 10};
+.global .align 1 .b8 $str$1[44] = {84, 104, 114, 101, 97, 100, 32, 37, 100, 58, 32, 105, 110, 116, 61, 37, 100, 44, 32, 102, 108, 111, 97, 116, 61, 37, 46, 50, 102, 44, 32, 100, 111, 117, 98, 108, 101, 61, 37, 46, 51, 102, 10};
+.global .align 1 .b8 $str$2[17] = {83, 116, 114, 105, 110, 103, 32, 116, 101, 115, 116, 58, 32, 37, 115, 10};
+.global .align 1 .b8 $str$3[12] = {72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100};
+.global .align 1 .b8 $str$4[19] = {72, 101, 120, 58, 32, 37, 120, 44, 32, 67, 104, 97, 114, 58, 32, 37, 99, 10};
+
+.visible .entry _Z11test_kerneli(
+.param .u32 _Z11test_kerneli_param_0
+)
+{
+.local .align 8 .b8 __local_depot0[24];
+.reg .b64 %SP;
+.reg .b64 %SPL;
+.reg .b32 %r<22>;
+.reg .b32 %f<3>;
+.reg .b64 %rd<13>;
+.reg .b64 %fd<4>;
+
+mov.u64 %SPL, __local_depot0;
+cvta.local.u64 %SP, %SPL;
+ld.param.u32 %r1, [_Z11test_kerneli_param_0];
+add.u64 %rd1, %SP, 0;
+add.u64 %rd2, %SPL, 0;
+mov.u32 %r2, %tid.x;
+mov.u32 %r3, %ctaid.x;
+mov.u32 %r4, %ntid.x;
+mad.lo.s32 %r5, %r3, %r4, %r2;
+st.local.v2.u32 [%rd2], {%r5, %r1};
+mov.u64 %rd3, $str;
+cvta.global.u64 %rd4, %rd3;
+{ 
+.param .b64 param0;
+st.param.b64 [param0], %rd4;
+.param .b64 param1;
+st.param.b64 [param1], %rd1;
+.param .b32 retval0;
+call.uni (retval0), 
+vprintf, 
+(
+param0, 
+param1
+);
+ld.param.b32 %r6, [retval0];
+} 
+shl.b32 %r8, %r5, 1;
+cvt.rn.f32.s32 %f1, %r5;
+mul.f32 %f2, %f1, 0f4048F5C3;
+cvt.rn.f64.s32 %fd1, %r5;
+mul.f64 %fd2, %fd1, 0d4005BF0A8B04919B;
+cvt.f64.f32 %fd3, %f2;
+st.local.v2.u32 [%rd2], {%r5, %r8};
+st.local.f64 [%rd2+8], %fd3;
+st.local.f64 [%rd2+16], %fd2;
+mov.u64 %rd5, $str$1;
+cvta.global.u64 %rd6, %rd5;
+{ 
+.param .b64 param0;
+st.param.b64 [param0], %rd6;
+.param .b64 param1;
+st.param.b64 [param1], %rd1;
+.param .b32 retval0;
+call.uni (retval0), 
+vprintf, 
+(
+param0, 
+param1
+);
+ld.param.b32 %r9, [retval0];
+} 
+mov.u64 %rd7, $str$3;
+cvta.global.u64 %rd8, %rd7;
+st.local.u64 [%rd2], %rd8;
+mov.u64 %rd9, $str$2;
+cvta.global.u64 %rd10, %rd9;
+{ 
+.param .b64 param0;
+st.param.b64 [param0], %rd10;
+.param .b64 param1;
+st.param.b64 [param1], %rd1;
+.param .b32 retval0;
+call.uni (retval0), 
+vprintf, 
+(
+param0, 
+param1
+);
+ld.param.b32 %r11, [retval0];
+} 
+mul.hi.s32 %r13, %r5, 1321528399;
+shr.u32 %r14, %r13, 31;
+shr.s32 %r15, %r13, 3;
+add.s32 %r16, %r15, %r14;
+mul.lo.s32 %r17, %r16, 26;
+sub.s32 %r18, %r5, %r17;
+add.s32 %r19, %r18, 65;
+st.local.v2.u32 [%rd2], {%r5, %r19};
+mov.u64 %rd11, $str$4;
+cvta.global.u64 %rd12, %rd11;
+{ 
+.param .b64 param0;
+st.param.b64 [param0], %rd12;
+.param .b64 param1;
+st.param.b64 [param1], %rd1;
+.param .b32 retval0;
+call.uni (retval0), 
+vprintf, 
+(
+param0, 
+param1
+);
+ld.param.b32 %r20, [retval0];
+} 
+ret;
+
+}
