@@ -238,6 +238,8 @@ stInst
     | ST VOLATILE? spaceQualifier? cacheOperator* vectorSpec? typeSpecifier addressExpr COMMA operand SEMI
     // For st.local.v2.u32 order: spaceQualifier vectorSpec typeSpecifier
     | ST spaceQualifier vectorSpec typeSpecifier addressExpr COMMA operand SEMI
+    // For st.local.v4.u16 order: spaceQualifier vectorSpec typeSpecifier with vector register list
+    | ST spaceQualifier vectorSpec typeSpecifier addressExpr COMMA vectorRegister SEMI
     ;
 
 // CVT instruction: cvt[.rnd].dstType.srcType[.sat][.ftz] dest, source;

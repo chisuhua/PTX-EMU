@@ -13,9 +13,9 @@ operand
 | ID
 ;
 
-// Vector register pair for store instructions: {%r5, %r1}
+// Vector register list for store instructions: {%r5, %r1, %r2, %r3}
 vectorRegister
-    : LEFT_BRACE register COMMA register RIGHT_BRACE
+    : LEFT_BRACE register (COMMA register)+ RIGHT_BRACE
     ;
 
 register

@@ -23,6 +23,9 @@ using namespace ptxparser;
 #include "utils/cubin_utils.h" // 添加cuobjdump工具函数
 #include "utils/logger.h"
 #include <string>
+#include <fstream>
+#include <filesystem>
+#include <cstdio>
 
 // 添加缺失的宏定义
 #define PTX_ERROR_CUDART(fmt, ...)                                             \
@@ -150,6 +153,67 @@ void **__cudaRegisterFatBinary(void **fatCubinHandle, void *fat_bin,
     if (ptx_code.empty()) {
         std::cerr << "Error: Could not extract PTX code" << std::endl;
         return nullptr;
+    }
+
+    // 3. 预处理PTX代码（规范化多行entry params和inline param blocks）
+    {
+        char input_path[] = "/tmp/ptxemu_input_XXXXXX.ptx";
+        char output_path[] = "/tmp/ptxemu_output_XXXXXX.ptx";
+        int fd = mkstemps(input_path, 4);
+        if (fd == -1) {
+            std::cerr << "Error: Could not create temp input file" << std::endl;
+            return nullptr;
+        }
+        close(fd);
+
+        std::ofstream infile(input_path);
+        infile << ptx_code;
+        infile.close();
+
+        // 查找 PTX_EMU_PATH：优先环境变量，否则从可执行文件路径推导
+        const char *ptx_emu_path = getenv("PTX_EMU_PATH");
+        std::string resolved_path;
+
+        if (ptx_emu_path && strlen(ptx_emu_path) > 0) {
+            resolved_path = ptx_emu_path;
+        } else {
+            // 可执行文件位于 <project_root>/build/bin/，向上两级得到项目根目录
+            std::string exe_dir = std::string(self_exe_path);
+            size_t last_slash = exe_dir.find_last_of("/");
+            if (last_slash != std::string::npos) {
+                std::string bin_dir = exe_dir.substr(0, last_slash);
+                size_t prev_slash = bin_dir.find_last_of("/");
+                if (prev_slash != std::string::npos) {
+                    std::string build_dir = bin_dir.substr(0, prev_slash);
+                    prev_slash = build_dir.find_last_of("/");
+                    if (prev_slash != std::string::npos) {
+                        resolved_path = build_dir.substr(0, prev_slash);
+                    }
+                }
+            }
+            if (resolved_path.empty()) {
+                resolved_path = ".";
+            }
+        }
+
+        char cmd[1024];
+        snprintf(cmd, sizeof(cmd),
+                 "python3 %s/tests/ptx/ptx_preprocess.py %s %s 2>/dev/null",
+                 resolved_path.c_str(), input_path, output_path);
+
+        int ret = system(cmd);
+        if (ret != 0) {
+            std::cerr << "Warning: PTX preprocessing failed, using original" << std::endl;
+        } else {
+            std::ifstream outfile(output_path);
+            std::stringstream ss;
+            ss << outfile.rdbuf();
+            ptx_code = ss.str();
+            outfile.close();
+        }
+
+        std::remove(input_path);
+        std::remove(output_path);
     }
 
     // 使用g_gpu_context的get_device_memory函数获取SimpleMemory实例
