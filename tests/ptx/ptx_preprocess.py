@@ -31,7 +31,7 @@ def collapse_multiline_entry_params(content: str) -> str:
 
     while i < len(lines):
         line = lines[i]
-        entry_match = re.match(r'^(\s*)(\.visible\s+)?\.entry\s+(\w+)\s*\(\s*$', line)
+        entry_match = re.match(r'^(\s*)(\.visible\s+)?\.entry\s+(\S+)\s*\(\s*$', line)
 
         if entry_match and i + 1 < len(lines):
             indent = entry_match.group(1)
@@ -71,7 +71,9 @@ def extract_inline_param_blocks(content: str) -> str:
     """
     Extract and normalize inline param blocks.
     Pattern: { .param ... statements ... }
+    Pattern: { // comment .reg .b32 temp_param_reg; .param ... statements ... }
     Transforms to: Hoisted param decls + statements without braces
+    Only processes inner blocks (with brace_depth > 1), not the outer function body.
     """
     lines = content.split('\n')
     result_lines = []
@@ -81,38 +83,51 @@ def extract_inline_param_blocks(content: str) -> str:
         line = lines[i]
         brace_match = re.match(r'^(\s*)\{\s*$', line)
 
-        if brace_match and i + 1 < len(lines):
+        inline_conv_match = re.match(r'^(\s*)\{\s*(.+);\s*\}\s*$', line)
+
+        if inline_conv_match:
+            indent = inline_conv_match.group(1)
+            instruction = inline_conv_match.group(2).strip()
+            if instruction:
+                result_lines.append(indent + instruction + ';')
+            i += 1
+        elif brace_match and i + 1 < len(lines):
             indent = brace_match.group(1)
             next_line = lines[i + 1].strip()
 
-            if next_line.startswith('.param'):
-                block_lines = []
-                j = i + 1
-                brace_depth = 1
+            block_lines = []
+            j = i + 1
+            brace_depth = 1
 
-                # Collect all lines in this block
-                while j < len(lines) and brace_depth > 0:
-                    block_lines.append(lines[j])
-                    brace_depth += lines[j].count('{') - lines[j].count('}')
-                    j += 1
+            # Collect all lines in this block
+            while j < len(lines) and brace_depth > 0:
+                block_lines.append(lines[j])
+                brace_depth += lines[j].count('{') - lines[j].count('}')
+                j += 1
 
-                # Separate param declarations from statements
-                extracted_params = []
-                block_body_lines = []
+            # Check if this block contains inner braces (nested blocks)
+            has_nested_blocks = any('{' in lines[k] for k in range(i + 1, j - 1))
 
-                for block_line in block_lines[:-1]:  # Skip closing brace
+            has_params = any(lines[k].strip().startswith('.param') for k in range(i + 1, j - 1))
+
+            if has_nested_blocks:
+                # Outer block with inner blocks - add opening brace, then process inner blocks
+                result_lines.append(line)
+                i = i + 1  # Reprocess from line after opening brace to handle inner blocks
+            elif has_params:
+                for block_line in block_lines[:-1]:
                     stripped = block_line.strip()
-                    if stripped.startswith('.param'):
-                        extracted_params.append(indent + stripped)
-                    elif stripped:
-                        block_body_lines.append(indent + stripped)
-
-                # Output: param decls first (hoisted), then statements (no braces)
-                if extracted_params:
-                    result_lines.extend(extracted_params)
-                if block_body_lines:
-                    result_lines.extend(block_body_lines)
-
+                    if stripped:
+                        result_lines.append(indent + stripped)
+                i = j
+            elif len(block_lines) == 1 and block_lines[0].strip().endswith(';'):
+                stripped = block_lines[0].strip()
+                if stripped.endswith(';'):
+                    instruction = stripped[:-1].strip()
+                    if instruction:
+                        result_lines.append(indent + instruction + ';')
+                else:
+                    result_lines.append(line)
                 i = j
             else:
                 result_lines.append(line)
