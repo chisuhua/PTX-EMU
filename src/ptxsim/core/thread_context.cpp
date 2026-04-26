@@ -277,13 +277,21 @@ void *ThreadContext::acquire_operand(const OperandContext &operand,
         // 如果在name2Share中没找到，再到name2Sym中查找（参数、局部变量等）
         auto sym_it = name2Sym->find(varOp.name);
         if (sym_it != name2Sym->end()) {
-            PTX_DEBUG_EMU("Reading kernel name2Sym from name2Sym: name=%s, "
-                          "symbol_table_entry=%p, stored_value=0x%lx, "
-                          "dereferenced_value=0x%lx",
-                          varOp.name.c_str(), sym_it->second,
-                          sym_it->second->val,
-                          *(uint64_t *)(sym_it->second->val));
-            return &(sym_it->second->val);
+            // For PARAM space, return the GPU address directly so printf can read from GPU memory
+            // For other spaces, return the address of the val field (for symbol addresses)
+            if (varOp.name.find("param") != std::string::npos || 
+                varOp.name.find("retval") != std::string::npos) {
+            // For parameters/retval, return the GPU address where the value is stored
+            // This way, when printf reads *formatPtrAddr, it reads from GPU memory
+            return (void *)sym_it->second->val;
+        }
+        PTX_DEBUG_EMU("Reading kernel name2Sym from name2Sym: name=%s, "
+                      "symbol_table_entry=%p, stored_value=0x%lx, "
+                      "dereferenced_value=0x%lx",
+                      varOp.name.c_str(), sym_it->second,
+                      sym_it->second->val,
+                      *(uint64_t *)(sym_it->second->val));
+        return &(sym_it->second->val);
         }
 
         break;
