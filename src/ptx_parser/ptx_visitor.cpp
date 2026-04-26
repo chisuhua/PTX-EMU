@@ -236,7 +236,26 @@ OperandContext PtxVisitor::createOperandFromContext(ptxparser::ptxParser::Operan
             return OperandContext{ImmOperand{"0"}};
         }
     }
-    
+
+    // 检查vectorRegister (braced register list like {%r5, %r1})
+    if (ctx->vectorRegister()) {
+        auto vecCtx = ctx->vectorRegister();
+        std::vector<OperandContext> elements;
+        for (auto regCtx : vecCtx->register_()) {
+            auto anyResult = visitRegister(regCtx);
+            try {
+                elements.push_back(std::any_cast<OperandContext>(anyResult));
+            } catch (const std::bad_any_cast& e) {
+                PTX_ERROR("Failed to cast vector register element: %s", e.what());
+            }
+        }
+        if (!elements.empty()) {
+            VecOperand vecOp;
+            vecOp.elements = std::move(elements);
+            return OperandContext{vecOp};
+        }
+    }
+
     // 检查ID（变量名）
     if (ctx->ID()) {
         const std::string text = ctx->ID()->getText();
@@ -432,6 +451,26 @@ std::any PtxVisitor::visitVariableDecl(ptxparser::ptxParser::VariableDeclContext
                     decl.array_size = 0; // 解析失败也设为动态大小
                 } catch (const std::out_of_range&) {
                     decl.array_size = 0;
+                }
+            }
+        }
+    }
+    
+    // Parse initializer values (for .global/.const arrays like {72, 101, ...})
+    // Format: .global .align 1 .b8 $str[30] = {72, 101, ...}
+    // The initializer is a child context: initializer? (ASSIGN initializerValue)
+    // where initializerValue can be LEFT_BRACE initializerList RIGHT_BRACE
+    if (ctx->initializer() && ctx->initializer()->initializerValue()) {
+        auto initValue = ctx->initializer()->initializerValue();
+        auto initList = initValue->initializerList();
+        if (initList) {
+            for (size_t i = 0; i < initList->initializerValue().size(); ++i) {
+                auto iv = initList->initializerValue(i);
+                if (iv && iv->IMMEDIATE()) {
+                    try {
+                        decl.initValues.push_back(std::stoi(iv->IMMEDIATE()->getText()));
+                    } catch (...) {
+                    }
                 }
             }
         }
@@ -763,6 +802,16 @@ std::any PtxVisitor::visitInstruction(ptxparser::ptxParser::InstructionContext *
         return visit##opname##Inst(ctx->instr_kind##Inst()->opstr##Inst()); \
     }
 #define  VISITOR_IMPL_matrix(opstr, opname, instr_kind)
+
+    // Handle call.uni instruction (not in ptx_op.def)
+    if (ctx->controlFlowInst() && ctx->controlFlowInst()->callUniInst()) {
+        return visitCallUniInst(ctx->controlFlowInst()->callUniInst());
+    }
+
+    // Handle call instruction (includes CALL and CALL UNI via callInst grammar)
+    if (ctx->controlFlowInst() && ctx->controlFlowInst()->callInst()) {
+        return visitCallInst(ctx->controlFlowInst()->callInst());
+    }
 
 #define X(openum, opstr, opname, opcount, _, instr_kind)                         \
     VISITOR_IMPL_##instr_kind(opstr, opname, instr_kind)

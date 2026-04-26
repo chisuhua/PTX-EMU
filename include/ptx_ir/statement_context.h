@@ -114,6 +114,7 @@ struct MbarrierInstr {
 // -----------------------------------------------------------------------------
 struct CallInstr {
     std::string funcName;
+    std::string instructionText;
     std::vector<Qualifier> qualifiers;
     std::vector<OperandContext> operands; // args + return address (if any)
 };

@@ -31,6 +31,8 @@ public:
     std::any visitInstruction(ptxparser::ptxParser::InstructionContext *ctx) override;
     
     // Instruction category visitors
+    // call.uni instruction visitor
+    std::any visitCallUniInst(ptxparser::ptxParser::CallUniInstContext *ctx) override;
 // These generate declarations for visitor methods based on struct_kind
 // Some struct_kinds like structure (operands/declarations) don't need visitor methods
 #define  VISITOR_DECL_ABI_DIRECTIVE(opstr)
