@@ -70,19 +70,28 @@ void StHandler::processOperation(ThreadContext *context, void *op[2],
     return;
   }
 
-  // 获取地址空间和数据大小
   MemorySpace space = getAddressSpace(qualifiers);
   size_t data_size = getBytes(qualifiers);
+  uint64_t src_val = *(uint64_t*)src;
 
   // ========================
   // 1. 标量 ST（无向量）
   // ========================
   if (!QvecHasQ(qualifiers, Qualifier::Q_V2) &&
       !QvecHasQ(qualifiers, Qualifier::Q_V4)) {
-    // 根据地址空间选择内存访问方式
-    // 对于其他内存空间，使用HardwareMemoryManager访问
-    HardwareMemoryManager::instance().access(host_ptr, src, data_size,
-                                             /*is_write=*/true, space);
+    // 对于 PARAM 空间，需要更新符号表条目中的值
+    if (space == MemorySpace::PARAM) {
+        // For st.param [param0], %rd4:
+        // - host_ptr is the GPU address where we should write (param0's slot address)
+        // - src_val is the value to write
+        uint64_t *gpu_addr = (uint64_t *)host_ptr;
+        *gpu_addr = src_val;
+    } else {
+        // 根据地址空间选择内存访问方式
+        // 对于其他内存空间，使用HardwareMemoryManager访问
+        HardwareMemoryManager::instance().access(host_ptr, src, data_size,
+                                                 /*is_write=*/true, space);
+    }
     return;
   }
 

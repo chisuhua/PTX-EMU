@@ -20,14 +20,13 @@ void CvtaHandler::processOperation(ThreadContext *context, void **operands,
     void *to = operands[0];
     void *from = operands[1];
 
-    // context->mov(from, to, qualifier);
-    //  空指针检查
+    // 空指针检查
     if (!to || !from) {
         std::cerr << "Error: Null pointer in CVTA instruction" << std::endl;
         return;
     }
-
-    // CVTA 是指针赋值：*to = *(void**)from
+    
+    // CVTA 是指针赋值：*(void**)to = *(void**)from
     // 即：将 from 指向的指针值，写入 to 指向的位置
     *(void **)to = *(void **)from;
 }

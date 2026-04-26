@@ -24,12 +24,11 @@ SimpleMemory::~SimpleMemory() {
 
 void SimpleMemory::direct_access(uint64_t address, void *data, size_t size,
                                  bool is_write) {
-    // cacluate offset from real ptr
-    if ((address >= (uint64_t)global_base_) &
-        address < ((uint64_t)global_base_ + global_size_)) {
+    bool in_range = (address >= (uint64_t)global_base_) &
+        address < ((uint64_t)global_base_ + global_size_);
+    if (in_range) {
         address -= (uint64_t)global_base_;
     }
-    // 确保访问不超过全局内存池大小
     if (address + size > global_size_) {
         throw std::runtime_error(
             "Memory access out of bounds: addr=" + std::to_string(address) +
@@ -37,7 +36,6 @@ void SimpleMemory::direct_access(uint64_t address, void *data, size_t size,
             ", max_size=" + std::to_string(global_size_));
     }
 
-    // 执行访问
     if (is_write) {
         std::memcpy(global_base_ + address, data, size);
     } else {
