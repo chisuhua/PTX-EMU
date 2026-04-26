@@ -101,12 +101,6 @@ void PtxInterpreter::funcInterpreter(
 
     // 构建KernelLaunchRequest并提交到全局GPUContext
     if (g_gpu_context) {
-        // 只传递name2Sym和label2pc的所有权，statements由ptxContext持有
-        auto name2sym_ptr =
-            std::make_shared<std::map<std::string, Symtable *>>(name2Sym);
-        auto label2pc_ptr =
-            std::make_shared<std::map<std::string, int>>(label2pc);
-
         // 预先计算总的本地内存需求
         size_t total_local_memory_needed = 0;
         size_t local_mem_per_thread = 0;
@@ -266,9 +260,11 @@ void PtxInterpreter::funcInterpreter(
             auto globalDecl = global_info.second;
             std::string global_name = global_info.first;
 
+            // element_size is per-element bytes (e.g., 1 for .b8, 4 for .b32)
             size_t element_size = Q2bytes(globalDecl->dataType);
-            size_t var_size = element_size *
-                              (globalDecl->size ? *globalDecl->size : 1);
+            // Use array_size for both allocation and element count for consistency
+            size_t array_size = globalDecl->array_size > 0 ? globalDecl->array_size : 1;
+            size_t var_size = element_size * array_size;
 
             // 考虑对齐，向上取整到8字节边界
             if (var_size % 8 != 0) {
@@ -279,8 +275,7 @@ void PtxInterpreter::funcInterpreter(
             Symtable *s = new Symtable();
             s->name = global_name;
             s->symType = globalDecl->dataType;
-            s->elementNum =
-                globalDecl->size ? *globalDecl->size : 1; // 数组大小
+            s->elementNum = array_size;
             s->byteNum = Q2bytes(globalDecl->dataType);
 
             // 设置全局变量在全局空间中的地址
@@ -308,7 +303,6 @@ void PtxInterpreter::funcInterpreter(
                 void *dest_addr = (void *)((char *)global_base_addr +
                                            current_global_offset);
 
-                // 根据数据类型初始化值
                 for (size_t i = 0; i < globalDecl->initValues.size() &&
                                    i < s->elementNum;
                      ++i) {
@@ -317,26 +311,22 @@ void PtxInterpreter::funcInterpreter(
                     case Qualifier::Q_U8:
                     case Qualifier::Q_S8: {
                         char *target = (char *)dest_addr + i * element_size;
-                        *target =
-                            static_cast<char>(globalDecl->initValues[i]);
+                        *target = static_cast<char>(globalDecl->initValues[i]);
                         break;
                     }
                     case Qualifier::Q_B16:
                     case Qualifier::Q_U16:
                     case Qualifier::Q_S16:
                     case Qualifier::Q_F16: {
-                        short *target =
-                            (short *)((char *)dest_addr + i * element_size);
-                        *target =
-                            static_cast<short>(globalDecl->initValues[i]);
+                        short *target = (short *)((char *)dest_addr + i * element_size);
+                        *target = static_cast<short>(globalDecl->initValues[i]);
                         break;
                     }
                     case Qualifier::Q_B32:
                     case Qualifier::Q_U32:
                     case Qualifier::Q_S32:
                     case Qualifier::Q_F32: {
-                        int *target =
-                            (int *)((char *)dest_addr + i * element_size);
+                        int *target = (int *)((char *)dest_addr + i * element_size);
                         *target = static_cast<int>(globalDecl->initValues[i]);
                         break;
                     }
@@ -344,17 +334,12 @@ void PtxInterpreter::funcInterpreter(
                     case Qualifier::Q_U64:
                     case Qualifier::Q_S64:
                     case Qualifier::Q_F64: {
-                        long long *target =
-                            (long long *)((char *)dest_addr +
-                                          i * element_size);
-                        *target = static_cast<long long>(
-                            globalDecl->initValues[i]);
+                        long long *target = (long long *)((char *)dest_addr + i * element_size);
+                        *target = static_cast<long long>(globalDecl->initValues[i]);
                         break;
                     }
                     default: {
-                        // 默认按int处理
-                        int *target =
-                            (int *)((char *)dest_addr + i * element_size);
+                        int *target = (int *)((char *)dest_addr + i * element_size);
                         *target = static_cast<int>(globalDecl->initValues[i]);
                         break;
                     }
@@ -403,6 +388,13 @@ void PtxInterpreter::funcInterpreter(
             }
         }
 
+        // 在所有符号（params, globals等）都添加到name2Sym之后，再创建共享指针
+        // 这样可以确保KernelLaunchRequest获得的是包含完整符号信息的拷贝
+        auto name2sym_ptr =
+            std::make_shared<std::map<std::string, Symtable *>>(name2Sym);
+        auto label2pc_ptr =
+            std::make_shared<std::map<std::string, int>>(label2pc);
+
         // 构建请求，statements由ptxContext持有，不转移所有权
         KernelLaunchRequest request(
             args, gridDim, blockDim,
@@ -429,7 +421,7 @@ void PtxInterpreter::setupConstantSymbols(
     }
 
     for (const auto &e : ptxContext->ptxStatements) {
-        if (e.type == S_CONST) {
+        if (e.type == S_CONST || e.type == S_GLOBAL) {
             Symtable *s = new Symtable();
             const auto &decl = std::get<DeclarationInstr>(e.data);
 

@@ -3,11 +3,12 @@
 #include "ptxsim/thread_context.h"
 #include "ptxsim/utils/qualifier_utils.h"
 #include <iostream>
+#include <mutex>
+
+static std::mutex g_printf_mutex;
 
 // RET is a VOID_INSTR handler
 void RetHandler::processOperation(ThreadContext *context, StatementContext &stmt) {
-    // Implementation for RET instruction
-    // This is a simplified version of the original process_operation
     if (context->call_stack.empty()) {
         context->state = EXIT;
     } else {
@@ -15,45 +16,86 @@ void RetHandler::processOperation(ThreadContext *context, StatementContext &stmt
         context->call_stack.pop();
         context->next_pc = return_pc;
     }
-    (void)stmt; // Unused for now
+    (void)stmt;
 }
 
 // CALL is a CALL_INSTR handler
 void CallHandler::executeCall(ThreadContext *context, const CallInstr &instr) {
-    // Implementation for CALL instruction
-    // This needs to be adapted from the original process_operation
-    // For now, implement a placeholder
-    (void)context;
-    (void)instr;
-    // TODO: Implement actual call logic
+    if (instr.funcName == "vprintf" || instr.funcName == "printf" || instr.funcName == "_printf") {
+        handlePrintf(context, instr);
+        return;
+    }
 }
 
+static constexpr size_t MAX_FORMAT_LEN = 512;
+static constexpr size_t MAX_ARGS_SIZE = 256;
+
 void CallHandler::handlePrintf(ThreadContext *context, const CallInstr &instr) {
-    if (instr.operands.size() < 1) {
-        return;
-    }
-
-    // Helper function to get string from memory
-    auto get_string_from_memory = [](ThreadContext *ctx, uint64_t addr) -> std::string {
-        static std::string temp_str = "Placeholder string";
-        return temp_str;
-    };
-
     std::string formatStr;
-    void *formatAddr = context->acquire_operand(instr.operands[0], instr.qualifiers);
-    if (!formatAddr) {
+    std::vector<void *> args;
+
+    if (!instr.operands.empty()) {
+        void *formatPtrAddr = context->acquire_operand(instr.operands[0], instr.qualifiers);
+        if (formatPtrAddr) {
+            uint64_t formatPtr = *static_cast<uint64_t *>(formatPtrAddr);
+
+            char formatBuf[MAX_FORMAT_LEN];
+            memset(formatBuf, 0, sizeof(formatBuf));
+            try {
+                HardwareMemoryManager::instance().access(
+                    reinterpret_cast<void *>(formatPtr),
+                    formatBuf, MAX_FORMAT_LEN - 1, false, MemorySpace::GLOBAL);
+                formatBuf[MAX_FORMAT_LEN - 1] = '\0';
+                formatStr = formatBuf;
+            } catch (const std::exception &e) {
+                PTX_DEBUG_EMU("handlePrintf: failed to read format string at %p: %s",
+                              reinterpret_cast<void *>(formatPtr), e.what());
+            }
+        }
+
+        if (instr.operands.size() > 1) {
+            void *argsPtrAddr = context->acquire_operand(instr.operands[1], instr.qualifiers);
+            if (argsPtrAddr) {
+                uint64_t gpuAddr = *static_cast<uint64_t *>(argsPtrAddr);
+                if (gpuAddr != 0) {
+                    char addrBuf[8];
+                    try {
+                        HardwareMemoryManager::instance().access(
+                            reinterpret_cast<void *>(gpuAddr),
+                            addrBuf, sizeof(addrBuf), false, MemorySpace::GLOBAL);
+                        uint64_t argsPtr = *reinterpret_cast<uint64_t *>(addrBuf);
+                        if (argsPtr != 0) {
+                            char actualArgsBuf[MAX_ARGS_SIZE];
+                            HardwareMemoryManager::instance().access(
+                                reinterpret_cast<void *>(argsPtr),
+                                actualArgsBuf, sizeof(actualArgsBuf), false, MemorySpace::GLOBAL);
+                            uint64_t *argsArray = reinterpret_cast<uint64_t *>(actualArgsBuf);
+                            size_t maxArgs = sizeof(actualArgsBuf) / sizeof(uint64_t);
+                            for (size_t i = 0; i < maxArgs; i++) {
+                                args.push_back(&argsArray[i]);
+                            }
+                        }
+                    } catch (const std::exception &e) {
+                        PTX_DEBUG_EMU("handlePrintf: failed to read args at %p: %s",
+                                      reinterpret_cast<void *>(gpuAddr), e.what());
+                    }
+                }
+            }
+        }
+    }
+
+    if (formatStr.empty()) {
+        std::lock_guard<std::mutex> lock(g_printf_mutex);
+        printf("[kernel printf]");
+        fflush(stdout);
         return;
     }
 
-    uint64_t formatPtr = *static_cast<uint64_t *>(formatAddr);
-    formatStr = get_string_from_memory(context, formatPtr);
-
-    std::vector<void *> args;
-    for (int i = 1; i < instr.operands.size(); i++) {
-        void *argAddr = context->acquire_operand(instr.operands[i], instr.qualifiers);
-        if (argAddr) {
-            args.push_back(argAddr);
-        }
+    if (args.empty()) {
+        std::lock_guard<std::mutex> lock(g_printf_mutex);
+        printf("%s", formatStr.c_str());
+        fflush(stdout);
+        return;
     }
 
     parseAndPrintFormat(context, formatStr, args);
@@ -62,7 +104,6 @@ void CallHandler::handlePrintf(ThreadContext *context, const CallInstr &instr) {
 void CallHandler::parseAndPrintFormat(ThreadContext *context,
                                        const std::string &format,
                                        const std::vector<void *> &args) {
-    // Keep the original implementation
     std::string result;
     size_t argIndex = 0;
 
@@ -72,6 +113,7 @@ void CallHandler::parseAndPrintFormat(ThreadContext *context,
             while (format[i] &&
                    (format[i] == '-' || format[i] == '+' || format[i] == '#' ||
                     format[i] == ' ' || format[i] == '*' ||
+                    format[i] == '.' ||
                     (format[i] >= '0' && format[i] <= '9'))) {
                 i++;
             }
@@ -109,23 +151,13 @@ void CallHandler::parseAndPrintFormat(ThreadContext *context,
                 result += buf;
             } break;
             case 'f':
-            case 'F': {
-                float val = *static_cast<float *>(args[argIndex]);
-                char buf[64];
-                snprintf(buf, sizeof(buf), "%.6f", val);
-                result += buf;
-            } break;
+            case 'F':
             case 'e':
-            case 'E': {
-                float val = *static_cast<float *>(args[argIndex]);
-                char buf[64];
-                snprintf(buf, sizeof(buf), "%e", val);
-                result += buf;
-            } break;
+            case 'E':
             case 'g':
             case 'G': {
-                float val = *static_cast<float *>(args[argIndex]);
-                char buf[64];
+                double val = *static_cast<double *>(args[argIndex]);
+                char buf[128];
                 snprintf(buf, sizeof(buf), "%g", val);
                 result += buf;
             } break;
@@ -135,12 +167,14 @@ void CallHandler::parseAndPrintFormat(ThreadContext *context,
             } break;
             case 's': {
                 uint64_t str_ptr = *static_cast<uint64_t *>(args[argIndex]);
-                // Need get_string_from_memory function
-                static auto get_string_from_memory = [](ThreadContext*, uint64_t) -> std::string {
-                    return "Placeholder";
-                };
-                std::string str = get_string_from_memory(context, str_ptr);
-                result += str;
+                if (str_ptr != 0) {
+                    char str_buf[1024];
+                    size_t max_len = sizeof(str_buf) - 1;
+                    HardwareMemoryManager::instance().access(
+                        reinterpret_cast<void *>(str_ptr), str_buf, max_len, false, MemorySpace::GLOBAL);
+                    str_buf[max_len] = '\0';
+                    result += str_buf;
+                }
             } break;
             case 'p': {
                 uint64_t ptr = *static_cast<uint64_t *>(args[argIndex]);
@@ -159,6 +193,9 @@ void CallHandler::parseAndPrintFormat(ThreadContext *context,
         }
     }
 
-    printf("%s", result.c_str());
-    fflush(stdout);
+    {
+        std::lock_guard<std::mutex> lock(g_printf_mutex);
+        printf("%s", result.c_str());
+        fflush(stdout);
+    }
 }
