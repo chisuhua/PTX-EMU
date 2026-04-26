@@ -108,27 +108,20 @@ void WarpContext::check_reconvergence() {
 }
 
 WarpContext::WarpContext()
-    : active_count(0), pc(0), warp_id(-1), single_step_mode(false),
+    : active_count(WARP_SIZE), pc(0), warp_id(-1), single_step_mode(false),
       divergence_detected(false), sm_context_(nullptr) {
-    // 初始化 warp 线程 ID 和活跃掩码
     for (int i = 0; i < WARP_SIZE; i++) {
         warp_thread_ids[i] = -1;
-        active_mask[i] = false;
-        pc_stacks[i] = std::vector<int>(); // 初始化 PC 栈
-        
-        // 线程状态初始化为非活跃，在 add_thread 时设置
+        active_mask[i] = true;
+        pc_stacks[i] = std::vector<int>();
         warp_state.threads[i].pc = 0;
         warp_state.threads[i].next_pc = 0;
-        warp_state.threads[i].is_active = false;
+        warp_state.threads[i].is_active = true;
         warp_state.threads[i].is_exited = false;
         warp_state.threads[i].is_blocked = false;
         warp_state.threads[i].status = ptxsim::ThreadStatus::Active;
     }
-    
-    // 初始化执行掩码
-    warp_state.exec_mask = 0x0;
-    
-    active_count = 0;
+    warp_state.exec_mask = 0xFFFFFFFF;
 }
 
 void WarpContext::add_thread(std::unique_ptr<ThreadContext> thread,
