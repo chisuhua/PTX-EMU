@@ -11,6 +11,7 @@ struct Wbar {
     uint32_t participation_mask = 0;
     uint32_t arrived_mask = 0;
     int reconvergence_pc = -1;
+    uint32_t barrier_pc = 0;  // PC of the barrier instruction itself
     bool is_initialized = false;
     int expected_count = 0;
     
@@ -21,6 +22,7 @@ struct Wbar {
         participation_mask = 0;
         arrived_mask = 0;
         reconvergence_pc = -1;
+        barrier_pc = 0;
         is_initialized = false;
         expected_count = 0;
         pre_barrier_stores.clear();

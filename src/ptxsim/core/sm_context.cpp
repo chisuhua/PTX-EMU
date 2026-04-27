@@ -293,6 +293,9 @@ void SMContext::update_state() {
         }
     }
 
+    // 清理已完成的blocks（释放共享内存）
+    cleanup_finished_blocks();
+
     // 检查是否有正在管理的blocks
     bool has_managed_blocks = !managed_blocks.empty();
 
@@ -464,30 +467,42 @@ bool SMContext::synchronize_barrier(int barId, ThreadContext *thread) {
     // 检查是否所有线程都已经到达barrier
     if (barrier_waiting_threads[barId].size() >=
         static_cast<size_t>(barrier_thread_counts[barId])) {
-        // 所有线程都到达了barrier，释放所有等待的线程
-        #ifdef PTX_DEBUG_BARRIER
-        PTX_INFO_EMU("All threads reached barrier %d, releasing %zu threads",
-                     barId, barrier_waiting_threads[barId].size());
-#endif
-
-        // 设置所有等待线程的状态为RUN
         for (auto waiting_thread : barrier_waiting_threads[barId]) {
             waiting_thread->set_state(RUN);
             waiting_thread->set_next_pc(waiting_thread->get_pc() + 1);
+            waiting_thread->sync_to_warp_state();
         }
 
-        // 清空barrier等待队列
+        for (auto waiting_thread : barrier_waiting_threads[barId]) {
+            WarpContext* warp_ctx = waiting_thread->get_warp_context();
+            if (warp_ctx) {
+                warp_ctx->set_exec_mask(0xFFFFFFFF);
+            }
+        }
+
         barrier_waiting_threads[barId].clear();
-        // 同时清空计数，防止已释放的线程被重复加入后又被阻塞
         barrier_thread_counts.erase(barId);
 
-        return true; // 表示同步完成
+        return true;
+    }
+
+    // If barrier_thread_counts was already cleared, barrier already completed
+    // Just release this thread without re-blocking
+    if (barrier_thread_counts.find(barId) == barrier_thread_counts.end()) {
+        thread->set_state(RUN);
+        thread->set_next_pc(thread->get_pc() + 1);
+        thread->sync_to_warp_state();
+        WarpContext* warp_ctx = thread->get_warp_context();
+        if (warp_ctx) {
+            warp_ctx->set_exec_mask(0xFFFFFFFF);
+        }
+        return true;
     }
 
     // 线程设置为等待状态
     thread->set_state(BAR_SYNC);
 
-    return false; // 表示线程还在等待
+    return false;
 }
 
 void SMContext::print_warp_status() const {

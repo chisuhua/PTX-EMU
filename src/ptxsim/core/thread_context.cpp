@@ -737,10 +737,7 @@ void ThreadContext::sync_to_warp_state() {
     switch (state) {
         case RUN:
             thread_state.status = ptxsim::ThreadStatus::Active;
-            // Barrier handler may have set is_blocked for this lane
-            if (!thread_state.is_blocked) {
-                thread_state.is_blocked = false;
-            }
+            thread_state.is_blocked = false;
             break;
         case BAR_SYNC:
             thread_state.status = ptxsim::ThreadStatus::Blocked;
@@ -749,6 +746,7 @@ void ThreadContext::sync_to_warp_state() {
         case EXIT:
             thread_state.status = ptxsim::ThreadStatus::Exited;
             thread_state.is_exited = true;
+            thread_state.is_active = false;
             thread_state.is_blocked = false;
             break;
         default:

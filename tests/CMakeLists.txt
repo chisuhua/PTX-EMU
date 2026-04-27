@@ -471,6 +471,13 @@ add_catch_test(test_specific_bugs_unit
     test_specific_bugs_unit.cpp
 )
 
+# Added 2026-04-27: Post-barrier warp divergence reproduction test
+# Reproduces the failure pattern from test_divergence_sync where thread 0
+# doesn't execute after CTA barrier due to exec_mask not being restored
+add_catch_test(test_post_barrier_divergence
+    test_post_barrier_divergence.cpp
+)
+
 # Developer utility: CFG debug tool (not a test, just a PTX analysis binary)
 # TODO: Fix API mismatch - PtxVisitor requires PtxContext&, no default ctor, no getKernels()
 # add_executable(test-cfg-debug ptx/test_cfg_debug.cpp)

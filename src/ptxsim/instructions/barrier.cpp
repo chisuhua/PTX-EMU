@@ -141,18 +141,17 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
     wbar.arrive(lane_id);
 
     if (wbar.is_complete()) {
-        // Safety guard: reconvergence_pc must be valid (non-negative)
-        // -1 would be converted to UINT32_MAX by set_thread_pc (takes uint32_t)
         if (reconvergence_pc < 0) {
             PTX_ERROR_EMU("bar.warp.sync: Invalid reconvergence_pc=%d at barrier completion, skipping PC update", reconvergence_pc);
             return;
         }
-        
+
+        warp_ctx->set_exec_mask(wbar.arrived_mask);
+
         PTX_INFO_EMU("bar.warp.sync: Barrier complete, releasing %d threads to PC=%d (mask=0x%X arrived=0x%X)",
                       wbar.count_participants(), reconvergence_pc,
                       wbar.participation_mask, wbar.arrived_mask);
-        
-        // Only update lanes that have actually arrived at the barrier
+
         for (int i = 0; i < WarpContext::WARP_SIZE; ++i) {
             if ((wbar.arrived_mask & (1u << i)) && warp_state.threads[i].is_active) {
                 uint32_t old_pc = warp_ctx->get_thread(i)->pc;
@@ -163,8 +162,7 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
                 PTX_INFO_EMU("  Released lane=%d: PC=%u -> %d", i, old_pc, reconvergence_pc);
             }
         }
-        
-        // Reset barrier for next use
+
         wbar.reset();
         warp_state.current_wbar_id = -1;
     } else {

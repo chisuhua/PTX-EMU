@@ -215,6 +215,41 @@ Lane X blocked at bar.warp.sync (arrived=N/32)
 
 ### 成功经验
 
+### 已知限制 (Known Limitations)
+
+#### 1. test_divergence_sync 失败
+
+**状态**: Open (未修复)
+
+**现象**: 
+- 测试 `test_divergence_sync` 失败，输出 `expected -847479615, got 0`
+- 其他 8 个共享内存测试全部通过
+
+**根本原因**:
+- Warp divergence + post-barrier reconvergence 问题
+- 测试涉及：
+  1. Lanes 0-15 vs 16-31 取不同代码路径（ warp divergence）
+  2. `__syncthreads()` CTA barrier 同步
+  3. Barrier 后 thread 0 收集数据（再次 divergence）
+
+**技术分析**:
+- Barrier 本身工作正常：所有线程正确同步并释放
+- Post-barrier divergence 处理有问题：thread 0 (lane 0) 在 barrier 后的 `if (tid == 0)` 检查中未正确执行
+- 可能与 SIMT stack 管理或 warp scheduler 在 post-barrier divergence 场景的行为有关
+
+**影响范围**:
+- 仅影响需要 post-barrier divergence 收集的场景
+- 基本 barrier 功能和其他 8 个共享内存测试不受影响
+
+**修复建议**:
+1. 深入分析 post-barrier divergence 场景的 warp 调度
+2. 检查 SIMT stack 在 barrier reconvergence 时的状态
+3. 验证 thread 0 在 `if (tid == 0)` 后的执行流程
+
+**Workaround**:
+- 避免在 barrier 后立即进行需要特定线程执行的 divergence 操作
+- 使用其他同步机制替代 post-barrier divergence 收集
+
 1. **PTX 提取是关键**: 多个测试失败源于 PTX 提取使用相对路径
    - 修复：使用 getcwd() 获取绝对路径
    
