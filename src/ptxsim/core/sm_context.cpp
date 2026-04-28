@@ -477,6 +477,7 @@ bool SMContext::synchronize_barrier(int barId, ThreadContext *thread) {
             WarpContext* warp_ctx = waiting_thread->get_warp_context();
             if (warp_ctx) {
                 warp_ctx->set_exec_mask(0xFFFFFFFF);
+                warp_ctx->set_active_mask(0xFFFFFFFF);
             }
         }
 
@@ -495,6 +496,7 @@ bool SMContext::synchronize_barrier(int barId, ThreadContext *thread) {
         WarpContext* warp_ctx = thread->get_warp_context();
         if (warp_ctx) {
             warp_ctx->set_exec_mask(0xFFFFFFFF);
+            warp_ctx->set_active_mask(0xFFFFFFFF);
         }
         return true;
     }

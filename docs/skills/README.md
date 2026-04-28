@@ -8,6 +8,7 @@
 
 | 技能 | 难度 | 适用场景 | 状态 |
 |------|------|---------|------|
+| [three-mode-testing](./three-mode-testing/) | ⭐⭐⭐ | PTX 测试生成 | ✅ |
 | [cfg-builder-pattern](./cfg-builder-pattern.md) | ⭐⭐⭐ | CFG 构建 | ✅ |
 | [post-dominator-algorithm](./post-dominator-algorithm.md) | ⭐⭐⭐⭐ | 控制流分析 | ✅ |
 | [simt-reconvergence](./simt-reconvergence.md) | ⭐⭐⭐⭐ | SIMT 收敛 | ✅ |
@@ -16,6 +17,11 @@
 ---
 
 ## 🎯 技能分类
+
+### 测试类
+
+- **Three-Mode Testing** - 三模式 PTX 测试生成框架
+- **TDD Workflow** - 测试驱动开发流程
 
 ### 算法类
 
@@ -26,10 +32,6 @@
 
 - **SIMT Reconvergence** - SIMT 收敛技术
 
-### 流程类
-
-- **TDD Workflow** - 测试驱动开发流程
-
 ---
 
 ## 📖 学习路径
@@ -38,9 +40,10 @@
 
 ```
 1. TDD Workflow (⭐⭐) → 了解开发流程
-2. CFG Builder Pattern (⭐⭐⭐) → 学习 CFG 构建
-3. SIMT Reconvergence (⭐⭐⭐⭐) → 理解 SIMT 收敛
-4. Post-Dominator Algorithm (⭐⭐⭐⭐) → 深入算法
+2. Three-Mode Testing (⭐⭐⭐) → 学习 PTX 测试生成
+3. CFG Builder Pattern (⭐⭐⭐) → 学习 CFG 构建
+4. SIMT Reconvergence (⭐⭐⭐⭐) → 理解 SIMT 收敛
+5. Post-Dominator Algorithm (⭐⭐⭐⭐) → 深入算法
 ```
 
 ### 架构师
@@ -49,6 +52,7 @@
 1. Post-Dominator Algorithm (⭐⭐⭐⭐) → 核心算法
 2. CFG Builder Pattern (⭐⭐⭐) → 构建模式
 3. SIMT Reconvergence (⭐⭐⭐⭐) → 架构设计
+4. Three-Mode Testing (⭐⭐⭐) → 测试框架
 ```
 
 ---

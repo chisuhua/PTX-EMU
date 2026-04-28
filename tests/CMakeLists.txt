@@ -492,4 +492,12 @@ add_catch_test(test_post_barrier_divergence
 #     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 # add_dependencies(test-cfg-debug GenerateParser ptx_parser)
 
+# ============================================================================
+# Three-Mode Testing Framework (2026-04-28)
+# Provides three PTX loading modes for debugging:
+# - Mode 1: cuobjdump dynamic extraction (end-to-end)
+# - Mode 2: pre-extracted PTX file (stable reproduction)
+# - Mode 3: direct StatementContext construction (unit testing)
+# ============================================================================
+add_subdirectory(three_mode_testing)
 

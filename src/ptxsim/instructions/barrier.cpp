@@ -163,6 +163,9 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
             }
         }
 
+        // Hybrid fix: update active_mask immediately so barrier handler state is self-contained
+        warp_ctx->set_active_mask(wbar.arrived_mask);
+
         wbar.reset();
         warp_state.current_wbar_id = -1;
     } else {

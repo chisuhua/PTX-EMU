@@ -152,7 +152,17 @@ void WarpContext::add_thread(std::unique_ptr<ThreadContext> thread,
 
 void WarpContext::execute_warp_instruction(StatementContext &stmt, int target_pc) {
     for (int i = 0; i < WARP_SIZE; i++) {
-        if (!is_lane_active(i) || i >= threads.size() || threads[i] == nullptr) {
+        if (i >= threads.size() || threads[i] == nullptr) {
+            continue;
+        }
+
+        ThreadContext *thread = threads[i].get();
+        bool lane_active = is_lane_active(i);
+        bool blocked_at_barrier = (thread->get_state() == BAR_SYNC);
+
+        // Hybrid fix: allow blocked threads to enter even if not lane_active
+        // so BAR_SYNC fallback handling can unblock them
+        if (!lane_active && !blocked_at_barrier) {
             continue;
         }
         
@@ -162,7 +172,6 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt, int target_pc
             continue;
         }
         
-        ThreadContext *thread = threads[i].get();
         thread->sync_from_warp_state();
         
         if (thread->get_state() == BAR_SYNC) {
@@ -192,7 +201,7 @@ void WarpContext::update_active_mask() {
     active_count = 0;
     for (int i = 0; i < WARP_SIZE; i++) {
         if (i < threads.size() && threads[i] != nullptr) {
-            if (threads[i]->is_exited()) {
+            if (threads[i]->is_exited() || warp_state.threads[i].is_blocked) {
                 active_mask[i] = false;
             } else {
                 active_mask[i] = true;
