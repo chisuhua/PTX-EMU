@@ -1,7 +1,7 @@
 # tests/three_mode_testing/CMakeLists.txt
 #
-# Three-Mode Testing Framework
-# Auto-detects all *_mode*.cpp files in this directory
+# Four-Mode Testing Framework
+# Auto-detects all *_mode*.cpp files (mode1, mode2, mode3a, mode3b)
 #
 
 set(THREE_MODE_BASE
@@ -15,25 +15,20 @@ set(THREE_MODE_INCLUDES
     ${CMAKE_SOURCE_DIR}/src
 )
 
-# Auto-detect all *_mode*.cpp files
 file(GLOB THREE_MODE_SOURCES CONFIGURE_DEPENDS "*.cpp")
 
-# Filter to only mode test files (exclude test_helpers.cpp and any non-test files)
 set(THREE_MODE_TESTS "")
 foreach(source IN LISTS THREE_MODE_SOURCES)
     get_filename_component(basename ${source} NAME)
-    # Match *_modeN.cpp pattern (N is a digit)
-    if(basename MATCHES "_mode[0-9]+\\.cpp$")
+    if(basename MATCHES "_mode[0-9]+[abc]?\\.cpp$")
         list(APPEND THREE_MODE_TESTS ${source})
     endif()
 endforeach()
 
-message(STATUS "Three-mode tests detected: ${THREE_MODE_TESTS}")
+message(STATUS "Four-mode tests detected: ${THREE_MODE_TESTS}")
 
-# Create executable and test for each detected file
 foreach(source IN LISTS THREE_MODE_TESTS)
-    get_filename_component(test_name ${source} NAME_WE)  # e.g., test_divergence_sync_standalone_mode1
-    message(STATUS "Registering three-mode test: ${test_name}")
+    get_filename_component(test_name ${source} NAME_WE)
 
     add_executable(${test_name}
         ${source}
@@ -47,8 +42,11 @@ foreach(source IN LISTS THREE_MODE_TESTS)
     add_test(NAME ${test_name} COMMAND ${test_name} WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endforeach()
 
-# Group all detected tests under "three_mode" label
 if(THREE_MODE_TESTS)
-    list(TRANSFORM THREE_MODE_TESTS GET NAME_WE THREE_MODE_TEST_NAMES)
+    set(THREE_MODE_TEST_NAMES "")
+    foreach(src IN LISTS THREE_MODE_TESTS)
+        get_filename_component(name ${src} NAME_WE)
+        list(APPEND THREE_MODE_TEST_NAMES ${name})
+    endforeach()
     set_tests_properties(${THREE_MODE_TEST_NAMES} PROPERTIES LABELS "three_mode")
 endif()

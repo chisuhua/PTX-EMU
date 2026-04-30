@@ -66,6 +66,7 @@ add_library(ptxsim SHARED
     ptxsim/core/cta_context.cpp
     ptxsim/core/thread_context.cpp
     ptxsim/core/warp_context.cpp
+    ptxsim/core/execution_tracer.cpp
     ptxsim/core/warp_scheduler.cpp
     ptxsim/core/sm_context.cpp
     ptxsim/core/gpu_context.cpp
