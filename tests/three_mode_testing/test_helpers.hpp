@@ -1,12 +1,12 @@
 /**
- * @file test_helpers.cpp
- * @brief Three-Mode Testing Framework - Common Helpers
+ * @file test_helpers.hpp
+ * @brief Five-Mode Testing Framework - Common Helpers
  *
  * 提供三种 PTX 测试模式的公共基础设施函数。
  */
 
-#ifndef TEST_HELPERS_CPP
-#define TEST_HELPERS_CPP
+#ifndef TEST_HELPERS_HPP
+#define TEST_HELPERS_HPP
 
 #include "catch_amalgamated.hpp"
 #include "ptxsim/warp_state.h"
@@ -351,4 +351,63 @@ inline void print_stmts(const std::vector<StatementContext>& stmts, const char* 
     INFO(ss.str());
 }
 
-#endif // TEST_HELPERS_CPP
+// ============================================================================
+// StatementContext 序列执行 (Mode 3 核心)
+// ============================================================================
+
+// 需要 g_gpu_context（由 libcudart.so 初始化）
+#ifndef GPU_CONTEXT_H
+#include "ptxsim/gpu_context.h"
+#endif
+extern std::unique_ptr<GPUContext> g_gpu_context;
+
+// 从 StatementContext 向量创建 KernelLaunchRequest
+inline KernelLaunchRequest make_kernel_request(
+    std::vector<StatementContext>& statements,
+    std::map<std::string, Symtable*>& name2Sym,
+    std::map<std::string, int>& label2pc,
+    void** args = nullptr,
+    Dim3 gridDim = {1, 1, 1},
+    Dim3 blockDim = {32, 1, 1},
+    size_t sharedMem = 0) {
+
+  KernelLaunchRequest req;
+  req.args = args;
+  req.gridDim = gridDim;
+  req.blockDim = blockDim;
+  req.statements = &statements;
+  req.name2Sym = std::make_shared<std::map<std::string, Symtable*>>(name2Sym);
+  req.label2pc = std::make_shared<std::map<std::string, int>>(label2pc);
+  req.shared_mem_size = sharedMem;
+  return req;
+}
+
+// 通过 GPUContext 执行一组 StatementContext 指令序列
+// 返回：true 表示成功提交并执行完成
+inline bool run_statement_sequence(
+    std::vector<StatementContext>& statements,
+    void** args = nullptr,
+    Dim3 gridDim = {1, 1, 1},
+    Dim3 blockDim = {32, 1, 1},
+    size_t sharedMem = 0) {
+
+  if (!g_gpu_context) return false;
+
+  std::map<std::string, Symtable*> name2Sym;
+  std::map<std::string, int> label2pc;
+
+  // 从 statements 提取 labels
+  for (size_t i = 0; i < statements.size(); i++) {
+    if (statements[i].type == S_LABEL) {
+      const auto& lbl = std::get<LabelInstr>(statements[i].data);
+      label2pc[lbl.labelName] = static_cast<int>(i);
+    }
+  }
+
+  auto req = make_kernel_request(statements, name2Sym, label2pc, args, gridDim, blockDim, sharedMem);
+  g_gpu_context->submit_kernel_request(std::move(req));
+  g_gpu_context->wait_for_completion();
+  return true;
+}
+
+#endif // TEST_HELPERS_HPP

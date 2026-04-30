@@ -43,7 +43,7 @@ grep -E "bar\.|ld\.shared|st\.shared|bra" tests/three_mode_testing/ptx/your_test
 
 ### 3. Create Mode 3 Test
 
-Use `test_helpers.cpp` helpers:
+Use `test_helpers.hpp` helpers:
 
 ```cpp
 std::vector<StatementContext> stmts = {
@@ -64,7 +64,7 @@ add_executable(test_your_test_mode3 test_your_test_mode3.cpp ${THREE_MODE_BASE})
 
 ## Helper Functions
 
-See `test_helpers.cpp` and `SKILL.md` for complete list.
+See `test_helpers.hpp` and `SKILL.md` for complete list.
 
 ### Common Patterns
 
@@ -88,7 +88,7 @@ tests/three_mode_testing/
 ├── CMakeLists.txt        # Build config
 ├── README.md             # This file
 ├── SKILL.md             # Skill documentation
-├── test_helpers.cpp      # Common helpers
+├── test_helpers.hpp      # Common helpers
 ├── test_mode1.cpp       # Mode 1 template
 ├── test_mode2.cpp       # Mode 2 template
 ├── test_mode3.cpp        # Mode 3 template

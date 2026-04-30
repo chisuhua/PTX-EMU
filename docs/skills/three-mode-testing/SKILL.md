@@ -72,13 +72,25 @@ python3 docs/skills/three-mode-testing/generate_tests.py --benchmark dummy --mod
 
 **注意**: `sync_cmake()` 使用 word boundary 检测已存在的测试，不会重复添加。
 
-## 三种模式
+## Five-Mode Testing Framework
 
 | 模式 | 说明 | 适用场景 |
 |------|------|----------|
 | **Mode 1** | cuobjdump 动态提取 PTX | 集成测试、CI/CD |
 | **Mode 2** | 预提取 PTX 文件 | 回归测试、版本控制 |
-| **Mode 3** | 直接构造 StatementContext | 单元测试、精确调试 |
+| **Mode 3a** | StatementContext BEFORE CFG | 单元测试，无 reconvergence_pc |
+| **Mode 3b** | StatementContext AFTER CFG | 单元测试，reconvergence_pc 已填充 |
+| **Mode 3c** | 运行 standalone binary（popen）| 端到端 FAIL 复现测试 |
+
+### Mode 3C: Standalone Binary FAIL Reproduction
+
+Mode 3C **不依赖内部 PtxContext/GPUContext 类型**（因为 ptx_parser.h 和 ptx_types.h 之间存在 X-macro 冲突）。
+而是通过 `popen()` 直接运行已编译的 standalone binary，检测其输出中的 FAIL 标记。
+
+- **测试目标**: 复现 standalone binary 的 FAIL 行为
+- **当前行为**: 检测 `=== Result: FAIL ===` 标记
+- **bug 修复后**: 输出会变为 `=== Result: PASS ===`，测试代码需要相应更新
+- **运行条件**: 直接调用 standalone binary（使用 `PTX_LOG_LEVEL=error` 减少噪音）
 
 ## 完整工作流
 
@@ -86,11 +98,11 @@ python3 docs/skills/three-mode-testing/generate_tests.py --benchmark dummy --mod
 # 1. 编译你的 CUDA 程序
 cmake --build build --target dummy
 
-# 2. 生成三模式测试（自动发现源码和 binary）
+# 2. 生成五模式测试（自动发现源码和 binary）
 python3 docs/skills/three-mode-testing/generate_tests.py --benchmark dummy
 
 # 3. 构建并运行
-cmake --build build --target test_dummy_mode1 test_dummy_mode2 test_dummy_mode3
+cmake --build build --target test_dummy_mode1 test_dummy_mode2 test_dummy_mode3a test_dummy_mode3b
 ctest -R dummy -V
 ```
 
@@ -122,7 +134,7 @@ python3 docs/skills/three-mode-testing/generate_tests.py --benchmark dummy --tes
 
 ## Mode 3 构造
 
-Mode 3 使用 `test_helpers.cpp` 中的辅助函数构造 StatementContext：
+Mode 3 使用 `test_helpers.hpp` 中的辅助函数构造 StatementContext：
 
 ### 语句构造
 
@@ -202,7 +214,7 @@ Mode 1: 端到端验证
 ```
 tests/three_mode_testing/
 ├── CMakeLists.txt          # 自动更新
-├── test_helpers.cpp        # 共享辅助函数
+├── test_helpers.hpp        # 共享辅助函数 (StatementContext 构建)
 ├── test_<name>_mode1.cpp   # Mode 1 测试
 ├── test_<name>_mode2.cpp   # Mode 2 测试
 ├── test_<name>_mode3.cpp   # Mode 3 测试
