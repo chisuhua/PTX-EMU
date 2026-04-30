@@ -1,6 +1,7 @@
 #include "ptxsim/warp_context.h"
 #include "ptxsim/sm_context.h"
 #include "ptxsim/ptx_config.h"
+#include "ptxsim/execution_trace.h"
 #include <algorithm>
 #include <cassert>
 #include <cstring>
@@ -192,6 +193,11 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt, int target_pc
         
         thread->execute_thread_instruction();
         thread->sync_to_warp_state();
+
+        if (ptxsim::ExecutionTracer::is_enabled()) {
+          ptxsim::ExecutionTracer::record(
+              i, warp_state.threads[i].pc, stmt.instructionText);
+        }
     }
     
     update_active_mask();
