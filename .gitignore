@@ -49,3 +49,5 @@ Testing/Temporary/
 
 # Mini test config (temporary)
 configs/mini_test.ini
+
+__pycache__/
