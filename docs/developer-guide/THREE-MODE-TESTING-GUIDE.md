@@ -1,20 +1,20 @@
-# 三模式测试框架指南
+# 四模式测试框架指南
 
-**版本**: v1.0
-**最后更新**: 2026-04-30
-**适合人群**: 测试工程师，开发者
+**版本**: v1.1
+**最后更新**: 2026-05-01
 
 ---
 
 ## 概述
 
-三模式测试框架提供三种 PTX 加载模式，用于测试 PTX-EMU 模拟器，支持从端到端到精确单元测试的调试。
+四模式测试框架提供四种 PTX 加载模式，用于测试 PTX-EMU 模拟器，支持从端到端到精确单元测试的调试。
 
 | 模式 | 描述 | 使用场景 |
 |------|------|---------|
 | **Mode 1** | cuobjdump 动态提取 | 端到端集成测试，CI/CD |
 | **Mode 2** | 预提取的 PTX 文件 | 稳定复现，版本控制 |
 | **Mode 3** | 直接构造 StatementContext | 单元测试，精确定位 |
+| **Mode 4** | PTXIR 二进制快速加载 | 快速回归测试，避免重复解析 |
 
 ---
 
@@ -111,6 +111,46 @@ Mode 3a (BEFORE CFG):
 Mode 3b (AFTER CFG):
   BranchInstr { reconvergence_pc = 15 }  // CFG builder 填充
   BarWarpSyncInstr { operands[1] = 16 }  // 更新为 i+1
+```
+
+---
+
+### Mode 4：PTXIR 二进制快速加载
+
+绕过 ANTLR 解析，直接从预序列化的 `.ptxir` 二进制文件加载 StatementContext：
+
+```cpp
+// 快速加载（~5ms vs ~200ms for ANTLR）
+auto stmts = load_ptxir("tests/ptxir/your_kernel.ptxir", false);
+
+// 或加载后立即应用 CFG builder
+auto stmts = load_ptxir("tests/ptxir/your_kernel.ptxir", true);
+```
+
+**Mode 4 优势**：
+- 加载速度极快（~5ms vs ~200ms）
+- 无需 ANTLR 依赖
+- 适合单元测试的快速迭代
+
+**生成 .ptxir 文件**：
+```bash
+# 从 PTX 文件生成
+python3 docs/skills/three-mode-testing/generate_tests.py --benchmark your_kernel --ptxir
+
+# 或使用 test_helpers.hpp 中的函数
+generate_ptxir("tests/three_mode_testing/ptx/your_kernel.ptx",
+               "tests/ptxir/your_kernel.ptxir");
+```
+
+**Mode 4 工作流**：
+```
+修复问题 → Mode 3b 验证 → Mode 4 快速回归测试
+                 ↓
+         serialize_statements() → .ptxir 文件
+                 ↓
+         deserialize_statements() → 快速加载
+                 ↓
+         run_statement_sequence() → 验证
 ```
 
 ---

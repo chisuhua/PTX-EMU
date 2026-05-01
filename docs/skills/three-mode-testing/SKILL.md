@@ -81,6 +81,7 @@ python3 docs/skills/three-mode-testing/generate_tests.py --benchmark dummy --mod
 | **Mode 3a** | StatementContext BEFORE CFG | 单元测试，无 reconvergence_pc |
 | **Mode 3b** | StatementContext AFTER CFG | 单元测试，reconvergence_pc 已填充 |
 | **Mode 3c** | 运行 standalone binary（popen）| 端到端 FAIL 复现测试 |
+| **Mode 4** | PTXIR binary serialize/deserialize | 快速加载测试（~5ms vs ~200ms）|
 
 ### Mode 3C: Standalone Binary FAIL Reproduction
 

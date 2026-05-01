@@ -9,6 +9,7 @@
 | 技能 | 难度 | 适用场景 | 状态 |
 |------|------|---------|------|
 | [three-mode-testing](./three-mode-testing/) | ⭐⭐⭐ | PTX 测试生成 | ✅ |
+| [ptxir-serialization](./ptxir-serialization/) | ⭐⭐⭐ | PTX 二进制序列化 | ✅ |
 | [cfg-builder-pattern](./cfg-builder-pattern.md) | ⭐⭐⭐ | CFG 构建 | ✅ |
 | [post-dominator-algorithm](./post-dominator-algorithm.md) | ⭐⭐⭐⭐ | 控制流分析 | ✅ |
 | [simt-reconvergence](./simt-reconvergence.md) | ⭐⭐⭐⭐ | SIMT 收敛 | ✅ |
@@ -20,7 +21,8 @@
 
 ### 测试类
 
-- **Three-Mode Testing** - 三模式 PTX 测试生成框架
+- **Three-Mode Testing** - 四模式 PTX 测试生成框架
+- **PTXIR Serialization** - PTX 二进制序列化与快速加载
 - **TDD Workflow** - 测试驱动开发流程
 
 ### 算法类

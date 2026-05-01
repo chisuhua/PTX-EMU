@@ -17,7 +17,7 @@
 | [DEBUG-QUICK-REFERENCE.md](./DEBUG-QUICK-REFERENCE.md) | 所有开发者 | ✅ |
 | [DEBUGGING-GUIDE.md](./DEBUGGING-GUIDE.md) | 所有开发者 | ✅ |
 | [PTX-DEBUG-SKILL-USAGE.md](./PTX-DEBUG-SKILL-USAGE.md) | 所有开发者 | ✅ |
-| [THREE-MODE-TESTING-GUIDE.md](./THREE-MODE-TESTING-GUIDE.md) | 测试工程师 | ✅ |
+| [THREE-MODE-TESTING-GUIDE.md](./THREE-MODE-TESTING-GUIDE.md) | 测试工程师 | ✅ 四模式 |
 
 ---
 
