@@ -111,6 +111,8 @@ add_library(ptx_parser SHARED
 target_link_libraries(ptx_parser ptx_ir)
 add_dependencies(ptx_parser GenerateParser)
 
+add_subdirectory(ptx_ir)
+
 # 创建共享库
 add_library(cudart SHARED ${SOURCES})
 target_link_libraries(cudart ptx_ir ptx_parser ptxsim)
