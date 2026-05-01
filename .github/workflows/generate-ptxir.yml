@@ -1,0 +1,40 @@
+name: Generate PTXIR Files
+
+on:
+  push:
+    paths:
+      - 'tests/three_mode_testing/ptx/*.ptx'
+      - 'src/ptx_ir/ptxir_writer.cpp'
+      - 'src/ptx_ir/ptxir_reader.cpp'
+  workflow_dispatch:
+
+jobs:
+  generate-ptxir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential cuda-toolkit
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build PTXIR tools
+        run: cmake --build build --target ptxir_writer ptxir_reader
+
+      - name: Generate PTXIR files
+        run: |
+          for ptx in tests/three_mode_testing/ptx/*.ptx; do
+            name=$(basename "$ptx" .ptx)
+            echo "Generating $name.ptxir..."
+            # TODO: implement generate_ptxir as standalone tool
+          done
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ptxir-files
+          path: tests/ptxir/*.ptxir

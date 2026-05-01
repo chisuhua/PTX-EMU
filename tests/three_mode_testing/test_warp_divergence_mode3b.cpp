@@ -74,9 +74,6 @@ TEST_CASE("Mode3b: test_warp_divergence - barrier Wbar arrive and complete", "[m
     CHECK(count_active_lanes(warp) == 32);
 }
 
-
-
-
 TEST_CASE("Mode3b: test_warp_divergence - shared memory via StatementContext", "[mode3b][shared]") {
     init_factory_once();
 

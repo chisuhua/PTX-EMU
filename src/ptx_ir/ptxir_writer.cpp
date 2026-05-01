@@ -78,6 +78,8 @@ void PtxirWriter::pre_pass(const std::vector<StatementContext>& statements) {
 }
 
 uint32_t PtxirWriter::get_reg_id(const std::string& name) {
+    // Currently returns 0xFFFFFFFF placeholder (dst_reg_id unused in serialization).
+    // Future: map register names to compact IDs in string table for roundtrip.
     auto it = reg2id_.find(name);
     return it != reg2id_.end() ? it->second : 0xFFFFFFFF;
 }
@@ -129,7 +131,6 @@ void PtxirWriter::write_instruction(const StatementContext& stmt) {
     stmt.visit([this](const auto& instr) {
         using T = std::decay_t<decltype(instr)>;
         if constexpr (std::is_same_v<T, BranchInstr>) {
-            write_i32(out_, -1);
             write_u32(out_, get_string_id(instr.target));
             write_u8(out_, instr.predicate_negated ? 1 : 0);
             write_i32(out_, instr.reconvergence_pc);
