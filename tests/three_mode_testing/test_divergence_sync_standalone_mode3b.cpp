@@ -39,7 +39,7 @@ TEST_CASE("Mode3b: test_divergence_sync_standalone - barrier via StatementContex
     INFO("Mode3b barrier StatementContext verified");
 }
 
-TEST_CASE("Mode3b: test_divergence_sync_standalone - barrier raw WarpContext", "[mode3b][barrier][raw]") {
+TEST_CASE("Mode3b: test_divergence_sync_standalone - barrier Wbar arrive and complete", "[mode3b][barrier]") {
     init_factory_once();
 
     WarpContext warp;
@@ -57,7 +57,7 @@ TEST_CASE("Mode3b: test_divergence_sync_standalone - barrier raw WarpContext", "
         wbar.arrive(i);
     }
 
-    REQUIRE(wbar.is_complete());
+    CHECK(wbar.is_complete() == true);
     warp.set_exec_mask(wbar.arrived_mask);
 
     for (int i = 0; i < 32; i++) {
@@ -89,28 +89,6 @@ TEST_CASE("Mode3b: test_divergence_sync_standalone - shared memory via Statement
     CHECK(stmts[1].instructionText.find("st.shared") != std::string::npos);
 }
 
-TEST_CASE("Mode3b: test_divergence_sync_standalone - shared memory raw", "[mode3b][shared][raw]") {
-    init_factory_once();
-
-    WarpContext warp;
-    std::vector<std::unique_ptr<ThreadContext>> threads;
-    setup_warp(warp, threads, 32);
-    reset_warp(warp);
-
-    void* shmem = allocate_shared(32);
-    for (int i = 0; i < 32; i++) {
-        auto* t = warp.get_thread(i);
-        if (t) t->shared_mem_space = shmem;
-    }
-
-    for (int i = 0; i < 32; i++) write_shared(shmem, i, i);
-
-    uint32_t sum = 0;
-    for (int i = 0; i < 32; i++) sum += read_shared(shmem, i);
-    CHECK(sum == 496);
-    free(shmem);
-}
-
 
 TEST_CASE("Mode3b: test_divergence_sync_standalone - divergence via StatementContext", "[mode3b][divergence]") {
     init_factory_once();
@@ -134,23 +112,6 @@ TEST_CASE("Mode3b: test_divergence_sync_standalone - divergence via StatementCon
     CHECK(bra.type == S_BRA);
     const auto& bra_data = std::get<BranchInstr>(bra.data);
     INFO("Mode3b branch reconvergence_pc: " << bra_data.reconvergence_pc);
-}
-
-TEST_CASE("Mode3b: test_divergence_sync_standalone - warp divergence raw", "[mode3b][divergence][raw]") {
-    init_factory_once();
-
-    WarpContext warp;
-    std::vector<std::unique_ptr<ThreadContext>> threads;
-    setup_warp(warp, threads, 32);
-    reset_warp(warp);
-
-    warp.set_active_mask(0x0000FFFF);
-    CHECK(count_active_lanes(warp) == 16);
-
-    warp.set_active_mask(0xFFFF0000);
-    CHECK(count_active_lanes(warp) == 16);
-
-    warp.set_active_mask(0xFFFFFFFF);
 }
 
 

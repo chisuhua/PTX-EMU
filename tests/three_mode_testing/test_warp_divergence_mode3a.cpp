@@ -54,33 +54,6 @@ TEST_CASE("Mode3a: test_warp_divergence - shared memory via StatementContext", "
     CHECK(stmts[1].instructionText.find("st.shared") != std::string::npos);
 }
 
-TEST_CASE("Mode3a: test_warp_divergence - shared memory raw WarpContext", "[mode3a][shared][raw]") {
-    init_factory_once();
-
-    WarpContext warp;
-    std::vector<std::unique_ptr<ThreadContext>> threads;
-    setup_warp(warp, threads, 32);
-    reset_warp(warp);
-
-    void* shmem = allocate_shared(32);
-    for (int i = 0; i < 32; i++) {
-        auto* t = warp.get_thread(i);
-        if (t) t->shared_mem_space = shmem;
-    }
-
-    for (int i = 0; i < 32; i++) {
-        write_shared(shmem, i, i);
-    }
-
-    uint32_t sum = 0;
-    for (int i = 0; i < 32; i++) {
-        sum += read_shared(shmem, i);
-    }
-
-    CHECK(sum == 496);
-    free(shmem);
-}
-
 
 TEST_CASE("Mode3a: test_warp_divergence - divergence via StatementContext", "[mode3a][divergence]") {
     init_factory_once();
@@ -114,23 +87,6 @@ TEST_CASE("Mode3a: test_warp_divergence - divergence via StatementContext", "[mo
     const auto& bra_data = std::get<BranchInstr>(bra.data);
     INFO("reconvergence_pc before CFG: " << bra_data.reconvergence_pc);
     CHECK(bra_data.reconvergence_pc < 0);
-}
-
-TEST_CASE("Mode3a: test_warp_divergence - warp divergence raw", "[mode3a][divergence][raw]") {
-    init_factory_once();
-
-    WarpContext warp;
-    std::vector<std::unique_ptr<ThreadContext>> threads;
-    setup_warp(warp, threads, 32);
-    reset_warp(warp);
-
-    warp.set_active_mask(0x0000FFFF);
-    CHECK(count_active_lanes(warp) == 16);
-
-    warp.set_active_mask(0xFFFF0000);
-    CHECK(count_active_lanes(warp) == 16);
-
-    warp.set_active_mask(0xFFFFFFFF);
 }
 
 

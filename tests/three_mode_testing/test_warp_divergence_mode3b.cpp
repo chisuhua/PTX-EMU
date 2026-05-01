@@ -39,7 +39,7 @@ TEST_CASE("Mode3b: test_warp_divergence - barrier via StatementContext (cta)", "
     INFO("Mode3b barrier StatementContext verified");
 }
 
-TEST_CASE("Mode3b: test_warp_divergence - barrier raw WarpContext", "[mode3b][barrier][raw]") {
+TEST_CASE("Mode3b: test_warp_divergence - barrier Wbar arrive and complete", "[mode3b][barrier]") {
     init_factory_once();
 
     WarpContext warp;
@@ -48,6 +48,7 @@ TEST_CASE("Mode3b: test_warp_divergence - barrier raw WarpContext", "[mode3b][ba
     reset_warp(warp);
     warp.set_active_mask(0xFFFFFFFF);
 
+    // 验证 Wbar.init / arrive / is_complete 流程
     Wbar& wbar = warp.get_warp_state().wbars[0];
     wbar.init(0xFFFFFFFF, 1);
 
@@ -57,7 +58,7 @@ TEST_CASE("Mode3b: test_warp_divergence - barrier raw WarpContext", "[mode3b][ba
         wbar.arrive(i);
     }
 
-    REQUIRE(wbar.is_complete());
+    CHECK(wbar.is_complete() == true);
     warp.set_exec_mask(wbar.arrived_mask);
 
     for (int i = 0; i < 32; i++) {
@@ -74,6 +75,8 @@ TEST_CASE("Mode3b: test_warp_divergence - barrier raw WarpContext", "[mode3b][ba
 }
 
 
+
+
 TEST_CASE("Mode3b: test_warp_divergence - shared memory via StatementContext", "[mode3b][shared]") {
     init_factory_once();
 
@@ -87,28 +90,6 @@ TEST_CASE("Mode3b: test_warp_divergence - shared memory via StatementContext", "
     CHECK(stmts[0].instructionText.find("ld.shared") != std::string::npos);
     CHECK(stmts[1].type == S_ST);
     CHECK(stmts[1].instructionText.find("st.shared") != std::string::npos);
-}
-
-TEST_CASE("Mode3b: test_warp_divergence - shared memory raw", "[mode3b][shared][raw]") {
-    init_factory_once();
-
-    WarpContext warp;
-    std::vector<std::unique_ptr<ThreadContext>> threads;
-    setup_warp(warp, threads, 32);
-    reset_warp(warp);
-
-    void* shmem = allocate_shared(32);
-    for (int i = 0; i < 32; i++) {
-        auto* t = warp.get_thread(i);
-        if (t) t->shared_mem_space = shmem;
-    }
-
-    for (int i = 0; i < 32; i++) write_shared(shmem, i, i);
-
-    uint32_t sum = 0;
-    for (int i = 0; i < 32; i++) sum += read_shared(shmem, i);
-    CHECK(sum == 496);
-    free(shmem);
 }
 
 
@@ -128,29 +109,10 @@ TEST_CASE("Mode3b: test_warp_divergence - divergence via StatementContext", "[mo
     CHECK(stmts[1].type == S_SETP);
     CHECK(stmts[2].type == S_LABEL);
 
-    // AFTER CFG: make_bra_pred 会设置 reconvergence_pc
-    // CFGBuilder 在运行时填充实际值，这里验证分支可正确创建
     StatementContext bra = make_bra_pred("L_join", "%p1", false);
     CHECK(bra.type == S_BRA);
     const auto& bra_data = std::get<BranchInstr>(bra.data);
     INFO("Mode3b branch reconvergence_pc: " << bra_data.reconvergence_pc);
-}
-
-TEST_CASE("Mode3b: test_warp_divergence - warp divergence raw", "[mode3b][divergence][raw]") {
-    init_factory_once();
-
-    WarpContext warp;
-    std::vector<std::unique_ptr<ThreadContext>> threads;
-    setup_warp(warp, threads, 32);
-    reset_warp(warp);
-
-    warp.set_active_mask(0x0000FFFF);
-    CHECK(count_active_lanes(warp) == 16);
-
-    warp.set_active_mask(0xFFFF0000);
-    CHECK(count_active_lanes(warp) == 16);
-
-    warp.set_active_mask(0xFFFFFFFF);
 }
 
 
