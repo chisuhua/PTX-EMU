@@ -6,6 +6,7 @@
 #include "ptxsim/execution_types.h"
 #include "ptxsim/instruction_factory.h"
 #include "ptxsim/ptx_debug.h"
+#include "ptxsim/ptx_exceptions.h"
 #include "ptxsim/register_analyzer.h"
 #include "ptxsim/utils/qualifier_utils.h"
 #include "ptxsim/warp_context.h"
@@ -450,7 +451,9 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
             }
         }
         if (mem_qualifier == Qualifier::Q_UNKNOWN) {
-            assert(false);
+            throw ExecutionStateException(
+                0, "unknown memory qualifier",
+                "Failed to determine memory address space from qualifiers");
         }
 
         assert(fa.registerOffset->kind() == OperandKind::REG);
