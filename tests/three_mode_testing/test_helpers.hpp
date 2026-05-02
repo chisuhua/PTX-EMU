@@ -475,10 +475,15 @@ inline void apply_cfg_builder(
             if (reconvergence_pc >= 0) {
                 branch.reconvergence_pc = reconvergence_pc;
             }
-        } else if (stmt.type == S_BAR || stmt.type == S_BAR_WARP_SYNC) {
+        } else if (stmt.type == S_BAR) {
             auto& bar = std::get<BarrierInstr>(statements[i].data);
             if (reconvergence_pc >= 0 && bar.barId) {
                 bar.type = std::to_string(reconvergence_pc);
+            }
+        } else if (stmt.type == S_BAR_WARP_SYNC) {
+            auto& bar = std::get<BarWarpSyncInstr>(statements[i].data);
+            if (reconvergence_pc >= 0) {
+                bar.reconvergenceLabel = std::to_string(reconvergence_pc);
             }
         }
     }

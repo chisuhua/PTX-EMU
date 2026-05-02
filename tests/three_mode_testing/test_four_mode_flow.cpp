@@ -45,7 +45,7 @@ TEST_CASE("Four-mode pipeline: Mode 2 parsed statements structurally equivalent 
     auto stmts = load_ptx_statements(PTX_FILE, "", false);
     REQUIRE(stmts.size() > 0);
 
-    CHECK(stmts[0].type == S_BAR || stmts[0].type == S_LABEL || stmts[0].type == S_MOV);
+    CHECK((stmts[0].type == S_BAR || stmts[0].type == S_LABEL || stmts[0].type == S_MOV));
 
     bool found_bar = false;
     for (size_t i = 0; i < stmts.size(); i++) {
