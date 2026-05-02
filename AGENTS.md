@@ -3,7 +3,7 @@
 > **PTX 模拟器**: C++20/CUDA PTX 模拟器，ANTLR4 解析 PTX，fake libcudart.so 拦截 CUDA runtime
 > **C++ 标准**: C++20（含 CUDA 代码）
 > **ANTLR 版本**: 4.11.1（antlr-4.11.1-complete.jar）
-> **Generated**: 2026-04-30 | **Commit**: 7fd3e57 | **Branch**: main
+> **Generated**: 2026-05-02 | **Commit**: baa8c4e | **Branch**: main
 
 ---
 
@@ -93,6 +93,7 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
 cmake --build build --target cudart     # fake libcudart.so
 cmake --build build --target ptxsim     # PTX 模拟引擎
 cmake --build build --target ptx_parser # PTX 解析器
+cmake --build build --target ptxir      # PTXIR 序列化库（ptxir_writer + ptxir_reader）
 
 # 重生成 ANTLR 解析器（改 .g4 后）
 cmake --build build --target GenerateParser
@@ -164,6 +165,7 @@ GPUContext (全局内存, SM 列表)
 | 目录 | 内容 |
 |------|------|
 | `src/ptx_ir/` | IR 类型、操作数/语句上下文 |
+| `src/ptxir/` | PTXIR 序列化库（ptxir_writer + ptxir_reader） |
 | `src/ptx_parser/` | PTXVisitor, CFGBuilder |
 | `src/ptxsim/core/` | GPU/SM/CTA/Warp/Thread 上下文 |
 | `src/ptxsim/instructions/` | PTX 指令实现 |
@@ -236,6 +238,7 @@ GPUContext (全局内存, SM 列表)
 | `src/cudart/cudart_sim.cpp` | CUDA runtime 入口 |
 | `src/ptxsim/InstructionHandlers.cpp` | 指令实现 |
 | `configs/ampere_a100.json` | 默认 GPU 架构配置 |
+| `include/ptxir/ptxir_serialization.h` | PTXIR 序列化 API |
 | `tests/ptx/test_all_ptx.sh` | PTX 语法全量测试 |
 
 ## 参考文档

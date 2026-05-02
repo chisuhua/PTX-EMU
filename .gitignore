@@ -46,6 +46,8 @@ build/
 
 # Testing temporary files
 Testing/Temporary/
+tests/ptxir/*_tmp.ptxir
+tests/three_mode_testing/debug_*.tmp
 
 # Mini test config (temporary)
 configs/mini_test.ini

@@ -132,6 +132,15 @@ GPUContext (top-level, global memory, SM list)
 - Ensure signature matches CUDA runtime API
 - Rebuild: `cmake --build build --target cudart`
 
+### PTXIR Serialization
+- API: `include/ptxir/ptxir_serialization.h`
+  - `serialize_statements(stmts, path)` / `deserialize_statements(path)` — file I/O
+  - `serialize_to_string(stmts)` / `deserialize_from_string(str)` — in-memory
+  - Writer/reader: `src/ptx_ir/ptxir_writer.cpp` / `ptxir_reader.cpp`
+  - Format: `include/ptx_ir/ptxir_format.h`
+  - Rebuild: `cmake --build build --target ptxir`
+  - Tests: `test_ptxir_serialization` (10 test cases, 43 assertions)
+
 ### Build Output
 - Executables: `build/bin/`
 - Fake libcudart.so: symlinked to `lib/` (also at `build/lib/`)
@@ -158,6 +167,7 @@ cmake --build build --target GenerateParser
 | `src/cudart/cudart_sim.cpp` | Main CUDA runtime entry point |
 | `src/ptxsim/instruction_handlers.h` | Instruction handler declarations |
 | `src/ptxsim/instruction_handlers.cpp` | Instruction handler implementations |
+| `include/ptxir/ptxir_serialization.h` | PTXIR binary serialization API |
 | `configs/ampere_a100.json` | Default GPU architecture config |
 
 ## Known Limitations
