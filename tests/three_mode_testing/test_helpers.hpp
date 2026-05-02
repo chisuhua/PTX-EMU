@@ -8,6 +8,18 @@
 #ifndef TEST_HELPERS_HPP
 #define TEST_HELPERS_HPP
 
+// Undefine macros that conflict with ANTLR-generated enum values
+// These macros are defined by <cmath> via <math.h> and by Catch2
+#undef NAN
+#undef INFINITY
+#undef FINITE
+#undef SECTION
+
+// ANTLR headers MUST come before catch_amalgamated.hpp to avoid macro conflict
+#include "ptxLexer.h"
+#include "ptxParser.h"
+#include "ptx_parser/ptx_visiter.h"
+#include "ptx_parser/cfg_builder.h"
 #include "catch_amalgamated.hpp"
 #include "ptxsim/warp_state.h"
 #include "ptxsim/warp_context.h"
@@ -352,52 +364,20 @@ inline bool ptx_contains(const std::string& ptx, const std::string& token) {
 //   - Standalone: deserialize_statements() has NO ANTLR dependency
 // ============================================================================
 
+#include "ptxir/ptxir_serialization.h"
 #include "ptx_ir/ptxir_writer.h"
 #include "ptx_ir/ptxir_reader.h"
 #include <fstream>
 
-// -------------------------------------------------------------------
-// serialize_to_string: serialize StatementContext vector → std::string
-// Use for: in-memory roundtrip testing without file I/O
-// -------------------------------------------------------------------
-inline std::string serialize_to_string(const std::vector<StatementContext>& stmts) {
-    std::ostringstream oss(std::ios::binary);
-    PtxirWriter writer(oss);
-    writer.write(stmts);
-    return oss.str();
-}
+// Forward declarations for functions defined later in this file
+inline std::vector<StatementContext> load_ptx_statements(
+    const std::string& path,
+    const std::string& kernel_name,
+    bool apply_cfg);
 
-// -------------------------------------------------------------------
-// deserialize_from_string: deserialize std::string → StatementContext vector
-// Use for: in-memory roundtrip testing without file I/O
-// Note: This function does NOT call ANTLR parser — pure binary deserialization
-// -------------------------------------------------------------------
-inline std::vector<StatementContext> deserialize_from_string(const std::string& data) {
-    std::istringstream iss(data, std::ios::binary);
-    PtxirReader reader(iss);
-    return reader.read();
-}
-
-// -------------------------------------------------------------------
-// serialize_statements: serialize StatementContext vector → binary file
-// Use for: persisting .ptxir files to disk
-// -------------------------------------------------------------------
-inline bool serialize_statements(const std::vector<StatementContext>& stmts, const std::string& path) {
-    std::ofstream out(path, std::ios::binary);
-    if (!out) return false;
-    PtxirWriter writer(out);
-    writer.write(stmts);
-    return out.good();
-}
-
-inline std::vector<StatementContext> deserialize_statements(const std::string& path) {
-    std::ifstream in(path, std::ios::binary);
-    if (!in) {
-        throw std::runtime_error("PTXIR file not found: " + path);
-    }
-    PtxirReader reader(in);
-    return reader.read();
-}
+inline void apply_cfg_builder(
+    std::vector<StatementContext>& statements,
+    std::map<std::string, int>& label2pc);
 
 inline bool generate_ptxir(const std::string& ptx_path, const std::string& ptxir_path, const std::string& kernel_name = "") {
     auto stmts = load_ptx_statements(ptx_path, kernel_name, false);
@@ -413,15 +393,10 @@ inline std::vector<StatementContext> load_ptxir(const std::string& ptxir_path, b
     return stmts;
 }
 
-// load_ptx_statements from PTX file (Mode 2 → Mode 3 转换)
-#include "ptx_parser/ptx_visiter.h"
-#include "ptx_parser/cfg_builder.h"
-#include <fstream>
-
 inline std::vector<StatementContext> load_ptx_statements(
     const std::string& path,
-    const std::string& kernel_name = "",
-    bool apply_cfg = false) {
+    const std::string& kernel_name,
+    bool apply_cfg) {
     std::ifstream file(path);
     if (!file.is_open()) {
         throw std::runtime_error("PTX file not found: " + path);
@@ -432,13 +407,13 @@ inline std::vector<StatementContext> load_ptx_statements(
     std::string ptx_content = buffer.str();
     file.close();
 
-    ANTLRInputStream input(ptx_content);
-    ptxLexer lexer(&input);
-    CommonTokenStream tokens(&lexer);
+    antlr4::ANTLRInputStream input(ptx_content);
+    ptxparser::ptxLexer lexer(&input);
+    antlr4::CommonTokenStream tokens(&lexer);
     tokens.fill();
 
-    ptxParser parser(&tokens);
-    ptxParser::PtxFileContext* tree = parser.ptxFile();
+    ptxparser::ptxParser parser(&tokens);
+    ptxparser::ptxParser::PtxFileContext* tree = parser.ptxFile();
 
     if (parser.getNumberOfSyntaxErrors() > 0) {
         throw std::runtime_error("PTX parse errors: " + std::to_string(parser.getNumberOfSyntaxErrors()));

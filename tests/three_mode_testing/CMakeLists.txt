@@ -43,7 +43,7 @@ foreach(source IN LISTS THREE_MODE_TESTS)
 
     target_include_directories(${test_name} PRIVATE ${THREE_MODE_INCLUDES})
     target_link_directories(${test_name} PRIVATE ${CMAKE_LIBRARY_OUTPUT_DIRECTORY} ${CMAKE_SOURCE_DIR}/lib)
-    target_link_libraries(${test_name} PRIVATE ptxsim cudart antlr4_shared ptxir_writer ptxir_reader -Wl,--as-needed -ldl -lpthread)
+    target_link_libraries(${test_name} PRIVATE ptxsim cudart antlr4_shared ptxir -Wl,--as-needed -ldl -lpthread)
     set_target_properties(${test_name} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/tests)
     add_test(NAME ${test_name} COMMAND ${test_name} WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endforeach()

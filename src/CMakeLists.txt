@@ -61,6 +61,8 @@ add_library(ptx_ir SHARED
 )
 target_include_directories(ptx_ir PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
+add_subdirectory(ptxir)
+
 add_library(ptxsim SHARED
     utils/logger.cpp
     ptxsim/core/cta_context.cpp
