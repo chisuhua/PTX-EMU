@@ -36,8 +36,8 @@ void PtxirWriter::write(const std::vector<StatementContext>& statements) {
     stmts_ = statements;
     pre_pass(statements);
     write_header();
-    write_kernel_section();
     write_string_table();
+    write_kernel_section();
 }
 
 void PtxirWriter::pre_pass(const std::vector<StatementContext>& statements) {
@@ -131,6 +131,7 @@ void PtxirWriter::write_instruction(const StatementContext& stmt) {
     stmt.visit([this](const auto& instr) {
         using T = std::decay_t<decltype(instr)>;
         if constexpr (std::is_same_v<T, BranchInstr>) {
+            write_u32(out_, get_string_id(instr.predicate));
             write_u32(out_, get_string_id(instr.target));
             write_u8(out_, instr.predicate_negated ? 1 : 0);
             write_i32(out_, instr.reconvergence_pc);

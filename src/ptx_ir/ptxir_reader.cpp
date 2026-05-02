@@ -92,7 +92,10 @@ StatementContext PtxirReader::read_instruction() {
     switch (type) {
         case S_BRA: {
             BranchInstr instr;
-            instr.reconvergence_pc = read_i32(in_);
+            uint32_t pred_id = read_u32(in_);
+            if (pred_id < string_table_.size()) {
+                instr.predicate = string_table_[pred_id];
+            }
             uint32_t target_id = read_u32(in_);
             if (target_id < string_table_.size()) {
                 instr.target = string_table_[target_id];
@@ -213,6 +216,7 @@ StatementContext PtxirReader::read_instruction() {
             for (uint8_t i = 0; i < qcount; i++) {
                 (void)read_u16(in_);
             }
+            read_u32(in_);  // dst_reg_id (unused, skip 0xFFFFFFFF padding)
             uint8_t ocount = read_u8(in_);
             for (uint8_t i = 0; i < ocount; i++) {
                 (void)read_u32(in_);
