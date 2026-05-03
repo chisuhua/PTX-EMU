@@ -19,7 +19,8 @@ using namespace ptxparser;
 // #include "ptx_parser/ptx_grammar.h" // 添加解析器相关的头文件
 // #include "ptx_parser/ptx_parser.h"
 #include "ptxsim/gpu_context.h"
-#include "ptxsim/ptx_config.h" // 添加DebugConfig所需的头文件
+#include "ptxsim/ptx_config.h"
+#include "ptxsim/ptx_exceptions.h" // 添加DebugConfig所需的头文件
 #include "utils/cubin_utils.h" // 添加cuobjdump工具函数
 #include "utils/logger.h"
 #include <string>
@@ -353,12 +354,21 @@ cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim, dim3 blockDim,
     }
 
     // 调用 PtxInterpreter 的 launch 函数，传递 sharedMem 参数
-    g_ptx_interpreter->launchPtxInterpreter(
-        g_ptx_interpreter->get_ptx_context(), func2name[(uint64_t)func], args,
-        gridDim3, blockDim3, sharedMem);
+    try {
+        g_ptx_interpreter->launchPtxInterpreter(
+            g_ptx_interpreter->get_ptx_context(), func2name[(uint64_t)func], args,
+            gridDim3, blockDim3, sharedMem);
 
-    // 等待kernel执行完成
-    g_gpu_context->wait_for_completion();
+        // 等待kernel执行完成
+        g_gpu_context->wait_for_completion();
+    } catch (const PtxEmuException& e) {
+        std::cerr << "PTX execution error: " << e.what()
+                  << " [code=" << e.get_error_code_name() << "]" << std::endl;
+        return (cudaError_t)999;
+    } catch (const std::exception& e) {
+        std::cerr << "Unexpected error during kernel execution: " << e.what() << std::endl;
+        return (cudaError_t)999;
+    }
 
     return cudaSuccess;
 }
