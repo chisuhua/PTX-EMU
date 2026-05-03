@@ -14,7 +14,7 @@ void RetHandler::processOperation(ThreadContext *context, StatementContext &stmt
     } else {
         int return_pc = context->call_stack.top();
         context->call_stack.pop();
-        context->next_pc = return_pc;
+        context->set_next_pc(return_pc);
     }
     (void)stmt;
 }

@@ -259,7 +259,7 @@ inline void reset_warp(WarpContext& warp, int num_lanes = 32) {
     for (int i = 0; i < num_lanes; i++) {
         auto* t = warp.get_thread(i);
         if (!t) continue;
-        t->pc = 0;
+        t->set_pc(0);
         t->state = RUN;
         warp.get_warp_state().threads[i].pc = 0;
         warp.get_warp_state().threads[i].next_pc = 0;

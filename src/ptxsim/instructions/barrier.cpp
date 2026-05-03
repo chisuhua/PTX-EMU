@@ -154,7 +154,7 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
 
         for (int i = 0; i < WarpContext::WARP_SIZE; ++i) {
             if ((wbar.arrived_mask & (1u << i)) && warp_state.threads[i].is_active) {
-                uint32_t old_pc = warp_ctx->get_thread(i)->pc;
+                uint32_t old_pc = warp_ctx->get_thread(i)->get_pc();
                 warp_ctx->set_thread_pc(i, reconvergence_pc);
                 warp_ctx->update_pc_stack(i, reconvergence_pc);
                 warp_state.threads[i].is_blocked = false;
@@ -242,14 +242,14 @@ void BarHandler::executeBarrier(ThreadContext* context, const BarrierInstr& inst
     WarpContext* warp_ctx = context->get_warp_context();
     if (!warp_ctx) {
         PTX_ERROR_EMU("WarpContext is null in barHandler");
-        context->next_pc = context->pc + 1;  // Advance PC to avoid infinite loop
+        context->set_next_pc(context->get_pc() + 1);  // Advance PC to avoid infinite loop
         return;
     }
     
     SMContext* sm_context = warp_ctx->get_sm_context();  // Assuming this method exists
     if (!sm_context) {
         PTX_ERROR_EMU("SMContext is null in barHandler");
-        context->next_pc = context->pc + 1;  // Advance PC to avoid infinite loop
+        context->set_next_pc(context->get_pc() + 1);  // Advance PC to avoid infinite loop
         return;
     }
     
@@ -266,11 +266,11 @@ void BarHandler::executeBarrier(ThreadContext* context, const BarrierInstr& inst
     if (sync_complete) {
         // All threads reached the barrier and have been released
         PTX_DEBUG_EMU("bar.sync complete: All threads released for barrier_id=%d", barId);
-        context->next_pc = context->pc + 1;  // Advance PC after barrier
+        context->set_next_pc(context->get_pc() + 1);  // Advance PC after barrier
     } else {
         // Thread is still waiting at barrier - do not advance PC, will retry
         // Need to keep next_pc == pc so thread stays at current instruction
-        context->next_pc = context->pc; 
+        context->set_next_pc(context->get_pc()); 
         // The thread state is already set to BAR_SYNC by synchronize_barrier()
         PTX_DEBUG_THREAD("Thread [%u,%u,%u] waiting at barrier_id=%d",
                          context->ThreadIdx.x, context->ThreadIdx.y, context->ThreadIdx.z,

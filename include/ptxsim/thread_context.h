@@ -7,6 +7,13 @@
 #include "ptxsim/common_types.h" // 包含通用类型定义
 #include "ptxsim/execution_types.h"
 #include "ptxsim/ptx_config.h"
+#include "ptxsim/warp_state.h"
+
+class PtxInterpreter;
+class WarpContext;
+class SMContext;
+class CTAContext;
+
 #include "register/condition_code_register.h"
 #include "register/register_bank_manager.h"
 #include "utils/logger.h"
@@ -15,14 +22,10 @@
 #include <map>
 #include <memory>
 #include <queue>
-#include <stack> // 添加stack头文件以支持调用栈
+#include <stack>
 #include <string>
 #include <unordered_map>
 #include <vector>
-
-class PtxInterpreter; // 前向声明
-class WarpContext;    // 前向声明
-class CTAContext;     // 前向声明
 
 class ThreadContext {
 public:
@@ -37,8 +40,6 @@ public:
 
     // 线程状态
     Dim3 BlockIdx, ThreadIdx, GridDim, BlockDim;
-    int pc;
-    int next_pc;
     int bar_id;
     EXE_STATE state;
 
@@ -179,17 +180,17 @@ public:
     // 设置线程状态
     void set_state(EXE_STATE new_state) { state = new_state; }
 
-    // 获取PC值
-    int get_pc() const { return pc; }
+    // 获取PC值（通过WarpState）
+    int get_pc() const;
 
-    // 设置PC值
-    void set_pc(int new_pc) { pc = new_pc; }
+    // 设置PC值（通过WarpState）
+    void set_pc(int new_pc);
 
-    // 获取下一个PC值
-    int get_next_pc() const { return next_pc; }
+    // 获取下一个PC值（通过WarpState）
+    int get_next_pc() const;
 
-    // 设置下一个PC值
-    void set_next_pc(int new_next_pc) { next_pc = new_next_pc; }
+    // 设置下一个PC值（通过WarpState）
+    void set_next_pc(int new_next_pc);
 
     // 获取线程索引
     Dim3 get_thread_idx() const { return ThreadIdx; }
@@ -207,8 +208,9 @@ public:
 
     // 检查PC是否有效
     bool is_valid_pc() const {
-        return statements != nullptr && pc >= 0 &&
-               pc < static_cast<int>(statements->size());
+        int current_pc = get_pc();
+        return statements != nullptr && current_pc >= 0 &&
+               current_pc < static_cast<int>(statements->size());
     }
 
     bool is_valid_pc(int p) const {
@@ -230,9 +232,10 @@ public:
 
     // 获取当前指令
     StatementContext *get_current_statement() {
-        if (statements != nullptr && pc >= 0 &&
-            pc < static_cast<int>(statements->size())) {
-            return &(*statements)[pc];
+        int current_pc = get_pc();
+        if (statements != nullptr && current_pc >= 0 &&
+            current_pc < static_cast<int>(statements->size())) {
+            return &(*statements)[current_pc];
         }
         return nullptr;
     }

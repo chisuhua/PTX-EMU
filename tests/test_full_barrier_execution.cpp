@@ -220,7 +220,7 @@ TEST_CASE("Full barrier execution: nested sync with 16 threads",
         for (int lane = 0; lane < 16; lane++) {
             auto* t = warp.get_thread(lane);
             REQUIRE(t != nullptr);
-            t->pc = 6;
+            t->set_pc(6);
             t->state = BAR_SYNC;
         }
 
@@ -254,7 +254,7 @@ TEST_CASE("Full barrier execution: nested sync with 16 threads",
         for (int lane = 0; lane < 16; lane++) {
             auto* t = warp.get_thread(lane);
             if (t) {
-                t->pc = 6;
+                t->set_pc(6);
                 t->state = BAR_SYNC;
             }
         }
@@ -262,7 +262,7 @@ TEST_CASE("Full barrier execution: nested sync with 16 threads",
         for (int lane = 0; lane < 16; lane++) {
             auto* t = warp.get_thread(lane);
             if (t) {
-                t->pc = 7;
+                t->set_pc(7);
                 t->state = RUN;
             }
         }

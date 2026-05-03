@@ -46,8 +46,6 @@ void ThreadContext::init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim,
     this->name2Sym = name2Sym;
     this->name2Share = name2Share; // 设置共享内存符号表引用
     this->label2pc = label2pc;
-    this->pc = 0;
-    this->next_pc = 0;
     this->bar_id = 0;  // Initialize barrier ID to default
     this->state = RUN;
     operand_collected.resize(ThreadContext::MAX_OPERANDS_PER_INSTR);
@@ -93,11 +91,10 @@ void ThreadContext::_execute_once() {
     // PTX_PERF_TIMER("instruction_execution");
 
     // 跟踪指令
-    StatementContext &statement = (*statements)[pc];
+    int current_pc = get_pc();
+    StatementContext &statement = (*statements)[current_pc];
 
-    // 【Stage 4 Fix】设置默认 next_pc 为 pc+1（顺序执行）
-    // 分支指令处理器可以覆盖这个值
-    next_pc = pc + 1;
+    set_next_pc(current_pc + 1);
 
     // if (statement.state == InstructionState::READY) {
     //     trace_instruction(statement);
@@ -116,7 +113,7 @@ void ThreadContext::_execute_once() {
     }
 
     // 更新PC
-    pc = next_pc;
+    set_pc(get_next_pc());
 }
 
 // void ThreadContext::trace_instruction(StatementContext &statement) {
@@ -171,7 +168,7 @@ void ThreadContext::prepare_breakpoint_context(
     }
 
     // 添加其他上下文信息
-    context["pc"] = pc;
+    context["pc"] = get_pc();
     context["blockIdx"] = BlockIdx;
     context["threadIdx"] = ThreadIdx;
 }
@@ -182,7 +179,7 @@ void ThreadContext::dump_state(std::ostream &os) const {
        << BlockIdx.z << "]" << std::endl;
     os << "  ThreadIdx: [" << ThreadIdx.x << ", " << ThreadIdx.y << ", "
        << ThreadIdx.z << "]" << std::endl;
-    os << "  PC: " << pc << std::endl;
+    os << "  PC: " << get_pc() << std::endl;
     os << "  State: ";
     switch (state) {
     case RUN:
@@ -208,8 +205,8 @@ void ThreadContext::dump_state(std::ostream &os) const {
 }
 
 void ThreadContext::reset() {
-    pc = 0;
-    next_pc = 0;
+    set_pc(0);
+    set_next_pc(0);
     bar_id = 0;  // Reset barrier ID
     state = RUN;
     cc_reg = ConditionCodeRegister{}; // 重置条件码寄存器
@@ -687,7 +684,7 @@ void ThreadContext::print_instruction_status(StatementContext &stmt) {
     std::string opcode_str = S2s(stmt.type);
 
     // 使用trace_status函数替代PTX_TRACE宏
-    trace_status(ptxsim::log_level::trace, "instr", "PC[0x%x] %s %s", pc,
+    trace_status(ptxsim::log_level::trace, "instr", "PC[0x%x] %s %s", get_pc(),
                  opcode_str.c_str(), operands_str.c_str());
 }
 
@@ -701,8 +698,8 @@ void ThreadContext::sync_from_warp_state() {
     ptxsim::ThreadState& thread_state = warp_context_->get_warp_state().threads[lane_id];
 
     // 同步 PC
-    pc = thread_state.pc;
-    next_pc = thread_state.next_pc;
+    set_pc(thread_state.pc);
+    set_next_pc(thread_state.next_pc);
 
     // 同步状态
     switch (thread_state.status) {
@@ -734,12 +731,13 @@ void ThreadContext::sync_to_warp_state() {
 
     // Synchronization barrier completion updates warp_state.pc for all lanes.
     // Don't overwrite an already-advanced PC with the stale barrier PC.
-    if (thread_state.pc > static_cast<uint32_t>(pc)) {
+    int current_pc = get_pc();
+    if (thread_state.pc > static_cast<uint32_t>(current_pc)) {
         // Completion handler already advanced past barrier — keep it
     } else {
-        thread_state.pc = pc;
+        thread_state.pc = current_pc;
     }
-    thread_state.next_pc = next_pc;
+    thread_state.next_pc = get_next_pc();
 
     // 同步状态
     switch (state) {
@@ -760,4 +758,34 @@ void ThreadContext::sync_to_warp_state() {
         default:
             break;
     }
+}
+
+// PC accessors - delegate to WarpState via WarpContext
+int ThreadContext::get_pc() const {
+    if (!warp_context_) return 0;
+    int lane = lane_id_;
+    if (lane < 0 || lane >= 32) return 0;
+    return warp_context_->get_warp_state().threads[lane].pc;
+}
+
+void ThreadContext::set_pc(int new_pc) {
+    if (!warp_context_) return;
+    int lane = lane_id_;
+    if (lane < 0 || lane >= 32) return;
+    warp_context_->get_warp_state().threads[lane].pc = new_pc;
+    warp_context_->get_warp_state().threads[lane].next_pc = new_pc;
+}
+
+int ThreadContext::get_next_pc() const {
+    if (!warp_context_) return 0;
+    int lane = lane_id_;
+    if (lane < 0 || lane >= 32) return 0;
+    return warp_context_->get_warp_state().threads[lane].next_pc;
+}
+
+void ThreadContext::set_next_pc(int new_next_pc) {
+    if (!warp_context_) return;
+    int lane = lane_id_;
+    if (lane < 0 || lane >= 32) return;
+    warp_context_->get_warp_state().threads[lane].next_pc = new_next_pc;
 }

@@ -85,10 +85,6 @@ void WarpContext::advance_thread_pc(int lane_id, int new_pc) {
     if (lane_id < 0 || lane_id >= WARP_SIZE) return;
     warp_state.threads[lane_id].pc = new_pc;
     warp_state.threads[lane_id].next_pc = new_pc;
-    if (lane_id < (int)threads.size() && threads[lane_id]) {
-        threads[lane_id]->pc = new_pc;
-        threads[lane_id]->next_pc = new_pc;
-    }
 }
 
 void WarpContext::advance_all_threads(int new_pc) {
@@ -96,10 +92,6 @@ void WarpContext::advance_all_threads(int new_pc) {
         if (!warp_state.threads[i].is_active) continue;
         warp_state.threads[i].pc = new_pc;
         warp_state.threads[i].next_pc = new_pc;
-        if (i < (int)threads.size() && threads[i]) {
-            threads[i]->pc = new_pc;
-            threads[i]->next_pc = new_pc;
-        }
     }
 }
 

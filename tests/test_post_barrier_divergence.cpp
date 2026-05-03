@@ -126,7 +126,7 @@ TEST_CASE("BUG-REPRODUCTION: bar.warp.sync releases threads but active_mask not 
     SECTION("Setup: all 32 threads at barrier PC=0, only lane 0 in active_mask") {
         for (int i = 0; i < 32; i++) {
             auto* t = warp.get_thread(i);
-            t->pc = 0;
+            t->set_pc(0);
             t->state = RUN;
             warp.get_warp_state().threads[i].pc = 0;
             warp.get_warp_state().threads[i].is_blocked = false;
@@ -268,7 +268,7 @@ TEST_CASE("FIX VERIFICATION: After barrier, set_active_mask should sync with rel
 
     for (int i = 0; i < 32; i++) {
         auto* t = warp.get_thread(i);
-        t->pc = 0;
+        t->set_pc(0);
         warp.get_warp_state().threads[i].pc = 0;
         warp.get_warp_state().threads[i].is_blocked = false;
         warp.get_warp_state().threads[i].status = ThreadStatus::Active;
@@ -336,7 +336,7 @@ TEST_CASE("Full cycle: barrier release then post-barrier instruction execution",
 
     for (int i = 0; i < 32; i++) {
         auto* t = warp.get_thread(i);
-        t->pc = 0;
+        t->set_pc(0);
         warp.get_warp_state().threads[i].pc = 0;
         warp.get_warp_state().threads[i].is_active = true;
         warp.get_warp_state().threads[i].is_exited = false;
@@ -420,7 +420,7 @@ TEST_CASE("BUG-REPRODUCTION-CTA: Post-barrier execute_warp_instruction only exec
 
     for (int i = 0; i < 32; i++) {
         auto* t = warp.get_thread(i);
-        t->pc = POST_BARRIER_PC;
+        t->set_pc(POST_BARRIER_PC);
         t->set_state(RUN);
 
         // Simulate synchronize_barrier() state updates
@@ -453,7 +453,7 @@ TEST_CASE("BUG-REPRODUCTION-CTA: Post-barrier execute_warp_instruction only exec
     // Record PCs before execution
     int pc_before[32];
     for (int i = 0; i < 32; i++) {
-        pc_before[i] = warp.get_thread(i)->pc;
+        pc_before[i] = warp.get_thread(i)->get_pc();
     }
 
     // Execute post-barrier instruction using real execute_warp_instruction()
@@ -463,7 +463,7 @@ TEST_CASE("BUG-REPRODUCTION-CTA: Post-barrier execute_warp_instruction only exec
     // Count how many threads actually executed (PC advanced)
     int executed_count = 0;
     for (int i = 0; i < 32; i++) {
-        int pc_after = warp.get_thread(i)->pc;
+        int pc_after = warp.get_thread(i)->get_pc();
         if (pc_after > pc_before[i]) {
             executed_count++;
         }
@@ -517,7 +517,7 @@ TEST_CASE("FIX-VERIFICATION-CTA: After updating active_mask, all lanes execute p
 
     for (int i = 0; i < 32; i++) {
         auto* t = warp.get_thread(i);
-        t->pc = POST_BARRIER_PC;
+        t->set_pc(POST_BARRIER_PC);
         t->set_state(RUN);
         warp.get_warp_state().threads[i].pc = POST_BARRIER_PC;
         warp.get_warp_state().threads[i].is_active = true;
@@ -531,7 +531,7 @@ TEST_CASE("FIX-VERIFICATION-CTA: After updating active_mask, all lanes execute p
 
     int pc_before[32];
     for (int i = 0; i < 32; i++) {
-        pc_before[i] = warp.get_thread(i)->pc;
+        pc_before[i] = warp.get_thread(i)->get_pc();
     }
 
     StatementContext nop_stmt = make_nop_stmt();
@@ -539,7 +539,7 @@ TEST_CASE("FIX-VERIFICATION-CTA: After updating active_mask, all lanes execute p
 
     int executed_count = 0;
     for (int i = 0; i < 32; i++) {
-        if (warp.get_thread(i)->pc > pc_before[i]) {
+        if (warp.get_thread(i)->get_pc() > pc_before[i]) {
             executed_count++;
         }
     }

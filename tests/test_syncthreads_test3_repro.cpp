@@ -340,8 +340,8 @@ TEST_CASE("Barrier execution: direct Wbar test with 16 threads",
         for (int lane = 0; lane < 16; lane++) {
             auto* t = warp.get_thread(lane);
             REQUIRE(t != nullptr);
-            t->pc = 6;
-            t->next_pc = 6;
+            t->set_pc(6);
+            t->set_next_pc(6);
             t->set_state(BAR_SYNC);
         }
 
@@ -366,8 +366,8 @@ TEST_CASE("Barrier execution: direct Wbar test with 16 threads",
         for (int lane = 0; lane < 16; lane++) {
             auto* t = warp.get_thread(lane);
             if (t) {
-                t->pc = 7;
-                t->next_pc = 7;
+                t->set_pc(7);
+                t->set_next_pc(7);
                 t->set_state(RUN);
             }
         }
@@ -387,8 +387,8 @@ TEST_CASE("Barrier execution: direct Wbar test with 16 threads",
         for (int lane = 0; lane < 16; lane++) {
             auto* t = warp.get_thread(lane);
             REQUIRE(t != nullptr);
-            t->pc = 20;
-            t->next_pc = 20;
+            t->set_pc(20);
+            t->set_next_pc(20);
             t->set_state(BAR_SYNC);
         }
 
@@ -407,8 +407,8 @@ TEST_CASE("Barrier execution: direct Wbar test with 16 threads",
         for (int lane = 0; lane < 16; lane++) {
             auto* t = warp.get_thread(lane);
             if (t) {
-                t->pc = 21;
-                t->next_pc = 21;
+                t->set_pc(21);
+                t->set_next_pc(21);
                 t->set_state(RUN);
             }
         }
@@ -427,8 +427,8 @@ TEST_CASE("Barrier execution: direct Wbar test with 16 threads",
         // First barrier
         for (int lane = 0; lane < 16; lane++) {
             auto* t = warp.get_thread(lane);
-            t->pc = 6;
-            t->next_pc = 6;
+            t->set_pc(6);
+            t->set_next_pc(6);
             t->set_state(BAR_SYNC);
         }
 
@@ -445,15 +445,15 @@ TEST_CASE("Barrier execution: direct Wbar test with 16 threads",
         // Release to PC=7
         for (int lane = 0; lane < 16; lane++) {
             auto* t = warp.get_thread(lane);
-            t->pc = 7;
+            t->set_pc(7);
             t->set_state(RUN);
         }
 
         // Second barrier
         for (int lane = 0; lane < 16; lane++) {
             auto* t = warp.get_thread(lane);
-            t->pc = 20;
-            t->next_pc = 20;
+            t->set_pc(20);
+            t->set_next_pc(20);
             t->set_state(BAR_SYNC);
         }
 
@@ -468,7 +468,7 @@ TEST_CASE("Barrier execution: direct Wbar test with 16 threads",
         // Release to PC=21
         for (int lane = 0; lane < 16; lane++) {
             auto* t = warp.get_thread(lane);
-            t->pc = 21;
+            t->set_pc(21);
             t->set_state(RUN);
         }
 

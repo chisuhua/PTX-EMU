@@ -23,28 +23,28 @@ inline void ptx_debug_emu_impl(const char* fmt, ...) {
 // Declaration handlers (variable declarations, etc.)
 void DeclarationHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
     // Declarations are handled at kernel initialization, not during execution
-    context->next_pc = context->pc + 1;
+    context->set_next_pc(context->get_pc() + 1);
 }
 
 // Simple handlers (labels, pragmas, dollar names)
 void SimpleHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
 
-    context->next_pc = context->pc + 1;
+    context->set_next_pc(context->get_pc() + 1);
 }
 
 // Void instructions (ret, exit, trap, etc.)
 void VoidHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
     context->trace_status(ptxsim::log_level::debug, "thread", 
-                          "PC=%x VOID_INSTR: %s", context->pc, 
+                          "PC=%x VOID_INSTR: %s", context->get_pc(), 
                           stmt.instructionText.c_str());
     processOperation(context, stmt);
-    context->next_pc = context->pc + 1;
+    context->set_next_pc(context->get_pc() + 1);
 }
 
 // Branch instructions
 void BranchHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
     context->trace_status(ptxsim::log_level::debug, "thread", 
-                          "PC=%x BRANCH: %s", context->pc, 
+                          "PC=%x BRANCH: %s", context->get_pc(), 
                           stmt.instructionText.c_str());
     const BranchInstr &branchInstr = std::get<BranchInstr>(stmt.data);
     executeBranch(context, branchInstr);
@@ -53,7 +53,7 @@ void BranchHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
 // Barrier instructions
 void BarrierHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
     context->trace_status(ptxsim::log_level::debug, "thread", 
-                          "PC=%x BARRIER: %s", context->pc, 
+                          "PC=%x BARRIER: %s", context->get_pc(), 
                           stmt.instructionText.c_str());
     const BarrierInstr &barrierInstr = std::get<BarrierInstr>(stmt.data);
     executeBarrier(context, barrierInstr);
@@ -62,13 +62,13 @@ void BarrierHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
 // Call instructions
 void CallBaseHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
     context->trace_status(ptxsim::log_level::debug, "thread", 
-                          "PC=%x CALL: %s", context->pc, 
+                          "PC=%x CALL: %s", context->get_pc(), 
                           stmt.instructionText.c_str());
     const CallInstr &callInstr = std::get<CallInstr>(stmt.data);
     executeCall(context, callInstr);
     // Default behavior: advance to next instruction
     // Derived classes may override this to set next_pc to target address
-    context->next_pc = context->pc + 1;
+    context->set_next_pc(context->get_pc() + 1);
 }
 
 // Pipeline Handler Implementation
@@ -80,26 +80,26 @@ void PipelineHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
     // inter-thread state interference.
     if (!prepareOperands(context, stmt)) {
         PTX_DEBUG_EMU("[PTX_PIPELINE_RETRY] stage=prepare pc=%d instr=%s",
-                      context->pc, stmt.instructionText.c_str());
+                      context->get_pc(), stmt.instructionText.c_str());
         return;
     }
 
     if (!executeOperation(context, stmt)) {
         PTX_DEBUG_EMU("[PTX_PIPELINE_RETRY] stage=execute pc=%d instr=%s",
-                      context->pc, stmt.instructionText.c_str());
+                      context->get_pc(), stmt.instructionText.c_str());
         return;
     }
 
     if (!commitResults(context, stmt)) {
         PTX_DEBUG_EMU("[PTX_PIPELINE_RETRY] stage=commit pc=%d instr=%s",
-                      context->pc, stmt.instructionText.c_str());
+                      context->get_pc(), stmt.instructionText.c_str());
         return;
     }
 
     // stmt.state is shared across all threads in a CTA; do not write to it
     // here to avoid a data race. The state begins as READY and need not be
     // reset—each thread drives its own pipeline atomically per ExecPipe call.
-    context->next_pc = context->pc + 1;
+    context->set_next_pc(context->get_pc() + 1);
 }
 
 bool PipelineHandler::acquireAllOperands(ThreadContext *context, 
@@ -110,7 +110,7 @@ bool PipelineHandler::acquireAllOperands(ThreadContext *context,
         void *result = context->acquire_operand(operands[i], qualifiers);
         if (!result) {
             PTX_DEBUG_EMU("Failed to get operand address for op[%d]", i);
-            PTX_DEBUG_EMU("  pc=%d op=%s", context->pc,
+            PTX_DEBUG_EMU("  pc=%d op=%s", context->get_pc(),
                           operands[i].toString().c_str());
             if (operands[i].kind() == OperandKind::ADDR) {
                 const auto &addr = std::get<AddrOperand>(operands[i].data);
@@ -263,9 +263,9 @@ bool WmmaPipelineHandler::commitResults(ThreadContext *context, StatementContext
 
 void AsyncCopyHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
     context->trace_status(ptxsim::log_level::debug, "thread",
-                          "PC=%x CP_ASYNC: %s", context->pc,
+                          "PC=%x CP_ASYNC: %s", context->get_pc(),
                           stmt.instructionText.c_str());
     const CpAsyncInstr &cpAsyncInstr = std::get<CpAsyncInstr>(stmt.data);
     executeAsyncCopy(context, cpAsyncInstr);
-    context->next_pc = context->pc + 1;
+    context->set_next_pc(context->get_pc() + 1);
 }
