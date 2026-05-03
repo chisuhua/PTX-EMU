@@ -1,5 +1,6 @@
 #include "ptx_parser/ptx_parser.h"
 #include "ptx_ir/ptx_types.h"
+#include "ptxsim/ptx_exceptions.h"
 #include "utils/logger.h"
 #include <cassert>
 #include <cstdio>
@@ -175,7 +176,10 @@ void PtxListener::exitTargetDes(ptxParser::TargetDesContext *ctx) {
     } else if (str.length() == 6) {
         ptxContext.ptxTarget = stoi(id->getText().substr(3, 3));
     } else {
-        assert(0 && "sm_xxx is not recognized!\n");
+        throw PTXParseException(
+            "Unrecognized SM architecture version: " + id->getText(),
+            ctx->getStart()->getLine(),
+            ctx->getStart()->getCharPositionInLine());
     }
 #ifdef LOG
     std::cout << __func__ << std::endl;
@@ -218,8 +222,12 @@ void PtxListener::exitPerformanceTuning(
         kernelContext->maxntid.z = stoi(ctx->DIGITS(2)->getText());
     } else if (ctx->MINNCTAPERSM()) {
         kernelContext->minnctapersm = stoi(ctx->DIGITS(0)->getText());
-    } else
-        assert(0 && "performancetuning not recognized!\n");
+    } else {
+        throw PTXParseException(
+            "Unrecognized performance tuning directive",
+            ctx->getStart()->getLine(),
+            ctx->getStart()->getCharPositionInLine());
+    }
 
 #ifdef LOG
     std::cout << __func__ << std::endl;
@@ -297,8 +305,11 @@ void PtxListener::exitQualifier(ptxParser::QualifierContext *ctx) {
     }
 #include "ptx_ir/ptx_qualifier.def"
 #undef X
-    else {
-        assert(0 && "some qualifier not recognized!\n");
+    } else {
+        throw PTXParseException(
+            "Unrecognized qualifier in operand",
+            ctx->getStart()->getLine(),
+            ctx->getStart()->getCharPositionInLine());
     }
 }
 
@@ -793,8 +804,12 @@ void PtxListener::exitAtomStatement(ptxParser::AtomStatementContext *ctx) {
             fetchOperand(st->operands[i]);
         }
         st->operandNum = 3;
-    } else
-        assert(0);
+    } else {
+        throw PTXParseException(
+            "Atom statement requires 3 or 4 operands",
+            ctx->getStart()->getLine(),
+            ctx->getStart()->getCharPositionInLine());
+    }
 
     /* end */
     statementType = S_ATOM;
@@ -897,8 +912,12 @@ void PtxListener::exitFetchAddress(ptxParser::FetchAddressContext *ctx) {
         extractREG(regName, r->regIdx, r->regName);
         fa->reg->operandType = O_REG;
         fa->reg->operand = r;
-    } else
-        assert(0);
+    } else {
+        throw PTXParseException(
+            "Fetch address requires ID or regi as base",
+            ctx->getStart()->getLine(),
+            ctx->getStart()->getCharPositionInLine());
+    }
 
     /* offset */
     if (ctx->DIGITS()) {
