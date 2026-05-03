@@ -426,9 +426,10 @@ void *ThreadContext::acquire_register(const RegOperand &reg,
     void *reg_data =
         register_bank_manager_->get_register(combinedName, warp_id_, lane_id_);
 
-    // 如果寄存器不存在，直接断言退出
-    assert(reg_data != nullptr &&
-           "Register not found in bank manager. Aborting.");
+    if (reg_data == nullptr) {
+      throw InvalidMemoryAccessException(0, 0, "null register data",
+          "Register not found in bank manager: " + combinedName);
+    }
 
     return reg_data;
 }
@@ -655,9 +656,13 @@ void ThreadContext::initialize_shared_memory(const std::string &name,
                                              uint64_t address) {
     extern uint64_t SHMEMADDR;
     if (SHMEMADDR) {
-        assert(address >> 32 == SHMEMADDR);
+      if (address >> 32 != SHMEMADDR) {
+        throw InvalidMemoryAccessException(
+            address, 0, "invalid shared memory address",
+            "Address high bits do not match SHMEMADDR constant");
+      }
     } else {
-        SHMEMADDR = address >> 32; // 只保存高32位
+      SHMEMADDR = address >> 32;  // 只保存高32位
     }
 }
 
