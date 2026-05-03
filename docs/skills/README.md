@@ -1,40 +1,30 @@
 # 技能沉淀目录
 
-本目录包含 SIMT v2.0 项目中的技术技能和模式总结。
+本目录包含技术参考文档。**可加载的技能**已迁移至 `.opencode/skills/`。
 
----
+## 可加载技能（`.opencode/skills/`）
 
-## 📁 技能列表
+| 技能 | 类别 |
+|------|------|
+| `ptx-debug` | 调试 |
+| `regression-bisect` | 调试 |
+| `state-modification-audit` | 调试 |
+| `oracle-prompting` | 调试 |
+| `ptx-instruction-pipeline` | PTX 仿真 |
+| `ptx-barrier-mechanism` | PTX 仿真 |
+| `ptx-grammar-modification` | 语法 |
+| `ptxir-serialization` | 解析 |
+| `three-mode-testing` | 测试 |
 
-| 技能 | 难度 | 适用场景 | 状态 |
-|------|------|---------|------|
-| [three-mode-testing](./three-mode-testing/) | ⭐⭐⭐ | PTX 测试生成 | ✅ |
-| [ptxir-serialization](./ptxir-serialization/) | ⭐⭐⭐ | PTX 二进制序列化 | ✅ |
-| [cfg-builder-pattern](./cfg-builder-pattern.md) | ⭐⭐⭐ | CFG 构建 | ✅ |
-| [post-dominator-algorithm](./post-dominator-algorithm.md) | ⭐⭐⭐⭐ | 控制流分析 | ✅ |
-| [simt-reconvergence](./simt-reconvergence.md) | ⭐⭐⭐⭐ | SIMT 收敛 | ✅ |
-| [tdd-workflow](./tdd-workflow.md) | ⭐⭐ | 开发流程 | ✅ |
+## 技术参考（本目录）
 
----
-
-## 🎯 技能分类
-
-### 测试类
-
-- **Three-Mode Testing** - 四模式 PTX 测试生成框架
-- **PTXIR Serialization** - PTX 二进制序列化与快速加载
-- **TDD Workflow** - 测试驱动开发流程
-
-### 算法类
-
-- **CFG Builder Pattern** - 控制流图构建模式
-- **Post-Dominator Algorithm** - 后支配树算法
-
-### 架构类
-
-- **SIMT Reconvergence** - SIMT 收敛技术
-
----
+| 文档 | 用途 |
+|------|------|
+| [cfg-builder-pattern.md](./cfg-builder-pattern.md) | CFG 构建模式 |
+| [post-dominator-algorithm.md](./post-dominator-algorithm.md) | 后支配树算法 |
+| [simt-reconvergence.md](./simt-reconvergence.md) | SIMT 收敛技术 |
+| [tdd-workflow.md](./tdd-workflow.md) | TDD 工作流程 |
+| [ptx-grammar-modification.md](./ptx-grammar-modification.md) | PTX 语法修改详细指南（→ 已转 skill） |
 
 ## 📖 学习路径
 
