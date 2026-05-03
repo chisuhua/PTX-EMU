@@ -1,5 +1,6 @@
 // memory/simple_memory.cpp
 #include "memory/simple_memory.h"
+#include "ptxsim/ptx_exceptions.h"
 #include "utils/logger.h"
 #include <stdexcept>
 #include <sys/mman.h>
@@ -22,18 +23,23 @@ SimpleMemory::~SimpleMemory() {
     }
 }
 
+bool SimpleMemory::validate_offset(uint64_t offset, size_t size) const {
+    return offset < global_size_ && (offset + size) <= global_size_;
+}
+
 void SimpleMemory::direct_access(uint64_t address, void *data, size_t size,
                                  bool is_write) {
-    bool in_range = (address >= (uint64_t)global_base_) &
+    bool in_range = (address >= (uint64_t)global_base_) &&
         address < ((uint64_t)global_base_ + global_size_);
     if (in_range) {
         address -= (uint64_t)global_base_;
     }
-    if (address + size > global_size_) {
-        throw std::runtime_error(
-            "Memory access out of bounds: addr=" + std::to_string(address) +
-            ", size=" + std::to_string(size) +
-            ", max_size=" + std::to_string(global_size_));
+    if (!validate_offset(address, size)) {
+        throw InvalidMemoryAccessException(
+            address, size, "out of bounds",
+            "Access at offset 0x" + std::to_string(address) +
+            " with size " + std::to_string(size) +
+            " exceeds SimpleMemory [size=" + std::to_string(global_size_) + "]");
     }
 
     if (is_write) {
