@@ -96,3 +96,28 @@ void HardwareMemoryManager::access(void *dev_ptr, void *data, size_t size,
     }
     }
 }
+
+bool HardwareMemoryManager::register_region(const MemoryRegion& region) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    regions_[region.name] = region;
+    return true;
+}
+
+bool HardwareMemoryManager::unregister_region(const std::string& name) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return regions_.erase(name) > 0;
+}
+
+const MemoryRegion* HardwareMemoryManager::get_region(const std::string& name) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = regions_.find(name);
+    if (it != regions_.end()) {
+        return &it->second;
+    }
+    return nullptr;
+}
+
+const std::unordered_map<std::string, MemoryRegion>&
+HardwareMemoryManager::get_all_regions() const {
+    return regions_;
+}
