@@ -132,6 +132,8 @@ add_catch_test(
     test_parse_immediate.cpp
 )
 
+add_catch_test(test_memory_bounds test_memory_bounds.cpp)
+
 # ================================
 # Catch2 PTX 指令测试套件（按类别拆分）
 # ================================
