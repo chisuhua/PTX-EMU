@@ -73,11 +73,11 @@ void CallBaseHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
 
 // Pipeline Handler Implementation
 void PipelineHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
-    // StatementContext is shared by all threads in a CTA. If we use stmt.state
-    // as a cross-call pipeline state machine, different threads can observe and
-    // mutate the same state, causing operand acquisition/execution phase
-    // mismatches. Execute full pipeline atomically per call to avoid
-    // inter-thread state interference.
+    // 保存当前PC，避免屏障处理器修改后 get_pc() 返回错误值
+    int saved_pc = context->get_pc();
+
+    // 流水线阶段1：获取操作数 - 每个线程独立运行，返回false表示资源冲突需要重试
+    // 确保准备操作数的过程独立运行，避免线程间状态干扰
     if (!prepareOperands(context, stmt)) {
         PTX_DEBUG_EMU("[PTX_PIPELINE_RETRY] stage=prepare pc=%d instr=%s",
                       context->get_pc(), stmt.instructionText.c_str());
@@ -99,7 +99,8 @@ void PipelineHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
     // stmt.state is shared across all threads in a CTA; do not write to it
     // here to avoid a data race. The state begins as READY and need not be
     // reset—each thread drives its own pipeline atomically per ExecPipe call.
-    context->set_next_pc(context->get_pc() + 1);
+    // 使用保存的PC而不是 get_pc()，因为屏障处理器可能已经通过 set_thread_pc 修改了PC
+    context->set_next_pc(saved_pc + 1);
 }
 
 bool PipelineHandler::acquireAllOperands(ThreadContext *context, 
