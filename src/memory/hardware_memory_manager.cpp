@@ -1,5 +1,6 @@
 #include "memory/hardware_memory_manager.h"
 #include "memory/simple_memory.h"
+#include "ptxsim/ptx_exceptions.h"
 #include "utils/logger.h"
 #include <cstring>
 #include <stdexcept>
@@ -19,6 +20,35 @@ void HardwareMemoryManager::set_simple_memory(SimpleMemory *simple_memory) {
 }
 
 void HardwareMemoryManager::access(const MemoryAccess &req) {
+    uint64_t addr = req.address;
+    const MemoryRegion* region = nullptr;
+
+    const char* region_name = nullptr;
+    switch (req.space) {
+    case MemorySpace::SHARED:    region_name = "shared"; break;
+    case MemorySpace::GLOBAL:    region_name = "global"; break;
+    case MemorySpace::LOCAL:     region_name = "local"; break;
+    case MemorySpace::CONST:    region_name = "constant"; break;
+    case MemorySpace::PARAM:    region_name = "param"; break;
+    default: break;
+    }
+    if (region_name) {
+        region = get_region(region_name);
+        if (region && !region->contains(addr, req.size)) {
+            throw InvalidMemoryAccessException(
+                addr, req.size, "out of bounds",
+                "Access at 0x" + std::to_string(addr) +
+                " exceeds region " + region_name +
+                " [base=0x" + std::to_string(region->base_address) +
+                ", size=" + std::to_string(region->size) + "]");
+        }
+        if (region && req.is_write && !region->is_writable) {
+            throw InvalidMemoryAccessException(
+                addr, req.size, "write to read-only region",
+                "Region " + std::string(region_name) + " is not writable");
+        }
+    }
+
     switch (req.space) {
     case MemorySpace::SHARED:
         // 对于共享内存访问，直接进行内存操作（因为共享内存地址已经是真实地址）
@@ -69,6 +99,35 @@ void HardwareMemoryManager::access(void *dev_ptr, void *data, size_t size,
     }
 
     std::lock_guard<std::mutex> lock(mutex_);
+
+    uint64_t addr = reinterpret_cast<uint64_t>(dev_ptr);
+    const MemoryRegion* region = nullptr;
+
+    const char* region_name = nullptr;
+    switch (space) {
+    case MemorySpace::SHARED:    region_name = "shared"; break;
+    case MemorySpace::GLOBAL:    region_name = "global"; break;
+    case MemorySpace::LOCAL:     region_name = "local"; break;
+    case MemorySpace::CONST:    region_name = "constant"; break;
+    case MemorySpace::PARAM:    region_name = "param"; break;
+    default: break;
+    }
+    if (region_name) {
+        region = get_region(region_name);
+        if (region && !region->contains(addr, size)) {
+            throw InvalidMemoryAccessException(
+                addr, size, "out of bounds",
+                "Access at 0x" + std::to_string(addr) +
+                " exceeds region " + region_name +
+                " [base=0x" + std::to_string(region->base_address) +
+                ", size=" + std::to_string(region->size) + "]");
+        }
+        if (region && is_write && !region->is_writable) {
+            throw InvalidMemoryAccessException(
+                addr, size, "write to read-only region",
+                "Region " + std::string(region_name) + " is not writable");
+        }
+    }
 
     // 根据地址空间类型处理访问
     switch (space) {
