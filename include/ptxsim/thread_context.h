@@ -197,6 +197,11 @@ public:
     // 原始 set_pc() 仅用于初始化、同步和重置。
     void commit_pc();
 
+    // 【强制写入】仅设置 PC（不修改 next_pc）
+    // 用于 warp 级操作（barrier 完成）对非当前线程的直接写入
+    // 注意：当前线程应通过 set_next_pc() + commit_pc() 流程推进 PC
+    void force_set_pc(int new_pc);
+
     // 获取线程索引
     Dim3 get_thread_idx() const { return ThreadIdx; }
 

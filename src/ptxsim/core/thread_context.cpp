@@ -790,9 +790,13 @@ void ThreadContext::set_next_pc(int new_next_pc) {
     warp_context_->get_warp_state().threads[lane].next_pc = new_next_pc;
 }
 
-// 【单一入口】提交 PC 变更：pc ← next_pc
-// 这是正常执行期间 PC 推进的唯一方法。
-// 原始 set_pc() 仅用于初始化、同步和重置。
+void ThreadContext::force_set_pc(int new_pc) {
+    if (!warp_context_) return;
+    int lane = lane_id_;
+    if (lane < 0 || lane >= 32) return;
+    warp_context_->get_warp_state().threads[lane].pc = new_pc;
+}
+
 void ThreadContext::commit_pc() {
     set_pc(get_next_pc());
 }
