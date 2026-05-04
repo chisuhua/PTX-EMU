@@ -538,3 +538,26 @@ add_catch_test(test_simt_stack_catch2
 add_catch_test(test_active_mask_consistency
     test_active_mask_consistency.cpp
 )
+
+# ============================================================================
+# SIMT Architecture Tests — Phase 3: Test Expansion
+# ============================================================================
+add_catch_test(test_warp_state
+    test_warp_state.cpp
+)
+
+add_catch_test(test_sync_mechanism
+    test_sync_mechanism.cpp
+)
+
+add_catch_test(test_pc_management_advanced
+    test_pc_management_advanced.cpp
+)
+
+add_catch_test(test_barrier_simt_integration
+    test_barrier_simt_integration.cpp
+)
+
+add_catch_test(test_simt_integration
+    test_simt_integration.cpp
+)
