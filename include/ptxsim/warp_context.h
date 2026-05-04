@@ -129,7 +129,7 @@ public:
 
     // 检查特定 lane 是否活跃
     bool is_lane_active(int lane_id) const {
-        return is_lane_schedulable(lane_id);
+        return lane_id >= 0 && lane_id < WARP_SIZE && active_mask[lane_id];
     }
 
     // 获取 warp 内线程 ID

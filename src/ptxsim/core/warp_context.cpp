@@ -208,11 +208,13 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt, int target_pc
 void WarpContext::update_active_mask() {
     active_count = 0;
     for (int i = 0; i < WARP_SIZE; i++) {
-        bool should_be_active = warp_state.threads[i].is_schedulable();
-        active_mask[i] = should_be_active;
-        warp_state.threads[i].is_active = should_be_active;
-        if (should_be_active) {
-            active_count++;
+        if (i < threads.size() && threads[i] != nullptr) {
+            if (threads[i]->is_exited() || warp_state.threads[i].is_blocked) {
+                active_mask[i] = false;
+            } else {
+                active_mask[i] = true;
+                active_count++;
+            }
         }
     }
 }
