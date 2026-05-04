@@ -21,6 +21,4 @@ void BraHandler::executeBranch(ThreadContext *context, const BranchInstr &instr)
         instr.reconvergence_pc,
         context->get_pc()
     );
-
-    context->set_pc(warp_ctx->get_thread_pc(context->lane_id_));
 }
