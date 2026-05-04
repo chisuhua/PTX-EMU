@@ -16,19 +16,20 @@ WarpContext* RoundRobinWarpScheduler::schedule_next() {
     if (warps.empty()) {
         return nullptr;
     }
-    
+
     // 寻找下一个活跃的warp
     size_t start_idx = current_warp_idx;
     do {
         WarpContext* warp = warps[current_warp_idx];
-        if (warp && warp->is_active() && !warp->is_finished()) {
+        if (warp && warp->is_active() && !warp->is_finished() &&
+            warp->is_warp_ready_to_fetch()) {
             current_warp_idx = (current_warp_idx + 1) % warps.size();
             return warp;
         }
         current_warp_idx = (current_warp_idx + 1) % warps.size();
     } while (current_warp_idx != start_idx);
-    
-    return nullptr;  // 没有活跃的warp
+
+    return nullptr;  // 没有就绪的warp
 }
 
 void RoundRobinWarpScheduler::update_state() {
@@ -60,19 +61,21 @@ WarpContext* GreedyWarpScheduler::schedule_next() {
     if (!ready_warps.empty()) {
         WarpContext* warp = ready_warps.front();
         ready_warps.pop();
-        if (warp && warp->is_active() && !warp->is_finished()) {
+        if (warp && warp->is_active() && !warp->is_finished() &&
+            warp->is_warp_ready_to_fetch()) {
             return warp;
         }
-        // 如果warp不再活跃，继续寻找
+        // 如果warp不再就绪，继续寻找
     }
-    
-    // 遍历所有warp找到下一个活跃的
+
+    // 遍历所有warp找到下一个就绪的
     for (auto* warp : warps) {
-        if (warp && warp->is_active() && !warp->is_finished()) {
+        if (warp && warp->is_active() && !warp->is_finished() &&
+            warp->is_warp_ready_to_fetch()) {
             return warp;
         }
     }
-    
+
     return nullptr;
 }
 
