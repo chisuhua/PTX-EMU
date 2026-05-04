@@ -17,9 +17,8 @@ struct WarpState {
     std::array<Wbar, 4> wbars;
     int current_wbar_id = -1;
     uint32_t warp_pc = 0;
-    std::array<int, 16> pc_stack;
-    int pc_stack_depth = 0;
-    
+    // pc_stack 和 pc_stack_depth 已移除 — 使用 WarpContext::pc_stacks 或 warp_state.threads[i].pc 替代
+
     void reset() {
         for (auto& thread : threads) {
             thread.reset();
@@ -31,7 +30,6 @@ struct WarpState {
         }
         current_wbar_id = -1;
         warp_pc = 0;
-        pc_stack_depth = 0;
     }
     
     int count_active_lanes() const {

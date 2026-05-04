@@ -520,3 +520,8 @@ add_catch_test(test_simt_stack_entry
 add_catch_test(test_exec_mask
     test_exec_mask.cpp
 )
+
+# Handle branch + SIMT stack integration
+add_catch_test(test_handle_branch_integration
+    test_handle_branch_integration.cpp
+)
