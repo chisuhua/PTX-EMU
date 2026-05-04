@@ -515,3 +515,8 @@ add_subdirectory(three_mode_testing)
 add_catch_test(test_simt_stack_entry
     test_simt_stack_entry.cpp
 )
+
+# BUG-001: exec_mask not restored after reconvergence
+add_catch_test(test_exec_mask
+    test_exec_mask.cpp
+)
