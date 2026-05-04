@@ -387,6 +387,10 @@ add_catch_test(test_simt_thread_pc
     test_simt_thread_pc.cpp
 )
 
+add_catch_test(test_pc_management
+    test_pc_management.cpp
+)
+
 add_catch_test(test_warp_barrier_extended
     test_warp_barrier.cpp
 )
