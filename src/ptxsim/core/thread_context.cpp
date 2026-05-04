@@ -112,8 +112,8 @@ void ThreadContext::_execute_once() {
         state = EXIT;
     }
 
-    // 更新PC
-    set_pc(get_next_pc());
+    // 提交 PC 变更（正常执行的唯一入口点）
+    commit_pc();
 }
 
 // void ThreadContext::trace_instruction(StatementContext &statement) {
@@ -788,4 +788,11 @@ void ThreadContext::set_next_pc(int new_next_pc) {
     int lane = lane_id_;
     if (lane < 0 || lane >= 32) return;
     warp_context_->get_warp_state().threads[lane].next_pc = new_next_pc;
+}
+
+// 【单一入口】提交 PC 变更：pc ← next_pc
+// 这是正常执行期间 PC 推进的唯一方法。
+// 原始 set_pc() 仅用于初始化、同步和重置。
+void ThreadContext::commit_pc() {
+    set_pc(get_next_pc());
 }

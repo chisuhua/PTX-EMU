@@ -192,6 +192,11 @@ public:
     // 设置下一个PC值（通过WarpState）
     void set_next_pc(int new_next_pc);
 
+    // 【单一入口】提交 PC 变更：pc ← next_pc
+    // 这是正常执行期间 PC 推进的唯一方法。
+    // 原始 set_pc() 仅用于初始化、同步和重置。
+    void commit_pc();
+
     // 获取线程索引
     Dim3 get_thread_idx() const { return ThreadIdx; }
 
