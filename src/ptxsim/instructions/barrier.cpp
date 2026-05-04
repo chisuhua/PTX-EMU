@@ -155,7 +155,11 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
         for (int i = 0; i < WarpContext::WARP_SIZE; ++i) {
             if ((wbar.arrived_mask & (1u << i)) && warp_state.threads[i].is_active) {
                 uint32_t old_pc = warp_ctx->get_thread(i)->get_pc();
-                warp_ctx->set_thread_pc(i, reconvergence_pc);
+                if (i == context->lane_id_) {
+                    context->force_set_pc(reconvergence_pc);
+                } else {
+                    warp_ctx->set_thread_pc(i, reconvergence_pc);
+                }
                 warp_ctx->update_pc_stack(i, reconvergence_pc);
                 warp_state.threads[i].is_blocked = false;
                 warp_state.threads[i].status = ptxsim::ThreadStatus::Active;
