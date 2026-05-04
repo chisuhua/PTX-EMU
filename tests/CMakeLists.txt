@@ -507,3 +507,11 @@ add_catch_test(test_post_barrier_divergence
 # ============================================================================
 add_subdirectory(three_mode_testing)
 
+
+# ============================================================================
+# SIMT Architecture Tests — Phase 1: Critical Bug Fixes (2026-05-04)
+# ============================================================================
+# BUG-002: Exited threads blocking SIMT stack convergence
+add_catch_test(test_simt_stack_entry
+    test_simt_stack_entry.cpp
+)

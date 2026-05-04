@@ -7,6 +7,10 @@ namespace ptxsim {
 bool SIMTStackEntry::is_converged(const std::array<ThreadState, 32>& threads) const {
     for (size_t i = 0; i < 32; i++) {
         if (return_mask & (1u << i)) {
+            // 跳过已退出或非活跃的线程 (修复 BUG-002)
+            if (threads[i].is_exited || !threads[i].is_active) {
+                continue;
+            }
             if ((int)threads[i].pc != reconvergence_pc) {
                 return false;
             }
