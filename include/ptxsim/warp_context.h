@@ -47,6 +47,9 @@ public:
     // 检查 warp 是否活跃
     bool is_active() const { return active_count > 0; }
 
+    // 【NEW】检查 warp 是否准备好取指 (所有活跃线程的 pc == next_pc)
+    bool is_warp_ready_to_fetch() const;
+
     // 获取活跃线程数量
     int get_active_count() const { return active_count; }
 

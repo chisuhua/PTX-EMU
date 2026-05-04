@@ -230,6 +230,16 @@ bool WarpContext::is_finished() const {
     return active_count == 0;
 }
 
+bool WarpContext::is_warp_ready_to_fetch() const {
+    for (int i = 0; i < WARP_SIZE; i++) {
+        if (!warp_state.threads[i].is_active) continue;
+        if (warp_state.threads[i].pc != warp_state.threads[i].next_pc) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool WarpContext::is_all_threads_exited() const {
     // 检查warp中的所有线程是否都已退出
     for (int i = 0; i < WARP_SIZE; i++) {
