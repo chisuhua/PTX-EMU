@@ -29,6 +29,11 @@ std::string SIMTStackEntry::toString() const {
 }
 
 void SIMTStack::push(const SIMTStackEntry& entry) {
+    if (entries_.size() >= MAX_DEPTH) {
+        throw std::runtime_error(
+            "SIMTStack overflow: maximum depth (" +
+            std::to_string(MAX_DEPTH) + ") exceeded");
+    }
     entries_.push_back(entry);
 }
 

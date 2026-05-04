@@ -54,9 +54,11 @@ public:
     int get_active_count() const { return active_count; }
 
     // 获取 PC 值（向后兼容，返回 warp 级 PC）
+    [[deprecated("Use warp_state.threads[lane_id].pc for per-thread PC")]]
     int get_pc() const { return pc; }
 
     // 设置 PC 值（向后兼容）
+    [[deprecated("Use advance_thread_pc() or advance_all_threads() instead")]]
     void set_pc(int new_pc) { pc = new_pc; }
 
     // 【NEW】获取每线程 PC
@@ -86,6 +88,7 @@ public:
     void advance_all_threads(int new_pc);
 
     // 【NEW】更新 PC 栈（用于 barrier 释放后设置正确的继续执行位置）
+    [[deprecated("Use warp_state.threads[lane_id].pc = new_pc instead")]]
     void update_pc_stack(int lane_id, uint32_t new_pc) {
         if (lane_id >= 0 && lane_id < WARP_SIZE && !pc_stacks[lane_id].empty()) {
             pc_stacks[lane_id].back() = new_pc;
@@ -126,7 +129,7 @@ public:
 
     // 检查特定 lane 是否活跃
     bool is_lane_active(int lane_id) const {
-        return lane_id >= 0 && lane_id < WARP_SIZE && active_mask[lane_id];
+        return is_lane_schedulable(lane_id);
     }
 
     // 获取 warp 内线程 ID
@@ -153,6 +156,7 @@ public:
     void sync_threads();
 
     // 处理分支分歧
+    [[deprecated("PC stacks replaced by SIMT stack + warp_state.threads[i].pc")]]
     void handle_branch_divergence(int lane_id, int new_pc);
 
     // 检查是否有分歧

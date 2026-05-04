@@ -525,3 +525,16 @@ add_catch_test(test_exec_mask
 add_catch_test(test_handle_branch_integration
     test_handle_branch_integration.cpp
 )
+
+# ============================================================================
+# SIMT Architecture Tests — Phase 2: Code Cleanup & Data Source Unification
+# ============================================================================
+# SIMT Stack basic operations
+add_catch_test(test_simt_stack_catch2
+    test_simt_stack_catch2.cpp
+)
+
+# active_mask vs exec_mask consistency (ISSUE-004)
+add_catch_test(test_active_mask_consistency
+    test_active_mask_consistency.cpp
+)
