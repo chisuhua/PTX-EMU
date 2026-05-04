@@ -199,8 +199,9 @@ EXE_STATE SMContext::exe_once() {
                                 print_warp_status(next_warp);
                             }
                             next_warp->execute_warp_instruction(*stmt, target_pc);
-                            // Check SIMT stack reconvergence only for branch instructions
-                            if (stmt->type == S_BRA) {
+                            // Check SIMT stack reconvergence for branch and barrier instructions
+                            if (stmt->type == S_BRA || stmt->type == S_BAR ||
+                                stmt->type == S_BAR_WARP_SYNC) {
                                 next_warp->check_reconvergence();
                             }
                         }
