@@ -688,7 +688,7 @@ void ThreadContext::print_instruction_status(StatementContext &stmt) {
                  opcode_str.c_str(), operands_str.c_str());
 }
 
-// 【Stage 4】从 warp_state 同步 PC 和状态到 ThreadContext
+// 【Stage 4】从 warp_state 同步状态到 ThreadContext
 void ThreadContext::sync_from_warp_state() {
     if (!warp_context_) return;
 
@@ -697,9 +697,8 @@ void ThreadContext::sync_from_warp_state() {
 
     ptxsim::ThreadState& thread_state = warp_context_->get_warp_state().threads[lane_id];
 
-    // 同步 PC
-    set_pc(thread_state.pc);
-    set_next_pc(thread_state.next_pc);
+    // PC 通过 get_pc()/get_next_pc() 直接从 warp_state 读取，无需同步
+    // sync_to_warp_state() 的 next_pc 同步保持一致性
 
     // 同步状态
     switch (thread_state.status) {
@@ -719,7 +718,7 @@ void ThreadContext::sync_from_warp_state() {
     }
 }
 
-// 【Stage 4】将 ThreadContext 的 PC 和状态同步到 warp_state
+// 【Stage 4】将 ThreadContext 的状态同步到 warp_state
 void ThreadContext::sync_to_warp_state() {
     if (!warp_context_) return;
 
@@ -729,14 +728,8 @@ void ThreadContext::sync_to_warp_state() {
 
     ptxsim::ThreadState& thread_state = warp_context_->get_warp_state().threads[lane_id];
 
-    // Synchronization barrier completion updates warp_state.pc for all lanes.
-    // Don't overwrite an already-advanced PC with the stale barrier PC.
-    int current_pc = get_pc();
-    if (thread_state.pc > static_cast<uint32_t>(current_pc)) {
-        // Completion handler already advanced past barrier — keep it
-    } else {
-        thread_state.pc = current_pc;
-    }
+    // 屏障完成处理会通过 warp_ctx->advance_thread_pc() 或 force_set_pc() 直接更新 warp_state
+    // 此处只同步 ThreadContext 自己维护的 next_pc 状态
     thread_state.next_pc = get_next_pc();
 
     // 同步状态

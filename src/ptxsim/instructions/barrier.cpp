@@ -157,6 +157,7 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
                 uint32_t old_pc = warp_ctx->get_thread(i)->get_pc();
                 if (i == context->lane_id_) {
                     context->force_set_pc(reconvergence_pc);
+                    context->set_next_pc(reconvergence_pc);
                 } else {
                     warp_ctx->set_thread_pc(i, reconvergence_pc);
                 }
