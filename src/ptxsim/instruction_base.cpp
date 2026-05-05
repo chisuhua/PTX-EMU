@@ -100,7 +100,10 @@ void PipelineHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
     // here to avoid a data race. The state begins as READY and need not be
     // reset—each thread drives its own pipeline atomically per ExecPipe call.
     // 使用保存的PC而不是 get_pc()，因为屏障处理器可能已经通过 set_thread_pc 修改了PC
-    context->set_next_pc(saved_pc + 1);
+    if (!pc_overridden_) {
+        context->set_next_pc(saved_pc + 1);
+    }
+    pc_overridden_ = false;
 }
 
 bool PipelineHandler::acquireAllOperands(ThreadContext *context, 

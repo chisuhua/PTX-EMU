@@ -567,6 +567,10 @@ add_catch_test(test_barrier_simt_integration
 )
 set_tests_properties(test_barrier_simt_integration PROPERTIES LABELS "barrier;simt")
 
+add_catch_test(test_barrier_pc_overwrite
+    test_barrier_pc_overwrite.cpp
+)
+
 add_catch_test(test_simt_integration
     test_simt_integration.cpp
 )

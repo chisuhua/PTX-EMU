@@ -76,9 +76,23 @@ bool BarWarpSyncHandler::prepareOperands(ThreadContext* context, StatementContex
 
 // Override executeOperation to use BarWarpSyncInstr
 bool BarWarpSyncHandler::executeOperation(ThreadContext* context, StatementContext& stmt) {
-    const BarWarpSyncInstr& instr = std::get<BarWarpSyncInstr>(stmt.data);
+    BarWarpSyncInstr& instr = std::get<BarWarpSyncInstr>(stmt.data);
+
+    if (!acquireAllOperands(context, instr.operands, instr.qualifiers,
+                           static_cast<int>(instr.operands.size()))) {
+        return false;
+    }
+    context->collect_operands(stmt, instr.operands, &(instr.qualifiers));
+
+    // Execute the barrier operation (may set next_pc to reconvergence_pc)
     processOperation(context, &(context->operand_collected[0]), instr.qualifiers,
                      &context->operand_is_immediate_);
+
+    // Notify PipelineHandler::ExecPipe that PC was overridden by this handler
+    // so it won't blindly call set_next_pc(saved_pc + 1) and overwrite reconvergence_pc
+    set_pc_overridden(true);
+
+    releaseAllOperands(instr.operands, static_cast<int>(instr.operands.size()));
     return true;
 }
 

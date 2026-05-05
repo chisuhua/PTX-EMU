@@ -76,14 +76,19 @@ public:
 class PipelineHandler : public InstructionHandler {
 public:
     void ExecPipe(ThreadContext *context, StatementContext &stmt) override;
-    
+
+    bool is_pc_overridden() const { return pc_overridden_; }
+
 protected:
+    bool pc_overridden_ = false;
+
+    void set_pc_overridden(bool v) { pc_overridden_ = v; }
+
     virtual bool prepareOperands(ThreadContext *context, StatementContext &stmt) = 0;
     virtual bool executeOperation(ThreadContext *context, StatementContext &stmt) = 0;
     virtual bool commitResults(ThreadContext *context, StatementContext &stmt) = 0;
-    
-    // Helper methods for operand management
-    bool acquireAllOperands(ThreadContext *context, std::vector<OperandContext> &operands, 
+
+    bool acquireAllOperands(ThreadContext *context, std::vector<OperandContext> &operands,
                            const std::vector<Qualifier> &qualifiers, int opCount);
     void releaseAllOperands(std::vector<OperandContext> &operands, int opCount);
 };
