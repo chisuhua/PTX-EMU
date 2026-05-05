@@ -226,8 +226,11 @@ EXE_STATE SMContext::exe_once() {
                 }
             }
             // Check SIMT stack reconvergence after processing all divergent groups
+            // Loop until no more entries are convergent (barrier may resolve multiple entries)
             if (next_warp && !next_warp->get_simt_stack().empty()) {
-                next_warp->check_reconvergence();
+                while (next_warp->check_reconvergence()) {
+                    // Keep popping until no more convergent entries
+                }
             }
         }
 

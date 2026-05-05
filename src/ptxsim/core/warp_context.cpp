@@ -95,8 +95,8 @@ void WarpContext::advance_all_threads(int new_pc) {
     }
 }
 
-void WarpContext::check_reconvergence() {
-    if (simt_stack.empty()) return;
+bool WarpContext::check_reconvergence() {
+    if (simt_stack.empty()) return false;
 
     size_t depth_before = simt_stack.depth();
     simt_stack.check_reconvergence(warp_state.threads);
@@ -107,7 +107,9 @@ void WarpContext::check_reconvergence() {
         } else {
             warp_state.exec_mask = simt_stack.top().active_mask;
         }
+        return true;
     }
+    return false;
 }
 
 WarpContext::WarpContext()
