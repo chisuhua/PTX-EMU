@@ -631,14 +631,12 @@ void PtxInterpreter::setupLabels(std::map<std::string, int> &label2pc) {
             else if (stmt.type == S_BAR_WARP_SYNC) {
                 auto &barrier = std::get<BarWarpSyncInstr>(
                     kernelContext->kernelStatements[i].data);
-                std::string old_reconvergence = (barrier.operands.size() >= 2)
-                    ? std::get<ImmOperand>(barrier.operands[1].data).value
-                    : "N/A";
                 if (barrier.operands.size() >= 2) {
-                    barrier.operands[1] = OperandContext{ImmOperand{std::to_string(i + 1)}};
+                    int barrier_reconvergence = i + 1;
+                    barrier.operands[1] = OperandContext{ImmOperand{std::to_string(barrier_reconvergence)}};
                     updated_barriers++;
-                    PTX_INFO_EMU("CFG[PC=%d]: S_BAR_WARP_SYNC updated - old_reconvergence=%s, new_reconvergence_pc=%d",
-                                i, old_reconvergence, i + 1);
+                    PTX_INFO_EMU("CFG[PC=%d]: S_BAR_WARP_SYNC updated - new_reconvergence_pc=%d",
+                                i, barrier_reconvergence);
                 }
             }
             else if (stmt.type == S_BAR) {

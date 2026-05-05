@@ -88,9 +88,8 @@ bool BarWarpSyncHandler::executeOperation(ThreadContext* context, StatementConte
     processOperation(context, &(context->operand_collected[0]), instr.qualifiers,
                      &context->operand_is_immediate_);
 
-    // Notify PipelineHandler::ExecPipe that PC was overridden by this handler
-    // so it won't blindly call set_next_pc(saved_pc + 1) and overwrite reconvergence_pc
-    set_pc_overridden(true);
+    // Note: set_pc_overridden(true) is called INSIDE processOperation's else branch
+    // when the thread is blocked. We do NOT call it here unconditionally.
 
     releaseAllOperands(instr.operands, static_cast<int>(instr.operands.size()));
     return true;
@@ -185,11 +184,18 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
         // Hybrid fix: update active_mask immediately so barrier handler state is self-contained
         warp_ctx->set_active_mask(wbar.arrived_mask);
 
-        wbar.reset();
+        // Don't reset wbar here! Once is_complete() is true, subsequent arrive() calls
+        // will still return true from is_complete() but won't re-run the release loop
+        // because arrived_mask already equals participation_mask.
+        // The barrier will be reset when it's re-initialized on the next bar.warp.sync.
+        // wbar.reset();
         warp_state.current_wbar_id = -1;
     } else {
         warp_state.threads[lane_id].is_blocked = true;
         warp_state.threads[lane_id].status = ptxsim::ThreadStatus::Blocked;
+        // Prevent commit_pc() from advancing PC while thread is blocked at barrier
+        // This ensures all threads stay at the barrier PC until it completes
+        set_pc_overridden(true);
         PTX_DEBUG_THREAD("Lane %d blocked at bar.warp.sync (arrived=%d/%d)",
                          lane_id, wbar.count_arrived(), wbar.count_participants());
     }

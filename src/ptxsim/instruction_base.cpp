@@ -4,6 +4,7 @@
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/thread_context.h"
+#include "ptxsim/warp_context.h"
 #include "ptxsim/utils/qualifier_utils.h"
 
 // Define PTX_DEBUG_EMU if not already defined
@@ -103,7 +104,13 @@ void PipelineHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
     if (!pc_overridden_) {
         context->set_next_pc(saved_pc + 1);
     }
-    pc_overridden_ = false;
+    // Only reset pc_overridden_ if thread is NOT blocked at barrier.
+    // If blocked, keep pc_overridden_ true so PC won't advance until barrier completes.
+    bool is_blocked = context->warp_context_ &&
+        context->warp_context_->get_warp_state().threads[context->lane_id_].is_blocked;
+    if (!is_blocked) {
+        pc_overridden_ = false;
+    }
 }
 
 bool PipelineHandler::acquireAllOperands(ThreadContext *context, 
