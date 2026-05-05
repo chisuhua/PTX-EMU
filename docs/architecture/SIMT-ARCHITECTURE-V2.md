@@ -1,24 +1,32 @@
 # SIMT 架构 v2.0 设计文档
 ## ——面向 Hopper/Blackwell 的 SIMT 控制流管理
 
-**版本**: 2.0  
-**日期**: 2026-04-09  
-**最后同步标注**: 2026-04-14  
-**状态**: 设计评审中 — 已实现 (含标注)  
+**版本**: 2.0
+**日期**: 2026-04-09
+**最后更新**: 2026-05-05
+**状态**: ✅ 已完成 (文档已对齐)  
 **作者**: PTX-EMU Team
 
 ---
 
 ## 0. 实现状态与文档对齐说明
 
-> ⚠️ **重要提示**: 本文档于 2026-04-09 编写，描述的是设计期望。后续 12 次提交的代码实现有所调整。核心设计决策 (85%) 仍然适用，但部分实现细节已变化。请以**实际代码**为准，本文档提供概念框架。
+> ⚠️ **重要提示**: 本文档于 2026-04-09 编写，描述的是设计期望。后续代码实现有所调整。核心设计决策 (85%) 仍然适用，但部分实现细节已变化。**2026-05-05 已进行文档对齐更新**。
+
+### 0.0 更新日志
+
+| 日期 | 更新内容 |
+|------|---------|
+| 2026-04-14 | 初始对齐说明添加 |
+| 2026-05-05 | 移除已删除的字段描述 (pc_stack, simt_stack_depth, predicate_state, last_issue_cycle) |
 
 ### 0.1 关键差异速查
 
 | 文档描述 | 实际实现 | 文件/行 |
 |---------|---------|---------|
 | `std::vector<SIMTStackEntry> simt_stack` | `ptxsim::SIMTStack simt_stack` (封装类) | `warp_context.h:235` |
-| `int simt_stack_depth` (ThreadState) | **不存在** — 改用 `pc_stack` (WarpState 内) | `warp_state.h:20` |
+| `int simt_stack_depth` (ThreadState) | **不存在** — 已移除 | `thread_state.h` |
+| `pc_stack` / `pc_stack_depth` (WarpState) | **不存在** — 已移除，改用 `warp_state.threads[i].pc` | `warp_state.h:20` |
 | `std::atomic<bool> memory_fence_complete` (Wbar) | `bool is_initialized` + `bool memory_fence_verification_enabled` | `wbar.h:16-17` |
 | `ThreadState::BLOCKED_BARRIER` | `BAR_SYNC` (+ `ThreadStatus::Blocked`) | `thread_context.h` |
 | `execute_branch_instruction()` | `handle_branch()` | `warp_context.cpp:8` |
@@ -238,14 +246,10 @@ struct ThreadState {
     bool is_active;             // Is this thread active?
     bool is_blocked;            // Is this thread blocked (barrier, memory)?
     
-    // SIMT stack pointer (for nested branches)
-    int simt_stack_depth;       // Current depth in SIMT stack
-    
+    // SIMT stack 相关字段已移除 - 使用 WarpContext::simt_stack 替代
+    // 注意: simt_stack_depth, predicate_state, last_issue_cycle 字段不存在
+
     // Execution state
-    uint64_t last_issue_cycle;  // Last cycle this thread was issued
-    
-    // Predicate state
-    bool predicate_state;       // Current predicate value (@p)
 };
 ```
 
@@ -764,6 +768,83 @@ PC=8: ret                              (all lanes)
 
 ---
 
-**文档状态**: 设计评审中  
-**最后更新**: 2026-04-09  
+## 附录 D: 已实现但未文档化的功能 (2026-05-05 添加)
+
+以下功能在代码中已实现，但本文档未详细描述：
+
+### D.1 双向同步机制
+
+```cpp
+// ThreadContext → WarpState 同步
+void ThreadContext::sync_to_warp_state();
+
+// WarpState → ThreadContext 同步
+void ThreadContext::sync_from_warp_state();
+```
+
+**位置**: `thread_context.cpp:679-748`
+**用途**: 保持 ThreadContext 和 WarpState 状态一致
+
+### D.2 统一 PC 更新接口
+
+```cpp
+// 单线程 PC 更新
+void WarpContext::advance_thread_pc(int lane_id, int new_pc);
+
+// 所有活跃线程 PC 更新
+void WarpContext::advance_all_threads(int new_pc);
+```
+
+**位置**: `warp_context.cpp:80-99`
+**用途**: 提供统一的 PC 更新接口，替代分散的 PC 设置
+
+### D.3 屏障后 SIMT 栈清理
+
+`sm_context.cpp` 中对 `S_BAR` 和 `S_BAR_WARP_SYNC` 指令调用 `check_reconvergence()`，确保屏障完成后检查 SIMT 栈收敛。
+
+**位置**: `sm_context.cpp:203-206`
+**代码**:
+```cpp
+if (stmt->type == S_BRA || stmt->type == S_BAR ||
+    stmt->type == S_BAR_WARP_SYNC) {
+    next_warp->check_reconvergence();
+}
+```
+
+### D.4 退出线程收敛跳过
+
+`SIMTStackEntry::is_converged()` 会跳过 `is_exited=true` 或 `is_active=false` 的线程，不阻塞收敛检查。
+
+**位置**: `simt_stack.cpp:7-19`
+**代码**:
+```cpp
+if (threads[i].is_exited || !threads[i].is_active) {
+    continue;  // 跳过退出线程
+}
+```
+
+### D.5 SIMT 栈深度限制
+
+防止无限嵌套分支导致栈溢出：
+
+```cpp
+static constexpr size_t MAX_DEPTH = 10;
+```
+
+**位置**: `simt_stack.h`
+**限制**: 最多 10 层嵌套
+
+### D.6 废弃 API 标记
+
+| 废弃字段/方法 | 替代方案 | 位置 |
+|-------------|---------|------|
+| `WarpContext::pc_stacks` | `warp_state.threads[i].pc` | warp_context.h |
+| `WarpContext::pc` | `warp_state.warp_pc` | warp_context.h |
+| `update_pc_stack()` | `warp_state.threads[i].pc = new_pc` | warp_context.h |
+| `handle_branch_divergence()` | `advance_thread_pc()` | warp_context.h |
+
+---
+
+**文档状态**: ✅ 已完成 (文档已对齐)
+**最后更新**: 2026-05-05
 **评审者**: PTX-EMU Architecture Team
