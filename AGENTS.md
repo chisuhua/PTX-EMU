@@ -131,6 +131,65 @@ make -C build RAY
 
 ---
 
+## TDD 开发流程
+
+**强制执行**: 所有功能实现和缺陷修复必须遵循 TDD 三阶段流程。
+
+### 三阶段流程
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│  1. 测试先行  │ → │  2. 实现代码  │ → │  3. 验证     │
+│  Write Test │    │  Implement  │    │  Sanity     │
+└─────────────┘    └─────────────┘    └─────────────┘
+```
+
+| 阶段 | 操作 | 验证方式 |
+|------|------|---------|
+| **1. 测试先行** | 编写失败的测试用例 | `./scripts/sanity.sh --quick` 确认失败 |
+| **2. 实现代码** | 编写通过测试的实现 | `./scripts/sanity.sh --quick` 确认通过 |
+| **3. 验证** | 运行完整 sanity 检查 | `./scripts/sanity.sh` 无回归 |
+
+### Sanity 脚本用法
+
+```bash
+# 完整 sanity 检查（推荐开发时使用）
+./scripts/sanity.sh
+
+# 快速检查（仅关键 bug 修复）
+./scripts/sanity.sh --quick
+
+# 仅 PTX 语法测试
+./scripts/sanity.sh --ptx
+
+# 详细输出
+./scripts/sanity.sh --verbose
+
+# 运行特定标签
+cd build && ctest -L "exec_mask|simt_entry" -V
+```
+
+### 测试标签速查
+
+| 标签 | 覆盖范围 | 用于验证 |
+|------|---------|---------|
+| `exec_mask` | BUG-001 exec_mask 恢复 | Bug 修复 |
+| `simt_entry` | BUG-002 SIMT stack exit 处理 | Bug 修复 |
+| `active_mask` | ISSUE-004 active_mask 一致性 | Bug 修复 |
+| `barrier` | 屏障同步、reconvergence | 同步逻辑 |
+| `ptx;integer/float/bitwise/cvt/ld_st` | PTX 指令 | 指令实现 |
+| `memory` | 内存分配、边界检查 | 内存安全 |
+| `integration` | 端到端集成 | 功能完整性 |
+
+### ❌ 禁止
+
+- 未写测试就实现功能
+- 测试未失败就实现（Red 阶段必须有失败）
+- 提交前不运行 `./scripts/sanity.sh`
+- 用 `ctest` 代替 `./tests/ptx/test_all_ptx.sh` 做 PTX 语法测试
+
+---
+
 ## 代码风格
 
 - **格式化**: clang-format（`.clang-format`, BasedOnStyle=LLVM, 4 空格缩进, 80 列）

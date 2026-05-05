@@ -105,7 +105,7 @@ void WarpContext::check_reconvergence() {
         if (simt_stack.empty()) {
             warp_state.exec_mask = 0xFFFFFFFF;
         } else {
-            warp_state.exec_mask = simt_stack.top().return_mask;
+            warp_state.exec_mask = simt_stack.top().active_mask;
         }
     }
 }

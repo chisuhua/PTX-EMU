@@ -515,16 +515,19 @@ add_subdirectory(three_mode_testing)
 add_catch_test(test_simt_stack_entry
     test_simt_stack_entry.cpp
 )
+set_tests_properties(test_simt_stack_entry PROPERTIES LABELS "simt_entry")
 
 # BUG-001: exec_mask not restored after reconvergence
 add_catch_test(test_exec_mask
     test_exec_mask.cpp
 )
+set_tests_properties(test_exec_mask PROPERTIES LABELS "exec_mask;simt_entry")
 
 # Handle branch + SIMT stack integration
 add_catch_test(test_handle_branch_integration
     test_handle_branch_integration.cpp
 )
+set_tests_properties(test_handle_branch_integration PROPERTIES LABELS "branch;simt_entry")
 
 # ============================================================================
 # SIMT Architecture Tests — Phase 2: Code Cleanup & Data Source Unification
@@ -533,11 +536,13 @@ add_catch_test(test_handle_branch_integration
 add_catch_test(test_simt_stack_catch2
     test_simt_stack_catch2.cpp
 )
+set_tests_properties(test_simt_stack_catch2 PROPERTIES LABELS "simt_stack;simt_entry")
 
 # active_mask vs exec_mask consistency (ISSUE-004)
 add_catch_test(test_active_mask_consistency
     test_active_mask_consistency.cpp
 )
+set_tests_properties(test_active_mask_consistency PROPERTIES LABELS "active_mask")
 
 # ============================================================================
 # SIMT Architecture Tests — Phase 3: Test Expansion
@@ -545,19 +550,24 @@ add_catch_test(test_active_mask_consistency
 add_catch_test(test_warp_state
     test_warp_state.cpp
 )
+set_tests_properties(test_warp_state PROPERTIES LABELS "warp;state;simt_entry")
 
 add_catch_test(test_sync_mechanism
     test_sync_mechanism.cpp
 )
+set_tests_properties(test_sync_mechanism PROPERTIES LABELS "sync;simt_entry")
 
 add_catch_test(test_pc_management_advanced
     test_pc_management_advanced.cpp
 )
+set_tests_properties(test_pc_management_advanced PROPERTIES LABELS "simt_entry")
 
 add_catch_test(test_barrier_simt_integration
     test_barrier_simt_integration.cpp
 )
+set_tests_properties(test_barrier_simt_integration PROPERTIES LABELS "barrier;simt")
 
 add_catch_test(test_simt_integration
     test_simt_integration.cpp
 )
+set_tests_properties(test_simt_integration PROPERTIES LABELS "integration;simt")
