@@ -44,28 +44,23 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
         int total_threads = compute_actual_thread_count(currentKernel); \
         uint32_t mask = (total_threads >= 32) ? 0xFFFFFFFFu : ((1u << total_threads) - 1); \
         \
-        /* Create translated bar.warp.sync instruction */ \
         BarWarpSyncInstr instr; \
         instr.qualifiers = {Qualifier::Q_B32}; \
         \
-        /* Create operand for participation mask (dynamically computed from CTA thread count) */ \
         OperandContext maskOperand{ImmOperand{std::to_string(mask)}}; \
         instr.operands.push_back(maskOperand); \
         \
-        /* Placeholder PC operand - CFG will update with correct reconvergence_pc */ \
         OperandContext pcOperand{ImmOperand{"0"}}; \
         instr.operands.push_back(pcOperand); \
         \
-        /* Reconvergence label placeholder (actual PC comes from CFG analysis) */ \
         instr.reconvergenceLabel = ""; \
         \
-        /* Modify the existing statement in-place instead of pushing a new one */ \
-        /* The original BarrierInstr was already added by the X-macro below */ \
-        StatementContext& stmtCtx = currentKernel->kernelStatements.back(); \
+        StatementContext stmtCtx; \
         stmtCtx.type = S_BAR_WARP_SYNC; \
         stmtCtx.instructionText = "bar.warp.sync.b32 " + std::to_string(mask) + ", 0;"; \
         stmtCtx.qualifier = {Qualifier::Q_B32}; \
         stmtCtx.data = instr; \
+        currentKernel->kernelStatements.push_back(stmtCtx); \
         \
         return nullptr; \
     } \
