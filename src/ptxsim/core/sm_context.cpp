@@ -474,14 +474,6 @@ bool SMContext::synchronize_barrier(int barId, ThreadContext *thread) {
             waiting_thread->sync_to_warp_state();
         }
 
-        for (auto waiting_thread : barrier_waiting_threads[barId]) {
-            WarpContext* warp_ctx = waiting_thread->get_warp_context();
-            if (warp_ctx) {
-                warp_ctx->set_exec_mask(0xFFFFFFFF);
-                warp_ctx->set_active_mask(0xFFFFFFFF);
-            }
-        }
-
         barrier_waiting_threads[barId].clear();
         barrier_thread_counts.erase(barId);
 
@@ -494,11 +486,6 @@ bool SMContext::synchronize_barrier(int barId, ThreadContext *thread) {
         thread->set_state(RUN);
         thread->set_next_pc(thread->get_pc() + 1);
         thread->sync_to_warp_state();
-        WarpContext* warp_ctx = thread->get_warp_context();
-        if (warp_ctx) {
-            warp_ctx->set_exec_mask(0xFFFFFFFF);
-            warp_ctx->set_active_mask(0xFFFFFFFF);
-        }
         return true;
     }
 

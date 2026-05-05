@@ -571,6 +571,10 @@ add_catch_test(test_barrier_pc_overwrite
     test_barrier_pc_overwrite.cpp
 )
 
+add_catch_test(test_barrier_active_mask_preserved
+    test_barrier_active_mask_preserved.cpp
+)
+
 add_catch_test(test_simt_integration
     test_simt_integration.cpp
 )
