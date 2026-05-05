@@ -631,15 +631,30 @@ void PtxInterpreter::setupLabels(std::map<std::string, int> &label2pc) {
             else if (stmt.type == S_BAR_WARP_SYNC) {
                 auto &barrier = std::get<BarWarpSyncInstr>(
                     kernelContext->kernelStatements[i].data);
-                std::string old_reconvergence = (barrier.operands.size() >= 2) 
-                    ? std::get<ImmOperand>(barrier.operands[1].data).value 
+                std::string old_reconvergence = (barrier.operands.size() >= 2)
+                    ? std::get<ImmOperand>(barrier.operands[1].data).value
                     : "N/A";
                 if (barrier.operands.size() >= 2) {
-                    // Barriers always reconverge to the next instruction (i+1).
                     barrier.operands[1] = OperandContext{ImmOperand{std::to_string(i + 1)}};
                     updated_barriers++;
                     PTX_INFO_EMU("CFG[PC=%d]: S_BAR_WARP_SYNC updated - old_reconvergence=%s, new_reconvergence_pc=%d",
                                 i, old_reconvergence, i + 1);
+                }
+            }
+            else if (stmt.type == S_BAR) {
+                auto &barrier = std::get<BarrierInstr>(
+                    kernelContext->kernelStatements[i].data);
+                int old_reconvergence = barrier.reconvergence_pc;
+                if (reconvergence_pc >= 0) {
+                    barrier.reconvergence_pc = reconvergence_pc;
+                    updated_barriers++;
+                    PTX_DEBUG_EMU("CFG[PC=%d]: S_BAR updated - old_reconvergence_pc=%d, new_reconvergence_pc=%d",
+                                 i, old_reconvergence, reconvergence_pc);
+                } else {
+                    barrier.reconvergence_pc = i + 1;
+                    fallback_barriers++;
+                    PTX_DEBUG_EMU("CFG[PC=%d]: S_BAR FALLBACK - old_reconvergence_pc=%d, new_reconvergence_pc=%d (no post-dominator)",
+                                 i, old_reconvergence, i + 1);
                 }
             }
         }

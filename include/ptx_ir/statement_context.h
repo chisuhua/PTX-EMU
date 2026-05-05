@@ -72,6 +72,7 @@ struct BarrierInstr {
     std::vector<Qualifier> qualifiers;
     std::string type;         // e.g., "cta", "gl"
     std::optional<int> barId; // optional barrier ID
+    int reconvergence_pc = -1; // CFG post-dominator for barrier reconvergence
 };
 
 // -----------------------------------------------------------------------------
