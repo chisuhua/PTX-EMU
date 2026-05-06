@@ -17,6 +17,7 @@ void WarpContext::handle_branch(const std::string& predicate,
     
     for (int i = 0; i < 32; i++) {
         if (!warp_state.threads[i].is_active) continue;
+        if (warp_state.threads[i].pc != current_inst_pc) continue;
 
         bool should_branch = true;
 
