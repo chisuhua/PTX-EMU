@@ -18,6 +18,12 @@
 | `ptx-instruction-pipeline` | 指令执行流水线 — ExecPipe / Handler / PC 管理 / 危险区 |
 | `ptx-barrier-mechanism` | 屏障机制 — S_BAR vs S_BAR_WARP_SYNC / Wbar / PC 覆写链 |
 
+## 架构与合规类
+
+| 技能 | 触发场景 |
+|------|---------|
+| `adr-compliance-check` | ADR 合规检查 — 开发完成后对照 ADR 检查清单验证实现 |
+
 ## 语法与解析类
 
 | 技能 | 触发场景 |
@@ -44,6 +50,9 @@ ptx-debug (入口)
   │   └─ ptx-barrier-mechanism (屏障问题)
   ├─ ptx-grammar-modification (ANTLR 解析错误)
   └─ cpp-debug (C++ 崩溃/内存)
+
+adr-compliance-check (独立使用)
+  └─ 开发完成后 / 代码审查前检查 ADR 合规性
 ```
 
-**最后更新**: 2026-05-04
+**最后更新**: 2026-05-06
