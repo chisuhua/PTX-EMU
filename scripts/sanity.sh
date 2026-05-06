@@ -162,6 +162,7 @@ run_regex_tests "test_barrier_reconvergence" "Barrier reconvergence"
 #run_regex_tests "test_syncthreads_test3" "Test 3 deadlock reproduction"
 run_regex_tests "test_barrier_simt" "Barrier SIMT integration"
 run_regex_tests "test_full_barrier" "Full barrier execution"
+run_regex_tests "test_barrier_scenarios" "Barrier scenarios (warp_sync/divergence/PC protection)"
 run_regex_tests "test_divergence_sync_standalone" "Divergence + barrier sync (standalone)"
 
 print_header "4. Memory Management"

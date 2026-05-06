@@ -575,6 +575,11 @@ add_catch_test(test_barrier_active_mask_preserved
     test_barrier_active_mask_preserved.cpp
 )
 
+add_catch_test(test_barrier_scenarios
+    test_barrier_scenarios.cpp
+)
+set_tests_properties(test_barrier_scenarios PROPERTIES LABELS "barrier;regression")
+
 add_catch_test(test_simt_integration
     test_simt_integration.cpp
 )
