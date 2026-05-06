@@ -174,7 +174,6 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
                 } else {
                     warp_ctx->set_thread_pc(i, reconvergence_pc);
                 }
-                warp_ctx->update_pc_stack(i, reconvergence_pc);
                 warp_state.threads[i].is_blocked = false;
                 warp_state.threads[i].status = ptxsim::ThreadStatus::Active;
                 PTX_INFO_EMU("  Released lane=%d: PC=%u -> %d", i, old_pc, reconvergence_pc);
