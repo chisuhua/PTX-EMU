@@ -208,7 +208,15 @@ public:
 private:
     std::vector<std::unique_ptr<ThreadContext>>
         threads;                                // warp 中的线程 unique_ptr
-    std::array<bool, WARP_SIZE> active_mask;    // 活跃掩码
+    // 活跃掩码 — 与 warp_state.exec_mask 是两个独立机制，共同维护：
+    // - exec_mask: WarpState 中的 uint32_t，用于 PTX activemask 指令返回值和 SIMT stack 管理
+    // - active_mask[]: WarpContext 中的 bool[WARP_SIZE]，用于调度器的 is_lane_active() 判断
+    // 两者在以下时序点同步：
+    //   1. barrier 释放时：barrier.cpp 同时调用 set_exec_mask() 和 set_active_mask()
+    //   2. 线程退出/阻塞时：update_active_mask() 根据 is_exited/is_blocked 重建 active_mask[]
+    // 注意：handle_branch() 发散时只更新 exec_mask，active_mask[] 在下一 execute_warp_instruction()
+    //       周期通过 update_active_mask() 重建。这是已知行为，由 test_post_barrier_divergence 测试验证。
+    std::array<bool, WARP_SIZE> active_mask;
     std::array<int, WARP_SIZE> warp_thread_ids; // 对应的线程 ID
     int active_count;                           // 活跃线程数量
     int pc;                                     // warp 级 PC (向后兼容)
