@@ -562,6 +562,13 @@ add_catch_test(test_pc_management_advanced
 )
 set_tests_properties(test_pc_management_advanced PROPERTIES LABELS "simt_entry")
 
+# Integrated barrier tests — driven by execute_warp_instruction()
+# Tests real instruction execution flow, not just static data structures
+add_catch_test(test_barrier_scenarios_integrated
+    test_barrier_scenarios_integrated.cpp
+)
+set_tests_properties(test_barrier_scenarios_integrated PROPERTIES LABELS "barrier;integrated;regression")
+
 add_catch_test(test_barrier_simt_integration
     test_barrier_simt_integration.cpp
 )
