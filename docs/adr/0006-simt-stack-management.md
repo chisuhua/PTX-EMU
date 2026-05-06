@@ -133,10 +133,10 @@ if (next_warp && !next_warp->get_simt_stack().empty()) {
 // warp_context.cpp
 bool WarpContext::check_reconvergence() {
     if (simt_stack.empty()) return false;
-    
+
     size_t depth_before = simt_stack.depth();
     simt_stack.check_reconvergence(warp_state.threads);
-    
+
     if (simt_stack.depth() < depth_before) {
         // An entry was popped, update exec_mask
         if (simt_stack.empty()) {
@@ -154,6 +154,35 @@ bool WarpContext::check_reconvergence() {
 - 嵌套分支场景中，barrier release 可能同时解除多层分支的阻塞
 - 单次 check_reconvergence 只 pop 最顶层的收敛条目
 - while 循环确保所有收敛条目都被处理
+
+### handle_branch 中的 PC 过滤
+
+为防止发散线程的过时 PC (stale PC) 影响 warp-level 分支决策，`handle_branch` 只处理 `pc == current_inst_pc` 的线程：
+
+```cpp
+void WarpContext::handle_branch(const std::string& predicate,
+                               bool predicate_negated,
+                               int target_pc,
+                               int reconvergence_pc,
+                               int current_inst_pc) {
+    // ...
+
+    for (int i = 0; i < 32; i++) {
+        if (!warp_state.threads[i].is_active) continue;
+        // PC 过滤：只处理当前指令 PC 的线程，防止 stale PC 影响分支决策
+        if (warp_state.threads[i].pc != current_inst_pc) continue;
+
+        bool should_branch = true;
+        // ... predicate evaluation ...
+    }
+    // ...
+}
+```
+
+**为什么需要 PC 过滤**：
+- Per-thread PC 模型下，不同线程可能处于不同 PC
+- 发散分支中，只有当前执行到分支指令的线程才应参与分支决策
+- 防止其他路径的线程（stale PC）错误地影响 taken_mask/not_taken_mask 计算
 
 ### 影响范围
 
@@ -196,6 +225,7 @@ bool WarpContext::check_reconvergence() {
 - [ ] 栈深度不超过 MAX_DEPTH
 - [ ] barrier 后使用 while 循环处理所有收敛条目
 - [ ] check_reconvergence 返回 bool 表示是否有条目被 pop
+- [ ] handle_branch 中使用 PC 过滤防止 stale PC 影响分支决策
 
 ## 更新记录
 
@@ -203,6 +233,7 @@ bool WarpContext::check_reconvergence() {
 |------|---------|------|
 | 2026-05-05 | 初始版本 | PTX-EMU Team |
 | 2026-05-06 | 添加 while 循环收敛模式说明、更新合规检查项 | PTX-EMU Team |
+| 2026-05-06 | 添加 handle_branch PC 过滤说明、更新合规检查项 | PTX-EMU Team |
 
 ## 参考
 
