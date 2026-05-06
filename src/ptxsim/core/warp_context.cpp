@@ -119,7 +119,6 @@ WarpContext::WarpContext()
     for (int i = 0; i < WARP_SIZE; i++) {
         warp_thread_ids[i] = -1;
         active_mask[i] = true;
-        pc_stacks[i] = std::vector<int>();
         warp_state.threads[i].pc = 0;
         warp_state.threads[i].next_pc = 0;
         warp_state.threads[i].is_active = true;
@@ -283,28 +282,9 @@ void WarpContext::reset() {
             active_mask[i] = false;
             warp_state.threads[i].is_active = false;
         }
-        // 重置PC栈
-        pc_stacks[i].clear();
-        pc_stacks[i].push_back(0);
     }
     pc = 0;
     divergence_detected = false;
-}
-
-void WarpContext::handle_branch_divergence(int lane_id, int new_pc) {
-    if (lane_id >= 0 && lane_id < WARP_SIZE) {
-        // 将当前PC压入栈中
-        if (!pc_stacks[lane_id].empty()) {
-            pc_stacks[lane_id].push_back(pc_stacks[lane_id].back());
-        } else {
-            pc_stacks[lane_id].push_back(0);
-        }
-
-        // 设置新PC
-        pc_stacks[lane_id].back() = new_pc;
-
-        divergence_detected = true;
-    }
 }
 
 uint32_t WarpContext::get_active_mask() const {

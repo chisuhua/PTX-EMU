@@ -87,14 +87,6 @@ public:
     // Used for non-divergent branches and barrier reconvergence.
     void advance_all_threads(int new_pc);
 
-    // 【NEW】更新 PC 栈（用于 barrier 释放后设置正确的继续执行位置）
-    [[deprecated("Use warp_state.threads[lane_id].pc = new_pc instead")]]
-    void update_pc_stack(int lane_id, uint32_t new_pc) {
-        if (lane_id >= 0 && lane_id < WARP_SIZE && !pc_stacks[lane_id].empty()) {
-            pc_stacks[lane_id].back() = new_pc;
-        }
-    }
-
     // 【NEW】获取执行掩码
     uint32_t get_exec_mask() const { return warp_state.exec_mask; }
 
@@ -155,10 +147,6 @@ public:
 
     // 同步 warp 内所有线程
     void sync_threads();
-
-    // 处理分支分歧
-    [[deprecated("PC stacks replaced by SIMT stack + warp_state.threads[i].pc")]]
-    void handle_branch_divergence(int lane_id, int new_pc);
 
     // 检查是否有分歧
     bool has_divergence() const { return divergence_detected; }
@@ -229,7 +217,6 @@ private:
     int physical_block_id;                      // 物理 block ID
 
     bool divergence_detected;              // 分歧检测标志
-    std::vector<int> pc_stacks[WARP_SIZE]; // 每个线程的 PC 栈，用于分支重新合并
 
     // 寄存器银行管理器
     std::shared_ptr<RegisterBankManager> register_bank_manager_;
