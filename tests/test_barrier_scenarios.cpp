@@ -60,12 +60,12 @@ TEST_CASE("bar_warp_sync_all_threads_arrive", "[barrier][warp_sync][single_warp]
     // 模拟 bar.warp.sync 执行：所有线程调用 arrive
     for (int i = 0; i < 32; i++) {
         ThreadContext* t = warp->get_thread(i);
-        warp->get_wbar().arrive(i);
+        warp->get_wbar(0).arrive(i);
     }
 
     // 验证 barrier 完成
-    CHECK(warp->get_wbar().is_complete() == true);
-    CHECK(warp->get_wbar().count_arrived() == 32);
+    CHECK(warp->get_wbar(0).is_complete() == true);
+    CHECK(warp->get_wbar(0).count_arrived() == 32);
 }
 
 TEST_CASE("bar_warp_sync_partial_threads_not_complete", "[barrier][warp_sync][partial]") {
@@ -93,12 +93,12 @@ TEST_CASE("bar_warp_sync_partial_threads_not_complete", "[barrier][warp_sync][pa
 
     // 只有 16 个线程到达 barrier
     for (int i = 0; i < 16; i++) {
-        warp->get_wbar().arrive(i);
+        warp->get_wbar(0).arrive(i);
     }
 
     // barrier 不应完成
-    CHECK(warp->get_wbar().is_complete() == false);
-    CHECK(warp->get_wbar().count_arrived() == 16);
+    CHECK(warp->get_wbar(0).is_complete() == false);
+    CHECK(warp->get_wbar(0).count_arrived() == 16);
 }
 
 // ============================================================================
@@ -247,7 +247,7 @@ TEST_CASE("barrier_after_divergent_branch_correct_participation", "[barrier][div
 
     // 只有活跃线程参与 barrier
     for (int i = 16; i < 32; i++) {
-        warp->get_wbar().arrive(i);
+        warp->get_wbar(0).arrive(i);
     }
 
     // participation_mask 应该是 0xFFFF0000（只有高 16 位）
