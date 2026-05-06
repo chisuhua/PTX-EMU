@@ -349,19 +349,22 @@ public:
     int reconvergence_pc;
     uint32_t participation_mask;  // Which threads must arrive
     uint32_t arrived_mask;        // Which threads have arrived
-    
-    // Memory fence state
-    std::atomic<bool> memory_fence_complete;
-    
+
+    // Memory fence state (2026-05-06: 已更新为实际实现)
+    bool is_initialized = false;
+    bool memory_fence_verification_enabled = false;
+
     // Lifecycle
     void init(int _reconvergence_pc, uint32_t _participation_mask);
     void arrive(int lane_id);
     bool is_complete() const;
     void reset();
-    
+
     // Verification (debug only)
+    void enable_memory_fence_verification(bool enable);
+    bool is_memory_fence_verification_enabled() const;
     void verify_memory_fence() const;
-    
+
 private:
     // Track memory operations before barrier
     #ifdef PTX_DEBUG
@@ -373,17 +376,18 @@ private:
 #### 3.4.2 Barrier 验证
 
 ```cpp
-#ifdef PTX_DEBUG
+void Wbar::enable_memory_fence_verification(bool enable) {
+    memory_fence_verification_enabled = enable;
+}
+
 void Wbar::verify_memory_fence() const {
-    if (!memory_fence_complete.load()) {
-        PTX_ERROR("Barrier completed but memory fence not complete!");
-    }
-    
+    if (!memory_fence_verification_enabled) return;
+
     // Verify all pre-barrier stores are visible
     for (const auto& store : pre_barrier_stores) {
         int lane_id = store.first;
         uint64_t addr = store.second;
-        
+
         // Check if store is visible to all participating lanes
         for (int i = 0; i < 32; i++) {
             if (participation_mask & (1u << i)) {
