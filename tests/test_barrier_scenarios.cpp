@@ -58,6 +58,7 @@ TEST_CASE("bar_warp_sync_all_threads_arrive", "[barrier][warp_sync][single_warp]
     }
 
     // 模拟 bar.warp.sync 执行：所有线程调用 arrive
+    warp->get_wbar(0).init(0xFFFFFFFF, 5);
     for (int i = 0; i < 32; i++) {
         ThreadContext* t = warp->get_thread(i);
         warp->get_wbar(0).arrive(i);
@@ -242,22 +243,16 @@ TEST_CASE("barrier_after_divergent_branch_correct_participation", "[barrier][div
         warp->get_warp_state().threads[i].is_active = (i >= 16);
     }
 
-    CHECK(warp->get_exec_mask() == 0xFFFF0000);
+CHECK(warp->get_exec_mask() == 0xFFFF0000);
     CHECK(warp->get_active_mask() == 0xFFFF0000);
 
-    // 只有活跃线程参与 barrier
+    warp->get_wbar(0).init(0xFFFF0000, 10);
     for (int i = 16; i < 32; i++) {
         warp->get_wbar(0).arrive(i);
     }
 
-    // participation_mask 应该是 0xFFFF0000（只有高 16 位）
-    // 注意：这里假设 wbar 正确初始化了 participation_mask
-    // 实际测试中需要验证 wbar.participation_mask == 0xFFFF0000
+    CHECK(warp->get_wbar(0).participation_mask == 0xFFFF0000);
 }
-
-// ============================================================================
-// 场景 6: barrier 后线程状态正确重置
-// ============================================================================
 
 TEST_CASE("barrier_release_resets_thread_status_to_active", "[barrier][status][reset]") {
     ResourceManager::instance().initialize(1, 8192);

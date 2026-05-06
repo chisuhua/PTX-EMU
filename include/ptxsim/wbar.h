@@ -45,10 +45,6 @@ struct Wbar {
     
     void arrive(int lane_id) {
         if (lane_id >= 0 && lane_id < 32) {
-            // Auto-initialize if called before init() (defensive, handles test scenarios)
-            if (!is_initialized) {
-                init(0xFFFFFFFF, 0);  // Default: all 32 threads, reconvergence_pc=0
-            }
             arrived_mask |= (1u << lane_id);
         }
     }

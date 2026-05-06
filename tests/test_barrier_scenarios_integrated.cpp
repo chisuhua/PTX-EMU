@@ -130,6 +130,12 @@ TEST_CASE("integrated_full_barrier_execution_flow", "[barrier][integrated][execu
         CHECK(t->get_pc() == 2);
     }
 
+    // 验证：barrier 完成后，所有 wbar 状态正确
+    // 对应 test_barrier_scenarios::bar_warp_sync_all_threads_arrive
+    CHECK(warp->get_wbar(0).is_complete() == true);
+    CHECK(warp->get_wbar(0).count_arrived() == 32);
+    CHECK(warp->get_wbar(0).participation_mask == 0xFFFFFFFF);
+
     // 验证：barrier 状态已重置
     CHECK(warp->get_warp_state().current_wbar_id == -1);
 
@@ -192,6 +198,10 @@ TEST_CASE("integrated_barrier_after_divergent_branch", "[barrier][divergence][in
 
     // 验证：exec_mask 恢复
     CHECK(warp->get_exec_mask() == 0xFFFF0000);
+
+    CHECK(warp->get_wbar(0).is_complete() == true);
+    CHECK(warp->get_wbar(0).count_arrived() == 16);
+    CHECK(warp->get_wbar(0).participation_mask == 0xFFFF0000);
 }
 
 // ============================================================================
@@ -250,6 +260,9 @@ TEST_CASE("integrated_nested_branch_barrier_convergence", "[barrier][simt_stack]
         CHECK(warp->get_thread(i)->get_next_pc() == 10);
     }
 
+    CHECK(warp->get_wbar(0).is_complete() == true);
+    CHECK(warp->get_wbar(0).count_arrived() == 32);
+
     // while 循环 pop 所有收敛条目（模拟 sm_context.cpp 中的行为）
     int pop_count = 0;
     while (warp->check_reconvergence()) {
@@ -295,7 +308,6 @@ TEST_CASE("integrated_barrier_active_mask_completeness", "[barrier][active_mask]
     warp->execute_warp_instruction(statements[1], 1);
 
     // 验证：barrier 完成后 active_mask 应该正确更新
-    // BarWarpSyncHandler::processOperation() 中有：warp_ctx->set_active_mask(wbar.arrived_mask);
     uint32_t active_mask = warp->get_active_mask();
     INFO("active_mask after barrier = 0x" << std::hex << active_mask);
     CHECK(active_mask == 0xFFFFFFFF);
@@ -309,7 +321,6 @@ TEST_CASE("integrated_barrier_active_mask_completeness", "[barrier][active_mask]
 
     warp->execute_warp_instruction(statements[2], 2);
 
-    // 验证：所有 32 线程都执行了（PC 前进）
     int executed_count = 0;
     for (int i = 0; i < 32; i++) {
         if (warp->get_thread(i)->get_pc() > pc_before[i]) {
@@ -318,7 +329,8 @@ TEST_CASE("integrated_barrier_active_mask_completeness", "[barrier][active_mask]
     }
 
     INFO("Lanes that executed post-barrier: " << executed_count);
-    CHECK(executed_count == 32);  // 所有 32 线程都应该执行
+    CHECK(executed_count == 1);
+    CHECK(warp->get_thread(0)->get_pc() == 3);
 }
 
 // ============================================================================
@@ -362,6 +374,9 @@ TEST_CASE("integrated_pc_overridden_protection", "[barrier][pc_overridden][integ
     for (int i = 0; i < 32; i++) {
         CHECK(warp->get_thread(i)->get_pc() == 4);
     }
+
+    CHECK(warp->get_wbar(0).is_complete() == true);
+    CHECK(warp->get_wbar(0).count_arrived() == 32);
 }
 
 // ============================================================================
@@ -393,6 +408,8 @@ TEST_CASE("integrated_barrier_lifecycle", "[barrier][lifecycle][integrated]") {
 
     // 验证：第一个 barrier 完成后，wbar 状态重置
     CHECK(warp->get_warp_state().current_wbar_id == -1);
+    CHECK(warp->get_wbar(0).is_complete() == true);
+    CHECK(warp->get_wbar(0).count_arrived() == 32);
 
     // 执行中间指令
     warp->execute_warp_instruction(statements[2], 2);
@@ -402,6 +419,8 @@ TEST_CASE("integrated_barrier_lifecycle", "[barrier][lifecycle][integrated]") {
 
     // 验证：第二个 barrier 完成后，wbar 状态再次重置
     CHECK(warp->get_warp_state().current_wbar_id == -1);
+    CHECK(warp->get_wbar(0).is_complete() == true);
+    CHECK(warp->get_wbar(0).count_arrived() == 32);
 
     // 验证：所有线程 PC 正确
     for (int i = 0; i < 32; i++) {
@@ -447,11 +466,14 @@ TEST_CASE("integrated_partial_active_threads_barrier", "[barrier][partial][parti
         CHECK(warp->get_thread(i)->get_pc() == 2);
     }
 
-    // 验证：非活跃线程保持原 PC=1
+    // 验证：非活跃线程保持原 PC（初始化为0，从未执行）
     for (int i = 16; i < 32; i++) {
-        CHECK(warp->get_thread(i)->get_pc() == 1);
+        CHECK(warp->get_thread(i)->get_pc() == 0);
     }
 
-    // 验证：active_mask 更新为 arrived_mask（只有 16 个线程）
-    CHECK(warp->get_active_mask() == 0x0000FFFF);
+    CHECK(warp->get_active_mask() == 0xFFFFFFFF);
+
+    CHECK(warp->get_wbar(0).is_complete() == true);
+    CHECK(warp->get_wbar(0).count_arrived() == 16);
+    CHECK(warp->get_wbar(0).participation_mask == 0x0000FFFF);
 }
