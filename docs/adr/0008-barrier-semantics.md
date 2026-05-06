@@ -182,13 +182,70 @@ void BarWarpSyncHandler::execute(ThreadContext* context, const BarrierInstr& ins
 }
 ```
 
+### PC 保护机制：pc_overridden_ vs force_set_pc()
+
+在 barrier 场景中，有两种 PC 保护机制协同工作：
+
+1. **pc_overridden_ 标志**（PipelineHandler 层）：
+   - 当线程阻塞在 barrier 时，`set_pc_overridden(true)` 阻止 `ExecPipe` 调用 `set_next_pc(saved_pc + 1)`
+   - 这确保阻塞线程的 `next_pc` 不会被意外修改
+   - 线程保持 `pc_overridden_ = true` 直到 barrier 完成并解除阻塞
+
+2. **force_set_pc()**（WarpContext 层）：
+   - barrier 完成后，当前线程使用 `force_set_pc(reconvergence_pc)` 设置到聚合点
+   - 其他线程通过 `WarpContext::set_thread_pc(i, reconvergence_pc)` 批量设置
+   - 这是 ADR-0003 定义的 warp-level 强制设置模式
+
+**为什么需要两种机制**：
+- `pc_overridden_` 保护的是 **指令执行阶段** 的 PC 不被默认逻辑覆盖
+- `force_set_pc()` 是 **barrier 完成后的显式设置**，属于 warp-level 操作
+- 两者在不同时机生效，互不冲突
+
+```cpp
+// instruction_base.cpp - pc_overridden_ 保护机制
+void PipelineHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
+    int saved_pc = context->get_pc();
+    // ... prepare, execute, commit ...
+    
+    // 默认设置 next_pc = saved_pc + 1
+    if (!pc_overridden_) {
+        context->set_next_pc(saved_pc + 1);
+    }
+    // 只有在非阻塞状态下才重置 pc_overridden_
+    bool is_blocked = context->warp_context_ &&
+        context->warp_context_->get_warp_state().threads[context->lane_id_].is_blocked;
+    if (!is_blocked) {
+        pc_overridden_ = false;
+    }
+}
+
+// barrier.cpp - barrier 完成后的 PC 设置
+void BarWarpSyncHandler::processOperation(ThreadContext* context, ...) {
+    if (wbar.is_complete()) {
+        // barrier 完成，设置所有线程到 reconvergence PC
+        if (i == context->lane_id_) {
+            context->force_set_pc(reconvergence_pc);  // 当前线程
+            context->set_next_pc(reconvergence_pc);
+        } else {
+            warp_ctx->set_thread_pc(i, reconvergence_pc);  // 其他线程
+        }
+        warp_ctx->set_thread_status(i, ThreadStatus::Active);
+    } else {
+        // 线程阻塞，设置 pc_overridden_ 保护 PC
+        set_pc_overridden(true);
+        warp_state.threads[lane_id].is_blocked = true;
+    }
+}
+```
+
 ### 影响范围
 
 | 组件 | 影响类型 | 说明 |
 |------|---------|------|
 | `include/ptxsim/wbar.h` | 修改 | Wbar 结构增强 |
-| `src/ptxsim/instructions/barrier.cpp` | 修改 | barrier 执行流程 |
+| `src/ptxsim/instructions/barrier.cpp` | 修改 | barrier 执行流程 + pc_overridden_ 保护 |
 | `src/ptxsim/core/sm_context.cpp` | 修改 | barrier 后调用 check_reconvergence |
+| `src/ptxsim/instruction_base.cpp` | 修改 | ExecPipe 中条件重置 pc_overridden_ |
 
 ## 后果
 
@@ -220,12 +277,28 @@ void BarWarpSyncHandler::execute(ThreadContext* context, const BarrierInstr& ins
 - [ ] barrier 完成后验证 is_complete()
 - [ ] barrier 后线程恢复到正确的 reconvergence_pc
 - [ ] Debug 模式下 memory fence 验证启用
+- [ ] barrier 阻塞线程设置 pc_overridden_ 保护 PC
+- [ ] barrier 完成后不重置 exec_mask/active_mask（保留 divergence 状态）
+- [ ] barrier 后调用 check_reconvergence 检查 SIMT 栈收敛
 
 ## 更新记录
 
 | 日期 | 更新内容 | 作者 |
 |------|---------|------|
 | 2026-05-05 | 初始版本 | PTX-EMU Team |
+| 2026-05-06 | 添加 pc_overridden_ 机制说明、更新合规检查项 | PTX-EMU Team |
+
+### Barrier 测试场景覆盖（2026-05-06 添加）
+
+以下 barrier 场景必须有回归测试覆盖：
+
+| 场景 | 测试文件 | 验证要点 |
+|------|---------|---------|
+| CTA barrier 保留 exec_mask | `test_barrier_active_mask_preserved.cpp` | barrier 后 exec_mask 不变 |
+| single-warp bar.warp.sync | barrier 单元测试 | 32 线程正确到达和释放 |
+| barrier 后 SIMT 栈收敛 | `sm_context.cpp` while 循环 | 嵌套分支收敛正确 |
+| barrier 阻塞 PC 保护 | `instruction_base.cpp` | pc_overridden_ 阻止 next_pc 修改 |
+| 发散分支后 barrier | 集成测试 | participation_mask 正确计算 |
 
 ## 参考
 

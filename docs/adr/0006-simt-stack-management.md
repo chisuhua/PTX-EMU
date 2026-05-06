@@ -116,6 +116,45 @@ class SIMTStack {
 };
 ```
 
+### while 循环收敛模式
+
+在某些场景下（如 barrier release 后），可能有多个 SIMT 栈条目同时满足收敛条件。此时需要使用 while 循环直到无条目可 pop：
+
+```cpp
+// sm_context.cpp
+// Check SIMT stack reconvergence after processing all divergent groups
+// Loop until no more entries are convergent (barrier may resolve multiple entries)
+if (next_warp && !next_warp->get_simt_stack().empty()) {
+    while (next_warp->check_reconvergence()) {
+        // Keep popping until no more convergent entries
+    }
+}
+
+// warp_context.cpp
+bool WarpContext::check_reconvergence() {
+    if (simt_stack.empty()) return false;
+    
+    size_t depth_before = simt_stack.depth();
+    simt_stack.check_reconvergence(warp_state.threads);
+    
+    if (simt_stack.depth() < depth_before) {
+        // An entry was popped, update exec_mask
+        if (simt_stack.empty()) {
+            warp_state.exec_mask = 0xFFFFFFFF;  // All lanes converged
+        } else {
+            warp_state.exec_mask = simt_stack.top().active_mask;
+        }
+        return true;
+    }
+    return false;
+}
+```
+
+**为什么需要 while 循环**：
+- 嵌套分支场景中，barrier release 可能同时解除多层分支的阻塞
+- 单次 check_reconvergence 只 pop 最顶层的收敛条目
+- while 循环确保所有收敛条目都被处理
+
 ### 影响范围
 
 | 组件 | 影响类型 | 说明 |
@@ -155,12 +194,15 @@ class SIMTStack {
 - [ ] reconvergence 时正确 pop SIMT 栈
 - [ ] check_reconvergence 跳过退出线程
 - [ ] 栈深度不超过 MAX_DEPTH
+- [ ] barrier 后使用 while 循环处理所有收敛条目
+- [ ] check_reconvergence 返回 bool 表示是否有条目被 pop
 
 ## 更新记录
 
 | 日期 | 更新内容 | 作者 |
 |------|---------|------|
 | 2026-05-05 | 初始版本 | PTX-EMU Team |
+| 2026-05-06 | 添加 while 循环收敛模式说明、更新合规检查项 | PTX-EMU Team |
 
 ## 参考
 

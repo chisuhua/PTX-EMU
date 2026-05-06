@@ -147,6 +147,31 @@ PostDominatorMap CFGBuilder::computePostDominators(const CFG& cfg) {
 }
 ```
 
+### Fallback 策略
+
+当 CFG 无法确定 post-dominator 时（例如 barrier 在循环内），使用 fallback 策略：
+
+```cpp
+// ptx_interpreter.cpp
+if (reconvergence_pc >= 0) {
+    // 使用 CFG post-dominator 分析结果
+    barrier.reconvergence_pc = reconvergence_pc;
+    PTX_DEBUG_EMU("CFG[PC=%d]: S_BAR updated - new_reconvergence_pc=%d",
+                 i, reconvergence_pc);
+} else {
+    // Fallback: barrier 后立即收敛（下一条指令）
+    // 常见场景：barrier 在循环内，无明确 post-dominator
+    barrier.reconvergence_pc = i + 1;
+    PTX_DEBUG_EMU("CFG[PC=%d]: S_BAR FALLBACK - new_reconvergence_pc=%d (no post-dominator, likely in loop)",
+                 i, i + 1);
+}
+```
+
+**Fallback 适用场景**：
+- `bar.warp.sync`：总是使用 `i+1`（warp barrier 后立即收敛）
+- `bar.sync` 在循环内：CFG 无法确定 post-dominator，fallback 到 `i+1`
+- `bar.sync` 在正常路径：使用 CFG post-dominator 分析结果
+
 ### 影响范围
 
 | 组件 | 影响类型 | 说明 |
@@ -182,15 +207,18 @@ PostDominatorMap CFGBuilder::computePostDominators(const CFG& cfg) {
 后续相关开发应检查：
 
 - [ ] 分支指令的 reconvergence_pc 来自 CFG post-dominator
-- [ ] 不硬编码 reconvergence 规则
+- [ ] 不硬编码 reconvergence 规则（bar.warp.sync 除外，它总是 i+1）
 - [ ] CFG 分析在 kernel 加载时执行一次
 - [ ] 单元测试覆盖嵌套分支、循环内分支等复杂场景
+- [ ] Fallback 到 i+1 时在日志中说明原因
+- [ ] S_BAR 和 S_BAR_WARP_SYNC 都正确处理 reconvergence_pc
 
 ## 更新记录
 
 | 日期 | 更新内容 | 作者 |
 |------|---------|------|
 | 2026-05-05 | 初始版本 | PTX-EMU Team |
+| 2026-05-06 | 添加 Fallback 策略说明、更新合规检查项 | PTX-EMU Team |
 
 ## 参考
 
