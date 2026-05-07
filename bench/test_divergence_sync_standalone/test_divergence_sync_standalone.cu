@@ -41,7 +41,7 @@ __global__ void test_divergence_sync_kernel(T *output) {
         }
         output[0] = sum;
     } else {
-        output[tid] = 0;
+        output[tid] = shared_data[tid];
     }
 }
 
@@ -59,12 +59,22 @@ bool test_divergence_sync() {
     // Compute expected sum
     int expected_sum = 0;
     for (int i = 0; i < 16; i++) {
-        expected_sum += (i * (i + 1)) / 2;  // sum 0..i
+        int value = 0;
+        for (int j = 0; j <= i; j++) value += j;
+        expected_sum += value;
+        printf("h_output[%d] = %d, %d\n", i, h_output[i], value);
+        if (h_output[i] != value) {
+          printf("FAIL: h_output[%d] expected %d, got %d\n", i, expected_sum, h_output[i]);
+        }
     }
     for (int i = 16; i < 32; i++) {
         int prod = 1;
         for (int j = 1; j <= i - 15; j++) prod *= j;
         expected_sum += prod;
+        printf("h_output[%d] = %d, %d\n", i, h_output[i], prod);
+        if (h_output[i] != prod) {
+          printf("FAIL: h_output[%d] expected %d, got %d\n", i, prod, h_output[i]);
+        }
     }
 
     if (h_output[0] != expected_sum) {
