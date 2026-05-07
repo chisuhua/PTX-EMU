@@ -173,7 +173,7 @@ run_regex_tests "test_barrier_verification" "Barrier verification (wbar lifecycl
 run_regex_tests "test_barrier_pc" "Barrier PC overwrite protection"
 run_regex_tests "test_barrier_active_mask" "Barrier active_mask preserved"
 run_regex_tests "test_warp_barrier_extended|test_post_barrier_divergence|test_barrier_interaction_integrated|test_warp_barrier_integrated" "Barrier extended (warp barrier/interaction)"
-#run_regex_tests "test_divergence_sync_standalone" "Divergence + barrier sync (standalone)"
+run_regex_tests "test_divergence_sync_standalone" "Divergence + barrier sync (standalone)"
 run_regex_tests "test_sync_mechanism" "Sync mechanism (unit + integrated)"
 
 print_header "4. Memory Management"
@@ -182,6 +182,7 @@ run_regex_tests "test_memory_bounds" "Memory bounds"
 
 print_header "5. PTX Instructions"
 run_label_tests "ptx" "PTX instructions (integer/float/bitwise/cvt/ld_st/cvta)"
+run_regex_tests "test_addc_subc_handler|test_ptx_bra" "Standalone instruction tests (ADD/SUBC/BRA)"
 
 print_header "6. PC Management & Scheduling"
 run_regex_tests "test_pc_management" "PC management (unit/advanced/integrated)"
@@ -190,13 +191,19 @@ run_regex_tests "test_warp_context" "WarpContext"
 run_regex_tests "test_warp_scheduler" "WarpScheduler"
 run_regex_tests "test_sm_context" "SMContext"
 
-print_header "7. PTX Syntax Test"
+print_header "7. Standalone PTX Tests"
+run_regex_tests "test-ptx|test_printf" "Standalone PTX tests (generic + printf)"
+
+print_header "8. PTX Syntax Test"
 run_ptx_syntax_test
 
 if [[ "$FULL" == "true" ]]; then
-    print_header "8. Benchmark Tests"
+    print_header "9. Benchmark Tests"
     run_label_tests "mini" "Mini test suite"
     run_label_tests "basic" "Basic test suite (GEMM/CONV)"
+    run_label_tests "cute" "CuTE test suite"
+    run_label_tests "three_mode" "Three-mode test suite"
+    run_regex_tests "test_syncthreads$|test_warp_divergence$|test_shared_memory$" "Sync bench tests (CUDA)"
 fi
 
 print_header "Summary"
