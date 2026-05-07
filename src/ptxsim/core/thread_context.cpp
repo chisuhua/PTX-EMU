@@ -737,6 +737,7 @@ void ThreadContext::sync_to_warp_state() {
         case RUN:
             thread_state.status = ptxsim::ThreadStatus::Active;
             thread_state.is_blocked = false;
+            thread_state.is_active = true;
             break;
         case BAR_SYNC:
             thread_state.status = ptxsim::ThreadStatus::Blocked;

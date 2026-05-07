@@ -113,3 +113,56 @@ TEST_CASE("J5: active_count matches active_mask bits", "[active_mask]") {
     // 还剩24-31共8个活跃线程
     REQUIRE(warp.get_active_count() == 8);
 }
+
+TEST_CASE("J6: update_active_mask syncs is_active to warp_state", "[active_mask][issue-004]") {
+    WarpContext warp;
+    init_full_warp(warp);
+
+    for (int i = 0; i < 8; i++) {
+        warp.get_warp_state().threads[i].is_blocked = true;
+        warp.get_warp_state().threads[i].is_active = true;
+    }
+
+    warp.update_active_mask();
+
+    for (int i = 0; i < 8; i++) {
+        REQUIRE(warp.get_warp_state().threads[i].is_active == false);
+    }
+}
+
+TEST_CASE("J7: update_active_mask keeps is_lane_active and is_schedulable consistent", "[active_mask][issue-004]") {
+    WarpContext warp;
+    init_full_warp(warp);
+
+    // 让前8个线程退出
+    for (int i = 0; i < 8; i++) {
+        warp.get_thread(i)->set_state(EXIT);
+        warp.get_warp_state().threads[i].is_exited = true;
+        warp.get_warp_state().threads[i].is_active = false;
+    }
+
+    // update_active_mask 后，active_mask[] 和 warp_state.is_active 应一致
+    warp.update_active_mask();
+
+    for (int i = 0; i < 32; i++) {
+        bool from_mask = warp.is_lane_active(i);
+        bool from_state = warp.get_warp_state().threads[i].is_active;
+        REQUIRE(from_mask == from_state);
+    }
+}
+
+TEST_CASE("J8: sync_to_warp_state RUN sets is_active=true after barrier", "[active_mask][issue-004]") {
+    WarpContext warp;
+    init_full_warp(warp);
+
+    int lane = 0;
+
+    warp.get_warp_state().threads[lane].is_active = false;
+    warp.get_thread(lane)->set_state(BAR_SYNC);
+    warp.get_thread(lane)->sync_to_warp_state();
+
+    warp.get_thread(lane)->set_state(RUN);
+    warp.get_thread(lane)->sync_to_warp_state();
+
+    REQUIRE(warp.get_warp_state().threads[lane].is_active == true);
+}

@@ -120,7 +120,8 @@ public:
     // 设置活跃掩码
     void set_active_mask(int lane_id, bool active);
 
-    // 检查特定 lane 是否活跃
+    // 检查特定 lane 是否活跃（从 active_mask[] 读取——调度掩码）
+    // 所有修改 active_mask 的操作都会同时同步到 warp_state.threads[i].is_active
     bool is_lane_active(int lane_id) const {
         return lane_id >= 0 && lane_id < WARP_SIZE && active_mask[lane_id];
     }
