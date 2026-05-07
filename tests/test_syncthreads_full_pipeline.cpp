@@ -148,6 +148,7 @@ TEST_CASE("Full pipeline: ResourceManager integration",
 {
     SECTION("ResourceManager initialization and shared memory allocation") {
         auto& rm = ResourceManager::instance();
+        rm.initialize(1, 49152);
         
         auto* shmem_mgr = rm.get_shared_memory_manager(0);
         REQUIRE(shmem_mgr != nullptr);
@@ -164,6 +165,7 @@ TEST_CASE("Full pipeline: SMContext with ResourceManager",
           "[full-pipeline][sm-context][resource-manager]")
 {
     auto& rm = ResourceManager::instance();
+    rm.initialize(1, 49152);
     auto* shmem_mgr = rm.get_shared_memory_manager(0);
     REQUIRE(shmem_mgr != nullptr);
 

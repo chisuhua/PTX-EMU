@@ -473,11 +473,15 @@ TEST_CASE("BUG-REPRODUCTION-CTA: Post-barrier execute_warp_instruction only exec
     INFO("Lanes in active_mask: " << active_mask_count);
     INFO("Lanes that actually executed post-barrier instruction: " << executed_count);
 
-    // The bug: execute_warp_instruction checks is_lane_active() BEFORE pc check.
-    // Since active_mask was never updated by synchronize_barrier(),
-    // only lane 0 passes the filter and executes.
-    CHECK(executed_count == 32);  // EXPECTED: all 32 should execute
-                                  // ACTUAL: only 1 due to active_mask bug
+    // 此测试直接构造了 bug 状态（stale active_mask），验证：
+    // 当 active_mask 未由 synchronize_barrier() 更新时，
+    // execute_warp_instruction 会按 active_mask 过滤，
+    // 导致只有 active_mask 中的线程能执行。
+    // 
+    // 修复在 sm_context.cpp 的 synchronize_barrier() 中：
+    // 在 release 后调用 update_active_mask() 更新所有 warp 的 active_mask。
+    // FIX-VERIFICATION-CTA 测试验证修复后的正确行为。
+    CHECK(executed_count == 1);
 }
 
 TEST_CASE("FIX-VERIFICATION-CTA: After updating active_mask, all lanes execute post-barrier",

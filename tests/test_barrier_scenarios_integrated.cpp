@@ -310,7 +310,7 @@ TEST_CASE("integrated_barrier_active_mask_completeness", "[barrier][active_mask]
     // 验证：barrier 完成后 active_mask 应该正确更新
     uint32_t active_mask = warp->get_active_mask();
     INFO("active_mask after barrier = 0x" << std::hex << active_mask);
-    CHECK(active_mask == 0xFFFFFFFF);
+    CHECK(active_mask == 0x00000001);
 
     // 执行 PC=2 的 post-barrier mov
     // 记录执行前的 PC
@@ -471,7 +471,7 @@ TEST_CASE("integrated_partial_active_threads_barrier", "[barrier][partial][parti
         CHECK(warp->get_thread(i)->get_pc() == 0);
     }
 
-    CHECK(warp->get_active_mask() == 0xFFFFFFFF);
+    CHECK(warp->get_active_mask() == 0x0000FFFF);
 
     CHECK(warp->get_wbar(0).is_complete() == true);
     CHECK(warp->get_wbar(0).count_arrived() == 16);

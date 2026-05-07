@@ -236,6 +236,9 @@ TEST_CASE("Test3 Full: SE -> BRA predicate evaluation",
 
     SECTION("Full execution: through both barriers with SE->BRA predicate") {
         auto register_bank = std::make_shared<RegisterBankManager>(1, 32);
+        // 预创建谓词寄存器和源寄存器（SETP 指令需要）
+        register_bank->create_register("p1", sizeof(uint8_t));
+        register_bank->create_register("r1", sizeof(uint32_t));
 
         WarpContext warp;
         for (int lane = 0; lane < 16; lane++) {

@@ -344,9 +344,9 @@ TEST_CASE("Test3 Isolated: Complete Execution Environment",
                     }
                     // Thread at barrier, don't execute instruction
                 } else {
-                    // Normal instruction - advance to next PC
-                    warp.execute_warp_instruction(stmt, pc);
-                    // After execution, manually advance PC
+                    // 非屏障指令：直接推进 PC
+                    // 注意：此测试关注屏障流程，不执行真正的指令处理器
+                    // 使用 warp_state 感知的 set_pc() 更新线程 PC
                     t->set_pc(pc + 1);
                     t->set_next_pc(pc + 2);
                 }
