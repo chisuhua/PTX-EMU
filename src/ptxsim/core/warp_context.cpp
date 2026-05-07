@@ -114,7 +114,7 @@ bool WarpContext::check_reconvergence() {
 }
 
 WarpContext::WarpContext()
-    : active_count(WARP_SIZE), pc(0), warp_id(-1), single_step_mode(false),
+    : active_count(0), pc(0), warp_id(-1), single_step_mode(false),
       divergence_detected(false), sm_context_(nullptr) {
     for (int i = 0; i < WARP_SIZE; i++) {
         warp_thread_ids[i] = -1;

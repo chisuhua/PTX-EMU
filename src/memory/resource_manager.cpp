@@ -29,6 +29,12 @@ void ResourceManager::initialize(int sm_count, size_t max_shared_mem_per_sm) {
 SharedMemoryManager* ResourceManager::get_shared_memory_manager(int sm_id) {
     std::lock_guard<std::mutex> lock(mutex_);
     
+    // 懒初始化：如果尚未初始化，创建默认的 SM 共享内存管理器
+    if (shared_mem_managers_.empty()) {
+        shared_mem_managers_.push_back(
+            std::make_unique<SharedMemoryManager>(49152));
+    }
+    
     if (sm_id < 0 || sm_id >= static_cast<int>(shared_mem_managers_.size())) {
         PTX_DEBUG_EMU("Invalid SM ID: %d, available SMs: %zu", 
                       sm_id, shared_mem_managers_.size());

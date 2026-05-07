@@ -141,40 +141,6 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
     // 预分配所有寄存器
     register_bank_manager->preallocate_registers(registers);
 
-    // 创建warp并分配线程
-    warps.clear();
-    warps.reserve(warpNum);
-
-    for (int w = 0; w < warpNum; w++) {
-
-        auto warp = std::make_unique<WarpContext>();
-        warp->set_warp_id(w);
-        // 设置寄存器银行管理器
-        warp->set_register_bank_manager(register_bank_manager);
-        warps.push_back(std::move(warp));
-    }
-
-    for (int i = 0; i < threadNum; i++) {
-        Dim3 threadIdx;
-        threadIdx.z = i / (BlockDim.x * BlockDim.y);
-        threadIdx.y = i % (BlockDim.x * BlockDim.y) / BlockDim.x;
-        threadIdx.x = i % (BlockDim.x * BlockDim.y) % BlockDim.x;
-
-        auto thread = std::make_unique<ThreadContext>();
-
-        // 传递this指针作为CTAContext指针，使ThreadContext可以访问本地内存符号表
-        thread->init(blockIdx, threadIdx, GridDim, BlockDim, statements,
-                     name2Sym, label2pc, &name2Share, this);
-
-        // 设置线程使用寄存器银行管理器
-        thread->set_register_bank_manager(register_bank_manager);
-
-        // 直接将线程添加到对应的warp
-        int warpId = i / WarpContext::WARP_SIZE;
-        int laneId = i % WarpContext::WARP_SIZE;
-        warps[warpId]->add_thread(std::move(thread), laneId);
-    }
-
     // 如果提供了本地内存基础地址，则分配每个线程的本地内存空间
     if (local_memory_base != nullptr && localMemBytesPerThread > 0) {
         // 计算当前CTA在全局本地内存中的偏移量

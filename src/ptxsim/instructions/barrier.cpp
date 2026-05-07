@@ -142,6 +142,11 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
     int wbar_id = 0;
     ptxsim::Wbar& wbar = warp_state.wbars[wbar_id];
 
+    // 如果前一个 barrier 已完成但 wbar 未重置，说明这是新的 barrier 调用
+    if (warp_state.current_wbar_id < 0 && wbar.is_initialized) {
+        wbar.reset();
+    }
+
     if (!wbar.is_initialized) {
         uint32_t participation_mask = (dynamic_mask != 0) ? (dynamic_mask & static_mask) : static_mask;
         if (participation_mask == 0) participation_mask = static_mask;
@@ -169,10 +174,9 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
             if ((wbar.arrived_mask & (1u << i)) && warp_state.threads[i].is_active) {
                 uint32_t old_pc = warp_ctx->get_thread(i)->get_pc();
                 if (i == context->lane_id_) {
-                    context->force_set_pc(reconvergence_pc);
-                    context->set_next_pc(reconvergence_pc);
+                    context->set_pc(reconvergence_pc);
                 } else {
-                    warp_ctx->set_thread_pc(i, reconvergence_pc);
+                    warp_ctx->advance_thread_pc(i, reconvergence_pc);
                 }
                 warp_state.threads[i].is_blocked = false;
                 warp_state.threads[i].status = ptxsim::ThreadStatus::Active;
