@@ -36,6 +36,7 @@
 | 技能 | 触发场景 |
 |------|---------|
 | `three-mode-testing` | 生成 PTX 测试用例 — 从 CUDA 程序自动生成 |
+| `test-coverage-enforcer` | 新增 barrier/warp/thread 单元测试 — 确保有对应的集成测试验证 PC |
 
 ---
 

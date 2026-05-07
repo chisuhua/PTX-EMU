@@ -587,6 +587,42 @@ add_catch_test(test_barrier_scenarios
 )
 set_tests_properties(test_barrier_scenarios PROPERTIES LABELS "barrier;regression")
 
+# Integrated tests for unit tests without execute_warp_instruction coverage
+add_catch_test(test_warp_barrier_integrated
+    test_warp_barrier_integrated.cpp
+)
+set_tests_properties(test_warp_barrier_integrated PROPERTIES LABELS "wbar;integrated;regression")
+
+add_catch_test(test_barrier_verification_integrated
+    test_barrier_verification_integrated.cpp
+)
+set_tests_properties(test_barrier_verification_integrated PROPERTIES LABELS "barrier;integrated")
+
+add_catch_test(test_pc_management_integrated
+    test_pc_management_integrated.cpp
+)
+set_tests_properties(test_pc_management_integrated PROPERTIES LABELS "pc;integrated")
+
+add_catch_test(test_simt_thread_pc_integrated
+    test_simt_thread_pc_integrated.cpp
+)
+set_tests_properties(test_simt_thread_pc_integrated PROPERTIES LABELS "thread_pc;integrated")
+
+add_catch_test(test_warp_state_integrated
+    test_warp_state_integrated.cpp
+)
+set_tests_properties(test_warp_state_integrated PROPERTIES LABELS "warp_state;integrated")
+
+add_catch_test(test_sync_mechanism_integrated
+    test_sync_mechanism_integrated.cpp
+)
+set_tests_properties(test_sync_mechanism_integrated PROPERTIES LABELS "sync;integrated")
+
+add_catch_test(test_simt_stack_entry_integrated
+    test_simt_stack_entry_integrated.cpp
+)
+set_tests_properties(test_simt_stack_entry_integrated PROPERTIES LABELS "simt_stack;integrated")
+
 add_catch_test(test_simt_integration
     test_simt_integration.cpp
 )

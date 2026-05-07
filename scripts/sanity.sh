@@ -52,8 +52,12 @@ check_build() {
         exit 1
     fi
     if [[ ! -f "$BUILD_DIR/bin/ptxsim" ]]; then
-        print_warn "ptxsim not built, building..."
-        cmake --build "$BUILD_DIR" || { print_fail "Build failed"; exit 1; }
+        print_warn "ptxsim not built, building core libs..."
+        cmake --build "$BUILD_DIR" --target ptxsim --target cudart --target ptx_parser -- -j$(nproc) 2>/dev/null || {
+            cmake --build "$BUILD_DIR" --target ptxsim --target cudart -- -j$(nproc) || {
+                print_fail "Build failed"; exit 1;
+            }
+        }
     fi
 }
 
@@ -136,7 +140,9 @@ if [[ "$QUICK" == "true" ]]; then
     run_regex_tests "test_exec_mask" "BUG-001: exec_mask restore"
     run_regex_tests "test_simt_stack_entry" "BUG-002: SIMT stack exit handling"
     run_regex_tests "test_active_mask_consistency" "ISSUE-004: active_mask consistency"
-    run_regex_tests "test_divergence_sync_standalone" "DIVERGENCE: divergence + barrier sync"
+    run_regex_tests "test_specific_bugs_unit" "Specific bugs unit tests"
+    run_regex_tests "test_barrier_scenarios" "Barrier scenarios (warp_sync/PC protection)"
+    run_regex_tests "test_barrier_verification" "Barrier verification (wbar lifecycle)"
     print_header "Quick check done. Failed: ${#FAILED_TESTS[@]}"
     exit ${#FAILED_TESTS[@]}
 fi
@@ -163,7 +169,11 @@ run_regex_tests "test_barrier_reconvergence" "Barrier reconvergence"
 run_regex_tests "test_barrier_simt" "Barrier SIMT integration"
 run_regex_tests "test_full_barrier" "Full barrier execution"
 run_regex_tests "test_barrier_scenarios" "Barrier scenarios (warp_sync/divergence/PC protection)"
-run_regex_tests "test_divergence_sync_standalone" "Divergence + barrier sync (standalone)"
+run_regex_tests "test_barrier_verification" "Barrier verification (wbar lifecycle/reuse)"
+run_regex_tests "test_barrier_pc" "Barrier PC overwrite protection"
+run_regex_tests "test_barrier_active_mask" "Barrier active_mask preserved"
+#run_regex_tests "test_divergence_sync_standalone" "Divergence + barrier sync (standalone)"
+run_regex_tests "test_sync_mechanism" "Sync mechanism (unit + integrated)"
 
 print_header "4. Memory Management"
 run_regex_tests "test_memory_manager" "Memory manager"
@@ -172,7 +182,9 @@ run_regex_tests "test_memory_bounds" "Memory bounds"
 print_header "5. PTX Instructions"
 run_label_tests "ptx" "PTX instructions (integer/float/bitwise/cvt/ld_st/cvta)"
 
-print_header "6. Warp Scheduling"
+print_header "6. PC Management & Scheduling"
+run_regex_tests "test_pc_management" "PC management (unit/advanced/integrated)"
+run_regex_tests "test_scheduler_config" "Scheduler config"
 run_regex_tests "test_warp_context" "WarpContext"
 run_regex_tests "test_warp_scheduler" "WarpScheduler"
 run_regex_tests "test_sm_context" "SMContext"
