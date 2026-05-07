@@ -71,11 +71,9 @@ public:
 
     // 【NEW】设置每线程 PC (legacy, does NOT sync ThreadContext)
     // Prefer advance_thread_to() which keeps both sources consistent
+    [[deprecated("Use advance_thread_pc() instead — unified PC advancement path")]]
     void set_thread_pc(int lane_id, uint32_t new_pc) {
-        if (lane_id >= 0 && lane_id < WARP_SIZE) {
-            warp_state.threads[lane_id].pc = new_pc;
-            warp_state.threads[lane_id].next_pc = new_pc;
-        }
+        advance_thread_pc(lane_id, new_pc);
     }
 
     // 【UNIFIED PC】 Advance a single thread's PC, updating both warp_state

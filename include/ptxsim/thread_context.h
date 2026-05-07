@@ -200,6 +200,7 @@ public:
     // 【强制写入】仅设置 PC（不修改 next_pc）
     // 用于 warp 级操作（barrier 完成）对非当前线程的直接写入
     // 注意：当前线程应通过 set_next_pc() + commit_pc() 流程推进 PC
+    [[deprecated("Use set_pc() instead which writes both pc and next_pc")]]
     void force_set_pc(int new_pc);
 
     // 获取线程索引
