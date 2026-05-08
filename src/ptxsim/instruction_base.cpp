@@ -165,46 +165,6 @@ bool GenericPipelineHandler::prepareOperands(ThreadContext *context, StatementCo
 bool GenericPipelineHandler::executeOperation(ThreadContext *context, StatementContext &stmt) {
     const GenericInstr &instr = std::get<GenericInstr>(stmt.data);
 
-    if (stmt.type == S_SETP && instr.operands.size() >= 3) {
-        void *dst = instr.operands[0].operand_phy_addr;
-        void *src1 = instr.operands[1].operand_phy_addr;
-        void *src2 = instr.operands[2].operand_phy_addr;
-        // No-op: dst is used directly in the write below
-        Qualifier cmpOp = getCmpOpQualifier(instr.qualifiers);
-        Qualifier dtype = getDataQualifier(instr.qualifiers);
-
-        auto cmp = [&](auto a, auto b) {
-            switch (cmpOp) {
-            case Qualifier::Q_EQ: return a == b;
-            case Qualifier::Q_NE: return a != b;
-            case Qualifier::Q_LT: return a < b;
-            case Qualifier::Q_LE: return a <= b;
-            case Qualifier::Q_GT: return a > b;
-            case Qualifier::Q_GE: return a >= b;
-            default: return false;
-            }
-        };
-
-        bool cmp_result = false;
-        if (src1 == nullptr || src2 == nullptr) {
-            cmp_result = false;
-        } else switch (dtype) {
-        case Qualifier::Q_U8: cmp_result = cmp(*static_cast<uint8_t*>(src1), *static_cast<uint8_t*>(src2)); break;
-        case Qualifier::Q_S8: cmp_result = cmp(*static_cast<int8_t*>(src1), *static_cast<int8_t*>(src2)); break;
-        case Qualifier::Q_U16: cmp_result = cmp(*static_cast<uint16_t*>(src1), *static_cast<uint16_t*>(src2)); break;
-        case Qualifier::Q_S16: cmp_result = cmp(*static_cast<int16_t*>(src1), *static_cast<int16_t*>(src2)); break;
-        case Qualifier::Q_U32: cmp_result = cmp(*static_cast<uint32_t*>(src1), *static_cast<uint32_t*>(src2)); break;
-        case Qualifier::Q_S32: cmp_result = cmp(*static_cast<int32_t*>(src1), *static_cast<int32_t*>(src2)); break;
-        case Qualifier::Q_F32: cmp_result = cmp(*static_cast<float*>(src1), *static_cast<float*>(src2)); break;
-        default: break;
-        }
-
-        if (dst != nullptr) {
-            *static_cast<uint8_t *>(dst) = cmp_result ? 1 : 0;
-        }
-        return true;
-    }
-
     processOperation(context, &(context->operand_collected[0]), instr.qualifiers,
                      &context->operand_is_immediate_);
     return true;

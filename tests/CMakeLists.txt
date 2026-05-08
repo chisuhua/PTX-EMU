@@ -441,8 +441,9 @@ add_catch_test(test_syncthreads_test3_repro
 )
 
 # Added 2026-04-16: Isolated Test 3 with complete execution environment
-add_catch_test(test_syncthreads_test3_isolated
-    test_syncthreads_test3_isolated.cpp
+# Renamed 2026-05-08: test_nested_divergence (tests nested divergence with SETP/SELP)
+add_catch_test(test_nested_divergence
+    test_nested_divergence.cpp
 )
 
 # Added 2026-04-16: Full pipeline test with SMContext scheduler
