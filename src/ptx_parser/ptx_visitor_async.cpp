@@ -1,20 +1,19 @@
 // 异步指令的实现（ASYNC_STORE, ASYNC_REDUCE）
+#include "ptx_parser/ptx_visiter.h"
+#include "ptx_ir/statement_factory.h"
+#include "utils/logger.h"
+
+using namespace ptxir::factory;
 
 #define VISITOR_ASYNC_STORE(openum, opstr, opname, opcount)                            \
 std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
-    StatementContext stmtCtx;                                                  \
-    stmtCtx.instructionText = ctx->getText();                                  \
-    stmtCtx.type = openum;                                                 \
-    AsyncStoreInstr asyncStore;                                                \
-    auto qualifiers = extractQualifiersFromContext(ctx);                       \
-    asyncStore.qualifiers = qualifiers;                                        \
-    auto operands = ctx->getRuleContexts<ptxparser::ptxParser::OperandContext>();     \
-    for (size_t i = 0; i < std::min(operands.size(), (size_t)opcount); ++i) {   \
-        auto oc = createOperandFromContext(operands[i]);                       \
-        asyncStore.operands.push_back(oc);                                     \
+    std::vector<OperandContext> operands;                                       \
+    auto operandCtxs = ctx->getRuleContexts<ptxparser::ptxParser::OperandContext>();     \
+    for (size_t i = 0; i < std::min(operandCtxs.size(), (size_t)opcount); ++i) {   \
+        operands.push_back(createOperandFromContext(operandCtxs[i]));            \
     }                                                                          \
-    stmtCtx.data = asyncStore;                                                 \
+    auto stmtCtx = makeAsyncStoreInstr(extractQualifiersFromContext(ctx), operands, ctx->getText()); \
     currentKernel->kernelStatements.push_back(stmtCtx);                        \
     return nullptr;                                                            \
 }
@@ -22,18 +21,12 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
 #define VISITOR_ASYNC_REDUCE(openum, opstr, opname, opcount)                           \
 std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
-    StatementContext stmtCtx;                                                  \
-    stmtCtx.instructionText = ctx->getText();                                  \
-    stmtCtx.type = openum;                                                 \
-    AsyncReduceInstr asyncReduce;                                              \
-    auto qualifiers = extractQualifiersFromContext(ctx);                       \
-    asyncReduce.qualifiers = qualifiers;                                        \
-    auto operands = ctx->getRuleContexts<ptxparser::ptxParser::OperandContext>();     \
-    for (size_t i = 0; i < std::min(operands.size(), (size_t)opcount); ++i) {   \
-        auto oc = createOperandFromContext(operands[i]);                       \
-        asyncReduce.operands.push_back(oc);                                    \
+    std::vector<OperandContext> operands;                                       \
+    auto operandCtxs = ctx->getRuleContexts<ptxparser::ptxParser::OperandContext>();     \
+    for (size_t i = 0; i < std::min(operandCtxs.size(), (size_t)opcount); ++i) {   \
+        operands.push_back(createOperandFromContext(operandCtxs[i]));            \
     }                                                                          \
-    stmtCtx.data = asyncReduce;                                               \
+    auto stmtCtx = makeAsyncReduceInstr(extractQualifiersFromContext(ctx), operands, ctx->getText()); \
     currentKernel->kernelStatements.push_back(stmtCtx);                        \
     return nullptr;                                                            \
 }

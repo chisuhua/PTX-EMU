@@ -3,7 +3,10 @@
 #include "ptx_ir/ptx_context.h"
 #include "ptx_ir/operand_context.h"
 #include "ptx_ir/statement_context.h"
+#include "ptx_ir/statement_factory.h"
 #include "utils/logger.h"
+
+using namespace ptxir::factory;
 #include <cassert>
 #include <cctype>
 #include <sstream>
@@ -407,59 +410,49 @@ std::any PtxVisitor::visitAddressSizeDirective(ptxparser::ptxParser::AddressSize
 }
 
 std::any PtxVisitor::visitVariableDecl(ptxparser::ptxParser::VariableDeclContext *ctx) {
-    StatementContext stmtCtx;
-    stmtCtx.instructionText = ctx->getText();
-    
     std::string text = ctx->getText();
 
-    stmtCtx.type = detectStorageClass(text);
-    
+    StatementType type = detectStorageClass(text);
+
     DeclarationInstr decl;
     decl.kind = DeclarationInstr::Kind::REG;
-    
+
     if (ctx->ID()) {
         decl.name = ctx->ID()->getText();
     }
     if (decl.name.empty()) {
         decl.name = "TODO";
     }
-    
+
     decl.dataType = detectDataTypeFromText(text);
     if (decl.dataType == Qualifier::Q_UNKNOWN) {
         decl.dataType = Qualifier::Q_U32;
     }
 
-    // 默认数组大小为 1
     decl.array_size = 1;
-    
-    // 检测是否为.extern 声明（动态共享内存等）
+
     bool is_extern = (text.find(".extern") != std::string::npos);
-    
+
     size_t bracketPos = text.find('[');
     if (bracketPos != std::string::npos) {
         size_t closeBracket = text.find(']', bracketPos);
         if (closeBracket != std::string::npos) {
             std::string sizeStr = text.substr(bracketPos + 1, closeBracket - bracketPos - 1);
-            
-            // 对于空数组 [] 或.extern 声明，设置 array_size = 0 表示动态大小
+
             if (sizeStr.empty() || is_extern) {
-                decl.array_size = 0; // 动态大小
+                decl.array_size = 0;
             } else {
                 try {
                     decl.array_size = std::stoi(sizeStr);
                 } catch (const std::invalid_argument&) {
-                    decl.array_size = 0; // 解析失败也设为动态大小
+                    decl.array_size = 0;
                 } catch (const std::out_of_range&) {
                     decl.array_size = 0;
                 }
             }
         }
     }
-    
-    // Parse initializer values (for .global/.const arrays like {72, 101, ...})
-    // Format: .global .align 1 .b8 $str[30] = {72, 101, ...}
-    // The initializer is a child context: initializer? (ASSIGN initializerValue)
-    // where initializerValue can be LEFT_BRACE initializerList RIGHT_BRACE
+
     if (ctx->initializer() && ctx->initializer()->initializerValue()) {
         auto initValue = ctx->initializer()->initializerValue();
         auto initList = initValue->initializerList();
@@ -475,15 +468,16 @@ std::any PtxVisitor::visitVariableDecl(ptxparser::ptxParser::VariableDeclContext
             }
         }
     }
-    
-    stmtCtx.data = decl;
-    
+
+    auto stmtCtx = makeDeclarationInstr(type, decl.kind, decl.name, decl.dataType, decl.array_size, text);
+    stmtCtx.get<DeclarationInstr>().initValues = std::move(decl.initValues);
+
     if (currentKernel) {
         currentKernel->kernelStatements.push_back(stmtCtx);
     } else {
         this->ctx.ptxStatements.push_back(stmtCtx);
     }
-    
+
     return nullptr;
 }
 
@@ -603,11 +597,8 @@ std::any PtxVisitor::visitFunctionDecl(ptxparser::ptxParser::FunctionDeclContext
                 continue;
             }
 
-            StatementContext stmtCtx;
-            stmtCtx.instructionText = regDeclCtx->getText();
-
             std::string text = regDeclCtx->getText();
-            stmtCtx.type = detectStorageClass(text);
+            StatementType type = detectStorageClass(text);
 
             DeclarationInstr decl;
             decl.kind = DeclarationInstr::Kind::REG;
@@ -622,20 +613,17 @@ std::any PtxVisitor::visitFunctionDecl(ptxparser::ptxParser::FunctionDeclContext
                 }
             }
 
-            stmtCtx.data = decl;
+            auto stmtCtx = makeDeclarationInstr(type, decl.kind, decl.name, decl.dataType, decl.array_size, text);
             currentKernel->kernelStatements.push_back(stmtCtx);
         }
-        
+
         for (auto *varDeclCtx : ctx->funcBody()->variableDecl()) {
             if (!varDeclCtx) {
                 continue;
             }
 
-            StatementContext stmtCtx;
-            stmtCtx.instructionText = varDeclCtx->getText();
-
             std::string text = varDeclCtx->getText();
-            stmtCtx.type = varDeclCtx->storageClass() ? detectStorageClass(text) : S_REG;
+            StatementType type = varDeclCtx->storageClass() ? detectStorageClass(text) : S_REG;
 
             DeclarationInstr decl;
             decl.kind = DeclarationInstr::Kind::REG;
@@ -668,7 +656,7 @@ std::any PtxVisitor::visitFunctionDecl(ptxparser::ptxParser::FunctionDeclContext
                 }
             }
 
-            stmtCtx.data = decl;
+            auto stmtCtx = makeDeclarationInstr(type, decl.kind, decl.name, decl.dataType, decl.array_size, text);
             currentKernel->kernelStatements.push_back(stmtCtx);
         }
 
@@ -691,22 +679,12 @@ std::any PtxVisitor::visitFunctionDecl(ptxparser::ptxParser::FunctionDeclContext
 
 std::any PtxVisitor::visitAbiPreserveDirective(ptxparser::ptxParser::AbiPreserveDirectiveContext *ctx) {
     // ABI保留指令
-    AbiDirective abiDir;
-    abiDir.regNumber = 0; // TODO: Extract from context
-    
-    StatementContext stmtCtx;
-    stmtCtx.type = S_ABI_PRESERVE;
-    stmtCtx.instructionText = ctx->getText();
-    stmtCtx.data = abiDir;
-    
-    // 添加到全局语句或当前kernel
+    std::string regName = ctx->ID() ? ctx->ID()->getText() : "";
+    auto stmtCtx = ptxir::factory::makeAbiDirective(0, ctx->getText());
+
     if (currentKernel) {
         currentKernel->kernelStatements.push_back(stmtCtx);
-        
-        // 同时添加到 KernelContext 的 abiPreservedRegisters
-        // 解析寄存器名称: .abi_preserve %r15
-        std::string regName = ctx->ID()->getText();
-        currentKernel->addAbiPreservedRegister(regName, 32); // 默认32位，可后续改进
+        currentKernel->addAbiPreservedRegister(regName, 32);
     } else {
         this->ctx.ptxStatements.push_back(stmtCtx);
     }
@@ -822,18 +800,14 @@ std::any PtxVisitor::visitInstruction(ptxparser::ptxParser::InstructionContext *
     if (ctx->label()) {
         if (!currentKernel) return nullptr;
 
-        StatementContext stmtCtx;
-        stmtCtx.instructionText = ctx->getText();
-        stmtCtx.type = S_DOLLOR;
-
-        DollarNameInstr dollar;
+        std::string name;
         if (ctx->label()->ID()) {
-            dollar.name = ctx->label()->ID()->getText();
+            name = ctx->label()->ID()->getText();
         } else {
             return nullptr;
         }
-        stmtCtx.data = dollar;
 
+        auto stmtCtx = ptxir::factory::makeDollarNameInstr(name, ctx->getText());
         currentKernel->kernelStatements.push_back(stmtCtx);
         return nullptr;
     }

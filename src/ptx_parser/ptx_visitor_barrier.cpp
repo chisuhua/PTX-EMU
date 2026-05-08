@@ -5,10 +5,10 @@
 #include "ptx_ir/kernel_context.h"
 #include "ptx_ir/statement_context.h"
 #include "ptx_ir/operand_context.h"
+#include "ptx_ir/statement_factory.h"
 #include "utils/logger.h"
-#include <algorithm>
-#include <any>
-#include <cstdio>
+
+using namespace ptxir::factory;
 
 namespace {
 
@@ -44,41 +44,25 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
         int total_threads = compute_actual_thread_count(currentKernel); \
         uint32_t mask = (total_threads >= 32) ? 0xFFFFFFFFu : ((1u << total_threads) - 1); \
         \
-        BarWarpSyncInstr instr; \
-        instr.qualifiers = {Qualifier::Q_B32}; \
+        std::vector<OperandContext> operands; \
+        operands.push_back(OperandContext{ImmOperand{std::to_string(mask)}}); \
+        operands.push_back(OperandContext{ImmOperand{"0"}}); \
         \
-        OperandContext maskOperand{ImmOperand{std::to_string(mask)}}; \
-        instr.operands.push_back(maskOperand); \
-        \
-        OperandContext pcOperand{ImmOperand{"0"}}; \
-        instr.operands.push_back(pcOperand); \
-        \
-        instr.reconvergenceLabel = ""; \
-        \
-        StatementContext stmtCtx; \
-        stmtCtx.type = S_BAR_WARP_SYNC; \
-        stmtCtx.instructionText = "bar.warp.sync.b32 " + std::to_string(mask) + ", 0;"; \
-        stmtCtx.qualifier = {Qualifier::Q_B32}; \
-        stmtCtx.data = instr; \
+        auto stmtCtx = makeBarWarpSyncInstr({Qualifier::Q_B32}, operands,      \
+            "bar.warp.sync.b32 " + std::to_string(mask) + ", 0;");           \
         currentKernel->kernelStatements.push_back(stmtCtx); \
         \
         return nullptr; \
     } \
     \
     /* Original bar.sync handling for multi-warp CTAs */ \
-    StatementContext stmtCtx; \
-    stmtCtx.instructionText = ctx->getText(); \
-    stmtCtx.type = openum; \
-    \
-    BarrierInstr instr; \
-    instr.qualifiers = extractQualifiersFromContext(ctx); \
-    \
-    /* Extract bar ID from barrierOperands if present */ \
+    std::optional<int> barId; \
     if (ctx->barrierOperands() && ctx->barrierOperands()->IMMEDIATE()) { \
-        instr.barId = extractIntFromToken(ctx->barrierOperands()->IMMEDIATE()->getSymbol()); \
+        barId = extractIntFromToken(ctx->barrierOperands()->IMMEDIATE()->getSymbol()); \
     } \
     \
-    stmtCtx.data = instr; \
+    auto stmtCtx = makeBarrierInstr(openum, extractQualifiersFromContext(ctx), \
+                                   barId, "", ctx->getText());               \
     currentKernel->kernelStatements.push_back(stmtCtx); \
     \
     return nullptr; \
@@ -87,41 +71,32 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
 // VISITOR_WARP_BARRIER: Manual implementation of bar.warp.sync instruction
 std::any PtxVisitor::visitBarWarpSyncInst(ptxparser::ptxParser::BarWarpSyncInstContext *ctx) {
     if (!currentKernel) return nullptr;
-    
-    StatementContext stmtCtx;
-    stmtCtx.instructionText = ctx->getText();
-    stmtCtx.type = S_BAR_WARP_SYNC;
-    
-    BarWarpSyncInstr instr;
-    instr.qualifiers = extractQualifiersFromContext(ctx);
-    
-    // Defensive: ensure we have a data type qualifier
-    // bar.warp.sync requires a data type (typically .b32 for the participation mask)
+
+    std::vector<Qualifier> qualifiers = extractQualifiersFromContext(ctx);
+
     bool hasDataType = false;
-    for (auto q : instr.qualifiers) {
+    for (auto q : qualifiers) {
         if (Q2bytes(q) > 0) {
             hasDataType = true;
             break;
         }
     }
     if (!hasDataType) {
-        instr.qualifiers = {Qualifier::Q_B32};
+        qualifiers = {Qualifier::Q_B32};
         PTX_WARN("bar.warp.sync missing data type qualifier, defaulting to .b32");
     }
-    
-    // Parse participation mask operand
-    auto operands = ctx->getRuleContexts<ptxparser::ptxParser::OperandContext>();
-    if (!operands.empty()) {
-        instr.operands.push_back(createOperandFromContext(operands[0]));
+
+    std::vector<OperandContext> operands;
+    auto operandCtxs = ctx->getRuleContexts<ptxparser::ptxParser::OperandContext>();
+    if (!operandCtxs.empty()) {
+        operands.push_back(createOperandFromContext(operandCtxs[0]));
     }
-    
-    // Parse reconvergence label
+
+    auto stmtCtx = makeBarWarpSyncInstr(qualifiers, operands, ctx->getText());
     if (ctx->labelOperand()) {
-        instr.reconvergenceLabel = ctx->labelOperand()->ID()->getText();
+        stmtCtx.get<BarWarpSyncInstr>().reconvergenceLabel = ctx->labelOperand()->ID()->getText();
     }
-    
-    stmtCtx.data = instr;
     currentKernel->kernelStatements.push_back(stmtCtx);
-    
+
     return nullptr;
 }

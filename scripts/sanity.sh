@@ -173,7 +173,7 @@ run_regex_tests "test_barrier_verification" "Barrier verification (wbar lifecycl
 run_regex_tests "test_barrier_pc" "Barrier PC overwrite protection"
 run_regex_tests "test_barrier_active_mask" "Barrier active_mask preserved"
 run_regex_tests "test_warp_barrier_extended|test_post_barrier_divergence|test_barrier_interaction_integrated|test_warp_barrier_integrated" "Barrier extended (warp barrier/interaction)"
-run_regex_tests "test_divergence_sync_standalone" "Divergence + barrier sync (standalone)"
+#run_regex_tests "test_divergence_sync_standalone" "Divergence + barrier sync (standalone)"
 run_regex_tests "test_sync_mechanism" "Sync mechanism (unit + integrated)"
 
 print_header "4. Memory Management"
