@@ -10,11 +10,15 @@
 #include "ptxsim/instruction_factory.h"
 #include "ptx_ir/statement_context.h"
 #include "ptx_ir/operand_context.h"
+#include "ptx_ir/statement_factory.h"
 #include "memory/resource_manager.h"
 #include <map>
 #include <memory>
 #include <vector>
 #include <string>
+
+namespace {
+using namespace ptxir::factory;
 
 /**
  * Barrier 场景集成测试集 — execute_warp_instruction 驱动
@@ -48,19 +52,6 @@ static StatementContext make_mov_stmt() {
     ctx.type = S_MOV;
     ctx.data = GenericInstr{};
     ctx.instructionText = "mov.u32 %r1, %r2;";
-    return ctx;
-}
-
-static StatementContext make_barrier_stmt(uint32_t mask, int reconvergence_pc) {
-    StatementContext ctx;
-    ctx.type = S_BAR_WARP_SYNC;
-    BarWarpSyncInstr instr;
-    instr.qualifiers = {Qualifier::Q_B32};
-    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(mask)}});
-    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(reconvergence_pc)}});
-    ctx.data = instr;
-    ctx.instructionText = "bar.warp.sync.b32 " + std::to_string(mask) + ", " + 
-                          std::to_string(reconvergence_pc) + ";";
     return ctx;
 }
 
@@ -105,7 +96,7 @@ TEST_CASE("integrated_full_barrier_execution_flow", "[barrier][integrated][execu
     // 构建指令序列
     std::vector<StatementContext> statements;
     statements.push_back(make_mov_stmt());           // PC=0
-    statements.push_back(make_barrier_stmt(0xFFFFFFFF, 2));  // PC=1: barrier, reconverge to PC=2
+    statements.push_back(makeBarWarpSyncInstr(0xFFFFFFFF, 2));  // PC=1: barrier, reconverge to PC=2
     statements.push_back(make_mov_stmt());           // PC=2: post-barrier
 
     SMContext sm(4, 128, 4096, 0);
@@ -164,7 +155,7 @@ TEST_CASE("integrated_barrier_after_divergent_branch", "[barrier][divergence][in
     // 构建指令序列
     std::vector<StatementContext> statements;
     statements.push_back(make_mov_stmt());           // PC=0
-    statements.push_back(make_barrier_stmt(0xFFFFFFFF, 2));  // PC=1: barrier
+    statements.push_back(makeBarWarpSyncInstr(0xFFFFFFFF, 2));  // PC=1: barrier
     statements.push_back(make_mov_stmt());           // PC=2: post-barrier
 
     SMContext sm(4, 128, 4096, 0);
@@ -220,7 +211,7 @@ TEST_CASE("integrated_nested_branch_barrier_convergence", "[barrier][simt_stack]
     std::vector<StatementContext> statements;
     statements.push_back(make_mov_stmt());           // PC=0
     statements.push_back(make_mov_stmt());           // PC=1
-    statements.push_back(make_barrier_stmt(0xFFFFFFFF, 10));  // PC=2: barrier, reconverge to PC=10
+    statements.push_back(makeBarWarpSyncInstr(0xFFFFFFFF, 10));  // PC=2: barrier, reconverge to PC=10
     statements.push_back(make_mov_stmt());           // PC=3: post-barrier（不会被执行）
 
     SMContext sm(4, 128, 4096, 0);
@@ -292,7 +283,7 @@ TEST_CASE("integrated_barrier_active_mask_completeness", "[barrier][active_mask]
 
     std::vector<StatementContext> statements;
     statements.push_back(make_mov_stmt());           // PC=0
-    statements.push_back(make_barrier_stmt(0xFFFFFFFF, 2));  // PC=1: barrier
+    statements.push_back(makeBarWarpSyncInstr(0xFFFFFFFF, 2));  // PC=1: barrier
     statements.push_back(make_mov_stmt());           // PC=2: post-barrier
 
     SMContext sm(4, 128, 4096, 0);
@@ -348,7 +339,7 @@ TEST_CASE("integrated_pc_overridden_protection", "[barrier][pc_overridden][integ
 
     std::vector<StatementContext> statements;
     statements.push_back(make_mov_stmt());           // PC=0
-    statements.push_back(make_barrier_stmt(0xFFFFFFFF, 3));  // PC=1: barrier
+    statements.push_back(makeBarWarpSyncInstr(0xFFFFFFFF, 3));  // PC=1: barrier
     statements.push_back(make_mov_stmt());           // PC=2: post-barrier
     statements.push_back(make_mov_stmt());           // PC=3: reconvergence target
 
@@ -394,9 +385,9 @@ TEST_CASE("integrated_barrier_lifecycle", "[barrier][lifecycle][integrated]") {
 
     std::vector<StatementContext> statements;
     statements.push_back(make_mov_stmt());           // PC=0
-    statements.push_back(make_barrier_stmt(0xFFFFFFFF, 2));  // PC=1: first barrier
+    statements.push_back(makeBarWarpSyncInstr(0xFFFFFFFF, 2));  // PC=1: first barrier
     statements.push_back(make_mov_stmt());           // PC=2: between barriers
-    statements.push_back(make_barrier_stmt(0xFFFFFFFF, 4));  // PC=3: second barrier
+    statements.push_back(makeBarWarpSyncInstr(0xFFFFFFFF, 4));  // PC=3: second barrier
     statements.push_back(make_mov_stmt());           // PC=4: after second barrier
 
     SMContext sm(4, 128, 4096, 0);
@@ -444,7 +435,7 @@ TEST_CASE("integrated_partial_active_threads_barrier", "[barrier][partial][parti
 
     std::vector<StatementContext> statements;
     statements.push_back(make_mov_stmt());           // PC=0
-    statements.push_back(make_barrier_stmt(0xFFFFFFFF, 2));  // PC=1: barrier
+    statements.push_back(makeBarWarpSyncInstr(0xFFFFFFFF, 2));  // PC=1: barrier
     statements.push_back(make_mov_stmt());           // PC=2: post-barrier
 
     SMContext sm(4, 128, 4096, 0);

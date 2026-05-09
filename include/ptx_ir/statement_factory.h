@@ -99,6 +99,37 @@ inline StatementContext makeBarWarpSyncInstr(
     return makeStatementContext(S_BAR_WARP_SYNC, std::move(instr), text);
 }
 
+/**
+ * @brief 便捷工厂: 创建 S_BAR_WARP_SYNC 屏障指令
+ * @param mask 线程掩码（十六进制字符串，如 "0xFF"）
+ * @param reconv_pc 重汇聚 PC
+ * @param text 原始 PTX 文本（用于调试）
+ */
+inline StatementContext makeBarWarpSyncInstr(
+    const std::string &mask,
+    int reconv_pc,
+    const std::string &text = "") {
+    BarWarpSyncInstr instr;
+    instr.operands.push_back(OperandContext{ImmOperand{mask}});
+    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(reconv_pc)}});
+    return makeStatementContext(S_BAR_WARP_SYNC, std::move(instr), text);
+}
+
+/**
+ * @brief 便捷工厂: 创建 S_BAR_WARP_SYNC 屏障指令（mask 以 uint32_t 传入）
+ * @param mask 线程掩码（uint32_t，会转换为十六进制）
+ * @param reconv_pc 重汇聚 PC
+ * @param text 原始 PTX 文本（用于调试）
+ */
+inline StatementContext makeBarWarpSyncInstr(
+    uint32_t mask,
+    int reconv_pc,
+    const std::string &text = "") {
+    std::ostringstream oss;
+    oss << "0x" << std::hex << mask;
+    return makeBarWarpSyncInstr(oss.str(), reconv_pc, text);
+}
+
 // --- 2.6 调用指令 (CallInstr) ---
 inline StatementContext makeCallInstr(
     StatementType type,

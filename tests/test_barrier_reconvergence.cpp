@@ -20,12 +20,14 @@
 #include "ptx_parser/cfg_builder.h"
 #include "ptx_ir/statement_context.h"
 #include "ptx_ir/operand_context.h"
+#include "ptx_ir/statement_factory.h"
 #include <vector>
 #include <map>
 #include <string>
 
 namespace cfg = ptx::cfg;
 using namespace ptx;
+using namespace ptxir::factory;
 
 // Helper: Create a regular (non-branch, non-barrier) statement
 static StatementContext make_regular_stmt(StatementType type = S_MOV) {
@@ -44,18 +46,6 @@ static StatementContext make_branch_stmt(const std::string& target) {
     branch.target = target;
     branch.reconvergence_pc = -1;  // Not yet computed
     ctx.data = branch;
-    return ctx;
-}
-
-// Helper: Create a warp barrier sync statement
-static StatementContext make_barrier_stmt() {
-    StatementContext ctx;
-    ctx.type = S_BAR_WARP_SYNC;
-    BarWarpSyncInstr barrier;
-    // bar.warp.sync has 2 operands: mask and reconvergence_pc (or label)
-    barrier.operands.push_back(OperandContext{ImmOperand{"0xFFFFFFFF"}});
-    barrier.operands.push_back(OperandContext{ImmOperand{"0"}});
-    ctx.data = barrier;
     return ctx;
 }
 
@@ -89,7 +79,7 @@ TEST_CASE("CFG: post-dominator for divergent branch before barrier", "[cfg][reco
     }
     
     // PC=10: First barrier (all threads converge here before divergence)
-    stmts.push_back(make_barrier_stmt());
+    stmts.push_back(makeBarWarpSyncInstr(0xFFFFFFFF, 0));
     
     // PC=11: setp instruction (divergent instruction - but for CFG purposes just a regular stmt)
     stmts.push_back(make_regular_stmt(S_SETP));
@@ -107,7 +97,7 @@ TEST_CASE("CFG: post-dominator for divergent branch before barrier", "[cfg][reco
     stmts.push_back(make_label_stmt("L_skip"));
     
     // PC=17: Second barrier (where all threads reconverge)
-    stmts.push_back(make_barrier_stmt());
+    stmts.push_back(makeBarWarpSyncInstr(0xFFFFFFFF, 0));
     
     // PC=18: ret (exit)
     stmts.push_back(make_regular_stmt(S_RET));
@@ -232,7 +222,7 @@ TEST_CASE("CFG: barrier as explicit reconvergence point", "[cfg][reconvergence][
     std::vector<StatementContext> stmts;
     std::map<std::string, int> label2pc;
     
-    stmts.push_back(make_barrier_stmt());  // PC=0: first barrier
+    stmts.push_back(makeBarWarpSyncInstr(0xFFFFFFFF, 0));  // PC=0: first barrier
     stmts.push_back(make_branch_stmt("L_else"));  // PC=1: divergent branch
     label2pc["L_else"] = 4;
     
@@ -244,7 +234,7 @@ TEST_CASE("CFG: barrier as explicit reconvergence point", "[cfg][reconvergence][
     stmts.push_back(make_regular_stmt());  // PC=5: path 2a
     stmts.push_back(make_regular_stmt());  // PC=6: path 2b
     
-    stmts.push_back(make_barrier_stmt());  // PC=7: second barrier (reconvergence)
+    stmts.push_back(makeBarWarpSyncInstr(0xFFFFFFFF, 0));  // PC=7: second barrier (reconvergence)
     stmts.push_back(make_regular_stmt(S_RET));  // PC=8: ret
     
     // Build CFG

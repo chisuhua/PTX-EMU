@@ -17,22 +17,6 @@
 using namespace ptxsim;
 using namespace ptxir::factory;
 
-static std::string to_hex(uint32_t val) {
-    std::ostringstream oss;
-    oss << "0x" << std::hex << val;
-    return oss.str();
-}
-
-static StatementContext make_barrier_stmt(uint32_t mask, int reconv_pc) {
-    StatementContext ctx;
-    ctx.type = S_BAR_WARP_SYNC;
-    BarWarpSyncInstr barrier;
-    barrier.operands.push_back(OperandContext{ImmOperand{to_hex(mask)}});
-    barrier.operands.push_back(OperandContext{ImmOperand{std::to_string(reconv_pc)}});
-    ctx.data = barrier;
-    return ctx;
-}
-
 static std::vector<StatementContext> build_divergence_sync_statements() {
     std::vector<StatementContext> stmts;
 
@@ -60,7 +44,7 @@ static std::vector<StatementContext> build_divergence_sync_statements() {
         {OperandContext{RegOperand{"r", 4}}, OperandContext{RegOperand{"r", 5}}, OperandContext{RegOperand{"r", 6}}, OperandContext{RegOperand{"p", 1}}},
         "selp.b32 %r4, %r5, %r6, %p1;"));
 
-    stmts.push_back(make_barrier_stmt(0x000000FF, 9));
+    stmts.push_back(makeBarWarpSyncInstr(0x000000FF, 9));
 
     stmts.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B64},
         {OperandContext{RegOperand{"rd", 1}}, OperandContext{ImmOperand{"0"}}},

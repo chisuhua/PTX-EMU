@@ -9,6 +9,7 @@
 #include "ptx_parser/cfg_builder.h"
 #include "ptx_ir/statement_context.h"
 #include "ptx_ir/operand_context.h"
+#include "ptx_ir/statement_factory.h"
 #include <vector>
 #include <map>
 #include <string>
@@ -16,6 +17,8 @@
 
 namespace cfg = ptx::cfg;
 using namespace ptx;
+namespace {
+using namespace ptxir::factory;
 
 // ============================================================
 // Helpers
@@ -36,16 +39,6 @@ static StatementContext make_branch_stmt(const std::string& target) {
     branch.target = target;
     branch.reconvergence_pc = -1;
     ctx.data = branch;
-    return ctx;
-}
-
-static StatementContext make_barrier_stmt() {
-    StatementContext ctx;
-    ctx.type = S_BAR_WARP_SYNC;
-    BarWarpSyncInstr barrier;
-    barrier.operands.push_back(OperandContext{ImmOperand{"0x0000FFFF"}});
-    barrier.operands.push_back(OperandContext{ImmOperand{"-1"}});
-    ctx.data = barrier;
     return ctx;
 }
 
@@ -81,7 +74,7 @@ TEST_CASE("D1: barrier reconvergence_pc fallback when no post-dominator",
     std::map<std::string, int> label2pc;
 
     stmts.push_back(make_regular_stmt());
-    stmts.push_back(make_barrier_stmt());
+    stmts.push_back(makeBarWarpSyncInstr(0x0000FFFF, -1));
     stmts.push_back(make_regular_stmt());
     stmts.push_back(make_regular_stmt(S_RET));
 
@@ -108,8 +101,8 @@ TEST_CASE("D1: two consecutive barriers — second barrier reconvergence",
           "[cfg][direction1][reconvergence]") {
     std::vector<StatementContext> stmts;
     std::map<std::string, int> label2pc;
-    stmts.push_back(make_barrier_stmt());
-    stmts.push_back(make_barrier_stmt());
+    stmts.push_back(makeBarWarpSyncInstr(0x0000FFFF, -1));
+    stmts.push_back(makeBarWarpSyncInstr(0x0000FFFF, -1));
     stmts.push_back(make_regular_stmt());
     stmts.push_back(make_regular_stmt(S_RET));
 
@@ -163,13 +156,13 @@ TEST_CASE("D2: CFG post-dominator for branch-then-barrier (Test 3 pattern)",
     std::map<std::string, int> label2pc;
 
     for (int i = 0; i < 5; i++) stmts.push_back(make_regular_stmt());
-    stmts.push_back(make_barrier_stmt());               // PC=5
+    stmts.push_back(makeBarWarpSyncInstr(0x0000FFFF, -1));               // PC=5
     stmts.push_back(make_regular_stmt(S_SETP));         // PC=6
     stmts.push_back(make_branch_stmt("L_skip"));        // PC=7
     label2pc["L_skip"] = 11;
     for (int i = 0; i < 3; i++) stmts.push_back(make_regular_stmt()); // PC=8-10
     stmts.push_back(make_label_stmt("L_skip"));         // PC=11
-    stmts.push_back(make_barrier_stmt());               // PC=12
+    stmts.push_back(makeBarWarpSyncInstr(0x0000FFFF, -1));               // PC=12
     stmts.push_back(make_regular_stmt());               // PC=13
     stmts.push_back(make_regular_stmt(S_RET));          // PC=14
 
@@ -212,7 +205,7 @@ TEST_CASE("D2: divergent branch with 8 threads in CTA",
     stmts.push_back(make_regular_stmt());    // PC=3: then
     stmts.push_back(make_regular_stmt());    // PC=4: more then
     stmts.push_back(make_label_stmt("L_merge")); // PC=5: label
-    stmts.push_back(make_barrier_stmt());    // PC=6: bar.sync
+    stmts.push_back(makeBarWarpSyncInstr(0x0000FFFF, -1));    // PC=6: bar.sync
     stmts.push_back(make_regular_stmt(S_RET)); // PC=7: ret
 
     auto postDoms = build_post_doms(stmts, label2pc);
@@ -249,9 +242,9 @@ TEST_CASE("D3: sequential shared memory with barrier between writes",
     std::map<std::string, int> label2pc;
 
     stmts.push_back(make_regular_stmt(S_ST));     // PC=0
-    stmts.push_back(make_barrier_stmt());         // PC=1
+    stmts.push_back(makeBarWarpSyncInstr(0x0000FFFF, -1));         // PC=1
     stmts.push_back(make_regular_stmt(S_LD));     // PC=2
-    stmts.push_back(make_barrier_stmt());         // PC=3
+    stmts.push_back(makeBarWarpSyncInstr(0x0000FFFF, -1));         // PC=3
     stmts.push_back(make_regular_stmt(S_RET));    // PC=4
 
     auto postDoms = build_post_doms(stmts, label2pc);
@@ -279,7 +272,7 @@ TEST_CASE("D3: barrier reconvergence_pc for if-then pattern with shared memory",
     std::map<std::string, int> label2pc;
 
     stmts.push_back(make_regular_stmt());        // PC=0: setup
-    stmts.push_back(make_barrier_stmt());        // PC=1: bar.sync 0
+    stmts.push_back(makeBarWarpSyncInstr(0x0000FFFF, -1));        // PC=1: bar.sync 0
     stmts.push_back(make_regular_stmt(S_SETP));  // PC=2: predicate
     stmts.push_back(make_branch_stmt("L_after"));// PC=3: conditional bra
     label2pc["L_after"] = 7;
@@ -287,7 +280,7 @@ TEST_CASE("D3: barrier reconvergence_pc for if-then pattern with shared memory",
     stmts.push_back(make_regular_stmt());         // PC=5: more work
     stmts.push_back(make_regular_stmt());         // PC=6: more work
     stmts.push_back(make_label_stmt("L_after"));  // PC=7: label
-    stmts.push_back(make_barrier_stmt());         // PC=8: bar.sync 0
+    stmts.push_back(makeBarWarpSyncInstr(0x0000FFFF, -1));         // PC=8: bar.sync 0
     stmts.push_back(make_regular_stmt(S_LD));     // PC=9: shared read
     stmts.push_back(make_regular_stmt(S_RET));    // PC=10: ret
 
@@ -362,3 +355,5 @@ TEST_CASE("D3c: barrier release PC advancement",
     REQUIRE(next_if_sync_incomplete == barrier_pc);
     REQUIRE(next_if_sync_incomplete != next_if_sync_complete);
 }
+
+} // anonymous namespace

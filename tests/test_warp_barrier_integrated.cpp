@@ -10,11 +10,14 @@
 #include "ptxsim/instruction_factory.h"
 #include "ptx_ir/statement_context.h"
 #include "ptx_ir/operand_context.h"
+#include "ptx_ir/statement_factory.h"
 #include "memory/resource_manager.h"
 #include <map>
 #include <memory>
 #include <vector>
 #include <string>
+
+using namespace ptxir::factory;
 
 static void init_instruction_factory_once() {
     static bool initialized = false;
@@ -32,18 +35,7 @@ static StatementContext make_mov_stmt() {
     return ctx;
 }
 
-static StatementContext make_barrier_stmt(uint32_t mask, int reconvergence_pc) {
-    StatementContext ctx;
-    ctx.type = S_BAR_WARP_SYNC;
-    BarWarpSyncInstr instr;
-    instr.qualifiers = {Qualifier::Q_B32};
-    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(mask)}});
-    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(reconvergence_pc)}});
-    ctx.data = instr;
-    ctx.instructionText = "bar.warp.sync.b32 " + std::to_string(mask) + ", " +
-                          std::to_string(reconvergence_pc) + ";";
-    return ctx;
-}
+
 
 static WarpContext* create_warp_with_threads(SMContext& sm, std::unique_ptr<CTAContext> block) {
     block->sharedMemBytes = 1024;
@@ -71,7 +63,7 @@ TEST_CASE("integrated_wbar_convergence_operations", "[wbar][integrated][execute_
 
     std::vector<StatementContext> statements;
     statements.push_back(make_mov_stmt());
-    statements.push_back(make_barrier_stmt(0x0000000F, 2));
+    statements.push_back(makeBarWarpSyncInstr(0x0000000F, 2));
     statements.push_back(make_mov_stmt());
 
     SMContext sm(4, 128, 4096, 0);
@@ -117,7 +109,7 @@ TEST_CASE("integrated_warp_barrier_divergence_scenario", "[wbar][divergence][int
 
     warp->execute_warp_instruction(statements[0], 0);
 
-    statements[1] = make_barrier_stmt(0xFFFFFFFE, 2);
+    statements[1] = makeBarWarpSyncInstr(0xFFFFFFFE, 2);
     warp->execute_warp_instruction(statements[1], 1);
 
     CHECK(warp->get_wbar(0).is_complete() == true);
@@ -134,13 +126,13 @@ TEST_CASE("integrated_multiple_barrier_registers", "[wbar][multi][integrated]") 
 
     std::vector<StatementContext> statements;
     statements.push_back(make_mov_stmt());
-    statements.push_back(make_barrier_stmt(0x0000000F, 4));
+    statements.push_back(makeBarWarpSyncInstr(0x0000000F, 4));
     statements.push_back(make_mov_stmt());
-    statements.push_back(make_barrier_stmt(0x000000F0, 6));
+    statements.push_back(makeBarWarpSyncInstr(0x000000F0, 6));
     statements.push_back(make_mov_stmt());
-    statements.push_back(make_barrier_stmt(0x00000F00, 8));
+    statements.push_back(makeBarWarpSyncInstr(0x00000F00, 8));
     statements.push_back(make_mov_stmt());
-    statements.push_back(make_barrier_stmt(0x0000F000, 10));
+    statements.push_back(makeBarWarpSyncInstr(0x0000F000, 10));
 
     SMContext sm(4, 128, 4096, 0);
     WarpContext* warp = create_warp_with_threads(sm, create_block(statements));
@@ -177,11 +169,11 @@ TEST_CASE("integrated_wbar_partial_participation", "[wbar][partial][integrated]"
 
     std::vector<StatementContext> statements;
     statements.push_back(make_mov_stmt());
-    statements.push_back(make_barrier_stmt(0x00000003, 2));
+    statements.push_back(makeBarWarpSyncInstr(0x00000003, 2));
     statements.push_back(make_mov_stmt());
-    statements.push_back(make_barrier_stmt(0x0000000F, 4));
+    statements.push_back(makeBarWarpSyncInstr(0x0000000F, 4));
     statements.push_back(make_mov_stmt());
-    statements.push_back(make_barrier_stmt(0x000000FF, 6));
+    statements.push_back(makeBarWarpSyncInstr(0x000000FF, 6));
 
     SMContext sm(4, 128, 4096, 0);
     WarpContext* warp = create_warp_with_threads(sm, create_block(statements));
@@ -217,7 +209,7 @@ TEST_CASE("integrated_wbar_divergent_control_flow", "[wbar][divergence][integrat
     statements.push_back(make_mov_stmt());
     statements.push_back(make_mov_stmt());
     statements.push_back(make_mov_stmt());
-    statements.push_back(make_barrier_stmt(0xFFFFFFFF, 5));
+    statements.push_back(makeBarWarpSyncInstr(0xFFFFFFFF, 5));
     statements.push_back(make_mov_stmt());
     statements.push_back(make_mov_stmt());
 
@@ -249,11 +241,11 @@ TEST_CASE("integrated_wbar_reconvergence_pc", "[wbar][pc][integrated]") {
 
     std::vector<StatementContext> statements;
     statements.push_back(make_mov_stmt());
-    statements.push_back(make_barrier_stmt(0x000000FF, 4));
+    statements.push_back(makeBarWarpSyncInstr(0x000000FF, 4));
     statements.push_back(make_mov_stmt());
-    statements.push_back(make_barrier_stmt(0x0000FF00, 6));
+    statements.push_back(makeBarWarpSyncInstr(0x0000FF00, 6));
     statements.push_back(make_mov_stmt());
-    statements.push_back(make_barrier_stmt(0x00FF0000, 8));
+    statements.push_back(makeBarWarpSyncInstr(0x00FF0000, 8));
 
     SMContext sm(4, 128, 4096, 0);
     WarpContext* warp = create_warp_with_threads(sm, create_block(statements));
@@ -289,7 +281,7 @@ TEST_CASE("integrated_wbar_thread_state_transitions", "[wbar][state][integrated]
 
     std::vector<StatementContext> statements;
     statements.push_back(make_mov_stmt());
-    statements.push_back(make_barrier_stmt(0xFFFFFFFF, 3));
+    statements.push_back(makeBarWarpSyncInstr(0xFFFFFFFF, 3));
     statements.push_back(make_mov_stmt());
     statements.push_back(make_mov_stmt());
 
@@ -329,7 +321,7 @@ TEST_CASE("integrated_full_barrier_execution_flow", "[wbar][full][integrated]") 
 
     std::vector<StatementContext> statements;
     statements.push_back(make_mov_stmt());
-    statements.push_back(make_barrier_stmt(0xFFFFFFFF, 2));
+    statements.push_back(makeBarWarpSyncInstr(0xFFFFFFFF, 2));
     statements.push_back(make_mov_stmt());
 
     SMContext sm(4, 128, 4096, 0);

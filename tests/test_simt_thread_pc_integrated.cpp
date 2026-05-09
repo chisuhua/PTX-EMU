@@ -10,11 +10,14 @@
 #include "ptxsim/instruction_factory.h"
 #include "ptx_ir/statement_context.h"
 #include "ptx_ir/operand_context.h"
+#include "ptx_ir/statement_factory.h"
 #include "memory/resource_manager.h"
 #include <map>
 #include <memory>
 #include <vector>
 #include <string>
+
+using namespace ptxir::factory;
 
 static void init_instruction_factory_once() {
     static bool initialized = false;
@@ -32,18 +35,7 @@ static StatementContext make_mov_stmt() {
     return ctx;
 }
 
-static StatementContext make_barrier_stmt(uint32_t mask, int reconvergence_pc) {
-    StatementContext ctx;
-    ctx.type = S_BAR_WARP_SYNC;
-    BarWarpSyncInstr instr;
-    instr.qualifiers = {Qualifier::Q_B32};
-    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(mask)}});
-    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(reconvergence_pc)}});
-    ctx.data = instr;
-    ctx.instructionText = "bar.warp.sync.b32 " + std::to_string(mask) + ", " +
-                          std::to_string(reconvergence_pc) + ";";
-    return ctx;
-}
+
 
 static WarpContext* create_warp_with_threads(SMContext& sm, std::unique_ptr<CTAContext> block) {
     block->sharedMemBytes = 1024;
@@ -102,7 +94,7 @@ TEST_CASE("integrated_thread_state_after_barrier", "[thread_pc][barrier][integra
 
     std::vector<StatementContext> statements;
     statements.push_back(make_mov_stmt());
-    statements.push_back(make_barrier_stmt(0xFFFFFFFF, 2));
+    statements.push_back(makeBarWarpSyncInstr(0xFFFFFFFF, 2));
     statements.push_back(make_mov_stmt());
 
     SMContext sm(4, 128, 4096, 0);

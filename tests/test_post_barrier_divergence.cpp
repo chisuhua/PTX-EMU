@@ -16,26 +16,18 @@
 #include "ptxsim/common_types.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/instruction_factory.h"
+#include "ptx_ir/statement_context.h"
+#include "ptx_ir/statement_factory.h"
+#include "ptx_ir/operand_context.h"
 #include <cstdint>
 #include <array>
 #include <memory>
 
+using namespace ptxir::factory;
 using ptxsim::WarpState;
 using ptxsim::ThreadState;
 using ptxsim::Wbar;
 using ptxsim::ThreadStatus;
-
-// Helper to create a bar.warp.sync statement
-static StatementContext make_barrier_stmt(uint32_t mask, int reconvergence_pc) {
-    StatementContext ctx;
-    ctx.type = S_BAR_WARP_SYNC;
-    BarWarpSyncInstr instr;
-    instr.qualifiers = {Qualifier::Q_B32};
-    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(mask)}});
-    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(reconvergence_pc)}});
-    ctx.data = instr;
-    return ctx;
-}
 
 // Helper to create a simple mov statement
 static StatementContext make_mov_stmt() {
@@ -146,8 +138,7 @@ TEST_CASE("BUG-REPRODUCTION: bar.warp.sync releases threads but active_mask not 
 
     SECTION("BUG: Execute barrier instruction, then post-barrier mov") {
         // Create barrier at PC=0, releases to PC=1
-        StatementContext barrier_stmt = make_barrier_stmt(0xFFFFFFFF, 1);
-        barrier_stmt.instructionText = "bar.warp.sync.b32 0xFFFFFFFF, 1;";
+        StatementContext barrier_stmt = makeBarWarpSyncInstr(0xFFFFFFFF, 1, "bar.warp.sync.b32 0xFFFFFFFF, 1;");
 
         // Create post-barrier mov at PC=1
         StatementContext mov_stmt = make_mov_stmt();
