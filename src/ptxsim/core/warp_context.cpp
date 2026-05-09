@@ -72,13 +72,12 @@ void WarpContext::handle_branch(const std::string& predicate,
         int next_pc = (taken_mask != 0) ? target_pc : fallthrough_pc;
 
         for (int i = 0; i < 32; i++) {
-            if (warp_state.threads[i].is_active) {
+            if (warp_state.threads[i].is_active &&
+                warp_state.threads[i].pc == current_inst_pc) {
                 warp_state.threads[i].pc = next_pc;
                 warp_state.threads[i].next_pc = next_pc;
             }
         }
-
-        advance_all_threads(next_pc);
     }
 }
 
