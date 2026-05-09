@@ -144,3 +144,4 @@ TEST_CASE("integrated_barrier_reset_and_reuse", "[barrier][lifecycle][integrated
         CHECK(warp->get_thread(i)->get_pc() == 4);
     }
 }
+}  // anonymous namespace

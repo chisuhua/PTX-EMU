@@ -142,3 +142,4 @@ TEST_CASE("integrated_warp_ready_with_inactive_threads", "[pc][scheduler][integr
 
     CHECK(warp->is_warp_ready_to_fetch() == true);
 }
+}  // anonymous namespace
