@@ -87,14 +87,6 @@ void WarpContext::advance_thread_pc(int lane_id, int new_pc) {
     warp_state.threads[lane_id].next_pc = new_pc;
 }
 
-void WarpContext::advance_all_threads(int new_pc) {
-    for (int i = 0; i < WARP_SIZE; i++) {
-        if (!warp_state.threads[i].is_active) continue;
-        warp_state.threads[i].pc = new_pc;
-        warp_state.threads[i].next_pc = new_pc;
-    }
-}
-
 bool WarpContext::check_reconvergence() {
     if (simt_stack.empty()) return false;
 

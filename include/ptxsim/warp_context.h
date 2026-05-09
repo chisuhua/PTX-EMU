@@ -81,10 +81,6 @@ public:
     // This is the only approved way to change a thread's PC after initialization.
     void advance_thread_pc(int lane_id, int new_pc);
 
-    // 【UNIFIED PC】 Advance all active threads to the same PC.
-    // Used for non-divergent branches and barrier reconvergence.
-    void advance_all_threads(int new_pc);
-
     // 【NEW】获取执行掩码
     uint32_t get_exec_mask() const { return warp_state.exec_mask; }
 
