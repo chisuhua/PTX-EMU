@@ -468,3 +468,4 @@ TEST_CASE("integrated_partial_active_threads_barrier", "[barrier][partial][parti
     CHECK(warp->get_wbar(0).count_arrived() == 16);
     CHECK(warp->get_wbar(0).participation_mask == 0x0000FFFF);
 }
+} // anonymous namespace
