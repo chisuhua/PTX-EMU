@@ -446,6 +446,11 @@ add_catch_test(test_nested_divergence
     test_nested_divergence.cpp
 )
 
+# Added 2026-05-09: Divergence + barrier sync isolated test
+add_catch_test(test_divergence_sync_isolated
+    test_divergence_sync_isolated.cpp
+)
+
 # Added 2026-04-16: Full pipeline test with SMContext scheduler
 add_catch_test(test_syncthreads_full_pipeline
     test_syncthreads_full_pipeline.cpp
