@@ -2,6 +2,7 @@
 #include "ptxsim/sm_context.h"
 #include "ptxsim/ptx_config.h"
 #include "ptxsim/execution_trace.h"
+#include "ptxsim/warp_trace_formatter.h"
 #include <algorithm>
 #include <cassert>
 #include <cstring>
@@ -57,6 +58,13 @@ void WarpContext::handle_branch(const std::string& predicate,
 
         simt_stack.push(entry);
 
+        // SIMT栈push跟踪
+        if (ptxsim::DebugConfig::get().is_trace_simt_stack_enabled() && sm_context_) {
+            PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_simt_push(
+                sm_context_->get_cycle_count(), sm_context_->get_sm_id(), warp_id,
+                entry, taken_mask).c_str());
+        }
+
         for (int i = 0; i < 32; i++) {
             if (taken_mask & (1u << i)) {
                 warp_state.threads[i].pc = target_pc;
@@ -91,6 +99,14 @@ bool WarpContext::check_reconvergence() {
     if (simt_stack.empty()) return false;
 
     size_t depth_before = simt_stack.depth();
+    
+    // 检查是否收敛，如果收敛则记录被弹出的条目用于跟踪
+    ptxsim::SIMTStackEntry popped_entry;
+    bool will_pop = simt_stack.top().is_converged(warp_state.threads);
+    if (will_pop) {
+        popped_entry = simt_stack.top();
+    }
+    
     simt_stack.check_reconvergence(warp_state.threads);
 
     if (simt_stack.depth() < depth_before) {
@@ -98,6 +114,12 @@ bool WarpContext::check_reconvergence() {
             warp_state.exec_mask = 0xFFFFFFFF;
         } else {
             warp_state.exec_mask = simt_stack.top().active_mask;
+        }
+        // SIMT栈pop跟踪
+        if (ptxsim::DebugConfig::get().is_trace_simt_stack_enabled() && sm_context_) {
+            PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_simt_pop(
+                sm_context_->get_cycle_count(), sm_context_->get_sm_id(), warp_id,
+                popped_entry).c_str());
         }
         return true;
     }

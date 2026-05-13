@@ -577,6 +577,10 @@ void PtxInterpreter::setupLabels(std::map<std::string, int> &label2pc) {
             const auto &s = std::get<LabelInstr>(e.data);
             PTX_INFO_EMU("Registering label: '%s' at PC=%d", s.labelName.c_str(), i);
             label2pc[s.labelName] = i;
+            if (!s.labelName.empty() && s.labelName[0] == '$') {
+                label2pc[s.labelName.substr(1)] = i;
+                PTX_INFO_EMU("  (also as: '%s' at PC=%d)", s.labelName.substr(1).c_str(), i);
+            }
         } else if (e.type == S_DOLLOR) {
             const auto &s = std::get<DollarNameInstr>(e.data);
             label2pc[s.name] = i;

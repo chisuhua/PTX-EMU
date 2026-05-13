@@ -494,16 +494,21 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
         const std::string &lookupName =
             fa.id.empty() ? fa.baseSymbol : fa.id;
 
-        PTX_DEBUG_EMU("get_memory_addr lookup: id=%s base=%s lookup=%s qualifiers=%zu",
+        // get_memory_addr debug logs - disabled for clarity
+#if 0
+        PTX_DEBUG_MEM("get_memory_addr lookup: id=%s base=%s lookup=%s qualifiers=%zu",
                       fa.id.c_str(), fa.baseSymbol.c_str(),
                       lookupName.c_str(), qualifiers.size());
+#endif
 
         // [REFACT] Check if lookupName is a register name (for handling [%rd4+4] register base + immediate offset)
         // NOTE: This assumes register names do not conflict with symbol names in name2Sym/name2Share
         RegOperand regOp;
         if (ptx::syntax::parseRegisterFromText(lookupName, regOp)) {
             // lookupName is a register, read base address from register bank
-            PTX_DEBUG_EMU("Address base is a register: %s, fetching from register bank", lookupName.c_str());
+#if 0
+            PTX_DEBUG_MEM("Address base is a register: %s, fetching from register bank", lookupName.c_str());
+#endif
 
             // Determine qualifier for register data type
             Qualifier mem_qualifier = Qualifier::Q_UNKNOWN;
@@ -557,21 +562,25 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
 
         auto sym_it = name2Sym->find(lookupName);
         if (sym_it != name2Sym->end()) {
-            PTX_DEBUG_EMU("Reading kernel argument from name2Sym in "
+#if 0
+            PTX_DEBUG_MEM("Reading kernel argument from name2Sym in "
                           "get_memory_addr: name=%s, "
                           "symbol_table_entry=%p, stored_value=0x%lx",
                           lookupName.c_str(), sym_it->second,
                           sym_it->second->val);
+#endif
             ret = (void *)sym_it->second->val;
         } else if (name2Share != nullptr) {
             // 如果在name2Sym中没找到，继续在name2Share中查找
             auto share_it = name2Share->find(lookupName);
             if (share_it != name2Share->end()) {
-                PTX_DEBUG_EMU("Reading shared memory from name2Share in "
+#if 0
+                PTX_DEBUG_MEM("Reading shared memory from name2Share in "
                               "get_memory_addr: name=%s, "
                               "symbol_table_entry=%p, stored_value=0x%lx",
                               lookupName.c_str(), share_it->second,
                               share_it->second->val);
+#endif
 
                 // 修正：对于共享内存变量，应该返回相对于共享内存空间的绝对地址
                 if (shared_mem_space != nullptr) {

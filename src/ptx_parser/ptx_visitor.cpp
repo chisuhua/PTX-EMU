@@ -807,7 +807,8 @@ std::any PtxVisitor::visitInstruction(ptxparser::ptxParser::InstructionContext *
             return nullptr;
         }
 
-        auto stmtCtx = ptxir::factory::makeDollarNameInstr(name, ctx->getText());
+        // 使用 makeLabelInstr 存储为 S_LABEL 类型，使 setupLabels 能正确识别
+        auto stmtCtx = ptxir::factory::makeLabelInstr(name, ctx->getText());
         currentKernel->kernelStatements.push_back(stmtCtx);
         return nullptr;
     }
