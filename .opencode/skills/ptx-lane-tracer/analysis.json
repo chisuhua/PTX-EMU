@@ -1,0 +1,37 @@
+{
+  "predicates": {
+    "%p1": "lane_id < 16 (from setp.lt.u32 %r2, 16 at PC where %r2 = lane_id)",
+    "%p2": "loop_iteration < loop_iterations (from setp.ne.s32 %r88, -15 in loop)",
+    "%p3": "tid.x != 0 (from setp.ne.s32 %r1, 0)"
+  },
+  "branches": [
+    {
+      "pattern": "@%p1 bra",
+      "condition": "lane_id < 16",
+      "target_bb": 7,
+      "fallback_bb": null
+    },
+    {
+      "pattern": "@%p2 bra",
+      "condition": "loop_iteration < loop_iterations",
+      "target_bb": 2,
+      "fallback_bb": null
+    },
+    {
+      "pattern": "@%p3 bra",
+      "condition": "tid.x != 0",
+      "target_bb": 5,
+      "fallback_bb": null
+    }
+  ],
+  "loop": {
+    "has_loop": true,
+    "iterations_func": "max(0, lane_id - 15)",
+    "header_bb": 2,
+    "exit_bb": 3
+  },
+  "register_values": {
+    "%r1": "%tid.x (thread ID)",
+    "%r2": "lane_id = %r1 & 31"
+  }
+}
