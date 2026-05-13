@@ -4,7 +4,8 @@
 #include "memory/shared_memory_manager.h" // 添加SharedMemoryManager头文件
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/cta_context.h"
-#include "ptxsim/ptx_config.h"     // 添加ptx_config头文件
+#include "ptxsim/ptx_config.h"
+#include "ptxsim/warp_trace_formatter.h"     // 添加ptx_config头文件
 #include "ptxsim/warp_scheduler.h" // 添加warp调度器头文件
 #include "utils/logger.h"          // 添加logger头文件
 #include <algorithm>
@@ -17,7 +18,7 @@ SMContext::SMContext(int max_warps, int max_threads_per_sm,
       max_shared_mem(shared_mem_size), allocated_shared_mem(0),
       current_thread_count(0), sm_state(IDLE), next_physical_block_id(0),
       next_physical_warp_id(0), shared_mem_manager_(nullptr),
-      current_reservation_id_(0), sm_id_(sm_id) {
+      current_reservation_id_(0), sm_id_(sm_id), cycle_counter_(0) {
     // 初始化warp调度器，使用RoundRobinWarpScheduler具体实现
     warp_scheduler = std::make_unique<RoundRobinWarpScheduler>();
 
@@ -123,6 +124,7 @@ bool SMContext::add_block(std::unique_ptr<CTAContext> block) {
 }
 
 EXE_STATE SMContext::exe_once() {
+    cycle_counter_++; // 递增周期计数器
     if (sm_state != RUN) {
         return sm_state;
     }
@@ -196,7 +198,14 @@ EXE_STATE SMContext::exe_once() {
                     StatementContext* stmt = sample_thread->get_statement_at(target_pc);
                         if (stmt) {
                             if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
-                                print_warp_status(next_warp);
+                                if (ptxsim::DebugConfig::get().is_trace_cycle_enabled()) {
+                                    PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_instruction(
+                                        cycle_counter_, sm_id_, next_warp->get_warp_id(),
+                                        target_pc, stmt->instructionText,
+                                        next_warp->get_active_mask()).c_str());
+                                } else {
+                                    print_warp_status(next_warp);
+                                }
                             }
                             next_warp->execute_warp_instruction(*stmt, target_pc);
                             // Check SIMT stack reconvergence for branch and barrier instructions
@@ -218,7 +227,14 @@ EXE_STATE SMContext::exe_once() {
 
                     if (stmt) {
                         if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
-                            print_warp_status(next_warp);
+                            if (ptxsim::DebugConfig::get().is_trace_cycle_enabled()) {
+                                PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_instruction(
+                                    cycle_counter_, sm_id_, next_warp->get_warp_id(),
+                                    pc, stmt->instructionText,
+                                    next_warp->get_active_mask()).c_str());
+                            } else {
+                                print_warp_status(next_warp);
+                            }
                         }
 
                         next_warp->execute_warp_instruction(*stmt, pc);
@@ -232,6 +248,12 @@ EXE_STATE SMContext::exe_once() {
                     // Keep popping until no more convergent entries
                 }
             }
+            // 打印线程分流信息（如果启用）
+            if (ptxsim::DebugConfig::get().is_trace_divergence_enabled() &&
+                lanes_by_pc.size() > 1) {
+                PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_divergence(
+                    lanes_by_pc).c_str());
+            }
         }
 
         // 执行完后取消warp的被调度状态
@@ -241,10 +263,11 @@ EXE_STATE SMContext::exe_once() {
     // 更新状态
     update_state();
 
-    // 从DebugConfig单例获取warp跟踪配置，如果需要打印所有warp状态
-    if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
-        print_warp_status(); // 打印所有warp的状态
-    }
+// 从DebugConfig单例获取warp跟踪配置，仅在非cycle模式时打印完整状态
+if (ptxsim::DebugConfig::get().is_trace_warp_enabled() &&
+    !ptxsim::DebugConfig::get().is_trace_cycle_enabled()) {
+    print_warp_status(); // 打印所有warp的状态
+}
 
     return sm_state;
 }

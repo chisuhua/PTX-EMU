@@ -59,6 +59,10 @@ public:
     // 获取当前活跃的warp数量
     size_t get_num_warps() const { return warps.size(); }
 
+    // 获取当前周期计数
+    uint64_t get_cycle_count() const { return cycle_counter_; }
+    int get_sm_id() const { return sm_id_; }
+
     // 获取WarpContext
     WarpContext *get_warp(size_t idx) {
         return idx < warps.size() ? warps[idx].get() : nullptr;
@@ -149,6 +153,9 @@ private:
 
     // SM ID
     int sm_id_;
+
+    // 周期计数器（每执行一次 exe_once 递增）
+    uint64_t cycle_counter_;
 
     // 新增：barrier同步数据结构
     std::map<int, std::set<ThreadContext *>> barrier_waiting_threads;

@@ -144,6 +144,42 @@ public:
         return trace_lanes_mask_;
     }
 
+    // 启用/禁用SIMT栈跟踪
+    void set_trace_simt_stack_enabled(bool enabled) {
+        std::lock_guard<std::mutex> lock(get_mutex());
+        trace_simt_stack_enabled_ = enabled;
+    }
+
+    bool is_trace_simt_stack_enabled() const {
+        std::lock_guard<std::mutex> lock(
+            const_cast<DebugConfig *>(this)->get_mutex());
+        return trace_simt_stack_enabled_;
+    }
+
+    // 启用/禁用周期计数器跟踪
+    void set_trace_cycle_enabled(bool enabled) {
+        std::lock_guard<std::mutex> lock(get_mutex());
+        trace_cycle_enabled_ = enabled;
+    }
+
+    bool is_trace_cycle_enabled() const {
+        std::lock_guard<std::mutex> lock(
+            const_cast<DebugConfig *>(this)->get_mutex());
+        return trace_cycle_enabled_;
+    }
+
+    // 启用/禁用线程分流跟踪
+    void set_trace_divergence_enabled(bool enabled) {
+        std::lock_guard<std::mutex> lock(get_mutex());
+        trace_divergence_enabled_ = enabled;
+    }
+
+    bool is_trace_divergence_enabled() const {
+        std::lock_guard<std::mutex> lock(
+            const_cast<DebugConfig *>(this)->get_mutex());
+        return trace_divergence_enabled_;
+    }
+
     // 检查特定lane是否被启用跟踪
     bool is_lane_traced(int lane_id) const {
         std::lock_guard<std::mutex> lock(
@@ -324,6 +360,9 @@ private:
     bool trace_registers_ = false;
     bool trace_warp_enabled_ = false;               // 新增warp跟踪开关
     bool trace_instruction_status_enabled_ = false; // 新增指令状态跟踪开关
+    bool trace_simt_stack_enabled_ = false;  // SIMT栈跟踪开关
+    bool trace_cycle_enabled_ = false;       // 周期计数器跟踪开关
+    bool trace_divergence_enabled_ = false;  // 线程分流跟踪开关
     uint32_t trace_lanes_mask_ =
         0xFFFFFFFF; // 新增lane跟踪掩码，默认启用所有lane
     std::unordered_map<int, BreakpointCondition> breakpoints_;

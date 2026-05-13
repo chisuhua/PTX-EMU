@@ -127,6 +127,30 @@ void DebugConfig::load_from_ini_section(
     if (!trace_lanes_str.empty()) {
         set_trace_lanes_mask_from_string(trace_lanes_str);
     }
+
+    // 设置SIMT栈跟踪
+    std::string trace_simt_stack_str;
+    inipp::get_value(debugger_section, "trace_simt_stack", trace_simt_stack_str);
+    if (!trace_simt_stack_str.empty()) {
+        bool trace_simt_stack = (trace_simt_stack_str == "true" || trace_simt_stack_str == "1");
+        set_trace_simt_stack_enabled(trace_simt_stack);
+    }
+
+    // 设置周期计数器跟踪
+    std::string trace_cycle_str;
+    inipp::get_value(debugger_section, "trace_cycle", trace_cycle_str);
+    if (!trace_cycle_str.empty()) {
+        bool trace_cycle = (trace_cycle_str == "true" || trace_cycle_str == "1");
+        set_trace_cycle_enabled(trace_cycle);
+    }
+
+    // 设置线程分流跟踪
+    std::string trace_divergence_str;
+    inipp::get_value(debugger_section, "trace_divergence", trace_divergence_str);
+    if (!trace_divergence_str.empty()) {
+        bool trace_divergence = (trace_divergence_str == "true" || trace_divergence_str == "1");
+        set_trace_divergence_enabled(trace_divergence);
+    }
 }
 
 } // namespace ptxsim
