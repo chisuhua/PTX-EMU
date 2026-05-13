@@ -133,6 +133,7 @@ add_catch_test(
 )
 
 add_catch_test(test_memory_bounds test_memory_bounds.cpp)
+add_catch_test(test_warp_trace_formatter test_warp_trace_formatter.cpp)
 
 # ================================
 # Catch2 PTX 指令测试套件（按类别拆分）
@@ -255,6 +256,15 @@ set(PTX_ALL_TESTS
     ${PTX_BASIC_TESTS}
     ${PTX_EXTRA_TESTS}
     ${PTX_MMA_TESTS})
+
+# ================================
+# Warp Divergence 测试
+# ================================
+add_catch_test(test_divergence
+    divergence/test_divergence.cu
+    divergence/divergence_kernels.cu
+)
+set_tests_properties(test_divergence PROPERTIES LABELS "divergence;warp")
 
 
 # 创建方便的自定义目标来运行不同组的测试
@@ -626,3 +636,36 @@ add_catch_test(test_simt_integration
     test_simt_integration.cpp
 )
 set_tests_properties(test_simt_integration PROPERTIES LABELS "integration;simt")
+
+# Added 2026-05-11: PTX Lane Verification Unit Tests
+add_catch_test(test_ptx_lane_verification
+    test_ptx_lane_verification.cpp
+)
+target_compile_definitions(test_ptx_lane_verification PRIVATE
+    TEST_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+)
+set_tests_properties(test_ptx_lane_verification PROPERTIES LABELS "ptx_lane_verification;unit")
+
+# Added 2026-05-11: PTX Lane PC Trace Printer (common utility)
+add_executable(ptx_lane_printer
+    common/ptx_lane_printer.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils/logger.cpp
+)
+target_include_directories(ptx_lane_printer PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+)
+target_link_directories(ptx_lane_printer PRIVATE
+    ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+    ${CMAKE_SOURCE_DIR}/lib
+)
+target_link_libraries(ptx_lane_printer PRIVATE
+    ptxsim
+    cudart
+    antlr4_shared
+    -Wl,--as-needed
+    -ldl -lpthread
+)
+set_target_properties(ptx_lane_printer PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)

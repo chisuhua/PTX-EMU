@@ -65,6 +65,7 @@ add_subdirectory(ptxir)
 
 add_library(ptxsim SHARED
     utils/logger.cpp
+    utils/ptx_lane_verification.cpp
     ptxsim/core/cta_context.cpp
     ptxsim/core/thread_context.cpp
     ptxsim/core/warp_context.cpp
@@ -80,6 +81,7 @@ add_library(ptxsim SHARED
     memory/shared_memory_manager.cpp
     memory/resource_manager.cpp
     ptxsim/debug/ptx_config.cpp
+    ptxsim/debug/warp_trace_formatter.cpp
     ptxsim/debug/ptx_debugger.cpp
     ptxsim/core/simt_stack.cpp
     ptxsim/instruction_factory.cpp
