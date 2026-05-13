@@ -1,0 +1,27 @@
+
+.version 9.0
+.target sm_100
+.address_size 64
+
+.visible .entry test_mixed()
+{
+  .reg .pred %p<3>;
+  .reg .b32 %r<5>;
+  mov.u32 %r2, 0;
+  mov.u32 %r3, 10;
+$loop:
+  setp.eq.s32 %p1, %r3, 0;
+  @%p1 bra $exit;
+  mov.u32 %r1, %tid.x;
+  setp.ne.s32 %p2, %r1, 0;
+  @%p2 bra $odd;
+    add.u32 %r2, %r2, 1;
+    bra.uni $next;
+$odd:
+    add.u32 %r2, %r2, 2;
+$next:
+  sub.u32 %r3, %r3, 1;
+  bra.uni $loop;
+$exit:
+  ret;
+}

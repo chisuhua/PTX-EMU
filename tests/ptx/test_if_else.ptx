@@ -1,0 +1,20 @@
+
+.version 9.0
+.target sm_100
+.address_size 64
+
+.visible .entry test_if_else()
+{
+  .reg .pred %p<2>;
+  .reg .b32 %r<4>;
+  mov.u32 %r1, %tid.x;
+  setp.ne.s32 %p1, %r1, 0;
+  @%p1 bra $taken;
+    mov.u32 %r2, 100;
+    bra.uni $join;
+  $taken:
+    mov.u32 %r2, 200;
+  $join:
+    mov.u32 %r3, 300;
+  ret;
+}

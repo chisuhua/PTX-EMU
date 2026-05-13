@@ -1,0 +1,19 @@
+
+.version 9.0
+.target sm_100
+.address_size 64
+
+.visible .entry test_loop()
+{
+  .reg .pred %p<2>;
+  .reg .b32 %r<4>;
+  mov.u32 %r1, 3;
+$loop:
+  setp.eq.s32 %p1, %r1, 0;
+  @%p1 bra $exit;
+  sub.u32 %r1, %r1, 1;
+  bra.uni $loop;
+$exit:
+  mov.u32 %r2, 999;
+  ret;
+}
