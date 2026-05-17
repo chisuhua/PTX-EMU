@@ -1,20 +1,83 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+# ============================================================
+# 项目上下文 - AI 创建工件时自动加载
+# ============================================================
+context: |
+  # 技术栈
+  Tech Stack: C++20, CUDA PTX, ANTLR4 (v4.11.1), CMake
+  Build System: CMake with ctest (Catch2)
+  Parser: ANTLR4 生成的 PTX 解析器
+  Architecture: SIMT v2.0 (Per-Thread PC, CFG-based Post-Dominator)
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  # 代码风格
+  - 缩进: 2空格 (禁止 Tab)
+  - 命名: 类 CamelCase | 函数 camelCase | 变量 snake_case
+  - 注释: 中文优先，复杂算法 >5 行必须注释
+  - 头文件: #ifndef/#define/#endif 守卫
+
+  # 项目结构
+  - src/ptx_parser/   : PTX 解析器 + CFG Builder
+  - src/ptxsim/      : SIMT 模拟器核心
+  - src/ptxsim/instructions/ : PTX 指令实现 (X-Macro 分发)
+  - src/cudart/      : Fake CUDA Runtime (libcudart.so)
+  - src/ptxir/       : PTXIR 序列化库
+  - include/ptx_ir/  : IR 类型定义
+  - docs/adr/        : 架构决策记录 (14 个 Active ADR)
+
+  # 核心概念
+  - Per-Thread PC: WarpState.threads[i].pc 单一权威源
+  - SIMT Stack: 显式分支收敛管理
+  - Barrier: Convergence barrier + Memory fence
+  - X-Macro: ptx_op.def 定义指令，Weak Symbol 分发
+
+# ============================================================
+# Per-Artifact 规则
+# ============================================================
+rules:
+  proposal:
+    - 标题简洁，描述清晰，不超过 80 字符
+    - Why/What/Capabilities/Impact 四段式结构
+    - 必须包含 "Capabilities" 和 "Impact" 部分
+    - 引用相关 ADR 编号 (如 ADR-0001, ADR-0006)
+    - 引用相关 Skill (如 ptx-debug, three-mode-testing)
+
+  tasks:
+    - 任务分解为 30 分钟粒度
+    - MUST/NOTE 标注关键约束
+    - 每个任务完成后立即验证 (ctest/sanity.sh)
+    - 完成后更新相关 ADR 合规检查
+
+  design:
+    - 必须包含 "现状问题" 和 "目标状态"
+    - 包含 "影响范围" 表格 (组件 | 影响类型)
+    - 包含 "风险与缓解" 表格
+    - 更新 docs/adr/ 时使用 ADR 模板 (template.md)
+
+  specs:
+    - 放在 openspec/specs/ 目录下
+    - 使用 .openspec.yaml 标记状态 (proposed/accepted/active)
+
+# ============================================================
+# 质量门禁
+# ============================================================
+quality-gates:
+  before-commit:
+    - clang-format -i <changed-files>
+    - ctest --output-on-failure (快速检查)
+    - ./scripts/sanity.sh --quick (关键 bug 检查)
+
+  before-pr:
+    - ./scripts/sanity.sh (完整检查)
+    - 检查是否需要更新 ADR
+    - 检查是否需要添加测试用例
+
+# ============================================================
+# 文档关联
+# ============================================================
+references:
+  architecture: docs/architecture/SIMT-ARCHITECTURE-V2.md
+  adr-index: docs/adr/README.md
+  skills-index: .opencode/skills/README.md
+  getting-started: docs/developer-guide/GETTING-STARTED.md
+  testing-guide: docs/developer-guide/TESTING-GUIDE.md
