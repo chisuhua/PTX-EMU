@@ -1,8 +1,14 @@
 #include "catch_amalgamated.hpp"
 #include "ptxsim/warp_context.h"
 #include "ptxsim/warp_state.h"
+#include "memory/resource_manager.h"
+#include "ptxsim/sm_context.h"
+#include "ptxsim/cta_context.h"
+#include "ptx_ir/statement_factory.h"
+#include "ptxsim/instruction_factory.h"
 
 using namespace ptxsim;
+using namespace ptxir::factory;
 
 static void setup_full_warp(WarpContext& warp) {
     for (int i = 0; i < 32; i++) {
@@ -126,4 +132,62 @@ TEST_CASE("I5: scheduler skips unfinished warp", "[integration][scheduler]") {
 
     warp.get_warp_state().threads[0].pc = 20;
     REQUIRE(warp.is_warp_ready_to_fetch() == true);
+}
+
+TEST_CASE("I6: divergent warp executes one PC group per cycle", "[integration][divergence][cycle_count]") {
+    // BUG-SIMT-001: Divergent warps should execute only ONE PC group per cycle.
+    // The bug: all PC groups execute in a single cycle.
+    // The fix: only the lowest PC group executes per cycle.
+
+    InstructionFactory::initialize();
+    ResourceManager::instance().initialize(1, 8192);
+
+    SMContext sm(4, 128, 4096, 0);
+    std::unique_ptr<CTAContext> block = std::make_unique<CTAContext>();
+
+    Dim3 gridDim = {1, 1, 1};
+    Dim3 blockDim = {32, 1, 1};
+    Dim3 blockIdx = {0, 0, 0};
+
+    std::vector<StatementContext> statements;
+    statements.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B32},
+        {OperandContext{RegOperand{"r", 1}}, OperandContext{ImmOperand{"0"}}},
+        "mov.u32 %r1, 0;"));
+    statements.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B32},
+        {OperandContext{RegOperand{"r", 2}}, OperandContext{ImmOperand{"1"}}},
+        "mov.u32 %r2, 1;"));
+    statements.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B32},
+        {OperandContext{RegOperand{"r", 3}}, OperandContext{ImmOperand{"2"}}},
+        "mov.u32 %r3, 2;"));
+    statements.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B32},
+        {OperandContext{RegOperand{"r", 4}}, OperandContext{ImmOperand{"3"}}},
+        "mov.u32 %r4, 3;"));
+    statements.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B32},
+        {OperandContext{RegOperand{"r", 5}}, OperandContext{ImmOperand{"4"}}},
+        "mov.u32 %r5, 4;"));
+
+    std::map<std::string, Symtable*> name2Sym;
+    std::map<std::string, int> label2pc;
+    block->init(gridDim, blockDim, blockIdx, statements, &name2Sym, label2pc);
+
+    sm.add_block(std::move(block));
+
+    WarpContext* warp = sm.get_warp(0);
+    REQUIRE(warp != nullptr);
+
+    for (int i = 0; i < 32; i++) {
+        warp->advance_thread_pc(i, 0);
+    }
+
+    auto lanes_by_pc_before = warp->get_lanes_by_pc();
+    int pc_groups_before = static_cast<int>(lanes_by_pc_before.size());
+
+    sm.exe_once();
+
+    auto lanes_by_pc_after = warp->get_lanes_by_pc();
+    int pc_groups_after = static_cast<int>(lanes_by_pc_after.size());
+
+    CHECK(pc_groups_before == 1);
+    CHECK(pc_groups_after == 1);
+    CHECK(warp->get_warp_state().threads[0].pc == 1);
 }

@@ -217,38 +217,43 @@ EXE_STATE SMContext::exe_once() {
                 }
             }
         } else if (!lanes_by_pc.empty()) {
-            // Divergent path: execute each PC group separately
-            for (const auto& [pc, lanes] : lanes_by_pc) {
-                int sample_lane = lanes[0];
-                ThreadContext* sample_thread = next_warp->get_thread(sample_lane);
+            // Divergent path: execute ONLY ONE PC group per cycle (Lowest PC first)
+            // std::map is sorted by PC ascending, so begin() gives the lowest PC
+            auto it = lanes_by_pc.begin();
+            int pc = it->first;
+            const auto& lanes = it->second;
 
-                if (sample_thread && pc >= 0 && pc < sample_thread->statements_size()) {
-                    StatementContext* stmt = sample_thread->get_statement_at(pc);
+            int sample_lane = lanes[0];
+            ThreadContext* sample_thread = next_warp->get_thread(sample_lane);
 
-                    if (stmt) {
-                        if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
-                            if (ptxsim::DebugConfig::get().is_trace_cycle_enabled()) {
-                                PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_instruction(
-                                    cycle_counter_, sm_id_, next_warp->get_warp_id(),
-                                    pc, stmt->instructionText,
-                                    next_warp->get_active_mask()).c_str());
-                            } else {
-                                print_warp_status(next_warp);
-                            }
+            if (sample_thread && pc >= 0 && pc < sample_thread->statements_size()) {
+                StatementContext* stmt = sample_thread->get_statement_at(pc);
+
+                if (stmt) {
+                    if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
+                        if (ptxsim::DebugConfig::get().is_trace_cycle_enabled()) {
+                            PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_instruction(
+                                cycle_counter_, sm_id_, next_warp->get_warp_id(),
+                                pc, stmt->instructionText,
+                                next_warp->get_active_mask()).c_str());
+                        } else {
+                            print_warp_status(next_warp);
                         }
+                    }
 
-                        next_warp->execute_warp_instruction(*stmt, pc);
+                    next_warp->execute_warp_instruction(*stmt, pc);
+
+                    // Check SIMT stack reconvergence immediately for branch/barrier
+                    if (stmt->type == S_BRA || stmt->type == S_BAR ||
+                        stmt->type == S_BAR_WARP_SYNC) {
+                        while (next_warp->check_reconvergence()) {
+                            // Keep popping until no more convergent entries
+                        }
                     }
                 }
             }
-            // Check SIMT stack reconvergence after processing all divergent groups
-            // Loop until no more entries are convergent (barrier may resolve multiple entries)
-            if (next_warp && !next_warp->get_simt_stack().empty()) {
-                while (next_warp->check_reconvergence()) {
-                    // Keep popping until no more convergent entries
-                }
-            }
-            // 打印线程分流信息（如果启用）
+
+            // Log divergence info if enabled
             if (ptxsim::DebugConfig::get().is_trace_divergence_enabled() &&
                 lanes_by_pc.size() > 1) {
                 PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_divergence(
