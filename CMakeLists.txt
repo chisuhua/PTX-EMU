@@ -55,6 +55,7 @@ find_program(CCACHE_FOUND ccache)
 if(CCACHE_FOUND)
     set(CMAKE_C_COMPILER_LAUNCHER "ccache")
     set(CMAKE_CXX_COMPILER_LAUNCHER "ccache")
+    set(CMAKE_CUDA_COMPILER_LAUNCHER "ccache")
 endif()
 
 # CUDA 架构（可选）
