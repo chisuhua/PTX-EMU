@@ -224,6 +224,12 @@ EXE_STATE SMContext::exe_once() {
             int pc = it->first;
             const auto& lanes = it->second;
 
+            // 构建当前执行 group 的真实 lane mask
+            uint32_t current_exec_mask = 0;
+            for (int lane : lanes) {
+                current_exec_mask |= (1u << lane);
+            }
+
             int sample_lane = lanes[0];
             ThreadContext* sample_thread = next_warp->get_thread(sample_lane);
 
@@ -236,7 +242,7 @@ EXE_STATE SMContext::exe_once() {
                             PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_instruction(
                                 cycle_counter_, sm_id_, next_warp->get_warp_id(),
                                 pc, stmt->instructionText,
-                                next_warp->get_exec_mask()).c_str());
+                                current_exec_mask).c_str());
                         } else {
                             print_warp_status(next_warp);
                         }
