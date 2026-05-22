@@ -209,10 +209,11 @@ EXE_STATE SMContext::exe_once() {
                                 }
                             }
                             next_warp->execute_warp_instruction(*stmt, target_pc);
-                            // Check SIMT stack reconvergence for branch and barrier instructions
-                            if (stmt->type == S_BRA || stmt->type == S_BAR ||
-                                stmt->type == S_BAR_WARP_SYNC) {
-                                next_warp->check_reconvergence();
+                            // Check SIMT stack reconvergence after every instruction
+                            // (not just branch/barrier, because lanes may reach reconvergence
+                            // point on any instruction, e.g., after a label or fallthrough)
+                            while (next_warp->check_reconvergence()) {
+                                // Keep popping until no more convergent entries
                             }
                         }
                 }
@@ -250,12 +251,9 @@ EXE_STATE SMContext::exe_once() {
 
                     next_warp->execute_warp_instruction(*stmt, pc);
 
-                    // Check SIMT stack reconvergence immediately for branch/barrier
-                    if (stmt->type == S_BRA || stmt->type == S_BAR ||
-                        stmt->type == S_BAR_WARP_SYNC) {
-                        while (next_warp->check_reconvergence()) {
-                            // Keep popping until no more convergent entries
-                        }
+                    // Check SIMT stack reconvergence after every instruction
+                    while (next_warp->check_reconvergence()) {
+                        // Keep popping until no more convergent entries
                     }
                 }
             }
