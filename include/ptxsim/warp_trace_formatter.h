@@ -62,11 +62,11 @@ public:
   static std::string format_simt_pop(uint64_t cycle, int sm_id, int warp_id,
                                      const SIMTStackEntry& popped_entry);
 
-  /**
+/**
    * @brief 将线程掩码格式化为紧凑的范围表示
    *
    * @param mask 32 位线程掩码
-   * @return 例如："全部32线程", "thread0", "thread0~15, thread17~31"
+   * @return 例如："[FFFFFFFF]", "[00000001]", "[FFFFFFFE]"
    */
   static std::string format_lane_ranges(uint32_t mask);
 
@@ -75,7 +75,7 @@ public:
    *
    * @param pc_to_lanes PC 到 lane 列表的映射
    * @return 格式化后的字符串，例如：
-   *         "线程分流: thread0→PC=5, thread1~31→PC=8"
+   *         "divergence: PC=5 [00000001], PC=8 [FFFFFFFE]"
    */
   static std::string format_divergence(
       const std::map<int, std::vector<int>>& pc_to_lanes);

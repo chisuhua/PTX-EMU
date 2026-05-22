@@ -190,7 +190,8 @@ EXE_STATE SMContext::exe_once() {
             // Fast path: non-divergent, all lanes at same PC
             auto it = lanes_by_pc.begin();
             int target_pc = it->first;
-            int sample_lane = it->second[0];
+            const auto& lanes = it->second;
+            int sample_lane = lanes[0];
             ThreadContext* sample_thread = next_warp->get_thread(sample_lane);
 
             if (sample_thread) {
@@ -202,7 +203,7 @@ EXE_STATE SMContext::exe_once() {
                                     PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_instruction(
                                         cycle_counter_, sm_id_, next_warp->get_warp_id(),
                                         target_pc, stmt->instructionText,
-                                        next_warp->get_active_mask()).c_str());
+                                        next_warp->get_exec_mask()).c_str());
                                 } else {
                                     print_warp_status(next_warp);
                                 }
@@ -235,7 +236,7 @@ EXE_STATE SMContext::exe_once() {
                             PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_instruction(
                                 cycle_counter_, sm_id_, next_warp->get_warp_id(),
                                 pc, stmt->instructionText,
-                                next_warp->get_active_mask()).c_str());
+                                next_warp->get_exec_mask()).c_str());
                         } else {
                             print_warp_status(next_warp);
                         }

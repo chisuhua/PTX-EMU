@@ -10,20 +10,19 @@ std::string WarpTraceFormatter::format_instruction(uint64_t cycle, int sm_id,
                                                    uint32_t active_mask) {
   std::ostringstream oss;
   oss << "Cycle " << cycle << ": SM " << sm_id << " Warp " << warp_id
-      << " PC=" << pc << "  [" << format_lane_ranges(active_mask) << "] "
+      << " PC=" << pc << "  " << format_lane_ranges(active_mask) << " "
       << instruction_text;
   return oss.str();
 }
 
 std::string WarpTraceFormatter::format_simt_push(uint64_t cycle, int sm_id,
-                                                 int warp_id,
-                                                 const SIMTStackEntry& entry,
-                                                 uint32_t taken_mask) {
+                                                  int warp_id,
+                                                  const SIMTStackEntry& entry,
+                                                  uint32_t taken_mask) {
   std::ostringstream oss;
-  oss << "         → SIMT Stack push: branch_pc=" << entry.branch_pc
+  oss << "         -> SIMT Stack push: branch_pc=" << entry.branch_pc
       << ", reconvergence_pc=" << entry.reconvergence_pc << "\n"
-      << "           taken_mask=0x" << std::hex << std::uppercase << taken_mask
-      << std::dec << " (" << mask_to_ranges(taken_mask) << ")";
+      << "           taken_mask=" << format_lane_ranges(taken_mask);
   return oss.str();
 }
 
@@ -31,19 +30,16 @@ std::string WarpTraceFormatter::format_simt_pop(uint64_t cycle, int sm_id,
                                                 int warp_id,
                                                 const SIMTStackEntry& popped_entry) {
   std::ostringstream oss;
-  oss << "         → SIMT Stack pop: reconvergence_pc="
+  oss << "         -> SIMT Stack pop: reconvergence_pc="
       << popped_entry.reconvergence_pc;
   return oss.str();
 }
 
 std::string WarpTraceFormatter::format_lane_ranges(uint32_t mask) {
-  if (mask == 0xFFFFFFFFu) {
-    return "全部32线程";
-  }
   if (mask == 0) {
-    return "无活跃线程";
+    return "no_active_lanes";
   }
-  return mask_to_ranges(mask);
+  return "[" + mask_to_hex(mask) + "]";
 }
 
 std::string WarpTraceFormatter::format_divergence(
@@ -53,7 +49,7 @@ std::string WarpTraceFormatter::format_divergence(
   }
 
   std::ostringstream oss;
-  oss << "线程分流: ";
+  oss << "         divergence: ";
   bool first = true;
   for (const auto& [pc, lanes] : pc_to_lanes) {
     if (!first) {
@@ -61,14 +57,14 @@ std::string WarpTraceFormatter::format_divergence(
     }
     first = false;
 
-    // 将 lane 列表转换为掩码，再格式化
     uint32_t mask = 0;
     for (int lane : lanes) {
       if (lane >= 0 && lane < 32) {
         mask |= (1u << lane);
       }
     }
-    oss << mask_to_ranges(mask) << "→PC=" << pc;
+    oss << "PC=" << pc << " [" << std::hex << std::uppercase << std::setfill('0')
+        << std::setw(8) << mask << std::dec << "]";
   }
   return oss.str();
 }
@@ -108,7 +104,7 @@ std::string WarpTraceFormatter::mask_to_ranges(uint32_t mask) {
 
 std::string WarpTraceFormatter::mask_to_hex(uint32_t mask) {
   std::ostringstream oss;
-  oss << "0x" << std::hex << std::uppercase << std::setfill('0')
+  oss << std::hex << std::uppercase << std::setfill('0')
       << std::setw(8) << mask;
   return oss.str();
 }
