@@ -22,20 +22,21 @@ struct SIMTStackEntry {
 
 class SIMTStack {
 public:
-    static constexpr size_t MAX_DEPTH = 10;
+    static constexpr size_t MAX_DEPTH = 32;
 
     void push(const SIMTStackEntry& entry);
     SIMTStackEntry pop();
     SIMTStackEntry& top();
     const SIMTStackEntry& top() const;
-    
+    const SIMTStackEntry& get_entry_at(size_t index) const;
+
     bool empty() const;
     size_t depth() const;
     void clear();
-    
+
     bool check_reconvergence(const std::array<ThreadState, 32>& threads);
     void print() const;
-    
+
 private:
     std::vector<SIMTStackEntry> entries_;
 };

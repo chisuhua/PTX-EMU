@@ -60,6 +60,13 @@ const SIMTStackEntry& SIMTStack::top() const {
     return entries_.back();
 }
 
+const SIMTStackEntry& SIMTStack::get_entry_at(size_t index) const {
+    if (index >= entries_.size()) {
+        throw std::out_of_range("SIMTStack index out of range");
+    }
+    return entries_[index];
+}
+
 bool SIMTStack::empty() const {
     return entries_.empty();
 }

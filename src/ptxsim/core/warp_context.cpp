@@ -62,7 +62,7 @@ void WarpContext::handle_branch(const std::string& predicate,
         if (ptxsim::DebugConfig::get().is_trace_simt_stack_enabled() && sm_context_) {
             PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_simt_push(
                 sm_context_->get_cycle_count(), sm_context_->get_sm_id(), warp_id,
-                entry, taken_mask).c_str());
+                entry, taken_mask, simt_stack).c_str());
         }
 
         for (int i = 0; i < 32; i++) {

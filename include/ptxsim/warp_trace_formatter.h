@@ -44,11 +44,13 @@ public:
    * @param warp_id Warp 标识
    * @param entry 被推入的 SIMT 栈条目
    * @param taken_mask 执行分支的线程掩码
+   * @param stack SIMT 栈引用，用于显示完整栈状态
    * @return 格式化后的字符串
    */
   static std::string format_simt_push(uint64_t cycle, int sm_id, int warp_id,
                                       const SIMTStackEntry& entry,
-                                      uint32_t taken_mask);
+                                      uint32_t taken_mask,
+                                      const SIMTStack& stack);
 
   /**
    * @brief 格式化 SIMT 栈 pop 事件
@@ -61,6 +63,14 @@ public:
    */
   static std::string format_simt_pop(uint64_t cycle, int sm_id, int warp_id,
                                      const SIMTStackEntry& popped_entry);
+
+  /**
+   * @brief 格式化整个 SIMT 栈状态
+   *
+   * @param stack SIMT 栈引用
+   * @return 格式化后的字符串，包含所有栈条目
+   */
+  static std::string format_simt_stack(const SIMTStack& stack);
 
 /**
    * @brief 将线程掩码格式化为紧凑的范围表示

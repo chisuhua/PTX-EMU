@@ -18,20 +18,40 @@ std::string WarpTraceFormatter::format_instruction(uint64_t cycle, int sm_id,
 std::string WarpTraceFormatter::format_simt_push(uint64_t cycle, int sm_id,
                                                   int warp_id,
                                                   const SIMTStackEntry& entry,
-                                                  uint32_t taken_mask) {
+                                                  uint32_t taken_mask,
+                                                  const SIMTStack& stack) {
   std::ostringstream oss;
   oss << "         -> SIMT Stack push: branch_pc=" << entry.branch_pc
       << ", reconvergence_pc=" << entry.reconvergence_pc << "\n"
       << "           taken_mask=" << format_lane_ranges(taken_mask);
+  oss << "\n" << format_simt_stack(stack);
   return oss.str();
 }
 
 std::string WarpTraceFormatter::format_simt_pop(uint64_t cycle, int sm_id,
-                                                int warp_id,
-                                                const SIMTStackEntry& popped_entry) {
+                                                 int warp_id,
+                                                 const SIMTStackEntry& popped_entry) {
   std::ostringstream oss;
   oss << "         -> SIMT Stack pop: reconvergence_pc="
       << popped_entry.reconvergence_pc;
+  return oss.str();
+}
+
+std::string WarpTraceFormatter::format_simt_stack(const SIMTStack& stack) {
+  std::ostringstream oss;
+  oss << "         SIMT Stack (depth=" << stack.depth() << "):";
+  if (stack.empty()) {
+    oss << " (empty)";
+  } else {
+    for (size_t i = stack.depth(); i > 0; i--) {
+      const SIMTStackEntry& entry = stack.get_entry_at(i - 1);
+      oss << "\n           [" << (stack.depth() - i) << "] "
+          << "branch_pc=" << entry.branch_pc
+          << ", reconvergence_pc=" << entry.reconvergence_pc
+          << ", active_mask=0x" << std::hex << std::uppercase << entry.active_mask
+          << std::dec << ", return_pc=" << entry.return_pc;
+    }
+  }
   return oss.str();
 }
 
