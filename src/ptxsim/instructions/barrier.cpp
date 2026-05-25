@@ -126,9 +126,10 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
     ptxsim::WarpState& warp_state = warp_ctx->get_warp_state();
     int lane_id = context->lane_id_;
 
+    uint32_t current_pc = warp_state.threads[lane_id].pc;
+
     uint32_t dynamic_mask = 0;
     if (warp_state.current_wbar_id < 0) {
-        uint32_t current_pc = warp_state.threads[lane_id].pc;
         for (int i = 0; i < 32; i++) {
             if (!warp_state.threads[i].is_active) continue;
             if (warp_state.threads[i].is_exited) continue;
@@ -142,7 +143,6 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
     int wbar_id = 0;
     ptxsim::Wbar& wbar = warp_state.wbars[wbar_id];
 
-    // 如果前一个 barrier 已完成但 wbar 未重置，说明这是新的 barrier 调用
     if (warp_state.current_wbar_id < 0 && wbar.is_initialized) {
         wbar.reset();
     }
@@ -184,20 +184,12 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
             }
         }
 
-        // Hybrid fix: update active_mask immediately so barrier handler state is self-contained
         warp_ctx->set_active_mask(wbar.arrived_mask);
 
-        // Don't reset wbar here! Once is_complete() is true, subsequent arrive() calls
-        // will still return true from is_complete() but won't re-run the release loop
-        // because arrived_mask already equals participation_mask.
-        // The barrier will be reset when it's re-initialized on the next bar.warp.sync.
-        // wbar.reset();
         warp_state.current_wbar_id = -1;
     } else {
         warp_state.threads[lane_id].is_blocked = true;
         warp_state.threads[lane_id].status = ptxsim::ThreadStatus::Blocked;
-        // Prevent commit_pc() from advancing PC while thread is blocked at barrier
-        // This ensures all threads stay at the barrier PC until it completes
         set_pc_overridden(true);
         PTX_DEBUG_THREAD("Lane %d blocked at bar.warp.sync (arrived=%d/%d)",
                          lane_id, wbar.count_arrived(), wbar.count_participants());

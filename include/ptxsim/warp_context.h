@@ -9,7 +9,7 @@
 #include <memory>
 #include <queue>
 #include <vector>
-#include <map>              // Divergent execution: get_lanes_by_pc()
+#include <map>
 
 // Forward declarations to avoid circular includes
 class SMContext;
