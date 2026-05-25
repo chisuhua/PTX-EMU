@@ -202,6 +202,94 @@ cd build && ctest -L "exec_mask|simt_entry" -V
 | `memory` | 内存分配、边界检查 | `test_memory_manager`, `test_memory_bounds` |
 | `integration` | 端到端集成 | `test_simt_integration`, `test_barrier_simt_integration` |
 
+### 测试分类规范
+
+**所有单元测试必须覆盖以下三种类型，确保从不同层次验证功能：**
+
+#### 类型一：直接单元测试（Direct Unit Test）
+
+直接测试核心数据结构和算法，不涉及执行流程。
+
+**特征**：
+- 直接实例化 `WarpBarrier`、`CTABarrier`、`BarrierModule` 等类
+- 调用类的方法验证行为
+- 无需 PTX 解析或指令执行
+
+**示例**：
+```cpp
+// test_barrier_module.cpp
+WarpBarrier wb;
+wb.init(0x000F, 10, 5);
+wb.arrive(0);
+REQUIRE(wb.is_complete() == false);
+```
+
+**适用场景**：数据结构逻辑、状态机、工具函数
+
+#### 类型二：指令序列集成测试（Instruction Sequence Test）
+
+使用 `statement_factory.h` 构建指令序列，通过 `execute_warp_instruction()` 驱动执行。
+
+**特征**：
+- 使用 `StatementFactory` 或 `makeXXXInstr()` 创建指令
+- 通过 `WarpContext::execute_warp_instruction()` 执行
+- 验证指令执行后的状态变化（PC、寄存器、active_mask 等）
+
+**示例**：
+```cpp
+// test_simt_stack_entry_integrated.cpp
+std::vector<StatementContext> stmts = buildBranchStatements();
+warp->execute_warp_instruction(stmts[0], 0);  // branch
+warp->execute_warp_instruction(stmts[1], 1);  // divergent target
+```
+
+**适用场景**：指令执行逻辑、PC 推进、分歧处理、SIMT stack 操作
+
+#### 类型三：CUDA Kernel E2E 测试（End-to-End Test）
+
+编译真实 CUDA kernel，提取 PTX，通过模拟器完整执行。
+
+**特征**：
+- 使用 `nvcc -ptx` 编译 CUDA 源文件
+- `cudaLaunchKernel()` 触发完整执行流程
+- 验证内存输出或函数行为
+
+**示例**：
+```cpp
+// test_divergence_sync_standalone.cpp
+// CUDA kernel 编译后提取 PTX
+// 通过 fake libcudart.so 拦截 cudaLaunchKernel
+// 验证 h_output[] 结果
+```
+
+**适用场景**：完整功能验证、PTX 解析集成、运行时行为
+
+---
+
+**测试覆盖率检查清单**：
+
+| 新增功能/修复 Bug | 类型一（单元） | 类型二（指令序列） | 类型三（E2E） |
+|-----------------|--------------|------------------|--------------|
+| 新数据结构 | ✅ 必须 | ✅ 推荐 | ✅ 推荐 |
+| 新指令实现 | ✅ 必须 | ✅ 必须 | ✅ 必须 |
+| Bug 修复 | ✅ 必须 | ✅ 必须 | ✅ 必须 |
+| 性能优化 | ✅ 可选 | ✅ 推荐 | ✅ 推荐 |
+
+**CMake 添加规则**：
+
+```cmake
+# 类型一：直接单元测试
+add_catch_test(test_barrier_module
+    test_barrier_module.cpp
+)
+
+# 类型二：指令序列集成测试（标签：integration）
+add_catch_test(test_simt_stack_entry_integrated
+    test_simt_stack_entry_integrated.cpp
+)
+set_tests_properties(test_simt_stack_entry_integrated PROPERTIES LABELS "integration")
+```
+
 ### ❌ 禁止
 
 - 未写测试就实现功能
