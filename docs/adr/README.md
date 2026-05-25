@@ -58,6 +58,7 @@ docs/adr/
 | # | 标题 | 状态 | 日期 | 关联任务 |
 |---|------|------|------|---------|
 | [0011](./0011-pipeline-architecture.md) | PTX→PTXIR 多阶段 Pipeline 架构 | Proposed | 2026-05-05 | Phase 12.1 |
+| [0014](./0014-independent-thread-scheduling.md) | Independent Thread Scheduling (ITS) 支持 | Proposed | 2026-05-25 | BUG-SIMT-001 |
 
 ### Superseded (已被替代)
 

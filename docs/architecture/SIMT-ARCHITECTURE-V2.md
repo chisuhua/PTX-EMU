@@ -1,9 +1,9 @@
 # SIMT 架构 v2.0 设计文档
 ## ——面向 Hopper/Blackwell 的 SIMT 控制流管理
 
-**版本**: 2.0
+**版本**: 2.1
 **日期**: 2026-04-09
-**最后更新**: 2026-05-05
+**最后更新**: 2026-05-25
 **状态**: ✅ 已完成 (文档已对齐)  
 **作者**: PTX-EMU Team
 
@@ -19,6 +19,7 @@
 |------|---------|
 | 2026-04-14 | 初始对齐说明添加 |
 | 2026-05-05 | 移除已删除的字段描述 (pc_stack, simt_stack_depth, predicate_state, last_issue_cycle) |
+| 2026-05-25 | 添加 ADR-0014 引用，相关 ADR 已更新索引 |
 
 ### 0.1 关键差异速查
 
@@ -1049,6 +1050,12 @@ PC=8: ret                              (all lanes)
 3. "Control Flow Management in Modern GPUs" (arXiv:2407.02944)
 4. "Stack-less SIMT Reconvergence at Low Cost" (HAL:00622654)
 5. "Divergence-Aware Warp Scheduling" (MICRO-2013)
+
+### 相关 ADR
+
+| ADR | 标题 | 状态 |
+|-----|------|------|
+| [ADR-0014](../adr/0014-independent-thread-scheduling.md) | Independent Thread Scheduling (ITS) 支持 | Proposed |
 
 ---
 
