@@ -13,12 +13,12 @@
 // From test_shared_memory.cu: test_divergence_sync_kernel
 template<typename T>
 __global__ void test_divergence_sync_kernel(T *output) {
-    __shared__ T shared_data[32];
+    //__shared__ T shared_data[32];
 
     int tid = threadIdx.x;
     int lane = tid % WARP_SIZE;
 
-    T value;
+    int value;
     // Divergent paths: lane 0-15 vs 16-31
     if (lane < 16) {
         // Path A: compute sum 0..lane
@@ -30,6 +30,10 @@ __global__ void test_divergence_sync_kernel(T *output) {
         for (int i = 1; i <= lane - 15; i++) value *= i;
     }
 
+    __syncthreads();
+    output[tid] = value;
+
+    /*
     shared_data[lane] = value;
     __syncthreads();
 
@@ -43,6 +47,7 @@ __global__ void test_divergence_sync_kernel(T *output) {
     } else {
         output[tid] = shared_data[tid];
     }
+    */
 }
 
 bool test_divergence_sync() {

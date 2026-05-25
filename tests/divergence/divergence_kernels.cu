@@ -152,16 +152,25 @@ __global__ void divergence_reduction(int* buf) {
 //   tid<16 先写, barrier, tid>=16 再写(模拟分歧后同步)
 // ====================================================================
 __global__ void divergence_barrier_sync(int* buf) {
+    __shared__ int shared_data[32];
     int tid = threadIdx.x;
+    int lane = tid % 32;
+    int value;
     if (tid < 16) {
-        buf[tid] = tid + 100;
+        value = 100;
+        for (int i = 0; i <= lane; i++) value += i;
     } else {
-        buf[tid + 16] = tid + 200;
+        value = 200;
+        //buf[tid + 16] = tid + 200;
+        for (int i = 1; i <= lane - 15; i++) value *= i;
     }
     __syncthreads();
+    buf[tid] = value;
     // 所有lane同步后再次分歧
+    /*
     if (tid < 8)
         buf[tid] = 999;
     else if (tid >= 24)
         buf[tid + 16] = 888;
+        */
 }

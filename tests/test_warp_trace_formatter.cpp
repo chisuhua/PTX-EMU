@@ -55,9 +55,12 @@ TEST_CASE("WTF9: format_simt_push", "[warp_trace_formatter]") {
     entry.return_mask = 0xFFFFFFFFu;
     entry.return_pc = 12;
 
+    SIMTStack stack;
+    stack.push(entry);
+
     std::string result = WarpTraceFormatter::format_simt_push(
-        5, 0, 0, entry, 0xFFFFFFFEu);
-    
+        5, 0, 0, entry, 0xFFFFFFFEu, stack);
+
     REQUIRE(result.find("SIMT Stack push") != std::string::npos);
     REQUIRE(result.find("branch_pc=4") != std::string::npos);
     REQUIRE(result.find("reconvergence_pc=12") != std::string::npos);
