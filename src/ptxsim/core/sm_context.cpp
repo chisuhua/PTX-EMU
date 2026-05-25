@@ -219,11 +219,34 @@ EXE_STATE SMContext::exe_once() {
                 }
             }
         } else if (!lanes_by_pc.empty()) {
-            // Divergent path: execute ONLY ONE PC group per cycle (Lowest PC first)
-            // std::map is sorted by PC ascending, so begin() gives the lowest PC
-            auto it = lanes_by_pc.begin();
-            int pc = it->first;
-            const auto& lanes = it->second;
+            int pc = -1;
+            const std::vector<int>* selected_lanes = nullptr;
+            bool found_non_blocked = false;
+
+            auto& ws = next_warp->get_warp_state();
+            for (const auto& [candidate_pc, candidate_lanes] : lanes_by_pc) {
+                bool all_non_blocked = true;
+                for (int lane : candidate_lanes) {
+                    if (ws.threads[lane].is_blocked) {
+                        all_non_blocked = false;
+                        break;
+                    }
+                }
+                if (all_non_blocked) {
+                    pc = candidate_pc;
+                    selected_lanes = &candidate_lanes;
+                    found_non_blocked = true;
+                    break;
+                }
+            }
+
+            if (!found_non_blocked) {
+                auto it = lanes_by_pc.begin();
+                pc = it->first;
+                selected_lanes = &it->second;
+            }
+
+            const auto& lanes = *selected_lanes;
 
             // 构建当前执行 group 的真实 lane mask
             uint32_t current_exec_mask = 0;

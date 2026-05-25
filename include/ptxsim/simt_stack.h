@@ -22,6 +22,7 @@ struct SIMTStackEntry {
 
 class SIMTStack {
 public:
+    SIMTStack() = default;
     static constexpr size_t MAX_DEPTH = 32;
 
     void push(const SIMTStackEntry& entry);
