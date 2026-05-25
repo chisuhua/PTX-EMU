@@ -6,7 +6,8 @@
 
 | 文档 | 行数 | 状态 | 用途 |
 |------|------|------|------|
-| [SIMT-ARCHITECTURE-V2.md](./SIMT-ARCHITECTURE-V2.md) | 732 | ✅ 最新 | SIMT v2.0 完整架构设计 |
+| [SIMT-ARCHITECTURE-V2.md](./SIMT-ARCHITECTURE-V2.md) | 1134 | ✅ 最新 | SIMT v2.0 完整架构设计 |
+| [sm90_100.md](./sm90_100.md) | ~300 | ✅ 新增 | Hopper/Blackwell 分歧路径执行顺序详解 |
 | [CFG-DESIGN.md](./CFG-DESIGN.md) | TBD | ⏳ 待创建 | CFG 分析详细设计 |
 
 ## 🏗️ 架构版本
@@ -20,12 +21,13 @@
 
 1. **入门**: SIMT-ARCHITECTURE-V2.md 执行摘要
 2. **深入**: SIMT-ARCHITECTURE-V2.md 架构设计章节
-3. **参考**: CFG-DESIGN.md (待创建)
+3. **Hopper/Blackwell 专篇**: sm90_100.md (分歧路径执行顺序)
+4. **参考**: CFG-DESIGN.md (待创建)
 
 ---
 
 **维护**: 只保留最新架构文档，旧版本归档到 `../archive/`  
-**最后更新**: 2026-04-11
+**最后更新**: 2026-05-25
 
 ## 📊 GPGPU-Sim Analysis
 

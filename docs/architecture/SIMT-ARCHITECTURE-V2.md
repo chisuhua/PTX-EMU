@@ -585,6 +585,286 @@ void BarWarpSyncHandler::execute(ThreadContext* context, const BarrierInstr& ins
 }
 ```
 
+### 4.4 Hopper/Blackwell 分歧路径执行顺序
+
+> **重要前提：PTX 是虚拟 ISA**
+>
+> ```
+> PTX (虚拟指令集)
+>     │
+>     │  ptxas 编译器
+>     ▼
+> SASS (实际机器码，包含 BSSY/BSYNC)
+>     │
+>     │  GPU 硬件执行
+>     ▼
+> 实际执行行为
+> ```
+>
+> **PTX 层面不直接暴露 `BSSY`/`BSYNC`**，这些是 ptxas 编译器在生成 SASS 时自动插入的。但 PTX 规范定义了**可观测行为（observable behavior）**，我们基于此来描述执行顺序。
+
+#### 4.4.1 PTX 指令序列示例
+
+为方便标注，给每条指令编号：
+
+```ptx
+// ===== 公共前导 =====
+I01: ld.param.u64 %rd1, [_Z27..._param_0]
+I02: mov.u32 %r1, %tid.x
+I03: and.b32 %r2, %r1, 31
+I04: setp.lt.u32 %p1, %r2, 16
+I05: @%p1 bra $L__BB0_4                    // 分歧点
+
+// ===== Path B (fall-through, lane >= 16) =====
+I06: neg.s32 %r18, %r2
+I07: mov.b32 %r20, 1
+I08: mov.b32 %r17, 15
+    $L__BB0_2:                              // 循环入口
+I09: add.s32 %r14, %r17, -14
+I10: mul.lo.s32 %r20, %r14, %r20
+I11: add.s32 %r18, %r18, 1
+I12: add.s32 %r17, %r17, 1
+I13: setp.ne.s32 %p2, %r18, -15
+I14: @%p2 bra $L__BB0_2                    // 循环回边
+
+// ===== 公共出口 =====
+    $L__BB0_3:
+I15: cvta.to.global.u64 %rd4, %rd1
+I16: bar.sync 0
+I17: mul.wide.u32 %rd5, %r1, 4
+I18: add.s64 %rd6, %rd4, %rd5
+I19: st.global.u32 [%rd6], %r20
+I20: ret
+
+// ===== Path A (taken, lane < 16) =====
+    $L__BB0_4:
+I21: add.s32 %r15, %r2, -1
+I22: mul.wide.u32 %rd2, %r15, %r2
+I23: shr.u64 %rd3, %rd2, 1
+I24: cvt.u32.u64 %r16, %rd3
+I25: add.s32 %r20, %r2, %r16
+I26: bra.uni $L__BB0_3                     // 跳到公共出口
+```
+
+#### 4.4.2 ptxas 编译为 SASS 时的隐式插入
+
+ptxas 将上述 PTX 编译为 Hopper/Blackwell SASS 时，会在关键位置插入收敛屏障指令：
+
+```
+PTX I05: @%p1 bra $L__BB0_4
+                │
+                │ ptxas 分析控制流图，找到 post-dominator = $L__BB0_3
+                ▼
+SASS 生成:
+    BSSY B0, $L__BB0_3     ← 自动插入（设置收敛点）
+    @P0 BRA $L__BB0_4
+
+PTX I14 (循环最后一次不跳转后) → 下一条是 I15 ($L__BB0_3)
+                │
+                ▼
+SASS 生成:
+    @P2 BRA $L__BB0_2
+    BSYNC B0                ← 自动插入（Path B 线程到达屏障）
+
+PTX I26: bra.uni $L__BB0_3
+                │
+                ▼
+SASS 生成:
+    BSYNC B0                ← 自动插入（Path A 线程到达屏障）
+    // bra.uni 被优化掉，因为 BSYNC 后直接从 target 恢复
+```
+
+#### 4.4.3 Hopper/Blackwell 实际执行顺序
+
+**关键原则：执行顺序是非确定性的**
+
+PTX 规范对 Hopper/Blackwell 的保证是：
+
+1. 同一线程内的指令按程序顺序执行
+2. 分歧路径的线程**最终**会在 reconvergence point 汇合
+3. 不同路径的相对执行顺序**无保证**
+
+**以 32 线程 Warp 为例，可能的执行场景：**
+
+**场景 1：类 Pre-Volta 顺序（最常见的实际行为）**
+
+```
+时间步    活跃线程         执行的 PTX 指令         说明
+─────────────────────────────────────────────────────────────
+t1       T0-T31 (32)     I01: ld.param           全部线程统一执行
+t2       T0-T31 (32)     I02: mov %tid.x         ↓
+t3       T0-T31 (32)     I03: and                ↓
+t4       T0-T31 (32)     I04: setp               ↓
+t5       T0-T31 (32)     I05: @%p1 bra           分歧发生，Scheduler 选择路径
+─────────────────────────── 分歧开始 ──────────────────────────
+t6       T16-T31 (16)    I06: neg                Scheduler 选择执行 Path B
+t7       T16-T31 (16)    I07: mov 1              ↓
+t8       T16-T31 (16)    I08: mov 15             ↓
+t9       T16-T31 (16)    I09: add (iter 1)       循环第 1 次
+t10      T16-T31 (16)    I10: mul               ↓
+t11      T16-T31 (16)    I11: add               ↓
+t12      T16-T31 (16)    I12: add                ↓
+t13      T16-T31 (16)    I13: setp              ↓
+t14      T16-T31 (16)    I14: @%p2 bra           T16 退出循环(p2=false)
+                                                   其余继续
+t15      T17-T31 (15)    I09: add (iter 2)       T16 已挂起(BSYNC)
+t16      T17-T31 (15)    I10: mul               ↓
+...                                               （循环继续）
+t??      T31 (1)         I09-I14 (iter 16)       最后一个线程完成
+                                                   → BSYNC → 挂起
+─────────────── Path B 全部线程到达屏障 ────────────────────────
+t??+1    T0-T15 (16)     I21: add               Scheduler 切换到 Path A
+t??+2    T0-T15 (16)    I22: mul.wide           ↓
+t??+3    T0-T15 (16)    I23: shr               ↓
+t??+4    T0-T15 (16)    I24: cvt               ↓
+t??+5    T0-T15 (16)    I25: add               ↓
+                          (I26: bra.uni)         → BSYNC → 挂起
+─────────────── Path A 全部线程到达屏障 ────────────────────────
+                          屏障 B0 释放            32 线程全部恢复
+─────────────────────── 汇合 ──────────────────────────────────
+t??+6    T0-T31 (32)     I15: cvta              统一执行
+t??+7    T0-T31 (32)    I16: bar.sync 0         block 级同步
+t??+8    T0-T31 (32)    I17: mul.wide          ↓
+t??+9    T0-T31 (32)    I18: add               ↓
+t??+10   T0-T31 (32)    I19: st.global         ↓
+t??+11   T0-T31 (32)    I20: ret               结束
+```
+
+**场景 2：交错执行（Hopper/Blackwell 独有能力）**
+
+```
+时间步    活跃线程         执行的 PTX 指令         说明
+─────────────────────────────────────────────────────────────
+t1-t5    T0-T31 (32)     I01-I05                 公共前导（同场景 1）
+─────────────────────────── 分歧开始 ──────────────────────────
+t6-t8    T16-T31 (16)    I06-I08                 Path B 初始化
+t9-t14   T16-T31 (16)    I09-I14 (iter 1)        Path B 第 1 次循环
+         T16 → BSYNC                             T16 完成，挂起
+
+★ Scheduler 决策：Path B 只剩 15 线程活跃，
+   切换到 Path A 可以利用空闲的执行通道
+
+t15      T0-T15 (16)    I21: add                 切换执行 Path A！
+t16      T0-T15 (16)    I22: mul.wide           ↓
+t17      T0-T15 (16)    I23: shr               ↓
+t18      T0-T15 (16)    I24: cvt               ↓
+t19      T0-T15 (16)    I25: add               ↓
+         T0-T15 → BSYNC                         Path A 全部完成，挂起
+
+★ 此时 T0-T15 都已到达屏障，但 T17-T31 仍在循环
+   屏障未释放（需要全部 32 线程到达）
+
+t20      T17-T31 (15)    I09-I14 (iter 2)       继续 Path B 循环
+...                                               （T17 完成第 2 次后挂起）
+...                                               （逐步减少活跃线程）
+t??      T31 (1)         I09-I14 (iter 16)       最后一个线程
+         T31 → BSYNC                             屏障条件满足！
+
+─────────────────────── 屏障释放 ───────────────────────────────
+t??+1    T0-T31 (32)     I15: cvta              统一执行
+...
+t??+6    T0-T31 (32)     I20: ret               结束
+```
+
+**场景 3：Path A 优先（Blackwell 启发式优化）**
+
+Blackwell 的 Scheduler 可能检测到 Path A 更短（无循环，5 条指令），优先执行：
+
+```
+时间步    活跃线程         执行的 PTX 指令         说明
+─────────────────────────────────────────────────────────────
+t1-t5    T0-T31 (32)     I01-I05                 公共前导
+─────────────────────────── 分歧开始 ──────────────────────────
+★ Blackwell Scheduler 启发式：Path A 更短，优先调度
+
+t6       T0-T15 (16)    I21: add                 先执行 Path A
+t7       T0-T15 (16)    I22: mul.wide           ↓
+t8       T0-T15 (16)    I23: shr               ↓
+t9       T0-T15 (16)    I24: cvt               ↓
+t10      T0-T15 (16)    I25: add               ↓
+         T0-T15 → BSYNC                         Path A 完成，挂起
+
+t11-t??  T16-T31 (16)    I06-I08, 循环           再执行 Path B（完整循环）
+         T16-T31 逐步 → BSYNC
+
+─────────────────────── 屏障释放 ───────────────────────────────
+t??+1    T0-T31 (32)     I15-I20                 公共出口
+```
+
+#### 4.4.4 PTX 层面的可观测保证（Hopper/Blackwell 内存模型）
+
+**跨路径可见性：**
+
+```ptx
+// Thread A (lane=5, Path A):
+I25: add.s32 %r20, %r2, %r16       // 计算 value
+     // ... 到达收敛点 ...
+
+// Thread B (lane=20, Path B):
+I10: mul.lo.s32 %r20, %r14, %r20   // 计算 value
+     // ... 到达收敛点 ...
+
+// 汇合后:
+I16: bar.sync 0                     // ← 这里保证所有线程看到一致状态
+I19: st.global.u32 [%rd6], %r20    // 每个线程写自己的 %r20，安全
+```
+
+**PTX 对执行顺序的规范声明：**
+
+```
+PTX ISA Spec (8.x+) 关于分歧的保证:
+
+1. "Different execution paths in diverged threads will eventually 
+    reconverge" (分歧线程最终会汇合)
+
+2. "The order of execution of different paths is UNSPECIFIED" 
+   (不同路径的执行顺序未定义)
+
+3. "Programs must not rely on any particular execution order of 
+    divergent paths" (程序不得依赖分歧路径的特定执行顺序)
+
+4. "bar.sync guarantees that all threads in the CTA have reached 
+    the barrier" (bar.sync 保证 CTA 内所有线程到达)
+```
+
+#### 4.4.5 PTX 指令到硬件行为的映射表
+
+| PTX 指令 | Hopper/Blackwell 硬件行为 |
+|----------|--------------------------|
+| `@%p1 bra $target` | 若分歧：触发 Scheduler 线程分组；若无分歧：普通跳转 |
+| `bra.uni $target` | 所有活跃线程统一跳转（无分歧开销）。若在分歧区域末尾，编译为 BSYNC |
+| `@%p2 bra $loop` (循环) | 每次迭代可能导致部分线程退出循环（退出的线程提前到达 BSYNC） |
+| `bar.sync 0` | Block 级全同步。已汇合的 Warp 正常通过；未汇合的 Warp 会在此被**强制汇合** |
+| `ret` | 线程终止。注意：若 Warp 中部分线程先 ret，其他还在执行，先 ret 的线程被标记为 terminated |
+
+#### 4.4.6 关键总结
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  在 PTX 层面，Hopper/Blackwell 的执行模型可以这样理解：            │
+│                                                                     │
+│  1. 公共前导 I01-I05：所有线程「同时」执行（一条接一条，锁步）     │
+│                                                                     │
+│  2. 分歧点 I05 之后：                                              │
+│     - Path A (I21-I25+I26) 和 Path B (I06-I14循环)                 │
+│     - 以「某种不确定的顺序」被 Scheduler 调度执行                   │
+│     - 可能全 B 先、全 A 先、或交错                                  │
+│     - PTX 程序不得假设任何特定顺序                                  │
+│                                                                     │
+│  3. 汇合点 $L__BB0_3 (I15)：                                      │
+│     - 硬件保证两条路径的线程在此重新统一                            │
+│     - 之后 I15-I20 再次「同时」执行                                 │
+│                                                                     │
+│  4. bar.sync (I16)：提供 Block 级同步+内存可见性保证               │
+│                                                                     │
+│  5. 性能提示（非功能保证）：                                        │
+│     - Hopper: 倾向于按 fall-through 优先                           │
+│     - Blackwell: 倾向于短路径优先 + 动态交错                       │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+**本质差异：PTX 不规定分歧路径的执行顺序。Pre-Volta 的 SIMT Stack 带来了确定性顺序（虽然 spec 也没保证），但 Hopper/Blackwell 的 Independent Thread Scheduling 让这种非确定性成为现实中可观测的行为。程序正确性必须依赖显式同步（`bar.sync`、`__syncwarp()`），不能依赖路径执行顺序。**
+
 ---
 
 ## 5. 与 PTX ISA 的映射
