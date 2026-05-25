@@ -414,6 +414,23 @@ add_catch_test(test_barrier_reconvergence
     test_barrier_reconvergence.cpp
 )
 
+# Added 2026-05-25: BarrierModule unit tests (TDD)
+add_catch_test(test_barrier_module
+    test_barrier_module.cpp
+)
+
+# Added 2026-05-25: BarrierModule 类型二测试（指令序列集成测试）
+add_catch_test(test_barrier_module_integrated
+    test_barrier_module_integrated.cpp
+)
+set_tests_properties(test_barrier_module_integrated PROPERTIES LABELS "integration")
+
+# Added 2026-05-25: BarrierModule 类型三测试（CUDA Kernel E2E）
+add_catch_test(test_barrier_warp_sync
+    test_barrier_warp_sync.cu
+)
+set_tests_properties(test_barrier_warp_sync PROPERTIES LABELS "barrier;e2e")
+
 # Added 2026-04-12: Test 3 root cause investigation (3 directions)
 add_catch_test(test_syncthreads_direction
     test_syncthreads_direction.cpp

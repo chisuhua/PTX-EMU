@@ -105,6 +105,9 @@ add_library(ptxsim SHARED
     ptxsim/instructions/data_transfer.cpp
     ptxsim/instructions/call.cpp
     ptxsim/instructions/barrier.cpp
+    ptxsim/barrier/warp_barrier.cpp
+    ptxsim/barrier/cta_barrier.cpp
+    ptxsim/barrier/barrier_module.cpp
 )
 target_link_libraries(ptxsim ptx_ir)
 
