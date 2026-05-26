@@ -415,3 +415,52 @@ TEST_CASE("divergence_sync_standalone: full warp barrier-then-divergence flow", 
     // 其他线程仍在 L_exit (bra L_exit)
     CHECK(warp->get_thread(1)->get_pc() == 15);
 }
+
+TEST_CASE("divergence_sync_standalone: all three modes produce same reconvergence", "[divergence_sync][all_modes][reconvergence]") {
+    init_factory_once();
+    ResourceManager::instance().initialize(1, 8192);
+
+    auto statements = build_divergence_sync_statements();
+    auto register_bank = std::make_shared<RegisterBankManager>(1, 32);
+    auto registers = RegisterAnalyzer::analyze_registers(statements);
+    register_bank->preallocate_registers(registers);
+
+    std::array<ptxsim::DivergenceExecutionMode, 3> modes = {
+        ptxsim::DivergenceExecutionMode::Sequential,
+        ptxsim::DivergenceExecutionMode::Interleaved,
+        ptxsim::DivergenceExecutionMode::ShortestFirst
+    };
+
+    for (auto mode : modes) {
+        INFO("Testing mode: " << static_cast<int>(mode));
+        SMContext sm(4, 128, 4096, 0);
+        sm.set_divergence_execution_mode(mode);
+        WarpContext* warp = create_warp_with_threads(sm, create_block(statements), register_bank);
+        warp->set_active_mask(0xFFFFFFFF);
+
+        for (int i = 0; i < 32; i++) {
+            void* tid_addr = register_bank->get_register("r1", 0, i);
+            if (tid_addr) {
+                *static_cast<uint32_t*>(tid_addr) = i;
+            }
+        }
+
+        advance_all_to_pc(*warp, 11);
+        warp->execute_warp_instruction(statements[11], 11);
+        warp->execute_warp_instruction(statements[12], 12);
+        REQUIRE(warp->get_thread(0)->get_pc() == 13);
+
+        warp->execute_warp_instruction(statements[13], 13);
+        warp->execute_warp_instruction(statements[14], 14);
+
+        CHECK(warp->get_thread(0)->get_pc() == 16);
+        CHECK(warp->get_thread(1)->get_pc() == 15);
+
+        warp->execute_warp_instruction(statements[16], 16);
+        warp->execute_warp_instruction(statements[17], 17);
+        warp->execute_warp_instruction(statements[18], 18);
+
+        CHECK(warp->get_thread(0)->get_pc() == 19);
+        CHECK(warp->get_thread(1)->get_pc() == 15);
+    }
+}
