@@ -3,6 +3,7 @@
 
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/common_types.h"
+#include "ptxsim/bsync_state.h"
 #include "ptxsim/cta_context.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/warp_context.h"
@@ -162,6 +163,9 @@ private:
     std::map<int, int> barrier_thread_counts; // 每个barrier需要等待的线程数
     // 保护 barrier 数据结构的 mutex
     mutable std::mutex barrier_mutex_;
+
+    // BsyncManager for warp barrier tracking
+    ptxsim::BsyncManager bsync_manager_;
 };
 
 #endif // SM_CONTEXT_H

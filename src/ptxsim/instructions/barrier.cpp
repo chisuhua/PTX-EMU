@@ -158,7 +158,15 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
 
     wbar.arrive(lane_id);
 
+    SMContext* sm_ctx = warp_ctx->get_sm_context();
+    if (sm_ctx) {
+        sm_ctx->bsync_manager_.bsync(wbar_id, lane_id, current_pc);
+    }
+
     if (wbar.is_complete()) {
+        if (sm_ctx) {
+            sm_ctx->bsync_manager_.release(wbar_id);
+        }
         if (reconvergence_pc < 0) {
             PTX_ERROR_EMU("bar.warp.sync: Invalid reconvergence_pc=%d at barrier completion, skipping PC update", reconvergence_pc);
             return;
