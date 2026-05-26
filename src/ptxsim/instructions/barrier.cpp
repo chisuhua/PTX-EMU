@@ -285,11 +285,7 @@ void BarHandler::executeBarrier(ThreadContext* context, const BarrierInstr& inst
                      context->ThreadIdx.x, context->ThreadIdx.y, context->ThreadIdx.z,
                      barId);
     
-    // Step 3: Check for warp-level divergence and force reconvergence if needed
-    // Per architecture doc (sm90_100.md:294): "bar.sync — 未汇合的 Warp 会在此被强制汇合"
-    // This matches hardware behavior: un-reconverged warps are forced to reconverge at bar.sync
-    if (warp_ctx->has_divergence()) {
-        PTX_INFO_EMU("Warp has divergence, forcing reconvergence at barrier PC=%u", context->get_pc());
+    if (warp_ctx->get_unique_pcs().size() > 1) {
         warp_ctx->force_reconvergence_at_barrier(context->get_pc());
     }
     

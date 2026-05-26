@@ -31,7 +31,7 @@ TEST_CASE("Multi-warp barrier divergence: warp-level divergence reconverges at b
 
     std::string output;
     char buf[4096];
-    while (fgets(buf, sizeof(buf), pipe)) {
+    while (fgets(buf, sizeof(buf), pipe) != nullptr) {
         output += buf;
     }
     int ret = pclose(pipe);
@@ -39,15 +39,10 @@ TEST_CASE("Multi-warp barrier divergence: warp-level divergence reconverges at b
     INFO("Standalone binary output (" << output.size() << " bytes):");
     INFO(output);
 
-    // Check for PASS or FAIL result
     bool has_pass = output.find("=== Result: PASS ===") != std::string::npos;
     bool has_fail = output.find("=== Result: FAIL ===") != std::string::npos;
 
     INFO("Has PASS: " << has_pass << ", Has FAIL: " << has_fail);
 
-    // With correct barrier reconvergence:
-    // - Even threads (path A) write output[tid] = 1, then after sync output[tid] += 10 → 11
-    // - Odd threads (path B) write output[tid] = 2, then after sync output[tid] += 10 → 12
-    // All threads should reach barrier and reconverge correctly
-    CHECK(has_pass || has_fail);  // At least one result should be present
+    CHECK(has_pass);
 }

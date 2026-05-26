@@ -1,0 +1,10 @@
+#include "catch_amalgamated.hpp"
+#include "test_helpers.hpp"
+
+TEST_CASE("Debug: check statement types", "[debug]") {
+    auto stmts = load_ptx_statements("tests/ptx/test_e8_integration.ptx", "", false);
+    INFO("Total statements: " << stmts.size());
+    for (size_t i = 0; i < stmts.size(); i++) {
+        INFO("[" << i << "] type=" << static_cast<int>(stmts[i].type) << " " << stmts[i].instructionText);
+    }
+}
