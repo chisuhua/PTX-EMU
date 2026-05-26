@@ -431,6 +431,11 @@ add_catch_test(test_barrier_warp_sync
 )
 set_tests_properties(test_barrier_warp_sync PROPERTIES LABELS "barrier;e2e")
 
+# Phase 4.1: BsyncState unit tests
+add_catch_test(test_bsync_state
+    test_bsync_state.cpp
+)
+
 # Added 2026-04-12: Test 3 root cause investigation (3 directions)
 add_catch_test(test_syncthreads_direction
     test_syncthreads_direction.cpp
