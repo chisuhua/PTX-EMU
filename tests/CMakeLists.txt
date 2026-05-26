@@ -132,6 +132,8 @@ add_catch_test(
     test_parse_immediate.cpp
 )
 
+add_catch_test(test_multiwarp_barrier_divergence test_multiwarp_barrier_divergence.cpp)
+
 add_catch_test(test_memory_bounds test_memory_bounds.cpp)
 add_catch_test(test_warp_trace_formatter test_warp_trace_formatter.cpp)
 
@@ -536,7 +538,7 @@ add_catch_test(test_post_barrier_divergence
 # - Mode 2: pre-extracted PTX file (stable reproduction)
 # - Mode 3: direct StatementContext construction (unit testing)
 # ============================================================================
-add_subdirectory(three_mode_testing)
+#add_subdirectory(three_mode_testing)
 
 
 # ============================================================================

@@ -342,10 +342,45 @@ std::map<int, std::vector<int>> WarpContext::get_lanes_by_pc() const {
 std::vector<int> WarpContext::get_unique_pcs() const {
     std::vector<int> pcs;
     auto lanes_by_pc = get_lanes_by_pc();
-    
+
     for (const auto& [pc, lanes] : lanes_by_pc) {
         pcs.push_back(pc);
     }
-    
+
     return pcs;
+}
+
+void WarpContext::force_reconvergence_at_barrier(int barrier_pc) {
+    uint32_t active_lanes = 0;
+    int next_pc = barrier_pc + 1;
+
+    // 1. Collect all non-exited threads and set their PCs to barrier_pc + 1
+    for (int i = 0; i < WARP_SIZE; i++) {
+        if (!warp_state.threads[i].is_active || warp_state.threads[i].is_exited) {
+            continue;
+        }
+
+        // Set PC to instruction after barrier
+        warp_state.threads[i].pc = next_pc;
+        warp_state.threads[i].next_pc = next_pc;
+
+        // Clear blocked state - ensure RUN status
+        warp_state.threads[i].is_blocked = false;
+        warp_state.threads[i].status = ptxsim::ThreadStatus::Active;
+
+        // Track active lanes for exec_mask
+        active_lanes |= (1u << i);
+    }
+
+    // 2. Update warp's exec_mask to include all active non-exited threads
+    warp_state.exec_mask = active_lanes;
+
+    // 3. Clear pending divergence state (SIMT stack)
+    simt_stack.clear();
+
+    // 4. Clear current wbar state
+    warp_state.current_wbar_id = -1;
+
+    // 5. Rebuild active_mask to match new state
+    update_active_mask();
 }

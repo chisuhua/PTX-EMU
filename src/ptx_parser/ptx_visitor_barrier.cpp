@@ -35,6 +35,17 @@ bool isWarpLevelBarrier(KernelContext* kernel) {
 
 // VISITOR_BARRIER macro for X-macro in ptx_visitor.cpp (handles regular bar.sync, bar.arrive, etc.)
 // Stage 4: Translate bar.sync to bar.warp.sync for single-warp CTAs
+//
+// TRANSLATION LOGIC (per architecture doc sm90_100.md:294):
+//   - bar.sync is a CTA-LEVEL barrier that forces reconvergence of threads from different warps
+//   - "bar.sync 0 — Block 级全同步。未汇合的 Warp 会在此被强制汇合"
+//   - For multi-warp CTAs: MUST keep as S_BAR (bar.sync) because CTA-level forced reconvergence
+//     behavior is required - warps that haven't reconverged will be forced to at this barrier
+//   - For single-warp CTAs: OPTIMIZATION - translate to bar.warp.sync because there's only one warp
+//     so CTA-level and warp-level semantics are equivalent, and bar.warp.sync is more efficient
+//
+// IMPORTANT: bar.warp.sync is an INTERNAL instruction (not real PTX ISA) - used for optimization
+// when we can prove that CTA-level and warp-level barrier behavior are semantically equivalent.
 #define VISITOR_BARRIER(openum, opstr, opname, opcount) \
 std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstContext *ctx) { \
     if (!currentKernel) return nullptr; \

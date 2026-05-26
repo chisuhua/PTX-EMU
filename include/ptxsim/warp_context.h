@@ -200,6 +200,12 @@ public:
         return warp_state.wbars[0];
     }
 
+    // 【BARRIER RECONVERGENCE】Force all non-exited threads to reconverge at barrier_pc + 1.
+    // This matches hardware behavior per sm90_100.md:294: "bar.sync — 未汇合的 Warp 会在此被强制汇合"
+    // For multi-warp CTAs, threads may arrive at barrier in different reconvergence states.
+    // This method forces them all to continue from the instruction after the barrier.
+    void force_reconvergence_at_barrier(int barrier_pc);
+
 private:
     std::vector<std::unique_ptr<ThreadContext>>
         threads;                                // warp 中的线程 unique_ptr

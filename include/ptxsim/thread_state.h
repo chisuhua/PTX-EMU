@@ -39,7 +39,8 @@ struct ThreadState {
     bool is_exited = false;   // 是否已退出 (permanent)
     
     // Barrier 相关
-    bool is_blocked = false;  // 是否在 barrier 等待
+    bool is_blocked = false;                          // 是否在 barrier 等待
+    int blocked_cycles_remaining = 0;                // 阻塞剩余周期数 (用于长延迟 barrier)
     
     // 执行掩码 (用于快速查询)
     bool is_active = true;    // 是否活跃 (可调度)
@@ -51,6 +52,7 @@ struct ThreadState {
         status = ThreadStatus::Active;
         is_exited = false;
         is_blocked = false;
+        blocked_cycles_remaining = 0;
         is_active = true;
     }
     
