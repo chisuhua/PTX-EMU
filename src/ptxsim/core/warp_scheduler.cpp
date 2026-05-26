@@ -1,5 +1,8 @@
 #include "ptxsim/warp_scheduler.h"
+#include "ptxsim/bsync_state.h"
 #include <algorithm>
+
+using namespace ptxsim;
 
 void RoundRobinWarpScheduler::add_warp(WarpContext* warp) {
     warps.push_back(warp);
@@ -96,4 +99,75 @@ bool GreedyWarpScheduler::all_warps_finished() const {
         }
     }
     return true;
+}
+
+void RoundRobinWarpScheduler::set_execution_mode(DivergenceExecutionMode mode) {
+    execution_mode_ = mode;
+}
+
+DivergenceExecutionMode RoundRobinWarpScheduler::get_execution_mode() const {
+    return execution_mode_;
+}
+
+bool RoundRobinWarpScheduler::schedule_with_migration(WarpContext* warp) {
+    if (!warp || warps.empty()) {
+        return false;
+    }
+
+    if (execution_mode_ == DivergenceExecutionMode::Sequential) {
+        return false;
+    }
+
+    size_t start_idx = current_warp_idx;
+    do {
+        WarpContext* w = warps[current_warp_idx];
+        if (w && w != warp && w->is_active() && !w->is_finished() &&
+            w->is_warp_ready_to_fetch()) {
+            if (execution_mode_ == DivergenceExecutionMode::Interleaved) {
+                if (rand() % 2 == 0) {
+                    current_warp_idx = (current_warp_idx + 1) % warps.size();
+                    return true;
+                }
+            } else if (execution_mode_ == DivergenceExecutionMode::ShortestFirst) {
+                current_warp_idx = (current_warp_idx + 1) % warps.size();
+                return true;
+            }
+        }
+        current_warp_idx = (current_warp_idx + 1) % warps.size();
+    } while (current_warp_idx != start_idx);
+
+    return false;
+}
+
+void GreedyWarpScheduler::set_execution_mode(DivergenceExecutionMode mode) {
+    execution_mode_ = mode;
+}
+
+DivergenceExecutionMode GreedyWarpScheduler::get_execution_mode() const {
+    return execution_mode_;
+}
+
+bool GreedyWarpScheduler::schedule_with_migration(WarpContext* warp) {
+    if (!warp || warps.empty()) {
+        return false;
+    }
+
+    if (execution_mode_ == DivergenceExecutionMode::Sequential) {
+        return false;
+    }
+
+    for (auto* w : warps) {
+        if (w && w != warp && w->is_active() && !w->is_finished() &&
+            w->is_warp_ready_to_fetch()) {
+            if (execution_mode_ == DivergenceExecutionMode::Interleaved) {
+                if (rand() % 2 == 0) {
+                    return true;
+                }
+            } else if (execution_mode_ == DivergenceExecutionMode::ShortestFirst) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }

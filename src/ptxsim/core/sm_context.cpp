@@ -291,6 +291,17 @@ EXE_STATE SMContext::exe_once() {
 
         // 执行完后取消warp的被调度状态
         next_warp->set_scheduled(false);
+        
+        // Decrement blocked_cycles_remaining if thread is blocked
+        auto& ws = next_warp->get_warp_state();
+        for (auto& thread : ws.threads) {
+            if (thread.is_blocked && thread.blocked_cycles_remaining > 0) {
+                thread.blocked_cycles_remaining--;
+                if (thread.blocked_cycles_remaining == 0) {
+                    thread.is_blocked = false;
+                }
+            }
+        }
     }
 
     // 更新状态
@@ -635,7 +646,7 @@ void SMContext::print_warp_status(const WarpContext *warp,
         }
     }
 
-    // 为每个不同的PC值打印一行信息
+        // 为每个不同的PC值打印一行信息
     for (const auto &[pc, lanes] : pc_to_lanes) {
         std::string lane_states = "";
         for (int lane = 0; lane < WarpContext::WARP_SIZE; ++lane) {
@@ -650,4 +661,47 @@ void SMContext::print_warp_status(const WarpContext *warp,
         PTX_DEBUG_EMU("  PC[0x%x]: %s | Lane States: %s", pc,
                       pc_to_instruction[pc].c_str(), lane_states.c_str());
     }
+}
+
+void SMContext::set_divergence_execution_mode(ptxsim::DivergenceExecutionMode mode) {
+    divergence_mode_ = mode;
+    PTX_DEBUG_EMU("SM %d: Set divergence execution mode to %s",
+                   sm_id_, ptxsim::divergence_execution_mode_to_string(mode));
+}
+
+ptxsim::DivergenceExecutionMode SMContext::get_divergence_execution_mode() const {
+    return divergence_mode_;
+}
+
+int SMContext::select_next_group(const std::vector<int>& active_lanes) {
+    // With multiple active paths, select based on divergence mode
+    if (active_lanes.size() <= 1) {
+        return 0; // No divergence, use first group
+    }
+
+    switch (divergence_mode_) {
+        case ptxsim::DivergenceExecutionMode::Sequential:
+            // Execute groups in order - just return first for now
+            return 0;
+
+        case ptxsim::DivergenceExecutionMode::Interleaved:
+            // Use round-robin or similar to switch dynamically
+            return 0; // Could implement round-robin counter per warp
+
+        case ptxsim::DivergenceExecutionMode::ShortestFirst:
+            // Estimate path length and execute shortest first
+            // For now, fall through to sequential
+            return 0;
+
+        default:
+            return 0;
+    }
+}
+
+void SMContext::suspend_and_switch(int current_group, int next_group) {
+    // Suspend current group and switch to next_group
+    // This is a placeholder for future blocking implementation (Phase 3)
+    // For now, we just proceed with the next group selection
+    PTX_DEBUG_EMU("SM %d: Suspend group %d, switch to group %d",
+                   sm_id_, current_group, next_group);
 }

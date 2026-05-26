@@ -101,6 +101,9 @@ public:
     void print_warp_status(const WarpContext *warp,
                            bool print_sm_id = true) const;
 
+    int select_next_group(const std::vector<int>& active_lanes);
+    void suspend_and_switch(int current_group, int next_group);
+
 private:
     // 初始化warp
     void init_warps_for_block(CTAContext *block);
@@ -166,6 +169,15 @@ private:
 
     // BsyncManager for warp barrier tracking
     ptxsim::BsyncManager bsync_manager_;
+    friend class BarWarpSyncHandler;
+
+    // Divergence execution mode
+    ptxsim::DivergenceExecutionMode divergence_mode_ = ptxsim::DivergenceExecutionMode::Sequential;
+
+public:
+    // Divergence execution mode methods
+    void set_divergence_execution_mode(ptxsim::DivergenceExecutionMode mode);
+    ptxsim::DivergenceExecutionMode get_divergence_execution_mode() const;
 };
 
 #endif // SM_CONTEXT_H

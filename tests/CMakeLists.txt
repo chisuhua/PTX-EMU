@@ -659,6 +659,11 @@ add_catch_test(test_simt_integration
 )
 set_tests_properties(test_simt_integration PROPERTIES LABELS "integration;simt")
 
+add_catch_test(test_shortest_path_first
+    test_shortest_path_first.cpp
+)
+set_tests_properties(test_shortest_path_first PROPERTIES LABELS "shortest_first;divergence")
+
 # Added 2026-05-11: PTX Lane Verification Unit Tests
 add_catch_test(test_ptx_lane_verification
     test_ptx_lane_verification.cpp

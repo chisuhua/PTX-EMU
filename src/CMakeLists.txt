@@ -74,6 +74,7 @@ add_library(ptxsim SHARED
     ptxsim/core/sm_context.cpp
     ptxsim/core/gpu_context.cpp
     ptxsim/core/active_warp_manager.cpp
+    ptxsim/core/bsync_state.cpp
     register/condition_code_register.cpp
     register/register_bank_manager.cpp
     memory/hardware_memory_manager.cpp  # 添加新的硬件内存管理器
