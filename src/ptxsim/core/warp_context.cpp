@@ -352,14 +352,16 @@ std::vector<int> WarpContext::get_unique_pcs() const {
 
 void WarpContext::force_reconvergence_at_barrier(int barrier_pc) {
     uint32_t active_lanes = 0;
-    int next_pc = barrier_pc + 1;
 
     for (int i = 0; i < WARP_SIZE; i++) {
         if (!warp_state.threads[i].is_active || warp_state.threads[i].is_exited) {
             continue;
         }
 
-        advance_thread_pc(i, next_pc);
+        int current_pc = warp_state.threads[i].pc;
+        if (current_pc < barrier_pc) {
+            advance_thread_pc(i, barrier_pc);
+        }
         warp_state.threads[i].is_blocked = false;
         warp_state.threads[i].status = ptxsim::ThreadStatus::Active;
 

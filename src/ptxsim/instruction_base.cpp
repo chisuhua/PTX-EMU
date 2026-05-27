@@ -110,6 +110,8 @@ void PipelineHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
         context->warp_context_->get_warp_state().threads[context->lane_id_].is_blocked;
     if (!is_blocked) {
         pc_overridden_ = false;
+    } else {
+        pc_overridden_ = true;
     }
 }
 

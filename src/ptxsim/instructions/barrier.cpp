@@ -129,6 +129,8 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
     uint32_t current_pc = warp_state.threads[lane_id].pc;
 
     uint32_t dynamic_mask = 0;
+    bool force_reconvergence_done = false;
+
     if (warp_state.current_wbar_id < 0) {
         for (int i = 0; i < 32; i++) {
             if (!warp_state.threads[i].is_active) continue;
@@ -138,6 +140,22 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
                 dynamic_mask |= (1u << i);
             }
         }
+    }
+
+    auto unique_pcs = warp_ctx->get_unique_pcs();
+    if (unique_pcs.size() > 1 && warp_state.current_wbar_id < 0) {
+        warp_ctx->force_reconvergence_at_barrier(static_cast<int>(current_pc));
+
+        warp_state.current_wbar_id = 0;
+        ptxsim::Wbar& init_wbar = warp_state.wbars[0];
+        init_wbar.init(0xFFFFFFFF, reconvergence_pc);
+
+        set_pc_overridden(true);
+        return;
+    }
+
+    if (force_reconvergence_done) {
+        return;
     }
 
     int wbar_id = 0;
@@ -181,11 +199,7 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
         for (int i = 0; i < WarpContext::WARP_SIZE; ++i) {
             if ((wbar.arrived_mask & (1u << i)) && warp_state.threads[i].is_active) {
                 uint32_t old_pc = warp_ctx->get_thread(i)->get_pc();
-                if (i == context->lane_id_) {
-                    context->set_pc(reconvergence_pc);
-                } else {
-                    warp_ctx->advance_thread_pc(i, reconvergence_pc);
-                }
+                warp_ctx->advance_thread_pc(i, reconvergence_pc);
                 warp_state.threads[i].is_blocked = false;
                 warp_state.threads[i].status = ptxsim::ThreadStatus::Active;
                 PTX_INFO_EMU("  Released lane=%d: PC=%u -> %d", i, old_pc, reconvergence_pc);
@@ -195,6 +209,7 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
         warp_ctx->set_active_mask(wbar.arrived_mask);
 
         warp_state.current_wbar_id = -1;
+        set_pc_overridden(true);
     } else {
         warp_state.threads[lane_id].is_blocked = true;
         warp_state.threads[lane_id].status = ptxsim::ThreadStatus::Blocked;
