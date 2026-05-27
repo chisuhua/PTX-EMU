@@ -164,13 +164,7 @@ __global__ void divergence_barrier_sync(int* buf) {
         //buf[tid + 16] = tid + 200;
         for (int i = 1; i <= lane - 15; i++) value *= i;
     }
+    shared_data[lane] = value;
     __syncthreads();
-    buf[tid] = value;
-    // 所有lane同步后再次分歧
-    /*
-    if (tid < 8)
-        buf[tid] = 999;
-    else if (tid >= 24)
-        buf[tid + 16] = 888;
-        */
+    buf[32-lane] = shared_data[lane];
 }

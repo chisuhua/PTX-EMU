@@ -132,8 +132,6 @@ add_catch_test(
     test_parse_immediate.cpp
 )
 
-add_catch_test(test_multiwarp_barrier_divergence test_multiwarp_barrier_divergence.cpp)
-
 add_catch_test(test_memory_bounds test_memory_bounds.cpp)
 add_catch_test(test_warp_trace_formatter test_warp_trace_formatter.cpp)
 
@@ -267,6 +265,12 @@ add_catch_test(test_divergence
     divergence/divergence_kernels.cu
 )
 set_tests_properties(test_divergence PROPERTIES LABELS "divergence;warp")
+
+# Divergence with barrier sync - lane data exchange
+add_catch_test(test_divergence_sync
+    divergence/test_divergence_sync.cu
+)
+set_tests_properties(test_divergence_sync PROPERTIES LABELS "divergence;barrier_sync")
 
 
 # 创建方便的自定义目标来运行不同组的测试
