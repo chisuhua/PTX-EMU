@@ -489,6 +489,12 @@ add_catch_test(test_divergence_sync_isolated
     test_divergence_sync_isolated.cpp
 )
 
+# Added 2026-05-27: Barrier divergence scheduling TDD Red-phase test
+# Bug: sync_to_warp_state() overwrites is_blocked, causing scheduler to pick post-barrier path
+add_catch_test(test_barrier_divergence_scheduling
+    test_barrier_divergence_scheduling.cpp
+)
+
 # Added 2026-05-09: 对标 test_divergence_sync_standalone.cu 的 execute_warp_instruction 驱动测试
 # ADR-0013 合规: 通过 ptxir::factory 构造 StatementContext
 add_catch_test(test_divergence_sync_standalone_integrated

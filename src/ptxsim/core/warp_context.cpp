@@ -351,28 +351,11 @@ std::vector<int> WarpContext::get_unique_pcs() const {
 }
 
 void WarpContext::force_reconvergence_at_barrier(int barrier_pc) {
-    uint32_t active_lanes = 0;
-
-    for (int i = 0; i < WARP_SIZE; i++) {
-        if (!warp_state.threads[i].is_active || warp_state.threads[i].is_exited) {
-            continue;
-        }
-
-        int current_pc = warp_state.threads[i].pc;
-        if (current_pc < barrier_pc) {
-            advance_thread_pc(i, barrier_pc);
-        }
-        warp_state.threads[i].is_blocked = false;
-        warp_state.threads[i].status = ptxsim::ThreadStatus::Active;
-
-        active_lanes |= (1u << i);
-    }
-
-    warp_state.exec_mask = active_lanes;
-
-    simt_stack.clear();
-
-    warp_state.current_wbar_id = -1;
-
-    update_active_mask();
+    // 不主动推进线程PC —— 让调度器自然选择非阻塞的PC执行
+    // 屏障处理器会在 divergence 路径中阻塞当前线程（set is_blocked=true），
+    // 调度器随后会跳过有阻塞线程的PC组，选择其他PC执行。
+    // 当所有线程都到达屏障后，wbar 完成并释放所有线程。
+    // 
+    // 注意：不能推进线程PC，否则会跳过 shared memory store 等关键指令。
+    // 注释掉的代码（advance_thread_pc）曾导致 E2E 测试中共享内存数据丢失。
 }

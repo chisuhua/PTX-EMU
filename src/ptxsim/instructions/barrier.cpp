@@ -148,9 +148,38 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
 
         warp_state.current_wbar_id = 0;
         ptxsim::Wbar& init_wbar = warp_state.wbars[0];
-        init_wbar.init(0xFFFFFFFF, reconvergence_pc);
 
-        set_pc_overridden(true);
+        SMContext* sm_ctx = warp_ctx->get_sm_context();
+
+        // 在分歧路径中，部分线程不在 barrier PC，动态掩码不完整。
+        // 应使用 PTX 指令的 static_mask 作为参与掩码，确保所有指定线程被计入。
+        uint32_t participation_mask = static_mask;
+
+        init_wbar.init(participation_mask, reconvergence_pc);
+        init_wbar.arrive(lane_id);
+
+        if (init_wbar.is_complete()) {
+            if (sm_ctx) {
+                sm_ctx->bsync_manager_.release(0);
+            }
+            warp_ctx->set_exec_mask(init_wbar.arrived_mask);
+            for (int i = 0; i < WarpContext::WARP_SIZE; ++i) {
+                if ((init_wbar.arrived_mask & (1u << i)) && warp_state.threads[i].is_active) {
+                    warp_ctx->advance_thread_pc(i, reconvergence_pc);
+                    warp_state.threads[i].is_blocked = false;
+                    warp_state.threads[i].status = ptxsim::ThreadStatus::Active;
+                }
+            }
+            warp_ctx->set_active_mask(init_wbar.arrived_mask);
+            warp_state.current_wbar_id = -1;
+            set_pc_overridden(true);
+        } else {
+            warp_state.threads[lane_id].is_blocked = true;
+            warp_state.threads[lane_id].status = ptxsim::ThreadStatus::Blocked;
+            set_pc_overridden(true);
+            PTX_DEBUG_THREAD("Lane %d blocked at forced reconvergence barrier (arrived=%d/%d)",
+                            lane_id, init_wbar.count_arrived(), init_wbar.count_participants());
+        }
         return;
     }
 

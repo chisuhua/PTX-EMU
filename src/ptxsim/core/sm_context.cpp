@@ -541,6 +541,15 @@ bool SMContext::synchronize_barrier(int barId, ThreadContext *thread) {
         for (auto waiting_thread : barrier_waiting_threads[barId]) {
             waiting_thread->set_state(RUN);
             waiting_thread->set_next_pc(waiting_thread->get_pc() + 1);
+            // 清除 warp_state 中的 blocked 状态，使 sync_to_warp_state 能正常转换到 Active
+            WarpContext* wc = waiting_thread->get_warp_context();
+            if (wc) {
+                int lid = waiting_thread->lane_id_;
+                if (lid >= 0 && lid < 32) {
+                    wc->get_warp_state().threads[lid].is_blocked = false;
+                    wc->get_warp_state().threads[lid].status = ptxsim::ThreadStatus::Active;
+                }
+            }
             waiting_thread->sync_to_warp_state();
         }
 
@@ -555,6 +564,15 @@ bool SMContext::synchronize_barrier(int barId, ThreadContext *thread) {
     if (barrier_thread_counts.find(barId) == barrier_thread_counts.end()) {
         thread->set_state(RUN);
         thread->set_next_pc(thread->get_pc() + 1);
+        // 同样需要清除 blocked 状态
+        WarpContext* wc = thread->get_warp_context();
+        if (wc) {
+            int lid = thread->lane_id_;
+            if (lid >= 0 && lid < 32) {
+                wc->get_warp_state().threads[lid].is_blocked = false;
+                wc->get_warp_state().threads[lid].status = ptxsim::ThreadStatus::Active;
+            }
+        }
         thread->sync_to_warp_state();
         return true;
     }

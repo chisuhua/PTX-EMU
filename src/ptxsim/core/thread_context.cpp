@@ -737,9 +737,21 @@ void ThreadContext::sync_to_warp_state() {
 
     ptxsim::ThreadState& thread_state = warp_context_->get_warp_state().threads[lane_id];
 
+    // 如果线程已经在 barrier 等待（is_blocked=true 或 status=Blocked），
+    // 则只同步 next_pc，不覆盖 blocked 状态。
+    // 注意：如果 barrier 主动通过 set_state(RUN) + 清除 is_blocked 来释放线程，
+    // 则应该在调用本函数之前清除 is_blocked（参见 sm_context.cpp synchronize_barrier）。
+    bool already_blocked = (thread_state.is_blocked ||
+                            thread_state.status == ptxsim::ThreadStatus::Blocked);
+
     // 屏障完成处理会通过 warp_ctx->advance_thread_pc() 或 force_set_pc() 直接更新 warp_state
     // 此处只同步 ThreadContext 自己维护的 next_pc 状态
     thread_state.next_pc = get_next_pc();
+
+    // 如果已经 blocked，只同步 next_pc，不修改状态
+    if (already_blocked) {
+        return;
+    }
 
     // 同步状态
     switch (state) {
