@@ -108,6 +108,9 @@ public:
     // Returns true if an entry was popped, false otherwise.
     bool check_reconvergence();
 
+    bool check_and_block_at_reconvergence_point(int target_pc,
+                                               std::vector<int>& blocked_lanes);
+
     // 更新活跃掩码（例如，遇到分支指令时）
     void update_active_mask();
 

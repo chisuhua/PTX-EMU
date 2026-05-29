@@ -110,6 +110,15 @@ bool WarpContext::check_reconvergence() {
     simt_stack.check_reconvergence(warp_state.threads);
 
     if (simt_stack.depth() < depth_before) {
+        int reconv_pc = popped_entry.reconvergence_pc;
+        for (int i = 0; i < WARP_SIZE; i++) {
+            if (!warp_state.threads[i].is_exited &&
+                (int)warp_state.threads[i].pc == reconv_pc) {
+                warp_state.threads[i].is_blocked = false;
+                warp_state.threads[i].is_active = true;
+            }
+        }
+        update_active_mask();
         if (simt_stack.empty()) {
             warp_state.exec_mask = 0xFFFFFFFF;
         } else {
@@ -124,6 +133,40 @@ bool WarpContext::check_reconvergence() {
         return true;
     }
     return false;
+}
+
+bool WarpContext::check_and_block_at_reconvergence_point(int target_pc,
+                                                         std::vector<int>& blocked_lanes) {
+    blocked_lanes.clear();
+    if (simt_stack.empty()) return false;
+
+    const ptxsim::SIMTStackEntry& top = simt_stack.top();
+    int reconv_pc = top.reconvergence_pc;
+    if (target_pc != reconv_pc) return false;
+
+    int lanes_not_at_reconv = 0;
+    int lanes_at_reconv = 0;
+    for (int i = 0; i < WARP_SIZE; i++) {
+        if (!(top.active_mask & (1u << i))) continue;
+        if (warp_state.threads[i].is_exited) continue;
+        if ((int)warp_state.threads[i].pc == reconv_pc) {
+            lanes_at_reconv++;
+        } else {
+            lanes_not_at_reconv++;
+        }
+    }
+
+    if (lanes_not_at_reconv == 0) return false;
+
+    for (int i = 0; i < WARP_SIZE; i++) {
+        if (!warp_state.threads[i].is_exited &&
+            (int)warp_state.threads[i].pc == reconv_pc &&
+            !warp_state.threads[i].is_blocked) {
+            warp_state.threads[i].is_blocked = true;
+            blocked_lanes.push_back(i);
+        }
+    }
+    return !blocked_lanes.empty();
 }
 
 WarpContext::WarpContext()
@@ -169,6 +212,11 @@ void WarpContext::add_thread(std::unique_ptr<ThreadContext> thread,
 }
 
 void WarpContext::execute_warp_instruction(StatementContext &stmt, int target_pc) {
+    std::vector<int> blocked_lanes;
+    if (check_and_block_at_reconvergence_point(target_pc, blocked_lanes)) {
+        update_active_mask();
+        return;
+    }
     for (int i = 0; i < WARP_SIZE; i++) {
         if (i >= threads.size() || threads[i] == nullptr) {
             continue;
