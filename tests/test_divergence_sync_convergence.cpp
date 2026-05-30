@@ -51,7 +51,13 @@ static constexpr int      NUM_STMTS     = 35;
 // ============================================================================
 static void init_factory() {
     static bool done = false;
-    if (!done) { InstructionFactory::initialize(); done = true; }
+    if (!done) {
+        InstructionFactory::initialize();
+        ptxsim::DebugConfig::get().set_trace_simt_stack_enabled(true);
+        ptxsim::DebugConfig::get().set_trace_divergence_enabled(true);
+        ptxsim::LoggerConfig::get().set_component_level("emu", ptxsim::log_level::debug);
+        done = true;
+    }
 }
 
 static StatementContext nop() {
