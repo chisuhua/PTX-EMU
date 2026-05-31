@@ -151,6 +151,14 @@ void DebugConfig::load_from_ini_section(
         bool trace_divergence = (trace_divergence_str == "true" || trace_divergence_str == "1");
         set_trace_divergence_enabled(trace_divergence);
     }
+
+    // 设置汇聚点跟踪
+    std::string trace_convergence_str;
+    inipp::get_value(debugger_section, "trace_convergence", trace_convergence_str);
+    if (!trace_convergence_str.empty()) {
+        bool trace_convergence = (trace_convergence_str == "true" || trace_convergence_str == "1");
+        set_trace_convergence_enabled(trace_convergence);
+    }
 }
 
 } // namespace ptxsim

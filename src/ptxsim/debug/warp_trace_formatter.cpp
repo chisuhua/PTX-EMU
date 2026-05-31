@@ -122,6 +122,46 @@ std::string WarpTraceFormatter::mask_to_ranges(uint32_t mask) {
   return oss.str();
 }
 
+std::string WarpTraceFormatter::format_convergence_remaining(
+    int reconvergence_pc,
+    const std::map<int, std::vector<int>>& pc_to_lanes,
+    int next_pc,
+    uint32_t next_mask) {
+  if (pc_to_lanes.empty()) {
+    return "";
+  }
+  std::ostringstream oss;
+  oss << "         -> convergence point: blocking at reconvergence_pc="
+      << reconvergence_pc << ": " << pc_to_lanes.size() << " path(s) pending";
+  for (const auto& [pc, lanes] : pc_to_lanes) {
+    uint32_t mask = 0;
+    for (int lane : lanes) {
+      if (lane >= 0 && lane < 32) {
+        mask |= (1u << lane);
+      }
+    }
+    oss << "\n           pending path: PC=" << pc << " ["
+        << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << mask
+        << std::dec << "]";
+  }
+  oss << "\n           next scheduled: PC=" << next_pc << " ["
+      << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << next_mask
+      << std::dec << "]";
+  return oss.str();
+}
+
+std::string WarpTraceFormatter::format_reconvergence(int reconvergence_pc,
+                                                      int pc,
+                                                      uint32_t merged_mask) {
+  std::ostringstream oss;
+  oss << "         -> reconvergence: all paths arrived at reconvergence_pc="
+      << reconvergence_pc << ", merging";
+  oss << "\n           merged path: PC=" << pc << " ["
+      << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << merged_mask
+      << std::dec << "]";
+  return oss.str();
+}
+
 std::string WarpTraceFormatter::mask_to_hex(uint32_t mask) {
   std::ostringstream oss;
   oss << std::hex << std::uppercase << std::setfill('0')

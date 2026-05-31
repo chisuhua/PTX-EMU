@@ -117,16 +117,18 @@ void CFGBuilder::buildEdges(CFG& cfg,
         if (stmt.type == S_BRA) {
             const auto& branch = std::get<BranchInstr>(stmt.data);
             
-            // 1. Add fall-through edge
-            for (auto& other : cfg.blocks) {
-                if (other.start_pc == block.end_pc) {
-                    bool found = false;
-                    for (int succ : block.successors) {
-                        if (succ == other.id) { found = true; break; }
-                    }
-                    if (!found) {
-                        block.successors.push_back(other.id);
-                        other.predecessors.push_back(block.id);
+            // 1. Add fall-through edge (仅对条件分支添加，无条件分支没有 fallthrough)
+            if (!branch.predicate.empty()) {
+                for (auto& other : cfg.blocks) {
+                    if (other.start_pc == block.end_pc) {
+                        bool found = false;
+                        for (int succ : block.successors) {
+                            if (succ == other.id) { found = true; break; }
+                        }
+                        if (!found) {
+                            block.successors.push_back(other.id);
+                            other.predecessors.push_back(block.id);
+                        }
                     }
                 }
             }
@@ -152,6 +154,15 @@ void CFGBuilder::buildEdges(CFG& cfg,
                     }
                 }
             }
+        } else if (stmt.type == S_RET || stmt.type == S_EXIT) {
+            // 返回/退出指令：连接到合成出口块
+            for (auto& other : cfg.blocks) {
+                if (other.is_exit) {
+                    block.successors.push_back(other.id);
+                    other.predecessors.push_back(block.id);
+                    break;
+                }
+            }
         } else {
             for (auto& other : cfg.blocks) {
                 if (other.start_pc == block.end_pc) {
@@ -171,11 +182,16 @@ CFG CFGBuilder::build(
     CFG cfg;
     cfg.blocks = identifyBasicBlocks(statements, label2pc);
     cfg.entry_block_id = 0;
-    cfg.exit_block_id = cfg.blocks.empty() ? 0 : cfg.blocks.size() - 1;
     
-    if (!cfg.blocks.empty()) {
-        cfg.blocks.back().is_exit = true;
-    }
+    // 预先添加合成出口块，让 buildEdges 知道出口位置
+    BasicBlock exit_block;
+    exit_block.id = cfg.blocks.size();
+    exit_block.start_pc = statements.size();
+    exit_block.end_pc = statements.size() + 1;
+    exit_block.is_exit = true;
+    exit_block.is_branch_target = false;
+    cfg.blocks.push_back(exit_block);
+    cfg.exit_block_id = exit_block.id;
     
     buildEdges(cfg, label2pc, statements);
     

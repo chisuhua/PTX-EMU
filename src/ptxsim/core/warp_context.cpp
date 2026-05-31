@@ -215,6 +215,44 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt, int target_pc
     std::vector<int> blocked_lanes;
     if (check_and_block_at_reconvergence_point(target_pc, blocked_lanes)) {
         update_active_mask();
+        // 汇聚点调试输出：有线程到达汇聚点但仍有分歧路径未到达
+        if (ptxsim::DebugConfig::get().is_trace_convergence_enabled() && sm_context_) {
+            auto current_lanes = get_lanes_by_pc();
+            if (current_lanes.size() > 1) {
+                // 找出下一条非阻塞的调度路径（跳过汇聚点自身的 PC 组）
+                int next_pc = -1;
+                uint32_t next_mask = 0;
+                for (const auto& [candidate_pc, candidate_lanes] : current_lanes) {
+                    if (candidate_pc == target_pc) continue; // 跳过汇聚点（已阻塞）
+                    bool has_non_blocked = false;
+                    for (int lane : candidate_lanes) {
+                        if (!warp_state.threads[lane].is_blocked) {
+                            has_non_blocked = true;
+                            break;
+                        }
+                    }
+                    if (has_non_blocked) {
+                        next_pc = candidate_pc;
+                        for (int lane : candidate_lanes) {
+                            if (!warp_state.threads[lane].is_blocked)
+                                next_mask |= (1u << lane);
+                        }
+                        break;
+                    }
+                }
+                // 构建剩余分歧路径（排除汇聚点 PC 组）
+                std::map<int, std::vector<int>> remaining_lanes;
+                for (const auto& [pc_val, lane_list] : current_lanes) {
+                    if (pc_val != target_pc) {
+                        remaining_lanes[pc_val] = lane_list;
+                    }
+                }
+                if (!remaining_lanes.empty() && next_pc >= 0) {
+                    PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_convergence_remaining(
+                        target_pc, remaining_lanes, next_pc, next_mask).c_str());
+                }
+            }
+        }
         return;
     }
     for (int i = 0; i < WARP_SIZE; i++) {

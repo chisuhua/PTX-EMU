@@ -90,6 +90,38 @@ public:
   static std::string format_divergence(
       const std::map<int, std::vector<int>>& pc_to_lanes);
 
+  /**
+   * @brief 格式化汇聚点未完全收敛时的信息（匹配测试输出风格）
+   *
+   * @param reconvergence_pc 汇聚点 PC 值
+   * @param pc_to_lanes 当前所有活跃线程按 PC 分组
+   * @param next_pc 下一条被调度的执行路径 PC
+   * @param next_mask 下一条被调度的执行路径 lane mask
+   * @return 格式化后的字符串，例如：
+   *         "-> convergence point: blocking at reconvergence_pc=10: 2 path(s) pending\n"
+   *         "  pending path: PC=5 [00000001]\n"
+   *         "  pending path: PC=8 [FFFFFFFE]\n"
+   *         "  next scheduled: PC=8 [FFFFFFFE]"
+   */
+  static std::string format_convergence_remaining(
+      int reconvergence_pc,
+      const std::map<int, std::vector<int>>& pc_to_lanes,
+      int next_pc,
+      uint32_t next_mask);
+
+  /**
+   * @brief 格式化所有路径到达汇聚点（reconvergence）
+   *
+   * @param reconvergence_pc 汇聚点 PC 值
+   * @param pc 合并后的执行 PC
+   * @param merged_mask 合并后的 lane mask
+   * @return 格式化后的字符串，例如：
+   *         "-> reconvergence: all paths arrived at reconvergence_pc=10, merging\n"
+   *         "  merged path: PC=10 [FFFFFFFF]"
+   */
+  static std::string format_reconvergence(int reconvergence_pc, int pc,
+                                          uint32_t merged_mask);
+
 private:
   /**
    * @brief 将掩码转换为 "threadX~Y" 范围列表
