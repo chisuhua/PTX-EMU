@@ -55,6 +55,7 @@ static void init_factory() {
         InstructionFactory::initialize();
         ptxsim::DebugConfig::get().set_trace_simt_stack_enabled(true);
         ptxsim::DebugConfig::get().set_trace_divergence_enabled(true);
+        ptxsim::DebugConfig::get().set_trace_convergence_enabled(true);
         ptxsim::LoggerConfig::get().set_component_level("emu", ptxsim::log_level::debug);
         done = true;
     }

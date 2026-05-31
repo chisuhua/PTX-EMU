@@ -214,10 +214,12 @@ void WarpContext::add_thread(std::unique_ptr<ThreadContext> thread,
 void WarpContext::execute_warp_instruction(StatementContext &stmt, int target_pc) {
     std::vector<int> blocked_lanes;
     if (check_and_block_at_reconvergence_point(target_pc, blocked_lanes)) {
+        // 在 update_active_mask 之前获取 lanes，否则被阻塞的线程会被过滤掉
+        auto current_lanes_before_block = get_lanes_by_pc();
         update_active_mask();
         // 汇聚点调试输出：有线程到达汇聚点但仍有分歧路径未到达
         if (ptxsim::DebugConfig::get().is_trace_convergence_enabled() && sm_context_) {
-            auto current_lanes = get_lanes_by_pc();
+            auto current_lanes = current_lanes_before_block;
             if (current_lanes.size() > 1) {
                 // 找出下一条非阻塞的调度路径（跳过汇聚点自身的 PC 组）
                 int next_pc = -1;
