@@ -31,7 +31,6 @@
 #include "ptx_ir/statement_factory.h"
 #include "memory/resource_manager.h"
 #include "register/register_bank_manager.h"
-#include "ptxsim/warp_trace_formatter.h"
 #include <vector>
 #include <memory>
 #include <map>
@@ -135,20 +134,6 @@ static int step_warp(WarpContext *w, std::vector<StatementContext> &v) {
         for (int l : lanes) { if (ws.threads[l].is_blocked) { ok = false; break; } }
         if (ok) { pick = pc; break; }
     }
-    // 调试输出：指令 + divergence 分组
-    static uint64_t cycle = 0; cycle++;
-    uint32_t current_mask = 0;
-    for (int l = 0; l < 32; l++) {
-        if (ws.threads[l].is_active && !ws.threads[l].is_exited &&
-            (int)ws.threads[l].pc == pick)
-            current_mask |= (1u << l);
-    }
-    auto pc_map = w->get_lanes_by_pc();
-    PTX_DEBUG_EMU("Cycle %lu: SM 0 Warp %d PC=%d [%08X] %s",
-                  cycle, w->get_warp_id(), pick, current_mask,
-                  v[pick].instructionText.c_str());
-    if (pc_map.size() > 1)
-        PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_divergence(pc_map).c_str());
     w->execute_warp_instruction(v[pick], pick);
     while (w->check_reconvergence()) {}
     return pick;
