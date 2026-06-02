@@ -1,0 +1,191 @@
+# tests/integration/CMakeLists.txt
+# Type 2: 指令序列集成测试
+# 使用 StatementContext + execute_warp_instruction() 验证指令执行
+
+set(CMAKE_CUDA_RUNTIME_LIBRARY Shared)
+set(CMAKE_CUDA_PTX_COMPILATION ON)
+set(CMAKE_CUDA_SEPARABLE_COMPILATION OFF)
+set(CMAKE_CUDA_ARCHITECTURES "100")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -keep --no-compress")
+
+set(CATCH_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/tests)
+
+# ============================================================================
+# Barrier 集成测试
+# ============================================================================
+add_catch_test(integration_barrier_module
+    barrier/test_barrier_module_integrated.cpp
+)
+set_tests_properties(integration_barrier_module PROPERTIES LABELS "integration;barrier")
+
+add_catch_test(integration_barrier_scenarios
+    barrier/test_barrier_scenarios_integrated.cpp
+)
+set_tests_properties(integration_barrier_scenarios PROPERTIES LABELS "integration;barrier;regression")
+
+add_catch_test(integration_barrier_verification
+    barrier/test_barrier_verification_integrated.cpp
+)
+set_tests_properties(integration_barrier_verification PROPERTIES LABELS "integration;barrier")
+
+add_catch_test(integration_barrier_interaction
+    barrier/test_barrier_interaction_integrated.cpp
+)
+set_tests_properties(integration_barrier_interaction PROPERTIES LABELS "integration;barrier")
+
+add_catch_test(integration_barrier_divergence_scheduling
+    barrier/test_barrier_divergence_scheduling.cpp
+)
+set_tests_properties(integration_barrier_divergence_scheduling PROPERTIES LABELS "integration;barrier;divergence")
+
+add_catch_test(integration_warp_barrier
+    barrier/test_warp_barrier_integrated.cpp
+)
+set_tests_properties(integration_warp_barrier PROPERTIES LABELS "integration;wbar;regression")
+
+# ============================================================================
+# SIMT 集成测试
+# ============================================================================
+add_catch_test(integration_simt_stack_entry
+    simt/test_simt_stack_entry_integrated.cpp
+)
+set_tests_properties(integration_simt_stack_entry PROPERTIES LABELS "integration;simt_stack")
+
+add_catch_test(integration_simt
+    simt/test_simt_integration.cpp
+)
+set_tests_properties(integration_simt PROPERTIES LABELS "integration;simt")
+
+add_catch_test(integration_simt_thread_pc
+    simt/test_simt_thread_pc_integrated.cpp
+)
+set_tests_properties(integration_simt_thread_pc PROPERTIES LABELS "integration;thread_pc")
+
+add_catch_test(integration_handle_branch
+    simt/test_handle_branch_integration.cpp
+)
+set_tests_properties(integration_handle_branch PROPERTIES LABELS "integration;branch;simt_entry")
+
+add_catch_test(integration_barrier_simt
+    simt/test_barrier_simt_integration.cpp
+)
+set_tests_properties(integration_barrier_simt PROPERTIES LABELS "integration;barrier;simt")
+
+# ============================================================================
+# Divergence 集成测试
+# ============================================================================
+add_catch_test(integration_divergence_sync_isolated
+    divergence/test_divergence_sync_isolated.cpp
+)
+set_tests_properties(integration_divergence_sync_isolated PROPERTIES LABELS "integration;divergence;barrier_sync")
+
+add_catch_test(integration_divergence_sync_convergence
+    divergence/test_divergence_sync_convergence.cpp
+)
+set_tests_properties(integration_divergence_sync_convergence PROPERTIES LABELS "integration;divergence;convergence")
+
+add_catch_test(integration_divergence_sync_standalone
+    divergence/test_divergence_sync_standalone_integrated.cpp
+)
+set_tests_properties(integration_divergence_sync_standalone PROPERTIES LABELS "integration;divergence;barrier_sync")
+
+add_catch_test(integration_nested_divergence
+    divergence/test_nested_divergence.cpp
+)
+set_tests_properties(integration_nested_divergence PROPERTIES LABELS "integration;divergence;nested")
+
+add_catch_test(integration_shortest_path_first
+    divergence/test_shortest_path_first.cpp
+)
+set_tests_properties(integration_shortest_path_first PROPERTIES LABELS "integration;shortest_first;divergence")
+
+add_catch_test(integration_post_barrier_divergence
+    divergence/test_post_barrier_divergence.cpp
+)
+set_tests_properties(integration_post_barrier_divergence PROPERTIES LABELS "integration;divergence;barrier")
+
+# ============================================================================
+# Exec 集成测试
+# ============================================================================
+add_catch_test(integration_exec_h1_h4
+    exec/test_exec_integration_h1_h4.cpp
+)
+set_tests_properties(integration_exec_h1_h4 PROPERTIES LABELS "integration;exec")
+
+add_catch_test(integration_exec_layer_e1_e3
+    exec/test_exec_layer_e1_e3.cpp
+)
+set_tests_properties(integration_exec_layer_e1_e3 PROPERTIES LABELS "integration;exec")
+
+add_catch_test(integration_warp_state
+    exec/test_warp_state_integrated.cpp
+)
+set_tests_properties(integration_warp_state PROPERTIES LABELS "integration;warp_state")
+
+add_catch_test(integration_ptx_lane_verification
+    exec/test_ptx_lane_verification.cpp
+)
+target_compile_definitions(integration_ptx_lane_verification PRIVATE
+    TEST_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+)
+set_tests_properties(integration_ptx_lane_verification PROPERTIES LABELS "integration;ptx_lane_verification")
+
+# ============================================================================
+# PC 集成测试
+# ============================================================================
+add_catch_test(integration_pc_management
+    pc/test_pc_management_integrated.cpp
+)
+set_tests_properties(integration_pc_management PROPERTIES LABELS "integration;pc")
+
+# ============================================================================
+# Sync 集成测试
+# ============================================================================
+add_catch_test(integration_sync_mechanism
+    sync/test_sync_mechanism_integrated.cpp
+)
+set_tests_properties(integration_sync_mechanism PROPERTIES LABELS "integration;sync")
+
+add_catch_test(integration_syncthreads_full_pipeline
+    sync/test_syncthreads_full_pipeline.cpp
+)
+set_tests_properties(integration_syncthreads_full_pipeline PROPERTIES LABELS "integration;syncthreads")
+
+add_catch_test(integration_syncthreads_test3_repro
+    sync/test_syncthreads_test3_repro.cpp
+)
+set_tests_properties(integration_syncthreads_test3_repro PROPERTIES LABELS "integration;syncthreads;regression")
+
+add_catch_test(integration_syncthreads_direction
+    sync/test_syncthreads_direction.cpp
+)
+set_tests_properties(integration_syncthreads_direction PROPERTIES LABELS "integration;syncthreads")
+
+add_catch_test(integration_test3_reproduction
+    sync/test3_reproduction.cpp
+)
+set_tests_properties(integration_test3_reproduction PROPERTIES LABELS "integration;sync;deadlock;reproduction")
+
+# test_spinlock_simulation.cu has pre-existing build errors
+# Not built in main branch
+# add_catch_test(integration_spinlock_simulation
+#     sync/test_spinlock_simulation.cu
+# )
+
+# ============================================================================
+# CFG 集成测试
+# ============================================================================
+# test_cfg_analysis.cpp has pre-existing build errors (uses <catch2/catch.hpp>)
+# Not built in main branch
+# add_catch_test(integration_cfg_analysis
+#     cfg/test_cfg_analysis.cpp
+# )
+
+# ============================================================================
+# Register 集成测试
+# ============================================================================
+# test_register_bank_subwarp.cpp has pre-existing build errors
+# Not built in main branch
+# add_catch_test(integration_register_bank_subwarp
+#     register/test_register_bank_subwarp.cpp
+# )

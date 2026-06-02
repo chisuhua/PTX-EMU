@@ -1,4 +1,17 @@
 # tests/CMakeLists.txt
+# Top-level CMake configuration for PTX-EMU test suite
+#
+# 测试分类：
+#   unit/        - Type 1: 直接单元测试
+#   integration/ - Type 2: 指令序列集成测试
+#   e2e/         - Type 3: CUDA Kernel E2E 测试
+#   ptx/         - PTX 解析/语法专项测试
+#   divergence/  - Warp 分歧专项测试（已存在）
+#   instructions/ - 指令测试（已存在）
+#   ptxir/       - PTXIR 序列化（已存在）
+#   common/      - 通用工具（已存在）
+#   archive/     - 历史归档
+
 set(CMAKE_CUDA_RUNTIME_LIBRARY Shared)
 set(CMAKE_CUDA_PTX_COMPILATION ON)       # 全局强制PTX模式
 set(CMAKE_CUDA_SEPARABLE_COMPILATION OFF) # 禁用分离编译
@@ -6,10 +19,6 @@ set(CMAKE_CUDA_SEPARABLE_COMPILATION OFF) # 禁用分离编译
 set(CMAKE_CUDA_COMPILE_OPTIONS_PTX "")
 set(CMAKE_CUDA_COMPILE_OPTIONS_ARCH "")
 set(CMAKE_CUDA_COMPILE_OPTIONS_CODE "")
-# set(CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES "")
-# set(CMAKE_CUDA_IMPLICIT_LINK_LIBRARIES "")
-# set(CMAKE_CUDA_HOST_IMPLICIT_LINK_DIRECTORIES "")
-# set(CMAKE_CUDA_HOST_IMPLICIT_LINK_LIBRARIES "")
 
 # 简化架构设置处理 - 现代CMake方式
 if(NOT DEFAULT_CUDA_ARCH)
@@ -34,12 +43,12 @@ set(CATCH_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 function(add_catch_test TEST_NAME)
     # 参数：测试名称（不含后缀），其余为该测试的源文件（不含 catch_amalgamated.cpp）
     set(SOURCES ${ARGN})
-    
+
     # 如果 TEST_NAME 是文件路径，提取不带扩展名的基本文件名作为目标名称
     get_filename_component(TEST_TARGET_NAME ${TEST_NAME} NAME_WE)
 
     # 自动包含 catch_amalgamated.cpp
-    list(APPEND SOURCES 
+    list(APPEND SOURCES
     ${CATCH_INCLUDE_DIR}/catch_amalgamated.cpp
     ${CMAKE_SOURCE_DIR}/src/utils/logger.cpp
     )
@@ -55,15 +64,15 @@ function(add_catch_test TEST_NAME)
     )
 
     # 链接我们自己构建的 cudart 库和 ANTLR 库
-    target_link_directories(${TEST_TARGET_NAME} PRIVATE 
+    target_link_directories(${TEST_TARGET_NAME} PRIVATE
         ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
         ${CMAKE_SOURCE_DIR}/lib
         )
 
     # 链接库
-    target_link_libraries(${TEST_TARGET_NAME} PRIVATE 
+    target_link_libraries(${TEST_TARGET_NAME} PRIVATE
         ptxsim
-        cudart 
+        cudart
         antlr4_shared
         -Wl,--as-needed  # 恢复默认行为
         -ldl -lpthread
@@ -82,11 +91,11 @@ endfunction()
 function(add_standalone_test TEST_NAME)
     # 参数：测试名称，其余为该测试的源文件
     set(SOURCES ${TEST_NAME} ${ARGN})
-    
+
     get_filename_component(TEST_TARGET_NAME ${TEST_NAME} NAME_WE)
 
     # 自动包含 catch_amalgamated.cpp
-    list(APPEND SOURCES 
+    list(APPEND SOURCES
     ${CMAKE_SOURCE_DIR}/src/utils/logger.cpp
     )
 
@@ -100,9 +109,9 @@ function(add_standalone_test TEST_NAME)
         ${ANTLR4_INCLUDE_DIR}
         ${ANTLR4_GENERATED_SRC_DIR}
     )
-    
+
     # 链接必要的库
-    target_link_libraries(${TEST_TARGET_NAME} 
+    target_link_libraries(${TEST_TARGET_NAME}
         ptx_ir
         ptx_parser
         cudart
@@ -110,13 +119,13 @@ function(add_standalone_test TEST_NAME)
         antlr4_shared
         pthread
     )
-    
+
     # 设置运行时路径
     set_target_properties(${TEST_TARGET_NAME} PROPERTIES
         INSTALL_RPATH "$ORIGIN/../lib;${CMAKE_SOURCE_DIR}/lib"
         BUILD_WITH_INSTALL_RPATH TRUE
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-        
+
     # 注册为 CTest 测试
     add_test(NAME ${TEST_TARGET_NAME} COMMAND ${TEST_TARGET_NAME})
 
@@ -127,114 +136,80 @@ function(add_standalone_test TEST_NAME)
     )
 endfunction()
 
-add_catch_test(
-    test_memory_manager.cpp
-    test_parse_immediate.cpp
-)
+# ============================================================================
+# 测试子目录（按三类组织）
+# ============================================================================
 
-add_catch_test(test_memory_bounds test_memory_bounds.cpp)
-add_catch_test(test_warp_trace_formatter test_warp_trace_formatter.cpp)
+# Type 1: 直接单元测试
+add_subdirectory(unit)
 
-# ================================
-# Catch2 PTX 指令测试套件（按类别拆分）
-# ================================
+# Type 2: 指令序列集成测试
+add_subdirectory(integration)
 
-# 整数算术测试
-add_catch_test(test_ptx_integer
-    test_ptx_integer.cu
-    ptx_integer_arith.cu
-)
-set_tests_properties(test_ptx_integer PROPERTIES LABELS "ptx;integer")
+# Type 3: CUDA Kernel E2E 测试
+add_subdirectory(e2e)
 
-# 浮点算术测试
-add_catch_test(test_ptx_float
-    test_ptx_float.cu
-    ptx_float_arith.cu
-)
-set_tests_properties(test_ptx_float PROPERTIES LABELS "ptx;float")
+# ============================================================================
+# 保留的特殊测试
+# ============================================================================
 
-# 扩展精度整数测试
-add_catch_test(test_ptx_extended
-    test_ptx_extended.cu
-    ptx_extended_prec.cu
-)
-set_tests_properties(test_ptx_extended PROPERTIES LABELS "ptx;integer")
+# Warp standalone 单元测试 (有 main 函数)
+add_standalone_test(unit/warp/test_warp_context.cpp)
+add_standalone_test(unit/warp/test_warp_scheduler.cpp)
+add_standalone_test(unit/warp/test_sm_context.cpp)
 
-# 逻辑与移位测试
-add_catch_test(test_ptx_bitwise
-    test_ptx_bitwise.cu
-    ptx_bitwise_shift.cu
-)
-set_tests_properties(test_ptx_bitwise PROPERTIES LABELS "ptx;bitwise")
+# Addc/Subc standalone 单元测试 (有 main 函数)
+add_standalone_test(unit/exec/test_addc_subc_handler.cpp)
 
-# 类型转换测试
-add_catch_test(test_ptx_cvt
-    test_ptx_cvt.cu
-    ptx_cvt_arith.cu
-)
-set_tests_properties(test_ptx_cvt PROPERTIES LABELS "ptx;cvt")
-
-# 内存访问测试
-add_catch_test(test_ptx_ld_st
-    test_ptx_ld_st.cu
-    ptx_ld_st.cu
-)
-set_tests_properties(test_ptx_ld_st PROPERTIES LABELS "ptx;ld_st")
-
-# 地址转换测试
-add_catch_test(test_ptx_cvta
-    test_ptx_cvta.cu
-    ptx_cvta.cu
-)
-set_tests_properties(test_ptx_cvta PROPERTIES LABELS "ptx;cvta")
-
-# （保留其他非 PTX 的 catch 测试，如将来有）
-# add_catch_test(test_another test_another.cpp)
-
-
-# ================================
-# 添加独立测试（不使用Catch2）
-# ================================
-
-# add_standalone_test(test-ptx test-ptx.cpp)
-# add_standalone_test(test-wmma test_wmma.cpp)
-# add_standalone_test(test-cc-register test_cc_register.cpp)
-# add_standalone_test(test_ptx_bra test_ptx_bra.cu)
-# add_standalone_test(warp/test_warp_context.cpp)
-# add_standalone_test(warp/test_warp_scheduler.cpp)
-# add_standalone_test(warp/test_sm_context.cpp)
-
-add_standalone_test(test-ptx.cpp)
-add_standalone_test(test_printf.cu)
+# Printf standalone E2E 测试 (有 main 函数)
+add_standalone_test(e2e/kernel/test_printf.cu)
 # test_printf uses debug logs that contain "Failed" but tests actually pass
 # Custom configuration to look for completion message instead
 set_tests_properties(test_printf PROPERTIES
     PASS_REGULAR_EXPRESSION "Printf test completed"
     FAIL_REGULAR_EXPRESSION "^Test.*FAILED"
 )
-add_standalone_test(test_addc_subc_handler.cpp)
-# add_standalone_test(test_wmma.cpp)
-# add_standalone_test(test_cc_register.cpp)
-# add_standalone_test(instructions/test_ptx_bra.cu)
-# add_standalone_test(warp/test_warp_context.cpp)
-# add_standalone_test(warp/test_warp_scheduler.cpp)
-# add_standalone_test(warp/test_sm_context.cpp)
+
+# PTX 解析验证（不使用 Catch2）
+add_standalone_test(ptx/parser/test-ptx.cpp)
+# test_wmma.cpp has pre-existing build errors (StatementContext::WMMA not defined)
+# Disabled in main branch as well
+# add_standalone_test(ptx/parser/test_wmma.cpp)
+
+# 已有 warp divergence 测试
+add_catch_test(divergence_test
+    divergence/test_divergence.cu
+    divergence/divergence_kernels.cu
+)
+set_tests_properties(divergence_test PROPERTIES LABELS "divergence;warp")
+
+add_catch_test(divergence_sync_test
+    divergence/test_divergence_sync.cu
+)
+set_tests_properties(divergence_sync_test PROPERTIES LABELS "divergence;barrier_sync")
+
+# 已有指令测试
 add_standalone_test(instructions/test_ptx_bra.cu)
-add_standalone_test(warp/test_warp_context.cpp)
-add_standalone_test(warp/test_warp_scheduler.cpp)
-add_standalone_test(warp/test_sm_context.cpp)
 
+# PTX 语法测试（使用 ANTLR 解析）
+add_standalone_test(ptx/test_cfg_builder.cpp)
+add_standalone_test(ptx/test_cfg_edge_cases.cpp)
+# test_cfg_debug.cpp has pre-existing API mismatch errors (PtxVisitor::getKernels doesn't exist)
+# Disabled in main branch as well
+# add_standalone_test(ptx/test_cfg_debug.cpp)
+add_standalone_test(ptx/test_cfg_benchmark.cpp)
+add_standalone_test(ptx/test_simt_stack_integration.cpp)
 
-# ================================
-# 添加基于 CUDA 的测试（直接使用 CMake 编译）
-# ================================
+# ============================================================================
+# Mini/basic/extra 基准测试（使用 bench/ 下的 .cu 文件）
+# ============================================================================
 
 # 定义 mini tests (基础测试集)
-set(PTX_MINI_TESTS 
+set(PTX_MINI_TESTS
     dummy dummy-args dummy-add dummy-float dummy-grid dummy-mul dummy-sub dummy-condition
     dummy-long dummy-sieve dummy-share dummy-loop)
 
-set(PTX_BASIC_TESTS 
+set(PTX_BASIC_TESTS
     simpleGEMM-int simpleGEMM-float simpleGEMM-double
     simpleCONV-int simpleCONV-float simpleCONV-double 2Dentropy
     aligned-types all-pairs-distance bitonic bfs )
@@ -250,27 +225,12 @@ set(PTX_EXTRA_TESTS
     dummy-wmma)
 
 # 定义全部测试 (包含基础测试和其他复杂测试)
-set(PTX_ALL_TESTS 
-    ${PTX_MINI_TESTS} 
+set(PTX_ALL_TESTS
+    ${PTX_MINI_TESTS}
     ${PTX_SYNC_TESTS}
     ${PTX_BASIC_TESTS}
     ${PTX_EXTRA_TESTS}
     ${PTX_MMA_TESTS})
-
-# ================================
-# Warp Divergence 测试
-# ================================
-add_catch_test(test_divergence
-    divergence/test_divergence.cu
-    divergence/divergence_kernels.cu
-)
-set_tests_properties(test_divergence PROPERTIES LABELS "divergence;warp")
-
-# Divergence with barrier sync - lane data exchange
-add_catch_test(test_divergence_sync
-    divergence/test_divergence_sync.cu
-)
-set_tests_properties(test_divergence_sync PROPERTIES LABELS "divergence;barrier_sync")
 
 
 # 创建方便的自定义目标来运行不同组的测试
@@ -318,7 +278,7 @@ foreach(TEST_NAME ${PTX_ALL_TESTS})
     # 创建可执行文件
     add_executable(${TEST_NAME} "")
 
-    target_sources(${TEST_NAME} PRIVATE ${OBJECT_FILE}) 
+    target_sources(${TEST_NAME} PRIVATE ${OBJECT_FILE})
 
     set_target_properties(${TEST_NAME} PROPERTIES
         LINKER_LANGUAGE CXX  # 必须显式指定!
@@ -326,12 +286,12 @@ foreach(TEST_NAME ${PTX_ALL_TESTS})
         OUTPUT_NAME "${TEST_NAME}"
         PREFIX ""  # 防止添加lib前缀
     )
-       
+
     # 包含 CUDA 头文件
     target_include_directories(${TEST_NAME} PRIVATE ${CUDA_INCLUDE_DIRS})
 
     # 链接我们自己构建的 cudart 库和 ANTLR 库
-    target_link_directories(${TEST_NAME} PRIVATE 
+    target_link_directories(${TEST_NAME} PRIVATE
         ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
         ${CMAKE_SOURCE_DIR}/lib
             )
@@ -343,14 +303,14 @@ foreach(TEST_NAME ${PTX_ALL_TESTS})
             -Wl,--as-needed  # 恢复默认行为
             -ldl -lpthread
             )
-            
+
     # 设置 RPATH，确保运行时能找到我们自己的库
     set_target_properties(${TEST_NAME} PROPERTIES
             INSTALL_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
             BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
             BUILD_WITH_INSTALL_RPATH TRUE
             SKIP_BUILD_RPATH FALSE
-            INSTALL_RPATH_USE_LINK_PATH TRUE            
+            INSTALL_RPATH_USE_LINK_PATH TRUE
             RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
         )
 
@@ -358,7 +318,7 @@ foreach(TEST_NAME ${PTX_ALL_TESTS})
 
     add_custom_target(${TEST_NAME}_obj DEPENDS ${OBJECT_FILE})
     add_dependencies(${TEST_NAME} ${TEST_NAME}_obj)
-        
+
     # 添加测试
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
 
@@ -371,7 +331,7 @@ foreach(TEST_NAME ${PTX_ALL_TESTS})
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             ENVIRONMENT "PTX_EMU_GPU_CONFIG=ampere_a100.json")
     endif()
-        
+
     # 设置属性，标记哪些是基础测试
     list(FIND PTX_MINI_TESTS ${TEST_NAME} IS_MINI_TEST)
     if(NOT IS_MINI_TEST EQUAL -1)
@@ -395,292 +355,11 @@ endforeach()
 # Add external test subdirectories
 add_subdirectory(../bench/test_extern_shared CMakeFiles.test_extern_shared.dir)
 
-# Additional comprehensive SIMT tests (wbar and spinlock)
-# Added 2026-04-02 for extended coverage
-
-# Register SIMT architecture tests (Stages 1-3)
-add_catch_test(test_simt_thread_pc
-    test_simt_thread_pc.cpp
-)
-
-add_catch_test(test_pc_management
-    test_pc_management.cpp
-)
-
-add_catch_test(test_warp_barrier_extended
-    test_warp_barrier.cpp
-)
-
-add_catch_test(test_scheduler_config
-    test_scheduler_config.cpp
-)
-
-# Added 2026-04-12: Barrier reconvergence after divergent branch (reconvergence_pc fix)
-add_catch_test(test_barrier_reconvergence
-    test_barrier_reconvergence.cpp
-)
-
-# Added 2026-05-25: BarrierModule unit tests (TDD)
-add_catch_test(test_barrier_module
-    test_barrier_module.cpp
-)
-
-# Added 2026-05-25: BarrierModule 类型二测试（指令序列集成测试）
-add_catch_test(test_barrier_module_integrated
-    test_barrier_module_integrated.cpp
-)
-set_tests_properties(test_barrier_module_integrated PROPERTIES LABELS "integration")
-
-# Added 2026-05-25: BarrierModule 类型三测试（CUDA Kernel E2E）
-add_catch_test(test_barrier_warp_sync
-    test_barrier_warp_sync.cu
-)
-set_tests_properties(test_barrier_warp_sync PROPERTIES LABELS "barrier;e2e")
-
-# Phase 4.1: BsyncState unit tests
-add_catch_test(test_bsync_state
-    test_bsync_state.cpp
-)
-
-# Added 2026-04-12: Test 3 root cause investigation (3 directions)
-add_catch_test(test_syncthreads_direction
-    test_syncthreads_direction.cpp
-)
-
-# Added 2026-04-12: Execution layer tests (E1-E3 hypotheses for Test 3)
-add_catch_test(test_exec_layer_e1_e3
-    test_exec_layer_e1_e3.cpp
-)
-
-# Added 2026-04-12: Integration PC sync tests (H1-H4 hypotheses for Test 3)
-add_catch_test(test_exec_integration_h1_h4
-    test_exec_integration_h1_h4.cpp
-)
-
-# Added 2026-04-12: Full CFG analysis of test_syncthreads Test 3 PTX
-add_catch_test(test_test3_cfg_full
-    test_test3_cfg_full.cpp
-)
-
-# Added 2026-04-14: Standalone reproduction of Test 3 deadlock
-# Covers: CFG post-dominator, barrier translation mask, branch divergence, get_lanes_by_pc
-add_catch_test(test3_reproduction
-    test3_reproduction.cpp
-)
-
-# Added 2026-04-12: Barrier interaction integration tests (I1-I3 hypotheses)
-add_catch_test(test_barrier_interaction_integrated
-    test_barrier_interaction_integrated.cpp
-)
-
-# Added 2026-04-16: Enhanced Test 3 reproduction with direct Wbar manipulation
-add_catch_test(test_syncthreads_test3_repro
-    test_syncthreads_test3_repro.cpp
-)
-
-# Added 2026-04-16: Isolated Test 3 with complete execution environment
-# Renamed 2026-05-08: test_nested_divergence (tests nested divergence with SETP/SELP)
-add_catch_test(test_nested_divergence
-    test_nested_divergence.cpp
-)
-
-# Added 2026-05-09: Divergence + barrier sync isolated test
-add_catch_test(test_divergence_sync_isolated
-    test_divergence_sync_isolated.cpp
-)
-
-# Added 2026-05-27: Barrier divergence scheduling TDD Red-phase test
-# Bug: sync_to_warp_state() overwrites is_blocked, causing scheduler to pick post-barrier path
-add_catch_test(test_barrier_divergence_scheduling
-    test_barrier_divergence_scheduling.cpp
-)
-
-# Added 2026-05-09: 对标 test_divergence_sync_standalone.cu 的 execute_warp_instruction 驱动测试
-# ADR-0013 合规: 通过 ptxir::factory 构造 StatementContext
-add_catch_test(test_divergence_sync_standalone_integrated
-    test_divergence_sync_standalone_integrated.cpp
-)
-
-# Added 2026-05-30: Implicit reconvergence enforcement test
-add_catch_test(test_divergence_sync_convergence
-    test_divergence_sync_convergence.cpp
-)
-
-# Added 2026-04-16: Full pipeline test with SMContext scheduler
-add_catch_test(test_syncthreads_full_pipeline
-    test_syncthreads_full_pipeline.cpp
-)
-
-# Added 2026-04-16: Complete Test3 with SE->BRA predicate evaluation
-add_catch_test(test_syncthreads_test3_full
-    test_syncthreads_test3_full.cpp
-)
-
-
-
-# Added 2026-04-12: Targeted unit tests for four specific bugs discovered
-# during Test 3 investigation (sync_to_warp_state, CFG barriers,
-# cudaMemset offset, and predicate register for sub-warp launches)
-add_catch_test(test_specific_bugs_unit
-    test_specific_bugs_unit.cpp
-)
-
-# Added 2026-04-27: Post-barrier warp divergence reproduction test
-# Reproduces the failure pattern from test_divergence_sync where thread 0
-# doesn't execute after CTA barrier due to exec_mask not being restored
-add_catch_test(test_post_barrier_divergence
-    test_post_barrier_divergence.cpp
-)
-
-# Developer utility: CFG debug tool (not a test, just a PTX analysis binary)
-# TODO: Fix API mismatch - PtxVisitor requires PtxContext&, no default ctor, no getKernels()
-# add_executable(test-cfg-debug ptx/test_cfg_debug.cpp)
-# target_include_directories(test-cfg-debug PRIVATE
-#     ${PROJECT_SOURCE_DIR}/include
-#     ${PROJECT_SOURCE_DIR}/src
-#     ${ANTLR4_INCLUDE_DIR}
-#     ${ANTLR4_GENERATED_SRC_DIR}
-# )
-# target_link_libraries(test-cfg-debug PRIVATE ptx_ir ptx_parser antlr4_shared pthread)
-# set_target_properties(test-cfg-debug PROPERTIES
-#     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-# add_dependencies(test-cfg-debug GenerateParser ptx_parser)
-
 # ============================================================================
-# SIMT Architecture Tests — Phase 1: Critical Bug Fixes (2026-05-04)
+# 通用工具（不是测试，但提供 build target）
 # ============================================================================
-# BUG-002: Exited threads blocking SIMT stack convergence
-add_catch_test(test_simt_stack_entry
-    test_simt_stack_entry.cpp
-)
-set_tests_properties(test_simt_stack_entry PROPERTIES LABELS "simt_entry")
 
-# BUG-001: exec_mask not restored after reconvergence
-add_catch_test(test_exec_mask
-    test_exec_mask.cpp
-)
-set_tests_properties(test_exec_mask PROPERTIES LABELS "exec_mask;simt_entry")
-
-# Handle branch + SIMT stack integration
-add_catch_test(test_handle_branch_integration
-    test_handle_branch_integration.cpp
-)
-set_tests_properties(test_handle_branch_integration PROPERTIES LABELS "branch;simt_entry")
-
-# ============================================================================
-# SIMT Architecture Tests — Phase 2: Code Cleanup & Data Source Unification
-# ============================================================================
-# SIMT Stack basic operations
-add_catch_test(test_simt_stack_catch2
-    test_simt_stack_catch2.cpp
-)
-set_tests_properties(test_simt_stack_catch2 PROPERTIES LABELS "simt_stack;simt_entry")
-
-# active_mask vs exec_mask consistency (ISSUE-004)
-add_catch_test(test_active_mask_consistency
-    test_active_mask_consistency.cpp
-)
-set_tests_properties(test_active_mask_consistency PROPERTIES LABELS "active_mask")
-
-# ============================================================================
-# SIMT Architecture Tests — Phase 3: Test Expansion
-# ============================================================================
-add_catch_test(test_warp_state
-    test_warp_state.cpp
-)
-set_tests_properties(test_warp_state PROPERTIES LABELS "warp;state;simt_entry")
-
-add_catch_test(test_sync_mechanism
-    test_sync_mechanism.cpp
-)
-set_tests_properties(test_sync_mechanism PROPERTIES LABELS "sync;simt_entry")
-
-add_catch_test(test_pc_management_advanced
-    test_pc_management_advanced.cpp
-)
-set_tests_properties(test_pc_management_advanced PROPERTIES LABELS "simt_entry")
-
-# Integrated barrier tests — driven by execute_warp_instruction()
-# Tests real instruction execution flow, not just static data structures
-add_catch_test(test_barrier_scenarios_integrated
-    test_barrier_scenarios_integrated.cpp
-)
-set_tests_properties(test_barrier_scenarios_integrated PROPERTIES LABELS "barrier;integrated;regression")
-
-add_catch_test(test_barrier_simt_integration
-    test_barrier_simt_integration.cpp
-)
-set_tests_properties(test_barrier_simt_integration PROPERTIES LABELS "barrier;simt")
-
-add_catch_test(test_barrier_pc_overwrite
-    test_barrier_pc_overwrite.cpp
-)
-
-add_catch_test(test_barrier_active_mask_preserved
-    test_barrier_active_mask_preserved.cpp
-)
-
-add_catch_test(test_barrier_scenarios
-    test_barrier_scenarios.cpp
-)
-set_tests_properties(test_barrier_scenarios PROPERTIES LABELS "barrier;regression")
-
-# Integrated tests for unit tests without execute_warp_instruction coverage
-add_catch_test(test_warp_barrier_integrated
-    test_warp_barrier_integrated.cpp
-)
-set_tests_properties(test_warp_barrier_integrated PROPERTIES LABELS "wbar;integrated;regression")
-
-add_catch_test(test_barrier_verification_integrated
-    test_barrier_verification_integrated.cpp
-)
-set_tests_properties(test_barrier_verification_integrated PROPERTIES LABELS "barrier;integrated")
-
-add_catch_test(test_pc_management_integrated
-    test_pc_management_integrated.cpp
-)
-set_tests_properties(test_pc_management_integrated PROPERTIES LABELS "pc;integrated")
-
-add_catch_test(test_simt_thread_pc_integrated
-    test_simt_thread_pc_integrated.cpp
-)
-set_tests_properties(test_simt_thread_pc_integrated PROPERTIES LABELS "thread_pc;integrated")
-
-add_catch_test(test_warp_state_integrated
-    test_warp_state_integrated.cpp
-)
-set_tests_properties(test_warp_state_integrated PROPERTIES LABELS "warp_state;integrated")
-
-add_catch_test(test_sync_mechanism_integrated
-    test_sync_mechanism_integrated.cpp
-)
-set_tests_properties(test_sync_mechanism_integrated PROPERTIES LABELS "sync;integrated")
-
-add_catch_test(test_simt_stack_entry_integrated
-    test_simt_stack_entry_integrated.cpp
-)
-set_tests_properties(test_simt_stack_entry_integrated PROPERTIES LABELS "simt_stack;integrated")
-
-add_catch_test(test_simt_integration
-    test_simt_integration.cpp
-)
-set_tests_properties(test_simt_integration PROPERTIES LABELS "integration;simt")
-
-add_catch_test(test_shortest_path_first
-    test_shortest_path_first.cpp
-)
-set_tests_properties(test_shortest_path_first PROPERTIES LABELS "shortest_first;divergence")
-
-# Added 2026-05-11: PTX Lane Verification Unit Tests
-add_catch_test(test_ptx_lane_verification
-    test_ptx_lane_verification.cpp
-)
-target_compile_definitions(test_ptx_lane_verification PRIVATE
-    TEST_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
-)
-set_tests_properties(test_ptx_lane_verification PROPERTIES LABELS "ptx_lane_verification;unit")
-
-# Added 2026-05-11: PTX Lane PC Trace Printer (common utility)
+# PTX Lane PC Trace Printer (common utility)
 add_executable(ptx_lane_printer
     common/ptx_lane_printer.cpp
     ${CMAKE_SOURCE_DIR}/src/utils/logger.cpp
