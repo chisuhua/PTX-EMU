@@ -128,23 +128,29 @@ inline StatementContext make_setp_lt(const std::string& pred, const std::string&
     return ctx;
 }
 
-inline StatementContext make_bra(const std::string& target) {
+inline StatementContext make_bra(const std::string& target, int reconvergence_pc = -1) {
     StatementContext ctx;
     ctx.type = S_BRA;
     BranchInstr instr;
     instr.target = target;
+    if (reconvergence_pc >= 0) {
+        instr.reconvergence_pc = reconvergence_pc;
+    }
     ctx.data = instr;
     ctx.instructionText = "bra " + target + ";";
     return ctx;
 }
 
-inline StatementContext make_bra_pred(const std::string& target, const std::string& pred, bool neg = false) {
+inline StatementContext make_bra_pred(const std::string& target, const std::string& pred, bool neg = false, int reconvergence_pc = -1) {
     StatementContext ctx;
     ctx.type = S_BRA;
     BranchInstr instr;
     instr.target = target;
     instr.predicate = pred;
     instr.predicate_negated = neg;
+    if (reconvergence_pc >= 0) {
+        instr.reconvergence_pc = reconvergence_pc;
+    }
     ctx.data = instr;
     ctx.instructionText = (neg ? "@!" : "@") + pred + " bra " + target + ";";
     return ctx;
@@ -171,6 +177,14 @@ inline StatementContext make_exit() {
     ctx.type = S_EXIT;
     ctx.data = VoidInstr{};
     ctx.instructionText = "exit;";
+    return ctx;
+}
+
+inline StatementContext make_ret() {
+    StatementContext ctx;
+    ctx.type = S_RET;
+    ctx.data = VoidInstr{};
+    ctx.instructionText = "ret;";
     return ctx;
 }
 

@@ -3,7 +3,7 @@
 
 #include "ptxsim/warp_context.h"
 #include "ptx_ir/statement_context.h"
-#include "ptxsim/ptx_types.h"
+#include "ptx_ir/ptx_types.h"
 #include "ptxsim/gpu_context.h"
 
 #include <vector>
@@ -58,8 +58,8 @@ inline bool run_until_converged(WarpContext* warp,
                                 const std::vector<StatementContext>& stmts,
                                 int max_steps = 1000) {
     for (int i = 0; i < max_steps; ++i) {
-        auto mask = warp->get_active_mask();
-        if (mask.count() == 1 && mask.test(0)) {
+        uint32_t mask = warp->get_active_mask();
+        if (mask == 1) {
             return true;
         }
         step_warp(warp, const_cast<std::vector<StatementContext>&>(stmts));

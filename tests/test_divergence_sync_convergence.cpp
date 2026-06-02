@@ -23,9 +23,12 @@
 #include "ptxsim/thread_context.h"
 #include "ptxsim/cta_context.h"
 #include "ptxsim/simt_stack.h"
+#include "ptxsim/testing/scheduler_utils.h"
 #include "ptxsim/common_types.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/instruction_factory.h"
+#include "ptxsim/testing/instruction_helpers.h"
+#include "ptxsim/testing/predicates.h"
 #include "ptx_ir/statement_context.h"
 #include "ptx_ir/operand_context.h"
 #include "ptx_ir/statement_factory.h"
@@ -36,6 +39,9 @@
 #include <map>
 #include <string>
 #include <cstdint>
+
+using ptxsim::testing::step_warp;
+using ptxsim::testing::setup_pred;
 
 static constexpr int      BRANCH_PC     = 4;
 static constexpr int      CONV_PC       = 14;
@@ -61,54 +67,18 @@ static void init_factory() {
     }
 }
 
-static StatementContext nop() {
-    using namespace ptxir::factory;
-    return makeGenericInstr(
-        S_MOV,
-        {Qualifier::Q_U32},
-        {OperandContext{RegOperand{"r", 1}}, OperandContext{ImmOperand{"0"}}},
-        "mov.u32 %r1, 0;");
-}
-
 static std::vector<StatementContext> build_instrs(
     std::map<std::string, int> &l2pc)
 {
     std::vector<StatementContext> v;
     v.reserve(NUM_STMTS);
-    for (int i = 0; i < NUM_STMTS; i++) v.push_back(nop());
-    // PC=4: @%p1 bra $L__BB0_4
-    {
-        auto b = ptxir::factory::makeBranchInstr(
-            S_BRA, {}, "L__BB0_4", "%p1", false, "@%p1 bra $L__BB0_4;");
-        std::get<BranchInstr>(b.data).reconvergence_pc = CONV_PC;
-        v[BRANCH_PC] = std::move(b);
-    }
-    // PC=34: bra.uni $L__BB0_3
-    {
-        auto b = ptxir::factory::makeBranchInstr(
-            S_BRA, {}, "L__BB0_3", "", false, "bra.uni $L__BB0_3;");
-        v[BRA_UNI_PC] = std::move(b);
-    }
-    // PC=27: ret
-    {
-        StatementContext r;
-        r.type = S_RET; r.data = VoidInstr{};
-        r.instructionText = "ret;";
-        v[27] = std::move(r);
-    }
+    for (int i = 0; i < NUM_STMTS; i++) v.push_back(ptxsim::testing::make_nop());
+    v[BRANCH_PC] = ptxsim::testing::make_bra_pred("L__BB0_4", "%p1", false, CONV_PC);
+    v[BRA_UNI_PC] = ptxsim::testing::make_bra("L__BB0_3");
+    v[27] = ptxsim::testing::make_ret();
     l2pc["L__BB0_4"] = PATH_B_TARGET;
     l2pc["L__BB0_3"] = CONV_PC;
     return v;
-}
-
-static void setup_pred(WarpContext *w, uint32_t taken) {
-    auto rbm = w->get_register_bank_manager();
-    REQUIRE(rbm);
-    rbm->create_register("p1", 1);
-    for (int i = 0; i < 32; i++) {
-        auto *p = static_cast<uint8_t*>(rbm->get_register("p1", 0, i));
-        REQUIRE(p); *p = (taken & (1u << i)) ? 1 : 0;
-    }
 }
 
 static WarpContext* setup(SMContext &sm,
@@ -122,22 +92,6 @@ static WarpContext* setup(SMContext &sm,
     blk->sharedMemBytes = 1024;
     bool ok = sm.add_block(std::move(blk));
     REQUIRE(ok); return sm.get_warp(0);
-}
-
-// step_warp — 完全模拟 sm_context.cpp 调度器算法
-static int step_warp(WarpContext *w, std::vector<StatementContext> &v) {
-    auto m = w->get_lanes_by_pc();
-    REQUIRE_FALSE(m.empty());
-    int pick = m.begin()->first;
-    auto &ws = w->get_warp_state();
-    for (auto &[pc, lanes] : m) {
-        bool ok = true;
-        for (int l : lanes) { if (ws.threads[l].is_blocked) { ok = false; break; } }
-        if (ok) { pick = pc; break; }
-    }
-    w->execute_warp_instruction(v[pick], pick);
-    while (w->check_reconvergence()) {}
-    return pick;
 }
 
 // ============================================================================
