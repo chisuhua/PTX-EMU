@@ -134,11 +134,13 @@ cmake --build build --target GenerateParser
 cd build && ctest
 
 # 按标签分组
-ctest -L mini      # Mini 基础测试
-ctest -L ptx       # PTX 指令测试
+ctest -L mini              # Mini 基础测试
+ctest -L "unit;barrier"    # 类型一：屏障相关单元测试
+ctest -L "integration"     # 类型二：所有指令序列集成测试
+ctest -L "e2e"             # 类型三：所有 CUDA Kernel E2E 测试
 
 # 单个测试（verbose）
-ctest -R test_memory_manager -V
+ctest -R unit_barrier_module -V
 
 # 运行单个 benchmark（项目根目录）
 make -C build RAY
@@ -192,74 +194,102 @@ cd build && ctest -L "exec_mask|simt_entry" -V
 
 ### 测试标签速查
 
-| 标签 | 覆盖范围 | 实际测试示例 |
+> **命名约定**：ctest 目标名带类型前缀 `unit_` / `integration_` / `e2e_`（commit `ab55e06`），避免 ctest 命名冲突。完整标签为 `unit;<subject>` 或 `integration;<subject>`。
+
+| 标签 | 覆盖范围 | ctest 目标示例 |
 |------|---------|-------------|
-| `exec_mask` | BUG-001 exec_mask 恢复 | `test_exec_mask` |
-| `simt_entry` | BUG-002 SIMT stack exit 处理 | `test_simt_stack_entry` |
-| `active_mask` | ISSUE-004 active_mask 一致性 | `test_active_mask_consistency` |
-| `barrier` | 屏障同步、reconvergence | `test_warp_barrier_extended`, `test_barrier_reconvergence` |
-| `ptx;integer/float/bitwise/cvt/ld_st` | PTX 指令 | `test_ptx_integer`, `test_ptx_float`, `test_ptx_ld_st` |
-| `memory` | 内存分配、边界检查 | `test_memory_manager`, `test_memory_bounds` |
-| `integration` | 端到端集成 | `test_simt_integration`, `test_barrier_simt_integration` |
+| `unit;exec_mask` / `unit;simt_entry` | BUG-001 exec_mask 恢复 / BUG-002 SIMT stack exit | `unit_exec_mask`, `unit_simt_stack_entry` |
+| `unit;active_mask` | ISSUE-004 active_mask 一致性 | `unit_active_mask_consistency` |
+| `unit;barrier` / `unit;wbar` | 屏障同步、reconvergence | `unit_barrier_module`, `unit_warp_barrier`, `unit_barrier_reconvergence` |
+| `unit;ptx;integer/float/bitwise/cvt/ld_st/cvta` | PTX 指令 | `unit_ptx_integer`, `unit_ptx_float`, `unit_ptx_bitwise`, `unit_ptx_cvt`, `unit_ptx_ld_st`, `unit_ptx_cvta` |
+| `unit;memory` | 内存分配、边界检查 | `unit_memory_bounds`, `unit_memory_manager_legacy` |
+| `integration;barrier` / `integration;wbar` | 屏障指令序列 | `integration_barrier_module`, `integration_warp_barrier` |
+| `integration;divergence` | 分歧与 reconvergence | `integration_divergence_sync_isolated`, `integration_divergence_sync_convergence` |
+| `integration;simt` / `integration;sync` / `integration;pc` | SIMT/同步/PC 指令序列 | `integration_simt`, `integration_sync_mechanism`, `integration_pc_management` |
+| `e2e;barrier` / `e2e;cfg` | 完整 kernel 端到端 | `e2e_barrier_warp_sync`, `e2e_test3_cfg_full` |
 
 ### 测试分类规范
 
-**所有单元测试必须覆盖以下三种类型，确保从不同层次验证功能：**
+**所有测试按目录物理分类到 `tests/unit/`、`tests/integration/`、`tests/e2e/` 三个子目录，对应下面三种类型。从不同层次验证功能：**
+
+| 类型 | 目录 | 标签前缀 | 测试目标 |
+|------|------|---------|---------|
+| 类型一：直接单元测试 | `tests/unit/` | `unit;...` | 核心数据结构/算法 |
+| 类型二：指令序列集成测试 | `tests/integration/` | `integration;...` | 指令执行流程 |
+| 类型三：CUDA Kernel E2E 测试 | `tests/e2e/` | `e2e;...` | 完整 kernel 端到端 |
+
+> **历史变更**：2026-06 起的三类测试目录重构（commit `ab55e06`）将原本混在一起的 `.cpp` 文件按类型物理分类到三个子目录；同时为 `add_catch_test` 目标统一加上了 `unit_` / `integration_` / `e2e_` 前缀以避免 ctest 命名冲突。原 `tests/three_mode_testing/` 下的 E2E 旧实现已迁移至 `tests/archive/three_mode_testing/`，**不再构建**。
 
 #### 类型一：直接单元测试（Direct Unit Test）
 
-直接测试核心数据结构和算法，不涉及执行流程。
+直接测试核心数据结构和算法，不涉及执行流程。源文件位于 `tests/unit/`。
 
 **特征**：
 - 直接实例化 `WarpBarrier`、`CTABarrier`、`BarrierModule` 等类
 - 调用类的方法验证行为
 - 无需 PTX 解析或指令执行
 
-**示例**：
+**示例**（`tests/unit/barrier/test_barrier_module.cpp`，ctest 名 `unit_barrier_module`）：
 ```cpp
-// test_barrier_module.cpp
-WarpBarrier wb;
-wb.init(0x000F, 10, 5);
-wb.arrive(0);
-REQUIRE(wb.is_complete() == false);
+#include "ptxsim/barrier/warp_barrier.h"
+using namespace ptxsim;
+TEST_CASE("WarpBarrier initialization", "[barrier][warp_barrier]") {
+    WarpBarrier wb;
+    wb.init(0xFFFF0000, 21, 20);
+    REQUIRE(wb.is_initialized() == true);
+    REQUIRE(wb.get_participation_mask() == 0xFFFF0000);
+    REQUIRE(wb.get_reconvergence_pc() == 21);
+}
 ```
 
 **适用场景**：数据结构逻辑、状态机、工具函数
 
 #### 类型二：指令序列集成测试（Instruction Sequence Test）
 
-使用 `statement_factory.h` 构建指令序列，通过 `execute_warp_instruction()` 驱动执行。
+使用 `statement_factory.h` 构建指令序列，通过 `execute_warp_instruction()` 驱动执行。源文件位于 `tests/integration/`。
 
 **特征**：
 - 使用 `StatementFactory` 或 `makeXXXInstr()` 创建指令
 - 通过 `WarpContext::execute_warp_instruction()` 执行
 - 验证指令执行后的状态变化（PC、寄存器、active_mask 等）
 
-**示例**：
+**示例**（`tests/integration/simt/test_simt_stack_entry_integrated.cpp`，ctest 名 `integration_simt_stack_entry`）：
 ```cpp
-// test_simt_stack_entry_integrated.cpp
+#include "ptx_ir/statement_factory.h"
+#include "ptxsim/warp_context.h"
+using namespace ptxir::factory;
 std::vector<StatementContext> stmts = buildBranchStatements();
 warp->execute_warp_instruction(stmts[0], 0);  // branch
 warp->execute_warp_instruction(stmts[1], 1);  // divergent target
+REQUIRE(warp->get_active_mask() == expected_mask);
 ```
 
 **适用场景**：指令执行逻辑、PC 推进、分歧处理、SIMT stack 操作
 
 #### 类型三：CUDA Kernel E2E 测试（End-to-End Test）
 
-编译真实 CUDA kernel，提取 PTX，通过模拟器完整执行。
+编译真实 CUDA kernel（`.cu` 源文件），提取 PTX，通过模拟器完整执行。源文件位于 `tests/e2e/kernel/`。
 
 **特征**：
-- 使用 `nvcc -ptx` 编译 CUDA 源文件
-- `cudaLaunchKernel()` 触发完整执行流程
+- 使用 `nvcc -ptx` 编译 CUDA 源文件（`-keep --no-compress` 保留中间 PTX）
+- `cudaLaunchKernel()` 触发完整执行流程（通过 fake `libcudart.so` 拦截）
 - 验证内存输出或函数行为
 
-**示例**：
-```cpp
-// test_divergence_sync_standalone.cpp
-// CUDA kernel 编译后提取 PTX
-// 通过 fake libcudart.so 拦截 cudaLaunchKernel
-// 验证 h_output[] 结果
+**示例**（`tests/e2e/kernel/test_barrier_warp_sync.cu`，ctest 名 `e2e_barrier_warp_sync`）：
+```cuda
+#include "ptxsim/execution_types.h"
+#include "ptxsim/sm_context.h"
+__global__ void kernel_barrier_sync(int* output, int num_threads) {
+    __shared__ int shared_data[32];
+    int tid = threadIdx.x;
+    shared_data[tid] = tid + 1;
+    __syncthreads();    // 由模拟器翻译为 S_BAR / S_BAR_WARP_SYNC
+    if (tid == 0) {
+        int sum = 0;
+        for (int i = 0; i < num_threads; i++) sum += shared_data[i];
+        output[0] = sum;  // host 端读取验证
+    }
+}
 ```
 
 **适用场景**：完整功能验证、PTX 解析集成、运行时行为
@@ -277,17 +307,26 @@ warp->execute_warp_instruction(stmts[1], 1);  // divergent target
 
 **CMake 添加规则**：
 
-```cmake
-# 类型一：直接单元测试
-add_catch_test(test_barrier_module
-    test_barrier_module.cpp
-)
+> **命名约束**：ctest 目标名必须带类型前缀（`unit_` / `integration_` / `e2e_`），且唯一。新增测试时遵循该约定。
 
-# 类型二：指令序列集成测试（标签：integration）
-add_catch_test(test_simt_stack_entry_integrated
-    test_simt_stack_entry_integrated.cpp
+```cmake
+# 类型一：直接单元测试（tests/unit/<area>/CMakeLists.txt）
+add_catch_test(unit_barrier_module
+    barrier/test_barrier_module.cpp
 )
-set_tests_properties(test_simt_stack_entry_integrated PROPERTIES LABELS "integration")
+set_tests_properties(unit_barrier_module PROPERTIES LABELS "unit;barrier")
+
+# 类型二：指令序列集成测试（tests/integration/<area>/CMakeLists.txt）
+add_catch_test(integration_simt_stack_entry
+    simt/test_simt_stack_entry_integrated.cpp
+)
+set_tests_properties(integration_simt_stack_entry PROPERTIES LABELS "integration;simt_stack")
+
+# 类型三：CUDA Kernel E2E 测试（tests/e2e/kernel/CMakeLists.txt）
+add_catch_test(e2e_barrier_warp_sync
+    kernel/test_barrier_warp_sync.cu
+)
+set_tests_properties(e2e_barrier_warp_sync PROPERTIES LABELS "e2e;barrier")
 ```
 
 ### ❌ 禁止
