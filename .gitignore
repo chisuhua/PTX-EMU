@@ -55,3 +55,6 @@ configs/mini_test.ini
 __pycache__/
 # Added by code-review-graph
 .code-review-graph/
+
+# Worktrees
+.worktrees/
