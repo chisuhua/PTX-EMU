@@ -547,16 +547,6 @@ add_catch_test(test_post_barrier_divergence
 # add_dependencies(test-cfg-debug GenerateParser ptx_parser)
 
 # ============================================================================
-# Three-Mode Testing Framework (2026-04-28)
-# Provides three PTX loading modes for debugging:
-# - Mode 1: cuobjdump dynamic extraction (end-to-end)
-# - Mode 2: pre-extracted PTX file (stable reproduction)
-# - Mode 3: direct StatementContext construction (unit testing)
-# ============================================================================
-#add_subdirectory(three_mode_testing)
-
-
-# ============================================================================
 # SIMT Architecture Tests — Phase 1: Critical Bug Fixes (2026-05-04)
 # ============================================================================
 # BUG-002: Exited threads blocking SIMT stack convergence
