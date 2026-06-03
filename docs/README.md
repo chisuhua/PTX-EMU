@@ -26,7 +26,7 @@
 
 1. **阅读 GETTING-STARTED** → `developer-guide/`
 2. **理解 SIMT 架构** → `architecture/SIMT-ARCHITECTURE-V2.md`
-3. **学习 CFG Builder** → `skills/cfg-builder-pattern.md`
+3. **学习 CFG Builder** → `skills/post-dominator-algorithm.md`
 4. **参考测试指南** → `developer-guide/TESTING-GUIDE.md` (待创建)
 
 ### 架构师路径
@@ -50,8 +50,7 @@
 | # | 文档 | 路径 | 适合人群 |
 |---|------|------|---------|
 | 1 | SIMT-ARCHITECTURE-V2.md | [`architecture/`](./architecture/) | 所有人 |
-| 2 | cfg-builder-pattern.md | [`skills/`](./skills/) | 架构师 |
-| 3 | PHASE5-FINAL-REPORT.md | [`reports/phase-reports/`](./reports/phase-reports/) | 技术负责人 |
+| 2 | post-dominator-algorithm.md | [`skills/`](./skills/) | 架构师 |
 | 4 | PERFORMANCE-BENCHMARK-REPORT.md | [`reports/phase-reports/`](./reports/phase-reports/) | 性能工程师 |
 | 5 | post-dominator-algorithm.md | [`skills/`](./skills/) | 算法开发者 |
 
@@ -80,11 +79,11 @@
 | 2 | SIMT Stack | ✅ 完成 | - |
 | 3 | Per-Thread PC | ✅ 完成 | - |
 | 4 | Barrier Enhancement | ✅ 完成 | - |
-| 5 | Integration & Testing | ✅ 完成 | [`Phase 5 Report`](./reports/phase-reports/PHASE5-FINAL-REPORT.md) |
-| 6 | Final Verification | ✅ 完成 | [`Phase 6 Report`](./reports/phase-reports/PHASE6-FINAL-VERIFICATION.md) |
+| 5 | Integration & Testing | ✅ 完成 | (已归档) |
+| 6 | Final Verification | ✅ 完成 | (已归档) |
 | 7 | Reconvergence Validation | ✅ 完成 | [`Phase 7 Report`](./reports/phase-reports/PHASE7-FINAL-REPORT.md) |
 | 8 | Performance Benchmark | ✅ 完成 | [`Phase 8 Report`](./reports/phase-reports/PHASE8-PERFORMANCE-REPORT.md) |
-| 9 | SIMT Stack Integration | ✅ 完成 | [`Phase 9 Report`](./reports/phase-reports/PHASE9-FINAL-REPORT.md) |
+| 9 | SIMT Stack Integration | ✅ 完成 | (已归档) |
 | 10 | Documentation & Release | ⏳ In Progress | - |
 
 ---

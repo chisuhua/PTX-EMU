@@ -26,7 +26,7 @@
 
 ```bash
 # Run CFG benchmark
-./bin/test_cfg_builder
+./bin/test_cfg_benchmark
 
 # Run dummy benchmark
 ./bin/dummy
@@ -165,7 +165,6 @@ valgrind --tool=massif ./bin/dummy
 
 - [`PHASE8-PERFORMANCE-REPORT.md`](../reports/phase-reports/)
 - [`post-dominator-algorithm.md`](../skills/)
-- [`cfg-builder-pattern.md`](../skills/)
 
 ---
 

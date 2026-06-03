@@ -41,7 +41,7 @@ ctest -R "^(test_simt|SIMT)" -V
 
 # 性能测试
 ./bin/dummy
-./bin/test_cfg_builder
+./bin/test_cfg_edge_cases
 ```
 
 ### 详细输出
@@ -57,8 +57,7 @@ ctest -R "test_cfg" --verbose
 ```
 tests/
 ├── ptx/                     # PTX 测试文件
-│   ├── test_cfg_builder.cpp           # CFG Builder 基础测试
-│   ├── test_cfg_edge_cases.cpp        # 16 个边界测试
+│   ├── test_cfg_edge_cases.cpp        # CFG 边界测试 (40 断言)
 │   ├── test_simt_stack_integration.cpp # SIMT Stack 集成测试
 │   ├── test_cfg_benchmark.cpp         # 性能基准
 │   └── *.ptx                          # PTX 汇编测试
@@ -161,7 +160,7 @@ ctest --test-dir build -R "test_name" --output-on-failure
 ./bin/dummy
 
 # CFG analysis
-./bin/test_cfg_builder
+./bin/test_cfg_edge_cases
 
 # Full suite
 ./bench/test_syncthreads/test_syncthreads
@@ -197,9 +196,7 @@ ctest --test-dir build -R "test_name" --output-on-failure
 
 ## 📚 参考文档
 
-- [`COMPREHENSIVE-TEST-REPORT.md`](../reports/test-reports/)
-- [`tdd-workflow.md`](../skills/tdd-workflow.md)
-- Phase 5-7 Reports
+- Phase 7-8 Reports (在 `reports/phase-reports/`)
 
 ---
 

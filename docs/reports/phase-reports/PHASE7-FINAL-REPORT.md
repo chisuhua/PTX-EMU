@@ -73,7 +73,7 @@ Phase 7 完成了 reconvergence_pc 的深度验证和代码质量重构。创建
    - 改进 Doxygen 文档
    - 添加时间复杂度说明
 
-2. **创建 CODE-REFACTORING-PLAN.md**
+2. **创建重构计划（已归档）**
    - 详细的审查清单
    - 重构任务规划
    - 时间表
@@ -85,8 +85,9 @@ Phase 7 完成了 reconvergence_pc 的深度验证和代码质量重构。创建
 ### 文档
 
 - RECONVERGENCE-VERIFICATION-REPORT.md
-- CODE-REFACTORING-PLAN.md
 - CODE-REVIEW-CFG.md 更新
+
+> 原计划交付物 `CODE-REFACTORING-PLAN.md` 已归档到 `docs/archive/code-reviews/`，并于 2026-06 文档清理时删除。
 
 ### 测试文件
 

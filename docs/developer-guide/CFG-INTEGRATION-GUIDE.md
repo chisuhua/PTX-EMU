@@ -218,9 +218,7 @@ blocks.reserve(statements.size() / 10);
 
 ## 📚 参考文档
 
-- [`cfg-builder-pattern.md`](../skills/)
 - [`post-dominator-algorithm.md`](../skills/)
-- [`PHASE5-FINAL-REPORT.md`](../reports/phase-reports/)
 
 ---
 

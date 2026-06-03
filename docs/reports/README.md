@@ -6,8 +6,8 @@
 
 | 子目录 | 用途 | 文档数 |
 |--------|------|--------|
-| [`phase-reports/`](./phase-reports/) | Phase 最终报告 | 4 |
-| [`test-reports/`](./test-reports/) | 测试验证报告 | 2 |
+| [`phase-reports/`](./phase-reports/) | Phase 最终报告 | 3 |
+| [`test-reports/`](./test-reports/) | 测试验证报告 | 1 |
 
 ## 📊 报告列表
 
@@ -15,16 +15,14 @@
 
 | Phase | 报告 | 状态 |
 |-------|------|------|
-| Phase 5 | [PHASE5-FINAL-REPORT.md](./phase-reports/PHASE5-FINAL-REPORT.md) | ✅ |
-| Phase 6 | [PHASE6-FINAL-VERIFICATION.md](./phase-reports/PHASE6-FINAL-VERIFICATION.md) | ✅ |
+| Phase 7 | [PHASE7-FINAL-REPORT.md](./phase-reports/PHASE7-FINAL-REPORT.md) | ✅ |
 | Phase 8 | [PHASE8-PERFORMANCE-REPORT.md](./phase-reports/PHASE8-PERFORMANCE-REPORT.md) | ✅ |
-| Phase 9 | [PHASE9-FINAL-REPORT.md](./phase-reports/PHASE9-FINAL-REPORT.md) | ✅ |
+| Phase 10 | [PHASE10-FINAL-REPORT.md](./phase-reports/PHASE10-FINAL-REPORT.md) | ✅ |
 
 ### 测试报告
 
 | 报告 | 内容 | 状态 |
 |------|------|------|
-| [COMPREHENSIVE-TEST-REPORT.md](./test-reports/COMPREHENSIVE-TEST-REPORT.md) | 综合测试报告 (12/12 PASS) | ✅ |
 | [RECONVERGENCE-VERIFICATION-REPORT.md](./test-reports/RECONVERGENCE-VERIFICATION-REPORT.md) | reconvergence 验证报告 | ✅ |
 
 ---

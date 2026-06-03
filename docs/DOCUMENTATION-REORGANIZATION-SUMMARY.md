@@ -4,6 +4,8 @@
 **范围**: 项目文档结构重组  
 **状态**: ✅ 完成
 
+> **说明**: 本报告反映 2026-04-11 整理完成时的状态。2026-06 的文档清理（删除 `cfg-builder-pattern.md`、`tdd-workflow.md` 及部分 Phase 报告）后，部分表格行已不再适用。
+
 ---
 
 ## 📊 整理成果
@@ -27,12 +29,12 @@ docs/
 │   └── SIMT-ARCHITECTURE-V2.md
 ├── developer-guide/               # ✅ 开发指南 (1 file)
 │   └── README.md
-├── skills/                        # ✅ 技能沉淀 (4 files)
+├── skills/                        # ✅ 技能沉淀 (3 files, 原 5 个中 2 个已迁移/删除)
 │   ├── README.md
-│   ├── cfg-builder-pattern.md
 │   ├── post-dominator-algorithm.md
 │   ├── simt-reconvergence.md
-│   └── tdd-workflow.md
+│   └── ptx-grammar-modification.md
+│   # (cfg-builder-pattern.md, tdd-workflow.md 已删除)
 ├── reports/                       # ✅ 项目报告 (6 files)
 │   ├── README.md
 │   ├── phase-reports/ (5 files)
@@ -97,26 +99,21 @@ docs/
 
 | 文档 | 状态 | 说明 |
 |------|------|------|
-| cfg-builder-pattern.md | ✅ 当前 | CFG Builder 模式 |
 | post-dominator-algorithm.md | ✅ 当前 | Post-Dominator 算法 |
 | simt-reconvergence.md | ✅ 当前 | SIMT 收敛技术 |
-| tdd-workflow.md | ✅ 当前 | TDD 工作流程 |
+| ptx-grammar-modification.md | ✅ 当前 | PTX 语法修改详细指南 |
 
 ### 项目报告
 
 | 报告 | Phase | 状态 |
 |------|-------|------|
-| PHASE5-FINAL-REPORT.md | Phase 5 | ✅ |
-| PHASE6-FINAL-VERIFICATION.md | Phase 6 | ✅ |
 | PHASE7-FINAL-REPORT.md | Phase 7 | ✅ |
 | PHASE8-PERFORMANCE-REPORT.md | Phase 8 | ✅ |
-| PHASE9-FINAL-REPORT.md | Phase 9 | ✅ |
 
 ### 测试报告
 
 | 报告 | 内容 | 状态 |
 |------|------|------|
-| COMPREHENSIVE-TEST-REPORT.md | 12/12 测试 | ✅ |
 | RECONVERGENCE-VERIFICATION-REPORT.md | reconvergence 验证 | ✅ |
 
 ---

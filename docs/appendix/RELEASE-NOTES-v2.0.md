@@ -102,16 +102,16 @@ PostDominatorMap postDoms = CFGBuilder::computePostDominators(cfg);
 | TESTING-GUIDE.md | 测试指南 |
 | PERFORMANCE-GUIDE.md | 性能指南 |
 | CFG-INTEGRATION-GUIDE.md | 集成指南 |
-| cfg-builder-pattern.md | 技能沉淀 |
 | post-dominator-algorithm.md | 算法文档 |
 | simt-reconvergence.md | SIMT 技术 |
 
-### 技能沉淀 (4 文件)
+### 技能沉淀 (3 文件)
 
-- cfg-builder-pattern.md
 - post-dominator-algorithm.md
 - simt-reconvergence.md
-- tdd-workflow.md
+- ptx-grammar-modification.md
+
+> 原 cfg-builder-pattern.md、tdd-workflow.md 已于 2026-06 文档清理时删除（内容已迁移到 .opencode/skills/）
 
 ---
 

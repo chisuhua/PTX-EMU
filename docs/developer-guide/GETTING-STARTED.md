@@ -120,16 +120,16 @@ Convergence → SIMT Stack Pop
 
 1. **阅读文档**
    - [`SIMT-ARCHITECTURE-V2.md`](../architecture/SIMT-ARCHITECTURE-V2.md)
-   - [`cfg-builder-pattern.md`](../skills/cfg-builder-pattern.md)
+   - [`post-dominator-algorithm.md`](../skills/post-dominator-algorithm.md)
 
 2. **运行示例**
    ```bash
    cd build && ./bin/dummy
-   ./bin/tests/test_cfg_builder
+   ./bin/tests/test_cfg_edge_cases
    ```
 
 3. **理解测试**
-   - 查看 `tests/ptx/test_cfg_builder.cpp`
+   - 查看 `tests/ptx/test_cfg_edge_cases.cpp`
    - 运行并修改测试
 
 ### Week 2: 深入开发
@@ -143,7 +143,7 @@ Convergence → SIMT Stack Pop
    - 添加新测试用例
 
 3. **开发流程**
-   - [`tdd-workflow.md`](../skills/tdd-workflow.md)
+   - 遵循项目 TDD 实践（参考 `docs/skills/ptx-grammar-modification.md` 中的 TDD 流程章节）
 
 ---
 
@@ -160,7 +160,7 @@ ctest --test-dir build -R "simt" -V
 
 # 性能基准
 ./build/bin/dummy
-./build/bin/test_cfg_builder
+./build/bin/test_cfg_benchmark
 ```
 
 ### 添加新测试
@@ -189,7 +189,7 @@ ctest --test-dir build -R "simt" -V
 6. Repeat
 ```
 
-详细指南: [`tdd-workflow.md`](../skills/tdd-workflow.md)
+详细指南: [`ptx-grammar-modification.md`](../skills/ptx-grammar-modification.md) (TDD 流程章节)
 
 ### 提交规范
 
@@ -252,9 +252,8 @@ ctest --test-dir build -R "test_name" -V
 ### Q: 如何理解 CFG 分析？
 
 A: 阅读:
-1. [`cfg-builder-pattern.md`](../skills/cfg-builder-pattern.md)
-2. [`post-dominator-algorithm.md`](../skills/post-dominator-algorithm.md)
-3. Phase 5 报告
+1. [`post-dominator-algorithm.md`](../skills/post-dominator-algorithm.md)
+2. CFG 集成章节: [`CFG-INTEGRATION-GUIDE.md`](./CFG-INTEGRATION-GUIDE.md)
 
 ---
 

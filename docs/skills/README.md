@@ -20,31 +20,28 @@
 
 | 文档 | 用途 |
 |------|------|
-| [cfg-builder-pattern.md](./cfg-builder-pattern.md) | CFG 构建模式 |
-| [post-dominator-algorithm.md](./post-dominator-algorithm.md) | 后支配树算法 |
+| [post-dominator-algorithm.md](./post-dominator-algorithm.md) | Post-Dominator 算法 |
 | [simt-reconvergence.md](./simt-reconvergence.md) | SIMT 收敛技术 |
-| [tdd-workflow.md](./tdd-workflow.md) | TDD 工作流程 |
 | [ptx-grammar-modification.md](./ptx-grammar-modification.md) | PTX 语法修改详细指南（→ 已转 skill） |
+
+> 历史说明：原 `cfg-builder-pattern.md` 和 `tdd-workflow.md` 已删除（其内容已迁移至 `.opencode/skills/` 对应技能）
 
 ## 📖 学习路径
 
 ### 新开发者
 
 ```
-1. TDD Workflow (⭐⭐) → 了解开发流程
-2. Three-Mode Testing (⭐⭐⭐) → 学习 PTX 测试生成
-3. CFG Builder Pattern (⭐⭐⭐) → 学习 CFG 构建
-4. SIMT Reconvergence (⭐⭐⭐⭐) → 理解 SIMT 收敛
-5. Post-Dominator Algorithm (⭐⭐⭐⭐) → 深入算法
+1. Three-Mode Testing (⭐⭐⭐) → 学习 PTX 测试生成
+2. SIMT Reconvergence (⭐⭐⭐⭐) → 理解 SIMT 收敛
+3. Post-Dominator Algorithm (⭐⭐⭐⭐) → 深入算法
 ```
 
 ### 架构师
 
 ```
 1. Post-Dominator Algorithm (⭐⭐⭐⭐) → 核心算法
-2. CFG Builder Pattern (⭐⭐⭐) → 构建模式
-3. SIMT Reconvergence (⭐⭐⭐⭐) → 架构设计
-4. Three-Mode Testing (⭐⭐⭐) → 测试框架
+2. SIMT Reconvergence (⭐⭐⭐⭐) → 架构设计
+3. Three-Mode Testing (⭐⭐⭐) → 测试框架
 ```
 
 ---
@@ -77,10 +74,8 @@ for (size_t i = 0; i < statements.size(); i++) {
 
 | 技能 | 理解 | 应用 | 精通 |
 |------|------|------|------|
-| CFG Builder | ✅ | ✅ | ⏳ |
 | Post-Dominator | ✅ | ✅ | ⏳ |
 | SIMT Reconvergence | ✅ | ✅ | ✅ |
-| TDD Workflow | ✅ | ✅ | ✅ |
 
 ---
 
