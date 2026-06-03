@@ -59,7 +59,6 @@ tests/
 ├── ptx/                     # PTX 测试文件
 │   ├── test_cfg_edge_cases.cpp        # CFG 边界测试 (40 断言)
 │   ├── test_simt_stack_integration.cpp # SIMT Stack 集成测试
-│   ├── test_cfg_benchmark.cpp         # 性能基准
 │   └── *.ptx                          # PTX 汇编测试
 └── CMakeLists.txt
 ```

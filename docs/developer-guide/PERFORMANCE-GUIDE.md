@@ -26,7 +26,7 @@
 
 ```bash
 # Run CFG benchmark
-./bin/test_cfg_benchmark
+./bin/integration_cfg_benchmark
 
 # Run dummy benchmark
 ./bin/dummy

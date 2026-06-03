@@ -181,6 +181,12 @@ set_tests_properties(integration_test3_reproduction PROPERTIES LABELS "integrati
 #     cfg/test_cfg_analysis.cpp
 # )
 
+# CFG performance benchmark (standalone, has its own main())
+# Measures CFGBuilder::build + computePostDominators overhead on synthetic kernels.
+# Moved from tests/ptx/ (commit ab55e06: integration_* prefix convention).
+add_standalone_test(cfg/integration_cfg_benchmark.cpp)
+set_tests_properties(integration_cfg_benchmark PROPERTIES LABELS "integration;cfg")
+
 # ============================================================================
 # Register 集成测试
 # ============================================================================
