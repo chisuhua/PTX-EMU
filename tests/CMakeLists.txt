@@ -6,7 +6,6 @@
 #   integration/ - Type 2: 指令序列集成测试
 #   e2e/         - Type 3: CUDA Kernel E2E 测试
 #   ptx/         - PTX 解析/语法专项测试
-#   divergence/  - Warp 分歧专项测试（已存在）
 #   instructions/ - 指令测试（已存在）
 #   ptxir/       - PTXIR 序列化（已存在）
 #   common/      - 通用工具（已存在）
@@ -176,17 +175,7 @@ add_standalone_test(ptx/parser/test-ptx.cpp)
 # Disabled in main branch as well
 # add_standalone_test(ptx/parser/test_wmma.cpp)
 
-# 已有 warp divergence 测试
-add_catch_test(divergence_test
-    divergence/test_divergence.cu
-    divergence/divergence_kernels.cu
-)
-set_tests_properties(divergence_test PROPERTIES LABELS "divergence;warp")
-
-add_catch_test(divergence_sync_test
-    divergence/test_divergence_sync.cu
-)
-set_tests_properties(divergence_sync_test PROPERTIES LABELS "divergence;barrier_sync")
+# Warp divergence E2E 测试已迁移到 tests/e2e/divergence/（见 tests/e2e/CMakeLists.txt）
 
 # 已有指令测试
 add_standalone_test(instructions/test_ptx_bra.cu)

@@ -31,9 +31,9 @@ tests/
 │   ├── cfg/              #   CFG 分析
 │   └── register/         #   寄存器管理
 ├── e2e/                  # 类型三：CUDA Kernel E2E 测试
-│   └── kernel/           #   完整 .cu kernel
+│   ├── kernel/           #   完整 .cu kernel
+│   └── divergence/       #   Warp 分歧完整 kernel
 ├── ptx/                  # PTX 语法测试（test_all_ptx.sh）
-├── divergence/           # Warp 分歧专项测试（保留）
 ├── instructions/         # 指令测试（保留）
 ├── ptxir/                # PTXIR 序列化测试
 ├── common/               # 通用工具源码
