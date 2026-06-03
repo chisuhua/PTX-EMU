@@ -181,7 +181,8 @@ add_standalone_test(ptx/parser/test-ptx.cpp)
 add_standalone_test(instructions/test_ptx_bra.cu)
 
 # PTX 语法测试（使用 ANTLR 解析）
-add_standalone_test(ptx/test_cfg_builder.cpp)
+# Note: tests/ptx/test_cfg_builder.cpp removed (Phase 5.1 stub, no real assertions;
+# coverage provided by test_cfg_edge_cases.cpp and tests/integration/cfg/test_cfg_analysis.cpp)
 add_standalone_test(ptx/test_cfg_edge_cases.cpp)
 # test_cfg_debug.cpp has pre-existing API mismatch errors (PtxVisitor::getKernels doesn't exist)
 # Disabled in main branch as well
