@@ -22,12 +22,15 @@
 #include "ptxsim/execution_types.h"
 #include "ptxsim/instruction_factory.h"
 #include "ptxsim/execution_trace.h"
+#include "ptxsim/testing/scheduler_utils.h"
 #include "ptx_ir/ptx_context.h"
 #include "ptx_ir/kernel_context.h"
 #include "ptx_ir/statement_context.h"
 #include "ptx_ir/operand_context.h"
 #include "ptx_ir/ptx_types.h"
 #include "memory/resource_manager.h"
+
+using ptxsim::testing::step_warp;
 #include <map>
 #include <memory>
 #include <vector>
