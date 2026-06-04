@@ -1022,10 +1022,10 @@ cd build && ctest
 ```
 
 ### Final Checklist
-- [ ] All "Must Have" present
-- [ ] All "Must NOT Have" absent
-- [ ] All tests pass
-- [ ] AGENTS.md 原则 5 含例外条款
-- [ ] AGENTS.md 含 handler isolation 定义
-- [ ] sanity.sh regex 与 ctest 名同步
-- [ ] 无孤儿文件（所有 .cpp/.cu 已注册或归档）
+- [x] All "Must Have" present (35/35 implementation tasks done; 0 violations in integration/)
+- [x] All "Must NOT Have" absent (no tool expansion, no batch commits, no scope creep)
+- [~] All tests pass — **BLOCKED on runtime verification**: 14 mechanical refactors (W2.1 + 13) not yet runtime-tested; W2.1 confirmed to hang at 5min ctest timeout. See `.omo/evidence/w2-1-finding.md`
+- [x] AGENTS.md 原则 5 含分类规则（line 259）— user decision: NO exception clause, instead classification rule
+- [x] AGENTS.md 含 integration/unit 区分（line 312）— user decision: NO handler isolation in integration/, unit/ allows direct calls
+- [x] sanity.sh regex 与 ctest 名同步（commit 1cce0ec）
+- [x] 无孤儿文件（所有 .cpp/.cu 已注册或归档）
