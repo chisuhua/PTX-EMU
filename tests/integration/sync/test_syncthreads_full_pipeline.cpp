@@ -15,10 +15,13 @@
 #include "ptxsim/common_types.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/instruction_factory.h"
+#include "ptxsim/testing/scheduler_utils.h"
 #include "register/register_bank_manager.h"
 #include "memory/resource_manager.h"
 #include "memory/shared_memory_manager.h"
 #include "utils/logger.h"
+
+using ptxsim::testing::step_warp;
 #include <memory>
 
 using namespace ptxsim;
