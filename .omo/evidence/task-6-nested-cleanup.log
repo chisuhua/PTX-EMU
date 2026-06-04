@@ -1,0 +1,46 @@
+Task 6: Clean up test_nested_divergence.cpp
+============================================
+
+## File Changes
+- Path: tests/integration/divergence/test_nested_divergence.cpp
+- Original: 226 lines, 4 TEST_CASEs
+- After: 183 lines, 1 TEST_CASE (73 assertions in 1 test case)
+- Net change: -43 lines, -3 TEST_CASEs
+
+## Verifications
+=== TEST_CASE count ===
+1
+=== nested_predication check ===
+TEST_CASE("test_nested_predication: Full warp execution with nested setp+selp", "[nested_divergence][execution][execute_warp]") {
+=== File line count ===
+183 lines
+
+## Build Output
+[100%] Built target integration_nested_divergence
+(no errors, no warnings)
+
+## ctest Output
+test 80
+    Start 80: integration_nested_divergence
+80: ===============================================================================
+80: All tests passed (73 assertions in 1 test case)
+
+1/1 Test #80: integration_nested_divergence ....   Passed    0.03 sec
+100% tests passed, 0 tests failed out of 1
+
+## Edits Applied
+1. Added file header comment (line 6-9): explains this tests predication, not real SIMT divergence
+2. Deleted "test_nested_divergence: Structure verification" (3 CHECKs of type, 4 CHECKs of text)
+3. Deleted "test_nested_divergence: Handler registration" (8 REQUIRE on InstructionFactory::get_handler)
+4. Deleted "test_nested_divergence: Register analysis" (1 CHECK on registers.size() >= 12)
+5. Renamed "Full warp execution with execute_warp_instruction" → "Full warp execution with nested setp+selp"
+6. Added TODO comment before main TEST_CASE: "添加真正的嵌套分歧测试（两级 @%p bra 推送 SIMT stack entry）"
+
+## Constraint Compliance
+- [x] Did NOT add real nested divergence test
+- [x] Did NOT modify build_nested_divergence_statements() instruction sequence
+- [x] Did NOT modify expected_nested_divergence() function
+- [x] Did NOT touch other divergence files
+
+## Result
+✅ PASS — All criteria met

@@ -446,6 +446,11 @@ for (const auto& path : paths) {
   - `tests/test_divergence_sync_isolated.cpp` - 使用 statement_factory 构建指令序列
   - `tests/test_barrier_verification_integrated.cpp` - 使用 execute_warp_instruction 驱动
   - `tests/test_nested_divergence.cpp` - 分歧验证示例
+
+> **注意**: `tests/test_shortest_path_first.cpp`（短路径优先模式测试）已**在 2026-06-04 重构中删除**。
+> 该文件 4 个 TEST_CASE 均为弱断言（只设置 ShortestFirst 模式但未实际驱动分歧路径执行），
+> 实际分歧路径覆盖由 `tests/test_divergence_sync_isolated.cpp` / `test_nested_divergence.cpp` 提供。
+> ctest 目标 `integration_shortest_path_first` 同步移除。
 - 相关 API:
   - `statement_factory.h` - 工厂函数
   - `warp_context.cpp:execute_warp_instruction()` - 执行入口

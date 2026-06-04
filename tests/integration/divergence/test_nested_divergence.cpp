@@ -1,7 +1,11 @@
 /**
- * @file test_syncthreads_test3_isolated.cpp
+ * @file test_nested_divergence.cpp
  * @brief Isolated test for nested divergence with SETP/SELP using real execute_warp_instruction
  * @date 2026-05-08
+ */
+/**
+ * @brief 测试嵌套谓词化（setp + selp），非真实 SIMT 嵌套分歧
+ * @note  本文件使用两级 setp/selp 谓词选择，不涉及 @%p bra 分支和 SIMT stack
  */
 
 #include "catch_amalgamated.hpp"
@@ -96,42 +100,9 @@ static void init_execution_environment() {
     }
 }
 
-TEST_CASE("test_nested_divergence: Structure verification", "[nested_divergence][structure]") {
-    init_execution_environment();
-    auto stmts = build_nested_divergence_statements();
+// TODO: 添加真正的嵌套分歧测试（两级 @%p bra 推送 SIMT stack entry）
 
-    INFO("Statement count: " << stmts.size());
-    CHECK(stmts.size() == 13);
-
-    CHECK(stmts[0].type == S_MOV);
-    CHECK(stmts[1].type == S_AND);
-    CHECK(stmts[2].type == S_SETP);
-    CHECK(stmts[3].type == S_SELP);
-    CHECK(stmts[4].type == S_ADD);
-    CHECK(stmts[7].type == S_SELP);
-    CHECK(stmts[11].type == S_ST);
-    CHECK(stmts[12].type == S_RET);
-
-    CHECK(stmts[2].instructionText == "setp.eq.b32 %p1, %r2, 1;");
-    CHECK(stmts[3].instructionText == "selp.b32 %r3, 200, 100, %p1;");
-    CHECK(stmts[6].instructionText == "setp.eq.s32 %p2, %r5, 0;");
-    CHECK(stmts[7].instructionText == "selp.b32 %r6, 10, 20, %p2;");
-}
-
-TEST_CASE("test_nested_divergence: Handler registration", "[nested_divergence][handlers]") {
-    init_execution_environment();
-
-    REQUIRE(InstructionFactory::get_handler(S_MOV) != nullptr);
-    REQUIRE(InstructionFactory::get_handler(S_AND) != nullptr);
-    REQUIRE(InstructionFactory::get_handler(S_SETP) != nullptr);
-    REQUIRE(InstructionFactory::get_handler(S_SELP) != nullptr);
-    REQUIRE(InstructionFactory::get_handler(S_ADD) != nullptr);
-    REQUIRE(InstructionFactory::get_handler(S_MUL) != nullptr);
-    REQUIRE(InstructionFactory::get_handler(S_ST) != nullptr);
-    REQUIRE(InstructionFactory::get_handler(S_RET) != nullptr);
-}
-
-TEST_CASE("test_nested_divergence: Full warp execution with execute_warp_instruction", "[nested_divergence][execution][execute_warp]") {
+TEST_CASE("test_nested_predication: Full warp execution with nested setp+selp", "[nested_divergence][execution][execute_warp]") {
     init_execution_environment();
 
     Dim3 blockIdx = {0, 0, 0};
@@ -210,17 +181,3 @@ TEST_CASE("test_nested_divergence: Full warp execution with execute_warp_instruc
     }
 }
 
-TEST_CASE("test_nested_divergence: Register analysis", "[nested_divergence][register-analysis]") {
-    init_execution_environment();
-    auto statements = build_nested_divergence_statements();
-
-    auto registers = RegisterAnalyzer::analyze_registers(statements);
-
-    INFO("Analyzed " << registers.size() << " registers:");
-    for (const auto& reg : registers) {
-        INFO("  " << reg.name << " (size=" << reg.size << ")");
-    }
-
-    // Should have: r1, r2, r3, r4, r5, r6, r7, rd2, rd3, rd4, p1, p2
-    CHECK(registers.size() >= 12);
-}

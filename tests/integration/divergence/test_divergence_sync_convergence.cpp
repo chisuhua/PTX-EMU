@@ -96,8 +96,9 @@ static WarpContext* setup(SMContext &sm,
 
 // ============================================================================
 // Test A: 分歧 → Path A 到汇聚点阻塞 → 调度器切 Path B → Path B 到达汇聚
+// (合并自原 Test A + Test C — 验证调度器在汇聚点切换且选择最低非阻塞 PC)
 // ============================================================================
-TEST_CASE("scheduler switches at convergence point",
+TEST_CASE("scheduler switches at convergence and picks lowest non-blocked PC",
           "[divergence][convergence][integrated][scheduler]")
 {
     init_factory(); ResourceManager::instance().initialize(1, 8192);
@@ -234,48 +235,11 @@ TEST_CASE("two level div with convergence block",
 }
 
 // ============================================================================
-// Test C: 验证调度器分歧后必须选 Path A（最低 PC 非阻塞分组）
-// ============================================================================
-TEST_CASE("scheduler picks lowest non-blocked PC group after divergence",
-          "[divergence][convergence][integrated][scheduler]")
-{
-    init_factory(); ResourceManager::instance().initialize(1, 8192);
-    std::map<std::string, int> l2pc;
-    auto v = build_instrs(l2pc);
-    SMContext sm(4, 128, 4096, 0);
-    WarpContext *w = setup(sm, v, l2pc);
-    setup_pred(w, 0x0000FFFFu);
-
-    step_warp(w, v); step_warp(w, v);
-    step_warp(w, v); step_warp(w, v);
-    CHECK(step_warp(w, v) == BRANCH_PC);  // 分歧
-
-    // 分歧后 get_lanes_by_pc = {5: [16..31], 28: [0..15]}
-    // 调度器必须选 PC=5（最低非阻塞分组），否则调度器有 bug
-    CHECK(step_warp(w, v) == PATH_A_START);
-    CHECK(step_warp(w, v) == PATH_A_START + 1);
-    CHECK(step_warp(w, v) == PATH_A_START + 2);
-    CHECK(step_warp(w, v) == PATH_A_START + 3);
-    CHECK(step_warp(w, v) == PATH_A_START + 4);
-    CHECK(step_warp(w, v) == PATH_A_START + 5);
-    CHECK(step_warp(w, v) == PATH_A_START + 6);
-    CHECK(step_warp(w, v) == PATH_A_START + 7);
-    CHECK(step_warp(w, v) == PATH_A_END);
-
-    // Path A 到 PC=14 → 阻塞
-    CHECK(step_warp(w, v) == CONV_PC);
-    CHECK(w->get_warp_state().threads[16].is_blocked == true);
-
-    // 调度器切 Path B
-    for (int i = 0; i < 6; i++) step_warp(w, v);
-    CHECK(step_warp(w, v) == BRA_UNI_PC);
-    CHECK(w->get_simt_stack().empty());
-}
-
-// ============================================================================
 // Test D: 边界 — active_mask 全部到达才收敛
+// (合并自原 Test D + Test E — 增加 check_reconvergence()==false 验证
+//  active_mask 之外不影响收敛判定)
 // ============================================================================
-TEST_CASE("boundary conv requires all active mask",
+TEST_CASE("boundary convergence requires all active_mask lanes",
           "[divergence][convergence][integrated][edge]")
 {
     init_factory(); ResourceManager::instance().initialize(1, 8192);
@@ -289,39 +253,15 @@ TEST_CASE("boundary conv requires all active mask",
     step_warp(w, v); step_warp(w, v);
     step_warp(w, v); // @%p1 bra → 分歧
 
-    // Path A → PC=14 → 阻塞
-    for (int i = 0; i < 9; i++) step_warp(w, v);
-    step_warp(w, v); // 阻塞
-
-    // Path B → bra.uni → 汇聚
-    for (int i = 0; i < 6; i++) step_warp(w, v);
-    CHECK(step_warp(w, v) == BRA_UNI_PC);
-    CHECK(w->get_simt_stack().empty());
-}
-
-// ============================================================================
-// Test E: 边界 — active_mask 之外不影响收敛判定（not_taken 先到不影响）
-// ============================================================================
-TEST_CASE("boundary non active mask no conv effect",
-          "[divergence][convergence][integrated][edge]")
-{
-    init_factory(); ResourceManager::instance().initialize(1, 8192);
-    std::map<std::string, int> l2pc;
-    auto v = build_instrs(l2pc);
-    SMContext sm(4, 128, 4096, 0);
-    WarpContext *w = setup(sm, v, l2pc);
-    setup_pred(w, 0x0000FFFFu);
-
-    step_warp(w, v); step_warp(w, v);
-    step_warp(w, v); step_warp(w, v);
-    step_warp(w, v); // 分歧
-
-    // Path A 到 PC=14（不触发收敛，因为 active_mask 跟踪 taken=0-15）
+    // Path A 到 PC=14：不触发收敛（active_mask 跟踪 taken=0-15，
+    //  Path A 的 lanes 不在 active_mask 中）
     for (int i = 0; i < 9; i++) step_warp(w, v);
     CHECK(w->check_reconvergence() == false);
 
-    // Path A 被阻塞 → 调度器切 Path B
+    // Path A → PC=14 → 阻塞
     step_warp(w, v); // 阻塞
+
+    // Path B → bra.uni → 汇聚
     for (int i = 0; i < 6; i++) step_warp(w, v);
     CHECK(step_warp(w, v) == BRA_UNI_PC);
     CHECK(w->get_simt_stack().empty());

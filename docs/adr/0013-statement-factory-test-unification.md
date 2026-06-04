@@ -113,14 +113,15 @@ static StatementContext make_barrier_stmt(uint32_t mask, int reconv_pc) { ... }
 | `test_barrier_reconvergence.cpp` | `make_barrier_stmt()` | `makeBarWarpSyncInstr(0xFFFFFFFF, 0)` |
 | `test_barrier_scenarios_integrated.cpp` | `make_barrier_stmt(uint32_t, int)` | `makeBarWarpSyncInstr(mask, reconv_pc)` |
 | `test_barrier_verification_integrated.cpp` | `make_barrier_stmt(uint32_t, int)` | `makeBarWarpSyncInstr(mask, reconv_pc)` |
-| `test_divergence_sync_isolated.cpp` | `make_barrier_stmt(uint32_t, int)` | `makeBarWarpSyncInstr(mask, reconv_pc)` |
+| `test_divergence_sync_isolated.cpp` | `make_barrier_stmt(uint32_t, int)` | **已删除（合并到 standalone）** |
 | `test_pc_management_integrated.cpp` | `make_barrier_stmt(uint32_t, int)` | `makeBarWarpSyncInstr(mask, reconv_pc)` |
-| `test_post_barrier_divergence.cpp` | `make_barrier_stmt(uint32_t, int)` | `makeBarWarpSyncInstr(mask, reconv_pc)` |
+| `test_post_barrier_divergence.cpp` | `make_barrier_stmt(uint32_t, int)` | **已合并（5→2 TEST_CASE）** |
 | `test_simt_stack_entry_integrated.cpp` | `make_barrier_stmt(uint32_t, int)` | `makeBarWarpSyncInstr(mask, reconv_pc)` |
 | `test_simt_thread_pc_integrated.cpp` | `make_barrier_stmt(uint32_t, int)` | `makeBarWarpSyncInstr(mask, reconv_pc)` |
 | `test_sync_mechanism_integrated.cpp` | `make_barrier_stmt(uint32_t, int)` | `makeBarWarpSyncInstr(mask, reconv_pc)` |
 | `test_syncthreads_direction.cpp` | `make_barrier_stmt()` | `makeBarWarpSyncInstr(0xFFFFFFFF, 0)` |
 | `test_warp_state_integrated.cpp` | `make_barrier_stmt(uint32_t, int)` | `makeBarWarpSyncInstr(mask, reconv_pc)` |
+| `test_shortest_path_first.cpp` | — | **已删除（无实际行为覆盖）** |
 
 ## 影响范围
 
@@ -131,14 +132,15 @@ static StatementContext make_barrier_stmt(uint32_t mask, int reconv_pc) { ... }
 | `tests/test_barrier_reconvergence.cpp` | 重构 | 同上 |
 | `tests/test_barrier_scenarios_integrated.cpp` | 重构 | 同上 |
 | `tests/test_barrier_verification_integrated.cpp` | 重构 | 同上 |
-| `tests/test_divergence_sync_isolated.cpp` | 重构 | 同上 |
+| `tests/test_divergence_sync_isolated.cpp` | **已删除** | 合并到 `test_divergence_sync_standalone_integrated.cpp` |
 | `tests/test_pc_management_integrated.cpp` | 重构 | 同上 |
-| `tests/test_post_barrier_divergence.cpp` | 重构 | 同上 |
+| `tests/test_post_barrier_divergence.cpp` | **已合并** | 5→2 TEST_CASE，保留已知问题文档 |
 | `tests/test_simt_stack_entry_integrated.cpp` | 重构 | 同上 |
 | `tests/test_simt_thread_pc_integrated.cpp` | 重构 | 同上 |
 | `tests/test_sync_mechanism_integrated.cpp` | 重构 | 同上 |
 | `tests/test_syncthreads_direction.cpp` | 重构 | 同上 |
 | `tests/test_warp_state_integrated.cpp` | 重构 | 同上 |
+| `tests/test_shortest_path_first.cpp` | **已删除** | 无实际行为覆盖，已移除 |
 
 ## 后果
 
@@ -173,6 +175,7 @@ static StatementContext make_barrier_stmt(uint32_t mask, int reconv_pc) { ... }
 | 日期 | 更新内容 | 作者 |
 |------|---------|------|
 | 2026-05-09 | 初始版本 | Sisyphus |
+| 2026-06-04 | 标记 `test_divergence_sync_isolated.cpp` / `test_shortest_path_first.cpp` 已删除，`test_post_barrier_divergence.cpp` 已合并（5→2 TEST_CASE） | Sisyphus |
 
 ## 参考
 

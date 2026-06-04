@@ -204,7 +204,7 @@ cd build && ctest -L "exec_mask|simt_entry" -V
 | `unit;ptx;integer/float/bitwise/cvt/ld_st/cvta` | PTX 指令 | `unit_ptx_integer`, `unit_ptx_float`, `unit_ptx_bitwise`, `unit_ptx_cvt`, `unit_ptx_ld_st`, `unit_ptx_cvta` |
 | `unit;memory` | 内存分配、边界检查 | `unit_memory_bounds`, `unit_memory_manager_legacy` |
 | `integration;barrier` / `integration;wbar` | 屏障指令序列 | `integration_barrier_module`, `integration_warp_barrier` |
-| `integration;divergence` | 分歧与 reconvergence | `integration_divergence_sync_isolated`, `integration_divergence_sync_convergence` |
+| `integration;divergence` | 分歧与 reconvergence | `integration_divergence_sync_standalone`, `integration_divergence_sync_convergence`, `integration_nested_divergence`, `integration_post_barrier_divergence` |
 | `integration;simt` / `integration;sync` / `integration;pc` | SIMT/同步/PC 指令序列 | `integration_simt`, `integration_sync_mechanism`, `integration_pc_management` |
 | `e2e;barrier` / `e2e;cfg` | 完整 kernel 端到端 | `e2e_barrier_warp_sync`, `e2e_test3_cfg_full` |
 

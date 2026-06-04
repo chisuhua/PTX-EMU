@@ -1,0 +1,172 @@
+# F4 范围保真检查报告
+# Generated: $(date -Iseconds)
+# Checker: deep
+
+================================================================================
+## 1. 文件变更范围检查
+================================================================================
+
+### 实际修改文件清单 (git diff --name-only HEAD):
+.opencode/skills/ptx-lane-verification/SKILL.md
+AGENTS.md
+docs/adr/0013-statement-factory-test-unification.md
+docs/testing/TEST_DOCUMENTATION.md
+scripts/sanity.sh
+src/ptxsim/core/AGENTS.md
+tests/integration/CMakeLists.txt
+tests/integration/divergence/test_divergence_sync_convergence.cpp
+tests/integration/divergence/test_divergence_sync_isolated.cpp
+tests/integration/divergence/test_divergence_sync_standalone_integrated.cpp
+tests/integration/divergence/test_nested_divergence.cpp
+tests/integration/divergence/test_post_barrier_divergence.cpp
+tests/integration/divergence/test_shortest_path_first.cpp
+workflow-state.md
+
+### 预期文件清单:
+- tests/integration/divergence/* (重构)
+- tests/integration/CMakeLists.txt
+- scripts/sanity.sh
+- AGENTS.md, src/ptxsim/core/AGENTS.md
+- docs/adr/0013-*.md
+- docs/testing/TEST_DOCUMENTATION.md
+- workflow-state.md
+- .omo/* (notepad + evidence + boulder)
+
+### 结果: ALL ACCOUNTED FOR ✅
+所有 14 个修改文件都在计划中有明确对应说明。
+
+================================================================================
+## 2. 任务完成度逐项验证
+================================================================================
+
+### Task 2: 删除 test_shortest_path_first.cpp 及所有引用
+- [x] 删除 test_shortest_path_first.cpp（git 显示文件变更）
+- [x] CMakeLists.txt 移除 integration_shortest_path_first 目标
+- [x] AGENTS.md 移除引用
+- [x] workflow-state.md 标记为已删除
+- [x] .opencode/skills/ptx-lane-verification/SKILL.md 添加注释 (+5 行)
+状态: COMPLIANT ✅
+
+### Task 3: 删除 test_divergence_sync_isolated.cpp，清理 standalone 元数据
+- [x] 删除 test_divergence_sync_isolated.cpp（188 行删除）
+- [x] CMakeLists.txt 移除 integration_divergence_sync_isolated 目标
+- [x] sanity.sh 更新正则
+- [x] standalone 文件删除 2 个元数据 TEST_CASE（6→4）
+- [x] standalone 文件添加 tombstone 注释
+状态: COMPLIANT ✅
+
+### Task 4: 合并 test_post_barrier_divergence.cpp (5→2)
+- [x] 文件包含 2 个 TEST_CASE（grep -c TEST_CASE = 2）
+- [x] 263 行大幅修改，符合合并预期
+状态: COMPLIANT ✅
+
+### Task 5: 合并 test_divergence_sync_convergence.cpp (A+C, D+E)
+- [x] 文件包含 3 个 TEST_CASE（grep -c TEST_CASE = 3，原 5 个）
+- [x] 80 行减少，符合合并预期
+状态: COMPLIANT ✅
+
+### Task 6: 清理 test_nested_divergence.cpp
+- [x] 文件包含 1 个 TEST_CASE（grep -c TEST_CASE = 1，原 4 个）
+- [x] 55 行减少，符合删除 3 个 TEST_CASE 预期
+状态: COMPLIANT ✅
+
+### Task 7: 强化 standalone_integrated.cpp
+- [x] 文件包含 4 个 TEST_CASE（grep -c TEST_CASE = 4）
+- [x] 151 行修改，符合重写断言预期
+状态: COMPLIANT ✅
+
+### Task 8: 更新所有外部文档引用
+- [x] AGENTS.md 修改（2 行）
+- [x] src/ptxsim/core/AGENTS.md 修改（4 行）
+- [x] scripts/sanity.sh 修改（2 行）
+- [x] docs/testing/TEST_DOCUMENTATION.md 修改（2 行）
+- [x] docs/adr/0013-*.md 修改（11 行）
+- [x] workflow-state.md 修改（2 行）
+状态: COMPLIANT ✅
+
+================================================================================
+## 3. Must NOT do 合规性检查
+================================================================================
+
+1. 禁止修改任何 src/ptxsim/** 源码
+   结果: PASS ✅
+   证据: src/ptxsim/core/AGENTS.md 是唯一修改，但它是文档注释文件（非源码），
+        且计划"预期仅包含"明确列出该文件。
+   源码检查: git diff --stat HEAD -- src/ptxsim/ | 仅 AGENTS.md
+
+2. 禁止添加新的 StatementFactory helper
+   结果: PASS ✅
+   证据: 无新增 helper 文件或代码
+
+3. 禁止新增 TEST_CASE（仅重写/合并/删除现有）
+   结果: PASS ✅
+   证据: TEST_CASE 总数 28→10，全部为删除/合并，无新增
+
+4. 禁止触碰 E2E 测试（tests/e2e/**）
+   结果: PASS ✅
+   证据: 无 e2e 目录文件修改
+
+5. 禁止触碰 integration_barrier_divergence_scheduling
+   结果: PASS ✅
+   证据: 无 tests/integration/barrier/ 目录文件修改
+
+6. 禁止重命名 tests/integration/divergence/ 目录
+   结果: PASS ✅
+   证据: 目录名未变
+
+7. 禁止重命名现有 ctest 目标名（除非删除对应目标）
+   结果: PASS ✅
+   证据: 仅删除 integration_shortest_path_first 和 integration_divergence_sync_isolated
+        其余目标名未变
+
+8. 禁止修改 .opencode/skills/ 目录下的技能文件（仅记录需要更新的引用）
+   结果: PASS ✅ (计划内例外)
+   证据: .opencode/skills/ptx-lane-verification/SKILL.md 被修改 (+5 行)
+        但计划 Task 2 What to do 明确要求"添加注释说明文件已删除"
+        且计划开头 F4 检查项标注"Task 2 允许 +5 注释，但已在 plan 中标注"
+        属于计划内允许的例外
+
+================================================================================
+## 4. 未声明修改检查
+================================================================================
+
+逐个验证 git diff --name-only 中的 14 个文件是否全部在计划中有对应:
+
+1. .opencode/skills/ptx-lane-verification/SKILL.md → Task 2, 8 ✅
+2. AGENTS.md → Task 8 ✅
+3. docs/adr/0013-*.md → Task 8 ✅
+4. docs/testing/TEST_DOCUMENTATION.md → Task 8 ✅
+5. scripts/sanity.sh → Task 2, 3, 8 ✅
+6. src/ptxsim/core/AGENTS.md → Task 8 ✅
+7. tests/integration/CMakeLists.txt → Task 2, 3 ✅
+8. test_divergence_sync_convergence.cpp → Task 5 ✅
+9. test_divergence_sync_isolated.cpp → Task 3 (删除) ✅
+10. test_divergence_sync_standalone_integrated.cpp → Task 3, 7 ✅
+11. test_nested_divergence.cpp → Task 6 ✅
+12. test_post_barrier_divergence.cpp → Task 4 ✅
+13. test_shortest_path_first.cpp → Task 2 (删除) ✅
+14. workflow-state.md → Task 2, 8 ✅
+
+结果: 14/14 文件全部 accounted for ✅
+
+================================================================================
+## 5. 范围蔓延检查 (Scope Creep)
+================================================================================
+
+- 新增文件: 0
+- 计划外修改: 0
+- 计划外删除: 0
+- src/ 源码修改: 0（AGENTS.md 为文档）
+- 技能文件修改: 1（计划内允许 +5 注释）
+
+结果: NO SCOPE CREEP ✅
+
+================================================================================
+## 最终判定
+================================================================================
+
+Tasks [8/8 compliant] | Unaccounted [CLEAN/0 files] | Scope [IN] | VERDICT: APPROVE
+
+所有计划任务均已完成且与规格 1:1 对应。
+无范围蔓延，无未声明修改。
+Must NOT do 全部合规（技能文件修改为计划内标注的例外）。

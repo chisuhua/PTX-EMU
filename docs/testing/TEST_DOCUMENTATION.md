@@ -214,7 +214,7 @@ J5: active_count matches active_mask bits
 | `test_sync_mechanism.cpp` | `sync;mechanism` | 同步机制 |
 | `test_barrier_simt_integration.cpp` | `barrier;simt` | 屏障与 SIMT 集成 |
 | `test_simt_integration.cpp` | `simt;integration` | SIMT 集成测试 |
-| `test_post_barrier_divergence.cpp` | `barrier;divergence` | CTA 屏障后线程 divergence 复现 |
+| `test_post_barrier_divergence.cpp` | `barrier;divergence` | CTA 屏障后线程 divergence 复现（5→2 TEST_CASE 合并后保留已知问题文档） |
 | `test_specific_bugs_unit.cpp` | `bug;unit` | 4个特定 bug 的单元测试 (sync_to_warp_state, CFG barriers, cudaMemset offset, predicate register) |
 
 ---

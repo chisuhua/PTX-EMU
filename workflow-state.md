@@ -82,7 +82,7 @@
 - `src/ptxsim/core/bsync_state.cpp` - BsyncManager 实现
 - `tests/test_bsync_state.cpp` - 单元测试
 - `tests/test_divergence_interleaved.cpp` - 交错执行测试
-- `tests/test_shortest_path_first.cpp` - 短路径优先测试
+- `tests/test_shortest_path_first.cpp` - 短路径优先测试 [DELETED in refactor 2026-06-04]
 
 ### 修改文件
 

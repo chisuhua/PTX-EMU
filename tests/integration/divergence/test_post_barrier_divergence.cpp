@@ -8,6 +8,16 @@
  * Result: Only 1 lane executes post-barrier instead of 32
  */
 
+/**
+ * KNOWN ISSUE DOCUMENTATION: Post-barrier active_mask not updated
+ *
+ * synchronize_barrier() (sm_context.cpp:536-637) releases threads after barrier
+ * completion but does NOT call update_active_mask(). This causes execute_warp_instruction()
+ * to only execute lanes that were in active_mask before the barrier.
+ *
+ * See: src/ptxsim/core/AGENTS.md#48
+ */
+
 #include "catch_amalgamated.hpp"
 #include "ptxsim/warp_state.h"
 #include "ptxsim/warp_context.h"
@@ -84,9 +94,12 @@ static StatementContext make_nop_stmt() {
     return ctx;
 }
 
-TEST_CASE("BUG-REPRODUCTION: bar.warp.sync releases threads but active_mask not updated",
+TEST_CASE("KNOWN-ISSUE: bar.warp.sync releases threads but active_mask not updated",
           "[post_barrier][divergence][execute_warp_instruction][bug]")
 {
+    // KNOWN ISSUE: synchronize_barrier() does not call update_active_mask() (AGENTS.md#48)
+    // This test documents the bug behavior: only 1 lane executes post-barrier
+    // because active_mask is stale (still pre-barrier value).
     WarpContext warp;
     std::vector<std::unique_ptr<ThreadContext>> thread_ptrs;
 
@@ -230,9 +243,12 @@ TEST_CASE("BUG-REPRODUCTION: bar.warp.sync releases threads but active_mask not 
     }
 }
 
-TEST_CASE("FIX VERIFICATION: After barrier, set_active_mask should sync with released lanes",
+TEST_CASE("WORKAROUND-VERIFY: Manual set_active_mask fixes post-barrier execution",
           "[post_barrier][divergence][execute_warp_instruction][fix]")
 {
+    // This test verifies the documented workaround: callers must manually
+    // call warp.set_active_mask(arrived_mask) after barrier completion
+    // until the bug in synchronize_barrier() is fixed (AGENTS.md#48).
     WarpContext warp;
     std::vector<std::unique_ptr<ThreadContext>> thread_ptrs;
 
@@ -298,247 +314,4 @@ TEST_CASE("FIX VERIFICATION: After barrier, set_active_mask should sync with rel
     }
 }
 
-TEST_CASE("Full cycle: barrier release then post-barrier instruction execution",
-          "[post_barrier][divergence][full_cycle]")
-{
-    WarpContext warp;
-    std::vector<std::unique_ptr<ThreadContext>> thread_ptrs;
 
-    Dim3 blockIdx = {0, 0, 0};
-    Dim3 gridDim = {1, 1, 1};
-    Dim3 blockDim = {32, 1, 1};
-    std::vector<StatementContext> statements;
-    std::map<std::string, Symtable*> name2Sym;
-    std::map<std::string, int> label2pc;
-
-    for (int lane = 0; lane < 32; lane++) {
-        auto thread = std::make_unique<ThreadContext>();
-        Dim3 tid = {(uint32_t)lane, 0, 0};
-        thread->init(blockIdx, tid, gridDim, blockDim, statements, &name2Sym,
-                     label2pc, nullptr, nullptr);
-        thread->set_state(RUN);
-        thread_ptrs.push_back(std::move(thread));
-    }
-    for (int i = 0; i < 32; i++) {
-        warp.add_thread(std::move(thread_ptrs[i]), i);
-    }
-
-    warp.set_active_mask(0x00000001);
-
-    for (int i = 0; i < 32; i++) {
-        auto* t = warp.get_thread(i);
-        t->set_pc(0);
-        warp.get_warp_state().threads[i].pc = 0;
-        warp.get_warp_state().threads[i].is_active = true;
-        warp.get_warp_state().threads[i].is_exited = false;
-        warp.get_warp_state().threads[i].is_blocked = true;
-        warp.get_warp_state().threads[i].status = ThreadStatus::Blocked;
-    }
-
-    // Simulate barrier arrival and release
-    Wbar& wbar = warp.get_warp_state().wbars[0];
-    wbar.init(0xFFFFFFFF, 1);
-    for (int i = 0; i < 32; i++) {
-        wbar.arrive(i);
-    }
-    REQUIRE(wbar.is_complete() == true);
-
-    warp.set_exec_mask(wbar.arrived_mask);
-
-    for (int i = 0; i < 32; i++) {
-        if ((wbar.arrived_mask & (1u << i))) {
-            warp.set_thread_pc(i, 1);
-            warp.get_warp_state().threads[i].is_blocked = false;
-            warp.get_warp_state().threads[i].status = ThreadStatus::Active;
-        }
-    }
-
-    SECTION("BUG DEMONSTRATION: Without active_mask fix, only lane 0 executes post-barrier") {
-        // active_mask is still 0x00000001 (only lane 0)
-        int lanes_at_pc1 = 0;
-        int lanes_schedulable = 0;
-
-        for (int i = 0; i < 32; i++) {
-            if (warp.get_warp_state().threads[i].pc == 1) lanes_at_pc1++;
-            if (warp.is_lane_active(i) && warp.get_warp_state().threads[i].pc == 1) lanes_schedulable++;
-        }
-
-        INFO("Threads at PC=1: " << lanes_at_pc1);
-        INFO("Threads schedulable (active_mask check): " << lanes_schedulable);
-
-        REQUIRE(lanes_at_pc1 == 32);  // All 32 at PC=1
-        CHECK(lanes_schedulable < lanes_at_pc1);  // Bug: active_mask filters out 31 lanes
-    }
-}
-
-TEST_CASE("BUG-REPRODUCTION-CTA: Post-barrier execute_warp_instruction only executes active_mask lanes",
-          "[post_barrier][cta_barrier][execute_warp_instruction][bug]")
-{
-    init_instruction_factory_once();
-
-    WarpContext warp;
-    std::vector<std::unique_ptr<ThreadContext>> thread_ptrs;
-
-    Dim3 blockIdx = {0, 0, 0};
-    Dim3 gridDim = {1, 1, 1};
-    Dim3 blockDim = {32, 1, 1};
-    std::vector<StatementContext> statements;
-    statements.push_back(make_nop_stmt());  // PC=0: barrier instruction placeholder
-    statements.push_back(make_nop_stmt());  // PC=1: post-barrier instruction
-    std::map<std::string, Symtable*> name2Sym;
-    std::map<std::string, int> label2pc;
-
-    // Create 32 threads
-    for (int lane = 0; lane < 32; lane++) {
-        auto thread = std::make_unique<ThreadContext>();
-        Dim3 tid = {(uint32_t)lane, 0, 0};
-        thread->init(blockIdx, tid, gridDim, blockDim, statements, &name2Sym,
-                     label2pc, nullptr, nullptr);
-        thread->set_state(RUN);
-        thread_ptrs.push_back(std::move(thread));
-    }
-    for (int i = 0; i < 32; i++) {
-        warp.add_thread(std::move(thread_ptrs[i]), i);
-    }
-
-    // Simulate the state AFTER CTA barrier (synchronize_barrier) has completed:
-    // All threads released, but active_mask still only has lane 0
-    const int BARRIER_PC = 0;
-    const int POST_BARRIER_PC = 1;
-
-    warp.set_active_mask(0x00000001);  // ONLY lane 0 active (bug condition)
-    warp.set_exec_mask(0xFFFFFFFF);     // All 32 lanes in exec_mask (correct)
-
-    for (int i = 0; i < 32; i++) {
-        auto* t = warp.get_thread(i);
-        t->set_pc(POST_BARRIER_PC);
-        t->set_state(RUN);
-
-        // Simulate synchronize_barrier() state updates
-        warp.get_warp_state().threads[i].pc = POST_BARRIER_PC;
-        warp.get_warp_state().threads[i].next_pc = POST_BARRIER_PC;
-        warp.get_warp_state().threads[i].is_active = true;
-        warp.get_warp_state().threads[i].is_exited = false;
-        warp.get_warp_state().threads[i].is_blocked = false;
-        warp.get_warp_state().threads[i].status = ThreadStatus::Active;
-    }
-
-    // Pre-check: all 32 threads are at PC=1 and ready
-    int ready_count = 0;
-    for (int i = 0; i < 32; i++) {
-        bool ready = warp.get_warp_state().threads[i].is_active &&
-                    !warp.get_warp_state().threads[i].is_exited &&
-                    !warp.get_warp_state().threads[i].is_blocked &&
-                    warp.get_warp_state().threads[i].pc == POST_BARRIER_PC;
-        if (ready) ready_count++;
-    }
-    REQUIRE(ready_count == 32);
-
-    // Pre-check: only lane 0 is active in active_mask
-    int active_mask_count = 0;
-    for (int i = 0; i < 32; i++) {
-        if (warp.is_lane_active(i)) active_mask_count++;
-    }
-    REQUIRE(active_mask_count == 1);
-
-    // Record PCs before execution
-    int pc_before[32];
-    for (int i = 0; i < 32; i++) {
-        pc_before[i] = warp.get_thread(i)->get_pc();
-    }
-
-    // Execute post-barrier instruction using real execute_warp_instruction()
-    StatementContext nop_stmt = make_nop_stmt();
-    warp.execute_warp_instruction(nop_stmt, POST_BARRIER_PC);
-
-    // Count how many threads actually executed (PC advanced)
-    int executed_count = 0;
-    for (int i = 0; i < 32; i++) {
-        int pc_after = warp.get_thread(i)->get_pc();
-        if (pc_after > pc_before[i]) {
-            executed_count++;
-        }
-    }
-
-    INFO("Threads ready before execute_warp_instruction: " << ready_count);
-    INFO("Lanes in active_mask: " << active_mask_count);
-    INFO("Lanes that actually executed post-barrier instruction: " << executed_count);
-
-    // 此测试直接构造了 bug 状态（stale active_mask），验证：
-    // 当 active_mask 未由 synchronize_barrier() 更新时，
-    // execute_warp_instruction 会按 active_mask 过滤，
-    // 导致只有 active_mask 中的线程能执行。
-    // 
-    // 修复在 sm_context.cpp 的 synchronize_barrier() 中：
-    // 在 release 后调用 update_active_mask() 更新所有 warp 的 active_mask。
-    // FIX-VERIFICATION-CTA 测试验证修复后的正确行为。
-    CHECK(executed_count == 1);
-}
-
-TEST_CASE("FIX-VERIFICATION-CTA: After updating active_mask, all lanes execute post-barrier",
-          "[post_barrier][cta_barrier][execute_warp_instruction][fix]")
-{
-    init_instruction_factory_once();
-
-    WarpContext warp;
-    std::vector<std::unique_ptr<ThreadContext>> thread_ptrs;
-
-    Dim3 blockIdx = {0, 0, 0};
-    Dim3 gridDim = {1, 1, 1};
-    Dim3 blockDim = {32, 1, 1};
-    std::vector<StatementContext> statements;
-    statements.push_back(make_nop_stmt());  // PC=0
-    statements.push_back(make_nop_stmt());  // PC=1
-    std::map<std::string, Symtable*> name2Sym;
-    std::map<std::string, int> label2pc;
-
-    for (int lane = 0; lane < 32; lane++) {
-        auto thread = std::make_unique<ThreadContext>();
-        Dim3 tid = {(uint32_t)lane, 0, 0};
-        thread->init(blockIdx, tid, gridDim, blockDim, statements, &name2Sym,
-                     label2pc, nullptr, nullptr);
-        thread->set_state(RUN);
-        thread_ptrs.push_back(std::move(thread));
-    }
-    for (int i = 0; i < 32; i++) {
-        warp.add_thread(std::move(thread_ptrs[i]), i);
-    }
-
-    const int POST_BARRIER_PC = 1;
-
-    // Same setup as bug reproduction
-    warp.set_active_mask(0x00000001);
-    warp.set_exec_mask(0xFFFFFFFF);
-
-    for (int i = 0; i < 32; i++) {
-        auto* t = warp.get_thread(i);
-        t->set_pc(POST_BARRIER_PC);
-        t->set_state(RUN);
-        warp.get_warp_state().threads[i].pc = POST_BARRIER_PC;
-        warp.get_warp_state().threads[i].is_active = true;
-        warp.get_warp_state().threads[i].is_exited = false;
-        warp.get_warp_state().threads[i].is_blocked = false;
-        warp.get_warp_state().threads[i].status = ThreadStatus::Active;
-    }
-
-    // THE FIX: update active_mask to match released threads
-    warp.set_active_mask(0xFFFFFFFF);
-
-    int pc_before[32];
-    for (int i = 0; i < 32; i++) {
-        pc_before[i] = warp.get_thread(i)->get_pc();
-    }
-
-    StatementContext nop_stmt = make_nop_stmt();
-    warp.execute_warp_instruction(nop_stmt, POST_BARRIER_PC);
-
-    int executed_count = 0;
-    for (int i = 0; i < 32; i++) {
-        if (warp.get_thread(i)->get_pc() > pc_before[i]) {
-            executed_count++;
-        }
-    }
-
-    INFO("Lanes that executed with fixed active_mask: " << executed_count);
-    REQUIRE(executed_count == 32);
-}

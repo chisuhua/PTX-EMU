@@ -1,0 +1,253 @@
+{
+  "schema_version": 2,
+  "active_work_id": "divergence-test-refactor-24ed7a40",
+  "works": {
+    "divergence-test-refactor-24ed7a40": {
+      "work_id": "divergence-test-refactor-24ed7a40",
+      "active_plan": "/workspace/project/PTX-EMU/.omo/plans/divergence-test-refactor.md",
+      "plan_name": "divergence-test-refactor",
+      "status": "active",
+      "started_at": "2026-06-04T03:00:43.245Z",
+      "updated_at": "2026-06-04T05:52:52.897Z",
+      "session_ids": [
+        "opencode:ses_17335ea71ffe44TslykMIZ4uQ1",
+        "opencode:ses_16f66b559ffeIn3fT2K55KqKC7",
+        "opencode:ses_16f66731effeg35s7DxgtLpaCd",
+        "opencode:ses_16f662889ffep5UkvPB5fVWOy3",
+        "opencode:ses_16f65f55dffe30x9qhSTLi9Azp",
+        "opencode:ses_16f65b881ffeKqnHYlMNU91za0"
+      ],
+      "session_origins": {
+        "opencode:ses_17335ea71ffe44TslykMIZ4uQ1": "direct",
+        "opencode:ses_16f66b559ffeIn3fT2K55KqKC7": "appended",
+        "opencode:ses_16f66731effeg35s7DxgtLpaCd": "appended",
+        "opencode:ses_16f662889ffep5UkvPB5fVWOy3": "appended",
+        "opencode:ses_16f65f55dffe30x9qhSTLi9Azp": "appended",
+        "opencode:ses_16f65b881ffeKqnHYlMNU91za0": "appended"
+      },
+      "agent": "atlas",
+      "task_sessions": {
+        "todo:2": {
+          "task_key": "todo:2",
+          "task_label": "2",
+          "task_title": "**删除 test_shortest_path_first.cpp 及所有引用**",
+          "session_id": "opencode:ses_16f66b559ffeIn3fT2K55KqKC7",
+          "agent": "Sisyphus-Junior",
+          "updated_at": "2026-06-04T03:38:50.002Z",
+          "started_at": "2026-06-04T03:34:31.823Z",
+          "status": "completed",
+          "ended_at": "2026-06-04T03:38:50.002Z",
+          "elapsed_ms": 258179
+        },
+        "todo:3": {
+          "task_key": "todo:3",
+          "task_label": "3",
+          "task_title": "**删除 test_divergence_sync_isolated.cpp，清理 standalone 中的元数据**",
+          "session_id": "opencode:ses_16f66731effeg35s7DxgtLpaCd",
+          "agent": "Sisyphus-Junior",
+          "updated_at": "2026-06-04T03:52:18.253Z",
+          "started_at": "2026-06-04T03:45:42.572Z",
+          "status": "completed",
+          "ended_at": "2026-06-04T03:52:18.253Z",
+          "elapsed_ms": 395681
+        },
+        "todo:4": {
+          "task_key": "todo:4",
+          "task_label": "4",
+          "task_title": "**合并 test_post_barrier_divergence.cpp (5→2 TEST_CASE)**",
+          "session_id": "opencode:ses_16f662889ffep5UkvPB5fVWOy3",
+          "agent": "Sisyphus-Junior",
+          "updated_at": "2026-06-04T04:08:56.160Z",
+          "started_at": "2026-06-04T04:06:43.336Z",
+          "status": "completed",
+          "ended_at": "2026-06-04T04:08:56.158Z",
+          "elapsed_ms": 132822
+        },
+        "todo:5": {
+          "task_key": "todo:5",
+          "task_label": "5",
+          "task_title": "**合并 test_divergence_sync_convergence.cpp (A+C, D+E)**",
+          "session_id": "opencode:ses_16f65f55dffe30x9qhSTLi9Azp",
+          "agent": "Sisyphus-Junior",
+          "updated_at": "2026-06-04T04:19:29.610Z",
+          "started_at": "2026-06-04T04:17:57.441Z",
+          "status": "completed",
+          "ended_at": "2026-06-04T04:19:29.610Z",
+          "elapsed_ms": 92169
+        },
+        "todo:6": {
+          "task_key": "todo:6",
+          "task_label": "6",
+          "task_title": "**清理 test_nested_divergence.cpp**",
+          "session_id": "opencode:ses_16f65b881ffeKqnHYlMNU91za0",
+          "agent": "Sisyphus-Junior",
+          "updated_at": "2026-06-04T04:25:48.251Z",
+          "started_at": "2026-06-04T04:24:19.024Z",
+          "status": "completed",
+          "ended_at": "2026-06-04T04:25:48.251Z",
+          "elapsed_ms": 89227
+        },
+        "todo:7": {
+          "task_key": "todo:7",
+          "task_label": "7",
+          "task_title": "**使用 `step_warp` 风格重写 standalone_integrated.cpp \"all three modes\" 测试**",
+          "session_id": "opencode:ses_16f19e119ffegg2MzFgrYPcNO3",
+          "agent": "Sisyphus-Junior",
+          "category": "unspecified-high",
+          "updated_at": "2026-06-04T04:56:19.829Z",
+          "started_at": "2026-06-04T04:53:13.839Z",
+          "status": "completed",
+          "ended_at": "2026-06-04T04:56:19.829Z",
+          "elapsed_ms": 185990
+        },
+        "todo:8": {
+          "task_key": "todo:8",
+          "task_label": "8",
+          "task_title": "**更新所有外部文档引用**",
+          "session_id": "opencode:ses_16f01c88dffeQjgHBzbtHcjJbG",
+          "agent": "Sisyphus-Junior",
+          "category": "writing",
+          "updated_at": "2026-06-04T05:15:45.652Z",
+          "started_at": "2026-06-04T05:14:16.770Z",
+          "status": "completed",
+          "ended_at": "2026-06-04T05:15:45.652Z",
+          "elapsed_ms": 88882
+        },
+        "final-wave:f1": {
+          "task_key": "final-wave:f1",
+          "task_label": "F1",
+          "task_title": "**计划合规审计** — `oracle`",
+          "session_id": "opencode:ses_16ef09a4bffeVgd1GjAfD4oOBR",
+          "agent": "oracle",
+          "updated_at": "2026-06-04T05:52:52.897Z",
+          "started_at": "2026-06-04T05:24:44.690Z",
+          "status": "completed",
+          "ended_at": "2026-06-04T05:52:52.897Z",
+          "elapsed_ms": 1688207
+        }
+      }
+    }
+  },
+  "active_plan": "/workspace/project/PTX-EMU/.omo/plans/divergence-test-refactor.md",
+  "started_at": "2026-06-04T03:00:43.245Z",
+  "status": "active",
+  "updated_at": "2026-06-04T05:52:52.897Z",
+  "session_ids": [
+    "opencode:ses_17335ea71ffe44TslykMIZ4uQ1",
+    "opencode:ses_16f66b559ffeIn3fT2K55KqKC7",
+    "opencode:ses_16f66731effeg35s7DxgtLpaCd",
+    "opencode:ses_16f662889ffep5UkvPB5fVWOy3",
+    "opencode:ses_16f65f55dffe30x9qhSTLi9Azp",
+    "opencode:ses_16f65b881ffeKqnHYlMNU91za0"
+  ],
+  "session_origins": {
+    "opencode:ses_17335ea71ffe44TslykMIZ4uQ1": "direct",
+    "opencode:ses_16f66b559ffeIn3fT2K55KqKC7": "appended",
+    "opencode:ses_16f66731effeg35s7DxgtLpaCd": "appended",
+    "opencode:ses_16f662889ffep5UkvPB5fVWOy3": "appended",
+    "opencode:ses_16f65f55dffe30x9qhSTLi9Azp": "appended",
+    "opencode:ses_16f65b881ffeKqnHYlMNU91za0": "appended"
+  },
+  "plan_name": "divergence-test-refactor",
+  "task_sessions": {
+    "todo:2": {
+      "task_key": "todo:2",
+      "task_label": "2",
+      "task_title": "**删除 test_shortest_path_first.cpp 及所有引用**",
+      "session_id": "opencode:ses_16f66b559ffeIn3fT2K55KqKC7",
+      "agent": "Sisyphus-Junior",
+      "updated_at": "2026-06-04T03:38:50.002Z",
+      "started_at": "2026-06-04T03:34:31.823Z",
+      "status": "completed",
+      "ended_at": "2026-06-04T03:38:50.002Z",
+      "elapsed_ms": 258179
+    },
+    "todo:3": {
+      "task_key": "todo:3",
+      "task_label": "3",
+      "task_title": "**删除 test_divergence_sync_isolated.cpp，清理 standalone 中的元数据**",
+      "session_id": "opencode:ses_16f66731effeg35s7DxgtLpaCd",
+      "agent": "Sisyphus-Junior",
+      "updated_at": "2026-06-04T03:52:18.253Z",
+      "started_at": "2026-06-04T03:45:42.572Z",
+      "status": "completed",
+      "ended_at": "2026-06-04T03:52:18.253Z",
+      "elapsed_ms": 395681
+    },
+    "todo:4": {
+      "task_key": "todo:4",
+      "task_label": "4",
+      "task_title": "**合并 test_post_barrier_divergence.cpp (5→2 TEST_CASE)**",
+      "session_id": "opencode:ses_16f662889ffep5UkvPB5fVWOy3",
+      "agent": "Sisyphus-Junior",
+      "updated_at": "2026-06-04T04:08:56.160Z",
+      "started_at": "2026-06-04T04:06:43.336Z",
+      "status": "completed",
+      "ended_at": "2026-06-04T04:08:56.158Z",
+      "elapsed_ms": 132822
+    },
+    "todo:5": {
+      "task_key": "todo:5",
+      "task_label": "5",
+      "task_title": "**合并 test_divergence_sync_convergence.cpp (A+C, D+E)**",
+      "session_id": "opencode:ses_16f65f55dffe30x9qhSTLi9Azp",
+      "agent": "Sisyphus-Junior",
+      "updated_at": "2026-06-04T04:19:29.610Z",
+      "started_at": "2026-06-04T04:17:57.441Z",
+      "status": "completed",
+      "ended_at": "2026-06-04T04:19:29.610Z",
+      "elapsed_ms": 92169
+    },
+    "todo:6": {
+      "task_key": "todo:6",
+      "task_label": "6",
+      "task_title": "**清理 test_nested_divergence.cpp**",
+      "session_id": "opencode:ses_16f65b881ffeKqnHYlMNU91za0",
+      "agent": "Sisyphus-Junior",
+      "updated_at": "2026-06-04T04:25:48.251Z",
+      "started_at": "2026-06-04T04:24:19.024Z",
+      "status": "completed",
+      "ended_at": "2026-06-04T04:25:48.251Z",
+      "elapsed_ms": 89227
+    },
+    "todo:7": {
+      "task_key": "todo:7",
+      "task_label": "7",
+      "task_title": "**使用 `step_warp` 风格重写 standalone_integrated.cpp \"all three modes\" 测试**",
+      "session_id": "opencode:ses_16f19e119ffegg2MzFgrYPcNO3",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-06-04T04:56:19.829Z",
+      "started_at": "2026-06-04T04:53:13.839Z",
+      "status": "completed",
+      "ended_at": "2026-06-04T04:56:19.829Z",
+      "elapsed_ms": 185990
+    },
+    "todo:8": {
+      "task_key": "todo:8",
+      "task_label": "8",
+      "task_title": "**更新所有外部文档引用**",
+      "session_id": "opencode:ses_16f01c88dffeQjgHBzbtHcjJbG",
+      "agent": "Sisyphus-Junior",
+      "category": "writing",
+      "updated_at": "2026-06-04T05:15:45.652Z",
+      "started_at": "2026-06-04T05:14:16.770Z",
+      "status": "completed",
+      "ended_at": "2026-06-04T05:15:45.652Z",
+      "elapsed_ms": 88882
+    },
+    "final-wave:f1": {
+      "task_key": "final-wave:f1",
+      "task_label": "F1",
+      "task_title": "**计划合规审计** — `oracle`",
+      "session_id": "opencode:ses_16ef09a4bffeVgd1GjAfD4oOBR",
+      "agent": "oracle",
+      "updated_at": "2026-06-04T05:52:52.897Z",
+      "started_at": "2026-06-04T05:24:44.690Z",
+      "status": "completed",
+      "ended_at": "2026-06-04T05:52:52.897Z",
+      "elapsed_ms": 1688207
+    }
+  },
+  "agent": "atlas"
+}

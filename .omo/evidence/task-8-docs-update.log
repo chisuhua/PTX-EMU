@@ -1,0 +1,134 @@
+Task 8 — Documentation Update Evidence Log
+=============================================
+Date: 2026-06-04
+Author: Sisyphus
+Scope: Update external documentation references to reflect divergence test refactor (Tasks 2-7)
+
+----------------------------------------------------
+1. FILES MODIFIED
+----------------------------------------------------
+
+A. /workspace/project/PTX-EMU/AGENTS.md
+   - Lines changed: 1 (line 207)
+   - Action: replaced `integration_divergence_sync_isolated, integration_divergence_sync_convergence` with the full set of post-refactor divergence ctest targets
+   - Before: `integration_divergence_sync_isolated`, `integration_divergence_sync_convergence`
+   - After:  `integration_divergence_sync_standalone`, `integration_divergence_sync_convergence`, `integration_nested_divergence`, `integration_post_barrier_divergence`
+
+B. /workspace/project/PTX-EMU/src/ptxsim/core/AGENTS.md
+   - Lines changed: 2 (replaced 2 bullet lines under "## KNOWN ISSUES")
+   - Action: replaced 2-line bullet list with the 2-line `// KNOWN ISSUE` comment block referencing the test file and 2 TEST_CASE
+   - Before:
+       - `synchronize_barrier()` may not update `active_mask` correctly after barrier release
+       - `test_post_barrier_divergence.cpp` documents this as a known bug (BUG-REPRODUCTION test)
+   - After:
+       // KNOWN ISSUE: synchronize_barrier() may not update active_mask correctly after barrier release
+       // See: tests/integration/divergence/test_post_barrier_divergence.cpp (2 TEST_CASE documenting the issue)
+
+C. /workspace/project/PTX-EMU/docs/testing/TEST_DOCUMENTATION.md
+   - Lines changed: 1 (line 217)
+   - Action: extended `test_post_barrier_divergence.cpp` description to note 5→2 TEST_CASE merge
+   - Before: `CTA 屏障后线程 divergence 复现`
+   - After:  `CTA 屏障后线程 divergence 复现（5→2 TEST_CASE 合并后保留已知问题文档）`
+
+D. /workspace/project/PTX-EMU/docs/adr/0013-statement-factory-test-unification.md
+   - Lines changed: 8 (5 in two tables, 1 in update record)
+   - Action:
+       - In "12 个测试文件按以下规则替换" table:
+           * `test_divergence_sync_isolated.cpp` row → `**已删除（合并到 standalone）**`
+           * `test_post_barrier_divergence.cpp` row → `**已合并（5→2 TEST_CASE）**`
+           * Added new row: `test_shortest_path_first.cpp` → `**已删除（无实际行为覆盖）**`
+       - In "影响范围" table:
+           * `tests/test_divergence_sync_isolated.cpp` row → `**已删除** | 合并到 test_divergence_sync_standalone_integrated.cpp`
+           * `tests/test_post_barrier_divergence.cpp` row → `**已合并** | 5→2 TEST_CASE，保留已知问题文档`
+           * Added new row: `tests/test_shortest_path_first.cpp` → `**已删除** | 无实际行为覆盖，已移除`
+       - In "更新记录" table: added 2026-06-04 row summarizing the refactor
+
+----------------------------------------------------
+2. FILES NOT MODIFIED (per constraints)
+----------------------------------------------------
+
+E. /workspace/project/PTX-EMU/.opencode/skills/ptx-lane-verification/SKILL.md
+   - Per constraint: "禁止修改 .opencode/skills/ 目录下的技能文件（仅记录需要更新的引用）"
+   - Checked, found 2 stale references to deleted `test_divergence_sync_isolated.cpp`:
+       * Line 446: `tests/test_divergence_sync_isolated.cpp` (in 参考实现 list)
+       * Line 452: `tests/test_divergence_sync_isolated.cpp` (in note about shortest_path_first)
+   - The Task 2/3 5-line note about `test_shortest_path_first.cpp` (lines 450-453) is correctly in place.
+   - The note on line 452 itself contains a stale reference to the deleted isolated file as a coverage source.
+   - These stale refs are LOGGED HERE, not modified.
+
+F. /workspace/project/PTX-EMU/docs/superpowers/plans/* (historical)
+G. /workspace/project/PTX-EMU/openspec/changes/*/tasks.md (historical)
+   - Per constraint: historical plan files and task records must not be modified.
+
+H. /workspace/project/PTX-EMU/src/ptxsim/** (source code)
+   - Per constraint: source code is out of scope.
+
+----------------------------------------------------
+3. VERIFICATION (per task spec)
+----------------------------------------------------
+
+3.1 Grep check 1: deleted ctest target in target docs
+    Command: grep -rn "integration_divergence_sync_isolated" \
+        /workspace/project/PTX-EMU/AGENTS.md \
+        /workspace/project/PTX-EMU/src/ptxsim/core/AGENTS.md \
+        /workspace/project/PTX-EMU/docs/
+    Expected: no output
+    Actual:   no output (exit 1)  ✅ PASS
+
+3.2 Grep check 2: deleted ctest target in AGENTS.md files
+    Command: grep -rn "integration_shortest_path_first" \
+        /workspace/project/PTX-EMU/AGENTS.md \
+        /workspace/project/PTX-EMU/src/ptxsim/core/AGENTS.md
+    Expected: no output
+    Actual:   no output (exit 1)  ✅ PASS
+
+3.3 Grep check 3: sanity.sh updated
+    Command: grep "divergence_sync" /workspace/project/PTX-EMU/scripts/sanity.sh
+    Expected: only test_divergence_sync_standalone (no isolated)
+    Actual:   run_regex_tests "test_divergence_sync_standalone" "Divergence + barrier sync (standalone)"  ✅ PASS
+
+3.4 ctest verification: all divergence integration tests
+    Command: cd build && ctest -R "integration_(divergence|nested|shortest|post_barrier)" -V
+    Expected: 4/4 PASS
+    Actual:   4/4 PASS  ✅ PASS
+        1/4 integration_divergence_sync_convergence  ... Passed
+        2/4 integration_divergence_sync_standalone    ... Passed (244 assertions in 4 test cases)
+        3/4 integration_nested_divergence            ... Passed (73 assertions in 1 test case)
+        4/4 integration_post_barrier_divergence      ... Passed (8 assertions in 2 test cases)
+        100% tests passed, 0 tests failed out of 4
+
+----------------------------------------------------
+4. STALE REFERENCES IN SKILL.md (constraint: record only, do not modify)
+----------------------------------------------------
+
+File: /workspace/project/PTX-EMU/.opencode/skills/ptx-lane-verification/SKILL.md
+
+Line 446:
+    - `tests/test_divergence_sync_isolated.cpp` - 使用 statement_factory 构建指令序列
+    → Stale: file deleted in Task 3 (refactored into test_divergence_sync_standalone_integrated.cpp)
+
+Line 452:
+    > 实际分歧路径覆盖由 `tests/test_divergence_sync_isolated.cpp` / `test_nested_divergence.cpp` 提供。
+    → Stale: file deleted in Task 3. Should reference test_divergence_sync_standalone_integrated.cpp instead.
+
+Line 446 also still correctly references:
+    - `tests/test_barrier_verification_integrated.cpp` (exists)
+    - `tests/test_nested_divergence.cpp` (exists)
+
+Task 2/3 5-line blocknote about test_shortest_path_first.cpp is in place (lines 450-453) — verified.
+
+These stale references will be picked up in a follow-up task that has permission to modify skill files.
+
+----------------------------------------------------
+5. RESULT
+----------------------------------------------------
+
+ALL VERIFICATIONS PASS:
+- 4 documentation files updated as required
+- 0 historical plan files touched
+- 0 source files touched
+- 0 skill files modified (per constraint)
+- 2 stale references in skill file LOGGED for follow-up
+- 4/4 ctest integration tests PASS
+
+TASK 8 COMPLETE.

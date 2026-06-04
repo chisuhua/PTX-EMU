@@ -74,11 +74,6 @@ set_tests_properties(integration_barrier_simt PROPERTIES LABELS "integration;bar
 # ============================================================================
 # Divergence 集成测试
 # ============================================================================
-add_catch_test(integration_divergence_sync_isolated
-    divergence/test_divergence_sync_isolated.cpp
-)
-set_tests_properties(integration_divergence_sync_isolated PROPERTIES LABELS "integration;divergence;barrier_sync")
-
 add_catch_test(integration_divergence_sync_convergence
     divergence/test_divergence_sync_convergence.cpp
 )
@@ -93,11 +88,6 @@ add_catch_test(integration_nested_divergence
     divergence/test_nested_divergence.cpp
 )
 set_tests_properties(integration_nested_divergence PROPERTIES LABELS "integration;divergence;nested")
-
-add_catch_test(integration_shortest_path_first
-    divergence/test_shortest_path_first.cpp
-)
-set_tests_properties(integration_shortest_path_first PROPERTIES LABELS "integration;shortest_first;divergence")
 
 add_catch_test(integration_post_barrier_divergence
     divergence/test_post_barrier_divergence.cpp

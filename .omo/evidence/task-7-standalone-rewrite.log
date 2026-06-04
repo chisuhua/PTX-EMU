@@ -1,0 +1,88 @@
+================================================================================
+TASK 7: 重写 test_divergence_sync_standalone "all three modes" 测试
+================================================================================
+Date:        2026-06-04
+Target file: tests/integration/divergence/test_divergence_sync_standalone_integrated.cpp
+Reference:   tests/integration/divergence/test_divergence_sync_convergence.cpp
+
+--------------------------------------------------------------------------------
+1. 重构范围
+--------------------------------------------------------------------------------
+- 修改文件: 1 (test_divergence_sync_standalone_integrated.cpp)
+- 新增 includes: 3 (scheduler_utils.h, instruction_helpers.h, predicates.h)
+- 新增 using:   2 (ptxsim::testing::step_warp, ptxsim::testing::setup_pred)
+- 新增 include: 1 (<array>)
+- 重写 TEST_CASE: 1 ("all three modes produce same reconvergence")
+- 触碰其他 TEST_CASE: 0 ✓
+- 修改其他 divergence 文件: 0 ✓
+
+--------------------------------------------------------------------------------
+2. 重构前后对比
+--------------------------------------------------------------------------------
+TEST_CASE 数量:
+  - 之前: 4
+  - 之后: 4 (保持不变)
+
+"all three modes" TEST_CASE 断言数:
+  - 之前: 6 CHECK (3 模式 × 2 断言/模式)
+  - 之后: 70 CHECK + 3 REQUIRE
+    ├─ Per mode:
+    │   ├─ 4 CHECK (PC=0..3, 4 NOPs)
+    │   ├─ 2 CHECK + 1 REQUIRE (分歧断言: BRANCH_PC, get_thread_pc, simt_stack.depth)
+    │   ├─ 9 CHECK (Path A 顺序 PC=5..13)
+    │   ├─ 1 CHECK + 3 CHECK (Path A 到达 CONV_PC: PC + 3 阻塞断言)
+    │   ├─ 6 CHECK (Path B 顺序 PC=28..33)
+    │   ├─ 1 CHECK (bra.uni PC=34)
+    │   └─ 4 CHECK + 32 CHECK (汇聚断言: simt_stack.empty, exec_mask, lane unblocked, 32 thread PC)
+    └─ 跨模式: 3 REQUIRE (sm.get_divergence_execution_mode() == mode)
+  - 净增断言: ~64+ 新增断言，覆盖分歧-汇聚全流程
+
+指令构造方式:
+  - 之前: 21 条手工 makeGenericInstr/makeBranchInstr/makeLabelInstr/makeBarWarpSyncInstr
+  - 之后: 35 条 make_nop + make_bra_pred + make_bra (helpers 构造)
+
+执行驱动:
+  - 之前: warp->execute_warp_instruction(statements[N], N) 直接驱动
+  - 之后: step_warp(w, stmts) 调度器驱动
+
+Predicate 设置:
+  - 之前: 直接写 r1 寄存器 (模拟 tid)，用 setp.eq 计算 p_t0
+  - 之后: setup_pred(w, 0x0000FFFFu) 直接注入 p1
+
+--------------------------------------------------------------------------------
+3. 验证
+--------------------------------------------------------------------------------
+3.1 完整构建:
+$ cd build && cmake --build . 2>&1 | tail -3
+[100%] Built target cute_hello_tiled_copy
+[100%] Built target cute_rmsnorm_obj
+[100%] Built target cute_rmsnorm
+
+3.2 ctest 详细输出:
+$ ctest -R integration_divergence_sync_standalone -V 2>&1 | grep "All tests passed"
+79: All tests passed (244 assertions in 4 test cases)
+1/1 Test #79: integration_divergence_sync_standalone ...   Passed    0.05 sec
+
+3.3 失败测试回归确认:
+  - test_divergence_sync_standalone (#25)              : 预存在失败 (E2E CUDA bench)
+  - integration_barrier_divergence_scheduling (#71)    : 预存在失败 (barrier 调度)
+  - 验证方法: git stash → 重新跑同样两个测试 → 同样失败 → git stash pop
+  - 结论: 这两个失败与本次重构无关，是 main 分支预存在问题
+
+--------------------------------------------------------------------------------
+4. 关键发现
+--------------------------------------------------------------------------------
+- step_warp 自动处理分歧后的 SIMT 调度：低 PC 优先，且支持阻塞/解阻机制
+- check_reconvergence 在 step_warp 末尾循环调用，汇聚后自动解阻早期 lane
+- 指令布局对齐 convergence test 极大简化了断言：35 NOPs + 1 谓词 bra + 1 bra.uni
+- 三个 mode (Sequential/Interleaved/ShortestFirst) 都产生相同 final state：
+  simt_stack.empty() + exec_mask=0xFFFFFFFFu + 所有 32 lane 在 CONV_PC
+
+--------------------------------------------------------------------------------
+5. 违反约束检查
+--------------------------------------------------------------------------------
+- 不新增 TEST_CASE:        ✓ (维持 4 个)
+- 不改变宏观意图:          ✓ (仍测试 "all 3 modes → same reconvergence")
+- 不触碰其他 TEST_CASE:    ✓ (仅修改目标 1 个)
+- 不修改其他 divergence:   ✓ (仅改 target file)
+================================================================================

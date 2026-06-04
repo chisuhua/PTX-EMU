@@ -15,6 +15,10 @@
  * 分歧分支通过 SIMT stack 推送处理，barrier 执行前手动汇聚线程到 barrier PC。
  */
 
+// NOTE: 原 test_divergence_sync_isolated.cpp 的屏障同步测试已合并到此处。
+// 该文件使用 setp+selp 谓词化（非真实 SIMT 分歧），其屏障行为覆盖已由本文件的
+// "barrier releases all threads" 和 "full warp barrier-then-divergence flow" 覆盖。
+
 #include "catch_amalgamated.hpp"
 #include "ptx_ir/statement_factory.h"
 #include "ptxsim/warp_context.h"
@@ -25,12 +29,19 @@
 #include "ptxsim/register_analyzer.h"
 #include "ptxsim/common_types.h"
 #include "ptxsim/execution_types.h"
+#include "ptxsim/testing/scheduler_utils.h"
+#include "ptxsim/testing/instruction_helpers.h"
+#include "ptxsim/testing/predicates.h"
 #include "memory/resource_manager.h"
 #include "register/register_bank_manager.h"
+#include <array>
 #include <map>
 #include <memory>
 #include <vector>
 #include <cstdint>
+
+using ptxsim::testing::step_warp;
+using ptxsim::testing::setup_pred;
 
 namespace {
 using namespace ptxir::factory;
@@ -246,50 +257,6 @@ static void advance_all_to_pc(WarpContext& warp, int pc) {
 // 测试用例
 // ============================================================================
 
-TEST_CASE("divergence_sync_standalone: statement sequence structure", "[divergence_sync][structure]") {
-    init_factory_once();
-    auto stmts = build_divergence_sync_statements();
-
-    INFO("Statement count: " << stmts.size());
-    REQUIRE(stmts.size() == 22);
-
-    CHECK(stmts[0].type == S_MOV);
-    CHECK(stmts[1].type == S_SETP);
-    CHECK(stmts[2].type == S_BRA);
-    CHECK(stmts[3].type == S_BRA);
-    CHECK(stmts[4].type == S_LABEL);
-    CHECK(stmts[5].type == S_MOV);
-    CHECK(stmts[6].type == S_BRA);
-    CHECK(stmts[7].type == S_LABEL);
-    CHECK(stmts[8].type == S_MOV);
-    CHECK(stmts[9].type == S_BRA);
-    CHECK(stmts[10].type == S_LABEL);
-    CHECK(stmts[11].type == S_ST);
-    CHECK(stmts[12].type == S_BAR_WARP_SYNC);
-    CHECK(stmts[13].type == S_SETP);
-    CHECK(stmts[14].type == S_BRA);
-    CHECK(stmts[15].type == S_BRA);
-    CHECK(stmts[16].type == S_LABEL);
-    CHECK(stmts[17].type == S_LD);
-    CHECK(stmts[18].type == S_ADD);
-    CHECK(stmts[19].type == S_BRA);
-    CHECK(stmts[20].type == S_LABEL);
-    CHECK(stmts[21].type == S_RET);
-}
-
-TEST_CASE("divergence_sync_standalone: handler registration", "[divergence_sync][handlers]") {
-    init_factory_once();
-
-    REQUIRE(InstructionFactory::get_handler(S_MOV) != nullptr);
-    REQUIRE(InstructionFactory::get_handler(S_SETP) != nullptr);
-    REQUIRE(InstructionFactory::get_handler(S_BRA) != nullptr);
-    REQUIRE(InstructionFactory::get_handler(S_ST) != nullptr);
-    REQUIRE(InstructionFactory::get_handler(S_LD) != nullptr);
-    REQUIRE(InstructionFactory::get_handler(S_ADD) != nullptr);
-    REQUIRE(InstructionFactory::get_handler(S_BAR_WARP_SYNC) != nullptr);
-    REQUIRE(InstructionFactory::get_handler(S_RET) != nullptr);
-}
-
 TEST_CASE("divergence_sync_standalone: barrier releases all threads to reconvergence PC", "[divergence_sync][barrier]") {
     init_factory_once();
     ResourceManager::instance().initialize(1, 8192);
@@ -420,10 +387,32 @@ TEST_CASE("divergence_sync_standalone: all three modes produce same reconvergenc
     init_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    auto statements = build_divergence_sync_statements();
-    auto register_bank = std::make_shared<RegisterBankManager>(1, 32);
-    auto registers = RegisterAnalyzer::analyze_registers(statements);
-    register_bank->preallocate_registers(registers);
+    // 指令布局（与 test_divergence_sync_convergence.cpp 对齐）：
+    //   PC=0..3:    4 NOPs（分歧前）
+    //   PC=4:       @%p1 bra L_reduce（reconvergence_pc=14）→ SIMT 分歧
+    //   PC=5..13:   9 NOPs（Path A，predicate 不取 lanes 16-31）
+    //   PC=14:      NOP（CONV_PC 汇聚点）
+    //   PC=28..33:  6 NOPs（Path B，predicate 取 lanes 0-15）
+    //   PC=34:      bra.uni L_join → 跳回 CONV_PC=14 触发汇聚
+    static constexpr int BRANCH_PC     = 4;
+    static constexpr int CONV_PC       = 14;
+    static constexpr int PATH_A_START  = 5;
+    static constexpr int PATH_A_END    = 13;
+    static constexpr int PATH_B_TARGET = 28;
+    static constexpr int PATH_B_END    = 33;
+    static constexpr int BRA_UNI_PC    = 34;
+    static constexpr int NUM_STMTS     = 35;
+
+    std::map<std::string, int> l2pc;
+    std::vector<StatementContext> stmts;
+    stmts.reserve(NUM_STMTS);
+    for (int i = 0; i < NUM_STMTS; i++) {
+        stmts.push_back(ptxsim::testing::make_nop());
+    }
+    stmts[BRANCH_PC] = ptxsim::testing::make_bra_pred("L_reduce", "%p1", false, CONV_PC);
+    stmts[BRA_UNI_PC] = ptxsim::testing::make_bra("L_join");
+    l2pc["L_reduce"]  = PATH_B_TARGET;
+    l2pc["L_join"]    = CONV_PC;
 
     std::array<ptxsim::DivergenceExecutionMode, 3> modes = {
         ptxsim::DivergenceExecutionMode::Sequential,
@@ -432,35 +421,53 @@ TEST_CASE("divergence_sync_standalone: all three modes produce same reconvergenc
     };
 
     for (auto mode : modes) {
-        INFO("Testing mode: " << static_cast<int>(mode));
+        INFO("Mode " << static_cast<int>(mode) << " — divergence → reconvergence");
         SMContext sm(4, 128, 4096, 0);
         sm.set_divergence_execution_mode(mode);
-        WarpContext* warp = create_warp_with_threads(sm, create_block(statements), register_bank);
-        warp->set_active_mask(0xFFFFFFFF);
+        REQUIRE(sm.get_divergence_execution_mode() == mode);
 
+        auto blk = std::make_unique<CTAContext>();
+        Dim3 g{1, 1, 1}, b{32, 1, 1}, bi{0, 0, 0};
+        std::map<std::string, Symtable*> n2s;
+        blk->init(g, b, bi, stmts, &n2s, l2pc);
+        blk->sharedMemBytes = 1024;
+        bool ok = sm.add_block(std::move(blk));
+        REQUIRE(ok);
+        WarpContext* w = sm.get_warp(0);
+
+        setup_pred(w, 0x0000FFFFu);
+
+        CHECK(step_warp(w, stmts) == 0);
+        CHECK(step_warp(w, stmts) == 1);
+        CHECK(step_warp(w, stmts) == 2);
+        CHECK(step_warp(w, stmts) == 3);
+
+        CHECK(step_warp(w, stmts) == BRANCH_PC);
+        REQUIRE(w->get_simt_stack().depth() == 1);
+        CHECK(w->get_thread_pc(16) == PATH_A_START);
+        CHECK(w->get_thread_pc(0)  == PATH_B_TARGET);
+
+        for (int pc = PATH_A_START; pc <= PATH_A_END; pc++) {
+            CHECK(step_warp(w, stmts) == pc);
+        }
+        CHECK(step_warp(w, stmts) == CONV_PC);
+        CHECK(w->get_warp_state().threads[16].is_blocked == true);
+        CHECK(w->get_warp_state().threads[20].is_blocked == true);
+        CHECK(w->get_warp_state().threads[31].is_blocked == true);
+
+        for (int pc = PATH_B_TARGET; pc <= PATH_B_END; pc++) {
+            CHECK(step_warp(w, stmts) == pc);
+        }
+        CHECK(step_warp(w, stmts) == BRA_UNI_PC);
+
+        CHECK(w->get_simt_stack().empty());
+        CHECK(w->get_exec_mask() == 0xFFFFFFFFu);
+        CHECK(w->get_warp_state().threads[16].is_blocked == false);
+        CHECK(w->get_warp_state().threads[16].is_active == true);
         for (int i = 0; i < 32; i++) {
-            void* tid_addr = register_bank->get_register("r1", 0, i);
-            if (tid_addr) {
-                *static_cast<uint32_t*>(tid_addr) = i;
-            }
+            CHECK(w->get_thread_pc(i) == CONV_PC);
         }
 
-        advance_all_to_pc(*warp, 11);
-        warp->execute_warp_instruction(statements[11], 11);
-        warp->execute_warp_instruction(statements[12], 12);
-        REQUIRE(warp->get_thread(0)->get_pc() == 13);
-
-        warp->execute_warp_instruction(statements[13], 13);
-        warp->execute_warp_instruction(statements[14], 14);
-
-        CHECK(warp->get_thread(0)->get_pc() == 16);
-        CHECK(warp->get_thread(1)->get_pc() == 15);
-
-        warp->execute_warp_instruction(statements[16], 16);
-        warp->execute_warp_instruction(statements[17], 17);
-        warp->execute_warp_instruction(statements[18], 18);
-
-        CHECK(warp->get_thread(0)->get_pc() == 19);
-        CHECK(warp->get_thread(1)->get_pc() == 15);
+        INFO("Mode " << static_cast<int>(mode) << " completed");
     }
 }

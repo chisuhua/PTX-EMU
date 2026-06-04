@@ -45,8 +45,8 @@ GPUContext
 - `.bak` files in this directory are committed artifacts — do not edit
 
 ## KNOWN ISSUES
-- `synchronize_barrier()` may not update `active_mask` correctly after barrier release
-- `test_post_barrier_divergence.cpp` documents this as a known bug (BUG-REPRODUCTION test)
+// KNOWN ISSUE: synchronize_barrier() may not update active_mask correctly after barrier release
+// See: tests/integration/divergence/test_post_barrier_divergence.cpp (2 TEST_CASE documenting the issue)
 
 ## COMMANDS
 ```bash
