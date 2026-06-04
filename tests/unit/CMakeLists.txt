@@ -172,6 +172,11 @@ add_catch_test(unit_syncthreads_direction
 )
 set_tests_properties(unit_syncthreads_direction PROPERTIES LABELS "unit;syncthreads")
 
+add_catch_test(unit_syncthreads_test3_repro
+    sync/test_syncthreads_test3_repro.cpp
+)
+set_tests_properties(unit_syncthreads_test3_repro PROPERTIES LABELS "unit;syncthreads;regression")
+
 # ============================================================================
 # Common 单元测试
 # ============================================================================
