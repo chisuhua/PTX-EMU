@@ -28,11 +28,6 @@ add_catch_test(integration_barrier_verification
 )
 set_tests_properties(integration_barrier_verification PROPERTIES LABELS "integration;barrier")
 
-add_catch_test(integration_barrier_interaction
-    barrier/test_barrier_interaction_integrated.cpp
-)
-set_tests_properties(integration_barrier_interaction PROPERTIES LABELS "integration;barrier")
-
 add_catch_test(integration_barrier_divergence_scheduling
     barrier/test_barrier_divergence_scheduling.cpp
 )

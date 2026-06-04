@@ -33,6 +33,11 @@ add_catch_test(unit_barrier_reconvergence
 )
 set_tests_properties(unit_barrier_reconvergence PROPERTIES LABELS "unit;barrier")
 
+add_catch_test(unit_barrier_interaction
+    barrier/test_barrier_interaction_integrated.cpp
+)
+set_tests_properties(unit_barrier_interaction PROPERTIES LABELS "unit;barrier")
+
 # test_barrier_verification.cpp has pre-existing build error (uses <catch2/catch.hpp>)
 # Not built in main branch either
 # add_catch_test(unit_barrier_verification
