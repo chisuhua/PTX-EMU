@@ -8,10 +8,13 @@
 #include "ptxsim/common_types.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/instruction_factory.h"
+#include "ptxsim/testing/scheduler_utils.h"
 #include "ptx_ir/statement_context.h"
 #include "ptx_ir/operand_context.h"
 #include "ptx_ir/statement_factory.h"
 #include "memory/resource_manager.h"
+
+using ptxsim::testing::step_warp;
 #include <map>
 #include <memory>
 #include <vector>
@@ -103,7 +106,7 @@ TEST_CASE("integrated_full_barrier_execution_flow", "[barrier][integrated][execu
     WarpContext* warp = create_warp_with_threads(sm, create_block(statements));
 
     // 执行 PC=0 的 mov
-    warp->execute_warp_instruction(statements[0], 0);
+    step_warp(warp, statements);
 
     // 验证所有线程 PC=1
     for (int i = 0; i < 32; i++) {
@@ -111,7 +114,7 @@ TEST_CASE("integrated_full_barrier_execution_flow", "[barrier][integrated][execu
     }
 
     // 执行 PC=1 的 barrier
-    warp->execute_warp_instruction(statements[1], 1);
+    step_warp(warp, statements);
 
     // 验证：所有线程 PC 设置为 reconvergence_pc=2
     for (int i = 0; i < 32; i++) {
@@ -131,7 +134,7 @@ TEST_CASE("integrated_full_barrier_execution_flow", "[barrier][integrated][execu
     CHECK(warp->get_warp_state().current_wbar_id == -1);
 
     // 执行 PC=2 的 post-barrier mov
-    warp->execute_warp_instruction(statements[2], 2);
+    step_warp(warp, statements);
 
     // 验证：所有线程 PC 前进到 3
     for (int i = 0; i < 32; i++) {
@@ -169,10 +172,10 @@ TEST_CASE("integrated_barrier_after_divergent_branch", "[barrier][divergence][in
     }
 
     // 执行 PC=0 的 mov（只有活跃线程执行）
-    warp->execute_warp_instruction(statements[0], 0);
+    step_warp(warp, statements);
 
     // 执行 PC=1 的 barrier（只有 16 个活跃线程参与）
-    warp->execute_warp_instruction(statements[1], 1);
+    step_warp(warp, statements);
 
     // 验证：barrier 完成后，只有 16 个线程到达 reconvergence_pc
     auto& wbar = warp->get_wbar(0);
@@ -243,7 +246,7 @@ TEST_CASE("integrated_nested_branch_barrier_convergence", "[barrier][simt_stack]
     }
 
     // 执行 barrier
-    warp->execute_warp_instruction(statements[2], 2);
+    step_warp(warp, statements);
 
     // 验证：所有线程 PC=10（reconvergence PC）
     for (int i = 0; i < 32; i++) {
@@ -293,10 +296,10 @@ TEST_CASE("integrated_barrier_active_mask_completeness", "[barrier][active_mask]
     warp->set_active_mask(0x00000001);
 
     // 执行 PC=0 的 mov
-    warp->execute_warp_instruction(statements[0], 0);
+    step_warp(warp, statements);
 
     // 执行 PC=1 的 barrier
-    warp->execute_warp_instruction(statements[1], 1);
+    step_warp(warp, statements);
 
     // 验证：barrier 完成后 active_mask 应该正确更新
     uint32_t active_mask = warp->get_active_mask();
@@ -310,7 +313,7 @@ TEST_CASE("integrated_barrier_active_mask_completeness", "[barrier][active_mask]
         pc_before[i] = warp->get_thread(i)->get_pc();
     }
 
-    warp->execute_warp_instruction(statements[2], 2);
+    step_warp(warp, statements);
 
     int executed_count = 0;
     for (int i = 0; i < 32; i++) {
@@ -347,8 +350,8 @@ TEST_CASE("integrated_pc_overridden_protection", "[barrier][pc_overridden][integ
     WarpContext* warp = create_warp_with_threads(sm, create_block(statements));
 
     // 执行到 barrier
-    warp->execute_warp_instruction(statements[0], 0);
-    warp->execute_warp_instruction(statements[1], 1);
+    step_warp(warp, statements);
+    step_warp(warp, statements);
 
     // 验证：barrier 完成后，所有线程的 next_pc = 3（reconvergence PC）
     // 而不是 saved_pc + 1 = 2
@@ -359,7 +362,7 @@ TEST_CASE("integrated_pc_overridden_protection", "[barrier][pc_overridden][integ
     }
 
     // 执行 PC=3 的指令（跳过 PC=2，因为 barrier 直接跳到 reconvergence PC）
-    warp->execute_warp_instruction(statements[3], 3);
+    step_warp(warp, statements);
 
     // 验证：所有线程 PC 前进到 4
     for (int i = 0; i < 32; i++) {
@@ -394,8 +397,8 @@ TEST_CASE("integrated_barrier_lifecycle", "[barrier][lifecycle][integrated]") {
     WarpContext* warp = create_warp_with_threads(sm, create_block(statements));
 
     // 执行第一个 barrier
-    warp->execute_warp_instruction(statements[0], 0);
-    warp->execute_warp_instruction(statements[1], 1);
+    step_warp(warp, statements);
+    step_warp(warp, statements);
 
     // 验证：第一个 barrier 完成后，wbar 状态重置
     CHECK(warp->get_warp_state().current_wbar_id == -1);
@@ -403,10 +406,10 @@ TEST_CASE("integrated_barrier_lifecycle", "[barrier][lifecycle][integrated]") {
     CHECK(warp->get_wbar(0).count_arrived() == 32);
 
     // 执行中间指令
-    warp->execute_warp_instruction(statements[2], 2);
+    step_warp(warp, statements);
 
     // 执行第二个 barrier
-    warp->execute_warp_instruction(statements[3], 3);
+    step_warp(warp, statements);
 
     // 验证：第二个 barrier 完成后，wbar 状态再次重置
     CHECK(warp->get_warp_state().current_wbar_id == -1);
@@ -449,8 +452,8 @@ TEST_CASE("integrated_partial_active_threads_barrier", "[barrier][partial][parti
     warp->set_exec_mask(0x0000FFFF);
 
     // 执行 barrier
-    warp->execute_warp_instruction(statements[0], 0);
-    warp->execute_warp_instruction(statements[1], 1);
+    step_warp(warp, statements);
+    step_warp(warp, statements);
 
     // 验证：活跃线程到达 reconvergence PC=2
     for (int i = 0; i < 16; i++) {
