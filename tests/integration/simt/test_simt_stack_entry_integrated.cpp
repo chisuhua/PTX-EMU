@@ -8,10 +8,13 @@
 #include "ptxsim/common_types.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/instruction_factory.h"
+#include "ptxsim/testing/scheduler_utils.h"
 #include "ptx_ir/statement_context.h"
 #include "ptx_ir/operand_context.h"
 #include "ptx_ir/statement_factory.h"
 #include "memory/resource_manager.h"
+
+using ptxsim::testing::step_warp;
 #include <map>
 #include <memory>
 #include <vector>
@@ -79,8 +82,8 @@ TEST_CASE("integrated_simt_stack_entry_after_barrier", "[simt_stack][integrated]
 
     CHECK(warp->get_simt_stack().depth() == 1);
 
-    warp->execute_warp_instruction(statements[0], 0);
-    warp->execute_warp_instruction(statements[1], 1);
+    step_warp(warp, statements);
+    step_warp(warp, statements);
 
     CHECK(warp->get_simt_stack().depth() >= 0);
 }
@@ -105,8 +108,8 @@ TEST_CASE("integrated_simt_stack_reconvergence_after_barrier", "[simt_stack][bar
     entry.return_pc = 3;
     warp->get_simt_stack().push(entry);
 
-    warp->execute_warp_instruction(statements[0], 0);
-    warp->execute_warp_instruction(statements[1], 1);
+    step_warp(warp, statements);
+    step_warp(warp, statements);
 
     while (warp->check_reconvergence()) {
     }
