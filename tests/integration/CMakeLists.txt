@@ -51,11 +51,6 @@ add_catch_test(integration_simt_thread_pc
 )
 set_tests_properties(integration_simt_thread_pc PROPERTIES LABELS "integration;thread_pc")
 
-add_catch_test(integration_handle_branch
-    simt/test_handle_branch_integration.cpp
-)
-set_tests_properties(integration_handle_branch PROPERTIES LABELS "integration;branch;simt_entry")
-
 add_catch_test(integration_barrier_simt
     simt/test_barrier_simt_integration.cpp
 )
