@@ -12,8 +12,11 @@
 #include "ptxsim/instruction_factory.h"
 #include "ptxsim/common_types.h"
 #include "ptxsim/execution_types.h"
+#include "ptxsim/testing/scheduler_utils.h"
 #include "memory/resource_manager.h"
 #include "register/register_bank_manager.h"
+
+using ptxsim::testing::step_warp;
 #include <map>
 #include <memory>
 #include <vector>
@@ -76,8 +79,8 @@ TEST_CASE("BarrierModule execute barrier instruction", "[barrier_module][integra
     auto register_bank = std::make_shared<RegisterBankManager>(4, 32);
     WarpContext* warp = create_warp_with_threads(sm, create_block(statements), register_bank);
 
-    warp->execute_warp_instruction(statements[0], 0);
-    warp->execute_warp_instruction(statements[1], 1);
+    step_warp(warp, statements);
+    step_warp(warp, statements);
 }
 
 TEST_CASE("BarrierModule multi-warp CTA barrier sharing", "[barrier_module][integrated]") {
