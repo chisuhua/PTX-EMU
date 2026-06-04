@@ -256,6 +256,8 @@ TEST_CASE("WarpBarrier initialization", "[barrier][warp_barrier]") {
 4. **predicate 通过 `RegisterBankManager` 设置 per-lane 值** —— 使用 `ptxsim::testing::setup_pred(w, mask)` / `set_predicate_per_lane(w, lane, val)`。
 5. **分歧由 `handle_branch` 自动处理** —— 测试代码不直接 push/pop SIMT stack，只读取 `warp->get_simt_stack().depth()` 等结果状态。
 
+**分类规则**：如测试需要手动设置 SIMT stack/PC 状态（如两级分歧 back-edge），则该测试**不是指令序列集成测试**，应归入 `tests/unit/`（单元测试允许直接 `execute_warp_instruction`）。
+
 **特征**：
 - 头文件：`ptxsim/testing/scheduler_utils.h`、`ptxsim/testing/instruction_helpers.h`、`ptxsim/testing/predicates.h`（按需包含）
 - 指令构造：`ptxsim::testing::make_mov()` / `make_mov_imm()` / `make_bra()` / `make_bra_pred()` / `make_bar_sync()` / `make_nop()` / `make_ret()` 等
@@ -307,7 +309,7 @@ CHECK(step_warp(w, v) == PATH_B_TARGET);           // 调度器切至 Path B
 - ❌ 在测试里手写 `step_warp` 循环逻辑（应使用 `ptxsim::testing::step_warp`）
 - ❌ 直接调用 `warp->execute_warp_instruction()` 绕过调度器（应通过 `step_warp` 间接调用）
 - ❌ 手写 `setp` + 寄存器赋值来构造谓词（应使用 `setup_pred` / `set_predicate_per_lane`）
-- ❌ 直接 `push_simt_stack()` / `pop_simt_stack()` 干预分歧（应观察 `handle_branch` 后的状态）
+- ❌ 直接 `push_simt_stack()` / `pop_simt_stack()` 干预分歧（应观察 `handle_branch` 后的状态；如必须手动 push，则该测试属于 `unit/` 而非 `integration/`）
 
 #### 类型三：CUDA Kernel E2E 测试（End-to-End Test）
 
