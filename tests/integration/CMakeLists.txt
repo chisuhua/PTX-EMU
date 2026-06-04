@@ -116,11 +116,6 @@ add_catch_test(integration_syncthreads_test3_repro
 )
 set_tests_properties(integration_syncthreads_test3_repro PROPERTIES LABELS "integration;syncthreads;regression")
 
-add_catch_test(integration_syncthreads_direction
-    sync/test_syncthreads_direction.cpp
-)
-set_tests_properties(integration_syncthreads_direction PROPERTIES LABELS "integration;syncthreads")
-
 # test_spinlock_simulation.cu has pre-existing build errors
 # Not built in main branch
 # add_catch_test(integration_spinlock_simulation

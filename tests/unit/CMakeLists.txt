@@ -167,6 +167,11 @@ add_catch_test(unit_bsync_state
 )
 set_tests_properties(unit_bsync_state PROPERTIES LABELS "unit;bsync")
 
+add_catch_test(unit_syncthreads_direction
+    sync/test_syncthreads_direction.cpp
+)
+set_tests_properties(unit_syncthreads_direction PROPERTIES LABELS "unit;syncthreads")
+
 # ============================================================================
 # Common 单元测试
 # ============================================================================
