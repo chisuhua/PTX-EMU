@@ -8,7 +8,10 @@
       "plan_name": "divergence-test-refactor",
       "status": "active",
       "started_at": "2026-06-04T03:00:43.245Z",
-      "updated_at": "2026-06-04T05:52:52.897Z",
+      "updated_at": "2026-06-04T05:55:00.000Z",
+      "ended_at": "2026-06-04T05:55:00.000Z",
+      "elapsed_ms": 8816755,
+      "status": "completed",
       "session_ids": [
         "opencode:ses_17335ea71ffe44TslykMIZ4uQ1",
         "opencode:ses_16f66b559ffeIn3fT2K55KqKC7",
@@ -128,10 +131,12 @@
       }
     }
   },
-  "active_plan": "/workspace/project/PTX-EMU/.omo/plans/divergence-test-refactor.md",
+  "active_plan": null,
   "started_at": "2026-06-04T03:00:43.245Z",
-  "status": "active",
-  "updated_at": "2026-06-04T05:52:52.897Z",
+  "status": "completed",
+  "ended_at": "2026-06-04T05:55:00.000Z",
+  "elapsed_ms": 8816755,
+  "updated_at": "2026-06-04T05:55:00.000Z",
   "session_ids": [
     "opencode:ses_17335ea71ffe44TslykMIZ4uQ1",
     "opencode:ses_16f66b559ffeIn3fT2K55KqKC7",
