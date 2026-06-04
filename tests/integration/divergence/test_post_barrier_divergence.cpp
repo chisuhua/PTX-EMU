@@ -26,6 +26,7 @@
 #include "ptxsim/common_types.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/instruction_factory.h"
+#include "ptxsim/testing/scheduler_utils.h"
 #include "ptx_ir/statement_context.h"
 #include "ptx_ir/statement_factory.h"
 #include "ptx_ir/operand_context.h"
@@ -35,6 +36,7 @@
 
 using namespace ptxir::factory;
 using ptxsim::WarpState;
+using ptxsim::testing::step_warp;
 using ptxsim::ThreadState;
 using ptxsim::Wbar;
 using ptxsim::ThreadStatus;
