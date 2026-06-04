@@ -272,7 +272,7 @@ TEST_CASE("ptx_lane_verification: 精简序列执行 + ExecutionTracer",
     while (active && iters < MAX_ITER) {
         iters++;
         for (size_t pc = 0; pc < stmts.size(); ++pc)
-            warp->execute_warp_instruction(stmts[pc], static_cast<int>(pc));
+            step_warp(warp, stmts);
         active = false;
         for (int i = 0; i < 32; i++) {
             auto* t = warp->get_thread(i);
