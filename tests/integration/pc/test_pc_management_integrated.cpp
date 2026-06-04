@@ -8,10 +8,13 @@
 #include "ptxsim/common_types.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/instruction_factory.h"
+#include "ptxsim/testing/scheduler_utils.h"
 #include "ptx_ir/statement_context.h"
 #include "ptx_ir/operand_context.h"
 #include "ptx_ir/statement_factory.h"
 #include "memory/resource_manager.h"
+
+using ptxsim::testing::step_warp;
 #include <map>
 #include <memory>
 #include <vector>
@@ -69,13 +72,13 @@ TEST_CASE("integrated_pc_after_barrier_commit_flow", "[pc][integrated][execute_w
     SMContext sm(4, 128, 4096, 0);
     WarpContext* warp = create_warp_with_threads(sm, create_block(statements));
 
-    warp->execute_warp_instruction(statements[0], 0);
-    warp->execute_warp_instruction(statements[1], 1);
+    step_warp(warp, statements);
+    step_warp(warp, statements);
 
     CHECK(warp->get_wbar(0).is_complete() == true);
     CHECK(warp->is_warp_ready_to_fetch() == true);
 
-    warp->execute_warp_instruction(statements[2], 2);
+    step_warp(warp, statements);
 
     for (int i = 0; i < 32; i++) {
         if (warp->get_warp_state().threads[i].pc != warp->get_warp_state().threads[i].next_pc) {
@@ -83,7 +86,7 @@ TEST_CASE("integrated_pc_after_barrier_commit_flow", "[pc][integrated][execute_w
         }
     }
 
-    warp->execute_warp_instruction(statements[3], 3);
+    step_warp(warp, statements);
     CHECK(warp->is_warp_ready_to_fetch() == true);
 }
 
@@ -137,8 +140,8 @@ TEST_CASE("integrated_warp_ready_with_inactive_threads", "[pc][scheduler][integr
 
     CHECK(warp->is_warp_ready_to_fetch() == true);
 
-    warp->execute_warp_instruction(statements[0], 0);
-    warp->execute_warp_instruction(statements[1], 1);
+    step_warp(warp, statements);
+    step_warp(warp, statements);
 
     CHECK(warp->is_warp_ready_to_fetch() == true);
 }
