@@ -118,7 +118,7 @@ TEST_CASE("Full pipeline: InstructionFactory with real handlers",
         // Execute prologue (PC 0-5)
         for (int pc = 0; pc < 6; pc++) {
             auto& stmt = statements[pc];
-            warp.execute_warp_instruction(stmt, pc);
+            step_warp(warp, stmt);
         }
 
         // Verify all threads at barrier
@@ -239,7 +239,7 @@ TEST_CASE("Full pipeline: Warp scheduler simulation",
             }
 
             auto& stmt = statements[current_pc];
-            warp.execute_warp_instruction(stmt, current_pc);
+            step_warp(warp, stmt);
         }
 
         // Verify all threads progressed
@@ -291,7 +291,7 @@ TEST_CASE("Full pipeline: Complete barrier execution sequence",
         // Execute prologue
         for (int pc = 0; pc < 6; pc++) {
             auto& stmt = statements[pc];
-            warp.execute_warp_instruction(stmt, pc);
+            step_warp(warp, stmt);
         }
 
         // All threads at barrier (PC=6)
@@ -318,7 +318,7 @@ TEST_CASE("Full pipeline: Complete barrier execution sequence",
         // Execute epilogue
         for (int pc = 7; pc < 10; pc++) {
             auto& stmt = statements[pc];
-            warp.execute_warp_instruction(stmt, pc);
+            step_warp(warp, stmt);
         }
 
         // Verify all threads completed
