@@ -174,67 +174,6 @@ TEST_CASE("scheduler switches at convergence and picks lowest non-blocked PC",
 }
 
 // ============================================================================
-// Test B: 两级分歧 — loop entry + primary entry，两级汇聚点阻塞 + 调度器切换
-// ============================================================================
-TEST_CASE("two level div with convergence block",
-          "[divergence][convergence][integrated]")
-{
-    init_factory(); ResourceManager::instance().initialize(1, 8192);
-    std::map<std::string, int> l2pc;
-    auto v = build_instrs(l2pc);
-    SMContext sm(4, 128, 4096, 0);
-    WarpContext *w = setup(sm, v, l2pc);
-    setup_pred(w, 0x0000FFFFu);
-
-    step_warp(w, v); step_warp(w, v);
-    step_warp(w, v); step_warp(w, v);
-    step_warp(w, v);  // @%p1 bra → 分歧
-
-    // 模拟循环 back-edge 推入的二级分歧 entry
-    ptxsim::SIMTStackEntry le;
-    le.branch_pc = 13; le.reconvergence_pc = CONV_PC;
-    le.active_mask = 0xFFFC0000u; // lanes 18-31
-    le.return_mask = 0xFFFF0000u; le.return_pc = CONV_PC;
-    w->get_simt_stack().push(le);
-    REQUIRE(w->get_simt_stack().depth() == 2);
-
-    // step_warp 自然选 Path A（PC=5 最低）
-    int pc;
-    pc = step_warp(w, v); CHECK(pc == PATH_A_START);
-    pc = step_warp(w, v); CHECK(pc == PATH_A_START + 1);
-    pc = step_warp(w, v); CHECK(pc == PATH_A_START + 2);
-    pc = step_warp(w, v); CHECK(pc == PATH_A_START + 3);
-    pc = step_warp(w, v); CHECK(pc == PATH_A_START + 4);
-    pc = step_warp(w, v); CHECK(pc == PATH_A_START + 5);
-    pc = step_warp(w, v); CHECK(pc == PATH_A_START + 6);
-    pc = step_warp(w, v); CHECK(pc == PATH_A_START + 7);
-    pc = step_warp(w, v); CHECK(pc == PATH_A_END);
-
-    // Path A 到 PC=14 → loop entry 的 active_mask (18-31) 全到 → 汇聚弹出
-    CHECK(w->get_simt_stack().depth() == 1);
-
-    // 此时栈顶为 primary entry (active_mask=0x0000FFFF)
-    // Path A 在 PC=14 → check_and_block 阻塞 Path A
-    pc = step_warp(w, v);
-    CHECK(pc == CONV_PC);
-    CHECK(w->get_warp_state().threads[16].is_blocked == true);
-
-    // 调度器切至 Path B
-    CHECK(step_warp(w, v) == PATH_B_TARGET);
-    CHECK(step_warp(w, v) == PATH_B_TARGET + 1);
-    CHECK(step_warp(w, v) == PATH_B_TARGET + 2);
-    CHECK(step_warp(w, v) == PATH_B_TARGET + 3);
-    CHECK(step_warp(w, v) == PATH_B_TARGET + 4);
-    CHECK(step_warp(w, v) == PATH_B_TARGET + 5);
-    CHECK(step_warp(w, v) == BRA_UNI_PC);
-
-    // 汇聚：primary entry 弹出，Path A 解阻
-    CHECK(w->get_simt_stack().empty());
-    CHECK(w->get_exec_mask() == 0xFFFFFFFFu);
-    CHECK(w->get_warp_state().threads[16].is_blocked == false);
-}
-
-// ============================================================================
 // Test D: 边界 — active_mask 全部到达才收敛
 // (合并自原 Test D + Test E — 增加 check_reconvergence()==false 验证
 //  active_mask 之外不影响收敛判定)

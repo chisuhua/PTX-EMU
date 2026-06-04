@@ -57,6 +57,11 @@ add_catch_test(unit_simt_thread_pc
 )
 set_tests_properties(unit_simt_thread_pc PROPERTIES LABELS "unit;simt_entry")
 
+add_catch_test(unit_handle_branch_two_level_divergence
+    simt/test_handle_branch_two_level_divergence.cpp
+)
+set_tests_properties(unit_handle_branch_two_level_divergence PROPERTIES LABELS "unit;simt;divergence")
+
 # ============================================================================
 # Warp 单元测试
 # 注: test_warp_context.cpp, test_warp_scheduler.cpp, test_sm_context.cpp
