@@ -110,27 +110,3 @@ add_catch_test(integration_syncthreads_full_pipeline
     sync/test_syncthreads_full_pipeline.cpp
 )
 set_tests_properties(integration_syncthreads_full_pipeline PROPERTIES LABELS "integration;syncthreads")
-
-# test_spinlock_simulation.cu has pre-existing build errors
-# Not built in main branch
-# add_catch_test(integration_spinlock_simulation
-#     sync/test_spinlock_simulation.cu
-# )
-
-# ============================================================================
-# CFG 集成测试
-# ============================================================================
-# test_cfg_analysis.cpp has pre-existing build errors (uses <catch2/catch.hpp>)
-# Not built in main branch
-# add_catch_test(integration_cfg_analysis
-#     cfg/test_cfg_analysis.cpp
-# )
-
-# ============================================================================
-# Register 集成测试
-# ============================================================================
-# test_register_bank_subwarp.cpp has pre-existing build errors
-# Not built in main branch
-# add_catch_test(integration_register_bank_subwarp
-#     register/test_register_bank_subwarp.cpp
-# )
