@@ -246,25 +246,68 @@ TEST_CASE("WarpBarrier initialization", "[barrier][warp_barrier]") {
 
 #### 类型二：指令序列集成测试（Instruction Sequence Test）
 
-使用 `statement_factory.h` 构建指令序列，通过 `execute_warp_instruction()` 驱动执行。源文件位于 `tests/integration/`。
+使用 `ptxsim/testing/` 提供的测试辅助函数构建指令序列并驱动执行。源文件位于 `tests/integration/`。**禁止在测试代码里重新实现 `step_warp`、`make_*`、`setup_pred` 等基础函数** —— 一律复用 `ptxsim::testing` 命名空间下的工具（详见 `include/ptxsim/testing/`）。
+
+**核心原则**（以 `tests/integration/divergence/test_divergence_sync_convergence.cpp` 头部注释为准）：
+
+1. **所有 PC 变化通过 `execute_warp_instruction` → 指令执行管道驱动** —— 测试不直接改写 PC。
+2. **路径由 `ptxsim::testing::step_warp()` 完全模拟调度器决策**（算法见 `sm_context.cpp:250-264`），返回本步执行的 PC。
+3. **测试不干预调度器选择，只验证其选择是否正确** —— `step_warp` 内部封装了"取 lane 分组 → 找最低非阻塞 PC → 执行 → 循环至 reconvergence"全过程。
+4. **predicate 通过 `RegisterBankManager` 设置 per-lane 值** —— 使用 `ptxsim::testing::setup_pred(w, mask)` / `set_predicate_per_lane(w, lane, val)`。
+5. **分歧由 `handle_branch` 自动处理** —— 测试代码不直接 push/pop SIMT stack，只读取 `warp->get_simt_stack().depth()` 等结果状态。
 
 **特征**：
-- 使用 `StatementFactory` 或 `makeXXXInstr()` 创建指令
-- 通过 `WarpContext::execute_warp_instruction()` 执行
-- 验证指令执行后的状态变化（PC、寄存器、active_mask 等）
+- 头文件：`ptxsim/testing/scheduler_utils.h`、`ptxsim/testing/instruction_helpers.h`、`ptxsim/testing/predicates.h`（按需包含）
+- 指令构造：`ptxsim::testing::make_mov()` / `make_mov_imm()` / `make_bra()` / `make_bra_pred()` / `make_bar_sync()` / `make_nop()` / `make_ret()` 等
+- 路径推进：`step_warp(warp, stmts) → int pc`（单步驱动调度器 + 执行管道）
+- 谓词设置：`setup_pred(warp, lane_mask)` 或 `set_predicate_per_lane(warp, lane_id, value)`
+- 验证维度：执行后 PC（`get_thread_pc(lane)`）、`active_mask`、`get_lanes_by_pc()` 分组、SIMT stack 深度、寄存器值
 
-**示例**（`tests/integration/simt/test_simt_stack_entry_integrated.cpp`，ctest 名 `integration_simt_stack_entry`）：
+**示例**（`tests/integration/divergence/test_divergence_sync_convergence.cpp`，ctest 名 `integration_divergence_sync_convergence`）：
 ```cpp
 #include "ptx_ir/statement_factory.h"
-#include "ptxsim/warp_context.h"
-using namespace ptxir::factory;
-std::vector<StatementContext> stmts = buildBranchStatements();
-warp->execute_warp_instruction(stmts[0], 0);  // branch
-warp->execute_warp_instruction(stmts[1], 1);  // divergent target
-REQUIRE(warp->get_active_mask() == expected_mask);
+#include "ptxsim/sm_context.h"
+#include "ptxsim/testing/scheduler_utils.h"   // step_warp
+#include "ptxsim/testing/instruction_helpers.h" // make_bra_pred / make_nop / ...
+#include "ptxsim/testing/predicates.h"        // setup_pred
+
+using ptxsim::testing::step_warp;
+using ptxsim::testing::setup_pred;
+
+// 1) 构建指令序列：35 条含一个 @%p1 bra + 汇聚点
+static std::vector<StatementContext> build_instrs(std::map<std::string,int>& l2pc) {
+    std::vector<StatementContext> v(NUM_STMTS);
+    for (auto& s : v) s = ptxsim::testing::make_nop();
+    v[BRANCH_PC] = ptxsim::testing::make_bra_pred("L__BB0_4", "%p1", false, CONV_PC);
+    v[BRA_UNI_PC] = ptxsim::testing::make_bra("L__BB0_3");
+    v[27]         = ptxsim::testing::make_ret();
+    l2pc["L__BB0_4"] = PATH_B_TARGET;
+    l2pc["L__BB0_3"] = CONV_PC;
+    return v;
+}
+
+// 2) 通过 setup_pred 给分歧谓词设置 per-lane 值（low 16 lanes 走 Path B）
+auto v = build_instrs(l2pc);
+SMContext sm(4, 128, 4096, 0);
+WarpContext* w = setup(sm, v, l2pc);
+setup_pred(w, 0x0000FFFFu);  // 原则 4
+
+// 3) step_warp 驱动执行：调度器选择 + 指令执行全自动
+CHECK(step_warp(w, v) == BRANCH_PC);             // 抵达分歧点
+REQUIRE(w->get_simt_stack().depth() == 1);        // 验证 handle_branch 起效（原则 5）
+// 4) 只验证调度器在汇聚点的切换是否正确，不干预其决策（原则 3）
+while (step_warp(w, v) != CONV_PC) { /* drain Path A */ }
+CHECK(w->get_warp_state().threads[16].is_blocked); // Path A 阻塞在汇聚点
+CHECK(step_warp(w, v) == PATH_B_TARGET);           // 调度器切至 Path B
 ```
 
-**适用场景**：指令执行逻辑、PC 推进、分歧处理、SIMT stack 操作
+**适用场景**：调度器选择验证、PC 推进、分歧/汇聚、SIMT stack 边界条件、barrier 后控制流、`active_mask` 一致性
+
+**反模式**：
+- ❌ 在测试里手写 `step_warp` 循环逻辑（应使用 `ptxsim::testing::step_warp`）
+- ❌ 直接调用 `warp->execute_warp_instruction()` 绕过调度器（应通过 `step_warp` 间接调用）
+- ❌ 手写 `setp` + 寄存器赋值来构造谓词（应使用 `setup_pred` / `set_predicate_per_lane`）
+- ❌ 直接 `push_simt_stack()` / `pop_simt_stack()` 干预分歧（应观察 `handle_branch` 后的状态）
 
 #### 类型三：CUDA Kernel E2E 测试（End-to-End Test）
 
