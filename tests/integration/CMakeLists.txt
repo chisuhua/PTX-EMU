@@ -51,11 +51,6 @@ add_catch_test(integration_simt_thread_pc
 )
 set_tests_properties(integration_simt_thread_pc PROPERTIES LABELS "integration;thread_pc")
 
-add_catch_test(integration_barrier_simt
-    simt/test_barrier_simt_integration.cpp
-)
-set_tests_properties(integration_barrier_simt PROPERTIES LABELS "integration;barrier;simt")
-
 # ============================================================================
 # Divergence 集成测试
 # ============================================================================

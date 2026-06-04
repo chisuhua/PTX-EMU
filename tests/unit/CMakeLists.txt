@@ -77,6 +77,11 @@ add_catch_test(unit_handle_branch
 )
 set_tests_properties(unit_handle_branch PROPERTIES LABELS "unit;branch;simt_entry")
 
+add_catch_test(unit_barrier_simt
+    simt/test_barrier_simt_integration.cpp
+)
+set_tests_properties(unit_barrier_simt PROPERTIES LABELS "unit;barrier;simt")
+
 # ============================================================================
 # Warp 单元测试
 # 注: test_warp_context.cpp, test_warp_scheduler.cpp, test_sm_context.cpp
