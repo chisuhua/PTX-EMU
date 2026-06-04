@@ -12,12 +12,14 @@
 #include "ptx_ir/operand_context.h"
 #include "ptx_ir/statement_factory.h"
 #include "memory/resource_manager.h"
+#include "ptxsim/testing/scheduler_utils.h"
 #include <map>
 #include <memory>
 #include <vector>
 #include <string>
 
 using namespace ptxir::factory;
+using ptxsim::testing::step_warp;
 
 static void init_instruction_factory_once() {
     static bool initialized = false;
@@ -69,8 +71,8 @@ TEST_CASE("integrated_wbar_convergence_operations", "[wbar][integrated][execute_
     SMContext sm(4, 128, 4096, 0);
     WarpContext* warp = create_warp_with_threads(sm, create_block(statements));
 
-    warp->execute_warp_instruction(statements[0], 0);
-    warp->execute_warp_instruction(statements[1], 1);
+    step_warp(warp, statements);
+    step_warp(warp, statements);
 
     CHECK(warp->get_wbar(0).is_complete() == true);
     CHECK(warp->get_wbar(0).count_arrived() == 4);
@@ -81,7 +83,7 @@ TEST_CASE("integrated_wbar_convergence_operations", "[wbar][integrated][execute_
         CHECK(warp->get_thread(i)->get_pc() == 2);
     }
 
-    warp->execute_warp_instruction(statements[2], 2);
+    step_warp(warp, statements);
 
     for (int i = 0; i < 4; i++) {
         CHECK(warp->get_thread(i)->get_pc() == 3);
@@ -107,10 +109,10 @@ TEST_CASE("integrated_warp_barrier_divergence_scenario", "[wbar][divergence][int
     warp->set_exec_mask(0xFFFFFFFE);
     warp->set_active_mask(0xFFFFFFFE);
 
-    warp->execute_warp_instruction(statements[0], 0);
+    step_warp(warp, statements);
 
     statements[1] = makeBarWarpSyncInstr(0xFFFFFFFE, 2);
-    warp->execute_warp_instruction(statements[1], 1);
+    step_warp(warp, statements);
 
     CHECK(warp->get_wbar(0).is_complete() == true);
     CHECK(warp->get_wbar(0).count_arrived() == 31);
@@ -139,8 +141,8 @@ TEST_CASE("integrated_multiple_barrier_registers", "[wbar][multi][integrated]") 
 
     REQUIRE(warp->get_warp_state().wbars.size() == 4);
 
-    warp->execute_warp_instruction(statements[0], 0);  // mov: all → PC=1
-    warp->execute_warp_instruction(statements[1], 1);  // barrier 0x0F: lanes 0-3 → PC=4
+    step_warp(warp, statements);  // mov: all → PC=1
+    step_warp(warp, statements);  // barrier 0x0F: lanes 0-3 → PC=4
 
     // 第一个 barrier 完成后立即验证 wbar[0] 状态
     CHECK(warp->get_wbar(0).is_complete() == true);
@@ -150,12 +152,12 @@ TEST_CASE("integrated_multiple_barrier_registers", "[wbar][multi][integrated]") 
 
     // 后续 barrier 指令（PC 3/5/7）在当前单 wbar 实现中
     // 部分可能重新初始化 wbar[0]，覆盖之前的完成状态
-    warp->execute_warp_instruction(statements[2], 2);  // mov: no lanes at PC=2, no-op
-    warp->execute_warp_instruction(statements[3], 3);  // barrier: no lanes at PC=3, no-op
-    warp->execute_warp_instruction(statements[4], 4);  // mov: lanes 0-3 → PC=5
-    warp->execute_warp_instruction(statements[5], 5);  // barrier 0xF00: lanes 0-3 arrive, barrier can't complete (needs lanes 12-15)
-    warp->execute_warp_instruction(statements[6], 6);  // mov: no lanes at PC=6
-    warp->execute_warp_instruction(statements[7], 7);  // barrier 0xF000: no lanes at PC=7
+    step_warp(warp, statements);  // mov: no lanes at PC=2, no-op
+    step_warp(warp, statements);  // barrier: no lanes at PC=3, no-op
+    step_warp(warp, statements);  // mov: lanes 0-3 → PC=5
+    step_warp(warp, statements);  // barrier 0xF00: lanes 0-3 arrive, barrier can't complete (needs lanes 12-15)
+    step_warp(warp, statements);  // mov: no lanes at PC=6
+    step_warp(warp, statements);  // barrier 0xF000: no lanes at PC=7
 
     // wbar[1]、wbar[2]、wbar[3] 不会被使用（当前单 wbar 实现）
     CHECK(warp->get_wbar(1).is_complete() == false);
@@ -178,14 +180,14 @@ TEST_CASE("integrated_wbar_partial_participation", "[wbar][partial][integrated]"
     SMContext sm(4, 128, 4096, 0);
     WarpContext* warp = create_warp_with_threads(sm, create_block(statements));
 
-    warp->execute_warp_instruction(statements[0], 0);
-    warp->execute_warp_instruction(statements[1], 1);
+    step_warp(warp, statements);
+    step_warp(warp, statements);
     CHECK(warp->get_wbar(0).is_complete() == true);
     CHECK(warp->get_wbar(0).count_arrived() == 2);
     CHECK(warp->get_wbar(0).count_participants() == 2);
 
-    warp->execute_warp_instruction(statements[2], 2);
-    warp->execute_warp_instruction(statements[3], 3);
+    step_warp(warp, statements);
+    step_warp(warp, statements);
     // 当前单 wbar 实现中，第二个 barrier 只 2 个线程能到达（lanes 0-1）
     // 因为第一个 barrier 后非参与者线程（lanes 2-31）被卡在 PC=1
     // wbar 在第二个 barrier 调用时重新初始化
@@ -193,8 +195,8 @@ TEST_CASE("integrated_wbar_partial_participation", "[wbar][partial][integrated]"
     CHECK(warp->get_wbar(0).count_arrived() == 2);
     CHECK(warp->get_wbar(0).count_participants() == 2);
 
-    warp->execute_warp_instruction(statements[4], 4);
-    warp->execute_warp_instruction(statements[5], 5);
+    step_warp(warp, statements);
+    step_warp(warp, statements);
     // 第三个 barrier：同样只有 lanes 0-1 能到达
     CHECK(warp->get_wbar(0).is_complete() == true);
     CHECK(warp->get_wbar(0).count_arrived() == 2);
@@ -222,10 +224,10 @@ TEST_CASE("integrated_wbar_divergent_control_flow", "[wbar][divergence][integrat
         warp->get_warp_state().threads[i].is_active = false;
     }
 
-    warp->execute_warp_instruction(statements[0], 0);
-    warp->execute_warp_instruction(statements[1], 1);
-    warp->execute_warp_instruction(statements[2], 2);
-    warp->execute_warp_instruction(statements[3], 3);
+    step_warp(warp, statements);
+    step_warp(warp, statements);
+    step_warp(warp, statements);
+    step_warp(warp, statements);
 
     CHECK(warp->get_wbar(0).is_complete() == true);
     CHECK(warp->get_wbar(0).count_arrived() == 16);
@@ -250,8 +252,8 @@ TEST_CASE("integrated_wbar_reconvergence_pc", "[wbar][pc][integrated]") {
     SMContext sm(4, 128, 4096, 0);
     WarpContext* warp = create_warp_with_threads(sm, create_block(statements));
 
-    warp->execute_warp_instruction(statements[0], 0);
-    warp->execute_warp_instruction(statements[1], 1);
+    step_warp(warp, statements);
+    step_warp(warp, statements);
 
     CHECK(warp->get_wbar(0).is_complete() == true);
     CHECK(warp->get_wbar(0).count_arrived() == 8);
@@ -260,8 +262,10 @@ TEST_CASE("integrated_wbar_reconvergence_pc", "[wbar][pc][integrated]") {
         CHECK(warp->get_thread(i)->get_pc() == 4);
     }
 
-    warp->execute_warp_instruction(statements[2], 2);
-    warp->execute_warp_instruction(statements[3], 3);
+    int pc = 0;
+    while ((pc = step_warp(warp, statements)) != 3) {}
+    while ((pc = step_warp(warp, statements)) != 3) {}
+    while ((pc = step_warp(warp, statements)) != 5) {}
 
     // 第二个 barrier (mask 0xFF00) 无法到达：lanes 8-15 被卡在 PC=1
     // 当前单 wbar 实现中，非参与者线程（非 mask 0xFF 的线程）不推进
@@ -288,7 +292,7 @@ TEST_CASE("integrated_wbar_thread_state_transitions", "[wbar][state][integrated]
     SMContext sm(4, 128, 4096, 0);
     WarpContext* warp = create_warp_with_threads(sm, create_block(statements));
 
-    warp->execute_warp_instruction(statements[0], 0);
+    step_warp(warp, statements);
 
     int schedulable_before = 0;
     for (int i = 0; i < 32; i++) {
@@ -298,7 +302,7 @@ TEST_CASE("integrated_wbar_thread_state_transitions", "[wbar][state][integrated]
     }
     CHECK(schedulable_before == 32);
 
-    warp->execute_warp_instruction(statements[1], 1);
+    step_warp(warp, statements);
 
     CHECK(warp->get_wbar(0).is_complete() == true);
 
@@ -327,13 +331,13 @@ TEST_CASE("integrated_full_barrier_execution_flow", "[wbar][full][integrated]") 
     SMContext sm(4, 128, 4096, 0);
     WarpContext* warp = create_warp_with_threads(sm, create_block(statements));
 
-    warp->execute_warp_instruction(statements[0], 0);
+    step_warp(warp, statements);
 
     for (int i = 0; i < 32; i++) {
         CHECK(warp->get_thread(i)->get_pc() == 1);
     }
 
-    warp->execute_warp_instruction(statements[1], 1);
+    step_warp(warp, statements);
 
     CHECK(warp->get_wbar(0).is_complete() == true);
     CHECK(warp->get_wbar(0).count_arrived() == 32);
@@ -344,7 +348,7 @@ TEST_CASE("integrated_full_barrier_execution_flow", "[wbar][full][integrated]") 
         CHECK(warp->get_thread(i)->get_pc() == 2);
     }
 
-    warp->execute_warp_instruction(statements[2], 2);
+    step_warp(warp, statements);
 
     for (int i = 0; i < 32; i++) {
         CHECK(warp->get_thread(i)->get_pc() == 3);
