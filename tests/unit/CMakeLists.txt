@@ -101,6 +101,16 @@ add_catch_test(unit_active_mask_consistency
 )
 set_tests_properties(unit_active_mask_consistency PROPERTIES LABELS "unit;active_mask")
 
+add_catch_test(unit_exec_integration_h1_h4
+    exec/test_exec_integration_h1_h4.cpp
+)
+set_tests_properties(unit_exec_integration_h1_h4 PROPERTIES LABELS "unit;exec")
+
+add_catch_test(unit_exec_layer_e1_e3
+    exec/test_exec_layer_e1_e3.cpp
+)
+set_tests_properties(unit_exec_layer_e1_e3 PROPERTIES LABELS "unit;exec")
+
 # ============================================================================
 # PC 单元测试
 # ============================================================================

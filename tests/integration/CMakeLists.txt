@@ -97,16 +97,6 @@ set_tests_properties(integration_post_barrier_divergence PROPERTIES LABELS "inte
 # ============================================================================
 # Exec 集成测试
 # ============================================================================
-add_catch_test(integration_exec_h1_h4
-    exec/test_exec_integration_h1_h4.cpp
-)
-set_tests_properties(integration_exec_h1_h4 PROPERTIES LABELS "integration;exec")
-
-add_catch_test(integration_exec_layer_e1_e3
-    exec/test_exec_layer_e1_e3.cpp
-)
-set_tests_properties(integration_exec_layer_e1_e3 PROPERTIES LABELS "integration;exec")
-
 add_catch_test(integration_warp_state
     exec/test_warp_state_integrated.cpp
 )
