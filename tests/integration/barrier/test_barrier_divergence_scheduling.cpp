@@ -7,9 +7,12 @@
 #include "ptxsim/cta_context.h"
 #include "ptxsim/instruction_factory.h"
 #include "ptxsim/register_analyzer.h"
+#include "ptxsim/testing/scheduler_utils.h"
 #include "register/register_bank_manager.h"
 #include "memory/resource_manager.h"
 #include "utils/logger.h"
+
+using ptxsim::testing::step_warp;
 #include <memory>
 #include <vector>
 #include <map>
