@@ -46,11 +46,6 @@ add_catch_test(integration_simt_stack_entry
 )
 set_tests_properties(integration_simt_stack_entry PROPERTIES LABELS "integration;simt_stack")
 
-add_catch_test(integration_simt
-    simt/test_simt_integration.cpp
-)
-set_tests_properties(integration_simt PROPERTIES LABELS "integration;simt")
-
 add_catch_test(integration_simt_thread_pc
     simt/test_simt_thread_pc_integrated.cpp
 )

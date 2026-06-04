@@ -62,6 +62,11 @@ add_catch_test(unit_simt_thread_pc
 )
 set_tests_properties(unit_simt_thread_pc PROPERTIES LABELS "unit;simt_entry")
 
+add_catch_test(unit_simt_integration
+    simt/test_simt_integration.cpp
+)
+set_tests_properties(unit_simt_integration PROPERTIES LABELS "unit;simt")
+
 add_catch_test(unit_handle_branch_two_level_divergence
     simt/test_handle_branch_two_level_divergence.cpp
 )
