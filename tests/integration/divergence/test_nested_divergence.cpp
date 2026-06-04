@@ -138,7 +138,7 @@ TEST_CASE("test_nested_predication: Full warp execution with nested setp+selp", 
 
     for (int pc = 0; pc < (int)statements.size(); pc++) {
         auto& stmt = statements[pc];
-        warp.execute_warp_instruction(stmt, pc);
+        step_warp(warp, stmt);
     }
 
     INFO("\n=== Verification ===");
