@@ -8,10 +8,13 @@
 #include "ptxsim/common_types.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/instruction_factory.h"
+#include "ptxsim/testing/scheduler_utils.h"
 #include "ptx_ir/statement_context.h"
 #include "ptx_ir/operand_context.h"
 #include "ptx_ir/statement_factory.h"
 #include "memory/resource_manager.h"
+
+using ptxsim::testing::step_warp;
 #include <map>
 #include <memory>
 #include <vector>
@@ -69,8 +72,8 @@ TEST_CASE("integrated_sync_mechanism_next_pc_stable", "[sync][integrated][execut
     SMContext sm(4, 128, 4096, 0);
     WarpContext* warp = create_warp_with_threads(sm, create_block(statements));
 
-    warp->execute_warp_instruction(statements[0], 0);
-    warp->execute_warp_instruction(statements[1], 1);
+    step_warp(warp, statements);
+    step_warp(warp, statements);
 
     for (int i = 0; i < 32; i++) {
         int next_pc = warp->get_warp_state().threads[i].next_pc;
@@ -90,8 +93,8 @@ TEST_CASE("integrated_sync_barrier_releases_all_threads", "[sync][barrier][integ
     SMContext sm(4, 128, 4096, 0);
     WarpContext* warp = create_warp_with_threads(sm, create_block(statements));
 
-    warp->execute_warp_instruction(statements[0], 0);
-    warp->execute_warp_instruction(statements[1], 1);
+    step_warp(warp, statements);
+    step_warp(warp, statements);
 
     CHECK(warp->get_wbar(0).is_complete() == true);
     CHECK(warp->get_wbar(0).count_arrived() == 32);
