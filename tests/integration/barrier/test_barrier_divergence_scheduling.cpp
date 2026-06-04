@@ -119,7 +119,7 @@ TEST_CASE("test_barrier_divergence_scheduling: Barrier blocks lanes and schedule
     for (int pc = 0; pc < (int)statements.size(); pc++) {
         auto& stmt = statements[pc];
         INFO("PC=" << pc << " executing: " << stmt.instructionText);
-        warp.execute_warp_instruction(stmt, pc);
+        step_warp(warp, stmt);
     }
 
     INFO("\n=== Verification ===");
