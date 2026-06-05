@@ -29,6 +29,7 @@ configs/
 - `reg` - Register operations
 - `thread` - Thread state
 - `func` - Function calls
+- `cudart` - Fake CUDA runtime API interception (cudaMemcpy, cudaMemcpyAsync, cudaMalloc, cudaFree, ...). Use `component.cudart=debug` to inspect per-call routing through the CudaDriver global pool.
 
 ## LOG LEVELS
 `trace`, `debug`, `info`, `warning`, `error`, `fatal`

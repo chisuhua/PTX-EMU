@@ -28,14 +28,6 @@ using namespace ptxparser;
 #include <filesystem>
 #include <cstdio>
 
-// 添加缺失的宏定义
-#define PTX_ERROR_CUDART(fmt, ...)                                             \
-    do {                                                                       \
-        fprintf(stderr, "[ERROR][CUDART] %s:%d: " fmt "\n", __FILE__,          \
-                __LINE__, ##__VA_ARGS__);                                      \
-        fflush(stderr);                                                        \
-    } while (0)
-
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
@@ -396,8 +388,14 @@ void __cudaRegisterVar(void **fatCubinHandle, char *hostVar,
 cudaError_t cudaMemcpy(void *dst, const void *src, size_t count,
                        cudaMemcpyKind kind) {
     PTX_DEBUG_EMU("Called cudaMemcpy(%p, %p, %zu, %d)", dst, src, count, kind);
+    PTX_DEBUG_CUDART(
+        "cudaMemcpy ENTRY: dst=%p src=%p count=%zu kind=%d (host<->device "
+        "routing routed through CudaDriver global pool)",
+        dst, src, count, static_cast<int>(kind));
 
     if (!dst || !src || count == 0) {
+        PTX_WARN_CUDART("cudaMemcpy REJECT: invalid args (dst=%p src=%p count=%zu)",
+                        dst, src, count);
         return cudaErrorInvalidValue;
     }
 
@@ -405,45 +403,62 @@ cudaError_t cudaMemcpy(void *dst, const void *src, size_t count,
     uint64_t global_pool = (uint64_t)CudaDriver::instance().get_global_pool();
     uint64_t global_size = (uint64_t)CudaDriver::instance().get_global_size();
     if (!global_pool) {
+        PTX_ERROR_CUDART(
+            "cudaMemcpy REJECT: CudaDriver global pool not initialized");
         return cudaErrorInitializationError;
     }
+    PTX_DEBUG_CUDART("cudaMemcpy POOL: base=0x%lx size=0x%lx", global_pool,
+                     global_size);
 
     // 根据复制类型执行内存复制
     switch (kind) {
     case cudaMemcpyHostToHost: {
-        // 从主机内存复制到设备内存
+        PTX_DEBUG_CUDART("cudaMemcpy BRANCH HostToHost: count=%zu", count);
         std::memcpy(dst, src, count);
         break;
     }
     case cudaMemcpyHostToDevice: {
-        // 从主机内存复制到设备内存
+        PTX_DEBUG_CUDART("cudaMemcpy BRANCH HostToDevice: count=%zu", count);
         // dst是设备指针（即偏移量），src是主机指针
         uint64_t device_offset = reinterpret_cast<uint64_t>(dst);
         if (device_offset >= global_pool) {
             device_offset -= global_pool;
         }
         if (device_offset >= global_size) {
+            PTX_WARN_CUDART(
+                "cudaMemcpy REJECT: H2D offset 0x%lx out of range (pool size=0x%lx)",
+                device_offset, global_size);
             return cudaErrorInvalidValue;
         }
 
+        PTX_DEBUG_CUDART(
+            "cudaMemcpy H2D COPY: pool+0x%lx <- host %p, %zu bytes",
+            device_offset, src, count);
         std::memcpy((uint8_t *)(global_pool + device_offset), src, count);
         break;
     }
     case cudaMemcpyDeviceToHost: {
-        // 从设备内存复制到主机内存
+        PTX_DEBUG_CUDART("cudaMemcpy BRANCH DeviceToHost: count=%zu", count);
         // src是设备指针（即偏移量），dst是主机指针
         uint64_t device_offset = reinterpret_cast<uint64_t>(src);
         if (device_offset >= global_pool) {
             device_offset -= global_pool;
         }
         if (device_offset >= global_size) {
+            PTX_WARN_CUDART(
+                "cudaMemcpy REJECT: D2H offset 0x%lx out of range (pool size=0x%lx)",
+                device_offset, global_size);
             return cudaErrorInvalidValue;
         }
 
+        PTX_DEBUG_CUDART(
+            "cudaMemcpy D2H COPY: host %p <- pool+0x%lx, %zu bytes",
+            dst, device_offset, count);
         std::memcpy(dst, (uint8_t *)(global_pool + device_offset), count);
         break;
     }
     case cudaMemcpyDeviceToDevice: {
+        PTX_DEBUG_CUDART("cudaMemcpy BRANCH DeviceToDevice: count=%zu", count);
         // 设备到设备的复制
         uint64_t src_device_offset = reinterpret_cast<uint64_t>(src);
         uint64_t dst_device_offset = reinterpret_cast<uint64_t>(dst);
@@ -457,17 +472,27 @@ cudaError_t cudaMemcpy(void *dst, const void *src, size_t count,
 
         if ((src_device_offset >= global_size) ||
             (dst_device_offset >= global_size)) {
+            PTX_WARN_CUDART(
+                "cudaMemcpy REJECT: D2D out of range src=0x%lx dst=0x%lx (pool size=0x%lx)",
+                src_device_offset, dst_device_offset, global_size);
             return cudaErrorInvalidValue;
         }
 
+        PTX_DEBUG_CUDART(
+            "cudaMemcpy D2D COPY: pool+0x%lx <- pool+0x%lx, %zu bytes",
+            dst_device_offset, src_device_offset, count);
         std::memcpy((uint8_t *)(global_pool + dst_device_offset),
                     (uint8_t *)(global_pool + src_device_offset), count);
         break;
     }
     default:
+        PTX_WARN_CUDART("cudaMemcpy REJECT: unsupported kind=%d",
+                        static_cast<int>(kind));
         return cudaErrorInvalidValue;
     }
 
+    PTX_DEBUG_CUDART("cudaMemcpy OK: %zu bytes transferred (kind=%d)", count,
+                     static_cast<int>(kind));
     return cudaSuccess;
 }
 
@@ -475,6 +500,10 @@ cudaError_t cudaMemcpyAsync(void *dst, const void *src, size_t count,
                             cudaMemcpyKind kind, cudaStream_t stream) {
     PTX_DEBUG_EMU("Called cudaMemcpyAsync(%p, %p, %zu, %d, %p)", dst, src,
                   count, kind, stream);
+    PTX_DEBUG_CUDART(
+        "cudaMemcpyAsync ENTRY: dst=%p src=%p count=%zu kind=%d stream=%p "
+        "(emulator downgrades to sync: stream parameter is ignored)",
+        dst, src, count, static_cast<int>(kind), stream);
 
     // 异步复制在仿真器中与同步复制相同
     return cudaMemcpy(dst, src, count, kind);

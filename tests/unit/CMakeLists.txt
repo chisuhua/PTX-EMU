@@ -188,6 +188,14 @@ add_catch_test(unit_syncthreads_test3_repro
 set_tests_properties(unit_syncthreads_test3_repro PROPERTIES LABELS "unit;syncthreads;regression")
 
 # ============================================================================
+# Logger 单元测试
+# ============================================================================
+add_catch_test(unit_logger_cudart_component
+    logger/test_logger_cudart_component.cpp
+)
+set_tests_properties(unit_logger_cudart_component PROPERTIES LABELS "unit;logger;cudart")
+
+# ============================================================================
 # Common 单元测试
 # ============================================================================
 # test_cc_register.cpp has pre-existing build errors (subc_handler undeclared)

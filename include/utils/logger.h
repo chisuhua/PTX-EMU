@@ -647,6 +647,17 @@ inline void output_log_simple(log_level level, const std::string &component,
     PTX_LOG(ptxsim::log_level::debug, "emu", fmt, ##__VA_ARGS__)
 #define PTX_INFO_EMU_SIMPLE(fmt, ...)                                          \
     PTX_LOG(ptxsim::log_level::info, "emu_simple", fmt, ##__VA_ARGS__)
+
+#define PTX_DEBUG_CUDART(fmt, ...)                                             \
+    PTX_LOG(ptxsim::log_level::debug, "cudart", fmt, ##__VA_ARGS__)
+#define PTX_INFO_CUDART(fmt, ...)                                              \
+    PTX_LOG(ptxsim::log_level::info, "cudart", fmt, ##__VA_ARGS__)
+#define PTX_WARN_CUDART(fmt, ...)                                              \
+    PTX_LOG(ptxsim::log_level::warning, "cudart", fmt, ##__VA_ARGS__)
+#define PTX_ERROR_CUDART(fmt, ...)                                             \
+    PTX_LOG(ptxsim::log_level::error, "cudart", fmt, ##__VA_ARGS__)
+#define PTX_FATAL_CUDART(fmt, ...)                                             \
+    PTX_LOG(ptxsim::log_level::fatal, "cudart", fmt, ##__VA_ARGS__)
 #else
 #define PTX_DEBUG_EMU(fmt, ...)                                                \
     PTX_LOG_SIMPLE(ptxsim::log_level::debug, "emu", fmt, ##__VA_ARGS__)
@@ -677,6 +688,17 @@ inline void output_log_simple(log_level level, const std::string &component,
     PTX_LOG_SIMPLE(ptxsim::log_level::debug, "emu", fmt, ##__VA_ARGS__)
 #define PTX_INFO_EMU_SIMPLE(fmt, ...)                                          \
     PTX_LOG_SIMPLE(ptxsim::log_level::info, "emu_simple", fmt, ##__VA_ARGS__)
+
+#define PTX_DEBUG_CUDART(fmt, ...)                                             \
+    PTX_LOG_SIMPLE(ptxsim::log_level::debug, "cudart", fmt, ##__VA_ARGS__)
+#define PTX_INFO_CUDART(fmt, ...)                                              \
+    PTX_LOG_SIMPLE(ptxsim::log_level::info, "cudart", fmt, ##__VA_ARGS__)
+#define PTX_WARN_CUDART(fmt, ...)                                              \
+    PTX_LOG_SIMPLE(ptxsim::log_level::warning, "cudart", fmt, ##__VA_ARGS__)
+#define PTX_ERROR_CUDART(fmt, ...)                                             \
+    PTX_LOG_SIMPLE(ptxsim::log_level::error, "cudart", fmt, ##__VA_ARGS__)
+#define PTX_FATAL_CUDART(fmt, ...)                                             \
+    PTX_LOG_SIMPLE(ptxsim::log_level::fatal, "cudart", fmt, ##__VA_ARGS__)
 #endif
 
 // 条件编译日志宏

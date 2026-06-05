@@ -113,17 +113,17 @@ void LoggerConfig::load_from_ini_section(
     }
 
     // 读取组件级别配置
+    // 接受 "component.<name>=<level>" 格式（inipp 解析时 key 即为
+    // 整串 "component.<name>"，含中点）。
+    const std::string component_prefix = "component.";
     for (const auto &pair : logger_section) {
-        if (pair.first.length() > 10 &&
-            pair.first.substr(0, 9) == "component") {
-            std::string component = pair.first.substr(10); // skip "component."
-            if (!component.empty() &&
-                component[0] == '.') { // 确保格式为 "component.name"
-                component = component.substr(1); // remove leading dot
-                if (!component.empty()) {
-                    log_level level = string_to_log_level(pair.second);
-                    set_component_level(component, level);
-                }
+        const std::string &key = pair.first;
+        if (key.size() > component_prefix.size() &&
+            key.compare(0, component_prefix.size(), component_prefix) == 0) {
+            std::string component = key.substr(component_prefix.size());
+            if (!component.empty()) {
+                log_level level = string_to_log_level(pair.second);
+                set_component_level(component, level);
             }
         }
     }
