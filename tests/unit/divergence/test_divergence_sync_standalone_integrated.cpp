@@ -275,8 +275,8 @@ TEST_CASE("divergence_sync_standalone: barrier releases all threads to reconverg
     // 将所有线程汇聚到 barrier PC=12
     advance_all_to_pc(*warp, 12);
 
-    // 执行 bar.warp.sync: 所有 32 线程同时到达，barrier 立即完成
-    step_warp(warp, statements);
+    // 执行 bar.warp.sync: 所有 32 线程同时到达，barrier 立即完成（直接控制 PC）
+    warp->execute_warp_instruction(statements[12], 12);
 
     // 验证: barrier 后所有线程在 PC=13
     for (int i = 0; i < 32; i++) {
@@ -307,16 +307,16 @@ TEST_CASE("divergence_sync_standalone: thread 0-only branch after barrier", "[di
         }
     }
 
-    // 汇聚到 barrier，执行 barrier
+    // 汇聚到 barrier，执行 barrier（直接控制 PC）
     advance_all_to_pc(*warp, 12);
-    step_warp(warp, statements);
+    warp->execute_warp_instruction(statements[12], 12);
     REQUIRE(warp->get_thread(0)->get_pc() == 13);
 
-    // 执行 PC=13: setp.eq %p_t0, %r_tid, 0
-    step_warp(warp, statements);
+    // 执行 PC=13: setp.eq %p_t0, %r_tid, 0（直接控制 PC）
+    warp->execute_warp_instruction(statements[13], 13);
 
-    // 执行 PC=14: @%p_t0 bra L_reduce
-    step_warp(warp, statements);
+    // 执行 PC=14: @%p_t0 bra L_reduce（直接控制 PC）
+    warp->execute_warp_instruction(statements[14], 14);
 
     // 验证: thread 0 (tid=0) 在 PC=16 (L_reduce)，其他线程在 PC=15 (bra L_exit)
     CHECK(warp->get_thread(0)->get_pc() == 16);
@@ -348,17 +348,17 @@ TEST_CASE("divergence_sync_standalone: full warp barrier-then-divergence flow", 
         }
     }
 
-    // Phase 1: 执行 barrier 前的 store (PC=11)
+    // Phase 1: 执行 barrier 前的 store (PC=11)（直接控制 PC）
     advance_all_to_pc(*warp, 11);
-    step_warp(warp, statements);
+    warp->execute_warp_instruction(statements[11], 11);
 
-    // Phase 2: barrier (PC=12) - 所有线程同步
-    step_warp(warp, statements);
+    // Phase 2: barrier (PC=12) - 所有线程同步（直接控制 PC）
+    warp->execute_warp_instruction(statements[12], 12);
     REQUIRE(warp->get_thread(0)->get_pc() == 13);
 
-    // Phase 3: barrier 后的分歧 - thread 0 vs 其他线程
-    step_warp(warp, statements); // setp.eq
-    step_warp(warp, statements); // @%p_t0 bra L_reduce
+    // Phase 3: barrier 后的分歧 - thread 0 vs 其他线程（直接控制 PC）
+    warp->execute_warp_instruction(statements[13], 13); // setp.eq
+    warp->execute_warp_instruction(statements[14], 14); // @%p_t0 bra L_reduce
 
     INFO("After predicated bra (PC=14):");
     for (int lane = 0; lane < 32; lane++) {
@@ -370,13 +370,13 @@ TEST_CASE("divergence_sync_standalone: full warp barrier-then-divergence flow", 
     CHECK(warp->get_thread(1)->get_pc() == 15);
     CHECK(warp->get_thread(31)->get_pc() == 15);
 
-    // Phase 4: Thread 0 执行 reduction (PC=16~21)
-    step_warp(warp, statements); // L_reduce: ld.shared
-    step_warp(warp, statements); // add
-    step_warp(warp, statements); // bra L_exit
-    step_warp(warp, statements); // bra L_exit
-    step_warp(warp, statements); // L_exit label
-    step_warp(warp, statements); // ret
+    // Phase 4: Thread 0 执行 reduction (PC=16~21)（直接控制 PC）
+    warp->execute_warp_instruction(statements[16], 16); // L_reduce: ld.shared
+    warp->execute_warp_instruction(statements[17], 17); // add
+    warp->execute_warp_instruction(statements[18], 18); // bra L_exit
+    warp->execute_warp_instruction(statements[19], 19); // bra L_exit
+    warp->execute_warp_instruction(statements[20], 20); // L_exit label
+    warp->execute_warp_instruction(statements[21], 21); // ret
 
     CHECK(warp->get_thread(0)->get_pc() == 22);
     // 其他线程仍在 L_exit (bra L_exit)

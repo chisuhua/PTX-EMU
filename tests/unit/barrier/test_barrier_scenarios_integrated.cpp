@@ -245,8 +245,8 @@ TEST_CASE("integrated_nested_branch_barrier_convergence", "[barrier][simt_stack]
         warp->get_warp_state().threads[i].is_active = true;
     }
 
-    // 执行 barrier
-    step_warp(warp, statements);
+    // 执行 barrier（直接控制 PC，不通过调度器）
+    warp->execute_warp_instruction(statements[2], 2);
 
     // 验证：所有线程 PC=10（reconvergence PC）
     for (int i = 0; i < 32; i++) {
