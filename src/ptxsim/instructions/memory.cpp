@@ -23,13 +23,6 @@ void LdHandler::processOperation(ThreadContext *context, void *op[2],
       !QvecHasQ(qualifier, Qualifier::Q_V4)) {
     HardwareMemoryManager::instance().access(host_ptr, dst, data_size,
                                              false, space);
-
-    if (space == MemorySpace::GLOBAL) {
-      WarpContext* warp_ctx = context->get_warp_context();
-      if (warp_ctx) {
-        warp_ctx->get_warp_state().threads[context->lane_id_].is_blocked = true;
-      }
-    }
     return;
   }
 
