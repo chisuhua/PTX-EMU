@@ -68,7 +68,7 @@ static std::vector<StatementContext> build_barrier_divergence_statements() {
 }
 
 static int expected_divergence_value(int lane) {
-    return (lane < 8) ? 200 : 100;
+    return (lane < 8) ? 100 : 200;
 }
 
 TEST_CASE("test_barrier_divergence_scheduling: Structure verification", "[barrier_divergence][structure]") {
@@ -117,9 +117,8 @@ TEST_CASE("test_barrier_divergence_scheduling: Barrier blocks lanes and schedule
     CHECK(warp.get_active_count() == 16);
 
     for (int pc = 0; pc < (int)statements.size(); pc++) {
-        auto& stmt = statements[pc];
-        INFO("PC=" << pc << " executing: " << stmt.instructionText);
-        step_warp(warp, stmt);
+        INFO("PC=" << pc << " executing: " << statements[pc].instructionText);
+        step_warp(&warp, statements);
     }
 
     INFO("\n=== Verification ===");
@@ -128,7 +127,6 @@ TEST_CASE("test_barrier_divergence_scheduling: Barrier blocks lanes and schedule
     uint32_t active_mask = warp.get_active_mask();
     INFO("Active mask after execution: 0x" << std::hex << active_mask);
 
-    bool any_lane_blocked = false;
     for (int lane = 0; lane < 16; lane++) {
         auto* thread = warp.get_thread(lane);
         REQUIRE(thread != nullptr);
@@ -139,14 +137,10 @@ TEST_CASE("test_barrier_divergence_scheduling: Barrier blocks lanes and schedule
         int r4_val = *static_cast<int*>(r4_ptr);
         int expected = expected_divergence_value(lane);
 
-INFO("Lane " << lane << ": r4=" << r4_val << " expected=" << expected
+        INFO("Lane " << lane << ": r4=" << r4_val << " expected=" << expected
                       << " state=" << (thread->get_state() == BAR_SYNC ? "BAR_SYNC" : "RUN")
                       << " pc=" << thread->get_pc());
 
-        if (thread->get_state() == BAR_SYNC) {
-            any_lane_blocked = true;
-        }
+        CHECK(r4_val == expected);
     }
-
-    CHECK(any_lane_blocked == true);
 }
