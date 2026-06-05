@@ -70,3 +70,31 @@ Test files with underscores in names (e.g., `test_warp_barrier integrat integrat
 - Wave 1 acceptance: `.omo/evidence/w1-15-acceptance.log`
 - Reference (compliant): `tests/integration/divergence/test_divergence_sync_convergence.cpp` (Test A)
 - Reference (reclassified to unit): `tests/unit/simt/test_handle_branch_two_level_divergence.cpp`
+
+## W2.1 Empirical Reality (2026-06-05)
+
+**Prediction vs Reality**: W2.1 predicted "all 14 mechanical refactors will hang at runtime". Empirical testing revealed:
+
+- **12/14 mechanical refactors PASSED at runtime** (no redesign needed)
+- **2/14 needed fixes**:
+  1. `integration_barrier_divergence_scheduling`: Wrong `step_warp` signature (passed single StatementContext instead of vector) + inverted `expected_divergence_value` logic
+  2. `integration_warp_barrier`: Test data bugs (barrier mask mismatches with active_mask, infinite loops waiting for unreachable PCs)
+
+**Root Causes**:
+- The mechanical replacement `execute_warp_instruction(stmts[i], i)` → `step_warp(warp, statements)` was correct for 12/14 tests
+- The 2 failures were NOT scheduler behavior mismatches, but:
+  - Type error: `step_warp` expects `WarpContext*` and `vector<StatementContext>&`, not single StatementContext
+  - Test data bugs: barrier participation masks didn't match active_mask, causing hangs
+  - Assertion bugs: expecting barrier to block threads when all participants arrive simultaneously
+
+**Key Insight**: The scheduler's behavior is more robust than W2.1 analysis assumed. Most tests work correctly with `step_warp` because:
+- `step_warp` correctly picks the lowest non-blocked PC
+- Barrier completion releases all participants immediately (no lingering BAR_SYNC state)
+- The scheduler handles divergence/reconvergence correctly without manual intervention
+
+**Action Taken**: Fixed the 2 failing tests with minimal changes (no redesign needed):
+- Corrected `step_warp` signature and pointer passing
+- Fixed test data (barrier masks, expected values)
+- Removed invalid assertions
+
+**Commit**: 69fe22c
