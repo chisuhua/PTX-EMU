@@ -38,6 +38,11 @@ add_catch_test(unit_barrier_interaction
 )
 set_tests_properties(unit_barrier_interaction PROPERTIES LABELS "unit;barrier")
 
+add_catch_test(unit_barrier_scenarios_integrated
+    barrier/test_barrier_scenarios_integrated.cpp
+)
+set_tests_properties(unit_barrier_scenarios_integrated PROPERTIES LABELS "unit;barrier;regression")
+
 # test_barrier_verification.cpp has pre-existing build error (uses <catch2/catch.hpp>)
 # Not built in main branch either
 # add_catch_test(unit_barrier_verification
@@ -51,6 +56,11 @@ add_catch_test(unit_simt_stack_entry
     simt/test_simt_stack_entry.cpp
 )
 set_tests_properties(unit_simt_stack_entry PROPERTIES LABELS "unit;simt_entry")
+
+add_catch_test(unit_simt_stack_entry_integrated
+    simt/test_simt_stack_entry_integrated.cpp
+)
+set_tests_properties(unit_simt_stack_entry_integrated PROPERTIES LABELS "unit;simt_entry")
 
 add_catch_test(unit_simt_stack_catch2
     simt/test_simt_stack_catch2.cpp
@@ -205,6 +215,14 @@ add_catch_test(unit_warp_trace_formatter
     common/test_warp_trace_formatter.cpp
 )
 set_tests_properties(unit_warp_trace_formatter PROPERTIES LABELS "unit;warp_trace_formatter")
+
+# ============================================================================
+# Divergence 单元测试
+# ============================================================================
+add_catch_test(unit_divergence_sync_standalone_integrated
+    divergence/test_divergence_sync_standalone_integrated.cpp
+)
+set_tests_properties(unit_divergence_sync_standalone_integrated PROPERTIES LABELS "unit;divergence;barrier_sync")
 
 # ============================================================================
 # PTX 指令单元测试

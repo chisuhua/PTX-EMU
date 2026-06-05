@@ -18,10 +18,7 @@ add_catch_test(integration_barrier_module
 )
 set_tests_properties(integration_barrier_module PROPERTIES LABELS "integration;barrier")
 
-add_catch_test(integration_barrier_scenarios
-    barrier/test_barrier_scenarios_integrated.cpp
-)
-set_tests_properties(integration_barrier_scenarios PROPERTIES LABELS "integration;barrier;regression")
+# integration_barrier_scenarios moved to unit/ (manual SIMT stack push violates Principle 5)
 
 add_catch_test(integration_barrier_verification
     barrier/test_barrier_verification_integrated.cpp
@@ -41,10 +38,7 @@ set_tests_properties(integration_warp_barrier PROPERTIES LABELS "integration;wba
 # ============================================================================
 # SIMT 集成测试
 # ============================================================================
-add_catch_test(integration_simt_stack_entry
-    simt/test_simt_stack_entry_integrated.cpp
-)
-set_tests_properties(integration_simt_stack_entry PROPERTIES LABELS "integration;simt_stack")
+# integration_simt_stack_entry moved to unit/ (manual SIMT stack push violates Principle 5)
 
 add_catch_test(integration_simt_thread_pc
     simt/test_simt_thread_pc_integrated.cpp
@@ -59,10 +53,7 @@ add_catch_test(integration_divergence_sync_convergence
 )
 set_tests_properties(integration_divergence_sync_convergence PROPERTIES LABELS "integration;divergence;convergence")
 
-add_catch_test(integration_divergence_sync_standalone
-    divergence/test_divergence_sync_standalone_integrated.cpp
-)
-set_tests_properties(integration_divergence_sync_standalone PROPERTIES LABELS "integration;divergence;barrier_sync")
+# integration_divergence_sync_standalone moved to unit/ (advance_all_to_pc violates Principle 5)
 
 add_catch_test(integration_nested_divergence
     divergence/test_nested_divergence.cpp

@@ -60,7 +60,7 @@ static std::unique_ptr<CTAContext> create_block(
     return block;
 }
 
-TEST_CASE("integrated_simt_stack_entry_after_barrier", "[simt_stack][integrated][execute_warp]") {
+TEST_CASE("unit_simt_stack_entry_after_barrier", "[simt_stack][unit][execute_warp]") {
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
@@ -88,7 +88,7 @@ TEST_CASE("integrated_simt_stack_entry_after_barrier", "[simt_stack][integrated]
     CHECK(warp->get_simt_stack().depth() >= 0);
 }
 
-TEST_CASE("integrated_simt_stack_reconvergence_after_barrier", "[simt_stack][barrier][integrated]") {
+TEST_CASE("unit_simt_stack_reconvergence_after_barrier", "[simt_stack][barrier][unit]") {
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
