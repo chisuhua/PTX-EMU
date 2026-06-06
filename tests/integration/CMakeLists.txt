@@ -164,6 +164,11 @@ add_catch_test(integration_ptx_extended
 )
 set_tests_properties(integration_ptx_extended PROPERTIES LABELS "integration;ptx;extended;addc;subc;mad;mul24")
 
+add_catch_test(integration_ptx_cvta
+    ptx/test_cvta.cpp
+)
+set_tests_properties(integration_ptx_cvta PROPERTIES LABELS "integration;ptx;cvta")
+
 # ============================================================================
 # Memory 集成测试 — 驱动模拟器
 # B1 plan: shared memory layout, multi-buffer offsets, zero-init verification

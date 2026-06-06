@@ -340,6 +340,30 @@ inline StatementContext make_mul24(const std::string& dst, const std::string& sr
     return ctx;
 }
 
+inline StatementContext make_cvta_to_global(const std::string& dst, const std::string& src) {
+    StatementContext ctx;
+    ctx.type = S_CVTA;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_U64, Qualifier::Q_GLOBAL};
+    instr.operands.push_back(OperandContext{RegOperand{dst, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src, -1}});
+    ctx.data = instr;
+    ctx.instructionText = "cvta.to.global.u64 " + dst + ", " + src + ";";
+    return ctx;
+}
+
+inline StatementContext make_cvta_to_shared(const std::string& dst, const std::string& src) {
+    StatementContext ctx;
+    ctx.type = S_CVTA;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_U64, Qualifier::Q_SHARED};
+    instr.operands.push_back(OperandContext{RegOperand{dst, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src, -1}});
+    ctx.data = instr;
+    ctx.instructionText = "cvta.to.shared.u64 " + dst + ", " + src + ";";
+    return ctx;
+}
+
 inline StatementContext make_ld_shared(const std::string& dst_reg, const std::string& shared_var, const std::string& offset_reg) {
     StatementContext ctx;
     ctx.type = S_LD;
