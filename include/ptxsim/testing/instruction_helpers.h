@@ -210,6 +210,78 @@ inline StatementContext make_cvt(const std::string& dst, const std::string& src,
     return ctx;
 }
 
+inline StatementContext make_fadd(const std::string& dst, const std::string& src1,
+                                  const std::string& src2) {
+    StatementContext ctx;
+    ctx.type = S_ADD;  // Float reuses integer opcode; Q_F32 selects float path
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_F32};
+    instr.operands.push_back(OperandContext{RegOperand{dst, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+    ctx.data = instr;
+    ctx.instructionText = "add.f32 " + dst + ", " + src1 + ", " + src2 + ";";
+    return ctx;
+}
+
+inline StatementContext make_fsub(const std::string& dst, const std::string& src1,
+                                  const std::string& src2) {
+    StatementContext ctx;
+    ctx.type = S_SUB;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_F32};
+    instr.operands.push_back(OperandContext{RegOperand{dst, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+    ctx.data = instr;
+    ctx.instructionText = "sub.f32 " + dst + ", " + src1 + ", " + src2 + ";";
+    return ctx;
+}
+
+inline StatementContext make_fmul(const std::string& dst, const std::string& src1,
+                                  const std::string& src2) {
+    StatementContext ctx;
+    ctx.type = S_MUL;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_F32};
+    instr.operands.push_back(OperandContext{RegOperand{dst, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+    ctx.data = instr;
+    ctx.instructionText = "mul.f32 " + dst + ", " + src1 + ", " + src2 + ";";
+    return ctx;
+}
+
+inline StatementContext make_fdiv(const std::string& dst, const std::string& src1,
+                                  const std::string& src2) {
+    StatementContext ctx;
+    ctx.type = S_DIV;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_F32};
+    instr.operands.push_back(OperandContext{RegOperand{dst, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+    ctx.data = instr;
+    ctx.instructionText = "div.f32 " + dst + ", " + src1 + ", " + src2 + ";";
+    return ctx;
+}
+
+inline StatementContext make_ffma(const std::string& dst,
+                                  const std::string& src1, const std::string& src2,
+                                  const std::string& src3) {
+    StatementContext ctx;
+    ctx.type = S_FMA;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_F32};
+    instr.operands.push_back(OperandContext{RegOperand{dst, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src3, -1}});
+    ctx.data = instr;
+    ctx.instructionText = "fma.rn.f32 " + dst + ", " + src1 + ", " + src2 + ", " + src3 + ";";
+    return ctx;
+}
+
 inline StatementContext make_ld_shared(const std::string& dst_reg, const std::string& shared_var, const std::string& offset_reg) {
     StatementContext ctx;
     ctx.type = S_LD;
