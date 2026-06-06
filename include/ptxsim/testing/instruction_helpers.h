@@ -89,6 +89,20 @@ inline StatementContext make_mul(const std::string& dst, const std::string& src1
     return ctx;
 }
 
+inline StatementContext make_sub(const std::string& dst, const std::string& src1,
+                                  const std::string& src2) {
+    StatementContext ctx;
+    ctx.type = S_SUB;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_B32};
+    instr.operands.push_back(OperandContext{RegOperand{dst, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+    ctx.data = instr;
+    ctx.instructionText = "sub.b32 " + dst + ", " + src1 + ", " + src2 + ";";
+    return ctx;
+}
+
 inline StatementContext make_ld_shared(const std::string& dst_reg, const std::string& shared_var, const std::string& offset_reg) {
     StatementContext ctx;
     ctx.type = S_LD;
