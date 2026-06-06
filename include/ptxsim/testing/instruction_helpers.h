@@ -282,6 +282,64 @@ inline StatementContext make_ffma(const std::string& dst,
     return ctx;
 }
 
+inline StatementContext make_addc(const std::string& dst, const std::string& src1,
+                                   const std::string& src2) {
+    StatementContext ctx;
+    ctx.type = S_ADDC;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_B32};
+    instr.operands.push_back(OperandContext{RegOperand{dst, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+    ctx.data = instr;
+    ctx.instructionText = "addc.u32 " + dst + ", " + src1 + ", " + src2 + ";";
+    return ctx;
+}
+
+inline StatementContext make_subc(const std::string& dst, const std::string& src1,
+                                   const std::string& src2) {
+    StatementContext ctx;
+    ctx.type = S_SUBC;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_B32};
+    instr.operands.push_back(OperandContext{RegOperand{dst, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+    ctx.data = instr;
+    ctx.instructionText = "subc.u32 " + dst + ", " + src1 + ", " + src2 + ";";
+    return ctx;
+}
+
+inline StatementContext make_mad(const std::string& dst,
+                                  const std::string& src1, const std::string& src2,
+                                  const std::string& src3) {
+    StatementContext ctx;
+    ctx.type = S_MAD;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_B32};
+    instr.operands.push_back(OperandContext{RegOperand{dst, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src3, -1}});
+    ctx.data = instr;
+    ctx.instructionText = "mad.lo.s32 " + dst + ", " + src1 + ", " + src2 + ", " + src3 + ";";
+    return ctx;
+}
+
+inline StatementContext make_mul24(const std::string& dst, const std::string& src1,
+                                    const std::string& src2) {
+    StatementContext ctx;
+    ctx.type = S_MUL24;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_B32};
+    instr.operands.push_back(OperandContext{RegOperand{dst, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+    ctx.data = instr;
+    ctx.instructionText = "mul.lo.u32 " + dst + ", " + src1 + ", " + src2 + ";";
+    return ctx;
+}
+
 inline StatementContext make_ld_shared(const std::string& dst_reg, const std::string& shared_var, const std::string& offset_reg) {
     StatementContext ctx;
     ctx.type = S_LD;

@@ -159,6 +159,11 @@ add_catch_test(integration_ptx_float_arith
 )
 set_tests_properties(integration_ptx_float_arith PROPERTIES LABELS "integration;ptx;float;fadd;fsub;fmul;fdiv;ffma")
 
+add_catch_test(integration_ptx_extended
+    ptx/test_extended.cpp
+)
+set_tests_properties(integration_ptx_extended PROPERTIES LABELS "integration;ptx;extended;addc;subc;mad;mul24")
+
 # ============================================================================
 # Memory 集成测试 — 驱动模拟器
 # B1 plan: shared memory layout, multi-buffer offsets, zero-init verification
