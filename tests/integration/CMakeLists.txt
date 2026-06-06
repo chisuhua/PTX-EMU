@@ -35,6 +35,16 @@ add_catch_test(integration_warp_barrier
 )
 set_tests_properties(integration_warp_barrier PROPERTIES LABELS "integration;wbar;regression")
 
+add_catch_test(integration_warp_barrier_memory_visibility
+    barrier/test_warp_barrier_memory_visibility.cpp
+)
+set_tests_properties(integration_warp_barrier_memory_visibility PROPERTIES LABELS "integration;barrier;memory_visibility")
+
+add_catch_test(integration_cta_barrier_memory_visibility
+    barrier/test_cta_barrier_memory_visibility.cpp
+)
+set_tests_properties(integration_cta_barrier_memory_visibility PROPERTIES LABELS "integration;barrier;memory_visibility")
+
 # ============================================================================
 # SIMT 集成测试
 # ============================================================================
