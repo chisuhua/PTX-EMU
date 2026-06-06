@@ -185,6 +185,31 @@ inline StatementContext make_not(const std::string& dst, const std::string& src)
     return ctx;
 }
 
+inline StatementContext make_cvt(const std::string& dst, const std::string& src,
+                                 Qualifier dst_dtype, Qualifier src_dtype) {
+    StatementContext ctx;
+    ctx.type = S_CVT;
+    GenericInstr instr;
+    instr.qualifiers = {dst_dtype, src_dtype};
+    instr.operands.push_back(OperandContext{RegOperand{dst, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src, -1}});
+    ctx.data = instr;
+    auto qual_name = [](Qualifier q) -> std::string {
+        switch (q) {
+            case Qualifier::Q_S32: return "s32";
+            case Qualifier::Q_F32: return "f32";
+            case Qualifier::Q_F64: return "f64";
+            case Qualifier::Q_S64: return "s64";
+            case Qualifier::Q_B32: return "b32";
+            case Qualifier::Q_B64: return "b64";
+            default: return "b32";
+        }
+    };
+    ctx.instructionText = "cvt." + qual_name(dst_dtype) + "." +
+                          qual_name(src_dtype) + " " + dst + ", " + src + ";";
+    return ctx;
+}
+
 inline StatementContext make_ld_shared(const std::string& dst_reg, const std::string& shared_var, const std::string& offset_reg) {
     StatementContext ctx;
     ctx.type = S_LD;

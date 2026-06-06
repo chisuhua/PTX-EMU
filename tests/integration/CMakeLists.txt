@@ -149,6 +149,11 @@ add_catch_test(integration_ptx_bitwise
 )
 set_tests_properties(integration_ptx_bitwise PROPERTIES LABELS "integration;ptx;bitwise")
 
+add_catch_test(integration_ptx_cvt
+    ptx/test_cvt.cpp
+)
+set_tests_properties(integration_ptx_cvt PROPERTIES LABELS "integration;ptx;cvt")
+
 # ============================================================================
 # Memory 集成测试 — 驱动模拟器
 # B1 plan: shared memory layout, multi-buffer offsets, zero-init verification
