@@ -201,11 +201,13 @@ set_tests_properties(unit_logger_cudart_component PROPERTIES LABELS "unit;logger
 # ============================================================================
 # Common 单元测试
 # ============================================================================
-# test_cc_register.cpp has pre-existing build errors (subc_handler undeclared)
-# Not built in main branch either
-# add_catch_test(unit_cc_register
-#     common/test_cc_register.cpp
-# )
+# P2-3 (re-enabled 2026-06-07): was disabled per KNOWN_ISSUES.md §D1.2
+# (subc_handler undeclared + non-Catch2 format). Fixed by rewriting
+# to Catch2 TEST_CASE format with corrected processOperation (camelCase).
+add_catch_test(unit_cc_register
+    common/test_cc_register.cpp
+)
+set_tests_properties(unit_cc_register PROPERTIES LABELS "unit;cc;addc;subc")
 
 add_catch_test(unit_specific_bugs_unit
     common/test_specific_bugs_unit.cpp
