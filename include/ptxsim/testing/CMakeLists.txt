@@ -12,6 +12,8 @@
 #   - scheduler_utils.h      : Scheduler-related test utilities
 #   - debug_utils.h          : Debug formatting helpers
 #   - warp_test_utils.h      : Warp-level test utilities
+#   - memory_test_utils.h    : setup_block, init_instruction_factory_once,
+#                              make_*_decl, make_*_addr, read_reg_u32
 #
 # Usage in tests:
 #   target_include_directories(my_test PRIVATE
@@ -30,6 +32,7 @@ set(PTXSIM_TESTING_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/scheduler_utils.h
     ${CMAKE_CURRENT_SOURCE_DIR}/debug_utils.h
     ${CMAKE_CURRENT_SOURCE_DIR}/warp_test_utils.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/memory_test_utils.h
 )
 
 # Expose headers for external tests via generated header collection
