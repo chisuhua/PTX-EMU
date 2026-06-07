@@ -184,9 +184,6 @@ add_standalone_test(instructions/test_ptx_bra.cu)
 # Note: tests/ptx/test_cfg_builder.cpp removed (Phase 5.1 stub, no real assertions;
 # coverage provided by test_cfg_edge_cases.cpp and tests/integration/cfg/test_cfg_analysis.cpp)
 add_standalone_test(ptx/test_cfg_edge_cases.cpp)
-# test_cfg_debug.cpp has pre-existing API mismatch errors (PtxVisitor::getKernels doesn't exist)
-# Disabled in main branch as well
-# add_standalone_test(ptx/test_cfg_debug.cpp)
 # test_cfg_benchmark.cpp moved to tests/integration/cfg/integration_cfg_benchmark.cpp
 # (commit ab55e06 naming convention: integration_* prefix; classified as integration test
 #  per AGENTS.md test type classification since it exercises CFG subsystem integration)
