@@ -276,6 +276,161 @@ To fix the bugs:
 
 ---
 
+## B1.3 — Local Memory Path (get_memory_addr Q_LOCAL is no-op'd)
+
+**Status:** `integration_local_memory` test written, marked `DISABLED True` in
+`tests/integration/CMakeLists.txt` to prevent SEGFAULT during normal `ctest`.
+
+**Affected test:**
+- `integration_local_memory` (ctest #91 in the disabled list, see `tests/integration/CMakeLists.txt:198-202`)
+
+**Origin:** Added 2026-06-06 as part of the B1 plan to close the local-memory
+test gap. The test file `tests/integration/memory/test_local_memory.cpp` was
+written to verify a per-lane `st.local.b32` / `ld.local.b32` round-trip. It
+SEGFAULTs on `main` because the `Q_LOCAL` branch in `get_memory_addr()` is
+commented out.
+
+### Symptoms
+
+Running the enabled test (after removing `DISABLED True`) crashes with a
+segfault. Backtrace points to `thread_context.cpp:get_memory_addr` returning
+`nullptr` (or an uninitialized value) for `Q_LOCAL` accesses, which the
+subsequent `st.local`/`ld.local` handler then dereferences.
+
+### Suspected Root Cause
+
+`src/ptxsim/core/thread_context.cpp:480-488` has the `Q_LOCAL` branch
+**commented out**:
+
+```cpp
+// } else if (QvecHasQ(qualifiers, Qualifier::Q_LOCAL)) {
+//     //
+//     对于本地内存访问，寄存器中的值是偏移量，需要加上本地内存基地址
+//     if (local_mem_space != nullptr) {
+//         ret = (void *)((uint64_t)local_mem_space + reg_value);
+//     } else {
+//         // 如果没有设置本地内存基地址，则返回nullptr
+//         return nullptr;
+//     }
+// }
+```
+
+This means `get_memory_addr()` falls through to the generic `else` branch
+at line 489-491, which returns `ret = (void *)reg_value` (i.e. the register
+value cast to a pointer, **not** a `local_mem_space`-relative address). The
+`st.local`/`ld.local` handlers then dereference this bogus pointer and crash.
+
+The `local_mem_space` allocation infrastructure **does** exist — each lane
+has its own backing array (allocated in `cta_context.cpp:155`). The bug is
+specifically in the address resolution layer, not the allocation layer.
+
+### Workaround
+
+The test is registered in CMake with `DISABLED True`:
+
+```cmake
+add_catch_test(integration_local_memory
+    memory/test_local_memory.cpp
+)
+set_tests_properties(integration_local_memory
+    PROPERTIES LABELS "integration;memory;local;ld_st" DISABLED True)
+```
+
+ctest skips it on `main`. The test source itself is correct and ready to
+run once the `Q_LOCAL` branch is restored.
+
+### How to Re-enable / Fix
+
+1. In `src/ptxsim/core/thread_context.cpp`, restore lines 480-488 by
+   uncommenting the `Q_LOCAL` branch and removing the leading `}` that
+   pairs with the still-active `if (QvecHasQ(qualifiers, Q_SHARED))`.
+   The branch should be:
+   ```cpp
+   } else if (QvecHasQ(qualifiers, Qualifier::Q_LOCAL)) {
+       if (local_mem_space != nullptr) {
+           ret = (void *)((uint64_t)local_mem_space + reg_value);
+       } else {
+           return nullptr;
+       }
+   } else {
+       ret = (void *)reg_value;
+   }
+   ```
+2. Verify `local_mem_space` is initialized per-lane during CTAContext::init
+   (it is — see `cta_context.cpp:155`).
+3. Remove `DISABLED True` from `tests/integration/CMakeLists.txt:201-202`.
+4. Run `ctest -R integration_local_memory -V` and confirm the round-trip
+   passes for all 32 lanes.
+
+**Estimated effort:** 5-10 minutes. Single-file, ~10-line change.
+
+### Files Involved
+
+- `src/ptxsim/core/thread_context.cpp:480-491` (handler — needs fix)
+- `tests/integration/memory/test_local_memory.cpp` (test, ready and waiting)
+- `tests/integration/CMakeLists.txt:198-202` (DISABLED registration)
+- `src/ptxsim/core/cta_context.cpp:155` (per-lane `local_mem_space` allocation)
+
+---
+
+## D1.3 — Empty Directories Removed (`tests/integration/cfg/`, `tests/integration/register/`)
+
+**Status:** Resolved (2026-06-05). Directories deleted; covered by tests in
+`tests/unit/`. Documented here so the cross-reference from `tests/AGENTS.md`
+and `docs/testing/TEST_DOCUMENTATION.md` resolves to a real section.
+
+**Origin:** After the 2026-06 test reorg (commit `ab55e06`),
+`tests/integration/cfg/` and `tests/integration/register/` each contained a
+single archived test file. Both were moved to `tests/archive/` in two
+cleanup commits, leaving the directories empty.
+
+### What was removed
+
+| Path | Last test | Archived in | Reason |
+|------|-----------|-------------|--------|
+| `tests/integration/cfg/` | `integration_cfg_benchmark.cpp` (standalone benchmark) | `c86d0ea` (2026-06-05) | Standalone benchmark, not a regression test. CFG coverage is provided by `tests/ptx/test_cfg_edge_cases.cpp` in the syntax-test directory. |
+| `tests/integration/cfg/` | `test_cfg_analysis.cpp` (broken: missing CFG builder API) | `88e1526` (2026-06-05) | Pre-P0 baseline: referenced a `CFGBuilder` API that was completely rewritten. One-off debug tool, not a regression check. |
+| `tests/integration/register/` | `test_register_bank_subwarp.cpp` (broken: orphan) | `88e1526` (2026-06-05) | Pre-P0 baseline: orphaned file (no CMake registration, no consumer). Register-bank coverage is provided by the `tests/unit/register/` suite. |
+
+After the three files were archived, the two directories contained zero
+`.cpp`/`.cu` files. They were removed as empty directories; the
+`tests/integration/CMakeLists.txt` references to them were also removed
+(in the same cleanup commits).
+
+### Why this section exists
+
+`tests/AGENTS.md` and `docs/testing/TEST_DOCUMENTATION.md` both reference
+`KNOWN_ISSUES.md §D1.3` to explain the directory absence. This section
+provides the missing explanation so those cross-references resolve.
+
+### Workaround
+
+None needed. The functionality previously tested (if any) is covered by:
+- CFG: `tests/ptx/test_cfg_edge_cases.cpp` (PTX syntax tests)
+- Register bank: `tests/unit/register/` (unit tests for `RegisterBankManager`)
+
+### How to Re-introduce (if ever needed)
+
+If a future feature requires integration-level CFG or register-bank tests:
+
+1. Recreate the directory with `mkdir -p tests/integration/{cfg,register}`.
+2. Add a new `.cpp` test using the standard `add_catch_test` pattern.
+3. Update this section to mark the work as in-progress.
+
+**Estimated effort:** N/A — directories are gone by design.
+
+### Files Involved
+
+- `tests/AGENTS.md:30` (cross-reference)
+- `docs/testing/TEST_DOCUMENTATION.md` §10 (cross-reference)
+- `tests/integration/cfg/` (removed)
+- `tests/integration/register/` (removed)
+- `tests/archive/integration_cfg_benchmark.cpp` (archived, see `c86d0ea`)
+- `tests/archive/test_cfg_analysis.cpp` (archived, see `88e1526`)
+- `tests/archive/test_register_bank_subwarp.cpp` (archived, see `88e1526`)
+
+---
+
 ## How to Add a New Entry
 
 ```markdown

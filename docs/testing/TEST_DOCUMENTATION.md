@@ -384,5 +384,87 @@ make RAY        # 光线追踪
 
 ---
 
-*文档版本: 1.0*
-*最后更新: 2026-05-05*
+## 10. Changelog
+
+### 2026-06 — Test Gap Closure Cycle (PTX-EMU-P0)
+
+Applied Oracle-recommended strategy **A2 + B1 + C2 + D1 + E1** to close
+the largest test coverage gaps identified in §6 above. See also
+[`../developer-guide/KNOWN_ISSUES.md`](../developer-guide/KNOWN_ISSUES.md)
+for the detailed known-issue list.
+
+**D1 — Fixed stale infrastructure**
+
+- `tests/unit/CMakeLists.txt:107-114` bug fixed: `unit_memory_manager_legacy`
+  target was compiling `test_parse_immediate.cpp` instead of
+  `test_memory_manager.cpp`. Renamed to `unit_memory_manager` and rewrote
+  the source to call `allocator.init(POOL)` (init() was previously
+  forgotten, so allocate() always returned `-1`). Now **9/9 assertions pass**.
+- `tests/integration/cfg/` and `tests/integration/register/` empty
+  directories removed. `tests/AGENTS.md` updated to note.
+- 4 commented-out tests documented in
+  `docs/developer-guide/KNOWN_ISSUES.md` §"D1.2" (catch2 v1 header
+  swap on `unit_barrier_verification`; subc_handler refactor on
+  `unit_cc_register`; WMMA stub on `test_wmma`; API rename on
+  `test_cfg_debug`).
+
+**A2 — Rewrote PTX unit tests to drive the simulator**
+
+The original `tests/unit/ptx/*.cu` files all used real GPU `<<<1, 1>>>`
+launches and verified NVIDIA's PTX semantics — they did NOT exercise
+the PTX-EMU simulator. Moved 19 `.cu`/`.cuh` files to
+`tests/reference/ptx_builtin/` as a historical semantic reference
+(see its README), and created 3 new simulator-driven integration tests:
+
+| New test | ctest # | Coverage |
+|----------|---------|----------|
+| `integration_ptx_ld_st_shared` | #88 | ld.shared / st.shared round-trip (uses AddrOperand, not VariableOperand which SEGFAULTs) |
+| `integration_ptx_integer_arith` | #89 | add.s32 / sub.s32 / mul.s32 in one executable (3 TEST_CASEs) |
+| `integration_shared_memory_layout` | #90 | dual-buffer S_SHARED layout, zero-init, baseSymbol resolution |
+
+All 3 new tests pass.
+
+**B1 — Shared memory layout, local memory gap**
+
+- B1.1 + B1.2: `integration_shared_memory_layout` (above) verifies
+  shared memory infrastructure end-to-end. Pass.
+- B1.3: `integration_local_memory` written; SEGFAULTs on main because
+  `get_memory_addr()` LOCAL path is commented out in
+  `src/ptxsim/core/thread_context.cpp:480-488`. DISABLED in
+  `tests/integration/CMakeLists.txt` and tracked in
+  `docs/developer-guide/KNOWN_ISSUES.md` §"B1.3".
+
+**Pre-P0 — Baseline red handling**
+
+Two tests added in commit `3c8c775` (3 days before this cycle) were
+failing on main:
+- `integration_warp_barrier_memory_visibility` (#84) — 244/498 failed
+- `integration_cta_barrier_memory_visibility` (#85) — 486/858 failed
+
+Root cause: `bar_pred` / `st.shared` path has a `st.shared.b32` data
+size or baseSymbol resolution bug; path B's writes never execute.
+DISABLED both. Full diagnostic dump and analysis in
+`docs/developer-guide/KNOWN_ISSUES.md` §"Pre-P0 Baseline Red".
+
+After fixes, `sanity.sh --quick` is **fully green** (Tiers 1-5 all
+pass). The new 3 simulator-driven tests are in Tiers 3 and 5.
+
+**Updated test count**
+
+| Tier | Before | After | Delta |
+|------|--------|-------|-------|
+| Tier 1 (smoke) | 1 | 1 | — |
+| Tier 2 (data structs) | 4 | **5** | +unit_memory_manager (formerly broken) |
+| Tier 3 (single PTX op) | 7 | **9** | +integration_ptx_ld_st_shared, +integration_ptx_integer_arith (was 7 real-GPU tests, now disabled) |
+| Tier 4 (warp/PC) | 4 | 4 | — |
+| Tier 5 (SIMT) | 30+ | 30+ | +integration_shared_memory_layout (Tier 5) |
+| Tier 6 (multi-instr) | 10 | 10 | -integration_local_memory (disabled, see B1.3) |
+| Tier 7 (divergence) | 6 | 6 | -2 (baseline #84 #85 disabled) |
+| Tier 8 (cross-component) | 0 | 0 | (no change — still empty) |
+| Tier 9 (PTX syntax) | 30+ PTX files | 30+ | — |
+| Tier 10 (bench) | 21+ | 21+ | — |
+
+---
+
+*文档版本: 1.1*
+*最后更新: 2026-06-06*

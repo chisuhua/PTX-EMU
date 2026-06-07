@@ -58,3 +58,6 @@ __pycache__/
 
 # Worktrees
 .worktrees/
+
+# Sisyphus orchestration tool state (session tracking, plans, evidence)
+.omo/

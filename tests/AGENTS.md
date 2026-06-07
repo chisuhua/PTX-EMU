@@ -28,8 +28,7 @@ tests/
 │   ├── exec/             #   exec 指令
 │   ├── pc/               #   PC 推进
 │   ├── sync/             #   同步指令
-│   ├── cfg/              #   CFG 分析
-│   └── register/         #   寄存器管理
+│   ├── (cfg/, register/ removed 2026-06; see KNOWN_ISSUES.md §D1.3)
 ├── e2e/                  # 类型三：CUDA Kernel E2E 测试
 │   ├── kernel/           #   完整 .cu kernel
 │   └── divergence/       #   Warp 分歧完整 kernel
