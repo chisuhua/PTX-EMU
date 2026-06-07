@@ -141,6 +141,7 @@ endfunction()
 
 # Type 1: 直接单元测试
 add_subdirectory(unit)
+add_subdirectory(unit/testing)
 
 # Type 2: 指令序列集成测试
 add_subdirectory(integration)
