@@ -277,11 +277,10 @@ if ! skip_tier 7; then
 fi
 
 # Tier 8: Cross-Component Integration
-# Reserved for future full-warp end-to-end tests
+# (added 2026-06-07 per docs/superpowers/specs/2026-06-07-ptx-emu-tier8-design.md)
 if ! skip_tier 8; then
     print_header "Tier 8: Cross-Component Integration (full warp flows)"
-    # No tests assigned yet - reserved for future end-to-end warp flow tests
-    print_test "Tier 8 currently empty (reserved for future end-to-end tests)"
+    run_regex_tests "integration_barrier_full_lifecycle" "Barrier full lifecycle (init/arrive/release/reset)"
 fi
 
 # Tier 9: PTX Syntax Validation
