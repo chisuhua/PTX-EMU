@@ -28,6 +28,7 @@
 #include "ptxsim/register_analyzer.h"
 #include "ptxsim/sm_context.h"
 #include "ptxsim/testing/instruction_helpers.h"
+#include "ptxsim/testing/memory_test_utils.h"
 #include "ptxsim/testing/scheduler_utils.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/warp_context.h"
@@ -45,97 +46,15 @@
 #include <string>
 #include <vector>
 
+using ptxsim::testing::init_instruction_factory_once;
+using ptxsim::testing::make_ld_local_addr;
+using ptxsim::testing::make_local_decl;
 using ptxsim::testing::make_mov;
 using ptxsim::testing::make_ret;
+using ptxsim::testing::make_st_local_addr;
+using ptxsim::testing::read_reg_u32;
+using ptxsim::testing::setup_block;
 using ptxsim::testing::step_warp;
-
-namespace {
-
-void init_instruction_factory_once() {
-    static bool done = false;
-    if (!done) {
-        InstructionFactory::initialize();
-        done = true;
-    }
-}
-
-StatementContext make_local_decl(const std::string &name, int array_size) {
-    StatementContext ctx;
-    ctx.type = S_LOCAL;
-    DeclarationInstr d;
-    d.kind = DeclarationInstr::Kind::LOCAL;
-    d.name = name;
-    d.dataType = Qualifier::Q_B32;
-    d.array_size = array_size;
-    ctx.data = d;
-    ctx.instructionText =
-        ".local .b32 " + name + "[" + std::to_string(array_size) + "];";
-    return ctx;
-}
-
-StatementContext make_st_local_addr(const std::string &base_sym,
-                                    const std::string &offset_reg,
-                                    const std::string &src_reg) {
-    StatementContext ctx;
-    ctx.type = S_ST;
-    GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_LOCAL, Qualifier::Q_B32};
-    AddrOperand addr;
-    addr.space = AddrOperand::Space::LOCAL;
-    addr.baseSymbol = base_sym;
-    addr.offsetType = AddrOperand::OffsetType::REGISTER;
-    addr.registerOffset =
-        std::make_shared<OperandContext>(RegOperand{offset_reg, -1});
-    instr.operands.push_back(OperandContext{addr});
-    instr.operands.push_back(OperandContext{RegOperand{src_reg, -1}});
-    ctx.data = instr;
-    ctx.instructionText =
-        "st.local.b32 [" + base_sym + "+" + offset_reg + "], " + src_reg + ";";
-    return ctx;
-}
-
-StatementContext make_ld_local_addr(const std::string &dst_reg,
-                                    const std::string &base_sym,
-                                    const std::string &offset_reg) {
-    StatementContext ctx;
-    ctx.type = S_LD;
-    GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_LOCAL, Qualifier::Q_B32};
-    AddrOperand addr;
-    addr.space = AddrOperand::Space::LOCAL;
-    addr.baseSymbol = base_sym;
-    addr.offsetType = AddrOperand::OffsetType::REGISTER;
-    addr.registerOffset =
-        std::make_shared<OperandContext>(RegOperand{offset_reg, -1});
-    instr.operands.push_back(OperandContext{RegOperand{dst_reg, -1}});
-    instr.operands.push_back(OperandContext{addr});
-    ctx.data = instr;
-    ctx.instructionText =
-        "ld.local.b32 " + dst_reg + ", [" + base_sym + "+" + offset_reg + "];";
-    return ctx;
-}
-
-WarpContext *setup_block(SMContext &sm, std::vector<StatementContext> &stmts) {
-    auto blk = std::make_unique<CTAContext>();
-    Dim3 g{1, 1, 1};
-    Dim3 b{32, 1, 1};
-    Dim3 bi{0, 0, 0};
-    std::map<std::string, int> l2pc;
-    std::map<std::string, Symtable *> n2s;
-    blk->init(g, b, bi, stmts, &n2s, l2pc);
-    bool ok = sm.add_block(std::move(blk));
-    REQUIRE(ok);
-    return sm.get_warp(0);
-}
-
-uint32_t read_reg_u32(WarpContext *w, const std::string &reg, int lane) {
-    auto rbm = w->get_register_bank_manager();
-    void *p = rbm->get_register(reg, 0, lane);
-    REQUIRE(p != nullptr);
-    return *static_cast<uint32_t *>(p);
-}
-
-} // namespace
 
 TEST_CASE("integration_local_memory_round_trip",
           "[integration][memory][local][ld_st]") {
