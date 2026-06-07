@@ -1,6 +1,7 @@
-#include <catch2/catch.hpp>
+#include "catch_amalgamated.hpp"
 #include "ptxsim/wbar.h"
 #include "ptxsim/thread_state.h"
+#include "ptxsim/simt_stack.h"
 #include <array>
 
 using namespace ptxsim;

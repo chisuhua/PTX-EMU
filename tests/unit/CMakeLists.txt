@@ -43,11 +43,13 @@ add_catch_test(unit_barrier_scenarios_integrated
 )
 set_tests_properties(unit_barrier_scenarios_integrated PROPERTIES LABELS "unit;barrier;regression")
 
-# test_barrier_verification.cpp has pre-existing build error (uses <catch2/catch.hpp>)
-# Not built in main branch either
-# add_catch_test(unit_barrier_verification
-#     barrier/test_barrier_verification.cpp
-# )
+# P2-1 (re-enabled 2026-06-07): was disabled per KNOWN_ISSUES.md §D1.2
+# (SIMTStackEntry/simt_stack not in scope). Fixed by adding the missing
+# #include "ptxsim/simt_stack.h" to test_barrier_verification.cpp.
+add_catch_test(unit_barrier_verification
+    barrier/test_barrier_verification.cpp
+)
+set_tests_properties(unit_barrier_verification PROPERTIES LABELS "unit;barrier;fence")
 
 # ============================================================================
 # SIMT 单元测试
@@ -105,13 +107,14 @@ set_tests_properties(unit_warp_state PROPERTIES LABELS "unit;warp;state;simt_ent
 # ============================================================================
 # Memory 单元测试
 # 注: 原始 CMakeLists.txt 中 test_memory_manager.cpp 实际上未被编译
-#     (add_catch_test 的参数解析bug, test_memory_manager.cpp 被当作 test name)
-#     只有 test_parse_immediate.cpp 被编译。保留此行为。
+#     (legacy bug: 同一个 test_parse_immediate.cpp 被编译两次 — 一次作为
+#      unit_memory_manager_legacy, 另一次作为 unit_parse_immediate)。
+#     修复: 拆分为两个独立目标, 各用正确的源文件。
 # ============================================================================
-add_catch_test(unit_memory_manager_legacy
-    common/test_parse_immediate.cpp
+add_catch_test(unit_memory_manager
+    memory/test_memory_manager.cpp
 )
-set_tests_properties(unit_memory_manager_legacy PROPERTIES LABELS "unit;memory;parser")
+set_tests_properties(unit_memory_manager PROPERTIES LABELS "unit;memory")
 
 add_catch_test(unit_memory_bounds
     memory/test_memory_bounds.cpp
@@ -234,45 +237,52 @@ set_tests_properties(unit_divergence_sync_standalone_integrated PROPERTIES LABEL
 
 # ============================================================================
 # PTX 指令单元测试
+# ---------------------------------------------------------------------------
+# A2 cleanup (2026-06): the 7 tests below all `<<<1, 1>>>` real GPU kernels
+# and verify NVIDIA's PTX semantics — they do NOT exercise the PTX-EMU
+# simulator. They were moved to tests/reference/ptx_builtin/ as a
+# historical "semantic reference". Simulator-driven equivalents live in
+# tests/integration/ptx/ (see integration_ptx_ld_st_shared and
+# integration_ptx_integer_arith). Disabled per Oracle A2 recommendation.
 # ============================================================================
-add_catch_test(unit_ptx_integer
-    ptx/test_ptx_integer.cu
-    ptx/ptx_integer_arith.cu
-)
-set_tests_properties(unit_ptx_integer PROPERTIES LABELS "unit;ptx;integer")
-
-add_catch_test(unit_ptx_float
-    ptx/test_ptx_float.cu
-    ptx/ptx_float_arith.cu
-)
-set_tests_properties(unit_ptx_float PROPERTIES LABELS "unit;ptx;float")
-
-add_catch_test(unit_ptx_extended
-    ptx/test_ptx_extended.cu
-    ptx/ptx_extended_prec.cu
-)
-set_tests_properties(unit_ptx_extended PROPERTIES LABELS "unit;ptx;integer")
-
-add_catch_test(unit_ptx_bitwise
-    ptx/test_ptx_bitwise.cu
-    ptx/ptx_bitwise_shift.cu
-)
-set_tests_properties(unit_ptx_bitwise PROPERTIES LABELS "unit;ptx;bitwise")
-
-add_catch_test(unit_ptx_cvt
-    ptx/test_ptx_cvt.cu
-    ptx/ptx_cvt_arith.cu
-)
-set_tests_properties(unit_ptx_cvt PROPERTIES LABELS "unit;ptx;cvt")
-
-add_catch_test(unit_ptx_ld_st
-    ptx/test_ptx_ld_st.cu
-    ptx/ptx_ld_st.cu
-)
-set_tests_properties(unit_ptx_ld_st PROPERTIES LABELS "unit;ptx;ld_st")
-
-add_catch_test(unit_ptx_cvta
-    ptx/test_ptx_cvta.cu
-    ptx/ptx_cvta.cu
-)
-set_tests_properties(unit_ptx_cvta PROPERTIES LABELS "unit;ptx;cvta")
+# add_catch_test(unit_ptx_integer
+#     ptx/test_ptx_integer.cu
+#     ptx/ptx_integer_arith.cu
+# )
+# set_tests_properties(unit_ptx_integer PROPERTIES LABELS "unit;ptx;integer")
+#
+# add_catch_test(unit_ptx_float
+#     ptx/test_ptx_float.cu
+#     ptx/ptx_float_arith.cu
+# )
+# set_tests_properties(unit_ptx_float PROPERTIES LABELS "unit;ptx;float")
+#
+# add_catch_test(unit_ptx_extended
+#     ptx/test_ptx_extended.cu
+#     ptx/ptx_extended_prec.cu
+# )
+# set_tests_properties(unit_ptx_extended PROPERTIES LABELS "unit;ptx;integer")
+#
+# add_catch_test(unit_ptx_bitwise
+#     ptx/test_ptx_bitwise.cu
+#     ptx/ptx_bitwise_shift.cu
+# )
+# set_tests_properties(unit_ptx_bitwise PROPERTIES LABELS "unit;ptx;bitwise")
+#
+# add_catch_test(unit_ptx_cvt
+#     ptx/test_ptx_cvt.cu
+#     ptx/ptx_cvt_arith.cu
+# )
+# set_tests_properties(unit_ptx_cvt PROPERTIES LABELS "unit;ptx;cvt")
+#
+# add_catch_test(unit_ptx_ld_st
+#     ptx/test_ptx_ld_st.cu
+#     ptx/ptx_ld_st.cu
+# )
+# set_tests_properties(unit_ptx_ld_st PROPERTIES LABELS "unit;ptx;ld_st")
+#
+# add_catch_test(unit_ptx_cvta
+#     ptx/test_ptx_cvta.cu
+#     ptx/ptx_cvta.cu
+# )
+# set_tests_properties(unit_ptx_cvta PROPERTIES LABELS "unit;ptx;cvta")
