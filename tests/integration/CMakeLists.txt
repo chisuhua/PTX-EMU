@@ -35,6 +35,15 @@ add_catch_test(integration_warp_barrier
 )
 set_tests_properties(integration_warp_barrier PROPERTIES LABELS "integration;wbar;regression")
 
+# ============================================================================
+# P1-3: Tier 8 cross-component integration test
+# (added 2026-06-07 per docs/superpowers/specs/2026-06-07-ptx-emu-tier8-design.md)
+# ============================================================================
+add_catch_test(integration_barrier_full_lifecycle
+    barrier/test_barrier_full_lifecycle.cpp
+)
+set_tests_properties(integration_barrier_full_lifecycle PROPERTIES LABELS "integration;barrier;lifecycle;tier8")
+
 # ---------------------------------------------------------------------------
 # KNOWN FAILING (pre-existing, see KNOWN_ISSUES.md §"Pre-P0 Baseline Red")
 # ---------------------------------------------------------------------------
