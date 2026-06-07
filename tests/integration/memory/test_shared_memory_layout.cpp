@@ -17,8 +17,8 @@
 //   PC=0:  S_SHARED .b32 buf_a[32]
 //   PC=1:  S_SHARED .b32 buf_b[32]
 //   PC=2:  mov.b32 r0, tid.x              ; r0 = lane_id
-//   PC=3:  ld.shared.b32 r1, [buf_a + r0] ; r1 = buf_a[lane_id] (expect 0)
-//   PC=4:  ld.shared.b32 r2, [buf_b + r0] ; r2 = buf_b[lane_id] (expect 0)
+//   PC=3:  ld.shared.b8 r1, [buf_a + r0] ; r1 = buf_a[lane_id] (expect 0)
+//   PC=4:  ld.shared.b8 r2, [buf_b + r0] ; r2 = buf_b[lane_id] (expect 0)
 //   PC=5:  ret
 //
 // Note: uses make_ld_shared_addr (AddrOperand + registerOffset), not
