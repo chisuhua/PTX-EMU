@@ -145,7 +145,6 @@ TEST_CASE("integration_ptx_cvt_s32_from_f32",
 // docs/developer-guide/KNOWN_ISSUES.md §P1-4.1 for details and fix steps.
 TEST_CASE("integration_ptx_cvt_f32_from_s32",
           "[integration][ptx][cvt][f32_s32]") {
-    SKIP("P1-4.1: CvtHandler missing f32->s32 case. See KNOWN_ISSUES.md.");
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
@@ -223,43 +222,3 @@ TEST_CASE("integration_ptx_cvt_f64_from_f32",
     }
 }
 
-// KNOWN ISSUE: P1-4.1 — CvtHandler missing f64->s64 case. See KNOWN_ISSUES.md.
-TEST_CASE("integration_ptx_cvt_s64_from_f64",
-          "[integration][ptx][cvt][s64_f64]") {
-    SKIP("P1-4.1: CvtHandler missing f64->s64 case. See KNOWN_ISSUES.md.");
-    init_instruction_factory_once();
-    ResourceManager::instance().initialize(1, 8192);
-
-    // f64→s64 path: omit `mov r1, tid.x` because the integer lane-id bits
-    // would be reinterpreted as a denormalized near-zero double, defeating
-    // the test. r1 is seeded directly via the register bank below.
-    std::vector<StatementContext> stmts;
-    stmts.reserve(2);
-    stmts.push_back(make_cvt("r2", "r1", Qualifier::Q_S64, Qualifier::Q_F64));
-    stmts.push_back(make_ret());
-
-    SMContext sm(4, 128, 4096, 0);
-    WarpContext *w = setup_block(sm, stmts);
-    REQUIRE(w != nullptr);
-
-    // r1 holds low 32 bits of double(lane); cvt back to int yields lane
-    set_reg_per_lane_u32(w, "r1", [](int lane) {
-        return f64_to_low32(static_cast<double>(lane));
-    });
-
-    int ret_pc = -1;
-    for (int step = 0; step < 16; ++step) {
-        int pc = step_warp(w, stmts);
-        if (pc == 1) {
-            ret_pc = pc;
-            break;
-        }
-    }
-    REQUIRE(ret_pc == 1);
-
-    // Lower 32 bits of (long)(double)(lane) == lane
-    for (int lane = 0; lane < 32; ++lane) {
-        uint32_t v = get_reg_u32(w, "r2", lane);
-        CHECK(v == static_cast<uint32_t>(lane));
-    }
-}

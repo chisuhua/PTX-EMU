@@ -110,14 +110,12 @@ uint32_t f32_to_bits(float f) {
 // (0x40800000). Test body preserved for re-enablement; SKIP for now.
 // See docs/developer-guide/KNOWN_ISSUES.md §P1-4.2 for details and fix steps.
 TEST_CASE("integration_ptx_float_fadd_f32", "[integration][ptx][float][fadd]") {
-    SKIP("P1-4.2: AddHandler missing Q_F32 path. See KNOWN_ISSUES.md.");
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
     std::vector<StatementContext> stmts;
-    stmts.reserve(3);
-    stmts.push_back(make_mov("r1", "tid.x"));
-    stmts.push_back(make_fadd("r2", "r1", "r1")); // PC=1: r2 = r1 + r1
+    stmts.reserve(2);
+    stmts.push_back(make_fadd("r2", "r1", "r1")); // r2 = r1 + r1
     stmts.push_back(make_ret());
 
     SMContext sm(4, 128, 4096, 0);
@@ -131,12 +129,12 @@ TEST_CASE("integration_ptx_float_fadd_f32", "[integration][ptx][float][fadd]") {
     int ret_pc = -1;
     for (int step = 0; step < 16; ++step) {
         int pc = step_warp(w, stmts);
-        if (pc == 2) {
+        if (pc == 1) {
             ret_pc = pc;
             break;
         }
     }
-    REQUIRE(ret_pc == 2);
+    REQUIRE(ret_pc == 1);
 
     for (int lane = 0; lane < 32; ++lane) {
         uint32_t v = get_reg_u32(w, "r2", lane);
@@ -185,14 +183,12 @@ TEST_CASE("integration_ptx_float_fsub_f32", "[integration][ptx][float][fsub]") {
 // of 1.0f (0x3f800000). Test body preserved for re-enablement; SKIP for now.
 // See docs/developer-guide/KNOWN_ISSUES.md §P1-4.2 for details and fix steps.
 TEST_CASE("integration_ptx_float_fmul_f32", "[integration][ptx][float][fmul]") {
-    SKIP("P1-4.2: MulHandler missing Q_F32 path. See KNOWN_ISSUES.md.");
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
     std::vector<StatementContext> stmts;
-    stmts.reserve(3);
-    stmts.push_back(make_mov("r1", "tid.x"));
-    stmts.push_back(make_fmul("r2", "r1", "r1")); // PC=1: r2 = r1 * r1
+    stmts.reserve(2);
+    stmts.push_back(make_fmul("r2", "r1", "r1")); // r2 = r1 * r1
     stmts.push_back(make_ret());
 
     SMContext sm(4, 128, 4096, 0);
@@ -206,12 +202,12 @@ TEST_CASE("integration_ptx_float_fmul_f32", "[integration][ptx][float][fmul]") {
     int ret_pc = -1;
     for (int step = 0; step < 16; ++step) {
         int pc = step_warp(w, stmts);
-        if (pc == 2) {
+        if (pc == 1) {
             ret_pc = pc;
             break;
         }
     }
-    REQUIRE(ret_pc == 2);
+    REQUIRE(ret_pc == 1);
 
     for (int lane = 0; lane < 32; ++lane) {
         uint32_t v = get_reg_u32(w, "r2", lane);
@@ -226,14 +222,12 @@ TEST_CASE("integration_ptx_float_fmul_f32", "[integration][ptx][float][fmul]") {
 // of 2.0f (0x40000000). Test body preserved for re-enablement; SKIP for now.
 // See docs/developer-guide/KNOWN_ISSUES.md §P1-4.2 for details and fix steps.
 TEST_CASE("integration_ptx_float_ffma_f32", "[integration][ptx][float][ffma]") {
-    SKIP("P1-4.2: FmaHandler missing Q_F32 path. See KNOWN_ISSUES.md.");
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
     std::vector<StatementContext> stmts;
-    stmts.reserve(3);
-    stmts.push_back(make_mov("r1", "tid.x"));
-    stmts.push_back(make_ffma("r2", "r1", "r1", "r1")); // PC=1: r2 = r1*r1 + r1
+    stmts.reserve(2);
+    stmts.push_back(make_ffma("r2", "r1", "r1", "r1")); // r2 = r1*r1 + r1
     stmts.push_back(make_ret());
 
     SMContext sm(4, 128, 4096, 0);
@@ -247,12 +241,12 @@ TEST_CASE("integration_ptx_float_ffma_f32", "[integration][ptx][float][ffma]") {
     int ret_pc = -1;
     for (int step = 0; step < 16; ++step) {
         int pc = step_warp(w, stmts);
-        if (pc == 2) {
+        if (pc == 1) {
             ret_pc = pc;
             break;
         }
     }
-    REQUIRE(ret_pc == 2);
+    REQUIRE(ret_pc == 1);
 
     for (int lane = 0; lane < 32; ++lane) {
         uint32_t v = get_reg_u32(w, "r2", lane);
