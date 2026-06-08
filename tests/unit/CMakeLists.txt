@@ -122,6 +122,20 @@ add_catch_test(unit_memory_bounds
 set_tests_properties(unit_memory_bounds PROPERTIES LABELS "unit;memory")
 
 # ============================================================================
+# Memory Regression Tests (BUG-ST-OVERREAD, BUG-NAME2SHARE)
+# RED PHASE: These tests must FAIL on unpatched code.
+# ============================================================================
+add_catch_test(unit_st_handler_data_size
+    memory/test_st_handler_data_size.cpp
+)
+set_tests_properties(unit_st_handler_data_size PROPERTIES LABELS "unit;memory;regression;BUG-ST-OVERREAD")
+
+add_catch_test(unit_get_memory_addr_shared
+    memory/test_get_memory_addr_shared.cpp
+)
+set_tests_properties(unit_get_memory_addr_shared PROPERTIES LABELS "unit;memory;regression;BUG-NAME2SHARE")
+
+# ============================================================================
 # Exec 单元测试
 # ============================================================================
 add_catch_test(unit_exec_mask
@@ -143,6 +157,15 @@ add_catch_test(unit_exec_layer_e1_e3
     exec/test_exec_layer_e1_e3.cpp
 )
 set_tests_properties(unit_exec_layer_e1_e3 PROPERTIES LABELS "unit;exec")
+
+# ============================================================================
+# Exec Regression Tests (BUG-BRAPRED)
+# RED PHASE: These tests must FAIL on unpatched code.
+# ============================================================================
+add_catch_test(unit_bra_pred_divergent
+    exec/test_bra_pred_divergent.cpp
+)
+set_tests_properties(unit_bra_pred_divergent PROPERTIES LABELS "unit;exec;regression;BUG-BRAPRED")
 
 # ============================================================================
 # PC 单元测试
