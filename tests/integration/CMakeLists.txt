@@ -142,7 +142,7 @@ set_tests_properties(integration_syncthreads_full_pipeline PROPERTIES LABELS "in
 add_catch_test(integration_ptx_ld_st_shared
     ptx/test_ld_st_shared.cpp
 )
-set_tests_properties(integration_ptx_ld_st_shared PROPERTIES LABELS "integration;ptx;ld_st;shared")
+set_tests_properties(integration_ptx_ld_st_shared PROPERTIES LABELS "integration;ptx;ld_st;shared;shared_memory")
 
 add_catch_test(integration_ptx_integer_arith
     ptx/test_integer_arith.cpp
@@ -185,7 +185,7 @@ set_tests_properties(integration_ptx_cvta PROPERTIES LABELS "integration;ptx;cvt
 add_catch_test(integration_shared_memory_layout
     memory/test_shared_memory_layout.cpp
 )
-set_tests_properties(integration_shared_memory_layout PROPERTIES LABELS "integration;memory;shared;layout")
+set_tests_properties(integration_shared_memory_layout PROPERTIES LABELS "integration;memory;shared;layout;shared_memory")
 
 # ---------------------------------------------------------------------------
 # KNOWN FAILING (pre-existing, see KNOWN_ISSUES.md §"B1.3 Local Memory Path")
@@ -200,3 +200,11 @@ add_catch_test(integration_local_memory
 )
 set_tests_properties(integration_local_memory
     PROPERTIES LABELS "integration;memory;local;ld_st" DISABLED True)
+
+# ============================================================================
+# Dynamic Shared Memory Integration Test
+# ============================================================================
+add_catch_test(integration_dynamic_shared_memory
+    memory/test_dynamic_shared_memory.cpp
+)
+set_tests_properties(integration_dynamic_shared_memory PROPERTIES LABELS "integration;memory;shared_memory;dynamic")

@@ -36,3 +36,21 @@ add_catch_test(e2e_divergence_sync
     divergence/test_divergence_sync.cu
 )
 set_tests_properties(e2e_divergence_sync PROPERTIES LABELS "e2e;divergence;barrier_sync")
+
+# ============================================================================
+# Shared Memory E2E 测试 - 共享内存 kernel 验证
+# ============================================================================
+add_catch_test(e2e_shared_memory_dynamic
+    kernel/test_shared_memory_dynamic.cu
+)
+set_tests_properties(e2e_shared_memory_dynamic PROPERTIES LABELS "e2e;shared_memory;dynamic")
+
+add_catch_test(e2e_shared_memory_multi_buffer
+    kernel/test_shared_memory_multi_buffer.cu
+)
+set_tests_properties(e2e_shared_memory_multi_buffer PROPERTIES LABELS "e2e;shared_memory;multi_buffer")
+
+add_catch_test(e2e_shared_memory_divergence_visibility
+    kernel/test_shared_memory_divergence_visibility.cu
+)
+set_tests_properties(e2e_shared_memory_divergence_visibility PROPERTIES LABELS "e2e;shared_memory;divergence;visibility")
