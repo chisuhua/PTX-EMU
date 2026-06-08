@@ -472,7 +472,15 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
         if (QvecHasQ(qualifiers, Qualifier::Q_SHARED)) {
             // 对于共享内存访问，寄存器中的值是偏移量，需要加上共享内存基地址
             if (shared_mem_space != nullptr) {
-                ret = (void *)((uint64_t)shared_mem_space + reg_value);
+                uint64_t offset = reg_value;
+                // 查name2Share获取baseSymbol在共享内存中的偏移量
+                if (name2Share != nullptr && !fa.baseSymbol.empty()) {
+                    auto it = name2Share->find(fa.baseSymbol);
+                    if (it != name2Share->end()) {
+                        offset += it->second->val;
+                    }
+                }
+                ret = (void *)((uint64_t)shared_mem_space + offset);
             } else {
                 // 如果没有设置共享内存基地址，则返回nullptr
                 return nullptr;
