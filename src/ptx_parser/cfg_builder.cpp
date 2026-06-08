@@ -201,12 +201,12 @@ CFG CFGBuilder::build(
 PostDominatorMap CFGBuilder::computePostDominators(const CFG& cfg) {
     std::map<int, std::set<int>> postDomSets;
     PostDominatorMap result;
-    
+
     std::set<int> all_block_ids;
     for (const auto& block : cfg.blocks) {
         all_block_ids.insert(block.id);
     }
-    
+
     for (const auto& block : cfg.blocks) {
         if (block.id == cfg.exit_block_id) {
             postDomSets[block.id] = {block.id};
@@ -214,24 +214,24 @@ PostDominatorMap CFGBuilder::computePostDominators(const CFG& cfg) {
             postDomSets[block.id] = all_block_ids;
         }
     }
-    
+
     bool changed = true;
     int iterations = 0;
     while (changed && iterations < 100) {
         changed = false;
         iterations++;
-        
+
         for (const auto& block : cfg.blocks) {
             if (block.id == cfg.exit_block_id) continue;
-            
+
             // 标准后支配集算法：用全量集合初始化，求后继交集，最后加入自身
             std::set<int> newSet = all_block_ids;
-            
+
             if (!block.successors.empty()) {
                 for (int succ_id : block.successors) {
                     auto it = postDomSets.find(succ_id);
                     if (it == postDomSets.end()) continue;
-                    
+
                     std::set<int> intersection;
                     std::set_intersection(
                         newSet.begin(), newSet.end(),
@@ -242,20 +242,25 @@ PostDominatorMap CFGBuilder::computePostDominators(const CFG& cfg) {
                 }
             }
             newSet.insert(block.id);
-            
+
             if (newSet != postDomSets[block.id]) {
                 postDomSets[block.id] = newSet;
                 changed = true;
             }
         }
     }
-    
+
     // Build a map from block ID to start_pc for post-dominator resolution
     std::map<int, int> blockIdToPC;
     for (const auto& block : cfg.blocks) {
         blockIdToPC[block.id] = block.start_pc;
     }
-    
+
+    // exit_block_pc is a synthetic PC (= statements.size()) with no real
+    // instruction. Fall back to pc+1 (or -1 at the end) when a PC's only
+    // post-dominator is the exit block.
+    int exit_block_pc = blockIdToPC[cfg.exit_block_id];
+
     for (const auto& block : cfg.blocks) {
         int ipd_block_id = findImmediatePostDominator(block, postDomSets);
         int postDomPC = -1;
@@ -266,10 +271,14 @@ PostDominatorMap CFGBuilder::computePostDominators(const CFG& cfg) {
             }
         }
         for (int pc = block.start_pc; pc < block.end_pc; pc++) {
-            result[pc] = postDomPC;
+            int effective = postDomPC;
+            if (effective == exit_block_pc) {
+                effective = (pc + 1 < exit_block_pc) ? (pc + 1) : -1;
+            }
+            result[pc] = effective;
         }
     }
-    
+
     return result;
 }
 

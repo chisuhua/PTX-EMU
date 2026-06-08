@@ -32,10 +32,8 @@ __global__ void test_divergence_sync_kernel(T *output) {
 
     shared_data[lane] = value;
     __syncthreads();
-    output[tid] = shared_data[32 - lane];
 
     // Thread 0 collects sum
-    /*
     if (tid == 0) {
         T sum = 0;
         for (int i = 0; i < WARP_SIZE; i++) {
@@ -43,9 +41,8 @@ __global__ void test_divergence_sync_kernel(T *output) {
         }
         output[0] = sum;
     } else {
-        output[tid] = shared_data[tid];
+        output[tid] = shared_data[32 - lane];
     }
-    */
 }
 
 bool test_divergence_sync() {
@@ -66,13 +63,13 @@ bool test_divergence_sync() {
         int value = 0;
         for (int j = 0; j <= i; j++) value += j;
         expected_sum += value;
-        //if (i != 0 ) {
+        if (i != 0 ) {
           printf("h_output[%d] = %d, %d\n", i, h_output[32-i], value);
           if (h_output[32-i] != value) {
             printf("FAIL: h_output[%d] expected %d, got %d\n", 32-i, expected_sum, h_output[32-i]);
             failed = true;
           }
-        //}
+        }
     }
     for (int i = 16; i < 32; i++) {
         int prod = 1;
@@ -84,13 +81,13 @@ bool test_divergence_sync() {
           failed = true;
         }
     }
-/*
+
     printf("h_output[0] = %d, %d\n", h_output[0], expected_sum);
     if (h_output[0] != expected_sum) {
         printf("FAIL: expected h_output[0]=%d, got %d\n", expected_sum, h_output[0]);
         return false;
     }
-    */
+
     if (failed) {
         return false;
     }
