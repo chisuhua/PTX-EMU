@@ -63,7 +63,8 @@ void StHandler::processOperation(ThreadContext *context, void *op[2],
 
   MemorySpace space = getAddressSpace(qualifiers);
   size_t data_size = getBytes(qualifiers);
-  uint64_t src_val = *(uint64_t*)src;
+  uint64_t src_val = 0;
+  memcpy(&src_val, src, data_size);
 
   // ========================
   // 1. 标量 ST（无向量）
