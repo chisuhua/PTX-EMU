@@ -53,13 +53,21 @@ std::unique_ptr<GPUContext> g_gpu_context;
 std::unique_ptr<PtxInterpreter> g_ptx_interpreter;
 
 // 配置文件路径
-static const char *CONFIG_FILE = "config.ini";
+// PTX_EMU_CONFIG 环境变量可覆盖默认 config.ini（用于按场景切换 trace/日志级别）
+static std::string get_config_file_path() {
+ const char *env = std::getenv("PTX_EMU_CONFIG");
+ if (env != nullptr && env[0] != '\0') {
+  return std::string(env);
+ }
+ return std::string("config.ini");
+}
 
 // 初始化调试环境和GPUContext
 void initialize_environment() {
     // 解析配置文件一次，然后分别设置各个组件
     inipp::Ini<char> ini;
-    std::ifstream is(CONFIG_FILE);
+    std::string config_path = get_config_file_path();
+ std::ifstream is(config_path);
     if (is.is_open()) {
         ini.parse(is);
 
@@ -94,7 +102,7 @@ void initialize_environment() {
         g_gpu_context->init();
         g_ptx_interpreter = std::make_unique<PtxInterpreter>();
 
-        PTX_INFO_EMU("Configuration loaded from %s", CONFIG_FILE);
+        PTX_INFO_EMU("Configuration loaded from %s", config_path.c_str());
     } else {
         PTX_INFO_EMU("No configuration file found, using default settings");
         // 设置默认的日志级别

@@ -319,7 +319,7 @@ foreach(TEST_NAME ${PTX_ALL_TESTS})
         # 基础测试和额外测试需要A100配置和工作目录为项目根目录
         set_tests_properties(${TEST_NAME} PROPERTIES
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-            ENVIRONMENT "PTX_EMU_GPU_CONFIG=ampere_a100.json")
+            ENVIRONMENT "PTX_EMU_GPU_CONFIG=ampere_a100.json;PTX_EMU_CONFIG=perf_config.ini;PTX_EMU_GEMM_TEST_MODE=small;PTX_EMU_CONV_TEST_MODE=small")
     endif()
 
     # 设置属性，标记哪些是基础测试

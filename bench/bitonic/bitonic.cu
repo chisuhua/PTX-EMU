@@ -186,7 +186,7 @@ int main(int argc, char *argv[]) {
 
   // Read parameters.
   try {
-    n = 16;//std::stoi(argv[1]);
+ n =10; // 默认 small规模 (size=1024)；保证 ctest1 分钟内完成；原默认 n=16 =65536
 
     // Verify the boundary of acceptance.
     if (n < 0 || n >= exp_max) {

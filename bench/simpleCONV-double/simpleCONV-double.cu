@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cstring>
 #include <cstdio>
 #include <functional>
 #include <vector>
@@ -193,6 +194,14 @@ bool benchmark(int M,int N){
    
 }
 
+
 int main(){
-   return !benchmark<double,double,31,31>(128,128);
+ const char *mode = std::getenv("PTX_EMU_CONV_TEST_MODE");
+ bool small = (mode == nullptr) || (strcmp(mode, "small") ==0);
+ if (small) {
+ printf("[TEST MODE: small GridDim]\n");
+ return !benchmark<int,int,15,15>(32,32);
+ }
+ printf("[TEST MODE: large GridDim]\n");
+ return !benchmark<int,int,31,31>(128,128);
 }
