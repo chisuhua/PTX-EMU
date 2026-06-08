@@ -8,7 +8,7 @@ cause, and current workaround. Use this document to track failures that are
 
 ## Pre-P0 Baseline Red — `integration_*_barrier_memory_visibility`
 
-**Status:** DISABLED in `tests/integration/CMakeLists.txt` (commit pending)
+**Status:** DISABLED in `tests/integration/CMakeLists.txt` — 2026-06-08: root causes 2 and 3 fixed, root cause 1 under investigation
 
 **Affected tests:**
 - `integration_warp_barrier_memory_visibility` (ctest #84)
@@ -68,15 +68,40 @@ DIAG shmem[124..191]:  00×68
    - The asymmetry of 17 vs 15 (off-by-one) suggests a **partial
      single-byte overlap** between the two divergent write sequences.
 
+### Progress — Fixes Applied 2026-06-08
+
+**Root cause 3 fixed:** `StHandler::processOperation` 8-byte over-read at `memory.cpp:66`.
+
+`uint64_t src_val = *(uint64_t*)src;` was replaced with `uint64_t src_val = 0; memcpy(&src_val, src, data_size);`.
+This eliminated the undefined behavior in the REGISTER read.
+
+**Root cause 2 fixed:** `get_memory_addr` SHARED REGISTER path (`thread_context.cpp:472-479`) now consults `name2Share` for `fa.baseSymbol` offset.
+
+The per-buffer offset stored in `Symtable.val` (set during `build_shared_memory_symbol_table`) is added to `reg_value` before computing the shared memory address. This ensures writes to `buf_b` go to the correct offset, not to `buf_a`'s base address.
+
+**Root cause 1 status (2026-06-08):** Under investigation.
+
+The bra_pred divergence issue was investigated by reading all relevant code paths:
+- `WarpContext::handle_branch` (warp_context.cpp:10-90) — divergence detection and lane PC rewrite logic appears correct
+- `SIMTStack::is_converged` and `check_reconvergence` (simt_stack.cpp:7-95) — correct
+- `WarpContext::execute_warp_instruction` (warp_context.cpp:214-309) — correct handling of different PC groups
+- `WarpContext::get_lanes_by_pc` (warp_context.cpp:415-428) — correct
+- `step_warp` scheduler (scheduler_utils.h:19-32) — correct selection of non-blocked PC groups
+
+The remaining failures (236/498 and 470/858 assertions) after T5+T6 fixes suggest the root cause is a subtle interaction between the divergence scheduling and barrier reconvergence. Further investigation may require runtime tracing.
+
+**Assertion counts before/after fixes:**
+| Test | Before T5+T6 | After T5+T6 |
+|------|-------------|-------------|
+| `integration_warp_barrier_memory_visibility` | 254/498 passed (244 failed) | 262/498 passed (236 failed) |
+| `integration_cta_barrier_memory_visibility` | 372/858 passed (486 failed) | 388/858 passed (470 failed) |
+
 ### Suspected Root Causes (ranked)
 
-1. **`bra_pred` handler does not branch for the divergent path.**
+1. **`bra_pred` divergent path scheduling.** (Remaining)
    `bar.warp.sync` succeeds with mask `0xFFFFFFFF`, which means the SIMT
-   stack saw both paths active (otherwise it would only release the arrived
-   mask). But if the branch handler doesn't actually rewrite the divergent
-   lanes' PC to `L_path_b` (PC=7), all 32 lanes would still execute path A.
-   The `0xCAFEBABE` / `0xDEADBEEF` "uninit" values are a *secondary*
-   symptom — the reads happened from the wrong base.
+   stack saw both paths active. Code logic appears correct; the issue may
+   be in how the scheduler transitions between PC groups after divergence.
 
 2. **`st.shared` write goes to a different address than the test reads.**
    The test does direct pointer arithmetic on `t0->shared_mem_space`:

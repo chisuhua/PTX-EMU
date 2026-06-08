@@ -56,6 +56,7 @@
 #include "ptxsim/simt_stack.h"
 #include "ptxsim/sm_context.h"
 #include "ptxsim/testing/instruction_helpers.h"
+#include "ptxsim/testing/memory_test_utils.h"
 #include "ptxsim/testing/predicates.h"
 #include "ptxsim/testing/scheduler_utils.h"
 #include "ptxsim/thread_context.h"
@@ -80,104 +81,17 @@ using ptxsim::testing::make_bar_sync;
 using ptxsim::testing::make_bra;
 using ptxsim::testing::make_bra_pred;
 using ptxsim::testing::make_label;
+using ptxsim::testing::make_ld_shared_addr;
 using ptxsim::testing::make_mov;
 using ptxsim::testing::make_mov_imm;
 using ptxsim::testing::make_ret;
+using ptxsim::testing::make_setp_lt_imm;
+using ptxsim::testing::make_shared_decl;
+using ptxsim::testing::make_st_shared_addr;
 using ptxsim::testing::setup_pred;
 using ptxsim::testing::step_warp;
 
 namespace {
-
-// -----------------------------------------------------------------------------
-// Local Instruction Helpers
-// -----------------------------------------------------------------------------
-// Same rationale as in test_warp_barrier_memory_visibility.cpp:
-//   - make_st_shared / make_ld_shared from instruction_helpers.h use
-//     VariableOperand, which acquire_operand cannot resolve into a real
-//     shared-memory offset. We need AddrOperand with baseSymbol +
-//     registerOffset for real st.shared/ld.shared writes (per-lane offsets into
-//     a declared .shared buffer), exactly as the PTX parser produces.
-//   - make_setp_lt in instruction_helpers.h always builds RegOperand for src2,
-//     so we add a local variant that accepts an immediate for setp.lt IMM.
-// These helpers stay in this test file only (per Task 6 SKIPPED rule — do NOT
-// add them to instruction_helpers.h).
-
-// setp.lt.u32 %pred, %src1_reg, IMM
-static StatementContext make_setp_lt_imm(const std::string &pred,
-                                         const std::string &src1_reg,
-                                         int64_t imm) {
-    StatementContext ctx;
-    ctx.type = S_SETP;
-    GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_LT};
-    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{src1_reg, -1}});
-    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(imm)}});
-    ctx.data = instr;
-    ctx.instructionText = "setp.lt.u32 " + pred + ", " + src1_reg + ", " +
-                          std::to_string(imm) + ";";
-    return ctx;
-}
-
-// S_SHARED declaration (e.g., `.shared .b32 buf_a[64];`)
-static StatementContext make_shared_decl(const std::string &name,
-                                         int array_size) {
-    StatementContext ctx;
-    ctx.type = S_SHARED;
-    DeclarationInstr d;
-    d.kind = DeclarationInstr::Kind::SHARED;
-    d.name = name;
-    d.dataType = Qualifier::Q_B32;
-    d.array_size = array_size;
-    ctx.data = d;
-    ctx.instructionText =
-        ".shared .b32 " + name + "[" + std::to_string(array_size) + "];";
-    return ctx;
-}
-
-// st.shared.b32 [baseSym + offset_reg], src_reg  → AddrOperand
-static StatementContext make_st_shared_addr(const std::string &base_sym,
-                                            const std::string &offset_reg,
-                                            const std::string &src_reg) {
-    StatementContext ctx;
-    ctx.type = S_ST;
-    GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_SHARED, Qualifier::Q_B32};
-    AddrOperand addr;
-    addr.space = AddrOperand::Space::SHARED;
-    addr.baseSymbol = base_sym;
-    addr.offsetType = AddrOperand::OffsetType::REGISTER;
-    addr.registerOffset =
-        std::make_shared<OperandContext>(RegOperand{offset_reg, -1});
-    instr.operands.push_back(OperandContext{addr});
-    instr.operands.push_back(OperandContext{RegOperand{src_reg, -1}});
-    ctx.data = instr;
-    ctx.instructionText =
-        "st.shared.b32 [" + base_sym + "+" + offset_reg + "], " + src_reg + ";";
-    return ctx;
-}
-
-// ld.shared.b32 dst_reg, [baseSym + offset_reg]  → AddrOperand
-static StatementContext make_ld_shared_addr(const std::string &dst_reg,
-                                            const std::string &base_sym,
-                                            const std::string &offset_reg) {
-    StatementContext ctx;
-    ctx.type = S_LD;
-    GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_SHARED, Qualifier::Q_B32};
-    AddrOperand addr;
-    addr.space = AddrOperand::Space::SHARED;
-    addr.baseSymbol = base_sym;
-    addr.offsetType = AddrOperand::OffsetType::REGISTER;
-    addr.registerOffset =
-        std::make_shared<OperandContext>(RegOperand{offset_reg, -1});
-    instr.operands.push_back(OperandContext{RegOperand{dst_reg, -1}});
-    instr.operands.push_back(OperandContext{addr});
-    ctx.data = instr;
-    ctx.instructionText =
-        "ld.shared.b32 " + dst_reg + ", [" + base_sym + "+" + offset_reg + "];";
-    return ctx;
-}
 
 // -----------------------------------------------------------------------------
 // Factory / setup
@@ -305,16 +219,16 @@ build_statements(std::map<std::string, int> &l2pc) {
     stmts.push_back(make_mov("r1", "tid.x"));                   // PC=2
     stmts.push_back(make_setp_lt_imm("p1", "r1", 32));          // PC=3
     stmts.push_back(make_bra_pred("L_path_b", "p1", false, 9)); // PC=4
-    stmts.push_back(make_st_shared_addr("buf_a", "r1", "r2"));  // PC=5 (path A)
+    stmts.push_back(make_st_shared_addr("buf_a", "r1", "r2", Qualifier::Q_B32));  // PC=5 (path A)
     stmts.push_back(make_bra("L_join"));                        // PC=6
     stmts.push_back(make_label("L_path_b"));                    // PC=7
-    stmts.push_back(make_st_shared_addr("buf_b", "r1", "r2"));  // PC=8 (path B)
+    stmts.push_back(make_st_shared_addr("buf_b", "r1", "r2", Qualifier::Q_B32));  // PC=8 (path B)
     stmts.push_back(make_label("L_join"));                      // PC=9
     stmts.push_back(make_bar_sync(0));       // PC=10 (CTA-level)
     stmts.push_back(make_mov_imm("r1", 32)); // PC=11
-    stmts.push_back(make_ld_shared_addr("r3", "buf_a", "r1")); // PC=12
+    stmts.push_back(make_ld_shared_addr("r3", "buf_a", "r1", Qualifier::Q_B32)); // PC=12
     stmts.push_back(make_mov_imm("r1", 0));                    // PC=13
-    stmts.push_back(make_ld_shared_addr("r4", "buf_b", "r1")); // PC=14
+    stmts.push_back(make_ld_shared_addr("r4", "buf_b", "r1", Qualifier::Q_B32)); // PC=14
     stmts.push_back(make_ret());                               // PC=15
 
     l2pc.clear();
