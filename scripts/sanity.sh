@@ -11,7 +11,8 @@
 #   Tier 7:  Divergence & Reconvergence   - divergence scenarios
 #   Tier 8:  Cross-Component Integration  - full warp flows
 #   Tier 9:  PTX Syntax Validation        - static PTX parsing
-#   Tier 10: Benchmarks (--full only)     - mini/basic/cute/etc
+#   Tier 10: Shared Memory 专项           - ld/st/cvta/barrier/dynamic
+#   Tier 11: Benchmarks (--full only)     - mini/basic/cute/etc
 #
 # Flags:
 #   --quick     Tiers 1-5 (smoke + simple + critical)
@@ -59,7 +60,8 @@ Tiered test execution (simple -> complex):
   Tier 7:  Divergence & Reconvergence
   Tier 8:  Cross-Component Integration
   Tier 9:  PTX Syntax Validation
-  Tier 10: Benchmarks                   (--full only)
+  Tier 10: Shared Memory 专项           (ld/st/cvta/barrier/dynamic)
+  Tier 11: Benchmarks                   (--full only)
 
 Flags:
   --quick         Run Tiers 1-5 (smoke + simple + critical)
@@ -178,8 +180,8 @@ run_ptx_syntax_test() {
 
 # Determine tier range based on flags
 if [[ -n "$TIER" ]]; then
-    if ! [[ "$TIER" =~ ^[0-9]+$ ]] || [[ $TIER -lt 1 ]] || [[ $TIER -gt 10 ]]; then
-        echo "Invalid --tier value: $TIER (must be 1-10)"
+    if ! [[ "$TIER" =~ ^[0-9]+$ ]] || [[ $TIER -lt 1 ]] || [[ $TIER -gt 11 ]]; then
+        echo "Invalid --tier value: $TIER (must be 1-11)"
         exit 1
     fi
     MIN_TIER=$TIER
@@ -192,11 +194,11 @@ elif [[ "$QUICK" == "true" ]]; then
     MAX_TIER=5
 else
     MIN_TIER=1
-    MAX_TIER=9
+    MAX_TIER=10
 fi
 
 if [[ "$FULL" == "true" ]]; then
-    MAX_TIER=10
+    MAX_TIER=11
 fi
 
 # Helper: returns 0 (true) if the given tier number is out of range
@@ -289,9 +291,15 @@ if ! skip_tier 9; then
     run_ptx_syntax_test
 fi
 
-# Tier 10: Benchmarks (--full only)
+# Tier 10: Shared Memory 专项
 if ! skip_tier 10; then
-    print_header "Tier 10: Benchmarks (--full only)"
+    print_header "Tier 10: Shared Memory 专项 (ld/st/cvta/barrier/dynamic)"
+    run_label_tests "shared_memory" "Shared Memory (ld/st/cvta/barrier/dynamic)"
+fi
+
+# Tier 11: Benchmarks (--full only)
+if ! skip_tier 11; then
+    print_header "Tier 11: Benchmarks (--full only)"
     run_label_tests "mini" "Mini test suite"
     run_label_tests "basic" "Basic test suite (GEMM/CONV)"
     run_label_tests "cute" "CuTE test suite"
