@@ -31,11 +31,13 @@
 #include "ptxsim/warp_context.h"
 
 #include "ptx_ir/operand_context.h"
+#include "ptx_ir/ptx_types.h"
 #include "ptx_ir/statement_context.h"
 
 #include "memory/resource_manager.h"
 #include "register/register_bank_manager.h"
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>
@@ -47,12 +49,6 @@ namespace ptxsim::testing {
 // Factory Initialization
 // ============================================================================
 
-// One-shot guard for InstructionFactory::initialize().
-//
-// All 3 tests require the factory to be initialized before any
-// S_LD/S_ST/etc. statement executes, but the initializer is not idempotent
-// in the current codebase. The static-bool-guard pattern ensures the call
-// happens exactly once per process.
 inline void init_instruction_factory_once() {
     static bool done = false;
     if (!done) {
@@ -65,9 +61,8 @@ inline void init_instruction_factory_once() {
 // Memory Declarations (S_SHARED, S_LOCAL)
 // ============================================================================
 
-// `.shared .b32 <name>[<size>];` declaration.
 inline StatementContext make_shared_decl(const std::string &name,
-                                         int array_size) {
+                                          int array_size) {
     StatementContext ctx;
     ctx.type = S_SHARED;
     DeclarationInstr d;
@@ -81,9 +76,8 @@ inline StatementContext make_shared_decl(const std::string &name,
     return ctx;
 }
 
-// `.local .b32 <name>[<size>];` declaration.
 inline StatementContext make_local_decl(const std::string &name,
-                                        int array_size) {
+                                         int array_size) {
     StatementContext ctx;
     ctx.type = S_LOCAL;
     DeclarationInstr d;
@@ -100,18 +94,10 @@ inline StatementContext make_local_decl(const std::string &name,
 // ============================================================================
 // Addressed Loads / Stores (AddrOperand form, not VariableOperand)
 // ============================================================================
-//
-// IMPORTANT: these helpers use AddrOperand with REGISTER offset. The
-// VariableOperand form (used in older test helpers in instruction_helpers.h)
-// SEGFAULTs the handler per KNOWN_ISSUES.md section "Pre-P0 Baseline Red".
-//
-// The b8 qualifier on shared variants avoids per-lane overlap on 32 lanes:
-// a b32 write per lane (4 bytes) at offset=lane_id would cause inter-lane
-// overlap because lane N writes buf[N..N+3] and lane N+1 writes buf[N+1..N+4].
 
 inline StatementContext make_st_shared_addr(const std::string &base_sym,
-                                            const std::string &offset_reg,
-                                            const std::string &src_reg) {
+                                             const std::string &offset_reg,
+                                             const std::string &src_reg) {
     StatementContext ctx;
     ctx.type = S_ST;
     GenericInstr instr;
@@ -131,8 +117,8 @@ inline StatementContext make_st_shared_addr(const std::string &base_sym,
 }
 
 inline StatementContext make_st_local_addr(const std::string &base_sym,
-                                           const std::string &offset_reg,
-                                           const std::string &src_reg) {
+                                            const std::string &offset_reg,
+                                            const std::string &src_reg) {
     StatementContext ctx;
     ctx.type = S_ST;
     GenericInstr instr;
@@ -152,8 +138,8 @@ inline StatementContext make_st_local_addr(const std::string &base_sym,
 }
 
 inline StatementContext make_ld_shared_addr(const std::string &dst_reg,
-                                            const std::string &base_sym,
-                                            const std::string &offset_reg) {
+                                             const std::string &base_sym,
+                                             const std::string &offset_reg) {
     StatementContext ctx;
     ctx.type = S_LD;
     GenericInstr instr;
@@ -173,8 +159,8 @@ inline StatementContext make_ld_shared_addr(const std::string &dst_reg,
 }
 
 inline StatementContext make_ld_local_addr(const std::string &dst_reg,
-                                           const std::string &base_sym,
-                                           const std::string &offset_reg) {
+                                            const std::string &base_sym,
+                                            const std::string &offset_reg) {
     StatementContext ctx;
     ctx.type = S_LD;
     GenericInstr instr;
@@ -197,13 +183,8 @@ inline StatementContext make_ld_local_addr(const std::string &dst_reg,
 // CTA / Warp Setup
 // ============================================================================
 
-// Create a 32-thread CTA, attach to SM, return warp 0.
-//
-// Pre-conditions:
-//   - InstructionFactory must be initialized (call init_instruction_factory_once())
-//   - ResourceManager must be initialized (call ResourceManager::instance().initialize(...))
 inline WarpContext *setup_block(SMContext &sm,
-                                std::vector<StatementContext> &stmts) {
+                                 std::vector<StatementContext> &stmts) {
     auto blk = std::make_unique<CTAContext>();
     Dim3 g{1, 1, 1};
     Dim3 b{32, 1, 1};
@@ -216,18 +197,415 @@ inline WarpContext *setup_block(SMContext &sm,
     return sm.get_warp(0);
 }
 
+// Create a 32-thread CTA with dynamic shared memory, attach to SM, return warp 0.
+//
+// Pre-conditions:
+//   - InstructionFactory must be initialized (call init_instruction_factory_once())
+//   - ResourceManager must be initialized
+inline WarpContext *setup_block_with_dynamic_shared(SMContext &sm,
+                                                     std::vector<StatementContext> &stmts,
+                                                     size_t dynamic_bytes) {
+    auto blk = std::make_unique<CTAContext>();
+    Dim3 g{1, 1, 1};
+    Dim3 b{32, 1, 1};
+    Dim3 bi{0, 0, 0};
+    std::map<std::string, int> l2pc;
+    std::map<std::string, Symtable *> n2s;
+    blk->init(g, b, bi, stmts, &n2s, l2pc, nullptr, 0, dynamic_bytes);
+    bool ok = sm.add_block(std::move(blk));
+    REQUIRE(ok);
+    return sm.get_warp(0);
+}
+
 // ============================================================================
 // Register Read
 // ============================================================================
 
-// Read a u32 register from a specific lane.
-//
-// Fails the test if the register is not allocated for that lane.
 inline uint32_t read_reg_u32(WarpContext *w, const std::string &reg, int lane) {
     auto rbm = w->get_register_bank_manager();
     void *p = rbm->get_register(reg, 0, lane);
     REQUIRE(p != nullptr);
     return *static_cast<uint32_t *>(p);
+}
+
+// ============================================================================
+// Multi-Width Load/Store (Qualifier Overloads)
+// ============================================================================
+
+inline StatementContext make_ld_shared_addr(const std::string &dst_reg,
+                                            const std::string &base_sym,
+                                            const std::string &offset_reg,
+                                            Qualifier q) {
+    StatementContext ctx;
+    ctx.type = S_LD;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_SHARED, q};
+    AddrOperand addr;
+    addr.space = AddrOperand::Space::SHARED;
+    addr.baseSymbol = base_sym;
+    addr.offsetType = AddrOperand::OffsetType::REGISTER;
+    addr.registerOffset =
+        std::make_shared<OperandContext>(RegOperand{offset_reg, -1});
+    instr.operands.push_back(OperandContext{RegOperand{dst_reg, -1}});
+    instr.operands.push_back(OperandContext{addr});
+    ctx.data = instr;
+    std::string qStr = Q2s(q);
+    ctx.instructionText =
+        "ld.shared." + qStr + " " + dst_reg + ", [" + base_sym + "+" + offset_reg + "];";
+    return ctx;
+}
+
+inline StatementContext make_st_shared_addr(const std::string &base_sym,
+                                            const std::string &offset_reg,
+                                            const std::string &src_reg,
+                                            Qualifier q) {
+    StatementContext ctx;
+    ctx.type = S_ST;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_SHARED, q};
+    AddrOperand addr;
+    addr.space = AddrOperand::Space::SHARED;
+    addr.baseSymbol = base_sym;
+    addr.offsetType = AddrOperand::OffsetType::REGISTER;
+    addr.registerOffset =
+        std::make_shared<OperandContext>(RegOperand{offset_reg, -1});
+    instr.operands.push_back(OperandContext{addr});
+    instr.operands.push_back(OperandContext{RegOperand{src_reg, -1}});
+    ctx.data = instr;
+    std::string qStr = Q2s(q);
+    ctx.instructionText =
+        "st.shared." + qStr + " [" + base_sym + "+" + offset_reg + "], " + src_reg + ";";
+    return ctx;
+}
+
+// ============================================================================
+// Vector Load/Store (v2/v4)
+// ============================================================================
+
+inline StatementContext make_ld_shared_addr_v2(const std::string &dst1,
+                                               const std::string &dst2,
+                                               const std::string &base_sym,
+                                               const std::string &offset_reg,
+                                               Qualifier q = Qualifier::Q_B32) {
+    StatementContext ctx;
+    ctx.type = S_LD;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_SHARED, q, Qualifier::Q_V2};
+    AddrOperand addr;
+    addr.space = AddrOperand::Space::SHARED;
+    addr.baseSymbol = base_sym;
+    addr.offsetType = AddrOperand::OffsetType::REGISTER;
+    addr.registerOffset =
+        std::make_shared<OperandContext>(RegOperand{offset_reg, -1});
+    instr.operands.push_back(OperandContext{RegOperand{dst1, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{dst2, -1}});
+    instr.operands.push_back(OperandContext{addr});
+    ctx.data = instr;
+    std::string qStr = Q2s(q);
+    ctx.instructionText = "ld.shared.v2." + qStr + " {" + dst1 + "," + dst2 +
+                          "}, [" + base_sym + "+" + offset_reg + "];";
+    return ctx;
+}
+
+inline StatementContext make_st_shared_addr_v2(const std::string &base_sym,
+                                               const std::string &offset_reg,
+                                               const std::string &src1,
+                                               const std::string &src2,
+                                               Qualifier q = Qualifier::Q_B32) {
+    StatementContext ctx;
+    ctx.type = S_ST;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_SHARED, q, Qualifier::Q_V2};
+    AddrOperand addr;
+    addr.space = AddrOperand::Space::SHARED;
+    addr.baseSymbol = base_sym;
+    addr.offsetType = AddrOperand::OffsetType::REGISTER;
+    addr.registerOffset =
+        std::make_shared<OperandContext>(RegOperand{offset_reg, -1});
+    instr.operands.push_back(OperandContext{addr});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+    ctx.data = instr;
+    std::string qStr = Q2s(q);
+    ctx.instructionText = "st.shared.v2." + qStr + " [" + base_sym + "+" +
+                          offset_reg + "], {" + src1 + "," + src2 + "};";
+    return ctx;
+}
+
+inline StatementContext make_ld_shared_addr_v4(const std::string &dst1,
+                                               const std::string &dst2,
+                                               const std::string &dst3,
+                                               const std::string &dst4,
+                                               const std::string &base_sym,
+                                               const std::string &offset_reg,
+                                               Qualifier q = Qualifier::Q_B32) {
+    StatementContext ctx;
+    ctx.type = S_LD;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_SHARED, q, Qualifier::Q_V4};
+    AddrOperand addr;
+    addr.space = AddrOperand::Space::SHARED;
+    addr.baseSymbol = base_sym;
+    addr.offsetType = AddrOperand::OffsetType::REGISTER;
+    addr.registerOffset =
+        std::make_shared<OperandContext>(RegOperand{offset_reg, -1});
+    instr.operands.push_back(OperandContext{RegOperand{dst1, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{dst2, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{dst3, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{dst4, -1}});
+    instr.operands.push_back(OperandContext{addr});
+    ctx.data = instr;
+    std::string qStr = Q2s(q);
+    ctx.instructionText = "ld.shared.v4." + qStr + " {" + dst1 + "," + dst2 +
+                          "," + dst3 + "," + dst4 + "}, [" + base_sym + "+" +
+                          offset_reg + "];";
+    return ctx;
+}
+
+inline StatementContext make_st_shared_addr_v4(const std::string &base_sym,
+                                               const std::string &offset_reg,
+                                               const std::string &src1,
+                                               const std::string &src2,
+                                               const std::string &src3,
+                                               const std::string &src4,
+                                               Qualifier q = Qualifier::Q_B32) {
+    StatementContext ctx;
+    ctx.type = S_ST;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_SHARED, q, Qualifier::Q_V4};
+    AddrOperand addr;
+    addr.space = AddrOperand::Space::SHARED;
+    addr.baseSymbol = base_sym;
+    addr.offsetType = AddrOperand::OffsetType::REGISTER;
+    addr.registerOffset =
+        std::make_shared<OperandContext>(RegOperand{offset_reg, -1});
+    instr.operands.push_back(OperandContext{addr});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src3, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src4, -1}});
+    ctx.data = instr;
+    std::string qStr = Q2s(q);
+    ctx.instructionText = "st.shared.v4." + qStr + " [" + base_sym + "+" +
+                          offset_reg + "], {" + src1 + "," + src2 + "," + src3 +
+                          "," + src4 + "};";
+    return ctx;
+}
+
+// ============================================================================
+// Setp Comparison Variants (Register operands)
+// ============================================================================
+
+inline StatementContext make_setp_eq(const std::string &pred,
+                                      const std::string &src1,
+                                      const std::string &src2) {
+    StatementContext ctx;
+    ctx.type = S_SETP;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_EQ};
+    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+    ctx.data = instr;
+    ctx.instructionText = "setp.eq.u32 " + pred + ", " + src1 + ", " + src2 + ";";
+    return ctx;
+}
+
+inline StatementContext make_setp_ne(const std::string &pred,
+                                      const std::string &src1,
+                                      const std::string &src2) {
+    StatementContext ctx;
+    ctx.type = S_SETP;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_NE};
+    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+    ctx.data = instr;
+    ctx.instructionText = "setp.ne.u32 " + pred + ", " + src1 + ", " + src2 + ";";
+    return ctx;
+}
+
+inline StatementContext make_setp_gt(const std::string &pred,
+                                      const std::string &src1,
+                                      const std::string &src2) {
+    StatementContext ctx;
+    ctx.type = S_SETP;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_GT};
+    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+    ctx.data = instr;
+    ctx.instructionText = "setp.gt.u32 " + pred + ", " + src1 + ", " + src2 + ";";
+    return ctx;
+}
+
+inline StatementContext make_setp_ge(const std::string &pred,
+                                      const std::string &src1,
+                                      const std::string &src2) {
+    StatementContext ctx;
+    ctx.type = S_SETP;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_GE};
+    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+    ctx.data = instr;
+    ctx.instructionText = "setp.ge.u32 " + pred + ", " + src1 + ", " + src2 + ";";
+    return ctx;
+}
+
+inline StatementContext make_setp_le(const std::string &pred,
+                                      const std::string &src1,
+                                      const std::string &src2) {
+    StatementContext ctx;
+    ctx.type = S_SETP;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_LE};
+    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+    ctx.data = instr;
+    ctx.instructionText = "setp.le.u32 " + pred + ", " + src1 + ", " + src2 + ";";
+    return ctx;
+}
+
+// ============================================================================
+// Setp Comparison Variants (Immediate operand)
+// ============================================================================
+
+inline StatementContext make_setp_eq_imm(const std::string &pred,
+                                          const std::string &src1,
+                                          int32_t imm_value) {
+    StatementContext ctx;
+    ctx.type = S_SETP;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_EQ};
+    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(imm_value)}});
+    ctx.data = instr;
+    ctx.instructionText =
+        "setp.eq.u32 " + pred + ", " + src1 + ", " + std::to_string(imm_value) + ";";
+    return ctx;
+}
+
+inline StatementContext make_setp_ne_imm(const std::string &pred,
+                                          const std::string &src1,
+                                          int32_t imm_value) {
+    StatementContext ctx;
+    ctx.type = S_SETP;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_NE};
+    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(imm_value)}});
+    ctx.data = instr;
+    ctx.instructionText =
+        "setp.ne.u32 " + pred + ", " + src1 + ", " + std::to_string(imm_value) + ";";
+    return ctx;
+}
+
+inline StatementContext make_setp_lt_imm(const std::string &pred,
+                                          const std::string &src1,
+                                          int32_t imm_value) {
+    StatementContext ctx;
+    ctx.type = S_SETP;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_LT};
+    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(imm_value)}});
+    ctx.data = instr;
+    ctx.instructionText =
+        "setp.lt.u32 " + pred + ", " + src1 + ", " + std::to_string(imm_value) + ";";
+    return ctx;
+}
+
+inline StatementContext make_setp_gt_imm(const std::string &pred,
+                                          const std::string &src1,
+                                          int32_t imm_value) {
+    StatementContext ctx;
+    ctx.type = S_SETP;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_GT};
+    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(imm_value)}});
+    ctx.data = instr;
+    ctx.instructionText =
+        "setp.gt.u32 " + pred + ", " + src1 + ", " + std::to_string(imm_value) + ";";
+    return ctx;
+}
+
+inline StatementContext make_setp_le_imm(const std::string &pred,
+                                          const std::string &src1,
+                                          int32_t imm_value) {
+    StatementContext ctx;
+    ctx.type = S_SETP;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_LE};
+    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(imm_value)}});
+    ctx.data = instr;
+    ctx.instructionText =
+        "setp.le.u32 " + pred + ", " + src1 + ", " + std::to_string(imm_value) + ";";
+    return ctx;
+}
+
+inline StatementContext make_setp_ge_imm(const std::string &pred,
+                                          const std::string &src1,
+                                          int32_t imm_value) {
+    StatementContext ctx;
+    ctx.type = S_SETP;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_GE};
+    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(imm_value)}});
+    ctx.data = instr;
+    ctx.instructionText =
+        "setp.ge.u32 " + pred + ", " + src1 + ", " + std::to_string(imm_value) + ";";
+    return ctx;
+}
+
+// ============================================================================
+// Shared Declaration with Qualifier and Multi-Dim
+// ============================================================================
+
+inline StatementContext make_shared_decl(const std::string &name, int array_size,
+                                         Qualifier q) {
+    StatementContext ctx;
+    ctx.type = S_SHARED;
+    DeclarationInstr d;
+    d.kind = DeclarationInstr::Kind::SHARED;
+    d.name = name;
+    d.dataType = q;
+    d.array_size = array_size;
+    ctx.data = d;
+    std::string qStr = Q2s(q);
+    ctx.instructionText =
+        ".shared " + qStr + " " + name + "[" + std::to_string(array_size) + "];";
+    return ctx;
+}
+
+inline StatementContext make_shared_decl(const std::string &name, int dim1,
+                                         int dim2,
+                                         Qualifier q = Qualifier::Q_B32) {
+    StatementContext ctx;
+    ctx.type = S_SHARED;
+    DeclarationInstr d;
+    d.kind = DeclarationInstr::Kind::SHARED;
+    d.name = name;
+    d.dataType = q;
+    d.array_size = dim1 * dim2;
+    ctx.data = d;
+    std::string qStr = Q2s(q);
+    ctx.instructionText = ".shared " + qStr + " " + name + "[" +
+                          std::to_string(dim1) + "][" + std::to_string(dim2) + "];";
+    return ctx;
 }
 
 } // namespace ptxsim::testing

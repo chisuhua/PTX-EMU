@@ -25,10 +25,25 @@
 using ptxsim::testing::init_instruction_factory_once;
 using ptxsim::testing::make_ld_local_addr;
 using ptxsim::testing::make_ld_shared_addr;
+using ptxsim::testing::make_ld_shared_addr_v2;
+using ptxsim::testing::make_ld_shared_addr_v4;
 using ptxsim::testing::make_local_decl;
 using ptxsim::testing::make_shared_decl;
 using ptxsim::testing::make_st_local_addr;
 using ptxsim::testing::make_st_shared_addr;
+using ptxsim::testing::make_st_shared_addr_v2;
+using ptxsim::testing::make_st_shared_addr_v4;
+using ptxsim::testing::make_setp_eq;
+using ptxsim::testing::make_setp_ne;
+using ptxsim::testing::make_setp_gt;
+using ptxsim::testing::make_setp_ge;
+using ptxsim::testing::make_setp_le;
+using ptxsim::testing::make_setp_eq_imm;
+using ptxsim::testing::make_setp_ne_imm;
+using ptxsim::testing::make_setp_lt_imm;
+using ptxsim::testing::make_setp_gt_imm;
+using ptxsim::testing::make_setp_le_imm;
+using ptxsim::testing::make_setp_ge_imm;
 using ptxsim::testing::read_reg_u32;
 using ptxsim::testing::setup_block;
 
@@ -148,7 +163,7 @@ TEST_CASE("read_reg_u32 returns uint32_t (compile-time signature check)",
 }
 
 TEST_CASE("setup_block creates warp on minimal CTA",
-          "[unit][testing][memory_test_utils]") {
+           "[unit][testing][memory_test_utils]") {
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
@@ -158,4 +173,70 @@ TEST_CASE("setup_block creates warp on minimal CTA",
     SMContext sm(4, 128, 4096, 0);
     WarpContext *w = setup_block(sm, stmts);
     REQUIRE(w != nullptr);
+}
+
+TEST_CASE("All new shared memory helpers compile and produce valid StatementContext",
+           "[unit][testing][memory_test_utils][smoke]") {
+    auto ld_b16 = make_ld_shared_addr("r1", "buf", "r0", Qualifier::Q_B16);
+    REQUIRE(std::get_if<GenericInstr>(&ld_b16.data) != nullptr);
+    
+    auto ld_b32 = make_ld_shared_addr("r1", "buf", "r0", Qualifier::Q_B32);
+    REQUIRE(std::get_if<GenericInstr>(&ld_b32.data) != nullptr);
+    
+    auto ld_b64 = make_ld_shared_addr("r1", "buf", "r0", Qualifier::Q_B64);
+    REQUIRE(std::get_if<GenericInstr>(&ld_b64.data) != nullptr);
+    
+    auto st_b32 = make_st_shared_addr("buf", "r0", "r1", Qualifier::Q_B32);
+    REQUIRE(std::get_if<GenericInstr>(&st_b32.data) != nullptr);
+    
+    auto ld_v2 = make_ld_shared_addr_v2("r1", "r2", "buf", "r0");
+    REQUIRE(std::get_if<GenericInstr>(&ld_v2.data) != nullptr);
+    
+    auto st_v2 = make_st_shared_addr_v2("buf", "r0", "r1", "r2");
+    REQUIRE(std::get_if<GenericInstr>(&st_v2.data) != nullptr);
+    
+    auto ld_v4 = make_ld_shared_addr_v4("r1", "r2", "r3", "r4", "buf", "r0");
+    REQUIRE(std::get_if<GenericInstr>(&ld_v4.data) != nullptr);
+    
+    auto st_v4 = make_st_shared_addr_v4("buf", "r0", "r1", "r2", "r3", "r4");
+    REQUIRE(std::get_if<GenericInstr>(&st_v4.data) != nullptr);
+    
+    auto decl_b16 = make_shared_decl("buf", 32, Qualifier::Q_B16);
+    REQUIRE(std::get_if<DeclarationInstr>(&decl_b16.data) != nullptr);
+    
+    auto decl_2d = make_shared_decl("buf", 32, 33);
+    REQUIRE(std::get_if<DeclarationInstr>(&decl_2d.data) != nullptr);
+    
+    auto setp_eq = make_setp_eq("%p1", "r0", "r1");
+    REQUIRE(std::get_if<GenericInstr>(&setp_eq.data) != nullptr);
+    
+    auto setp_ne = make_setp_ne("%p1", "r0", "r1");
+    REQUIRE(std::get_if<GenericInstr>(&setp_ne.data) != nullptr);
+    
+    auto setp_gt = make_setp_gt("%p1", "r0", "r1");
+    REQUIRE(std::get_if<GenericInstr>(&setp_gt.data) != nullptr);
+    
+    auto setp_ge = make_setp_ge("%p1", "r0", "r1");
+    REQUIRE(std::get_if<GenericInstr>(&setp_ge.data) != nullptr);
+    
+    auto setp_le = make_setp_le("%p1", "r0", "r1");
+    REQUIRE(std::get_if<GenericInstr>(&setp_le.data) != nullptr);
+    
+    auto setp_eq_imm = make_setp_eq_imm("%p1", "r0", 16);
+    REQUIRE(std::get_if<GenericInstr>(&setp_eq_imm.data) != nullptr);
+    
+    auto setp_ne_imm = make_setp_ne_imm("%p1", "r0", 16);
+    REQUIRE(std::get_if<GenericInstr>(&setp_ne_imm.data) != nullptr);
+    
+    auto setp_lt_imm = make_setp_lt_imm("%p1", "r0", 16);
+    REQUIRE(std::get_if<GenericInstr>(&setp_lt_imm.data) != nullptr);
+    
+    auto setp_gt_imm = make_setp_gt_imm("%p1", "r0", 16);
+    REQUIRE(std::get_if<GenericInstr>(&setp_gt_imm.data) != nullptr);
+    
+    auto setp_le_imm = make_setp_le_imm("%p1", "r0", 16);
+    REQUIRE(std::get_if<GenericInstr>(&setp_le_imm.data) != nullptr);
+    
+    auto setp_ge_imm = make_setp_ge_imm("%p1", "r0", 16);
+    REQUIRE(std::get_if<GenericInstr>(&setp_ge_imm.data) != nullptr);
 }

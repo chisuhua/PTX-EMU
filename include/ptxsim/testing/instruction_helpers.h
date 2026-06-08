@@ -364,31 +364,8 @@ inline StatementContext make_cvta_to_shared(const std::string& dst, const std::s
     return ctx;
 }
 
-inline StatementContext make_ld_shared(const std::string& dst_reg, const std::string& shared_var, const std::string& offset_reg) {
-    StatementContext ctx;
-    ctx.type = S_LD;
-    GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_SHARED, Qualifier::Q_B32};
-    std::string addr = "[" + shared_var + "+" + offset_reg + "]";
-    instr.operands.push_back(OperandContext{RegOperand{dst_reg, -1}});
-    instr.operands.push_back(OperandContext{VariableOperand{addr}});
-    ctx.data = instr;
-    ctx.instructionText = "ld.shared.b32 " + dst_reg + ", " + addr + ";";
-    return ctx;
-}
-
-inline StatementContext make_st_shared(const std::string& shared_var, const std::string& offset_reg, const std::string& src_reg) {
-    StatementContext ctx;
-    ctx.type = S_ST;
-    GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_SHARED, Qualifier::Q_B32};
-    std::string addr = "[" + shared_var + "+" + offset_reg + "]";
-    instr.operands.push_back(OperandContext{VariableOperand{addr}});
-    instr.operands.push_back(OperandContext{RegOperand{src_reg, -1}});
-    ctx.data = instr;
-    ctx.instructionText = "st.shared.b32 " + addr + ", " + src_reg + ";";
-    return ctx;
-}
+// NOTE: make_ld_shared / make_st_shared (VariableOperand form) have been removed.
+// Use memory_test_utils.h::make_ld_shared_addr / make_st_shared_addr with AddrOperand form instead.
 
 inline StatementContext make_setp_lt(const std::string& pred, const std::string& src1, const std::string& src2) {
     StatementContext ctx;
