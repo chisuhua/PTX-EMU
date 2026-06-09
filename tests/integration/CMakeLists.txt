@@ -144,6 +144,11 @@ add_catch_test(integration_ptx_ld_st_shared
 )
 set_tests_properties(integration_ptx_ld_st_shared PROPERTIES LABELS "integration;ptx;ld_st;shared;shared_memory")
 
+add_catch_test(integration_ptx_ld_st_latency_table
+    ptx/test_ld_st_latency_table.cpp
+)
+set_tests_properties(integration_ptx_ld_st_latency_table PROPERTIES LABELS "integration;ptx;ld_st;latency")
+
 add_catch_test(integration_ptx_integer_arith
     ptx/test_integer_arith.cpp
 )

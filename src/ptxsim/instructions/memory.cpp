@@ -1,7 +1,9 @@
 #include "memory/hardware_memory_manager.h"
+#include "ptx_ir/instruction_latency_table.h"
 #include "ptxsim/instruction_handlers.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/warp_context.h"
+#include "ptxsim/warp_state.h"
 #include "ptxsim/utils/qualifier_utils.h"
 #include <iostream>
 
@@ -21,6 +23,22 @@ void LdHandler::processOperation(ThreadContext *context, void *op[2],
 
   if (!QvecHasQ(qualifier, Qualifier::Q_V2) &&
       !QvecHasQ(qualifier, Qualifier::Q_V4)) {
+    // After the load completes, mark active threads as blocked for the
+    // remaining latency cycles. The sm_context decrement loop (see
+    // sm_context.cpp:~348) will clear is_blocked once the cycles expire.
+    WarpContext *warp_ctx = context->warp_context_;
+    if (warp_ctx != nullptr) {
+      auto latency = ptxsim::getLatency(S_LD);
+      if (latency.cycles > 0) {
+        auto &ws = warp_ctx->get_warp_state();
+        for (auto &thread : ws.threads) {
+          if (thread.is_active && !thread.is_exited) {
+            thread.is_blocked = true;
+            thread.blocked_cycles_remaining = latency.cycles;
+          }
+        }
+      }
+    }
     HardwareMemoryManager::instance().access(host_ptr, dst, data_size,
                                              false, space);
     return;
