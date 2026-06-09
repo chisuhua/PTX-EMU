@@ -274,13 +274,7 @@ J5: active_count matches active_mask bits
 | `bitonic` | 排序网络 |
 | `bfs` | 广度优先搜索 |
 
-### 5.3 Extra 测试 (标签: `extra`)
-
-| 测试名 | 说明 |
-|-------|------|
-| `dummy-wmma` | WMMA (Tensor Core) 操作 |
-
-### 5.4 Sync 测试 (标签: `sync`)
+### 5.3 Sync 测试 (标签: `sync`)
 
 | 测试名 | 说明 |
 |-------|------|

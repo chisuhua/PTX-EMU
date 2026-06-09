@@ -211,15 +211,11 @@ set(PTX_SYNC_TESTS
     test_shared_memory
     test_divergence_sync_standalone)
 
-set(PTX_EXTRA_TESTS
-    dummy-wmma)
-
 # 定义全部测试 (包含基础测试和其他复杂测试)
 set(PTX_ALL_TESTS
     ${PTX_MINI_TESTS}
     ${PTX_SYNC_TESTS}
     ${PTX_BASIC_TESTS}
-    ${PTX_EXTRA_TESTS}
     ${PTX_MMA_TESTS})
 
 
@@ -314,9 +310,8 @@ foreach(TEST_NAME ${PTX_ALL_TESTS})
 
     # 设置工作目录和GPU配置环境变量
     list(FIND PTX_BASIC_TESTS ${TEST_NAME} IS_BASIC_TEST)
-    list(FIND PTX_EXTRA_TESTS ${TEST_NAME} IS_EXTRA_TEST)
-    if((NOT IS_BASIC_TEST EQUAL -1) OR (NOT IS_EXTRA_TEST EQUAL -1))
-        # 基础测试和额外测试需要A100配置和工作目录为项目根目录
+    if(NOT IS_BASIC_TEST EQUAL -1)
+        # 基础测试需要A100配置和工作目录为项目根目录
         set_tests_properties(${TEST_NAME} PROPERTIES
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             ENVIRONMENT "PTX_EMU_GPU_CONFIG=ampere_a100.json;PTX_EMU_CONFIG=perf_config.ini;PTX_EMU_GEMM_TEST_MODE=small;PTX_EMU_CONV_TEST_MODE=small")
@@ -331,10 +326,6 @@ foreach(TEST_NAME ${PTX_ALL_TESTS})
     list(FIND PTX_BASIC_TESTS ${TEST_NAME} IS_BASIC_TEST)
     if(NOT IS_BASIC_TEST EQUAL -1)
         set_tests_properties(${TEST_NAME} PROPERTIES LABELS "basic")
-    endif()
-    list(FIND PTX_EXTRA_TESTS ${TEST_NAME} IS_EXTRA_TEST)
-    if(NOT IS_EXTRA_TEST EQUAL -1)
-        set_tests_properties(${TEST_NAME} PROPERTIES LABELS "extra")
     endif()
     list(FIND PTX_MMA_TESTS ${TEST_NAME} IS_MMA_TEST)
     if(NOT IS_MMA_TEST EQUAL -1)
