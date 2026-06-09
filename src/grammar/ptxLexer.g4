@@ -324,6 +324,7 @@ LOP3    : 'lop3';   // Removed _LOGICAL suffix
 SHL     : 'shl';    // Removed _LOGICAL suffix
 SHR     : 'shr';    // Removed _LOGICAL suffix
 SHF     : 'shf';
+BFE     : 'bfe';
 
 // Data Movement
 MOV     : 'mov';    LD      : 'ld';     ST      : 'st';

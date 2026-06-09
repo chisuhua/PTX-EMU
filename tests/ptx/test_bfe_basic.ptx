@@ -1,0 +1,31 @@
+.version 8.5
+.target sm_100
+.address_size 64
+
+.visible .entry test_bfe_kernel(
+    .param .u64 param_output
+)
+{
+    .reg .u32 %r<4>;
+    .reg .u64 %rd<3>;
+    .reg .u64 %rd_output;
+
+    ld.param.u64 %rd_output, [param_output];
+
+    // Test: bfe u32 - extract bits 4..12 (8 bits) from 0xDEADBEEF => 0xBE
+    mov.u32 %r0, 0xDEADBEEF;
+    bfe.u32 %r1, %r0, 4, 8;
+
+    // Test: bfe u64 - extract bits 0..16 from 0xCAFEBABEDEADBEEF => 0xBEEF
+    mov.u64 %rd1, 0xCAFEBABEDEADBEEF;
+    bfe.u64 %rd2, %rd1, 0, 16;
+
+    // Test: bfe s32 - extract sign-extended bits
+    bfe.s32 %r2, %r0, 0, 4;
+
+    // Test: bfe u32 with immediate-only operands (bit 31 alone, width 1)
+    bfe.u32 %r3, %r0, 31, 1;
+
+    st.global.u32 [%rd_output], %r1;
+    ret;
+}

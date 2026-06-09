@@ -191,6 +191,7 @@ lop3Inst: LOP3 typeSpecifier vectorSpec? operand COMMA operand COMMA operand COM
 shlInst: SHL typeSpecifier vectorSpec? operand COMMA operand COMMA operand SEMI;
 shrInst: SHR typeSpecifier vectorSpec? operand COMMA operand COMMA operand SEMI;
 shfInst: SHF shiftMode typeSpecifier vectorSpec? operand COMMA operand COMMA operand COMMA operand SEMI;
+bfeInst: BFE typeSpecifier vectorSpec? operand COMMA operand COMMA operand COMMA operand SEMI;
 
 logicalInst
     : andInst
@@ -206,6 +207,7 @@ logicalInst
     | shlInst
     | shrInst
     | shfInst
+    | bfeInst
     ;
 
 shiftMode : LEFT_SHIFT | RIGHT_SHIFT | WRAP | CLAMP ;
