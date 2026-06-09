@@ -91,3 +91,23 @@ enum class DivergenceExecutionMode {
 | BsyncManager 状态复杂导致死锁 | 添加超时检测和强制释放机制 |
 | 动态交错引入不确定性导致难以测试 | 通过 seed 控制随机性，提供确定性测试模式 |
 | 性能下降（频繁切换） | 提供开关，默认使用顺序模式 |
+## 实现状态（归档前记录 —2026-06-09）
+
+**已完成**：
+
+- `include/ptxsim/bsync_state.h` — `BsyncState` + `BsyncManager` + `DivergenceExecutionMode` 三模式枚举
+- `src/ptxsim/core/bsync_state.cpp` — `bssy` / `bsync` / `check_release` / `release`全部实现
+- `src/ptxsim/instructions/barrier.cpp` —集成 `bsync_manager_`，替换简单的 `is_blocked`标记
+- `src/ptxsim/core/sm_context.cpp` — `set_divergence_execution_mode` / `get_divergence_execution_mode` / `select_next_group` / `suspend_and_switch`
+- `include/ptxsim/thread_state.h` — `blocked_cycles_remaining`字段 + `is_schedulable()` 检查
+- `tests/unit/sync/test_bsync_state.cpp` —单元测试覆盖生命周期
+
+**占位实现（未完整实现，需后续 follow-up）**：
+
+- `DivergenceExecutionMode::Interleaved` — `select_next_group` 的 Interleaved 分支当前 `return0`（fall-through 至 sequential）
+- `DivergenceExecutionMode::ShortestFirst` — `select_next_group` 的 ShortestFirst 分支当前 `return0`（fall-through 至 sequential）
+- `suspend_and_switch()` —注释明确写 "placeholder for future blocking implementation"
+
+**实际可用模式**：`Sequential`（默认）— Hopper/Blackwell 的动态交错与短路径优先调度策略尚未落地。
+
+**推荐 follow-up change**：创建新 change `add-sm90-100-scheduler-policies` 实现 Interleaved/ShortestFirst调度策略。
