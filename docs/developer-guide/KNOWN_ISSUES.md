@@ -456,6 +456,406 @@ If a future feature requires integration-level CFG or register-bank tests:
 
 ---
 
+## Pre-P0b Baseline Red — `bench/aligned-types` & `bench/all-pairs-distance` (ANTLR PTX parse errors)
+
+**Status:** under investigation — filed 2026-06-09
+
+**Origin:** Surfaced during `dummy-wmma` removal task (commit on 2026-06-09). Both
+benchmarks were already failing on `main` because the PTX grammar in
+`src/grammar/ptxParser.g4` does not recognize several modern PTX instructions
+emitted by recent `nvcc` (compute_100 / sm_100). Independent of the
+`dummy-wmma` task — this entry is filed here for visibility.
+
+**Affected tests:**
+- `aligned-types` (ctest #33) — SEGFAULT after PTX parse error aborts setup
+- `all-pairs-distance` (ctest #34) — aborted by PTX parse error
+
+### Symptoms
+
+`aligned-types.1.sm_100.ptx:273` — ANTLR fails on the first multi-target
+`mov.b64` instruction:
+
+```
+line 273:24 no viable alternative at input '.visible.entry_Z10testKernelI13uint3_alignedEvPT_PKS1_i_param_0,...)...ld.global.nc.v4.u32{%r6,%r7,%r8,%r9},[%rd7];mov.b64%rd8,{%r8,%r9};.reg.b32tmp;mov.b64{tmp'
+line 273:24 mismatched input 'tmp' expecting {'%', '$'}
+```
+
+`all-pairs-distance.1.sm_100.ptx:42` — ANTLR fails on `bfe` family instructions:
+
+```
+line 42:3  mismatched input '.u32' expecting ':'
+line 42:12 mismatched input ',' expecting ':'
+line 42:18 mismatched input ',' expecting ':'
+line 43:3  mismatched input '.u32' expecting ':'
+... (repeats for lines 46, 47, 51, 52, 56, 57, 102, 103, 106, 107, 111, 112, 116, 117)
+```
+
+### Suspected Root Causes (ranked)
+
+1. **`mov.b64{tmp, ...}` multi-target mov with virtual register `tmp`** is
+   ungrammatical — `tmp` is not a valid PTX register identifier. Likely
+   the `.reg.b32 tmp` declaration is dropped by the lexer/parser combination
+   used here. The grammar's `reg` rule expects `%` or `$` prefix.
+2. **`bfe.u32` (bit-field extract)** is not in the grammar's instruction set.
+   The `bfe` family is standard since sm_20 and is in the PTX 8.x ISA.
+3. The bench uses `__align__` packed structures that the bench's
+   `testCPU` validation routine (a CPU reference) cannot be parsed by ANTLR
+   for kernel validation — irrelevant to grammar, but the kernel itself
+   contains the problematic instructions.
+
+### Workaround
+
+None. Both benchmarks are build-time dependent on these PTX instructions
+emitted by `nvcc -ptx -arch=sm_100 -code=compute_100`. Disabling would
+leave the SM_100 target untested for `bfe` and modern `mov.b64` patterns.
+
+### How to Re-enable / Fix
+
+Follow the `ptx-grammar-modification` skill workflow
+(`.opencode/skills/ptx-grammar-modification/SKILL.md`):
+
+1. Add a failing-test reproduction case to `tests/ptx/parser/` that
+   uses `bfe.u32` and `mov.b64{a, b, c, ...}` patterns.
+2. Update `src/grammar/ptxParser.g4` to add:
+   - `bfe` family in the integer instruction alternation
+   - multi-target `mov.b{8,16,32,64}{a, b, c, d}` syntax
+3. Regenerate parser: `cmake --build build --target GenerateParser`
+4. Verify `./tests/ptx/test_all_ptx.sh` passes (no regression in existing
+   PTX syntax coverage).
+5. Re-run `ctest -R "^(aligned-types|all-pairs-distance)$"`.
+
+**Estimated effort:** M (1-2 days). Grammar changes require careful
+addition without breaking existing PTX test corpus.
+
+### Files Involved
+
+- `bench/aligned-types/aligned-types.cu` (source producing bad PTX)
+- `bench/aligned-types/aligned-types.1.sm_100.ptx` (generated, in build dir)
+- `bench/all-pairs-distance/all-pairs-distance.cu` (source producing bad PTX)
+- `bench/all-pairs-distance/all-pairs-distance.1.sm_100.ptx` (generated, in build dir)
+- `src/grammar/ptxParser.g4` (grammar to extend)
+- `tests/ptx/parser/test_*.cpp` (add new test cases)
+
+---
+
+## Pre-P0c Baseline Red — `cute_hello_tiled_copy` & `cute_rmsnorm` (kernel results all zero)
+
+**Status:** under investigation — filed 2026-06-09
+
+**Origin:** Surfaced during `dummy-wmma` removal task (2026-06-09). Both
+CUTE-derived benchmarks were producing all-zero outputs on `main` after
+the S_SHARED global-declaration merge location in
+`src/cudart/ptx_interpreter.cpp` was moved from the launch-site
+(after `setupLabels`) to the entry of `funcInterpreter` (before
+`setupLabels`). Independent of the `dummy-wmma` task — but the
+`ptx_interpreter.cpp` change is a known in-flight refactor in
+the worktree (not a `dummy-wmma` artifact).
+
+**Affected tests:**
+- `cute_hello_tiled_copy` (ctest #113) — output buffer all zeros
+- `cute_rmsnorm` (ctest #114) — RMSNorm mismatches
+
+### Symptoms
+
+`cute_hello_tiled_copy` (testing `cute::Copy` of size 16):
+
+```
+Launched kernel with 1 CTAs
+Mismatch at [1]: 0 vs 1
+Mismatch at [2]: 0 vs 2
+...
+Mismatch at [15]: 0 vs 15
+❌ FAILED!
+```
+
+`cute_rmsnorm` (testing M=8, N=768):
+
+```
+Testing RMSNorm with M=8, N=768
+...
+Mismatch at [0]: got 0, expected 1.60033
+❌ RMSNorm test FAILED!
+```
+
+Both kernels report success in `Registering label` and `CFG analysis`,
+which means parsing + label resolution + CFG construction all worked.
+The kernel **launches** but the writes to global memory never reach the
+output buffer (or reach the wrong location).
+
+### Suspected Root Causes (ranked)
+
+1. **S_SHARED merge moved before `setupLabels`** in
+   `src/cudart/ptx_interpreter.cpp:70-90` (was at line 372-385 pre-refactor).
+   The S_SHARED entries hold the *base pointer* for dynamic shared
+   memory allocation. If inserted at the wrong time, the
+   `setSharedMemAllocation` callback may not see the symbols in the
+   `name2Sym` table — yet the kernel uses the **statically** registered
+   shared pointer (which is now stale by the time `cudaLaunchKernel`
+   looks it up).
+2. The pre-merge location (inside the launch closure) was correct
+   because the launch-time blockDim / sharedMem were already known.
+   The new pre-`setupLabels` location has stale state.
+3. CUTE-derived kernels use `cute::SharedMemory` declarations that
+   depend on the dynamic shared memory base registered via
+   `cudaFuncSetAttribute`/`cudaMalloc`-style APIs. The current
+   S_SHARED merge path may not register dynamic shared allocations
+   correctly when the merge happens too early.
+
+### Workaround
+
+None. Both benchmarks are real-world CUTE/CuTe DSL patterns and
+represent a significant coverage gap for `cute_*` tests.
+
+### How to Re-enable / Fix
+
+Two candidate paths, both require investigating the S_SHARED
+lifecycle in `ptx_interpreter.cpp`:
+
+**Path A: Revert the S_SHARED move** (preferred if regression
+is recent)
+1. Compare `src/cudart/ptx_interpreter.cpp` HEAD vs current worktree
+   using `git diff HEAD -- src/cudart/ptx_interpreter.cpp`.
+2. Identify the exact move commit
+   (`Merge from $L__BB0_4 → setSharedMemAllocation` region).
+3. Revert only the move: keep `already_inserted` guard from
+   in-flight work, but restore the S_SHARED merge to its
+   original launch-site position.
+4. Rebuild and re-run `ctest -R "^(cute_)"`.
+
+**Path B: Fix the S_SHARED merge to also handle dynamic shared**
+1. In `funcInterpreter`, after the early-merge of static S_SHARED
+   globals, add a second merge pass for dynamic shared allocations
+   that consults `kernelArgs[sharedMemSizeIdx]` and updates
+   `name2Share[shared_ptr_name]`.
+2. Update `get_memory_addr` SHARED path
+   (referenced in `KNOWN_ISSUES.md §B1.3`) to consult the
+   dynamic shared base correctly.
+3. Add a new E2E test in `tests/e2e/kernel/` that mirrors the
+   `cute_rmsnorm` pattern (alloc + launch + copyback + validate)
+   to prevent future regressions.
+
+**Estimated effort:** L (3-5 days). Touches the cudart SHARED
+allocation pipeline. Requires careful regression testing on
+all `e2e_shared_memory_*` and `cute_*` tests.
+
+### Files Involved
+
+- `src/cudart/ptx_interpreter.cpp` (S_SHARED merge location)
+- `src/ptxsim/memory/shared_memory_manager.*` (downstream consumer)
+- `src/ptxsim/instructions/ld_st_handlers.*` (load/store address resolution)
+- `bench/cute/cute_hello_tiled_copy.cu` (benchmark source)
+- `bench/cute/cute_rmsnorm.cu` (benchmark source)
+- `tests/e2e/kernel/test_shared_memory_*.cu` (regression coverage)
+
+---
+
+## Pre-P0d Baseline Red — `unit_barrier_reconvergence`, `unit_barrier_verification`, `unit_simt_stack_catch2`, `unit_active_mask_consistency` (Wbar API + ThreadState refactor fallout)
+
+**Status:** under investigation — filed 2026-06-09
+
+**Origin:** Surfaced during `dummy-wmma` removal task (2026-06-09).
+All four tests are pre-existing failures on `main` caused by recent
+refactors in the worktree:
+- `include/ptxsim/barrier/warp_barrier.h` — `WarpBarrier::init` signature
+  changed from 2-arg to 3-arg.
+- `include/ptxsim/thread_state.h` — `ThreadState::blocked_cycles_remaining`
+  type changed from `int` to `uint32_t`; `is_schedulable()` adds new
+  `blocked_cycles_remaining > 0` early-return.
+- `src/ptx_parser/cfg_builder.cpp` — post-dominator computation
+  reworked in commits `1b78d98` and `a107ea8`.
+
+Independent of the `dummy-wmma` task — but the worktree contains
+these refactors in-flight.
+
+**Affected tests:**
+- `unit_barrier_reconvergence` (ctest #40) — `5 == 4` (post-dom size mismatch)
+- `unit_barrier_verification` (ctest #43) — 3 assertions fail (Wbar init args)
+- `unit_simt_stack_catch2` (ctest #46) — `A8: maximum depth enforcement` no-throw
+- `unit_active_mask_consistency` (ctest #58) — `J8` is_active expected true
+
+### Symptoms
+
+**`unit_barrier_reconvergence`** — `TEST_CASE("CFG: post-dominator map completeness", "[cfg][reconvergence]")` at `tests/unit/barrier/test_barrier_reconvergence.cpp:278`:
+
+```
+REQUIRE( postDoms.size() == stmts.size() )
+with expansion:
+  5 == 4
+```
+
+The test creates 4 `StatementContext`s (3 regular + 1 S_RET), but
+`computePostDominators` returns 5 entries. Likely the CFG builder now
+adds a virtual exit/entry node to the post-dom map.
+
+**`unit_barrier_verification`** — three sections fail at
+`tests/unit/barrier/test_barrier_verification.cpp`:
+
+```
+Section "Partial arrive not complete" (line 27):
+  REQUIRE( !wbar.is_complete() ) with expansion: false
+  → 16 arrives with mask=0xFFFFFFFF expected to leave is_complete()==false
+    but it returned true. (see Root Cause #1 for explanation)
+
+Section "Dynamic participation mask" (line 37):
+  REQUIRE( (wbar.participation_mask & 0x1) != 0 ) with expansion: 0 != 0
+  → After wbar.arrive(0), participation_mask bit 0 should be set, but it's 0.
+
+Section "Barrier complete after all arrive" (line 130):
+  REQUIRE( wbar.reconvergence_pc == 50 ) with expansion: -1 == 50
+  → reconvergence_pc field returns -1 instead of 50.
+```
+
+**`unit_simt_stack_catch2`** — `TEST_CASE("A8: maximum depth enforcement")` at `tests/unit/simt/test_simt_stack_catch2.cpp:99`:
+
+```
+REQUIRE_THROWS_AS( stack.push(e), std::runtime_error )
+because no exception was thrown where one was expected:
+```
+
+Push 10 entries succeeds (depth becomes 10), but the 11th push **does
+not throw** — the depth-limit check has been removed or the
+default `MAX_DEPTH` is now > 10.
+
+**`unit_active_mask_consistency`** — `TEST_CASE("J8: sync_to_warp_state RUN sets is_active=true after barrier", "[active_mask][issue-004]")` at `tests/unit/exec/test_active_mask_consistency.cpp:154`:
+
+```
+REQUIRE( warp.get_warp_state().threads[lane].is_active == true )
+with expansion:
+  false == true
+```
+
+Setting thread state to `RUN` and calling `sync_to_warp_state()`
+should set `warp_state.threads[lane].is_active = true`, but it
+remains `false`. Likely the new `is_schedulable()` check
+(`blocked_cycles_remaining > 0` returns false) propagates a
+`false` is_active into the warp state.
+
+### Suspected Root Causes (ranked)
+
+1. **Wbar::init 2-arg → 3-arg API change without test migration.**
+   Current signature in `include/ptxsim/barrier/warp_barrier.h:23`:
+   ```cpp
+   void init(uint32_t participation_mask, int reconvergence_pc, uint32_t barrier_pc);
+   ```
+   Tests use old 2-arg call: `wbar.init(100, 0xFFFFFFFF);`
+   Maps to new signature as `(mask=100, pc=0xFFFFFFFF, barrier_pc=garbage)`.
+   With `mask=100` (only 3 bits set), 16 `arrive()` calls exceed
+   `expected_count = popcount(100) = 3`, so `is_complete()` becomes
+   true immediately. Section "Partial arrive not complete" fails
+   for this reason.
+   Similarly, "Dynamic participation mask" checks the **wrong field**
+   (`participation_mask` was the reconvergence_pc in the old API,
+   so it ends up as a value that doesn't have bit 0 set).
+   And "Barrier complete after all arrive" sets
+   `reconvergence_pc=50` (in the old API) but the new API stores
+   it as the participation_mask slot, so `get_reconvergence_pc()`
+   returns -1 (uninitialized).
+
+2. **CFG post-dominator map returns one extra entry.** Likely the
+   `computePostDominators` in `src/ptx_parser/cfg_builder.cpp:201`
+   now adds an artificial entry for the post-loop exit or the
+   synthesized `END` node. The test was written assuming
+   `postDoms.size() == stmts.size()` (1:1 mapping), which is no
+   longer true. The test needs updating **or** the CFG builder
+   needs to filter out the synthetic node from the post-dom map
+   result.
+
+3. **SIMT stack depth-limit check removed.** The check at
+   `src/ptxsim/core/simt_stack.cpp:push()` (or equivalent) that
+   throws `std::runtime_error` when depth exceeds limit has
+   been removed/disabled. Either restore the check or update
+   the test's `MAX_DEPTH` constant (currently 10).
+
+4. **`is_active` propagation broken by ThreadState refactor.**
+   The new `is_schedulable()` early-return on
+   `blocked_cycles_remaining > 0` interacts with
+   `sync_to_warp_state()`: the function consults
+   `is_schedulable()` to set `warp_state.threads[].is_active`,
+   but when the thread is *just transitioning* to RUN after a
+   barrier, `blocked_cycles_remaining` may transiently be
+   non-zero (carry-over from BAR_SYNC), causing
+   `is_schedulable() = false` and the wrong `is_active` value
+   propagates.
+
+### Workaround
+
+None for `unit_barrier_verification`, `unit_simt_stack_catch2`, and
+`unit_active_mask_consistency` — these are unit tests that must pass
+to validate the refactor's invariants.
+
+For `unit_barrier_reconvergence`: the 5 vs 4 mismatch is a 1-off
+counting issue. The post-dom map itself is likely correct; only
+the test expectation is stale.
+
+### How to Re-enable / Fix
+
+**Path A: Migrate tests to new API (preferred, lower risk)**
+
+For `unit_barrier_verification.cpp`, replace all 2-arg `wbar.init(...)`
+calls with the 3-arg form. Determine the correct arg mapping by
+reading `WarpBarrier::init` semantics — typical mapping:
+
+```cpp
+// Old (2-arg):
+wbar.init(reconvergence_pc, participation_mask);
+// New (3-arg):
+wbar.init(participation_mask, reconvergence_pc, /* barrier_pc */ reconvergence_pc);
+```
+
+Specifically:
+- Line 13, 18, 62, 73: `wbar.init(100, 0xFFFFFFFF);` → `wbar.init(0xFFFFFFFF, 100, 100);`
+- Line 131, 142: `wbar.init(50, 0xFFFFFFFF);` → `wbar.init(0xFFFFFFFF, 50, 50);`
+
+For `unit_barrier_reconvergence.cpp:293`, either:
+- Update the test to `REQUIRE(postDoms.size() >= stmts.size());`
+  (more permissive, accepts synthetic entry/exit), or
+- Filter the post-dom map in the test:
+  ```cpp
+  for (int pc = 0; pc < (int)stmts.size(); pc++) {
+      REQUIRE(postDoms.find(pc) != postDoms.end());
+  }
+  REQUIRE(postDoms.size() >= stmts.size());
+  ```
+
+For `unit_simt_stack_catch2.cpp:99-107`, read the current
+`MAX_DEPTH` constant in `SIMTStack` and update the test's
+`REQUIRE_THROWS_AS` loop bound accordingly, or restore the
+runtime_error throw at the right depth.
+
+For `unit_active_mask_consistency.cpp:154-167`, investigate
+`sync_to_warp_state()` in `src/ptxsim/core/thread_context.cpp`:
+the `is_active` propagation should set it to `true` when the
+thread is in RUN state. Either the propagation logic needs
+to clear `blocked_cycles_remaining` before calling
+`is_schedulable()`, or the test needs to set the thread
+to RUN with `blocked_cycles_remaining = 0` explicitly.
+
+**Path B: Revert the refactors** (only if Path A is too risky)
+- Revert `WarpBarrier::init` to 2-arg signature.
+- Revert `ThreadState::blocked_cycles_remaining` to `int`.
+- Revert `ThreadState::is_schedulable()` to original 4-condition check.
+- Revert `computePostDominators` to the `99412ab` (pre-`a107ea8`) state.
+- Re-run all 4 tests + the previously-passing related tests
+  (`unit_simt_stack_entry`, `unit_barrier_scenarios_integrated`,
+  `unit_handle_branch`, etc.) to confirm no regression.
+
+**Estimated effort:** S (half day) for Path A. L (2-3 days) for Path B
++ rerun all 100+ tests.
+
+### Files Involved
+
+- `include/ptxsim/barrier/warp_barrier.h` (Wbar API definition)
+- `include/ptxsim/thread_state.h` (ThreadState struct + is_schedulable)
+- `src/ptxsim/core/simt_stack.cpp` (push depth-limit)
+- `src/ptxsim/core/thread_context.cpp` (sync_to_warp_state)
+- `src/ptx_parser/cfg_builder.cpp` (computePostDominators)
+- `tests/unit/barrier/test_barrier_reconvergence.cpp` (test #40)
+- `tests/unit/barrier/test_barrier_verification.cpp` (test #43)
+- `tests/unit/simt/test_simt_stack_catch2.cpp` (test #46)
+- `tests/unit/exec/test_active_mask_consistency.cpp` (test #58)
+
+---
+
 ## How to Add a New Entry
 
 ```markdown
