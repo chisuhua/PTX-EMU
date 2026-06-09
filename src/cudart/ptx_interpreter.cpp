@@ -67,6 +67,29 @@ void PtxInterpreter::funcInterpreter(
     // Setup symbols
     setupConstantSymbols(name2Sym);
     setupKernelArguments(name2Sym);
+
+    // 将ptxStatements中的S_SHARED全局声明合并到kernelStatements
+    // 必须在 setupLabels (CFG pass) 之前完成 — 否则插入会偏移后续 PC，
+    // 使 CFG pass 已写入 operands[1] 的 reconvergence_pc 指向错误的指令。
+    // 用 already_inserted 保护，避免多次 launch 时重复插入。
+    {
+        bool already_inserted = false;
+        for (const auto &stmt : kernelContext->kernelStatements) {
+            if (stmt.type == S_SHARED) {
+                already_inserted = true;
+                break;
+            }
+        }
+        if (!already_inserted) {
+            for (const auto &stmt : ptx.ptxStatements) {
+                if (stmt.type == S_SHARED) {
+                    kernelContext->kernelStatements.insert(
+                        kernelContext->kernelStatements.begin(), stmt);
+                }
+            }
+        }
+    }
+
     setupLabels(label2pc);
 
     // Override barrier participation masks with launch-time blockDim.
@@ -370,15 +393,6 @@ void PtxInterpreter::funcInterpreter(
                 CudaDriver::instance().free(local_memory_ptr);
             }
         };
-
-        // 将ptxStatements中的S_SHARED全局声明合并到kernelStatements
-        // 这些是extern __shared__声明，需要在函数执行前可用
-        for (const auto &stmt : ptx.ptxStatements) {
-            if (stmt.type == S_SHARED) {
-                kernelContext->kernelStatements.insert(
-                    kernelContext->kernelStatements.begin(), stmt);
-            }
-        }
 
         // 在所有符号（params, globals等）都添加到name2Sym之后，再创建共享指针
         // 这样可以确保KernelLaunchRequest获得的是包含完整符号信息的拷贝
