@@ -171,7 +171,7 @@ bool WarpContext::check_and_block_at_reconvergence_point(int target_pc,
 
 WarpContext::WarpContext()
     : active_count(0), pc(0), warp_id(-1), single_step_mode(false),
-      divergence_detected(false), sm_context_(nullptr) {
+      divergence_detected(false), sm_context_(nullptr), simt_stack() {
     for (int i = 0; i < WARP_SIZE; i++) {
         warp_thread_ids[i] = -1;
         active_mask[i] = true;

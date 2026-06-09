@@ -30,22 +30,17 @@ enum class ThreadStatus : uint8_t {
 
 // 每线程状态结构
 struct ThreadState {
-    // PC 相关
-    uint32_t pc = 0;          // 当前程序计数器
-    uint32_t next_pc = 0;     // 下一条指令 PC
-    
-    // 状态标志
+    uint32_t pc = 0;
+    uint32_t next_pc = 0;
+
     ThreadStatus status = ThreadStatus::Active;
-    bool is_exited = false;   // 是否已退出 (permanent)
-    
-    // Barrier 相关
-    bool is_blocked = false;                          // 是否在 barrier 等待
-    int blocked_cycles_remaining = 0;                // 阻塞剩余周期数 (用于长延迟 barrier)
-    
-    // 执行掩码 (用于快速查询)
-    bool is_active = true;    // 是否活跃 (可调度)
-    
-    // 重置线程状态
+    bool is_exited = false;
+
+    bool is_blocked = false;
+    uint32_t blocked_cycles_remaining = 0;
+
+    bool is_active = true;
+
     void reset() {
         pc = 0;
         next_pc = 0;
@@ -55,9 +50,11 @@ struct ThreadState {
         blocked_cycles_remaining = 0;
         is_active = true;
     }
-    
-    // 检查线程是否可调度的快捷方法
+
     bool is_schedulable() const {
+        if (blocked_cycles_remaining > 0) {
+            return false;
+        }
         return is_active && !is_exited && !is_blocked && (status == ThreadStatus::Active);
     }
 };
