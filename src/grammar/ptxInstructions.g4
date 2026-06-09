@@ -228,6 +228,8 @@ dataMovementInst
 
 movInst
     : MOV typeSpecifier vectorSpec? operand COMMA operand SEMI
+    // mov.b{8,16,32,64}{a, b, c, d}, src; - broadcast source into multi-register destination list
+    | MOV typeSpecifier vectorSpec? vectorRegister COMMA operand SEMI
     ;
 
 ldInst

@@ -18,9 +18,12 @@ vectorRegister
     : LEFT_BRACE register (COMMA register)+ RIGHT_BRACE
     ;
 
+// Register: %ID (virtual), $ID (label/string alias), or bare ID (virtual alias in CUTLASS-generated PTX).
+// Bare ID is used in vector register lists (e.g., mov.b64 {tmp, %r2}, src;).
 register
     : PERCENT ID
     | DOLLAR ID
+    | ID
     ;
 
 // 修正1: 使用统一的 IMMEDIATE token（匹配修正后的 lexer）

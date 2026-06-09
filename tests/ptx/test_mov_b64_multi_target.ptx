@@ -1,0 +1,27 @@
+.version 8.5
+.target sm_100
+.address_size 64
+
+.visible .entry test_mov_multi(
+    .param .u64 param_output
+)
+{
+    .reg .b32 %r<4>;
+    .reg .b64 %rd<3>;
+    .reg .b32 tmp;       // 虚拟寄存器无 % 前缀
+    .reg .u64 %rd_output;
+
+    ld.param.u64 %rd_output, [param_output];
+
+    mov.b32 %r0, 0x12345678;
+    mov.b32 %r1, 0xDEADBEEF;
+
+    // 多目标 mov：合并 32 位到 64 位 (源是 src)
+    mov.b64 %rd0, {%r0, %r1};
+
+    // 多目标 mov 含虚拟寄存器 (目标是 register list)
+    mov.b64 {tmp, %r2}, %rd0;   // tmp 是虚拟寄存器
+
+    st.global.b32 [%rd_output], %r2;
+    ret;
+}
