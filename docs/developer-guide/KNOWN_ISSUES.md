@@ -458,7 +458,7 @@ If a future feature requires integration-level CFG or register-bank tests:
 
 ## Pre-P0b Baseline Red — `bench/aligned-types` & `bench/all-pairs-distance` (ANTLR PTX parse errors)
 
-**Status:** under investigation — filed 2026-06-09
+**Status:** ANTLR portion RESOLVED 2026-06-09; runtime register-bank error surfaces new issue (Pre-P0b-runtime, see below)
 
 **Origin:** Surfaced during `dummy-wmma` removal task (commit on 2026-06-09). Both
 benchmarks were already failing on `main` because the PTX grammar in
@@ -466,11 +466,13 @@ benchmarks were already failing on `main` because the PTX grammar in
 emitted by recent `nvcc` (compute_100 / sm_100). Independent of the
 `dummy-wmma` task — this entry is filed here for visibility.
 
-**Affected tests:**
-- `aligned-types` (ctest #33) — SEGFAULT after PTX parse error aborts setup
-- `all-pairs-distance` (ctest #34) — aborted by PTX parse error
+**Resolution (ANTLR portion):** Commits `c83c717` (bfe) + `59f356a` (mov.b64 multi-target + bare-ID reg) added the missing grammar rules. `./tests/ptx/test_all_ptx.sh` now 33/33 pass. The `no viable alternative` / `mismatched input 'tmp'` errors are gone.
 
-### Symptoms
+**Affected tests (status post-fix):**
+- `aligned-types` (ctest #33) — ANTLR parse OK, but **runtime** error: `Invalid memory access at address 0x0, size=0 (null register data): Register not found in bank manager: _Z10testKernelIhEvPT_PKS0_i_param_0 [code=INVALID_MEMORY_ACCESS]`. 12 sub-test failures.
+- `all-pairs-distance` (ctest #34) — same runtime register-bank error: `Register not found in bank manager: _Z11GPUregisterPKcPi_param_0 [code=INVALID_MEMORY_ACCESS]`.
+
+### Symptoms (original, now fixed)
 
 `aligned-types.1.sm_100.ptx:273` — ANTLR fails on the first multi-target
 `mov.b64` instruction:
@@ -490,42 +492,54 @@ line 43:3  mismatched input '.u32' expecting ':'
 ... (repeats for lines 46, 47, 51, 52, 56, 57, 102, 103, 106, 107, 111, 112, 116, 117)
 ```
 
-### Suspected Root Causes (ranked)
+### Original Root Causes (RESOLVED)
 
-1. **`mov.b64{tmp, ...}` multi-target mov with virtual register `tmp`** is
-   ungrammatical — `tmp` is not a valid PTX register identifier. Likely
-   the `.reg.b32 tmp` declaration is dropped by the lexer/parser combination
-   used here. The grammar's `reg` rule expects `%` or `$` prefix.
-2. **`bfe.u32` (bit-field extract)** is not in the grammar's instruction set.
-   The `bfe` family is standard since sm_20 and is in the PTX 8.x ISA.
-3. The bench uses `__align__` packed structures that the bench's
-   `testCPU` validation routine (a CPU reference) cannot be parsed by ANTLR
-   for kernel validation — irrelevant to grammar, but the kernel itself
-   contains the problematic instructions.
+1. ✅ **`mov.b64{tmp, ...}` multi-target mov with virtual register `tmp`** —
+   fixed in `59f356a` by adding `vectorRegister` rule and allowing bare ID in
+   the `register` rule.
+2. ✅ **`bfe.u32` (bit-field extract)** — fixed in `c83c717` by adding the
+   `bfeInst` rule and `BFE` token.
 
-### Workaround
+### New Issue Discovered: Pre-P0b-runtime — Register bank manager missing param_N symbols
 
-None. Both benchmarks are build-time dependent on these PTX instructions
-emitted by `nvcc -ptx -arch=sm_100 -code=compute_100`. Disabling would
-leave the SM_100 target untested for `bfe` and modern `mov.b64` patterns.
+**Symptoms (NEW, after 59f356a):**
 
-### How to Re-enable / Fix
+```
+PTX execution error: Invalid memory access at address 0x0, size=0 (null register data):
+Register not found in bank manager: _Z10testKernelIhEvPT_PKS0_i_param_0
+[code=INVALID_MEMORY_ACCESS]
+```
 
-Follow the `ptx-grammar-modification` skill workflow
-(`.opencode/skills/ptx-grammar-modification/SKILL.md`):
+```
+PTX execution error: Invalid memory access at address 0x0, size=0 (null register data):
+Register not found in bank manager: _Z11GPUregisterPKcPi_param_0
+[code=INVALID_MEMORY_ACCESS]
+```
 
-1. Add a failing-test reproduction case to `tests/ptx/parser/` that
-   uses `bfe.u32` and `mov.b64{a, b, c, ...}` patterns.
-2. Update `src/grammar/ptxParser.g4` to add:
-   - `bfe` family in the integer instruction alternation
-   - multi-target `mov.b{8,16,32,64}{a, b, c, d}` syntax
-3. Regenerate parser: `cmake --build build --target GenerateParser`
-4. Verify `./tests/ptx/test_all_ptx.sh` passes (no regression in existing
-   PTX syntax coverage).
-5. Re-run `ctest -R "^(aligned-types|all-pairs-distance)$"`.
+The kernel's parameter symbol (mangled C++ name with `_param_0` suffix) is
+not in the register bank when `ld.param` tries to look it up. The error
+fires at the first `ld.param.u64 %rd_output, [param_output]` in the kernel.
 
-**Estimated effort:** M (1-2 days). Grammar changes require careful
-addition without breaking existing PTX test corpus.
+**Suspected root cause:** The `ld.param.u64 %rdN, [param]` syntax expects the
+register bank to have a pre-registered entry for the parameter name
+(e.g., `param_output`). With CUTLASS / NVCC-generated PTX for sm_100, the
+parameter may be referenced via a different mangled name
+(`_Z10testKernelIhEvPT_PKS0_i_param_0`) than what was registered
+(via the kernel arguments setup path).
+
+This is a separate runtime issue from Pre-P0b (which was ANTLR-only) and
+needs its own investigation.
+
+### How to Re-enable / Fix (Pre-P0b-runtime)
+
+Use `ptx-debug` skill to trace:
+1. Where `name2Sym` is populated for kernel parameters
+2. Where the register bank gets entries from `name2Sym`
+3. Why the mangled name `_Z10testKernelIhEvPT_PKS0_i_param_0` is not
+   finding a corresponding entry
+
+**Estimated effort:** M (1-2 days). Likely in `src/cudart/kernel_launch.cpp`
+or `src/ptxsim/register/`.
 
 ### Files Involved
 
@@ -533,8 +547,9 @@ addition without breaking existing PTX test corpus.
 - `bench/aligned-types/aligned-types.1.sm_100.ptx` (generated, in build dir)
 - `bench/all-pairs-distance/all-pairs-distance.cu` (source producing bad PTX)
 - `bench/all-pairs-distance/all-pairs-distance.1.sm_100.ptx` (generated, in build dir)
-- `src/grammar/ptxParser.g4` (grammar to extend)
-- `tests/ptx/parser/test_*.cpp` (add new test cases)
+- `src/grammar/ptxLexer.g4`, `ptxInstructions.g4`, `ptxOperands.g4` (grammar - FIXED)
+- `tests/ptx/test_bfe_basic.ptx`, `tests/ptx/test_mov_b64_multi_target.ptx` (new tests)
+- `src/cudart/kernel_launch.cpp` or `src/ptxsim/register/` (pre-P0b-runtime fix target)
 
 ---
 
