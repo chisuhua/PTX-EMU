@@ -73,6 +73,7 @@ function(add_catch_test TEST_NAME)
         ptxsim
         cudart
         antlr4_shared
+        ptxir_writer
         -Wl,--as-needed  # 恢复默认行为
         -ldl -lpthread
     )

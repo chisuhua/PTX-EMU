@@ -237,6 +237,11 @@ add_catch_test(unit_specific_bugs_unit
 )
 set_tests_properties(unit_specific_bugs_unit PROPERTIES LABELS "unit;regression")
 
+add_catch_test(unit_instruction_latency_table
+    common/test_instruction_latency_table.cpp
+)
+set_tests_properties(unit_instruction_latency_table PROPERTIES LABELS "unit;ptx;latency")
+
 add_catch_test(unit_scheduler_config
     common/test_scheduler_config.cpp
 )
