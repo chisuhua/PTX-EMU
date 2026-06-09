@@ -540,7 +540,7 @@ addition without breaking existing PTX test corpus.
 
 ## Pre-P0c Baseline Red — `cute_hello_tiled_copy` & `cute_rmsnorm` (kernel results all zero)
 
-**Status:** under investigation — filed 2026-06-09
+**Status:** partial fix attempted (commit `9815f43`), still failing — updated 2026-06-09
 
 **Origin:** Surfaced during `dummy-wmma` removal task (2026-06-09). Both
 CUTE-derived benchmarks were producing all-zero outputs on `main` after
@@ -550,6 +550,16 @@ the S_SHARED global-declaration merge location in
 `setupLabels`). Independent of the `dummy-wmma` task — but the
 `ptx_interpreter.cpp` change is a known in-flight refactor in
 the worktree (not a `dummy-wmma` artifact).
+
+**Update 2026-06-09:** commit `9815f43` "fix(ptx_interpreter): merge
+S_SHARED before setupLabels to keep CFG reconvergence_pc aligned"
+attempted to address the root cause (CFG pass `reconvergence_pc`
+pointing to wrong instruction when S_SHARED inserted after
+`setupLabels`). However, `cute_rmsnorm` is **still failing** with
+`Mismatch at [0]: got 0, expected -0.140057` even after that fix.
+The S_SHARED move was a necessary correctness fix for the CFG pass,
+but is **not sufficient** to restore cute_* outputs. Root cause
+remains under investigation.
 
 **Affected tests:**
 - `cute_hello_tiled_copy` (ctest #113) — output buffer all zeros
