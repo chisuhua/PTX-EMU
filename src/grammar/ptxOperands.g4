@@ -14,16 +14,23 @@ operand
 ;
 
 // Vector register list for store instructions: {%r5, %r1, %r2, %r3}
+// virtRegister allows bare ID for CUTLASS-generated PTX (e.g., {tmp, %r2}).
 vectorRegister
-    : LEFT_BRACE register (COMMA register)+ RIGHT_BRACE
+    : LEFT_BRACE virtRegister (COMMA virtRegister)+ RIGHT_BRACE
     ;
 
-// Register: %ID (virtual), $ID (label/string alias), or bare ID (virtual alias in CUTLASS-generated PTX).
-// Bare ID is used in vector register lists (e.g., mov.b64 {tmp, %r2}, src;).
+// virtRegister is a register OR a bare identifier (used in vector register lists).
+virtRegister
+    : register
+    | ID
+    ;
+
+// Register: %ID (virtual) or $ID (label/string alias).
+// NOTE: bare ID is NOT a register here — keep this rule strict to avoid
+// misclassifying long PTX symbol names (e.g., _Z14..._param_1) as registers.
 register
     : PERCENT ID
     | DOLLAR ID
-    | ID
     ;
 
 // 修正1: 使用统一的 IMMEDIATE token（匹配修正后的 lexer）

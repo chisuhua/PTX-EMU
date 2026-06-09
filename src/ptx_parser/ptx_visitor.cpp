@@ -240,16 +240,26 @@ OperandContext PtxVisitor::createOperandFromContext(ptxparser::ptxParser::Operan
         }
     }
 
-    // 检查vectorRegister (braced register list like {%r5, %r1})
+    // 检查vectorRegister (braced register list like {%r5, %r1, tmp})
     if (ctx->vectorRegister()) {
         auto vecCtx = ctx->vectorRegister();
         std::vector<OperandContext> elements;
-        for (auto regCtx : vecCtx->register_()) {
-            auto anyResult = visitRegister(regCtx);
-            try {
-                elements.push_back(std::any_cast<OperandContext>(anyResult));
-            } catch (const std::bad_any_cast& e) {
-                PTX_ERROR("Failed to cast vector register element: %s", e.what());
+        for (auto virtRegCtx : vecCtx->virtRegister()) {
+            // virtRegister is either a register_() or a bare ID
+            if (virtRegCtx->register_()) {
+                auto anyResult = visitRegister(virtRegCtx->register_());
+                try {
+                    elements.push_back(std::any_cast<OperandContext>(anyResult));
+                } catch (const std::bad_any_cast& e) {
+                    PTX_ERROR("Failed to cast vector register element: %s", e.what());
+                }
+            } else if (virtRegCtx->ID()) {
+                // Bare ID in vector register (e.g., {tmp, %r2})
+                VariableOperand var;
+                var.name = virtRegCtx->ID()->getText();
+                elements.push_back(OperandContext{var});
+            } else {
+                PTX_ERROR("virtRegister has neither register_() nor ID()");
             }
         }
         if (!elements.empty()) {
