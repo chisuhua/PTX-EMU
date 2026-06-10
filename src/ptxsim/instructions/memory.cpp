@@ -23,11 +23,11 @@ void LdHandler::processOperation(ThreadContext *context, void *op[2],
 
   if (!QvecHasQ(qualifier, Qualifier::Q_V2) &&
       !QvecHasQ(qualifier, Qualifier::Q_V4)) {
-    // After the load completes, mark active threads as blocked for the
-    // remaining latency cycles. The sm_context decrement loop (see
-    // sm_context.cpp:~348) will clear is_blocked once the cycles expire.
+    // Block active threads for the post-load latency only on global
+    // loads — shared/local/const are 1-cycle on this simulator and
+    // must not be marked blocked. See regression commit 2b9d803.
     WarpContext *warp_ctx = context->warp_context_;
-    if (warp_ctx != nullptr) {
+    if (warp_ctx != nullptr && space == MemorySpace::GLOBAL) {
       auto latency = ptxsim::getLatency(S_LD);
       if (latency.cycles > 0) {
         auto &ws = warp_ctx->get_warp_state();
