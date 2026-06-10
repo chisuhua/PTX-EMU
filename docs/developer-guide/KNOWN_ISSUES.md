@@ -881,6 +881,217 @@ to RUN with `blocked_cycles_remaining = 0` explicitly.
 
 ---
 
+## B4.1 — `is_finished()` treats `is_blocked` threads as finished → warp destroyed before barrier
+
+**Status:** under investigation — filed 2026-06-10
+
+**Originating commits:**
+- `2b9d803 feat(memory): mark threads blocked after ld.global for latency cycles` — introduced `LdHandler` blocking logic
+- `5be8d69 refactor(latency): singleton InstructionLatencyTable + JSON-driven config` — fixed the link error that had previously prevented these tests from running, exposing the pre-existing bug
+
+**Affected tests (ctest #s):**
+- `simpleGEMM-int` (#26), `simpleGEMM-float` (#27), `simpleGEMM-double` (#28)
+- `simpleCONV-int` (#29), `simpleCONV-float` (#30), `simpleCONV-double` (#31)
+- `bitonic` (#35)
+- (NOT affected: `aligned-types` (#33) and `all-pairs-distance` (#34) — these are pre-existing SEPARATE failures caused by PTX `ld.param` register-bank lookup errors, documented in §Pre-P0b-runtime)
+
+### Symptoms
+
+All GEMM/CONV/bitonic benchmarks launch the kernel (`Launched kernel with N CTAs`) and produce output, but verification shows `got: 0.000000` (output buffer all zeros):
+
+```
+[simpleGEMM] iter 0: -0.000000 ms elapsed, -0.000000 ms min.
+at 0 0 expect:1369.000000 got:0.000000 relative error:100.000000%(>0.000100%)
+```
+
+The kernel's PTX shows the expected pattern — `ld.global` → `st.shared` → `bar.sync` → `ld.shared` → compute → `st.global` — but the output buffer is never written.
+
+### Root Cause Chain (3-bug cascade)
+
+The bug is a **three-deep cascade** in the scheduler state machine, triggered when any `ld.global` sets `is_blocked=true` on active threads.
+
+```
+Tick N: ld.global executes at LdHandler::processOperation()
+  │
+  ├─ [1] memory.cpp:34-37 ── all 32 lanes: is_blocked=true, blocked_cycles_remaining=5
+  │
+  ├─ [2] warp_context.cpp:308 → update_active_mask() (called at end of
+  │     execute_warp_instruction)
+  │     │  warp_context.cpp:315-318:
+  │     │    active = is_active && !is_exited && !is_blocked && status==Active
+  │     │            → false (because !is_blocked == false)
+  │     │  warp_context.cpp:320:
+  │     │    warp_state.threads[i].is_active = active;   // ← OVERWRITES is_active!
+  │     │  → active_count = 0
+  │
+  ├─ [3] sm_context.cpp:372-381 ── decrement loop (runs once per tick):
+  │     blocked_cycles 5→4, is_blocked still true
+  │
+  └─ [4] sm_context.cpp:384 → update_state():
+        warp_context.cpp:345: is_finished() = (active_count == 0) → TRUE
+        sm_context.cpp:429-441:
+          → warp_scheduler->remove_warp(warp)     // removed from scheduler
+          → warps.erase(it)                       // removed from SM's warp list
+          → physical_block_warp_counts-- → 0
+          → cleanup_finished_blocks() deletes the CTA block
+          → sm_state = EXIT
+```
+
+**Result:** The warp is destroyed in the SAME tick as `ld.global`. It never executes `st.shared`, never reaches `bar.sync`, never enters the compute loop. The output buffer stays at zero-initialized values.
+
+### Why the barrier fix is insufficient
+
+Adding `blocked_cycles_remaining > 0` guards in `synchronize_barrier()` (sm_context.cpp:560-649) and `exe_once()` (sm_context.cpp:142-175) only checks threads that have **already reached** the barrier. But the warp is destroyed before any thread reaches the barrier — it's still stuck at `ld.global`'s next PC (`st.shared`) when `update_state()` deletes the entire CTA block.
+
+### Why `6811c4d` (pre-`3943920`) passes
+
+At that commit, `LdHandler::processOperation` has **no** `is_blocked` / `blocked_cycles_remaining` logic at all. `memory.cpp` only does the load, no post-load blocking. `update_active_mask()` never sees blocked threads, so `active_count` stays at 32, `is_finished()` returns false, warp executes normally.
+
+### Suspected Root Causes (ranked)
+
+**Bug #1 (HIGH confidence, PRIMARY): `is_finished()` identifies blocked threads as finished**
+
+`warp_context.cpp:345`:
+```cpp
+bool WarpContext::is_finished() const {
+    return active_count == 0;  // ← Bug: blocked != finished
+}
+```
+
+When `ld.global` sets `is_blocked=true`, `update_active_mask()` (`warp_context.cpp:311-323`) counts them as inactive (`active_count` drops to 0). `is_finished()` returns `true` immediately, triggering warp destruction.
+
+**Fix:** `is_finished()` should check `is_all_threads_exited()` instead of `active_count == 0`. A blocked thread is not a finished thread.
+
+**Bug #2 (HIGH confidence): `update_active_mask()` overwrites persistent `is_active` with transient blocking state**
+
+`warp_context.cpp:320`:
+```cpp
+warp_state.threads[i].is_active = active;  // ← overwrites persistent state
+```
+
+`active` is derived from the transient `!is_blocked` condition at line 318, but the result is stored back into the `threads[i].is_active` field. This makes the block irreversible — even after `is_blocked` is cleared by the decrement loop, `is_active` remains `false`.
+
+**Fix:** `update_active_mask()` should only update `active_mask[i]`, not `warp_state.threads[i].is_active`. Or, when the decrement loop clears `is_blocked`, it should also restore `is_active = true`.
+
+**Bug #3 (MEDIUM confidence): Decrement loop only runs on scheduled warp**
+
+`sm_context.cpp:372-381`:
+```cpp
+// Decrement blocked_cycles_remaining if thread is blocked
+auto& ws = next_warp->get_warp_state();
+```
+
+This decrement only applies to `next_warp` (the single warp selected for execution this tick). When `is_finished()` removes the warp from the scheduler, decrement never happens.
+
+**Fix:** Move the decrement loop to `exe_once()` level (outside the warp-select block), iterating ALL warps in the SM.
+
+### Workaround
+
+Currently none. The bug manifests whenever `ld.global` is followed by shared-memory operations and a `bar.sync`. The GEMM/CONV/bitonic benchmarks demonstrate this pattern and are **failing on `main`**.
+
+These tests were **previously non-runnable** due to a link error (`instruction_latency_table.cpp` placed in `ptxir_writer` static library, unreachable by `libptxsim.so`). The link error was fixed in commit `5be8d69`, exposing this pre-existing scheduler bug.
+
+Three possible temporary workarounds:
+1. Set `ld_global_cycles = 1` in the JSON config (mini.json: `ld_global_cycles: 1`). This reduces the blocked period to 0 (cycles > 0 guard in memory.cpp:32), but may cause other edge cases.
+2. Remove the `!is_blocked` condition from `update_active_mask()` — but this would break the scheduler's blocked-thread detection for warp selection.
+3. Mark affected tests as `DISABLED` in CMakeLists.txt (reverts to the pre-5be8d69 status where they didn't run).
+
+### How to Re-enable / Fix
+
+All three bugs must be fixed together. They form a cascade: fixing any one individually leaves the others to trigger. **Recommended fix order:**
+
+**Step 1 (Bug #1): Fix `is_finished()` in `warp_context.cpp:345`**
+
+```cpp
+bool WarpContext::is_finished() const {
+    // A warp is finished when ALL threads have exited.
+    // Blocked threads (is_blocked) are NOT finished — they will
+    // resume when blocked_cycles_remaining drains or a barrier releases them.
+    return active_count == 0 && is_all_threads_exited();
+}
+```
+
+This prevents the warp from being destroyed while any threads remain active (even if temporarily blocked).
+
+**Step 2 (Bug #2): Fix `update_active_mask()` state overwrite in `warp_context.cpp:320`**
+
+Remove the line that writes back to `warp_state.threads[i].is_active`:
+
+```cpp
+void WarpContext::update_active_mask() {
+    active_count = 0;
+    for (int i = 0; i < WARP_SIZE; i++) {
+        if (i < threads.size() && threads[i] != nullptr) {
+            bool active = warp_state.threads[i].is_active &&
+                          !warp_state.threads[i].is_exited &&
+                          !warp_state.threads[i].is_blocked &&
+                          (warp_state.threads[i].status == ptxsim::ThreadStatus::Active);
+            active_mask[i] = active;
+            // warp_state.threads[i].is_active = active;  // ← REMOVE THIS LINE
+            if (active) active_count++;
+        }
+    }
+}
+```
+
+The lingering question is whether other code paths depend on `warp_state.threads[i].is_active` being set by `update_active_mask()`. A grep for `\.is_active` in `src/ptxsim/` is needed post-fix to verify.
+
+**Step 3 (Bug #3): Move decrement to `exe_once()` level in `sm_context.cpp`**
+
+Move the `blocked_cycles_remaining` decrement loop from the per-warp block (line 372-381) into `exe_once()` **outside** the `if (next_warp)` block, iterating all warps in `managed_warps` (or `warps` member):
+
+```cpp
+// In exe_once(), BEFORE or AFTER the warp-select block:
+for (auto& w : warps) {
+    if (!w) continue;
+    auto& ws = w->get_warp_state();
+    for (auto& thread : ws.threads) {
+        if (thread.is_blocked && thread.blocked_cycles_remaining > 0) {
+            thread.blocked_cycles_remaining--;
+            if (thread.blocked_cycles_remaining == 0) {
+                thread.is_blocked = false;
+            }
+        }
+    }
+}
+```
+
+**Validation:**
+
+1. Apply all three fixes
+2. Rebuild: `cmake --build build`
+3. Run: `ctest -R "simpleGEMM-int|simpleCONV-int|bitonic" -V`
+4. Confirm `expect:NNNN got:NNNN` matches (relative error < 1e-6)
+5. Run full: `ctest` — confirm no regressions in existing passing tests (especially latency/barrier/memory tests)
+6. If Step 2 causes regression, the `is_active` propagation via `sync_to_warp_state()`/`sync_from_warp_state()` needs to be investigated as an alternative fix.
+
+**Estimated effort:** M (1-2 days) — 3 small targeted fixes in 2 files, plus comprehensive regression testing.
+
+### Key code paths (for investigator reference)
+
+```
+warp_context.cpp:345       — is_finished() → return active_count == 0;
+warp_context.cpp:311-323   — update_active_mask() → overwrites is_active
+warp_context.cpp:320       — the specific overwrite: threads[i].is_active = active;
+sm_context.cpp:348-357     — blocked_cycles_remaining decrement (per-warp)
+sm_context.cpp:429-441     — update_state() warp removal via is_finished()
+memory.cpp:29-41           — LdHandler blocking (where is_blocked=true originates)
+```
+
+### Files Involved
+
+- `src/ptxsim/core/warp_context.cpp:345` (is_finished — Bug #1)
+- `src/ptxsim/core/warp_context.cpp:311-323` (update_active_mask — Bug #2)
+- `src/ptxsim/core/sm_context.cpp:348-357` (decrement placement — Bug #3)
+- `src/ptxsim/core/sm_context.cpp:429-441` (update_state warp removal — downstream consumer)
+- `src/ptxsim/instructions/memory.cpp:29-41` (LdHandler blocking — trigger)
+- `include/ptxsim/thread_state.h:39-40` (is_blocked / blocked_cycles_remaining definition)
+- `bench/simpleGEMM-int/simpleGEMM-int.cu` (GEMM kernel, failing test source)
+- `bench/simpleCONV-int/simpleCONV-int.cu` (CONV kernel, failing test source)
+- `bench/bitonic/bitonic.cu` (bitonic benchmark, failing test source)
+
+---
+
 ## How to Add a New Entry
 
 ```markdown
