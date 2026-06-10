@@ -2,6 +2,7 @@
 #define GPU_CONTEXT_H
 
 #include "cta_context.h"
+#include "ptx_ir/instruction_latency_config.h"
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/common_types.h" // 包含通用类型定义
 #include "ptxsim/execution_types.h"
@@ -19,6 +20,7 @@
 
 // GPU硬件配置结构体
 struct GPUConfig {
+
     int num_sms;
     int max_warps_per_sm;
     int max_threads_per_sm;
@@ -27,6 +29,12 @@ struct GPUConfig {
     int max_blocks_per_sm;
     int warp_size;
     size_t global_mem_size;  // 添加全局内存大小配置
+
+    // Per-instruction-class latency overrides loaded from the JSON
+    // "instruction_latencies" block. Definition lives in
+    // include/ptx_ir/instruction_latency_config.h so ptx_ir can use it
+    // without pulling in the entire GPUContext header.
+    InstructionLatencyConfig instruction_latencies;
 
     // 构造函数提供默认值
     GPUConfig()
@@ -37,7 +45,8 @@ struct GPUConfig {
           registers_per_sm(65536),           // 每个SM 64K寄存器
           max_blocks_per_sm(32),             // 每个SM最大32个block
           warp_size(32),                     // warp大小为32
-          global_mem_size(4ULL << 30)        // 默认4GB全局内存
+          global_mem_size(4ULL << 30),       // 默认4GB全局内存
+          instruction_latencies()
     {}
 };
 

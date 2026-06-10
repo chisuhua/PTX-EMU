@@ -1,4 +1,5 @@
 #include "ptxsim/gpu_context.h"
+#include "ptx_ir/instruction_latency_table.h"
 #include "cudart/cuda_driver.h"
 #include "memory/hardware_memory_manager.h" // 添加硬件内存管理器头文件
 #include "memory/resource_manager.h"
@@ -98,6 +99,42 @@ bool GPUContext::load_json_config(const std::string &config_path) {
             config.global_mem_size = j["global_mem_size"];
         }
 
+        // Per-instruction-class latency overrides. Each missing field
+        // leaves the constexpr default in place — the
+        // InstructionLatencyConfig default of -1 / false is the sentinel.
+        if (j.contains("instruction_latencies")) {
+            const auto& il = j["instruction_latencies"];
+            auto& cfg = config.instruction_latencies;
+            if (il.contains("ld_global_cycles"))
+                cfg.ld_global_cycles = il["ld_global_cycles"];
+            if (il.contains("ld_global_long_delay"))
+                cfg.ld_global_long_delay = il["ld_global_long_delay"];
+            if (il.contains("st_global_cycles"))
+                cfg.st_global_cycles = il["st_global_cycles"];
+            if (il.contains("st_global_long_delay"))
+                cfg.st_global_long_delay = il["st_global_long_delay"];
+            if (il.contains("mul_cycles"))
+                cfg.mul_cycles = il["mul_cycles"];
+            if (il.contains("mul_long_delay"))
+                cfg.mul_long_delay = il["mul_long_delay"];
+            if (il.contains("div_cycles"))
+                cfg.div_cycles = il["div_cycles"];
+            if (il.contains("div_long_delay"))
+                cfg.div_long_delay = il["div_long_delay"];
+            if (il.contains("bar_sync_cycles"))
+                cfg.bar_sync_cycles = il["bar_sync_cycles"];
+            if (il.contains("bar_sync_long_delay"))
+                cfg.bar_sync_long_delay = il["bar_sync_long_delay"];
+            if (il.contains("default_cycles"))
+                cfg.default_cycles = il["default_cycles"];
+            if (il.contains("default_long_delay"))
+                cfg.default_long_delay = il["default_long_delay"];
+
+            // Push overrides into the global latency table so any handler
+            // (e.g. LdHandler::processOperation) sees them on next query.
+            ptxsim::InstructionLatencyTable::instance().load(config.instruction_latencies);
+        }
+
         std::cout << "GPU configuration loaded from: " << config_path
                   << std::endl;
         std::cout << "  num_sms: " << config.num_sms << std::endl;
@@ -113,6 +150,9 @@ bool GPUContext::load_json_config(const std::string &config_path) {
                   << std::endl;
         std::cout << "  warp_size: " << config.warp_size << std::endl;
         std::cout << "  global_mem_size: " << config.global_mem_size
+                  << std::endl;
+        std::cout << "  ld.global cycles: "
+                  << config.instruction_latencies.ld_global_cycles
                   << std::endl;
 
         return true;
