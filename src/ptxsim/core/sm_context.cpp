@@ -176,6 +176,26 @@ EXE_STATE SMContext::exe_once() {
         }
     }
 
+    // Decrement blocked_cycles_remaining for ALL warps BEFORE scheduling
+    // (B4.1 Bug #2 + #3: must run every tick, even for warps not yet selected,
+    // so that newly-unblocked lanes become schedulable in the SAME tick).
+    for (auto& w : warps) {
+        if (!w) continue;
+        auto& ws = w->get_warp_state();
+        for (auto& thread : ws.threads) {
+            if (thread.is_blocked && thread.blocked_cycles_remaining > 0) {
+                thread.blocked_cycles_remaining--;
+                if (thread.blocked_cycles_remaining == 0) {
+                    thread.is_blocked = false;
+                    if (!thread.is_exited &&
+                        thread.status == ptxsim::ThreadStatus::Active) {
+                        thread.is_active = true;
+                    }
+                }
+            }
+        }
+    }
+
     // 调度下一个warp执行
     WarpContext *next_warp = warp_scheduler->schedule_next();
     if (next_warp) {
@@ -344,17 +364,6 @@ EXE_STATE SMContext::exe_once() {
 
         // 执行完后取消warp的被调度状态
         next_warp->set_scheduled(false);
-        
-        // Decrement blocked_cycles_remaining if thread is blocked
-        auto& ws = next_warp->get_warp_state();
-        for (auto& thread : ws.threads) {
-            if (thread.is_blocked && thread.blocked_cycles_remaining > 0) {
-                thread.blocked_cycles_remaining--;
-                if (thread.blocked_cycles_remaining == 0) {
-                    thread.is_blocked = false;
-                }
-            }
-        }
     }
 
     // 更新状态

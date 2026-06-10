@@ -166,3 +166,65 @@ TEST_CASE("J8: sync_to_warp_state RUN sets is_active=true after barrier", "[acti
 
     REQUIRE(warp.get_warp_state().threads[lane].is_active == true);
 }
+
+// ============================================================================
+// B4.1 — Scheduler Blocked-Finish Cascade Bug Regression Tests
+// ----------------------------------------------------------------------------
+// Locks down the contract that is_finished() must NOT return true while
+// threads are still blocked (is_blocked==true) waiting for memory latency
+// or barrier release. A blocked warp MUST continue to receive scheduler
+// ticks; otherwise ld.global post-load latency will destroy the warp before
+// it can reach bar.sync and complete the compute loop.
+// ============================================================================
+
+TEST_CASE("J9: blocked warp is not finished", "[active_mask][b4-1]") {
+    // B4.1 Bug #1: is_finished() returns true when active_count==0,
+    // even if some threads are still blocked (is_blocked==true).
+    // That causes the scheduler to destroy the warp mid-execution.
+    WarpContext warp;
+    init_full_warp(warp);
+
+    // All 32 threads are blocked on ld.global post-load latency.
+    for (int i = 0; i < 32; i++) {
+        warp.get_warp_state().threads[i].is_blocked = true;
+        warp.get_warp_state().threads[i].blocked_cycles_remaining = 5;
+        warp.get_warp_state().threads[i].is_active = false;
+    }
+
+    // update_active_mask() will set active_count = 0 because all threads
+    // are blocked. The fix must ensure is_finished() stays false.
+    warp.update_active_mask();
+
+    REQUIRE(warp.get_active_count() == 0);
+    REQUIRE(warp.is_finished() == false);
+}
+
+TEST_CASE("J10: mixed exited+blocked warp is not finished", "[active_mask][b4-1]") {
+    // B4.1 Bug #1: a warp with some exited and some blocked threads must
+    // not be considered finished — the blocked threads still need to
+    // resume and reach bar.sync. Destroying the warp early produces
+    // all-zero kernel output (observed in simpleGEMM / simpleCONV / bitonic).
+    WarpContext warp;
+    init_full_warp(warp);
+
+    // First 16 threads: exited (e.g. divergent branch leading to `ret`).
+    for (int i = 0; i < 16; i++) {
+        warp.get_warp_state().threads[i].is_exited = true;
+        warp.get_warp_state().threads[i].is_active = false;
+        warp.get_thread(i)->set_state(EXIT);
+    }
+
+    // Remaining 16 threads: blocked (e.g. waiting on ld.global latency).
+    for (int i = 16; i < 32; i++) {
+        warp.get_warp_state().threads[i].is_blocked = true;
+        warp.get_warp_state().threads[i].blocked_cycles_remaining = 5;
+        warp.get_warp_state().threads[i].is_active = false;
+    }
+
+    warp.update_active_mask();
+
+    // All threads are non-active, but the warp is NOT finished because
+    // 16 threads are merely blocked and have not yet exited.
+    REQUIRE(warp.get_active_count() == 0);
+    REQUIRE(warp.is_finished() == false);
+}

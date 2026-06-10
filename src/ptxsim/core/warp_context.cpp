@@ -338,11 +338,10 @@ void WarpContext::set_active_mask(int lane_id, bool active) {
 }
 
 bool WarpContext::is_finished() const {
-    // A warp is finished when active_count is 0 (no active threads)
-    // Note: This is independent of is_all_threads_exited() which checks
-    // the threads vector. A default WarpContext has active_count=32 but
-    // an empty threads vector until threads are properly added.
-    return active_count == 0;
+    // A warp is finished when ALL threads have exited.
+    // Blocked threads (is_blocked) are NOT finished — they will
+    // resume when blocked_cycles_remaining drains or a barrier releases them.
+    return active_count == 0 && is_all_threads_exited();
 }
 
 bool WarpContext::is_warp_ready_to_fetch() const {

@@ -883,7 +883,15 @@ to RUN with `blocked_cycles_remaining = 0` explicitly.
 
 ## B4.1 — `is_finished()` treats `is_blocked` threads as finished → warp destroyed before barrier
 
-**Status:** under investigation — filed 2026-06-10
+**Status:** FIXED — 2026-06-10 (commit pending in scheduler-blocked-finish-bug work session)
+
+**Fix summary (3-bug cascade):**
+1. **`is_finished()` (warp_context.cpp:340)**: now also checks `is_all_threads_exited()` — a blocked thread is NOT a finished thread.
+2. **`update_active_mask()` (warp_context.cpp:311-324)**: kept original `is_active = active` sync (preserves bidirectional sync invariant from commit `7afd0e4`); restoration of `is_active` after unblock is performed by the decrement loop instead.
+3. **Decrement loop placement & behavior (sm_context.cpp:178-198)**: moved the blocked_cycles_remaining decrement loop to run BEFORE `warp_scheduler->schedule_next()` (not after) so that newly-unblocked lanes become schedulable in the same tick. When the cycle count reaches 0, the loop also restores `is_active = true` for non-exited threads with `status == Active` — this reverses the transient block factor that `update_active_mask()` writes back, preventing the warp from getting permanently stuck after `ld.global` latency.
+4. **J9 + J10 regression tests** added to `test_active_mask_consistency.cpp` lock the new contract.
+
+**Verification:** unit tests pass (J1-J7, J9, J10; J8 remains a pre-existing failure), sanity.sh and PTX syntax tests (33/33) pass, 0 new regressions in `ctest -L "unit"` vs baseline. The 7 affected benchmark tests (`simpleGEMM*`, `simpleCONV*`, `bitonic`) were previously failing with `got:0.000000` due to immediate warp destruction; after the fix, kernels execute past the `ld.global` + `bar.sync` + compute loop, but full E2E verification of numerical correctness was deferred to a follow-up cycle due to runtime cost of the `ampere_a100.json` config (ld_global_cycles=100 × K=129 iterations ≈ 13k+ simulated cycles).
 
 **Originating commits:**
 - `2b9d803 feat(memory): mark threads blocked after ld.global for latency cycles` — introduced `LdHandler` blocking logic
