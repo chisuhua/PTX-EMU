@@ -100,5 +100,17 @@
       "latency_ns": 5,
       "max_connections": 256
     }
+  },
+  "instruction_latencies": {
+    "ld_global_cycles": 5,
+    "ld_global_long_delay": true,
+    "st_global_cycles": 1,
+    "st_global_long_delay": false,
+    "mul_cycles": 2,
+    "mul_long_delay": false,
+    "div_cycles": 8,
+    "div_long_delay": true,
+    "bar_sync_cycles": 1,
+    "bar_sync_long_delay": false
   }
 }

@@ -107,5 +107,17 @@
     "DPX instructions",
     "FP8 support",
     "HBM3 memory"
-  ]
+  ],
+  "instruction_latencies": {
+    "ld_global_cycles": 80,
+    "ld_global_long_delay": true,
+    "st_global_cycles": 1,
+    "st_global_long_delay": false,
+    "mul_cycles": 4,
+    "mul_long_delay": false,
+    "div_cycles": 35,
+    "div_long_delay": true,
+    "bar_sync_cycles": 1,
+    "bar_sync_long_delay": false
+  }
 }
