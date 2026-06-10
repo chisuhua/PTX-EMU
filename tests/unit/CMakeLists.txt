@@ -242,6 +242,11 @@ add_catch_test(unit_instruction_latency_table
 )
 set_tests_properties(unit_instruction_latency_table PROPERTIES LABELS "unit;ptx;latency")
 
+add_catch_test(unit_instruction_latency_config_load
+    common/test_instruction_latency_config_load.cpp
+)
+set_tests_properties(unit_instruction_latency_config_load PROPERTIES LABELS "unit;ptx;latency")
+
 add_catch_test(unit_scheduler_config
     common/test_scheduler_config.cpp
 )
