@@ -177,7 +177,7 @@ WarpContext::WarpContext()
         active_mask[i] = true;
         warp_state.threads[i].pc = 0;
         warp_state.threads[i].next_pc = 0;
-        warp_state.threads[i].is_active = true;
+        warp_state.threads[i].is_active = false;
         warp_state.threads[i].is_exited = false;
         warp_state.threads[i].is_blocked = false;
         warp_state.threads[i].status = ptxsim::ThreadStatus::Active;
