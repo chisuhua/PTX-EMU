@@ -113,6 +113,14 @@ target_compile_definitions(integration_ptx_lane_verification PRIVATE
 )
 set_tests_properties(integration_ptx_lane_verification PROPERTIES LABELS "integration;ptx_lane_verification")
 
+# fix-ldglobal-active-count-hang: regression test for ld.global hang (issue fix-ldglobal-active-count-hang)
+# Drives a minimal ld.global.u32 + st.global.u32 sequence through step_warp with
+# simulated SM ticks, verifying the warp completes within a bounded cycle count.
+add_catch_test(integration_ldglobal_no_hang
+    exec/test_ldglobal_no_hang.cpp
+)
+set_tests_properties(integration_ldglobal_no_hang PROPERTIES LABELS "integration;exec;ldglobal;hang_regression")
+
 # ============================================================================
 # PC 集成测试
 # ============================================================================

@@ -104,6 +104,14 @@ add_catch_test(unit_warp_state
 )
 set_tests_properties(unit_warp_state PROPERTIES LABELS "unit;warp;state;simt_entry")
 
+# BUG-001: active_count staleness after WarpContext::decrement_blocked_cycles()
+# drains blocked cycles. RED phase: this test MUST FAIL on unpatched code
+# (active_count remains 0 → scheduler skips a schedulable warp → hang).
+add_catch_test(unit_warp_blocked_decrement
+    warp/test_warp_blocked_decrement.cpp
+)
+set_tests_properties(unit_warp_blocked_decrement PROPERTIES LABELS "unit;warp;regression;BUG-LDGLOBAL-HANG")
+
 # ============================================================================
 # Memory 单元测试
 # 注: 原始 CMakeLists.txt 中 test_memory_manager.cpp 实际上未被编译
