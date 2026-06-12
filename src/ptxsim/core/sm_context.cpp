@@ -184,6 +184,16 @@ EXE_STATE SMContext::exe_once() {
         WarpContext::decrement_blocked_cycles(w->get_warp_state());
     }
 
+    // 【BUG-001 Fix #1】After blocked-decrement, recalculate active_count for
+    // each warp. decrement_blocked_cycles() directly sets is_active=true on
+    // unblocked lanes, but this bypasses WarpContext::active_count which is
+    // only updated by update_active_mask(). Without this fix, active_count
+    // stays at 0, is_active() returns false, and the warp scheduler skips
+    // the warp forever — causing a hang on any kernel with ld.global.
+    for (auto& w : warps) {
+        if (w) w->update_active_mask();
+    }
+
     // 调度下一个warp执行
     WarpContext *next_warp = warp_scheduler->schedule_next();
     if (next_warp) {
