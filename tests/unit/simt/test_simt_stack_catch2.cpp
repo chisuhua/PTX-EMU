@@ -102,7 +102,7 @@ TEST_CASE("A8: maximum depth enforcement", "[simt_stack][limit]") {
     e.branch_pc = 0; e.reconvergence_pc = 0; e.return_pc = 0;
     e.active_mask = 0; e.return_mask = 0;
 
-    for (int i = 0; i < 10; i++) stack.push(e);
-    REQUIRE(stack.depth() == 10);
+    for (int i = 0; i < 32; i++) stack.push(e);
+    REQUIRE(stack.depth() == 32);
     REQUIRE_THROWS_AS(stack.push(e), std::runtime_error);
 }
