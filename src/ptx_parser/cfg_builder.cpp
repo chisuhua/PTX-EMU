@@ -262,6 +262,10 @@ PostDominatorMap CFGBuilder::computePostDominators(const CFG& cfg) {
     int exit_block_pc = blockIdToPC[cfg.exit_block_id];
 
     for (const auto& block : cfg.blocks) {
+        // Skip exit block: start_pc is a synthetic sentinel (= statements.size())
+        // with no real instruction. The algorithm above still needs it in
+        // cfg.blocks as a fixed-point anchor; only real instruction PCs go in result.
+        if (block.is_exit) continue;
         int ipd_block_id = findImmediatePostDominator(block, postDomSets);
         int postDomPC = -1;
         if (ipd_block_id >= 0) {
