@@ -10,12 +10,12 @@ TEST_CASE("Memory Fence Verification", "[barrier][fence][phase4]") {
     Wbar wbar;
     
     SECTION("Wbar initialization") {
-        wbar.init(100, 0xFFFFFFFF);
+        wbar.init(0xFFFFFFFF, 100);
         REQUIRE(!wbar.is_complete());
     }
     
     SECTION("All lanes arrive") {
-        wbar.init(100, 0xFFFFFFFF);
+        wbar.init(0xFFFFFFFF, 100);
         
         for (int i = 0; i < 32; i++) {
             wbar.arrive(i);
@@ -25,7 +25,7 @@ TEST_CASE("Memory Fence Verification", "[barrier][fence][phase4]") {
     }
     
     SECTION("Partial arrive not complete") {
-        wbar.init(100, 0xFFFFFFFF);
+        wbar.init(0xFFFFFFFF, 100);
         
         for (int i = 0; i < 16; i++) {
             wbar.arrive(i);
@@ -35,7 +35,7 @@ TEST_CASE("Memory Fence Verification", "[barrier][fence][phase4]") {
     }
     
     SECTION("Dynamic participation mask") {
-        wbar.init(100, 0xFFFFFFFF);
+        wbar.init(0xFFFFFFFF, 100);
         
         wbar.arrive(0);
         REQUIRE((wbar.participation_mask & 0x1) != 0);
@@ -128,7 +128,7 @@ TEST_CASE("Barrier Semantic Verification", "[barrier][semantics][phase4]") {
     Wbar wbar;
     
     SECTION("Barrier complete after all arrive") {
-        wbar.init(50, 0xFFFFFFFF);
+        wbar.init(0xFFFFFFFF, 50);
         
         for (int i = 0; i < 32; i++) {
             wbar.arrive(i);
@@ -139,7 +139,7 @@ TEST_CASE("Barrier Semantic Verification", "[barrier][semantics][phase4]") {
     }
     
     SECTION("Barrier reset after complete") {
-        wbar.init(50, 0xFFFFFFFF);
+        wbar.init(0xFFFFFFFF, 50);
         
         for (int i = 0; i < 32; i++) {
             wbar.arrive(i);
