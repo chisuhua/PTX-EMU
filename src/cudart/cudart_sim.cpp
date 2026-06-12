@@ -68,6 +68,15 @@ void initialize_environment() {
     inipp::Ini<char> ini;
     std::string config_path = get_config_file_path();
  std::ifstream is(config_path);
+    if (!is.is_open()) {
+        // CWD 下未找到时，尝试 configs/ 子目录（mini/perf 等 ini 都放在那里）
+        std::string alt_path = "configs/" + config_path;
+        is.clear();
+        is.open(alt_path);
+        if (is.is_open()) {
+            config_path = alt_path;
+        }
+    }
     if (is.is_open()) {
         ini.parse(is);
 

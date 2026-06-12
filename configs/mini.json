@@ -1,7 +1,7 @@
 {
   "gpu_arch": "Ampere",
   "name": "NVIDIA A100",
-  "num_sms": 1,
+  "num_sms": 2,
   "max_warps_per_sm": 64,
   "max_threads_per_sm": 2048,
   "shared_mem_size_per_sm": 163840,
