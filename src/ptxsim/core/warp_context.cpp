@@ -442,7 +442,24 @@ void WarpContext::force_reconvergence_at_barrier(int barrier_pc) {
     // 屏障处理器会在 divergence 路径中阻塞当前线程（set is_blocked=true），
     // 调度器随后会跳过有阻塞线程的PC组，选择其他PC执行。
     // 当所有线程都到达屏障后，wbar 完成并释放所有线程。
-    // 
+    //
     // 注意：不能推进线程PC，否则会跳过 shared memory store 等关键指令。
     // 注释掉的代码（advance_thread_pc）曾导致 E2E 测试中共享内存数据丢失。
+}
+
+void WarpContext::decrement_blocked_cycles(ptxsim::WarpState& ws) {
+    // (B4.1 Bug #2 + #3: must run every tick, even for warps not yet selected,
+    // so that newly-unblocked lanes become schedulable in the SAME tick).
+    for (auto& thread : ws.threads) {
+        if (thread.is_blocked && thread.blocked_cycles_remaining > 0) {
+            thread.blocked_cycles_remaining--;
+            if (thread.blocked_cycles_remaining == 0) {
+                thread.is_blocked = false;
+                if (!thread.is_exited &&
+                    thread.status == ptxsim::ThreadStatus::Active) {
+                    thread.is_active = true;
+                }
+            }
+        }
+    }
 }

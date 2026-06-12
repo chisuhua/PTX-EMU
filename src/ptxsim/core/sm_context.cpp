@@ -181,19 +181,7 @@ EXE_STATE SMContext::exe_once() {
     // so that newly-unblocked lanes become schedulable in the SAME tick).
     for (auto& w : warps) {
         if (!w) continue;
-        auto& ws = w->get_warp_state();
-        for (auto& thread : ws.threads) {
-            if (thread.is_blocked && thread.blocked_cycles_remaining > 0) {
-                thread.blocked_cycles_remaining--;
-                if (thread.blocked_cycles_remaining == 0) {
-                    thread.is_blocked = false;
-                    if (!thread.is_exited &&
-                        thread.status == ptxsim::ThreadStatus::Active) {
-                        thread.is_active = true;
-                    }
-                }
-            }
-        }
+        WarpContext::decrement_blocked_cycles(w->get_warp_state());
     }
 
     // 调度下一个warp执行

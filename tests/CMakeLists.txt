@@ -198,7 +198,7 @@ add_standalone_test(ptx/test_simt_stack_integration.cpp)
 # 定义 mini tests (基础测试集)
 set(PTX_MINI_TESTS
     dummy dummy-args dummy-add dummy-float dummy-grid dummy-mul dummy-sub dummy-condition
-    dummy-long dummy-sieve dummy-share dummy-loop)
+    dummy-long dummy-sieve dummy-share dummy-loop dummy-ldglobal)
 
 set(PTX_BASIC_TESTS
     simpleGEMM-int simpleGEMM-float simpleGEMM-double

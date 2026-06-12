@@ -23,6 +23,11 @@ add_catch_test(e2e_barrier_warp_sync
 )
 set_tests_properties(e2e_barrier_warp_sync PROPERTIES LABELS "e2e;barrier")
 
+add_catch_test(e2e_ldglobal_simple
+    kernel/test_ldglobal_simple.cu
+)
+set_tests_properties(e2e_ldglobal_simple PROPERTIES LABELS "e2e;ldglobal")
+
 # ============================================================================
 # Divergence E2E 测试 - 完整 warp divergence kernel 验证
 # ============================================================================

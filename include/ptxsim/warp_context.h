@@ -114,6 +114,12 @@ public:
     // 更新活跃掩码（例如，遇到分支指令时）
     void update_active_mask();
 
+    // 【NEW】Decrement blocked_cycles_remaining for all threads and unblock when count hits 0.
+    // Extracted from sm_context.cpp:180-197 (B4.1 Bug #2 + #3 fix) so it can be unit-tested
+    // without depending on sm_context internals. This function does NOT update WarpContext::active_count
+    // — the caller must invoke update_active_mask() afterwards if needed.
+    static void decrement_blocked_cycles(ptxsim::WarpState& ws);
+
     // 设置活跃掩码
     void set_active_mask(int lane_id, bool active);
 
