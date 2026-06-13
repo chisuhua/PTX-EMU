@@ -1,6 +1,8 @@
 #include "memory/hardware_memory_manager.h"
 #include "ptxsim/instruction_handlers.h"
 #include "ptxsim/thread_context.h"
+#include "ptxsim/thread_state.h"
+#include "ptxsim/warp_context.h"
 #include "ptxsim/utils/qualifier_utils.h"
 #include <iostream>
 #include <mutex>
@@ -11,6 +13,21 @@ static std::mutex g_printf_mutex;
 void RetHandler::processOperation(ThreadContext *context, StatementContext &stmt) {
     if (context->call_stack.empty()) {
         context->state = EXIT;
+        WarpContext *wc = context->get_warp_context();
+        if (wc != nullptr) {
+            ptxsim::WarpState &ws = wc->get_warp_state();
+            for (int i = 0; i < WarpContext::WARP_SIZE; ++i) {
+                ws.threads[i].status = ptxsim::ThreadStatus::Exited;
+                ws.threads[i].is_exited = true;
+                ws.threads[i].is_active = false;
+                ws.threads[i].is_blocked = false;
+                ThreadContext *t = wc->get_thread(i);
+                if (t != nullptr) {
+                    t->set_state(EXIT);
+                }
+            }
+            wc->set_active_mask(0u);
+        }
     } else {
         int return_pc = context->call_stack.top();
         context->call_stack.pop();

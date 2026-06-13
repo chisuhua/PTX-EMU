@@ -286,10 +286,9 @@ EXE_STATE GPUContext::exe_once() {
         bool request_complete = true;
 
         // 检查所有SM的状态，判断这个特定请求是否完成
+        // RUN 表示SM仍在执行请求；EXIT（已退出）或 IDLE（从未参与）都视为已完成。
         for (const auto &sm : sms) {
-            // 如果SM状态不是EXIT，则说明还有任务在执行
-            // 这里我们假设如果SM状态是EXIT，意味着它已经完成了之前分配的请求
-            if (sm->get_state() != EXIT) {
+            if (sm->get_state() == RUN) {
                 request_complete = false;
                 break;
             }
@@ -320,7 +319,8 @@ EXE_STATE GPUContext::exe_once() {
     // 检查是否所有SM都已完成当前kernel
     bool all_finished = true;
     for (const auto &sm : sms) {
-        if (sm->get_state() != EXIT) {
+        // IDLE/EXIT 都表示该SM不持有活跃请求；只有 RUN 才阻止完成判定
+        if (sm->get_state() == RUN) {
             all_finished = false;
             break;
         }
