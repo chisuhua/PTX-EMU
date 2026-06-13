@@ -161,6 +161,10 @@ TEST_CASE("J8: sync_to_warp_state RUN sets is_active=true after barrier", "[acti
     warp.get_thread(lane)->set_state(BAR_SYNC);
     warp.get_thread(lane)->sync_to_warp_state();
 
+    // 【修复】遵循 sync_to_warp_state 契约：caller 必须在 set_state(RUN) 前显式清 is_blocked 和 status
+    // 参考 sm_context.cpp:609-610 的生产调用方模式（必须同时清两者，否则 already_blocked 仍为 true）
+    warp.get_warp_state().threads[lane].is_blocked = false;
+    warp.get_warp_state().threads[lane].status = ptxsim::ThreadStatus::Active;
     warp.get_thread(lane)->set_state(RUN);
     warp.get_thread(lane)->sync_to_warp_state();
 
