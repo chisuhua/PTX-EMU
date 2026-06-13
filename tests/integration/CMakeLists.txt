@@ -98,6 +98,18 @@ add_catch_test(integration_post_barrier_divergence
 set_tests_properties(integration_post_barrier_divergence PROPERTIES LABELS "integration;divergence;barrier")
 
 # ============================================================================
+# Barrier Regression (BUG-POSTBARRIER-TWOHALVES)
+# RED PHASE: Divergent warp splits into two halves that hit the same
+# barrier at different times. The second release must NOT lose the first
+# half from active_mask. Without fix: warp never finishes (first half
+# lanes are stuck, scheduler skips them every step).
+# ============================================================================
+add_catch_test(integration_post_barrier_two_halves
+    divergence/test_post_barrier_two_halves.cpp
+)
+set_tests_properties(integration_post_barrier_two_halves PROPERTIES LABELS "integration;divergence;barrier;regression;BUG-POSTBARRIER-TWOHALVES")
+
+# ============================================================================
 # Exec 集成测试
 # ============================================================================
 add_catch_test(integration_warp_state

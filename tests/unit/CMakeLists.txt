@@ -52,6 +52,17 @@ add_catch_test(unit_barrier_verification
 set_tests_properties(unit_barrier_verification PROPERTIES LABELS "unit;barrier;fence")
 
 # ============================================================================
+# Barrier Regression (BUG-POSTBARRIER-TWOHALVES)
+# RED PHASE: Divergent warp splits into two halves that hit the same barrier
+# at different times. The second release must NOT lose the first half from
+# active_mask. Without fix: active_mask becomes 0000FFFF instead of FFFFFFFF.
+# ============================================================================
+add_catch_test(unit_post_barrier_two_halves
+    barrier/test_post_barrier_two_halves.cpp
+)
+set_tests_properties(unit_post_barrier_two_halves PROPERTIES LABELS "unit;barrier;divergence;regression;BUG-POSTBARRIER-TWOHALVES")
+
+# ============================================================================
 # SIMT 单元测试
 # ============================================================================
 add_catch_test(unit_simt_stack_entry
