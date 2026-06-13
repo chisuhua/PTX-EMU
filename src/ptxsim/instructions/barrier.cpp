@@ -170,7 +170,11 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
                     warp_state.threads[i].status = ptxsim::ThreadStatus::Active;
                 }
             }
-            warp_ctx->set_active_mask(init_wbar.arrived_mask);
+            // BUG-POSTBARRIER-TWOHALVES fix: OR with existing active_mask
+            // to preserve lanes already released by a prior barrier call
+            // (e.g. when a divergent warp hits the same barrier in two halves).
+            warp_ctx->set_active_mask(
+                warp_ctx->get_active_mask() | init_wbar.arrived_mask);
             warp_state.current_wbar_id = -1;
             set_pc_overridden(true);
         } else {
@@ -235,7 +239,10 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
             }
         }
 
-        warp_ctx->set_active_mask(wbar.arrived_mask);
+        // BUG-POSTBARRIER-TWOHALVES fix: OR with existing active_mask
+        // to preserve lanes already released by a prior barrier call.
+        warp_ctx->set_active_mask(
+            warp_ctx->get_active_mask() | wbar.arrived_mask);
 
         warp_state.current_wbar_id = -1;
         set_pc_overridden(true);
