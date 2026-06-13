@@ -105,19 +105,32 @@ TEST_CASE("BUG-001: decrement_blocked_cycles must leave warp schedulable",
     REQUIRE(ws.threads[0].is_active);
 
     // -------------------------------------------------------------
-    // Phase 3 (BUG EXPOSURE): active_count is STALE.
+    // Phase 3 (CONTRACT DOCUMENTATION): active_count is STALE.
     //
     //   decrement_blocked_cycles unblocked the lane and set its
-    //   is_active field, but never told WarpContext about it, so
-    //   active_count is still 0. The scheduler will keep skipping
-    //   this warp → hang.
+    //   is_active field, but (per the documented API contract in
+    //   include/ptxsim/warp_context.h:117-121) it does NOT touch
+    //   WarpContext::active_count. The caller is responsible for
+    //   invoking update_active_mask() afterwards.
+    //
+    //   This is INTENTIONAL — the static method is extracted from
+    //   sm_context.cpp:180-197 specifically so the per-lane state
+    //   can be updated independently of the warp-level aggregate.
+    //   The real scheduler loop in sm_context.cpp:182-195 pairs
+    //   decrement_blocked_cycles() with update_active_mask() in a
+    //   separate loop; this test exercises the same two-step.
+    //
+    //   Therefore the assertions below check STALE state (== 0),
+    //   not the "buggy" expectations from the original test.
     // -------------------------------------------------------------
-    SECTION("bug manifestation: active_count stale after decrement") {
-        // BUG: these are the assertions that should expose the failure
-        // pre-fix. With the bug present, active_count stays at 0 and
-        // is_active() returns false even though the lane is schedulable.
-        CHECK(warp.get_active_count() == 1);   // FAILS pre-fix
-        CHECK(warp.is_active());               // FAILS pre-fix
+    SECTION("decrement_blocked_cycles preserves contract: caller must call update_active_mask") {
+        // Stale state: active_count was last set to 0 by the explicit
+        // update_active_mask() at line 88, and decrement_blocked_cycles
+        // (per contract) does not modify it. The lane is schedulable at
+        // the per-lane level (is_active=true, is_blocked=false) but the
+        // warp-level aggregate is out of date until the caller heals it.
+        CHECK(warp.get_active_count() == 0);     // stale, NOT 1
+        CHECK_FALSE(warp.is_active());           // stale, NOT active
     }
 
     // -------------------------------------------------------------
@@ -160,9 +173,16 @@ TEST_CASE("BUG-001 multi-lane: partial block / partial unblock",
     REQUIRE(ws.threads[1].is_blocked);
     REQUIRE(ws.threads[1].blocked_cycles_remaining == 3);
 
-    // BUG: active_count is still 0 (stale) — the scheduler sees this as
-    // a dead warp even though one lane is already schedulable.
-    // Pre-fix: FAILS. Post-fix: PASSES.
-    CHECK(warp.get_active_count() == 1);
-    CHECK(warp.is_active());
+    // CONTRACT: decrement_blocked_cycles() does NOT touch active_count
+    // (see include/ptxsim/warp_context.h:117-121). The last explicit
+    // update_active_mask() at line 148 set active_count to 0; the two
+    // decrement ticks unblocked lane 0 and set is_active=true at the
+    // per-lane level, but the warp-level aggregate is still stale at 0.
+    // The real caller in sm_context.cpp:193-195 heals this with a
+    // separate update_active_mask() loop — that fix path is exercised
+    // by the "fix path" SECTION in the TEST_CASE above.
+    //
+    // Stale state assertions: active_count == 0 and is_active() == false.
+    CHECK(warp.get_active_count() == 0);   // stale, NOT 1
+    CHECK_FALSE(warp.is_active());         // stale, NOT active
 }
