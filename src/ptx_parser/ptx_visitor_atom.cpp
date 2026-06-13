@@ -8,18 +8,81 @@ using namespace ptxir::factory;
 #define VISITOR_ATOM_INSTR(openum, opstr, opname, opcount)                             \
 std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
-                                                                                    \
+                                                                                     \
     std::vector<OperandContext> operands;                                          \
     auto operandCtxs = ctx->getRuleContexts<ptxparser::ptxParser::OperandContext>();     \
-    for (size_t i = 0; i < std::min(operandCtxs.size(), (size_t)opcount); ++i) {   \
-        operands.push_back(createOperandFromContext(operandCtxs[i]));              \
-    }                                                                               \
-                                                                                    \
+                                                                                     \
+    /* atom grammar:                                                                  \
+     *   atomInst: ATOM atomQualifiers atomOp typeSpecifier vectorSpec?              \
+     *              operand COMMA addressExpr COMMA operand (COMMA operand)? SEMI     \
+     *                                                                                \
+     * operandCtxs layout:                                                            \
+     *   operandCtxs[0] = dst                                                         \
+     *   operandCtxs[1] = src                                                         \
+     *   operandCtxs[2] = cmp (optional, only for atom.cas)                           \
+     * ctx->addressExpr() = middle address expression (the [addr] part)              \
+     *                                                                                \
+     * The previous implementation only collected dst+src via                         \
+     * getRuleContexts<OperandContext>() and silently dropped the middle             \
+     * addressExpr, yielding 2 operands instead of the 3 (or 4 for cas)              \
+     * that ptx_op.def (X(S_ATOM, atom, Atom, 3, ATOM_INSTR, atomic)) requires.       \
+     *                                                                                \
+     * Fix: explicitly convert ctx->addressExpr() into an AddrOperand and            \
+     * insert it between dst and src so the resulting operands vector                \
+     * contains exactly {dst, addr, src[, cmp]}.                                      \
+     */                                                                               \
+    if (operandCtxs.size() >= 2 && ctx->addressExpr() != nullptr) {              \
+        operands.push_back(createOperandFromContext(operandCtxs[0]));              \
+        auto *addrExprCtx = ctx->addressExpr();                                    \
+        AddrOperand addr;                                                          \
+        addr.space = AddrOperand::Space::GLOBAL;                                   \
+        addr.offsetType = AddrOperand::OffsetType::IMMEDIATE;                      \
+        addr.immediateOffset = "0";                                                \
+        if (addrExprCtx->operand()) {                                              \
+            auto baseOp = createOperandFromContext(addrExprCtx->operand());        \
+            if (baseOp.kind() == OperandKind::REG) {                               \
+                const auto &reg = std::get<RegOperand>(baseOp.data);               \
+                addr.baseSymbol = reg.fullName();                                  \
+                addr.id = reg.fullName();                                          \
+                addr.offsetType = AddrOperand::OffsetType::REGISTER;               \
+                addr.registerOffset = std::make_shared<OperandContext>(baseOp);    \
+            } else {                                                               \
+                std::string raw = addrExprCtx->getText();                          \
+                if (!raw.empty() && (raw.front() == '[' || raw.back() == ']')) {   \
+                    if (raw.front() == '[') raw.erase(raw.begin());                \
+                    if (!raw.empty() && raw.back() == ']') raw.pop_back();          \
+                }                                                                  \
+                if (!raw.empty() && (raw.front() == '%' || raw.front() == '$')) {  \
+                    raw.erase(raw.begin());                                        \
+                }                                                                  \
+                addr.baseSymbol = raw;                                             \
+                addr.id = raw;                                                     \
+            }                                                                      \
+        }                                                                          \
+        if (addrExprCtx->immediate()) {                                            \
+            auto *immCtx = addrExprCtx->immediate();                               \
+            addr.offsetType = AddrOperand::OffsetType::IMMEDIATE;                  \
+            addr.registerOffset.reset();                                           \
+            addr.immediateOffset = immCtx->MINUS()                                 \
+                ? ("-" + immCtx->IMMEDIATE()->getText())                           \
+                : immCtx->IMMEDIATE()->getText();                                  \
+        }                                                                          \
+        operands.push_back(OperandContext{addr});                                  \
+        operands.push_back(createOperandFromContext(operandCtxs[1]));              \
+        for (size_t i = 2; i < std::min(operandCtxs.size(), (size_t)opcount); ++i) { \
+            operands.push_back(createOperandFromContext(operandCtxs[i]));          \
+        }                                                                          \
+    } else {                                                                       \
+        for (size_t i = 0; i < std::min(operandCtxs.size(), (size_t)opcount); ++i) { \
+            operands.push_back(createOperandFromContext(operandCtxs[i]));          \
+        }                                                                          \
+    }                                                                              \
+                                                                                     \
     auto stmtCtx = makeAtomInstr(extractQualifiersFromContext(ctx), operands,      \
-                                 std::min((int)operandCtxs.size(), (int)opcount),  \
+                                 (int)operands.size(),                              \
                                  ctx->getText());                                    \
     currentKernel->kernelStatements.push_back(stmtCtx);                            \
-                                                                                    \
+                                                                                     \
     return nullptr;                                                                 \
 }
 
