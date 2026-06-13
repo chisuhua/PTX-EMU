@@ -256,6 +256,7 @@ if ! skip_tier 5; then
     run_regex_tests "unit_handle_branch" "Branch + SIMT integration (unit)"
     run_regex_tests "test_warp_state|test_warp_state_integrated" "Warp state (unit + integrated)"
     run_regex_tests "unit_exec_layer_e1_e3|unit_exec_integration_h1_h4" "Execution layer hypotheses (E1-E3/H1-H4, unit)"
+    run_regex_tests "unit_ret_handler_divergent" "BUG-RETHANG: ret handler on divergent warp"
 fi
 
 # Tier 6: Multi-Instruction Flows (barrier, sync)

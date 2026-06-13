@@ -176,6 +176,15 @@ add_catch_test(unit_bra_pred_divergent
 set_tests_properties(unit_bra_pred_divergent PROPERTIES LABELS "unit;exec;regression;BUG-BRAPRED")
 
 # ============================================================================
+# Exec Regression Tests (BUG-RETHANG)
+# RED PHASE: These tests must FAIL on unpatched code (ret on divergent warp hangs).
+# ============================================================================
+add_catch_test(unit_ret_handler_divergent
+    exec/test_ret_handler_divergent.cpp
+)
+set_tests_properties(unit_ret_handler_divergent PROPERTIES LABELS "unit;exec;regression;BUG-RETHANG")
+
+# ============================================================================
 # PC 单元测试
 # ============================================================================
 add_catch_test(unit_pc_management
