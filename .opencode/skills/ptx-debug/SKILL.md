@@ -823,6 +823,43 @@ include/ptxsim/wbar.h                    - Wbar 数据结构定义
 
 ---
 
+## 自愈型 Bug 检测（重要）
+
+### 问题：update_active_mask() 自愈
+`execute_warp_instruction()` 末尾调用 `update_active_mask()`，从 `warp_state.threads[i].is_active` 重新计算 `active_mask[]`。这意味着：
+- 一条指令内临时破坏 `active_mask[]`（如 barrier `set_active_mask(arrived_mask)` 覆写）
+- 下一条指令时 `update_active_mask()` 自动从线程状态恢复
+- 端到端集成测试只看 `is_finished()` → **可能 PASS 即使有 bug**
+
+### 检测方法
+1. **单元测试必须**：在特定调用后直接断言 `get_active_mask()`，不要只检查 `is_finished()`
+2. **集成测试补充**：检查所有 lane 的最终 PC — 如果某些 lane 停在 barrier PC 而非 post-barrier PC，说明有 lane 丢失
+3. **生产症状检查**：`simpleGEMM-*` 不再卡住 = fix 生效；但结果是否正确 = divergence reconciliation 是否完整（独立问题）
+
+### 诊断命令
+```bash
+# 1. 单元测试 — 验证 set_active_mask 行为（RED guard）
+ctest -R "post_barrier_two_halves" -V
+
+# 2. 集成测试 — 仅看 warp 是否完成（smoke test，可能被骗过）
+ctest -R "integration_post_barrier_two_halves" -V
+
+# 3. 真实症状 — 看 lane 是否全部推进
+for t in int float double; do
+  timeout 5 ./build/bin/simpleGEMM-$t 2>&1 | tail -1
+done
+```
+
+### 典型症状对照表
+| 检查 | 含义 |
+|------|------|
+| `ctest -R "post_barrier"` RED | **bug 存在** — set_active_mask 行为不对 |
+| `ctest -R "integration_post_barrier"` PASS 但 simpleGEMM 仍输出 0 | 自愈型 bug — warp 完成但数据错误（divergence reconciliation 独立 bug） |
+| `simpleGEMM` 卡住 | **bug 存在** — active_mask 被破坏后没有 lane 可调度 |
+| `simpleGEMM` 退出但结果非 0 | fix 生效，divergence reconciliation 正常 |
+
+---
+
 ##  经验教训
 
 1. **日志文件大小**: trace 级别可能产生数百 MB 日志

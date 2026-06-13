@@ -286,3 +286,40 @@ grep "S_BAR\|S_BAR_WARP_SYNC" src/ptx_parser/ptx_visitor_barrier.cpp
 | 发散线程未参与屏障 | 动态掩码构建排除了它们 | `barrier.cpp:117-126` |
 | reconvergence_pc 错误 | CFG pass 未修正或 visitor 计算有误 | `ptx_visitor_barrier.cpp:62` / CFG pass |
 | 屏障后 active_mask 不正确 | `set_active_mask` 在 `update_active_mask` 之前被调用 | `barrier.cpp:167` vs `warp_context.cpp:195` |
+| **divergent warp 两半分别到达 barrier 后第一半 lane 丢失** | **第二次 barrier 释放 `set_active_mask(arrived_mask)` 覆写而非合并** | **`barrier.cpp:176` 和 `barrier.cpp:244`** |
+
+### 两半 barrier 分歧模式（BUG-POSTBARRIER-TWOHALVES）
+
+**触发条件**：divergent warp 的两条路径在不同 cycle 到达同一 `bar.warp.sync`（典型场景：CTA 内两条 divergent 路径执行不同长度的循环后汇合于 `__syncthreads()`）。
+
+**调用序列**：
+1. 路径 A 到达 barrier PC → `force_reconvergence` 路径 → `wbar.init(arrived_mask=路径A)` → 所有路径 A lane 到达 → `set_active_mask(路径A)` → `current_wbar_id = -1`
+2. 路径 B 到达 barrier PC → `force_reconvergence` 路径再次进入（`current_wbar_id < 0`）→ `wbar.init(arrived_mask=路径B)` → 所有路径 B lane 到达 → `set_active_mask(路径B)` ← **覆写！丢失路径 A 的 lane**
+
+**症状**：路径 A 的 lane 不再在 `active_mask[]` 中，调度器永不调度它们。但 `update_active_mask()` 会在下一条指令从 `warp_state.threads[i].is_active` 重新计算 `active_mask[]`，**自愈了** lost lanes — 这就是为什么集成测试可能 PASS 而单元测试能 RED。
+
+**修复**：在 `barrier.cpp:176` 和 `barrier.cpp:244`（两处 barrier 完成点），将
+```cpp
+warp_ctx->set_active_mask(arrived_mask);
+```
+改为
+```cpp
+warp_ctx->set_active_mask(warp_ctx->get_active_mask() | arrived_mask);
+```
+
+**禁忌**：不要改 `set_active_mask` 全局语义为 OR！ret handler 用 `set_active_mask(0u)` 显式清零，OR 语义会破坏。OR 逻辑必须放在 caller。
+
+**诊断命令**：
+```bash
+# 单测直接测 set_active_mask 行为（捕获 bug）
+ctest -R "post_barrier_two_halves" -V
+
+# 集成测试：仅看 warp 是否完成（会被 update_active_mask 自愈骗过）
+ctest -R "integration_post_barrier_two_halves" -V
+# 真实症状检查：simpleGEMM-{int,float,double} 是否不再卡住
+for t in int float double; do timeout 5 ./build/bin/simpleGEMM-$t 2>&1 | tail -1; done
+```
+
+**回归测试**：
+- `tests/unit/barrier/test_post_barrier_two_halves.cpp`（单元，52 assertions RED→GREEN）
+- `tests/integration/divergence/test_post_barrier_two_halves.cpp`（集成，smoke test）

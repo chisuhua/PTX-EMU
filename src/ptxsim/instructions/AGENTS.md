@@ -56,3 +56,40 @@ cmake --build build --target ptxsim     # Build instruction handlers
 - `wmma.cpp` — MMA/WMMA instructions not implemented
 - `atomic.cpp` — Atomic operations are stubs
 - `tensor.cpp` — Tensor operations not implemented
+
+## KNOWN ISSUES
+
+### BUG-RETHANG: ret handler must mark ALL lanes exited (FIXED 2026-06)
+`RetHandler::processOperation` must mark the entire warp as exited, not just the
+executing lane. A divergent warp that reaches `ret` has many lanes stalled on
+different paths; only the active lane was getting `state=EXIT`, so
+`ThreadContext::is_exited()` (`state == EXIT`) was false for the rest and
+`WarpContext::is_finished()` never returned true.
+
+**Rule**: Any instruction handler that semantically ends the kernel (ret, exit)
+must update BOTH `warp_state.threads[i]` fields AND `ThreadContext::state` for
+all 32 lanes, then call `update_active_mask()`.
+
+### BUG-POSTBARRIER-TWOHALVES: barrier handler must OR arrived_mask (FIXED 2026-06)
+When a divergent warp hits a barrier in two halves at different times, the
+second release would overwrite `active_mask` with only the second half, losing
+lanes released by the first. Fix: at both barrier completion sites, call
+`set_active_mask(get_active_mask() | arrived_mask)` instead of
+`set_active_mask(arrived_mask)`.
+
+**Rule**: Handler functions that set `active_mask` from partial-warp data must
+OR with the existing mask, not overwrite. This is because other lanes may
+have been released by a prior handler call (e.g., the force_reconvergence path
+re-initializes a fresh wbar for each arriving half).
+
+**Do NOT fix `set_active_mask` semantics globally** to be additive — the
+ret handler relies on overwrite semantics (`set_active_mask(0u)` to clear).
+The OR logic must live in the CALLER.
+
+### SCOPE-OF-EFFECT PRINCIPLE
+Instruction handlers that affect warp-level state (ret, barrier, branch
+reconvergence) must consider ALL lanes, not just the executing one. The
+scheduler's `update_active_mask()` will self-heal `active_mask[]` from
+`warp_state.threads[i].is_active`, but handler logic that reads `active_mask`
+mid-instruction may see stale state. Pattern: after modifying per-thread state,
+call `update_active_mask()` to reconcile before any scheduler-visible call.
