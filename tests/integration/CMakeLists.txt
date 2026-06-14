@@ -110,6 +110,17 @@ add_catch_test(integration_post_barrier_two_halves
 set_tests_properties(integration_post_barrier_two_halves PROPERTIES LABELS "integration;divergence;barrier;regression;BUG-POSTBARRIER-TWOHALVES")
 
 # ============================================================================
+# Barrier Regression (BUG-RECONVERGENCE-SIMPLEGEMM)
+# RED PHASE: simpleGEMM kernel — two divergent halves converge at barrier.
+# All 32 lanes must reach the post-barrier main loop. Currently, lanes 0-15
+# get stuck at the barrier (wbar initialized with mask=0xFFFF0000 only).
+# ============================================================================
+add_catch_test(integration_post_barrier_reconvergence_simplegemm
+    divergence/test_post_barrier_reconvergence_simplegemm.cpp
+)
+set_tests_properties(integration_post_barrier_reconvergence_simplegemm PROPERTIES LABELS "integration;divergence;barrier;regression;BUG-RECONVERGENCE-SIMPLEGEMM")
+
+# ============================================================================
 # Exec 集成测试
 # ============================================================================
 add_catch_test(integration_warp_state

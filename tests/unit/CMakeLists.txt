@@ -63,6 +63,20 @@ add_catch_test(unit_post_barrier_two_halves
 set_tests_properties(unit_post_barrier_two_halves PROPERTIES LABELS "unit;barrier;divergence;regression;BUG-POSTBARRIER-TWOHALVES")
 
 # ============================================================================
+# Barrier Regression (BUG-RECONVERGENCE-SIMPLEGEMM)
+# RED PHASE: simpleGEMM kernel — lanes 0-15 take a_tile/b_tile loops while
+# lanes 16-31 skip them. Both halves converge at bar.warp.sync. The barrier
+# must be initialized with the FULL static_mask (0xFFFFFFFF), not the
+# dynamic_mask that excludes lanes still in flight in the divergent paths.
+# Without fix: wbar.participation_mask = 0xFFFF0000; only 16 lanes released;
+# lanes 0-15 stuck at barrier forever; warp never finishes GEMM main loop.
+# ============================================================================
+add_catch_test(unit_barrier_divergence_reconvergence_simplegemm
+    barrier/test_barrier_divergence_reconvergence_simplegemm.cpp
+)
+set_tests_properties(unit_barrier_divergence_reconvergence_simplegemm PROPERTIES LABELS "unit;barrier;divergence;regression;BUG-RECONVERGENCE-SIMPLEGEMM")
+
+# ============================================================================
 # SIMT 单元测试
 # ============================================================================
 add_catch_test(unit_simt_stack_entry
