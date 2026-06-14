@@ -177,42 +177,43 @@ bool GPUContext::execute_kernel_internal(
     std::vector<StatementContext> &statements,
     std::map<std::string, Symtable *> &name2Sym,
     std::map<std::string, int> &label2pc, const KernelLaunchRequest &request) {
-    // 计算总的CTA数量
     int ctaNum = gridDim.x * gridDim.y * gridDim.z;
 
-    // 为每个CTA创建上下文并尝试添加到SM
     for (int i = 0; i < ctaNum; i++) {
         Dim3 blockIdx;
         blockIdx.z = i / (gridDim.x * gridDim.y);
         blockIdx.y = i % (gridDim.x * gridDim.y) / (gridDim.x);
         blockIdx.x = i % (gridDim.x * gridDim.y) % (gridDim.x);
 
-        // 创建CTAContext
         auto cta = std::make_unique<CTAContext>();
         cta->init(gridDim, blockDim, blockIdx, statements, &name2Sym, label2pc,
-                  request.local_memory_base, request.local_mem_per_thread, request.shared_mem_size);
+                  request.local_memory_base, request.local_mem_per_thread,
+                  request.shared_mem_size);
 
-        // 尝试将CTA添加到一个可用的SM
-        bool added = false;
+        // BUG-SM-ADMISSION-OVERFLOW: add_block 现在对"资源不足"返回 true
+        // (进 pending),仅对"块绝对过大"返回 false → 跳出,无需重建试其他 SM
+        bool accepted_anywhere = false;
         for (auto &sm : sms) {
-            // 创建临时unique_ptr来接收add_block的结果
-            // 如果add_block返回false，临时变量会在循环结束时自动释放
             std::unique_ptr<CTAContext> block_to_add(std::move(cta));
-            added = sm->add_block(std::move(block_to_add));
-            if (added) {
+            if (sm->add_block(std::move(block_to_add))) {
+                accepted_anywhere = true;
                 break;
             }
-            // add_block失败，需要重新创建cta并继续尝试下一个SM
-            cta = std::make_unique<CTAContext>();
-            cta->init(gridDim, blockDim, blockIdx, statements, &name2Sym, label2pc,
-                      request.local_memory_base, request.local_mem_per_thread, request.shared_mem_size);
-        }
-
-        if (!added) {
-            std::cerr << "Error: Could not add block " << i << " to any SM"
-                      << std::endl;
+            // 块过大无法 fit,其他 SM 也不行 → 立即返回 false
+            std::cerr << "Error: block " << i
+                      << " resource request exceeds SM capacity" << std::endl;
             return false;
         }
+
+        if (!accepted_anywhere) {
+            std::cerr << "Error: no SMs available" << std::endl;
+            return false;
+        }
+    }
+
+    // BUG-SM-ADMISSION-OVERFLOW: 全局末尾再 refill,减少首轮 cross-SM 不均
+    for (auto &sm : sms) {
+        sm->try_admit_pending_blocks();
     }
 
     std::cout << "Launched kernel with " << ctaNum << " CTAs" << std::endl;

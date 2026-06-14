@@ -62,25 +62,43 @@ bool SMContext::add_block(std::unique_ptr<CTAContext> block) {
     size_t required_shared_mem = block->get_shared_memory_requirement();
     int required_warps = block->get_warp_count();
 
+    // BUG-SM-ADMISSION-OVERFLOW: 拒绝"绝对无法 fit"的块
+    // 单 block 所需资源 > SM 总容量 → 直接失败(原语义)
+    // 否则进 pending_blocks_,等待资源释放
+    if (required_warps > max_warps_per_sm) {
+        PTX_DEBUG_EMU(
+            "Block requires %d warps > SM max %d — cannot ever fit, dropping",
+            required_warps, max_warps_per_sm);
+        return false;
+    }
+    if (required_shared_mem > max_shared_mem) {
+        PTX_DEBUG_EMU(
+            "Block requires %zu shared mem > SM max %zu — cannot ever fit, dropping",
+            required_shared_mem, max_shared_mem);
+        return false;
+    }
+
     // 2. 分配reservation_id并设置到CTAContext
     int reservation_id = current_reservation_id_++;
     block->set_reservation_id(reservation_id);
 
     // 3. 检查资源是否足够
     if (!reserve_resources(required_shared_mem, required_warps)) {
-        PTX_DEBUG_EMU("Failed to reserve resources for block: "
-                      "shared_mem=%zu, warps=%d",
-                      required_shared_mem, required_warps);
-        return false; // 资源不足
+        // BUG-SM-ADMISSION-OVERFLOW fix: 不丢弃,进 pending 队列
+        // 资源释放后由 try_admit_pending_blocks() 重新 admit
+        PTX_DEBUG_EMU(
+            "Block queued in pending (SM full): shared_mem=%zu, warps=%d, "
+            "pending_count=%zu",
+            required_shared_mem, required_warps, pending_blocks_.size() + 1);
+        pending_blocks_.push_back(std::move(block));
+        return true;
     }
 
-    // 3. 分配共享内存
     void *shared_mem_space = nullptr;
     if (required_shared_mem > 0 && shared_mem_manager_) {
         shared_mem_space = shared_mem_manager_->allocate(
             required_shared_mem, block->get_reservation_id());
         if (!shared_mem_space) {
-            // 分配失败，释放预留
             release_resources(block->get_reservation_id());
             PTX_DEBUG_EMU(
                 "Failed to allocate shared memory of size %zu for block %d",
@@ -89,25 +107,17 @@ bool SMContext::add_block(std::unique_ptr<CTAContext> block) {
         }
     }
 
-    // 4. 构建共享内存符号表
     block->build_shared_memory_symbol_table(shared_mem_space);
-
-    // 5. 更新已分配的共享内存统计
     allocated_shared_mem += required_shared_mem;
 
-    // 6. 分配物理ID并记录块信息
     int physical_block_id = next_physical_block_id++;
     physical_block_warp_counts[physical_block_id] = required_warps;
-
-    // 7. 添加到管理列表 - 直接使用unique_ptr
     managed_blocks.insert({physical_block_id, std::move(block)});
 
-    // 8. 获取warp所有权并添加到SM
     auto block_warps = managed_blocks[physical_block_id]->release_warps();
     for (auto &warp : block_warps) {
         warp->set_physical_block_id(physical_block_id);
         warp->set_physical_warp_id(next_physical_warp_id++);
-        // 设置SMContext指针
         warp->set_sm_context(this);
         warps.push_back(std::move(warp));
         warp_scheduler->add_warp(warps.back().get());
@@ -121,6 +131,61 @@ bool SMContext::add_block(std::unique_ptr<CTAContext> block) {
                   required_shared_mem, required_warps, sm_id_);
 
     return true;
+}
+
+void SMContext::try_admit_pending_blocks() {
+    // FIFO admit:队首 block 资源能 fit 就 admit,继续检查下一个
+    // 直到队首 block 资源 fit 失败(说明当前 SM 已满)或队列空
+    while (!pending_blocks_.empty()) {
+        auto &front_block = pending_blocks_.front();
+        size_t req_smem = front_block->get_shared_memory_requirement();
+        int req_warps = front_block->get_warp_count();
+
+        if (!reserve_resources(req_smem, req_warps)) {
+            // 资源仍不足(被其他 admitted block 占用),停止
+            // 下一个 cleanup_finished_blocks() 释放资源后再试
+            return;
+        }
+
+        // 资源够,admit 这个 block
+        std::unique_ptr<CTAContext> block = std::move(pending_blocks_.front());
+        pending_blocks_.pop_front();
+
+        // 后续逻辑与 add_block 主路径完全相同
+        int reservation_id = block->get_reservation_id();
+        void *shared_mem_space = nullptr;
+        if (req_smem > 0 && shared_mem_manager_) {
+            shared_mem_space = shared_mem_manager_->allocate(
+                req_smem, reservation_id);
+            if (!shared_mem_space) {
+                release_resources(reservation_id);
+                PTX_DEBUG_EMU(
+                    "try_admit_pending: smem alloc failed for pending block");
+                continue;
+            }
+        }
+
+        block->build_shared_memory_symbol_table(shared_mem_space);
+        allocated_shared_mem += req_smem;
+
+        int physical_block_id = next_physical_block_id++;
+        physical_block_warp_counts[physical_block_id] = req_warps;
+        managed_blocks.insert({physical_block_id, std::move(block)});
+
+        auto block_warps =
+            managed_blocks[physical_block_id]->release_warps();
+        for (auto &warp : block_warps) {
+            warp->set_physical_block_id(physical_block_id);
+            warp->set_physical_warp_id(next_physical_warp_id++);
+            warp->set_sm_context(this);
+            warps.push_back(std::move(warp));
+            warp_scheduler->add_warp(warps.back().get());
+        }
+
+        PTX_DEBUG_EMU("try_admit_pending: admitted block with %zu smem, "
+                      "%d warps; %zu still pending",
+                      req_smem, req_warps, pending_blocks_.size());
+    }
 }
 
 EXE_STATE SMContext::exe_once() {
@@ -445,23 +510,20 @@ void SMContext::update_state() {
 }
 
 void SMContext::cleanup_finished_blocks() {
-    // 检查每个managed_block，看其相关的warp是否都已完成
     auto it = managed_blocks.begin();
     while (it != managed_blocks.end()) {
         auto physical_block_id = it->first;
         auto block = it->second.get();
         if (physical_block_warp_counts[physical_block_id] == 0) {
-            // 释放这个块的共享内存
             free_shared_memory(it->second.get());
-
             physical_block_warp_counts.erase(physical_block_id);
-            // 从managed_blocks中移除这个块
             it = managed_blocks.erase(it);
-
         } else {
             ++it;
         }
     }
+    // BUG-SM-ADMISSION-OVERFLOW: 资源刚释放,尝试重灌 pending
+    try_admit_pending_blocks();
 }
 
 void SMContext::free_shared_memory(CTAContext *block) {

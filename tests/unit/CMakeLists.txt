@@ -223,6 +223,17 @@ add_catch_test(unit_pc_management_advanced
 set_tests_properties(unit_pc_management_advanced PROPERTIES LABELS "unit;simt_entry")
 
 # ============================================================================
+# SM 单元测试 (BUG-SM-ADMISSION-OVERFLOW: streaming block admission)
+# RED PHASE: requires get_total_block_count/get_admitted_block_count/
+#            get_pending_block_count on SMContext, plus pending_blocks_
+#            queue in add_block (currently silent drop on overflow).
+# ============================================================================
+add_catch_test(unit_streaming_admission
+    sm/test_streaming_admission.cpp
+)
+set_tests_properties(unit_streaming_admission PROPERTIES LABELS "unit;sm;admission;streaming;regression;BUG-SM-ADMISSION-OVERFLOW")
+
+# ============================================================================
 # Sync 单元测试
 # ============================================================================
 add_catch_test(unit_sync_mechanism

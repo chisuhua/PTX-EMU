@@ -8,6 +8,7 @@
 #include "ptxsim/execution_types.h"
 #include "ptxsim/warp_context.h"
 #include "ptxsim/warp_scheduler.h"
+#include <deque>
 #include <map>
 #include <memory>
 #include <set> // 添加set头文件
@@ -72,11 +73,27 @@ public:
     // 清理已完成的块
     void cleanup_finished_blocks();
 
+    // 从 pending_blocks_ 队列尽可能多地 admit 新 block
+    // 由 cleanup_finished_blocks() 和 add_block() 在资源释放后自动调用
+    // 公开此方法以便测试和 GPUContext::execute_kernel_internal 显式触发
+    void try_admit_pending_blocks();
+
     // 预留资源
     bool reserve_resources(size_t shared_mem_size, int warp_count);
 
     // 释放资源
     void release_resources(int reservation_id);
+
+    // BUG-SM-ADMISSION-OVERFLOW: streaming admission 观察接口
+    // get_admitted_block_count() == managed_blocks.size()
+    // get_pending_block_count()  == pending_blocks_.size()
+    // get_total_block_count()    == 上述两者之和
+    // 不变式: add_block 成功调用后, total 必然 +1,绝不静默丢块
+    size_t get_admitted_block_count() const { return managed_blocks.size(); }
+    size_t get_pending_block_count() const { return pending_blocks_.size(); }
+    size_t get_total_block_count() const {
+        return managed_blocks.size() + pending_blocks_.size();
+    }
 
     // 获取资源使用统计
     struct ResourceStats {
@@ -135,6 +152,13 @@ private:
 
     // 使用unique_ptr管理CTAContext的生命周期
     std::map<int, std::unique_ptr<CTAContext>> managed_blocks;
+
+    // BUG-SM-ADMISSION-OVERFLOW: blocks 等待 admit 队列(FIFO)
+    // 当 add_block 因资源不足失败时,块进 pending_blocks_
+    // cleanup_finished_blocks() 后, try_admit_pending_blocks() 自动重灌
+    // 不变式: managed_blocks.size() + pending_blocks_.size() ==
+    //          累计成功 add_block 调用次数
+    std::deque<std::unique_ptr<CTAContext>> pending_blocks_;
 
     // 记录每个块的warp总数和已完成warp数（使用物理ID）
     std::map<int, int> physical_block_warp_counts;
