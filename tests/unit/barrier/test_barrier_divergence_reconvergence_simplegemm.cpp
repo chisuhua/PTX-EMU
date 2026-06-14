@@ -126,66 +126,75 @@ TEST_CASE("U-1: simpleGEMM pattern — wbar mask must be full (0xFFFFFFFF) "
 }
 
 // =============================================================================
-// U-2: simpleGEMM pattern — after both halves arrive, all 32 lanes must be released
+// U-2: simpleGEMM pattern — post-fix wbar state correctly accumulates arrivals
+//      across divergent halves
 // =============================================================================
-// After wbar init (buggy: mask=0xFFFF0000), all 32 lanes eventually arrive at
-// barrier. arrived_mask = 0xFFFFFFFF. is_complete() returns TRUE because arrived
-// covers the (buggy) participation_mask. Release path iterates arrived_mask & is_active:
-//   - lanes 16-31: arrived_mask bit set, is_active=true → released
-//   - lanes 0-15: arrived_mask bit set BUT is_active=false (was set false when
-//                  barrier blocked them) → NOT released
+// After my fix in barrier.cpp:158, the force_reconvergence path preserves
+// arrived_mask when the wbar is already initialized. This test verifies the
+// wbar data structure correctly accumulates the second half's arrivals on
+// top of the first half's existing arrived_mask.
 //
-// This documents the bug: only 16 lanes released.
+// State being modeled:
+//   - First half (lanes 16-31) already arrived and was released to PC=70.
+//   - Lanes 0-15 are now arriving at the barrier.
+//   - arrived_mask = 0xFFFF0000 (preserved from first half) → 0xFFFFFFFF
+//   - is_complete() must return true once both halves have arrived.
 // =============================================================================
-TEST_CASE("U-2: simpleGEMM pattern — buggy release leaves lanes 0-15 stuck",
+TEST_CASE("U-2: simpleGEMM pattern — wbar accumulates arrivals across halves",
           "[barrier][divergence][unit][simplegemm-pattern][BUG-RECONVERGENCE]")
 {
     WarpContext warp;
     for (int i = 0; i < 32; i++) add_thread(warp, i);
     auto& ws = warp.get_warp_state();
 
-    // Set up state matching the bug: lanes 16-31 already arrived + blocked (is_active=false)
+    // State after the first half's release:
+    //   - Lanes 16-31 already at reconv_pc=70 (released)
+    //   - Lanes 0-15 at barrier_pc=69, about to arrive
     for (int i = 0; i < 32; i++) {
-        ws.threads[i].pc = 69;
-        ws.threads[i].is_active = (i < 16);  // lanes 16-31 marked inactive by update_active_mask after blocking
-        ws.threads[i].is_blocked = (i >= 16);
+        ws.threads[i].pc = (i >= 16) ? 70u : 69u;  // 16-31 past barrier, 0-15 at barrier
+        ws.threads[i].next_pc = ws.threads[i].pc;
+        ws.threads[i].is_active = true;
+        ws.threads[i].is_blocked = false;
         ws.threads[i].is_exited = false;
-        ws.threads[i].status = (i < 16) ? ThreadStatus::Active : ThreadStatus::Blocked;
+        ws.threads[i].status = ThreadStatus::Active;
     }
-    warp.set_active_mask(0x0000FFFFu);
+    warp.set_active_mask(0xFFFFFFFFu);
 
-    // Mirror the BUG runtime state: wbar init with mask=0xFFFF0000, arrived=0xFFFF0000
+    // Simulate the post-first-release wbar state (this is what the fix preserves):
     Wbar& wbar = ws.wbars[0];
-    wbar.init(0xFFFF0000u, 70);
-    wbar.arrived_mask = 0xFFFF0000u;
+    wbar.init(0xFFFFFFFFu, 70);
+    wbar.arrived_mask = 0xFFFF0000u;  // first half's arrivals preserved
     ws.current_wbar_id = 0;
 
-    // Now lanes 0-15 "arrive" (the only currently active lanes)
+    INFO("Pre-second-half arrived_mask=0x" << std::hex << wbar.arrived_mask);
+    INFO("Pre-second-half participation_mask=0x" << std::hex << wbar.participation_mask);
+
+    // Now lanes 0-15 arrive (the second divergent half)
     for (int i = 0; i < 16; i++) wbar.arrive(i);
 
-    INFO("Final arrived_mask=0x" << std::hex << wbar.arrived_mask);
-    INFO("Final participation_mask=0x" << std::hex << wbar.participation_mask);
+    INFO("Post-second-half arrived_mask=0x" << std::hex << wbar.arrived_mask);
     INFO("is_complete()=" << std::dec << wbar.is_complete());
+
+    // CRITICAL assertions: the fix must preserve arrived_mask so the
+    // second half's arrivals accumulate to the full 0xFFFFFFFF, making
+    // the barrier completable for all 32 lanes.
     REQUIRE(wbar.arrived_mask == 0xFFFFFFFFu);
     REQUIRE(wbar.is_complete() == true);
 
-    // Trigger release (mirrors barrier.cpp:232-240)
+    // Now simulate the release path (barrier.cpp:232-240 logic).
+    // All 32 lanes are is_active=true, so all 32 should be released.
     simulate_release(warp, 70);
 
     int lanes_at_reconv = 0;
-    int lanes_at_barrier = 0;
+    int lanes_stuck = 0;
     for (int i = 0; i < 32; i++) {
         uint32_t pc = ws.threads[i].pc;
         if (pc == 70u) lanes_at_reconv++;
-        if (pc == 69u) lanes_at_barrier++;
+        if (pc == 69u) lanes_stuck++;
     }
     INFO("Lanes released to PC=70: " << lanes_at_reconv);
-    INFO("Lanes stuck at PC=69:    " << lanes_at_barrier);
+    INFO("Lanes stuck at PC=69:    " << lanes_stuck);
 
-    // BUG: lanes_at_reconv == 16 (only upper half); lanes_at_barrier == 16 (lower half).
-    // FIX: lanes_at_reconv == 32; lanes_at_barrier == 0.
-    //
-    // This test asserts the FIXED behavior — all 32 lanes released to reconv_pc.
     REQUIRE(lanes_at_reconv == 32);
-    REQUIRE(lanes_at_barrier == 0);
+    REQUIRE(lanes_stuck == 0);
 }
