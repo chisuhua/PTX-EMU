@@ -155,7 +155,21 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
         // 应使用 PTX 指令的 static_mask 作为参与掩码，确保所有指定线程被计入。
         uint32_t participation_mask = static_mask;
 
-        init_wbar.init(participation_mask, reconvergence_pc);
+        // BUG-RECONVERGENCE-SIMPLEGEMM fix:
+        // If the wbar was already initialized (e.g., a divergent half of the warp
+        // already passed through this barrier and was released), preserve its
+        // arrived_mask instead of resetting it. Otherwise the first divergent
+        // half's arrival record is lost, and subsequent arrivals can never
+        // accumulate to the full participation_mask → barrier never completes
+        // → lanes that arrive later are stuck at barrier_pc forever.
+        if (!init_wbar.is_initialized) {
+            init_wbar.init(participation_mask, reconvergence_pc);
+        } else {
+            init_wbar.participation_mask = participation_mask;
+            init_wbar.reconvergence_pc = reconvergence_pc;
+            init_wbar.expected_count = __builtin_popcount(participation_mask);
+            init_wbar.is_initialized = true;
+        }
         init_wbar.arrive(lane_id);
 
         if (init_wbar.is_complete()) {
