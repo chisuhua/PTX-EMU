@@ -103,7 +103,7 @@ void ShrHandler::processOperation(ThreadContext *context, void **operands,
     void *src2 = operands[2];
     int bytes = getBytes(qualifiers);
 
-    process_shift_operation(dst, src1, src2, bytes, 
+    process_shift_operation(dst, src1, src2, bytes,
         [](uint64_t a, uint64_t b) { return a >> b; });
 }
 
