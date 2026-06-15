@@ -121,13 +121,25 @@ void PtxInterpreter::funcInterpreter(
         size_t local_mem_per_thread = 0;
 
         // 遍历语句查找本地内存声明，计算每个线程需要的本地内存大小
+        // BUGFIX: 之前使用 `localDecl.size` (FIXME 字段，几乎未设置)
+        //          导致 array_size 字段被忽略，对隐式 .local 数组
+        //          （如 cute_hello_tiled_copy 生成的 __local_depot0[8]）
+        //          仅分配 1 字节而非实际需要 8 字节。
+        //          现改为：`size` 已设置则用之（总字节数），否则
+        //          用 element_size * array_size（兼容 .b8 arr[N] 形式）。
         for (const auto &stmt : kernelContext->kernelStatements) {
             if (stmt.type == S_LOCAL) {
                 const auto &localDecl =
                     std::get<DeclarationInstr>(stmt.data);
                 size_t element_size = Q2bytes(localDecl.dataType);
-                size_t var_size = element_size *
-                                  (localDecl.size ? *localDecl.size : 1);
+                size_t var_size;
+                if (localDecl.size) {
+                    var_size = *localDecl.size;
+                } else {
+                    var_size =
+                        element_size *
+                        (localDecl.array_size > 0 ? localDecl.array_size : 1);
+                }
                 local_mem_per_thread += var_size;
             }
         }
