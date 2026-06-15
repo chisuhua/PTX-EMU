@@ -495,15 +495,28 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
                 // 如果没有设置共享内存基地址，则返回nullptr
                 return nullptr;
             }
-            // } else if (QvecHasQ(qualifiers, Qualifier::Q_LOCAL)) {
-            //     //
-            //     对于本地内存访问，寄存器中的值是偏移量，需要加上本地内存基地址
-            //     if (local_mem_space != nullptr) {
-            //         ret = (void *)((uint64_t)local_mem_space + reg_value);
-            //     } else {
-            //         // 如果没有设置本地内存基地址，则返回nullptr
-            //         return nullptr;
-            //     }
+        } else if (QvecHasQ(qualifiers, Qualifier::Q_LOCAL)) {
+            // BUGFIX: 本地内存访问修复
+            // cute_hello_tiled_copy 等使用 NVCC 自动溢出到 .local
+            // 存储的 C 数组 (e.g. `__local_depot0[8]`) 的 kernel
+            // 会通过 register offset 模式 (mov %SPL, __local_depot0;
+            // st.local [%SPL]) 访问本地内存,需要在 register 值之上
+            // 加上每线程的 local_mem_space 基址,否则会写到错误的
+            // 地址(0 或与全局内存重叠)。
+            if (local_mem_space != nullptr) {
+                uint64_t offset = reg_value;
+                if (name2Share != nullptr && !fa.baseSymbol.empty()) {
+                    auto it = name2Share->find(fa.baseSymbol);
+                    if (it != name2Share->end()) {
+                        offset += it->second->val;
+                    }
+                }
+                ret = (void *)((uint64_t)local_mem_space + offset);
+            } else {
+                PTX_WARN_EMU(
+                    "get_memory_addr: Q_LOCAL but local_mem_space is null!");
+                return nullptr;
+            }
         } else {
             ret = (void *)reg_value;
         }
