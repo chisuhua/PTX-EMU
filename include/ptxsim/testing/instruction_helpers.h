@@ -203,6 +203,32 @@ inline StatementContext make_bfe_u32(const std::string& dst,
     return ctx;
 }
 
+// Atomic add on global memory: atom.global.add.u32 dst, [addr], src
+// Address is read from a 64-bit register (matches ld.global / st.global
+// pattern: register holds the host pointer).
+inline StatementContext make_atom_global_add_u32(const std::string& dst,
+                                                 const std::string& addr_reg,
+                                                 const std::string& src) {
+    StatementContext ctx;
+    ctx.type = S_ATOM;
+    AtomInstr instr;
+    instr.qualifiers = {Qualifier::Q_U32, Qualifier::Q_GLOBAL,
+                        Qualifier::Q_ADD_ATOM};
+    instr.operands.push_back(OperandContext{RegOperand{dst, -1}});
+    AddrOperand addr;
+    addr.space = AddrOperand::Space::GLOBAL;
+    addr.baseSymbol = "";
+    addr.offsetType = AddrOperand::OffsetType::REGISTER;
+    addr.registerOffset =
+        std::make_shared<OperandContext>(RegOperand{addr_reg, -1});
+    instr.operands.push_back(OperandContext{addr});
+    instr.operands.push_back(OperandContext{RegOperand{src, -1}});
+    ctx.data = instr;
+    ctx.instructionText = "atom.global.add.u32 " + dst + ", [" + addr_reg +
+                          "], " + src + ";";
+    return ctx;
+}
+
 inline StatementContext make_cvt(const std::string& dst, const std::string& src,
                                  Qualifier dst_dtype, Qualifier src_dtype) {
     StatementContext ctx;

@@ -203,6 +203,11 @@ add_catch_test(integration_ptx_bitwise
 )
 set_tests_properties(integration_ptx_bitwise PROPERTIES LABELS "integration;ptx;bitwise")
 
+add_catch_test(integration_ptx_atom_global_add
+    ptx/test_atom_add.cpp
+)
+set_tests_properties(integration_ptx_atom_global_add PROPERTIES LABELS "integration;ptx;atom")
+
 add_catch_test(integration_ptx_cvt
     ptx/test_cvt.cpp
 )
