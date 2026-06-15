@@ -168,6 +168,15 @@ add_catch_test(unit_get_memory_addr_shared
 )
 set_tests_properties(unit_get_memory_addr_shared PROPERTIES LABELS "unit;memory;regression;BUG-NAME2SHARE")
 
+# BUG-VECOP-STALE: vecOp_phy_addrs per-ThreadContext stack regression
+# RED PHASE: On the unpatched (FIFO) code, two consecutive VEC acquires
+# alias the same buffer; on the fixed code, each acquire pushes a fresh
+# entry and the returned pointer references only the just-pushed one.
+add_catch_test(unit_vec_op_phy_addrs_stack
+    memory/test_vec_op_phy_addrs_stack.cpp
+)
+set_tests_properties(unit_vec_op_phy_addrs_stack PROPERTIES LABELS "unit;memory;ptx;vec;regression;BUG-VECOP-STALE")
+
 # ============================================================================
 # Exec 单元测试
 # ============================================================================

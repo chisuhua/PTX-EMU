@@ -45,20 +45,23 @@ void LdHandler::processOperation(ThreadContext *context, void *op[2],
   }
 
   size_t step = getBytes(qualifier);
-  auto vecAddr = context->vecOp_phy_addrs.front();
-  context->vecOp_phy_addrs.pop();
+  // BUGFIX: read VEC element addresses directly from op[0] (the VEC
+  // destination), no longer from the global vecOp_phy_addrs FIFO. The
+  // per-ThreadContext stack in acquire_operand (case VEC) hands us a
+  // void** that points to the array of element addresses; we cast and
+  // iterate. This decouples V2/V4 LD/ST from the FIFO, so non-V2/V4
+  // handlers (e.g. mov.b64 with a vector source) can no longer leave
+  // stale entries that subsequent V4 LD/ST pop in their place.
+  void **vecAddrs = static_cast<void **>(dst);
 
   size_t vec_size = 0;
   if (QvecHasQ(qualifier, Qualifier::Q_V2)) {
     vec_size = 2;
-    assert(vecAddr.size() == 2);
   } else if (QvecHasQ(qualifier, Qualifier::Q_V4)) {
     vec_size = 4;
-    assert(vecAddr.size() == 4);
   }
-
   for (size_t i = 0; i < vec_size; ++i) {
-    void *element_dst = vecAddr[i];
+    void *element_dst = vecAddrs[i];
     uint64_t element_host_ptr = reinterpret_cast<uint64_t>(host_ptr) + i * step;
 
     HardwareMemoryManager::instance().access(
@@ -109,21 +112,20 @@ void StHandler::processOperation(ThreadContext *context, void *op[2],
   // 2. 向量 ST（V2/V4）
   // ========================
   size_t step = getBytes(qualifiers); // 元素步长
-  auto vecAddr = context->vecOp_phy_addrs.front();
-  context->vecOp_phy_addrs.pop();
+  // BUGFIX: see LdHandler V2/V4 path — read VEC element addresses
+  // directly from op[1] (the VEC source) instead of the global FIFO.
+  void **vecAddrs = static_cast<void **>(src);
 
   size_t vec_size = 0;
   if (QvecHasQ(qualifiers, Qualifier::Q_V2)) {
     vec_size = 2;
-    assert(vecAddr.size() == 2);
   } else if (QvecHasQ(qualifiers, Qualifier::Q_V4)) {
     vec_size = 4;
-    assert(vecAddr.size() == 4);
   }
 
   // 逐元素写入
   for (size_t i = 0; i < vec_size; ++i) {
-    void *element_src = vecAddr[i];
+    void *element_src = vecAddrs[i];
     uint64_t element_host_ptr = reinterpret_cast<uint64_t>(host_ptr) + i * step;
 
     // 对于其他内存空间，使用HardwareMemoryManager访问

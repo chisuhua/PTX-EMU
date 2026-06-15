@@ -78,12 +78,27 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
         }                                                                          \
     }                                                                              \
                                                                                      \
-    auto stmtCtx = makeAtomInstr(extractQualifiersFromContext(ctx), operands,      \
-                                 (int)operands.size(),                              \
-                                 ctx->getText());                                    \
-    currentKernel->kernelStatements.push_back(stmtCtx);                            \
-                                                                                     \
-    return nullptr;                                                                 \
+    auto quals = extractQualifiersFromContext(ctx);                                   \
+                                                                                       \
+    /* Fix ambiguous qualifier mappings: tokenToQualifier matches first               \
+     * occurrence in ptx_qualifier.def, but atom context requires the _ATOM           \
+     * variant.  ".add" -> Q_DOTADD beats Q_ADD_ATOM;                                 \
+     * ".or"  -> Q_DOTOR  beats Q_OR_ATOM.                                            \
+     */                                                                                \
+    for (auto &q : quals) {                                                            \
+        switch (q) {                                                                   \
+        case Qualifier::Q_DOTADD: q = Qualifier::Q_ADD_ATOM; break;                   \
+        case Qualifier::Q_DOTOR:  q = Qualifier::Q_OR_ATOM;  break;                   \
+        default: break;                                                                \
+        }                                                                              \
+    }                                                                                  \
+                                                                                       \
+    auto stmtCtx = makeAtomInstr(quals, operands,                                      \
+                                 (int)operands.size(),                                 \
+                                 ctx->getText());                                       \
+    currentKernel->kernelStatements.push_back(stmtCtx);                                \
+                                                                                       \
+    return nullptr;                                                                     \
 }
 
 // X-Macro展开

@@ -97,6 +97,7 @@ X(S_NOT,     not,     Not,     2, GENERIC_INSTR, logical)      // not: dst, src
 X(S_SHL,     shl,     Shl,     3, GENERIC_INSTR, logical)      // shl: dst, src, shift_amount
 X(S_SHR,     shr,     Shr,     3, GENERIC_INSTR, logical)      // shr: dst, src, shift_amount
 X(S_SHF,     shf,     Shf,     4, GENERIC_INSTR, logical)      // shf: dst, src1, src2, shift_amount
+X(S_BFE,     bfe,     Bfe,     4, GENERIC_INSTR, logical)      // bfe: dst, src, pos, len
 X(S_LOP3,    lop3,    Lop3,    5, GENERIC_INSTR, logical)      // lop3: dst, src1, src2, src3, imm
 
 // -----------------------------------------------------------------------------

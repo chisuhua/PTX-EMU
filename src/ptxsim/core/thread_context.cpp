@@ -132,9 +132,6 @@ void ThreadContext::_execute_once() {
 // }
 
 void ThreadContext::clear_temporaries() {
-    while (!vecOp_phy_addrs.empty()) {
-        vecOp_phy_addrs.pop();
-    }
 }
 
 void ThreadContext::prepare_breakpoint_context(
@@ -322,18 +319,31 @@ void *ThreadContext::acquire_operand(const OperandContext &operand,
     case OperandKind::VEC: {
         auto vecOp = std::get<VecOperand>(operand.data);
 
-        vecOp_phy_addrs.emplace();
-        auto &stored_vec = vecOp_phy_addrs.back();
+        // BUGFIX: keep storage per-ThreadContext (not per-OS-thread) so
+        // multiple ThreadContexts that happen to share an OS thread do not
+        // corrupt each other's VEC buffers. We use a std::vector of
+        // std::vector<void *> as a stack: each call to acquire_operand for
+        // a VEC pushes a fresh entry sized to vecOp.elements.size(). The
+        // handler iterates the just-pushed entry via the pointer returned
+        // here (op[0] / op[1]). The previous design used a FIFO std::queue,
+        // which let non-V2/V4 handlers (e.g. mov.b64 with a vector source)
+        // leave stale entries that subsequent V4 LD/ST popped in their
+        // place, breaking the uint3_aligned / uint4_* aligned-types
+        // subtests.
+        vecOp_phy_addrs.emplace_back();
+        auto &buffer = vecOp_phy_addrs.back();
 
         for (auto &elem : vecOp.elements) {
             void *addr = acquire_operand(elem, qualifiers);
-            if (!addr)
+            if (!addr) {
+                buffer.clear();
                 return nullptr;
+            }
             elem.operand_phy_addr = addr;
-            stored_vec.push_back(addr);
+            buffer.push_back(addr);
         }
 
-        return stored_vec.data();
+        return buffer.data(); // pointer to first element (void** when cast)
     }
 
     default:

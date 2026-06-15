@@ -107,6 +107,62 @@ void ShrHandler::processOperation(ThreadContext *context, void **operands,
         [](uint64_t a, uint64_t b) { return a >> b; });
 }
 
+// Bit Field Extract (bfe)
+//
+// Per PTX ISA spec:
+//   d = a[b+31:b] for .u32/.s32  (extract `len` bits starting at bit `pos`)
+//   d = a[b+63:b] for .u64/.s64
+//
+// Edge cases (per ISA):
+//   - If b+31 (or b+63) exceeds the width, the result is zero for .u*, or
+//     sign-extended for .s*.
+//   - If b exceeds the width, the result is zero.
+//   - If len is zero, the result is zero.
+void BfeHandler::processOperation(ThreadContext *context, void **operands,
+                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<char> *operand_is_immediate) {
+    void *dst = operands[0];
+    void *src = operands[1];
+    void *pos = operands[2];
+    void *len = operands[3];
+    int bytes = getBytes(qualifiers);
+
+    if (!dst || !src || !pos || !len) return;
+
+    uint64_t value = 0;
+    std::memcpy(&value, src, bytes);
+    uint32_t pos_val = 0;
+    std::memcpy(&pos_val, pos, bytes);
+    uint32_t len_val = 0;
+    std::memcpy(&len_val, len, bytes);
+
+    uint32_t total_bits = bytes * 8;
+    uint64_t result = 0;
+
+    if (len_val > 0 && pos_val < total_bits) {
+        uint32_t effective_len = std::min(len_val, total_bits - pos_val);
+        uint64_t mask =
+            (effective_len >= 64) ? ~0ULL : ((1ULL << effective_len) - 1);
+        result = (value >> pos_val) & mask;
+
+        bool is_signed = false;
+        for (auto q : qualifiers) {
+            if (q == Qualifier::Q_S32 || q == Qualifier::Q_S64) {
+                is_signed = true;
+                break;
+            }
+        }
+        if (is_signed && effective_len > 0 && effective_len < total_bits) {
+            if (result & (1ULL << (effective_len - 1))) {
+                uint64_t sign_mask = ~((1ULL << effective_len) - 1);
+                result |= sign_mask;
+            }
+        }
+    }
+
+    std::memcpy(dst, &result, bytes);
+}
+
 // 辅助：高效 popcount（使用编译器内置函数）
 inline uint32_t popcount_u64(uint64_t x) {
 #if defined(__GNUC__) || defined(__clang__)

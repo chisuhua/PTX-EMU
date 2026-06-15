@@ -18,10 +18,10 @@ class CTAContext;
 #include "register/register_bank_manager.h"
 #include "utils/logger.h"
 #include <any>
+#include <array>
 #include <iostream>
 #include <map>
 #include <memory>
-#include <queue>
 #include <stack>
 #include <string>
 #include <unordered_map>
@@ -47,8 +47,14 @@ public:
     ConditionCodeRegister cc_reg;
 
     // 当前指令执行状态
-    // 临时数据存储
-    std::queue<std::vector<void *>> vecOp_phy_addrs;
+    // 临时数据存储：VEC 操作数各元素的物理地址，每调用一次 acquire_operand
+    // for VEC 就 push 一个新向量（最多 4 个槽位，PTX 最大 V4）。handler 通过
+    // op[0]/op[1] 拿到的指针直接指向这里，cast 成 void** 后按 V2/V4 限定符
+    // 迭代。
+    // BUGFIX: 之前用 std::queue<FIFO>，导致 mov.b64 带 vector 源会 push 不 pop，
+    // 留下 stale entry，下一条 V4 LD/ST pop 到错误 entry。改成 per-ThreadContext
+    // 栈式存储（push 必配 pop）后，vector LD/ST 始终读自己刚 push 的 buffer。
+    std::vector<std::vector<void *>> vecOp_phy_addrs;
 
     // warp和lane标识
     int warp_id_;

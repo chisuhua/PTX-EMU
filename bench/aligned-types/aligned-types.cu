@@ -25,6 +25,12 @@
 #include <chrono>
 #include <cuda.h>
 
+// Test size: default to small mode (50KB) to keep ctest under 60s timeout.
+// Set PTX_EMU_ALIGNED_TYPES_TEST_MODE=large to use the original 500KB size
+// (matches NVIDIA SDK's original benchmark).
+static const int MEM_SIZE_LARGE = 500000;
+static const int MEM_SIZE_SMALL = 50000;
+
 ////////////////////////////////////////////////////////////////////////////////
 // Misaligned types
 ////////////////////////////////////////////////////////////////////////////////
@@ -184,7 +190,8 @@ template<class TData> int testCPU(
 // Data configuration
 ////////////////////////////////////////////////////////////////////////////////
 //Memory chunk size in bytes. Reused for test
-const int       MEM_SIZE = 500000;
+//Default: small mode (50KB) so ctest finishes in <60s. Set env var
+//PTX_EMU_ALIGNED_TYPES_TEST_MODE=large to use the original 500KB size.
 const int NUM_ITERATIONS = 1;
 
 //CPU input data and instance of GPU output data
@@ -246,6 +253,16 @@ template<class TData> int runTest(
 int main(int argc, char **argv)
 {
   int i, nTotalFailures = 0;
+
+  // Honor PTX_EMU_ALIGNED_TYPES_TEST_MODE for ctest vs. perf benchmark:
+  //   - unset / "small"  : 50KB (ctest-friendly, <60s timeout)
+  //   - "large"          : 500KB (matches NVIDIA SDK original)
+  const char *mode = std::getenv("PTX_EMU_ALIGNED_TYPES_TEST_MODE");
+  bool smallMode =
+      (mode == nullptr) || (strcmp(mode, "small") == 0);
+  int MEM_SIZE = smallMode ? MEM_SIZE_SMALL : MEM_SIZE_LARGE;
+  printf(smallMode ? "[TEST MODE: small (50KB)]\n"
+                   : "[TEST MODE: large (500KB)]\n");
 
   printf("[%s] - Starting...\n", argv[0]);
 

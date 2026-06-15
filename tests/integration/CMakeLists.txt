@@ -180,6 +180,15 @@ add_catch_test(integration_ptx_ld_st_latency_table
 )
 set_tests_properties(integration_ptx_ld_st_latency_table PROPERTIES LABELS "integration;ptx;ld_st;latency")
 
+# BUG-VECOP-STALE: instruction sequence (VEC-source mov.b64 followed by
+# ld/st.shared.v4) round-trips correctly. On unpatched code the VEC
+# pushed by the mov would not be popped, and the next V4 LD/ST would
+# pop that 2-element stale entry, dereferencing past its tail.
+add_catch_test(integration_ptx_vec_ld_st_isolation
+    ptx/test_vec_ld_st_isolation.cpp
+)
+set_tests_properties(integration_ptx_vec_ld_st_isolation PROPERTIES LABELS "integration;ptx;ld_st;vec;regression;BUG-VECOP-STALE")
+
 add_catch_test(integration_ptx_integer_arith
     ptx/test_integer_arith.cpp
 )

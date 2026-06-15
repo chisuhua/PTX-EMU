@@ -396,6 +396,34 @@ inline StatementContext make_st_shared_addr_v4(const std::string &base_sym,
 // Setp Comparison Variants (Register operands)
 // ============================================================================
 
+// mov.b64 dst, {src1, src2, ...} — pack 2 b32 sources into one b64 dest.
+// Exercises the VEC code path in ThreadContext::acquire_operand (OperandKind::VEC),
+// which is the path that interacts with LdHandler/StHandler V2/V4 via the
+// per-ThreadContext vecOp_phy_addrs stack (see BUG-VECOP-STALE).
+inline StatementContext make_mov_b64_vec_src(const std::string &dst,
+                                             const std::vector<std::string> &srcs) {
+    StatementContext ctx;
+    ctx.type = S_MOV;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_B64};
+    instr.operands.push_back(OperandContext{RegOperand{dst, -1}});
+    VecOperand v;
+    for (const auto &s : srcs) {
+        v.elements.push_back(OperandContext{RegOperand{s, -1}});
+    }
+    OperandContext vec_op{v};
+    instr.operands.push_back(vec_op);
+    ctx.data = instr;
+    std::string text = "mov.b64 " + dst + ", {";
+    for (size_t i = 0; i < srcs.size(); ++i) {
+        if (i > 0) text += ",";
+        text += srcs[i];
+    }
+    text += "};";
+    ctx.instructionText = text;
+    return ctx;
+}
+
 inline StatementContext make_setp_eq(const std::string &pred,
                                       const std::string &src1,
                                       const std::string &src2) {
