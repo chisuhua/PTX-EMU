@@ -16,6 +16,7 @@
 | 🛠️ **技能沉淀** | [`skills/`](./skills/) | 4 | 技术技能总结 |
 | 📊 **项目报告** | [`reports/`](./reports/) | 6 | Phase 与测试报告 |
 | 📎 **附录** | [`appendix/`](./appendix/) | 3 | 补充资料 (CHANGELOG, 术语表) |
+| 🔬 **调研文档** | [`research/`](./research/) | 1 主题 | 外部技术调研（NVIDIA 官方 + 开源参考） |
 | 🗄️ **历史归档** | [`archive/`](./archive/) | 50+ | 历史文档存档 |
 
 ---

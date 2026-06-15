@@ -287,6 +287,47 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, ...) {
 |------|---------|------|
 | 2026-05-05 | 初始版本 | PTX-EMU Team |
 | 2026-05-06 | 添加 pc_overridden_ 机制说明、更新合规检查项 | PTX-EMU Team |
+| 2026-06-15 | 追加：Warp-级到达计数正式决策（基于 [docs/research/barrier-semantics/06-synthesis-and-recommendations.md](../research/barrier-semantics/06-synthesis-and-recommendations.md)） | Sisyphus |
+
+### 2026-06-15 追加：Warp-级到达计数
+
+经过对 NVIDIA PTX ISA 9.3、Volta Tuning Guide、Hopper Whitepaper 以及 4 个学术 GPU 模拟器
+（gpgpu-sim、gem5-gpu、MIAOW、Multi2Sim）的系统调研（详见
+[`docs/research/barrier-semantics/`](../research/barrier-semantics/)），本项目正式确认 barrier
+到达计数采用 **warp-级粒度**：
+
+| 决策项 | 决策 | 证据 |
+|--------|------|------|
+| **到达计数单位** | **warp（32 lanes）**—— `arrive(lane_id)` 对所有 32 个 active lanes 调用，`arrived_mask` 累计为全 1，`count_arrived()` = 32 | NVIDIA 硬件 + 4 个学术模拟器一致 |
+| **释放范围** | **整 32 lane 一同推进到同一 reconvergence_pc** | gpgpu-sim CHANGES: "irrespective of divergence state" |
+| **`participation_mask` 的角色** | **静态声明**（PTX 指令的 static_mask）—— 仅用于 `is_complete()` 的位运算判定，**不限制** `arrive()` 调用对象 | PTX 9.3 §9.7.14.1; MLIR NVVM Dialect |
+| **divergent 两半时序** | **不释放直到所有 active lane 都到达** | Volta+ Independent Thread Scheduling |
+| **16 named barrier 槽** | **未来工作**—— 当前实现只用 `wbars[0]`，需扩展到全部 16 个 | CUTLASS `HardwareMaxNumNamedBarriers = 16` |
+
+**已修复的不一致**：之前 `tests/integration/barrier/test_warp_barrier integrat ed.cpp` 的部分断言
+（`count_arrived() == popcount(mask)`、`get_pc() == 1` for lanes 8-15 等）是基于单 lane 执行 API
+（`execute_warp_instruction(stmt, pc)`）的期望值，未对齐 commit `ca2140f` 引入的 32-lane warp 驱动
+API（`step_warp`）。本次更新将这些断言的期望值改为与 warp-级语义一致：
+
+- `count_arrived() == 4/2/8` → `count_arrived() == 32`（所有 32 active lanes 都 arrive）
+- `count_participants() == 2` → 保持 2（mask 0x03）/ 改为 4（mask 0x0F）/ 改为 8（mask 0xFF）
+- `is_complete() == false` → `is_complete() == true`（BUG-POSTBARRIER 修复后 wbar 持续 complete）
+- `get_pc() == 1` for lanes 8-15 → `get_pc() >= 4`（lanes 不再卡在 PC=1）
+
+**未来工作**（不属本 ADR 范围）：
+- 16 named barrier 槽完整实现
+- Cluster barrier (sm_90+)
+- mbarrier 完整实现（64-bit shared mem 对象 + phase parity）
+- 显式 membar/fence 完整实现（Volta+ 不再隐式 membar.cta）
+- `bar.warp.sync` membermask 的 UB 检测
+
+**调研依据**（详见 [docs/research/barrier-semantics/](../research/barrier-semantics/)）:
+1. [01-ptx-isa-official-semantics.md](../research/barrier-semantics/01-ptx-isa-official-semantics.md) — NVIDIA 官方 ISA 语义
+2. [02-divergent-warp-hardware-behavior.md](../research/barrier-semantics/02-divergent-warp-hardware-behavior.md) — divergent 行为
+3. [03-hopper-blackwell-new-features.md](../research/barrier-semantics/03-hopper-blackwell-new-features.md) — sm_90+ 新特性
+4. [04-ptx-emu-current-implementation.md](../research/barrier-semantics/04-ptx-emu-current-implementation.md) — 本项目代码地图
+5. [05-open-source-simulator-comparison.md](../research/barrier-semantics/05-open-source-simulator-comparison.md) — 4 个开源模拟器对比
+6. [06-synthesis-and-recommendations.md](../research/barrier-semantics/06-synthesis-and-recommendations.md) — 综合分析与决策
 
 ### Barrier 测试场景覆盖（2026-05-06 添加）
 
