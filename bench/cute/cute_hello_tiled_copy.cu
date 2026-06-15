@@ -28,23 +28,28 @@ __global__ void tiled_copy_kernel(half const* g_input, half* g_output) {
     auto thr_slice = tiled_copy.get_thread_slice(threadIdx.x);
     auto g_slice = thr_slice.partition_S(gTensor);
 
-    // Register fragment: just a raw array
-    half frag[4];
+    // Register fragment: backing storage for the destination tensor.
+    // BUGFIX: was `half frag[4]`, only enough for 1 thread's 1x4 slice.
+    // With 4 threads x 4 values each, the destination tile is 4x4 = 16
+    // elements, so we need 16 halves of storage. Otherwise NVCC emits
+    // out-of-bounds `st.local [%SPL + tid*8]` writes and the simulator
+    // (correctly) sees threads 1..3 corrupting each other's fragments.
+    half frag[16];
 
     // Perform copy: GMEM -> Register
     {
-        // Use default row-major layout for (1,4) — automatically gives stride (_4{}, _1{})
-        auto rLayout = make_layout(make_shape(_1{}, _4{}), make_stride(_4{}, _1{}));
-        // auto rLayout = make_layout(make_shape(_1{}, _4{}), make_stride(_1{}, _1{}));
+        // Destination layout must match the tile shape: 4 threads x 4
+        // values per thread = 4x4 row-major, stride (4, 1).
+        auto rLayout = make_layout(make_shape(_4{}, _4{}), make_stride(_4{}, _1{}));
         auto rTensor = make_tensor(&frag[0], rLayout);
-        //auto rTensor = make_tensor(&frag[0], Layout<_1, _4>{});
         auto r_slice = thr_slice.partition_D(rTensor);
         copy(tiled_copy, g_slice, r_slice);
     }
 
-    // Write back to global memory
+    // Write back to global memory. Thread t owns the slice
+    // frag[t*4 .. t*4+3] (row-major 4x4 storage).
     for (int j = 0; j < 4; ++j) {
-        g_output[threadIdx.x * 4 + j] = frag[j];
+        g_output[threadIdx.x * 4 + j] = frag[threadIdx.x * 4 + j];
     }
 }
 
