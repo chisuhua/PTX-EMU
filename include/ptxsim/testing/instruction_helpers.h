@@ -185,6 +185,24 @@ inline StatementContext make_not(const std::string& dst, const std::string& src)
     return ctx;
 }
 
+// Bit Field Extract: bfe.type dst, src, pos, len
+inline StatementContext make_bfe_u32(const std::string& dst,
+                                     const std::string& src,
+                                     const std::string& pos,
+                                     const std::string& len) {
+    StatementContext ctx;
+    ctx.type = S_BFE;
+    GenericInstr instr;
+    instr.qualifiers = {Qualifier::Q_U32};
+    instr.operands.push_back(OperandContext{RegOperand{dst, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{pos, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{len, -1}});
+    ctx.data = instr;
+    ctx.instructionText = "bfe.u32 " + dst + ", " + src + ", " + pos + ", " + len + ";";
+    return ctx;
+}
+
 inline StatementContext make_cvt(const std::string& dst, const std::string& src,
                                  Qualifier dst_dtype, Qualifier src_dtype) {
     StatementContext ctx;
