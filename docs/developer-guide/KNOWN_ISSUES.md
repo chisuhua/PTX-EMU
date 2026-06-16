@@ -824,9 +824,25 @@ both prepare the way:
      defensive fallback prevents a hard regression if CFG ever
      leaves it at 0.
 
+3. **Repeat-release guard** — `src/ptxsim/instructions/barrier.cpp` (2026-06-16):
+   - Both `init_wbar` (force_reconvergence path, line ~179) and `wbar`
+     (normal path, line ~235) now check `current_wbar_id >= 0` before
+     treating `is_complete()` as a release trigger.
+   - Without this guard, after the first release sets
+     `current_wbar_id = -1`, the wbar's `is_initialized=true` and
+     `arrived_mask=0xFFFFFFFF` persist; subsequent entries that hit
+     the same barrier PC would re-fire `is_complete()` and re-release
+     the lanes, perpetuating a cycle that never lets the broadcast
+     instruction at `reconvergence_pc` execute.
+   - Note: this is a guard against repeated release in the same
+     `wbar` lifecycle, not a state reset. A subsequent barrier that
+     re-uses the wbar at a different PC is unaffected (the
+     `current_wbar_id < 0` reset + `!is_initialized` re-init path in
+     lines 215-222 handles that case).
+
 ### What still fails (true root cause)
 
-The test still produces `output[0] = 0` even with both fixes above.
+The test still produces `output[0] = 0` even with all three fixes above.
 Investigation with LdHandler/StHandler PC traces (commits 0cdfc97
 build, debug rebuild) shows:
 
@@ -838,6 +854,18 @@ build, debug rebuild) shows:
   called** — the LdHandler sees no PC=109 invocations across all
   warps. The warp apparently advances to PC=132 (the second-loop
   `ld.global`) without ever executing PC=109.
+
+**Update 2026-06-16 (post repeat-release-guard fix):** PC=109
+`ld.shared.f32` is now dispatched (the repeat-release-guard
+restored dispatch gate correctness), but `st.shared.f32 [sdata]`
+at PC=105 (the lane-0 rsqrt write) is still not in the dispatch trace.
+This means the actual remaining root cause is upstream of the broadcast
+barrier: lane 0's `st.shared` does not run, so sdata[0] stays at 0
+through the entire kernel, and the broadcast load at PC=109 reads
+0 (correct execution, but no data to read). Investigation into why
+PC=105 `st.shared` is skipped — `is_lane_active()` gate at
+`warp_context.cpp:266` after the reduction barrier release — is
+deferred.
 
 The `ld.shared.f32` for the rsqrt INPUT (`%f25, [sdata]`) is also
 absent from the LdHandler trace, even though the conditional branch
@@ -897,6 +925,47 @@ committed.
      to call `synchronize_barrier` (regardless of which PC they
      arrive at).
 
+### Defense-in-Depth Regression Tests (added 2026-06-16)
+
+While the deep architectural fix is out of scope for the cute_rmsnorm
+debug session, two regression tests have been added to lock in correct
+behavior at the `BarWarpSyncHandler` and `step_warp` scheduler layers:
+
+- `tests/unit/barrier/test_broadcast_after_barrier.cpp` (ctest
+  `unit_broadcast_after_barrier`, labels
+  `unit;barrier;divergence;regression;BUG-CUTE-RMSNORM-BROADCAST-SKIP`):
+  directly drives `BarWarpSyncHandler::processOperation` on a divergent
+  warp (one lane on the divergent path, the other 31 on the skip path).
+  Asserts that:
+  1. After lane 0's arrival, the wbar is initialized with the FULL
+     `participation_mask=0xFFFFFFFF` (not just the dynamic partial mask).
+  2. After all 32 lanes have arrived, every lane's `pc == reconvergence_pc`
+     (NOT `reconvergence_pc+1`). This is the critical invariant the bug
+     would violate.
+  3. `warp.get_active_count() == 32` and `is_warp_ready_to_fetch()` after
+     release — i.e. the broadcast load at `reconvergence_pc` is schedulable
+     for all lanes.
+- `tests/integration/divergence/test_broadcast_after_barrier.cpp` (ctest
+  `integration_broadcast_after_barrier`, labels
+  `integration;barrier;divergence;regression;BUG-CUTE-RMSNORM-BROADCAST-SKIP`):
+  drives the cute_rmsnorm-style PTX pattern via `step_warp` and uses
+  `ExecutionTracer` to record every (lane, PC) pair actually executed.
+  Asserts that every lane's trace contains an entry at the broadcast
+  `ld.shared` PC. Includes two test cases:
+  - **I-1**: minimal `setp + @p1 bra + bar.warp.sync + ld.shared` pattern.
+  - **I-2**: cute_rmsnorm reduction-loop + broadcast pattern (multiple
+    `bar.warp.sync` invocations with divergent `setp` predicates, mirroring
+    the 8-iteration reduction + lane-0-only write in the actual kernel).
+
+**Important caveat**: Both tests PASS on the current unfixed code
+because the simplified patterns (1-3 barriers) don't reproduce the
+specific SIMT-stack-pop + bar.warp.sync interaction that fires in
+cute_rmsnorm's 16-barrier reduction loop. They serve as **early-warning
+regression defenses**: if `BarWarpSyncHandler` or the `step_warp`
+scheduler's basic divergent-warp behavior regresses, these tests will
+fail immediately. The actual `cute_rmsnorm` E2E test (ctest #130) remains
+the authoritative reproducer until the architectural fix lands.
+
 ### Files Involved
 
 - `bench/cute/cute_rmsnorm.cu` (source fix — already applied)
@@ -904,6 +973,8 @@ committed.
 - `src/ptxsim/core/sm_context.cpp` (synchronize_barrier — needs deep fix)
 - `src/ptxsim/instructions/barrier.cpp:150-220` (force_reconvergence — needs trace)
 - `src/ptx_parser/ptx_visitor_barrier.cpp:53-67` (auto-translation — needs to be flipped off for cute_rmsnorm to debug)
+- `tests/unit/barrier/test_broadcast_after_barrier.cpp` (regression defense — added 2026-06-16)
+- `tests/integration/divergence/test_broadcast_after_barrier.cpp` (regression defense — added 2026-06-16)
 
 ---
 
