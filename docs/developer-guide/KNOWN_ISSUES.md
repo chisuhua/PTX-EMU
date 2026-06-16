@@ -782,6 +782,131 @@ all `e2e_shared_memory_*` and `cute_*` tests.
 
 ---
 
+## `cute_rmsnorm` — broadcast-after-barrier skipped by scheduler (open)
+
+**Status:** root cause identified, deeper architectural fix required — opened 2026-06-16
+
+**Origin:** Follow-up to the `cute_hello_tiled_copy` fix (2026-06-15).
+`cute_rmsnorm` continues to produce all-zero output even after the
+cute_hello_tiled_copy local-memory fixes. Root cause is a separate
+simulator bug in the bar.warp.sync → post-barrier broadcast path.
+
+**Affected tests:**
+- `cute_rmsnorm` (ctest #130) — output[0] = 0 (expected ≈ input[0] / rms)
+
+### What was fixed in this session (2026-06-16)
+
+Two partial fixes were applied; neither fully resolves the test, but
+both prepare the way:
+
+1. **Source-side fix** — `bench/cute/cute_rmsnorm.cu`:
+   - Replaced `T val = input_row(j);` with `T val = input[row * N + j];`
+     in BOTH the sum-of-squares loop and the output write loop.
+   - Root cause for the source fix: NVCC 13.0 inlines
+     `input_row(j)` (a CUTE layout expression) as a constexpr and
+     eliminates the actual `ld.global` of `input[row*N+j]`, computing
+     `sum_sq += j*j` and `output[i] = scale * tid` instead of
+     `sum_sq += input[j]²` and `output[i] = scale * input[i]`.
+   - The test source already had a partial fix for `output_row(j)`
+     (line 100 comment: "Directly calculate output index instead of
+     using output_row(j)"); the same fix was needed for the input
+     read.
+   - After the source fix, the generated PTX correctly contains
+     `ld.global.nc.f32 %f14, [%rd6]` and `ld.global.nc.f32 %f30, [%rd15]`.
+
+2. **Defensive barrier handler fix** — `src/ptxsim/instructions/barrier.cpp`:
+   - When `reconvergence_pc` is unset (0) or matches the barrier's
+     own PC, fall back to `current_pc + 1` (the next instruction).
+   - The visitor's auto-translation of `bar.sync` → `bar.warp.sync`
+     (`src/ptx_parser/ptx_visitor_barrier.cpp:60`) hardcodes the
+     second operand to `"0"` because at parse time it doesn't know
+     the next PC. The runtime CFG pass usually patches this, but the
+     defensive fallback prevents a hard regression if CFG ever
+     leaves it at 0.
+
+### What still fails (true root cause)
+
+The test still produces `output[0] = 0` even with both fixes above.
+Investigation with LdHandler/StHandler PC traces (commits 0cdfc97
+build, debug rebuild) shows:
+
+- `st.shared.f32 [sdata], %f29;` (the rsqrt result) IS being executed
+  at PC=91 with non-zero values.
+- `bar.warp.sync` at PC=108 (the broadcast barrier) IS being released
+  to PC=109 for all 32 lanes (`Released lane=0: PC=108 -> 109` etc.).
+- The **following** `ld.shared.f32 %f8, [sdata]` at PC=109 is **NEVER
+  called** — the LdHandler sees no PC=109 invocations across all
+  warps. The warp apparently advances to PC=132 (the second-loop
+  `ld.global`) without ever executing PC=109.
+
+The `ld.shared.f32` for the rsqrt INPUT (`%f25, [sdata]`) is also
+absent from the LdHandler trace, even though the conditional branch
+(`@%p11 bra $L__BB0_15`) is per-warp-converging correctly.
+
+Hypothesis: the SIMT stack is dropping the post-barrier PC for the
+broadcast when the warp reconverges via `bar.warp.sync` from a
+divergent rsqrt path. The released lanes have their PC set to 109,
+but the scheduler (or the SIMT stack pop on reconvergence) advances
+them past 109 directly to 110/111/... before any instruction is
+executed at 109.
+
+This is a deeper architectural issue than cute_hello_tiled_copy's
+local-memory bugs. It requires:
+1. Adding trace_simt_stack / trace_divergence to debug the
+   per-instruction SIMT state changes around PC=108-110.
+2. Likely rewriting the `force_reconvergence_at_barrier` /
+   `advance_thread_pc` interaction in
+   `src/ptxsim/instructions/barrier.cpp:150-220`.
+3. Or switching back to the multi-warp `bar.sync` instruction
+   (disabling the auto-translation in
+   `src/ptx_parser/ptx_visitor_barrier.cpp:53-67`) and fixing the
+   CTA-level `synchronize_barrier` deadlock in
+   `src/ptxsim/core/sm_context.cpp:605-700`.
+
+**Estimated effort:** L (1-2 weeks). Out of scope for the cute_hello
+fix session.
+
+### Workaround
+
+None for `cute_rmsnorm`. The test stays red. The .cu source fix is
+correct and necessary for the eventual fix to work, so it has been
+committed.
+
+### How to Re-enable / Fix
+
+1. Add `trace_simt_stack=true, trace_divergence=true, trace_cycle=true`
+   to `configs/dev_debug_config.ini` and re-run
+   `./scripts/debug-run.sh debug ./build/bin/cute_rmsnorm`.
+2. Look for the SIMT stack entry pushed by the
+   `@%p11 bra $L__BB0_15` divergence: it should have
+   `reconvergence_pc = 145` (the broadcast `ld.shared.f32`). Verify
+   that the stack pop actually sets the lane's PC to 109, not 110+.
+3. Alternative path: disable the `bar.sync` → `bar.warp.sync`
+   auto-translation by flipping the `if (false && ...)` guard in
+   `ptx_visitor_barrier.cpp:62` (already applied) and uncomment the
+   original `if (openum == S_BAR && isWarpLevelBarrier(...))` block.
+   This will cause the test to **hang** (the CTA-level
+   `synchronize_barrier` can't bring all 8 warps to the same barrier
+   in the current scheduler), but it shifts the failure from
+   "silent zero output" to "deadlock", which is at least debuggable.
+4. Fix the `synchronize_barrier` deadlock by either:
+   - Pinning the warp scheduler to dispatch all warps of a CTA
+     together at every `bar.sync` (adds latency), or
+   - Implementing proper per-warp state tracking in
+     `SMContext::synchronize_barrier` so it can wait for ALL warps
+     to call `synchronize_barrier` (regardless of which PC they
+     arrive at).
+
+### Files Involved
+
+- `bench/cute/cute_rmsnorm.cu` (source fix — already applied)
+- `src/ptxsim/instructions/barrier.cpp` (defensive fix — already applied)
+- `src/ptxsim/core/sm_context.cpp` (synchronize_barrier — needs deep fix)
+- `src/ptxsim/instructions/barrier.cpp:150-220` (force_reconvergence — needs trace)
+- `src/ptx_parser/ptx_visitor_barrier.cpp:53-67` (auto-translation — needs to be flipped off for cute_rmsnorm to debug)
+
+---
+
 ## Pre-P0d Baseline Red — `unit_barrier_reconvergence`, `unit_barrier_verification`, `unit_simt_stack_catch2`, `unit_active_mask_consistency` (Wbar API + ThreadState refactor fallout)
 
 **Status:** under investigation — filed 2026-06-09
