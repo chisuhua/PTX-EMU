@@ -68,9 +68,13 @@ __global__ void rmsnorm_kernel(
     int blockSize = blockDim.x;
 
     // Step 1: Compute sum of squares
+    // Fix: Direct memory access instead of input_row(j). NVCC 13.0 with CUTE
+    //      layout objects inlines `input_row(j)` as a constexpr expression
+    //      and eliminates the actual ld.global of `input[row*N+j]`, computing
+    //      sum_sq += j*j instead of sum_sq += input[j]*input[j].
     float sum_sq = 0.0f;
     for (int j = tid; j < N; j += blockSize) {
-        T val = input_row(j);
+        T val = input[row * N + j];
         sum_sq += static_cast<float>(val) * static_cast<float>(val);
     }
 
@@ -95,8 +99,9 @@ __global__ void rmsnorm_kernel(
     float scale = sdata[0];
 
     // Step 4: Write normalized output
+    // Fix: Direct memory access for the same reason as Step 1 — see comment above.
     for (int j = tid; j < N; j += blockSize) {
-        T val = input_row(j);
+        T val = input[row * N + j];
         // Fix: Directly calculate output index instead of using output_row(j)
         output[row * N + j] = static_cast<T>(static_cast<float>(val) * scale);
     }
