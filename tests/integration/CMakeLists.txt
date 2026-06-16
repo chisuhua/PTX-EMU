@@ -98,6 +98,21 @@ add_catch_test(integration_post_barrier_divergence
 set_tests_properties(integration_post_barrier_divergence PROPERTIES LABELS "integration;divergence;barrier")
 
 # ============================================================================
+# Barrier Regression (BUG-CUTE-RMSNORM-BROADCAST-SKIP)
+# RED PHASE: Divergent warp pattern from cute_rmsnorm.cu broadcast loop.
+#   lane 0 takes the @p1 path (writes a value), lanes 1-31 fall through
+#   to the reconvergence label. All 32 lanes must execute the
+#   broadcast `ld.shared` at reconvergence_pc.
+# Without fix: lanes 1-31 advance from the barrier PC straight to ret,
+#   skipping the broadcast read. cute_rmsnorm then writes 0 to output[0].
+# See: docs/developer-guide/KNOWN_ISSUES.md §"cute_rmsnorm — broadcast-after-barrier skipped"
+# ============================================================================
+add_catch_test(integration_broadcast_after_barrier
+    divergence/test_broadcast_after_barrier.cpp
+)
+set_tests_properties(integration_broadcast_after_barrier PROPERTIES LABELS "integration;barrier;divergence;regression;BUG-CUTE-RMSNORM-BROADCAST-SKIP")
+
+# ============================================================================
 # Barrier Regression (BUG-POSTBARRIER-TWOHALVES)
 # RED PHASE: Divergent warp splits into two halves that hit the same
 # barrier at different times. The second release must NOT lose the first
