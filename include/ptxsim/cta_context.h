@@ -63,6 +63,7 @@ public:
 
     // 获取warp数量需求
     int get_warp_count() const { return warpNum; }
+    WarpContext* get_warp(int warp_id) const;
 
     // 获取线程数量
     int get_thread_count() const { return threadNum; }
