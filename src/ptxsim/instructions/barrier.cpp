@@ -128,6 +128,10 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
 
     uint32_t current_pc = warp_state.threads[lane_id].pc;
 
+    if (reconvergence_pc == 0 || reconvergence_pc == (int)current_pc) {
+        reconvergence_pc = (int)current_pc + 1;
+    }
+
     uint32_t dynamic_mask = 0;
     bool force_reconvergence_done = false;
 
