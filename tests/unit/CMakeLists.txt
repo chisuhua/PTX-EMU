@@ -67,6 +67,18 @@ add_catch_test(unit_broadcast_after_barrier
 )
 set_tests_properties(unit_broadcast_after_barrier PROPERTIES LABELS "unit;barrier;divergence;regression;BUG-CUTE-RMSNORM-BROADCAST-SKIP")
 
+# BUG-DISPATCH-GATE-LANE0-SKIP (hypothesis test, 2026-06-16):
+# Manually injects a stale SIMTStackEntry with reconvergence_pc matching
+# the lane 0 st.shared PC. Locks in correct dispatch behavior: the gate
+# must NOT block the instruction. If the gate incorrectly blocks (which
+# is the cute_rmsnorm hypothesis), this test fails and reproduces the
+# broadcast-after-barrier skip bug at the unit level.
+add_catch_test(unit_simt_stack_stale_entry_blocks_lane0
+    barrier/test_simt_stack_stale_entry_blocks_lane0.cpp
+)
+set_tests_properties(unit_simt_stack_stale_entry_blocks_lane0 PROPERTIES
+    LABELS "unit;barrier;divergence;simt;regression;BUG-DISPATCH-GATE-LANE0-SKIP")
+
 # ============================================================================
 # Barrier Regression (BUG-POSTBARRIER-TWOHALVES)
 # RED PHASE: Divergent warp splits into two halves that hit the same barrier

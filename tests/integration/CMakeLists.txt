@@ -112,6 +112,21 @@ add_catch_test(integration_broadcast_after_barrier
 )
 set_tests_properties(integration_broadcast_after_barrier PROPERTIES LABELS "integration;barrier;divergence;regression;BUG-CUTE-RMSNORM-BROADCAST-SKIP")
 
+# BUG-DISPATCH-GATE-LANE0-SKIP (2026-06-16):
+# cute_rmsnorm.ptx uses `bar.sync 0` (S_BAR, CTA-level barrier), NOT
+# `bar.warp.sync` (S_BAR_WARP_SYNC, warp-level). The existing I-1/I-2
+# tests use bar.warp.sync which is a DIFFERENT code path. This test
+# reproduces the cute_rmsnorm S_BAR (bar.sync 0) reduction + broadcast
+# pattern to verify lane 0's st.shared at the lane-0-only path is
+# actually dispatched. Without fix: lane 0's st.shared is skipped
+# because the dispatch gate sees a stale SIMT stack entry from the
+# reduction loop and blocks lane 0 at the reconvergence PC.
+add_catch_test(integration_cute_rmsnorm_bar_sync_pattern
+    divergence/test_cute_rmsnorm_bar_sync_pattern.cpp
+)
+set_tests_properties(integration_cute_rmsnorm_bar_sync_pattern PROPERTIES
+    LABELS "integration;barrier;divergence;s_bar;regression;BUG-DISPATCH-GATE-LANE0-SKIP")
+
 # ============================================================================
 # Barrier Regression (BUG-POSTBARRIER-TWOHALVES)
 # RED PHASE: Divergent warp splits into two halves that hit the same
