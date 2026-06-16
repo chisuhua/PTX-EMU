@@ -156,6 +156,8 @@ void PipelineHandler::releaseAllOperands(std::vector<OperandContext> &operands, 
 // Generic Pipeline Handler
 bool GenericPipelineHandler::prepareOperands(ThreadContext *context, StatementContext &stmt) {
     GenericInstr &instr = std::get<GenericInstr>(stmt.data);
+    PTX_INFO_EMU("GenericPipelineHandler::prepareOperands: pc=%d type=%d text=%s", 
+                 context->get_pc(), static_cast<int>(stmt.type), stmt.instructionText.c_str());
     if (!acquireAllOperands(context, instr.operands, instr.qualifiers, 
                            static_cast<int>(instr.operands.size()))) {
         return false;
