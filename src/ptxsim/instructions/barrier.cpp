@@ -176,7 +176,7 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
         }
         init_wbar.arrive(lane_id);
 
-        if (init_wbar.is_complete()) {
+        if (init_wbar.is_complete() && warp_state.current_wbar_id >= 0) {
             if (sm_ctx) {
                 sm_ctx->bsync_manager_.release(0);
             }
@@ -232,7 +232,11 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
         sm_ctx->bsync_manager_.bsync(wbar_id, lane_id, current_pc);
     }
 
-    if (wbar.is_complete()) {
+    // BUG-CUTE-RMSNORM-BROADCAST-SKIP: current_wbar_id < 0 means the wbar
+    // was already released (current_wbar_id is set to -1 on release).
+    // Re-checking is_complete() here would re-release the same lanes,
+    // skipping the broadcast instruction at reconvergence_pc.
+    if (wbar.is_complete() && warp_state.current_wbar_id >= 0) {
         if (sm_ctx) {
             sm_ctx->bsync_manager_.release(wbar_id);
         }
