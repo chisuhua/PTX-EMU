@@ -406,6 +406,13 @@ std::vector<std::unique_ptr<WarpContext>> CTAContext::release_warps() {
     return result;
 }
 
+WarpContext* CTAContext::get_warp(int warp_id) const {
+    if (warp_id < 0 || warp_id >= static_cast<int>(warps.size())) {
+        return nullptr;
+    }
+    return warps[warp_id].get();
+}
+
 CTAContext::~CTAContext() {
     // 注意：共享内存空间不由CTAContext释放，而是由SMContext管理
     // 因此这里不需要释放sharedMemSpace

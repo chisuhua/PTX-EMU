@@ -52,6 +52,34 @@ add_catch_test(unit_barrier_verification
 set_tests_properties(unit_barrier_verification PROPERTIES LABELS "unit;barrier;fence")
 
 # ============================================================================
+# Barrier Regression (BUG-CUTE-RMSNORM-BROADCAST-SKIP)
+# RED PHASE: Divergent warp (one lane writes sdata, the other 31 skip)
+# reconverges at bar.warp.sync. All 32 lanes must be released to
+# reconvergence_pc (the broadcast ld.shared PC), not reconvergence_pc+1.
+# Without fix: lanes land on reconvergence_pc+1, broadcast ld.shared
+# is skipped, downstream st.global writes 0 → output[0]=0 (cute_rmsnorm
+# failure mode).
+# See: docs/developer-guide/KNOWN_ISSUES.md §"cute_rmsnorm — broadcast-after-barrier skipped"
+#      KNOWN_ISSUES.md §"Pre-P0 Baseline Red — cute_rmsnorm"
+# ============================================================================
+add_catch_test(unit_broadcast_after_barrier
+    barrier/test_broadcast_after_barrier.cpp
+)
+set_tests_properties(unit_broadcast_after_barrier PROPERTIES LABELS "unit;barrier;divergence;regression;BUG-CUTE-RMSNORM-BROADCAST-SKIP")
+
+# BUG-DISPATCH-GATE-LANE0-SKIP (hypothesis test, 2026-06-16):
+# Manually injects a stale SIMTStackEntry with reconvergence_pc matching
+# the lane 0 st.shared PC. Locks in correct dispatch behavior: the gate
+# must NOT block the instruction. If the gate incorrectly blocks (which
+# is the cute_rmsnorm hypothesis), this test fails and reproduces the
+# broadcast-after-barrier skip bug at the unit level.
+add_catch_test(unit_simt_stack_stale_entry_blocks_lane0
+    barrier/test_simt_stack_stale_entry_blocks_lane0.cpp
+)
+set_tests_properties(unit_simt_stack_stale_entry_blocks_lane0 PROPERTIES
+    LABELS "unit;barrier;divergence;simt;regression;BUG-DISPATCH-GATE-LANE0-SKIP")
+
+# ============================================================================
 # Barrier Regression (BUG-POSTBARRIER-TWOHALVES)
 # RED PHASE: Divergent warp splits into two halves that hit the same barrier
 # at different times. The second release must NOT lose the first half from

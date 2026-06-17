@@ -13,6 +13,8 @@ void LdHandler::processOperation(ThreadContext *context, void *op[2],
   void *dst = op[0];
   void *host_ptr = op[1];
 
+  PTX_INFO_EMU("LD: dst=%p host_ptr=%p", dst, host_ptr);
+
   if (!dst || !host_ptr) {
     std::cerr << "Error: Null pointer in LD instruction" << std::endl;
     return;

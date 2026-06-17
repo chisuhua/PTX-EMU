@@ -98,6 +98,36 @@ add_catch_test(integration_post_barrier_divergence
 set_tests_properties(integration_post_barrier_divergence PROPERTIES LABELS "integration;divergence;barrier")
 
 # ============================================================================
+# Barrier Regression (BUG-CUTE-RMSNORM-BROADCAST-SKIP)
+# RED PHASE: Divergent warp pattern from cute_rmsnorm.cu broadcast loop.
+#   lane 0 takes the @p1 path (writes a value), lanes 1-31 fall through
+#   to the reconvergence label. All 32 lanes must execute the
+#   broadcast `ld.shared` at reconvergence_pc.
+# Without fix: lanes 1-31 advance from the barrier PC straight to ret,
+#   skipping the broadcast read. cute_rmsnorm then writes 0 to output[0].
+# See: docs/developer-guide/KNOWN_ISSUES.md §"cute_rmsnorm — broadcast-after-barrier skipped"
+# ============================================================================
+add_catch_test(integration_broadcast_after_barrier
+    divergence/test_broadcast_after_barrier.cpp
+)
+set_tests_properties(integration_broadcast_after_barrier PROPERTIES LABELS "integration;barrier;divergence;regression;BUG-CUTE-RMSNORM-BROADCAST-SKIP")
+
+# BUG-DISPATCH-GATE-LANE0-SKIP (2026-06-16):
+# cute_rmsnorm.ptx uses `bar.sync 0` (S_BAR, CTA-level barrier), NOT
+# `bar.warp.sync` (S_BAR_WARP_SYNC, warp-level). The existing I-1/I-2
+# tests use bar.warp.sync which is a DIFFERENT code path. This test
+# reproduces the cute_rmsnorm S_BAR (bar.sync 0) reduction + broadcast
+# pattern to verify lane 0's st.shared at the lane-0-only path is
+# actually dispatched. Without fix: lane 0's st.shared is skipped
+# because the dispatch gate sees a stale SIMT stack entry from the
+# reduction loop and blocks lane 0 at the reconvergence PC.
+add_catch_test(integration_cute_rmsnorm_bar_sync_pattern
+    divergence/test_cute_rmsnorm_bar_sync_pattern.cpp
+)
+set_tests_properties(integration_cute_rmsnorm_bar_sync_pattern PROPERTIES
+    LABELS "integration;barrier;divergence;s_bar;regression;BUG-DISPATCH-GATE-LANE0-SKIP")
+
+# ============================================================================
 # Barrier Regression (BUG-POSTBARRIER-TWOHALVES)
 # RED PHASE: Divergent warp splits into two halves that hit the same
 # barrier at different times. The second release must NOT lose the first
