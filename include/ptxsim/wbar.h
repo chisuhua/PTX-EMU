@@ -7,7 +7,27 @@
 
 namespace ptxsim {
 
-struct Wbar {
+// ============================================================================
+// DEPRECATED: legacy Wbar struct. Production handlers (BarHandler,
+// BarWarpSyncHandler) now use BarrierModule / WarpBarrier from
+// include/ptxsim/barrier/. This header is kept temporarily for tests that
+// still reference the old API. New code MUST use BarrierModule APIs.
+//
+// Migration map:
+//   Wbar wbar;                              → WarpBarrier* wbar = bm.get_warp_barrier(0);
+//   wbar.init(mask, reconv_pc)              → bm.init_warp_barrier(0, mask, reconv_pc, barrier_pc);
+//   wbar.arrive(lane_id)                    → bm.arrive_at_warp_barrier(0, lane_id);
+//   wbar.is_complete()                      → wbar->is_complete()
+//   wbar.count_participants()               → wbar->get_expected_count()
+//   wbar.count_arrived()                    → wbar->get_arrived_count()
+//   wbar.arrived_mask / participation_mask → wbar->get_arrived_mask() / get_participation_mask()
+//   wbar.reset()                            → wbar->reset()
+//   warp_state.wbars[0] / current_wbar_id   → bm.get_warp_barrier(0) / wbar->is_initialized()
+//   wbar.reconvergence_pc                   → wbar->get_reconvergence_pc()
+//
+// Removal scheduled after all tests migrate to BarrierModule API.
+// ============================================================================
+struct [[deprecated("Use ptxsim::WarpBarrier from ptxsim/barrier/barrier_module.h")]] Wbar {
     uint32_t participation_mask = 0;
     uint32_t arrived_mask = 0;
     int reconvergence_pc = -1;

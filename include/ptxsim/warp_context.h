@@ -13,6 +13,7 @@
 
 // Forward declarations to avoid circular includes
 class SMContext;
+class CTAContext;
 class ThreadContext;
 class WarpScheduler;
 
@@ -189,9 +190,15 @@ public:
 
     // 设置 SM Context
     void set_sm_context(SMContext *sm_ctx) { sm_context_ = sm_ctx; }
-    
+
     // 获取 SM Context
     SMContext *get_sm_context() const { return sm_context_; }
+
+    // 设置 CTA Context（反向链接，用于 barrier 模块访问）
+    void set_cta_context(CTAContext *cta_ctx) { cta_context_ = cta_ctx; }
+
+    // 获取 CTA Context
+    CTAContext *get_cta_context() const { return cta_context_; }
 
     // 【NEW】获取 warp state 引用
     ptxsim::WarpState& get_warp_state() { return warp_state; }
@@ -244,6 +251,7 @@ private:
 
     // 指向 SMContext 的指针
     SMContext *sm_context_ = nullptr;
+    CTAContext *cta_context_ = nullptr;
 
     // 调度状态
     bool is_scheduled_{false}; // 表示 warp 是否被调度执行

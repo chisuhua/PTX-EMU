@@ -1,9 +1,31 @@
 # BarrierModule 技术设计文档
 
 **项目**: PTX-EMU Barrier 统一管理模块
-**状态**: 草稿
-**日期**: 2026-05-24
+**状态**: ✅ 已落地 v1（生产路径）
+**日期**: 2026-05-24（初版草稿）→ 2026-06-18（落地 v1）
 **作者**: Sisyphus
+
+**实现完成度**（2026-06-18）：
+
+| 设计章节 | 状态 | 备注 |
+|---------|------|------|
+| §3.2.1 `WarpBarrier` 类 | ✅ 已实现 | `include/ptxsim/barrier/warp_barrier.h` |
+| §3.2.2 `CTABarrier` 类 | ✅ 已实现 | `include/ptxsim/barrier/cta_barrier.h` |
+| §3.2.3 `BarrierModule` 类 | ✅ 已实现 | `include/ptxsim/barrier/barrier_module.h` |
+| §5.1 Warp Barrier 动态 Mask 计算 | ✅ 由 `BarWarpSyncHandler` 实现 | `src/ptxsim/instructions/barrier.cpp:131-147` |
+| §5.2 Barrier 完成判断 | ✅ `WarpBarrier::is_complete` | |
+| §5.2 `BarWarpSyncHandler` 更新 | ✅ 完成 | commit `36dbb9a` 替换为 `BarrierModule` API |
+| §5.2 `BarSyncHandler` 更新 | ✅ 完成 | commit `b04cdb2` 替换为 `BarrierModule` API |
+
+**核心改进（v1 vs 草稿）**：
+- `CTAContext` 持有 `BarrierModule` 实例（per-CTA lifecycle）
+- `WarpContext` 添加 `cta_context_` 反向链接
+- `release_cta_barrier` 实现真正释放线程（含 `advance_thread_pc`）—— 修复 BUG-HANDLER-PC-ADVANCE
+- `Wbar` 旧结构体标记为 `[[deprecated]]`（向后兼容）
+
+**已知未完成项**：
+- `SMContext::synchronize_barrier` 死代码未完全删除（handler 不再调用，但 `exe_once` periodic check 仍存在）
+- `warp_state.wbars[4]` + `current_wbar_id` 字段保留（测试兼容性）
 
 ---
 

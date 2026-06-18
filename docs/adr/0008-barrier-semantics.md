@@ -347,29 +347,70 @@ API（`step_warp`）。本次更新将这些断言的期望值改为与 warp-级
 - [SIMT 架构文档](../architecture/SIMT-ARCHITECTURE-V2.md#34-barrier-机制)
 - [ADR-0006: SIMT Stack 显式控制流管理](./0006-simt-stack-management.md)
 
-## 2026-06-17 追加：BarrierModule 集成与状态机扩展
+## 2026-06-18 追加：BarrierModule 集成与状态机扩展（commit 13b6b36 ~ 83be5f7）
 
 ### 决策
 
-- `BarrierModule` 由 `CTAContext` 持有（每个 CTA 一个实例），替代 `SMContext` 全局 mutex + map
-- `release_cta_barrier(cta_barrier_id, cta_ctx)` 新增 `CTAContext*` 参数，用于遍历线程并调用 `set_state(RUN)` + `advance_thread_pc`
-- `release_warp_barrier` 必须在 `set_exec_mask` 前实施 `set_active_mask(get_active_mask() | arrived_mask)`（OR 逻辑），由 CALLER 负责（不可改 `set_active_mask` 全局语义）
-- `WarpBarrier::init` re-init 时仅更新 metadata，**保留** `arrived_mask` / `arrived_count`（force_reconvergence 路径需求）
+- `BarrierModule` 由 `CTAContext` 独占持有（每个 CTA 一个实例，per-CTA lifecycle），替代 `SMContext` 全局 mutex + map
+- `WarpContext` 添加反向链接 `cta_context_`（`set_cta_context` / `get_cta_context`），由 `CTAContext::init` 设置
+- `release_cta_barrier(cta_barrier_id, cta_ctx, post_barrier_pc)` 新增 `CTAContext*` 和 `post_barrier_pc` 参数；遍历 `arrived_threads_`，对每个 thread 调用 `set_state(RUN)` + `warp->advance_thread_pc(lane, post_barrier_pc)` —— **修复 BUG-HANDLER-PC-ADVANCE**
+- `release_warp_barrier` 实施 `set_active_mask(get_active_mask() | arrived_mask)`（OR 逻辑），由 `BarrierModule` 自身负责（**Caller 层 OR**，不可改 `set_active_mask` 全局语义 —— ret handler 依赖覆写语义清零）
+- `WarpBarrier::init` re-init 时**只更新** metadata（`participation_mask` / `reconvergence_pc` / `expected_count` / `state`），**保留** `arrived_mask` / `arrived_count`（force_reconvergence 路径需求 —— BUG-RECONVERGENCE-SIMPLEGEMM）
 
 ### 状态机扩展
 
-- `WarpBarrier::State` 新增 `Waiting`（已 init 但未 complete）和 `Complete`（全部到达），删除旧的 `Uninitialized → Active → Released` 三态模型
-- `CTABarrier` 沿用相同状态机
+- `WarpBarrier::State` 5 态：`Uninitialized → Initializing → Waiting → Complete → Released`
+- `CTABarrier` 沿用相同语义（通过 `is_initialized_` + `arrived_count >= expected_threads` 表达）
 
-### 移除项
+### 实现状态
 
-- `include/ptxsim/wbar.h` 旧 `Wbar` 结构体
-- `warp_state.h::wbars[]` + `current_wbar_id` 字段
-- `SMContext::synchronize_barrier` + `barrier_waiting_threads` map + `barrier_mutex_` 字段
-- `sm_context.cpp:200-260` 周期 barrier 检查代码块
+| 状态机迁移 | 状态 | 证据 |
+|----------|------|------|
+| `BarHandler::executeBarrier` 走 BarrierModule | ✅ 完成 | `barrier.cpp:230-273` (commit b04cdb2) |
+| `BarWarpSyncHandler::processOperation` 走 BarrierModule | ✅ 完成 | `barrier.cpp:110-225` (commit 36dbb9a) |
+| `CTAContext` 持有 `BarrierModule` | ✅ 完成 | `cta_context.h:96` + `cta_context.cpp:25` (commit 13b6b36) |
+| `WarpContext` 反向链接 CTA | ✅ 完成 | `warp_context.h:201-202` (commit b04cdb2) |
+| `release_cta_barrier` 真正推进 PC | ✅ 完成 | `barrier_module.cpp:159-201` (commit 13b6b36) |
+| `release_warp_barrier` OR active_mask | ✅ 完成 | `barrier_module.cpp:108-110` (commit c48b1cc) |
+| `WarpBarrier::init` re-init 保留 arrived_mask | ✅ 完成 | `warp_barrier.cpp:14-31` (commit 6212624) |
+
+### 废弃 / 暂留项
+
+| 项 | 状态 | 计划 |
+|---|------|------|
+| `include/ptxsim/wbar.h` 旧 `Wbar` 结构体 | ⚠️ `[[deprecated]]` 标记 | 测试迁移完成后删除 |
+| `warp_state.h::wbars[]` + `current_wbar_id` 字段 | ⚠️ 保留（向后兼容）| 同上 |
+| `SMContext::synchronize_barrier` 方法 | ⚠️ 死代码（handler 不再调用）| 未来 sprint 清理 |
+| `SMContext::barrier_waiting_threads` / `barrier_thread_counts` / `barrier_mutex_` | ⚠️ 同上 | 同上 |
+| `sm_context.cpp:200-260` periodic barrier check | ⚠️ 同上 | 同上 |
 
 ### 合规检查项
 
-- [ ] `release_warp_barrier` 调用前 `grep -n "set_active_mask.*|.*arrived_mask" src/ptxsim/barrier/barrier_module.cpp` 必须命中
-- [ ] `WarpBarrier::init` 必须有 `if (is_initialized_) return;` 分支
-- [ ] `set_active_mask` 全局实现 MUST NOT 修改（ret handler 依赖覆写语义清零）
+- [x] `release_warp_barrier` 实施 `set_active_mask(get_active_mask() \| arrived_mask)` —— `src/ptxsim/barrier/barrier_module.cpp:108-110` ✓
+- [x] `WarpBarrier::init` re-init 分支**保留** `arrived_mask` / `arrived_count` —— `src/ptxsim/barrier/warp_barrier.cpp:14-31` ✓
+- [x] `set_active_mask` 全局实现**未修改** —— 仅 caller 层 OR（ret handler 安全）✓
+- [x] `CTAContext` 通过 `std::make_unique<BarrierModule>` 持有 —— `src/ptxsim/core/cta_context.cpp:25` ✓
+- [x] `WarpContext::get_cta_context()` 公开访问器 —— `include/ptxsim/warp_context.h:201` ✓
+- [x] `BarHandler` 不再调用 `synchronize_barrier` —— `barrier.cpp:230-273` 全部走 `bm.arrive_at_cta_barrier` + `release_cta_barrier` ✓
+- [x] `BarWarpSyncHandler` 不再调用 `bsync_manager_` —— `barrier.cpp:110-225` grep `bsync_manager` 应为 0 ✓
+- [x] `release_cta_barrier` 调用 `warp->advance_thread_pc(lane, pc)` 真正推进 PC —— `barrier_module.cpp:185-187` ✓
+- [x] 集成测试 work-around (`test_cta_barrier_memory_visibility.cpp:138-184`) 已删除 —— commit ad7a46f ✓
+
+### 调研依据
+
+- [`docs/research/barrier-semantics/04-ptx-emu-current-implementation.md`](../research/barrier-semantics/04-ptx-emu-current-implementation.md) — 完整代码地图（Phase 7a 重写）
+- [`docs/technical_design/barrier_module_design.md`](../technical_design/barrier_module_design.md) — 落地 v1 状态（Phase 7b 更新）
+- [openspec change: integrate-barrier-module-cta-warp](../../openspec/changes/integrate-barrier-module-cta-warp/) — 完整 proposal/design/specs/tasks
+
+### OpenSpec Change
+
+```text
+openspec/changes/integrate-barrier-module-cta-warp/
+├── proposal.md              (Why/What/Capabilities/Impact)
+├── design.md                (Context/Goals/Decisions/Risks/Migration)
+├── specs/
+│   ├── cta-barrier-module/spec.md          (4 Requirements)
+│   ├── warp-barrier-unification/spec.md    (5 Requirements)
+│   └── barrier-handler-bugfix/spec.md      (4 Requirements)
+└── tasks.md                 (8 phases × 35 atomic tasks)
+```

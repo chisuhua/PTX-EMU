@@ -27,12 +27,12 @@ src/ptxsim/instructions/
 | Add instruction | `include/ptx_ir/ptx_op.def` | X-Macro entry |
 | Implement handler | `src/ptxsim/instructions/` | snake_case function |
 | Dispatch | `instruction_handlers.cpp` | X-Macro dispatch |
-| Barrier reconvergence | `barrier.cpp` | BarWarpSyncHandler |
+| Barrier reconvergence | `barrier.cpp` (dispatch) → `src/ptxsim/barrier/barrier_module.cpp` (state) | `BarHandler` + `BarWarpSyncHandler` route through `BarrierModule` API |
 
 ## KEY FILES
 | File | Purpose |
 |------|---------|
-| `barrier.cpp` | Warp/barrier sync (critical for divergence) |
+| `barrier.cpp` | **Dispatch entry**: `BarWarpSyncHandler::processOperation` + `BarHandler::executeBarrier`. Calls `BarrierModule` API for state. |
 | `control.cpp` | Branch, ret, exit |
 | `arithmetic.cpp` | ALU ops |
 

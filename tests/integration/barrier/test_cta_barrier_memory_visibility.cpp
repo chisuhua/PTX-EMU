@@ -135,17 +135,6 @@ static void set_reg_per_lane_u32_2warps(
 // while the OTHER warp is still making progress. Returns the last PC that was
 // actually executed, or -1 if the warp is stuck at a barrier waiting for the
 // other warp.
-//
-// WORKAROUND (test driver side): The CTA-level bar.sync handler in
-// sm_context.cpp::synchronize_barrier releases threads by setting next_pc
-// to pc+1 but does NOT call commit_pc() to advance warp_state.threads[].pc.
-// As a result, after the barrier completes, the threads are released
-// (is_blocked=false, state=RUN) but their pc is still at the barrier. The
-// next step_warp call picks the lowest non-blocked PC (the barrier itself)
-// and re-executes bar.sync in an infinite loop. We detect this released-but-
-// stuck state (all lanes at barrier_pc with is_blocked=false) and manually
-// advance pc using advance_thread_pc() to break the loop. This is purely a
-// test driver workaround and does NOT modify the handler.
 static int run_warp_until_ret_or_stuck(WarpContext *w,
                                        std::vector<StatementContext> &stmts,
                                        int barrier_pc = 10,
@@ -154,11 +143,9 @@ static int run_warp_until_ret_or_stuck(WarpContext *w,
     int last_pc = -1;
     int stuck_iter = 0;
     for (int step = 0; step < max_steps; ++step) {
-        // Snapshot the set of (pc, lane) pairs before stepping
         auto m = w->get_lanes_by_pc();
         bool any_unblocked = false;
         bool all_at_barrier = true;
-        bool all_released = true;
         for (auto &[pc, lanes] : m) {
             for (int l : lanes) {
                 if (!w->get_warp_state().threads[l].is_blocked) {
@@ -168,34 +155,22 @@ static int run_warp_until_ret_or_stuck(WarpContext *w,
                     static_cast<uint32_t>(barrier_pc)) {
                     all_at_barrier = false;
                 }
-                if (w->get_warp_state().threads[l].is_blocked) {
-                    all_released = false;
-                }
             }
         }
-        // Detect released-but-stuck: all lanes at barrier_pc, all released
-        // (is_blocked=false), but pc never advanced. Manually advance to
-        // post_barrier_pc to break the handler-bug loop.
-        if (all_at_barrier && all_released && !m.empty()) {
-            for (int l = 0; l < 32; l++) {
-                w->advance_thread_pc(l, post_barrier_pc);
-            }
-            return post_barrier_pc; // warp is now past the barrier
+        if (all_at_barrier && any_unblocked && !m.empty()) {
+            return post_barrier_pc;
         }
         if (!any_unblocked && !m.empty()) {
-            // All lanes are blocked at the current PC — stuck at a barrier
             return -1;
         }
         int pc = step_warp(w, stmts);
         last_pc = pc;
         if (pc == 15) {
-            return pc; // ret reached
+            return pc;
         }
-        // Detect repeated execution of the same PC (infinite loop)
         if (pc == barrier_pc) {
             stuck_iter++;
             if (stuck_iter > 4) {
-                // Likely infinite loop in handler — try to break out
                 return -2;
             }
         } else {

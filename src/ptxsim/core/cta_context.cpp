@@ -26,6 +26,9 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
                       void *local_memory_base, size_t local_mem_per_thread,
                       size_t dynamic_shared_mem_size) {
 
+    // 每个 CTA 一个 BarrierModule（包含 16 个 named CTA barrier + 4 个 warp barrier 槽）
+    barrier_module_ = std::make_unique<BarrierModule>();
+
     threadNum = BlockDim.x * BlockDim.y * BlockDim.z;
     curExeWarpId = 0;
     curExeThreadId = 0;
@@ -184,6 +187,7 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
     for (int w = 0; w < warpNum; w++) {
         auto warp = std::make_unique<WarpContext>();
         warp->set_warp_id(w);
+        warp->set_cta_context(this);  // 反向链接 CTA → warp
         // 设置寄存器银行管理器
         warp->set_register_bank_manager(register_bank_manager);
         warps.push_back(std::move(warp));

@@ -181,3 +181,75 @@ TEST_CASE("release_warp_barrier ORs with existing active_mask (BUG-POSTBARRIER-T
     // semantics: exec_mask is the lanes that "just completed" the barrier)
     CHECK(warp->get_warp_state().exec_mask == 0xFFFF0000u);
 }
+
+// ============================================================================
+// CTA-level barrier end-to-end: arrive -> is_complete -> release advances PC.
+// Regression for BUG-HANDLER-PC-ADVANCE: pre-fix BarHandler::executeBarrier
+// set next_pc=pc+1 but did NOT call commit_pc(), so warp_state.threads[lane].pc
+// stayed at barrier_pc after release; threads stuck in infinite loop.
+// Post-fix: BarrierModule::release_cta_barrier advances per-thread PC.
+// ============================================================================
+TEST_CASE("CTA barrier release advances per-thread PC (BUG-HANDLER-PC-ADVANCE)",
+          "[barrier][release][cta][regression][BUG-HANDLER-PC-ADVANCE]")
+{
+    init_factory_once();
+    ResourceManager::instance().initialize(1, 8192);
+
+    constexpr int BLOCK_DIM = 32;
+    constexpr int BARRIER_PC = 10;
+    constexpr int POST_BARRIER_PC = 11;
+
+    std::vector<StatementContext> statements;
+
+    auto block = std::make_unique<CTAContext>();
+    block->init({1, 1, 1}, {BLOCK_DIM, 1, 1}, {0, 0, 0},
+                statements, nullptr, std::map<std::string, int>{});
+    block->sharedMemBytes = 128;
+
+    auto register_bank = std::make_shared<RegisterBankManager>(1, BLOCK_DIM);
+    BarrierModule& bm = block->get_barrier_module();
+    WarpContext* warp = block->get_warp(0);
+    REQUIRE(warp != nullptr);
+    warp->set_register_bank_manager(register_bank);
+    for (int i = 0; i < BLOCK_DIM; i++) {
+        warp->get_thread(i)->set_register_bank_manager(register_bank);
+        warp->get_warp_state().threads[i].pc = BARRIER_PC;
+    }
+
+    CTABarrier* ctabar = bm.init_cta_barrier(0, BLOCK_DIM, 1);
+    REQUIRE(ctabar != nullptr);
+    REQUIRE_FALSE(ctabar->is_complete());
+
+    for (int i = 0; i < BLOCK_DIM; i++) {
+        ThreadContext* t = warp->get_thread(i);
+        REQUIRE(t != nullptr);
+        REQUIRE(t->warp_context_ == warp);
+        REQUIRE(t->lane_id_ == i);
+        bool complete = bm.arrive_at_cta_barrier(0, t);
+        if (i < BLOCK_DIM - 1) {
+            REQUIRE_FALSE(complete);
+        } else {
+            REQUIRE(complete);
+        }
+    }
+    REQUIRE(ctabar->is_complete());
+
+    for (int i = 0; i < BLOCK_DIM; i++) {
+        REQUIRE(warp->get_warp_state().threads[i].pc ==
+                static_cast<uint32_t>(BARRIER_PC));
+    }
+
+    bm.release_cta_barrier(0, block.get(), POST_BARRIER_PC);
+
+    for (int i = 0; i < BLOCK_DIM; i++) {
+        CHECK(warp->get_warp_state().threads[i].pc ==
+              static_cast<uint32_t>(POST_BARRIER_PC));
+    }
+
+    CHECK(ctabar->get_arrived_count() == 0);
+    CHECK_FALSE(ctabar->is_initialized());
+
+    ctabar = bm.init_cta_barrier(0, BLOCK_DIM, 1);
+    REQUIRE(ctabar != nullptr);
+    REQUIRE_FALSE(ctabar->is_complete());
+}

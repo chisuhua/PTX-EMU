@@ -1,9 +1,11 @@
 // barrier_module.cpp
 #include "ptxsim/barrier/barrier_module.h"
+#include "ptxsim/cta_context.h"
 #include "ptxsim/warp_context.h"
 #include "ptxsim/thread_context.h"
 #include "utils/logger.h"
 #include <sstream>
+#include <set>
 
 namespace ptxsim {
 
@@ -156,17 +158,43 @@ bool BarrierModule::is_cta_barrier_complete(int cta_barrier_id) const {
     return cta_barriers_[cta_barrier_id]->is_complete();
 }
 
-void BarrierModule::release_cta_barrier(int cta_barrier_id) {
+void BarrierModule::release_cta_barrier(int cta_barrier_id,
+                                        CTAContext* cta_ctx,
+                                        int post_barrier_pc) {
     CTABarrier* ctabar = get_cta_barrier(cta_barrier_id);
-    if (!ctabar) return;
-
-    if (!ctabar->is_complete()) {
-        PTX_ERROR_EMU("BarrierModule::release_cta_barrier called on incomplete barrier");
+    if (!ctabar) {
+        PTX_ERROR_EMU("BarrierModule::release_cta_barrier id=%d - ctabar is null",
+                      cta_barrier_id);
         return;
     }
 
-    PTX_INFO_EMU("BarrierModule::release_cta_barrier id=%d releasing %d threads",
-                  cta_barrier_id, ctabar->get_arrived_count());
+    if (!ctabar->is_complete()) {
+        PTX_ERROR_EMU("BarrierModule::release_cta_barrier called on incomplete barrier id=%d",
+                      cta_barrier_id);
+        return;
+    }
+
+    // Snapshot the waiting set BEFORE releasing — get_waiting_threads() returns
+    // a const reference, but reset() will clear the set, so we must copy first.
+    std::set<ThreadContext*> arrived = ctabar->get_waiting_threads();
+    int released_count = 0;
+
+    for (ThreadContext* thread : arrived) {
+        if (!thread) continue;
+        thread->set_state(ThreadStatus::RUN);
+        if (thread->warp_context_ != nullptr) {
+            thread->warp_context_->advance_thread_pc(thread->lane_id_, post_barrier_pc);
+            released_count++;
+            PTX_DEBUG_EMU("  release_cta_barrier id=%d thread=%p lane=%d -> PC=%d",
+                          cta_barrier_id, (void*)thread, thread->lane_id_, post_barrier_pc);
+        } else {
+            PTX_ERROR_EMU("release_cta_barrier thread=%p has no warp_context_", (void*)thread);
+        }
+    }
+
+    PTX_INFO_EMU("BarrierModule::release_cta_barrier id=%d COMPLETE - "
+                 "released %d threads to PC=%d",
+                 cta_barrier_id, released_count, post_barrier_pc);
 
     ctabar->reset();
 }
