@@ -81,8 +81,9 @@ public:
     std::vector<std::unique_ptr<WarpContext>> release_warps();
 
     // CTA 级 barrier 管理（per-CTA 一个 BarrierModule）
-    BarrierModule& get_barrier_module() { return *barrier_module_; }
-    const BarrierModule& get_barrier_module() const { return *barrier_module_; }
+    // Note: BarrierModule lives in ptxsim namespace (barrier/barrier_module.h).
+    ptxsim::BarrierModule& get_barrier_module() { return *barrier_module_; }
+    const ptxsim::BarrierModule& get_barrier_module() const { return *barrier_module_; }
 
     ~CTAContext();
 
@@ -100,7 +101,7 @@ private:
     std::vector<std::unique_ptr<WarpContext>> warps;
 
     // 统一管理 CTA 内 16 个 named barrier（NVIDIA 硬件对齐）
-    std::unique_ptr<BarrierModule> barrier_module_;
+    std::unique_ptr<ptxsim::BarrierModule> barrier_module_;
 };
 
 #endif // CTA_CONTEXT_H

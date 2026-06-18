@@ -9,10 +9,15 @@
 #include <memory>
 #include <vector>
 
-namespace ptxsim {
-
+// Forward declarations at GLOBAL scope so ::CTAContext and ::ThreadContext
+// remain the canonical types (NOT shadowed by ptxsim::CTAContext etc.).
+// This is required because cta_context.h defines CTAContext in global scope
+// (for backward compatibility with existing consumers), and consumers inside
+// namespace ptxsim::* must be able to find ::CTAContext via name lookup.
 class ThreadContext;
-class CTAContext;  // forward declare for release_cta_barrier signature
+class CTAContext;
+
+namespace ptxsim {
 
 class BarrierModule {
 public:

@@ -26,6 +26,7 @@ using ptxsim::testing::step_warp;
 namespace {
 using namespace ptxir::factory;
 using ptxsim::BarrierModule;
+using ptxsim::CTABarrier;
 
 static void init_factory_once() {
     static bool done = false;
@@ -200,10 +201,15 @@ TEST_CASE("CTA barrier release advances per-thread PC (BUG-HANDLER-PC-ADVANCE)",
     constexpr int POST_BARRIER_PC = 11;
 
     std::vector<StatementContext> statements;
+    std::map<std::string, int> label2pc;
+
+    Dim3 gridDim{1, 1, 1};
+    Dim3 blockDim{BLOCK_DIM, 1, 1};
+    Dim3 blockIdx{0, 0, 0};
 
     auto block = std::make_unique<CTAContext>();
-    block->init({1, 1, 1}, {BLOCK_DIM, 1, 1}, {0, 0, 0},
-                statements, nullptr, std::map<std::string, int>{});
+    block->init(gridDim, blockDim, blockIdx,
+                statements, nullptr, label2pc);
     block->sharedMemBytes = 128;
 
     auto register_bank = std::make_shared<RegisterBankManager>(1, BLOCK_DIM);
@@ -247,7 +253,7 @@ TEST_CASE("CTA barrier release advances per-thread PC (BUG-HANDLER-PC-ADVANCE)",
     }
 
     CHECK(ctabar->get_arrived_count() == 0);
-    CHECK_FALSE(ctabar->is_initialized());
+    CHECK_FALSE(ctabar->is_complete());
 
     ctabar = bm.init_cta_barrier(0, BLOCK_DIM, 1);
     REQUIRE(ctabar != nullptr);

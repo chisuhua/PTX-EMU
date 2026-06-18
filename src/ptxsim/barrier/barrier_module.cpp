@@ -181,7 +181,7 @@ void BarrierModule::release_cta_barrier(int cta_barrier_id,
 
     for (ThreadContext* thread : arrived) {
         if (!thread) continue;
-        thread->set_state(ThreadStatus::RUN);
+        thread->set_state(RUN);
         if (thread->warp_context_ != nullptr) {
             thread->warp_context_->advance_thread_pc(thread->lane_id_, post_barrier_pc);
             released_count++;

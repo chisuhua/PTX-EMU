@@ -8,9 +8,13 @@
 #include <mutex>
 #include <memory>
 
-namespace ptxsim {
-
+// Forward-declare at global scope so ptxsim::ThreadContext inside the
+// namespace below resolves to the same type as ::ThreadContext (defined
+// in ptxsim/thread_context.h). Putting this inside namespace ptxsim would
+// create a distinct shadow type that name-lookup prefers inside ptxsim::*.
 class ThreadContext;
+
+namespace ptxsim {
 
 class CTABarrier {
 public:

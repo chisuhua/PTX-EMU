@@ -28,6 +28,12 @@
 #include <vector>
 #include <memory>
 
+// Bring ptxsim barrier types into global scope so the rest of this file
+// (which lives in the global namespace) can reference them without prefix.
+using ptxsim::BarrierModule;
+using ptxsim::WarpBarrier;
+using ptxsim::CTABarrier;
+
 // Note: Handlers are defined in global namespace, not ptxsim namespace
 // (to match the declarations in instruction_handlers.h)
 

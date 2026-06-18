@@ -3,6 +3,7 @@
 #include "ptx_ir/kernel_context.h"
 #include "ptx_ir/ptx_types.h"
 #include "ptx_ir/statement_context.h"
+#include "ptxsim/barrier/barrier_module.h"
 #include "ptxsim/register_analyzer.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/utils/qualifier_utils.h"
@@ -27,7 +28,7 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
                       size_t dynamic_shared_mem_size) {
 
     // 每个 CTA 一个 BarrierModule（包含 16 个 named CTA barrier + 4 个 warp barrier 槽）
-    barrier_module_ = std::make_unique<BarrierModule>();
+    barrier_module_ = std::make_unique<ptxsim::BarrierModule>();
 
     threadNum = BlockDim.x * BlockDim.y * BlockDim.z;
     curExeWarpId = 0;
