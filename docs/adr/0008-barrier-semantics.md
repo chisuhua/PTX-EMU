@@ -346,3 +346,30 @@ API（`step_warp`）。本次更新将这些断言的期望值改为与 warp-级
 - [PTX ISA 9.1 Section 9.7.13.1 - Barrier Synchronization](../archive/ptx-instruction-reference/9.7.13_sync_comm.md)
 - [SIMT 架构文档](../architecture/SIMT-ARCHITECTURE-V2.md#34-barrier-机制)
 - [ADR-0006: SIMT Stack 显式控制流管理](./0006-simt-stack-management.md)
+
+## 2026-06-17 追加：BarrierModule 集成与状态机扩展
+
+### 决策
+
+- `BarrierModule` 由 `CTAContext` 持有（每个 CTA 一个实例），替代 `SMContext` 全局 mutex + map
+- `release_cta_barrier(cta_barrier_id, cta_ctx)` 新增 `CTAContext*` 参数，用于遍历线程并调用 `set_state(RUN)` + `advance_thread_pc`
+- `release_warp_barrier` 必须在 `set_exec_mask` 前实施 `set_active_mask(get_active_mask() | arrived_mask)`（OR 逻辑），由 CALLER 负责（不可改 `set_active_mask` 全局语义）
+- `WarpBarrier::init` re-init 时仅更新 metadata，**保留** `arrived_mask` / `arrived_count`（force_reconvergence 路径需求）
+
+### 状态机扩展
+
+- `WarpBarrier::State` 新增 `Waiting`（已 init 但未 complete）和 `Complete`（全部到达），删除旧的 `Uninitialized → Active → Released` 三态模型
+- `CTABarrier` 沿用相同状态机
+
+### 移除项
+
+- `include/ptxsim/wbar.h` 旧 `Wbar` 结构体
+- `warp_state.h::wbars[]` + `current_wbar_id` 字段
+- `SMContext::synchronize_barrier` + `barrier_waiting_threads` map + `barrier_mutex_` 字段
+- `sm_context.cpp:200-260` 周期 barrier 检查代码块
+
+### 合规检查项
+
+- [ ] `release_warp_barrier` 调用前 `grep -n "set_active_mask.*|.*arrived_mask" src/ptxsim/barrier/barrier_module.cpp` 必须命中
+- [ ] `WarpBarrier::init` 必须有 `if (is_initialized_) return;` 分支
+- [ ] `set_active_mask` 全局实现 MUST NOT 修改（ret handler 依赖覆写语义清零）
