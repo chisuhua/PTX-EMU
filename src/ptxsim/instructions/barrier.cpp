@@ -14,6 +14,8 @@
 // =============================================================================
 
 #include "ptxsim/instruction_handlers.h"
+#include "ptxsim/barrier/barrier_module.h"
+#include "ptxsim/cta_context.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/warp_context.h"
 #include "ptxsim/warp_state.h"
@@ -331,52 +333,44 @@ void ActivemaskHandler::processOperation(ThreadContext* context, void** operands
 // =============================================================================
 
 void BarHandler::executeBarrier(ThreadContext* context, const BarrierInstr& instr) {
-    // Step 1: Extract barId from BarrierInstr
-    int barId = 0;  // Default barrier ID
+    int barId = 0;
     if (instr.barId.has_value()) {
         barId = instr.barId.value();
     }
-    // For the type field, we expect this to indicate "cta" (cooperative thread array)
-    // but we can proceed with the standard synchronize_barrier which works at CTA level
-    
-    // Step 2: Get SM context via warp context
+
     WarpContext* warp_ctx = context->get_warp_context();
     if (!warp_ctx) {
         PTX_ERROR_EMU("WarpContext is null in barHandler");
-        context->set_next_pc(context->get_pc() + 1);  // Advance PC to avoid infinite loop
+        context->set_next_pc(context->get_pc() + 1);
         return;
     }
-    
-    SMContext* sm_context = warp_ctx->get_sm_context();  // Assuming this method exists
-    if (!sm_context) {
-        PTX_ERROR_EMU("SMContext is null in barHandler");
-        context->set_next_pc(context->get_pc() + 1);  // Advance PC to avoid infinite loop
+
+    CTAContext* cta_ctx = warp_ctx->get_cta_context();
+    if (!cta_ctx) {
+        PTX_ERROR_EMU("CTAContext is null in barHandler — warp not linked to CTA");
+        context->set_next_pc(context->get_pc() + 1);
         return;
     }
-    
+
     PTX_DEBUG_THREAD("Thread [%u,%u,%u] executing bar.sync with barrier_id=%d",
                      context->ThreadIdx.x, context->ThreadIdx.y, context->ThreadIdx.z,
                      barId);
-    
+
     if (warp_ctx->get_unique_pcs().size() > 1) {
         warp_ctx->force_reconvergence_at_barrier(context->get_pc());
     }
-    
-    // Step 4: Call synchronize_barrier to handle CTA-level synchronization
-    PTX_INFO_EMU("Thread [%u,%u,%u] calling synchronize_barrier(barrier_id=%d)",
-                 context->ThreadIdx.x, context->ThreadIdx.y, context->ThreadIdx.z,
-                 barId);
-    bool sync_complete = sm_context->synchronize_barrier(barId, context);
-    
+
+    BarrierModule& bm = cta_ctx->get_barrier_module();
+    bool sync_complete = bm.arrive_at_cta_barrier(barId, context);
+
     if (sync_complete) {
-        // All threads reached the barrier and have been released
-        PTX_DEBUG_EMU("bar.sync complete: All threads released for barrier_id=%d", barId);
-        context->set_next_pc(context->get_pc() + 1);  // Advance PC after barrier
+        int post_barrier_pc = context->get_pc() + 1;
+        bm.release_cta_barrier(barId, cta_ctx, post_barrier_pc);
+        PTX_DEBUG_EMU("bar.sync complete: All threads released for barrier_id=%d -> PC=%d",
+                      barId, post_barrier_pc);
+        context->set_next_pc(post_barrier_pc);
     } else {
-        // Thread is still waiting at barrier - do not advance PC, will retry
-        // Need to keep next_pc == pc so thread stays at current instruction
-        context->set_next_pc(context->get_pc()); 
-        // The thread state is already set to BAR_SYNC by synchronize_barrier()
+        context->set_next_pc(context->get_pc());
         PTX_DEBUG_THREAD("Thread [%u,%u,%u] waiting at barrier_id=%d",
                          context->ThreadIdx.x, context->ThreadIdx.y, context->ThreadIdx.z,
                          barId);

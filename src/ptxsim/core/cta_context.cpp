@@ -187,6 +187,7 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
     for (int w = 0; w < warpNum; w++) {
         auto warp = std::make_unique<WarpContext>();
         warp->set_warp_id(w);
+        warp->set_cta_context(this);  // 反向链接 CTA → warp
         // 设置寄存器银行管理器
         warp->set_register_bank_manager(register_bank_manager);
         warps.push_back(std::move(warp));
