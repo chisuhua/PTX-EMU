@@ -2,6 +2,7 @@
 #define CTA_CONTEXT_H
 
 #include "ptx_ir/statement_context.h"
+#include "ptxsim/barrier/barrier_module.h"
 #include "ptxsim/common_types.h" // 包含通用类型定义
 #include "ptxsim/execution_types.h"
 #include "ptxsim/thread_context.h"
@@ -79,6 +80,10 @@ public:
     // 释放warp的所有权
     std::vector<std::unique_ptr<WarpContext>> release_warps();
 
+    // CTA 级 barrier 管理（per-CTA 一个 BarrierModule）
+    BarrierModule& get_barrier_module() { return *barrier_module_; }
+    const BarrierModule& get_barrier_module() const { return *barrier_module_; }
+
     ~CTAContext();
 
 private:
@@ -93,6 +98,9 @@ private:
 
     // 存储warp的向量，用于转移所有权
     std::vector<std::unique_ptr<WarpContext>> warps;
+
+    // 统一管理 CTA 内 16 个 named barrier（NVIDIA 硬件对齐）
+    std::unique_ptr<BarrierModule> barrier_module_;
 };
 
 #endif // CTA_CONTEXT_H

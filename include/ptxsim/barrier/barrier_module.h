@@ -12,6 +12,7 @@
 namespace ptxsim {
 
 class ThreadContext;
+class CTAContext;  // forward declare for release_cta_barrier signature
 
 class BarrierModule {
 public:
@@ -37,6 +38,13 @@ public:
     void release_warp_barrier(int warp_barrier_id, WarpContext* warp_ctx);
 
     // CTA Barrier
+    // release_cta_barrier advances per-thread PC for every arrived thread via
+    // cta_ctx -> thread -> warp_context -> advance_thread_pc(lane, post_barrier_pc),
+    // and sets ThreadContext::state = RUN so the scheduler can resume execution.
+    // MUST only be called when is_cta_barrier_complete() returned true.
+    void release_cta_barrier(int cta_barrier_id, CTAContext* cta_ctx,
+                             int post_barrier_pc);
+
     CTABarrier* init_cta_barrier(int cta_barrier_id,
                                  int total_threads,
                                  int warp_count);
@@ -46,8 +54,6 @@ public:
     bool arrive_at_cta_barrier(int cta_barrier_id, ThreadContext* thread);
 
     bool is_cta_barrier_complete(int cta_barrier_id) const;
-
-    void release_cta_barrier(int cta_barrier_id);
 
     // 状态查询
     int get_active_warp_barrier_count() const;
