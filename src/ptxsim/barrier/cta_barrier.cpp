@@ -43,7 +43,12 @@ bool CTABarrier::arrive(ThreadContext* thread) {
     PTX_DEBUG_EMU("CTABarrier::arrive id=%d arrived=%d/%d",
                   barrier_id_, arrived_threads_.size(), expected_threads_);
 
-    if (is_complete()) {
+    // Inline completeness check instead of calling is_complete() — the public
+    // method re-locks mutex_, which would deadlock since we already hold it
+    // (std::mutex is non-recursive).
+    bool complete = (static_cast<int>(arrived_threads_.size()) >=
+                     expected_threads_);
+    if (complete) {
         PTX_INFO_EMU("CTABarrier::complete id=%d threads=%d",
                      barrier_id_, arrived_threads_.size());
         return true;
