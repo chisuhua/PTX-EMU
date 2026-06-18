@@ -151,3 +151,51 @@ TEST_CASE("BarrierModule warp barrier management", "[barrier][barrier_module]") 
         REQUIRE(bm.get_active_warp_barrier_count() == 0);
     }
 }
+
+// ============================================================================
+// Regression: BUG-RECONVERGENCE-SIMPLEGEMM
+// When a divergent warp hits a barrier in two halves (force_reconvergence
+// path), the second half calls init_warp_barrier with a fresh
+// participation_mask. The init MUST update metadata (participation_mask,
+// reconvergence_pc, expected_count) but PRESERVE arrived_mask and
+// arrived_count — otherwise the second half loses the first half's
+// accumulation and is_complete() returns the wrong answer.
+//
+// Pre-fix:  re-init resets arrived_mask to 0 (loses first half)
+// Post-fix:  re-init preserves arrived_mask (accumulates across re-inits)
+// ============================================================================
+TEST_CASE("WarpBarrier::init preserves arrived_mask on re-init (BUG-RECONVERGENCE-SIMPLEGEMM)",
+          "[barrier][warp_barrier][init][regression][BUG-RECONVERGENCE-SIMPLEGEMM]")
+{
+    WarpBarrier wbar;
+
+    // First init: first half (lanes 0-15) participates
+    wbar.init(0x0000FFFFu, 21, 20);
+    for (int i = 0; i < 16; ++i) {
+        wbar.arrive(i);
+    }
+    REQUIRE(wbar.get_arrived_mask() == 0x0000FFFFu);
+    REQUIRE(wbar.get_arrived_count() == 16);
+    REQUIRE(wbar.is_complete());
+
+    // Re-init: second half (lanes 16-31) — force_reconvergence path
+    wbar.init(0xFFFF0000u, 21, 20);
+
+    // KEY ASSERTION: arrived_mask MUST be preserved (not reset to 0)
+    // Metadata MUST be updated to reflect new participation
+    CHECK(wbar.get_arrived_mask() == 0x0000FFFFu);
+    CHECK(wbar.get_arrived_count() == 16);
+    CHECK(wbar.get_participation_mask() == 0xFFFF0000u);
+    CHECK(wbar.get_expected_count() == 16);
+    CHECK(wbar.get_reconvergence_pc() == 21);
+    CHECK(wbar.is_initialized());
+
+    // Second half arrives; expected_count is now 16, so 16 more lanes
+    // arriving brings arrived_count to 32 — barrier is complete
+    for (int i = 16; i < 32; ++i) {
+        wbar.arrive(i);
+    }
+    CHECK(wbar.get_arrived_mask() == 0xFFFFFFFFu);
+    CHECK(wbar.get_arrived_count() == 32);
+    CHECK(wbar.is_complete());
+}
