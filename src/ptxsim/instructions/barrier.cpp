@@ -116,7 +116,6 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
     }
 
     uint32_t static_mask = *static_cast<uint32_t*>(operands[0]);
-
     int reconvergence_pc = *static_cast<int*>(operands[1]);
 
     WarpContext* warp_ctx = context->warp_context_;
@@ -125,9 +124,17 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
         return;
     }
 
+    CTAContext* cta_ctx = warp_ctx->get_cta_context();
+    if (!cta_ctx) {
+        PTX_ERROR_EMU("CTAContext is null in BarWarpSyncHandler — warp not linked to CTA");
+        return;
+    }
+    BarrierModule& bm = cta_ctx->get_barrier_module();
+    constexpr int WBAR_ID = 0;
+    WarpBarrier* wbar = bm.get_warp_barrier(WBAR_ID);
+
     ptxsim::WarpState& warp_state = warp_ctx->get_warp_state();
     int lane_id = context->lane_id_;
-
     uint32_t current_pc = warp_state.threads[lane_id].pc;
 
     if (reconvergence_pc == 0 || reconvergence_pc == (int)current_pc) {
@@ -135,9 +142,9 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
     }
 
     uint32_t dynamic_mask = 0;
-    bool force_reconvergence_done = false;
+    bool wbar_was_initialized = (wbar != nullptr && wbar->is_initialized());
 
-    if (warp_state.current_wbar_id < 0) {
+    if (!wbar_was_initialized) {
         for (int i = 0; i < 32; i++) {
             if (!warp_state.threads[i].is_active) continue;
             if (warp_state.threads[i].is_exited) continue;
@@ -149,133 +156,61 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
     }
 
     auto unique_pcs = warp_ctx->get_unique_pcs();
-    if (unique_pcs.size() > 1 && warp_state.current_wbar_id < 0) {
+    if (unique_pcs.size() > 1 && !wbar_was_initialized) {
         warp_ctx->force_reconvergence_at_barrier(static_cast<int>(current_pc));
 
-        warp_state.current_wbar_id = 0;
-        ptxsim::Wbar& init_wbar = warp_state.wbars[0];
+        // force_reconvergence path: use static_mask since divergent lanes are
+        // not all at barrier_pc (dynamic_mask is incomplete in this branch).
+        // WarpBarrier::init preserves arrived_mask on re-init (BUG-RECONVERGENCE-
+        // SIMPLEGEMM fix from commit 6212624).
+        bm.init_warp_barrier(WBAR_ID, static_mask, reconvergence_pc, current_pc);
+        wbar = bm.get_warp_barrier(WBAR_ID);
+        wbar->arrive(lane_id);
 
-        SMContext* sm_ctx = warp_ctx->get_sm_context();
-
-        // 在分歧路径中，部分线程不在 barrier PC，动态掩码不完整。
-        // 应使用 PTX 指令的 static_mask 作为参与掩码，确保所有指定线程被计入。
-        uint32_t participation_mask = static_mask;
-
-        // BUG-RECONVERGENCE-SIMPLEGEMM fix:
-        // If the wbar was already initialized (e.g., a divergent half of the warp
-        // already passed through this barrier and was released), preserve its
-        // arrived_mask instead of resetting it. Otherwise the first divergent
-        // half's arrival record is lost, and subsequent arrivals can never
-        // accumulate to the full participation_mask → barrier never completes
-        // → lanes that arrive later are stuck at barrier_pc forever.
-        if (!init_wbar.is_initialized) {
-            init_wbar.init(participation_mask, reconvergence_pc);
-        } else {
-            init_wbar.participation_mask = participation_mask;
-            init_wbar.reconvergence_pc = reconvergence_pc;
-            init_wbar.expected_count = __builtin_popcount(participation_mask);
-            init_wbar.is_initialized = true;
-        }
-        init_wbar.arrive(lane_id);
-
-        if (init_wbar.is_complete() && warp_state.current_wbar_id >= 0) {
-            if (sm_ctx) {
-                sm_ctx->bsync_manager_.release(0);
-            }
-            warp_ctx->set_exec_mask(init_wbar.arrived_mask);
-            for (int i = 0; i < WarpContext::WARP_SIZE; ++i) {
-                if ((init_wbar.arrived_mask & (1u << i)) && warp_state.threads[i].is_active) {
-                    warp_ctx->advance_thread_pc(i, reconvergence_pc);
-                    warp_state.threads[i].is_blocked = false;
-                    warp_state.threads[i].status = ptxsim::ThreadStatus::Active;
-                }
-            }
-            // BUG-POSTBARRIER-TWOHALVES fix: OR with existing active_mask
-            // to preserve lanes already released by a prior barrier call
-            // (e.g. when a divergent warp hits the same barrier in two halves).
-            warp_ctx->set_active_mask(
-                warp_ctx->get_active_mask() | init_wbar.arrived_mask);
-            warp_state.current_wbar_id = -1;
+        if (wbar->is_complete()) {
+            bm.release_warp_barrier(WBAR_ID, warp_ctx);
             set_pc_overridden(true);
         } else {
             warp_state.threads[lane_id].is_blocked = true;
             warp_state.threads[lane_id].status = ptxsim::ThreadStatus::Blocked;
             set_pc_overridden(true);
             PTX_DEBUG_THREAD("Lane %d blocked at forced reconvergence barrier (arrived=%d/%d)",
-                            lane_id, init_wbar.count_arrived(), init_wbar.count_participants());
+                            lane_id, wbar->get_arrived_count(), wbar->get_expected_count());
         }
         return;
     }
 
-    if (force_reconvergence_done) {
-        return;
+    if (!wbar_was_initialized) {
+        bm.init_warp_barrier(WBAR_ID, static_mask, reconvergence_pc, current_pc);
+        wbar = bm.get_warp_barrier(WBAR_ID);
     }
 
-    int wbar_id = 0;
-    ptxsim::Wbar& wbar = warp_state.wbars[wbar_id];
+    bool complete = bm.arrive_at_warp_barrier(WBAR_ID, lane_id);
 
-    if (warp_state.current_wbar_id < 0 && wbar.is_initialized) {
-        wbar.reset();
-    }
-
-    if (!wbar.is_initialized) {
-        uint32_t participation_mask = (dynamic_mask != 0) ? (dynamic_mask & static_mask) : static_mask;
-        if (participation_mask == 0) participation_mask = static_mask;
-        wbar.init(participation_mask, reconvergence_pc);
-        warp_state.current_wbar_id = wbar_id;
-        PTX_DEBUG_EMU("bar.warp.sync: Initialized wbar[%d] with mask=0x%X, reconvergence_pc=%d",
-                      wbar_id, participation_mask, reconvergence_pc);
-    }
-
-    wbar.arrive(lane_id);
-
-    SMContext* sm_ctx = warp_ctx->get_sm_context();
-    if (sm_ctx) {
-        sm_ctx->bsync_manager_.bsync(wbar_id, lane_id, current_pc);
-    }
-
-    // BUG-CUTE-RMSNORM-BROADCAST-SKIP: current_wbar_id < 0 means the wbar
-    // was already released (current_wbar_id is set to -1 on release).
-    // Re-checking is_complete() here would re-release the same lanes,
-    // skipping the broadcast instruction at reconvergence_pc.
-    if (wbar.is_complete() && warp_state.current_wbar_id >= 0) {
-        if (sm_ctx) {
-            sm_ctx->bsync_manager_.release(wbar_id);
-        }
+    // BUG-CUTE-RMSNORM-BROADCAST-SKIP: if release_warp_barrier was called
+    // (resetting the wbar) between init and arrive, do NOT re-release — that
+    // would skip the broadcast instruction at reconvergence_pc.
+    if (complete && wbar->is_initialized()) {
         if (reconvergence_pc < 0) {
-            PTX_ERROR_EMU("bar.warp.sync: Invalid reconvergence_pc=%d at barrier completion, skipping PC update", reconvergence_pc);
+            PTX_ERROR_EMU("bar.warp.sync: Invalid reconvergence_pc=%d at barrier completion", reconvergence_pc);
             return;
         }
 
-        warp_ctx->set_exec_mask(wbar.arrived_mask);
-
         PTX_INFO_EMU("bar.warp.sync: Barrier complete, releasing %d threads to PC=%d (mask=0x%X arrived=0x%X)",
-                      wbar.count_participants(), reconvergence_pc,
-                      wbar.participation_mask, wbar.arrived_mask);
+                      wbar->get_expected_count(), reconvergence_pc,
+                      wbar->get_participation_mask(), wbar->get_arrived_mask());
 
-        for (int i = 0; i < WarpContext::WARP_SIZE; ++i) {
-            if ((wbar.arrived_mask & (1u << i)) && warp_state.threads[i].is_active) {
-                uint32_t old_pc = warp_ctx->get_thread(i)->get_pc();
-                warp_ctx->advance_thread_pc(i, reconvergence_pc);
-                warp_state.threads[i].is_blocked = false;
-                warp_state.threads[i].status = ptxsim::ThreadStatus::Active;
-                PTX_INFO_EMU("  Released lane=%d: PC=%u -> %d", i, old_pc, reconvergence_pc);
-            }
-        }
-
-        // BUG-POSTBARRIER-TWOHALVES fix: OR with existing active_mask
-        // to preserve lanes already released by a prior barrier call.
-        warp_ctx->set_active_mask(
-            warp_ctx->get_active_mask() | wbar.arrived_mask);
-
-        warp_state.current_wbar_id = -1;
+        // release_warp_barrier internally sets exec_mask, advances per-thread
+        // PC, clears is_blocked, OR's arrived_mask into active_mask
+        // (BUG-POSTBARRIER-TWOHALVES), and resets the wbar.
+        bm.release_warp_barrier(WBAR_ID, warp_ctx);
         set_pc_overridden(true);
     } else {
         warp_state.threads[lane_id].is_blocked = true;
         warp_state.threads[lane_id].status = ptxsim::ThreadStatus::Blocked;
         set_pc_overridden(true);
         PTX_DEBUG_THREAD("Lane %d blocked at bar.warp.sync (arrived=%d/%d)",
-                         lane_id, wbar.count_arrived(), wbar.count_participants());
+                         lane_id, wbar->get_arrived_count(), wbar->get_expected_count());
     }
 }
 
