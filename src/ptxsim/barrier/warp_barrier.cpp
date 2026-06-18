@@ -11,6 +11,25 @@ WarpBarrier::WarpBarrier() {
 }
 
 void WarpBarrier::init(uint32_t participation_mask, int reconvergence_pc, uint32_t barrier_pc) {
+    // BUG-RECONVERGENCE-SIMPLEGEMM: on re-init (force_reconvergence path),
+    // update metadata but PRESERVE arrived_mask/arrived_count so the second
+    // half accumulates onto the first half's records. Resetting would lose
+    // lanes already arrived and is_complete() would return the wrong answer.
+    if (is_initialized_) {
+        participation_mask_ = participation_mask;
+        reconvergence_pc_ = reconvergence_pc;
+        barrier_pc_ = barrier_pc;
+        expected_count_ = __builtin_popcount(participation_mask);
+        state_ = State::Waiting;
+        // arrived_mask_ / arrived_count_ intentionally NOT reset
+
+        PTX_DEBUG_EMU("WarpBarrier::init RE-INIT mask=0x%X reconv=%d barrier_pc=%u "
+                      "expected=%d (preserved arrived=0x%X count=%d)",
+                      participation_mask, reconvergence_pc, barrier_pc,
+                      expected_count_, arrived_mask_, arrived_count_);
+        return;
+    }
+
     participation_mask_ = participation_mask;
     arrived_mask_ = 0;
     expected_count_ = __builtin_popcount(participation_mask);
