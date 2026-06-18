@@ -254,17 +254,20 @@ void ActivemaskHandler::processOperation(ThreadContext* context, void** operands
 }
 
 // =============================================================================
-// barHandler Implementation for S_BAR (bar.sync) 
+// barHandler Implementation for S_BAR (bar.sync)
 // =============================================================================
 // PTX Syntax: bar.sync [cta,] [barrier_id];
-// 
-// Purpose: Synchronize all threads in a cooperative thread array (CTA/block)
-// 
+//
+// Purpose: Synchronize all threads in a cooperative thread array (CTA/block).
+// State is managed by BarrierModule (owned by CTAContext); this handler is a
+// thin dispatcher that calls arrive_at_cta_barrier + release_cta_barrier.
+//
 // Operation:
-// 1. Extract barId from BarrierInstr (may be specified as operand or default to 0)
-// 2. Get thread's warp context to access SM context
-// 3. Call sm_context_->synchronize_barrier(barId, thread) to handle CTA-level sync
-// 4. If all threads reach barrier, they are released to continue execution
+// 1. Extract barId from BarrierInstr (operand or default to 0)
+// 2. Get WarpContext → CTAContext via reverse link → get BarrierModule
+// 3. Call bm.arrive_at_cta_barrier(barId, thread)
+// 4. On complete, call bm.release_cta_barrier(barId, cta_ctx, post_pc)
+//    which advances every arrived thread's per-thread PC.
 // =============================================================================
 
 void BarHandler::executeBarrier(ThreadContext* context, const BarrierInstr& instr) {
