@@ -29,7 +29,7 @@
 - [ ] 4.1 修改 `src/ptxsim/instructions/barrier.cpp::BarHandler::executeBarrier`：将 `sm_context->synchronize_barrier(barId, context)` 替换为 `cta_ctx->get_barrier_module().arrive_at_cta_barrier(barId, context)`；当返回 true 时调用 `barrier_module.release_cta_barrier(barId, cta_ctx)` 真正释放线程
 - [ ] 4.2 关键修复（MUST）：在 release 路径中增加 `advance_thread_pc(lane, post_barrier_pc)` 调用（替换原 `set_next_pc(pc+1)` 的不完整更新）；MUST 覆盖所有 32 lane per warp
 - [ ] 4.3 验证：`cmake --build build && ctest -R integration_barrier -V`；integration_cta_barrier_memory_visibility 必须 PASS（仍可暂时保留 work-around）
-- [ ] 4.4 删除 `tests/integration/barrier/test_cta_barrier_memory_visibility.cpp:141-184` 的 `advance_thread_pc` work-around；增加新断言 `warp_state.threads[lane].pc == post_barrier_pc`；MUST 仍 PASS（证明 handler bug 已修复）
+- [ ] 4.4 删除 `tests/integration/barrier/test_cta_barrier_memory_visibility.cpp:138-184` 的 `advance_thread_pc` work-around；增加新断言 `warp_state.threads[lane].pc == post_barrier_pc`；MUST 仍 PASS（证明 handler bug 已修复）
 - [ ] 4.5 跑全量回归：`./scripts/sanity.sh --quick`；任何新增 FAIL 必须立即修复或回滚到 4.1
 
 ## 5. 切换 BarWarpSyncHandler 到 BarrierModule（Warp 路径）
