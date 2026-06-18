@@ -14,7 +14,7 @@ PTX-EMU 当前有两条 barrier 实现路径并存：
 ### 现状问题
 
 1. **413 行死代码**：`BarrierModule` 系列代码 0% 被生产路径调用，但编译进 `ptxsim.so`
-2. **handler 已知 bug**：`BarHandler::executeBarrier` 释放线程时设置 `state=RUN` + `next_pc=pc+1` 但**未调用 `commit_pc()`** 推进 `warp_state.threads[].pc`；`tests/integration/barrier/test_cta_barrier_memory_visibility.cpp:141-184` 用 `advance_thread_pc` work-around 掩盖
+2. **handler 已知 bug**：`BarHandler::executeBarrier` 释放线程时设置 `state=RUN` + `next_pc=pc+1` 但**未调用 `commit_pc()`** 推进 `warp_state.threads[].pc`；`tests/integration/barrier/test_cta_barrier_memory_visibility.cpp:138-184` 用 `advance_thread_pc` work-around 掩盖
 3. **遗留备份**：`src/ptxsim/instructions/barrier.cpp.bak` + `barrier.cpp.orig`（Apr 11 重构残留）
 4. **文档错位**：
    - `docs/research/barrier-semantics/04-ptx-emu-current-implementation.md` 详述旧路径，完全忽略新模块
@@ -103,7 +103,7 @@ void release_cta_barrier(int cta_barrier_id, CTAContext* cta_ctx);
 
 ### Decision 5: 测试 work-around 直接删除，不"软化"
 
-**选择**: 删除 `tests/integration/barrier/test_cta_barrier_memory_visibility.cpp:141-184` 的 44 行手动 `advance_thread_pc` 代码
+**选择**: 删除 `tests/integration/barrier/test_cta_barrier_memory_visibility.cpp:138-184` 的 47 行手动 `advance_thread_pc` 代码
 
 **理由**:
 - 修复后的 `BarHandler` 应该独立完成 PC 推进
@@ -141,7 +141,7 @@ void release_cta_barrier(int cta_barrier_id, CTAContext* cta_ctx);
 
 ### Phase 3: BarHandler 切换（1 天）
 8. 修改 `BarHandler::executeBarrier` 调用 `cta_ctx->barrier_module_.arrive_at_cta_barrier(barId, context)`
-9. **关键验证**：删除 `test_cta_barrier_memory_visibility.cpp:141-184` work-around，跑测试
+9. **关键验证**：删除 `test_cta_barrier_memory_visibility.cpp:138-184` work-around，跑测试
 10. 修复任何因 handler bug 修复而暴露的问题
 
 ### Phase 4: BarWarpSyncHandler 切换（1 天）
