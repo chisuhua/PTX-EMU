@@ -102,6 +102,12 @@ void BarrierModule::release_warp_barrier(int warp_barrier_id, WarpContext* warp_
                  "arrived_mask=0x%X",
                  warp_barrier_id, arrived_count, reconv_pc, arrived_mask);
 
+    // BUG-POSTBARRIER-TWOHALVES: OR with existing active_mask (preserves
+    // lanes already released by a prior barrier call when a divergent warp
+    // hits the same barrier in two halves). MUST live in caller — ret
+    // handler relies on set_active_mask overwrite semantics (0u to clear).
+    warp_ctx->set_active_mask(
+        warp_ctx->get_active_mask() | arrived_mask);
     warp_ctx->set_exec_mask(arrived_mask);
 
     for (int i = 0; i < WarpContext::WARP_SIZE; ++i) {

@@ -13,6 +13,7 @@
 #include "ptxsim/common_types.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/testing/scheduler_utils.h"
+#include "ptxsim/barrier/barrier_module.h"
 #include "memory/resource_manager.h"
 #include "register/register_bank_manager.h"
 
@@ -24,6 +25,7 @@ using ptxsim::testing::step_warp;
 
 namespace {
 using namespace ptxir::factory;
+using ptxsim::BarrierModule;
 
 static void init_factory_once() {
     static bool done = false;
@@ -121,4 +123,61 @@ TEST_CASE("BarrierModule arrive semantics via Wbar", "[barrier_module][integrate
 
     wbar.arrive(15);
     REQUIRE(wbar.is_complete());
+}
+
+// ============================================================================
+// Regression: BUG-POSTBARRIER-TWOHALVES
+// When a divergent warp hits the same barrier in two halves at different
+// times, the second BarrierModule::release_warp_barrier call MUST OR with
+// existing active_mask (per src/ptxsim/core/AGENTS.md invariant — "OR logic
+// must live in the caller"). Otherwise the second half overwrites the
+// first half's released lanes, losing them.
+//
+// Pre-fix: active_mask = 0xFFFF0000 (only second half).
+// Post-fix: active_mask = 0xFFFFFFFF (OR'd).
+// ============================================================================
+TEST_CASE("release_warp_barrier ORs with existing active_mask (BUG-POSTBARRIER-TWOHALVES)",
+          "[barrier_module][integrated][regression][BUG-POSTBARRIER-TWOHALVES]")
+{
+    init_factory_once();
+    ResourceManager::instance().initialize(1, 8192);
+
+    auto statements = build_simple_barrier_statements();
+    SMContext sm(4, 128, 4096, 0);
+    auto register_bank = std::make_shared<RegisterBankManager>(4, 32);
+    WarpContext* warp = create_warp_with_threads(sm, create_block(statements), register_bank);
+
+    // Initial active_mask: all 32 lanes active
+    warp->set_active_mask(0xFFFFFFFFu);
+    REQUIRE(warp->get_active_mask() == 0xFFFFFFFFu);
+
+    BarrierModule mod;
+
+    // First half arrives: lanes 0-15
+    mod.init_warp_barrier(0, 0x0000FFFFu, /*reconv_pc=*/5, /*barrier_pc=*/3);
+    for (int i = 0; i < 16; ++i) {
+        mod.arrive_at_warp_barrier(0, i);
+    }
+    REQUIRE(mod.is_warp_barrier_complete(0));
+
+    // First release: active_mask should be 0x0000FFFF (or-merged: 0xFFFFFFFF | 0x0000FFFF = 0xFFFFFFFF)
+    mod.release_warp_barrier(0, warp);
+    REQUIRE(warp->get_active_mask() == 0xFFFFFFFFu);
+
+    // Second half arrives: lanes 16-31 (force_reconvergence scenario)
+    mod.init_warp_barrier(0, 0xFFFF0000u, /*reconv_pc=*/5, /*barrier_pc=*/3);
+    for (int i = 16; i < 32; ++i) {
+        mod.arrive_at_warp_barrier(0, i);
+    }
+    REQUIRE(mod.is_warp_barrier_complete(0));
+
+    // KEY ASSERTION: second release must OR with existing active_mask,
+    // NOT overwrite. With the bug, active_mask would become 0xFFFF0000
+    // (losing lanes 0-15 released by first half).
+    mod.release_warp_barrier(0, warp);
+    CHECK(warp->get_active_mask() == 0xFFFFFFFFu);
+
+    // exec_mask should still reflect the second half (per BarrierModule
+    // semantics: exec_mask is the lanes that "just completed" the barrier)
+    CHECK(warp->get_warp_state().exec_mask == 0xFFFF0000u);
 }
