@@ -61,3 +61,11 @@ __pycache__/
 
 # Sisyphus orchestration tool state (session tracking, plans, evidence)
 .omo/
+
+# ⚠️ .code-review-graph/ 当前活跃使用（5 个 MCP server 进程运行中）
+#   - 配置: .mcp.json + .opencode.json
+#   - 工具: code-review-graph MCP（query_graph, get_impact_radius 等）
+#   - 清理会中断 5 个活跃 agent 会话
+#   - 删除前需先 kill 所有 `python3 -m code_review_graph serve` 进程
+#   - 详见 .code-review-graph/README.md
+.code-review-graph/
