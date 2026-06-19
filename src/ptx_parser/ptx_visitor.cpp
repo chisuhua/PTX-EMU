@@ -4,6 +4,7 @@
 #include "ptx_ir/operand_context.h"
 #include "ptx_ir/statement_context.h"
 #include "ptx_ir/statement_factory.h"
+#include "ptxsim/ptx_exceptions.h"
 #include "utils/logger.h"
 
 using namespace ptxir::factory;
@@ -431,7 +432,12 @@ std::any PtxVisitor::visitVariableDecl(ptxparser::ptxParser::VariableDeclContext
         decl.name = ctx->ID()->getText();
     }
     if (decl.name.empty()) {
-        decl.name = "TODO";
+        // P0 cleanup: silently using "TODO" as identifier was a bug — it created
+        // an anonymous declaration named "TODO" which collides across functions.
+        // Throw explicitly so callers see the parse failure.
+        throw PTXParseException(
+            "Variable declaration missing identifier (ctx text: '" +
+            ctx->getText() + "')");
     }
 
     decl.dataType = detectDataTypeFromText(text);
