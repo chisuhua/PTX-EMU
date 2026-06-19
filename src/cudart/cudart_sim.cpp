@@ -23,6 +23,8 @@ using namespace ptxparser;
 #include "ptxsim/ptx_exceptions.h" // 添加DebugConfig所需的头文件
 #include "utils/cubin_utils.h" // 添加cuobjdump工具函数
 #include "utils/logger.h"
+
+#include <stdexcept> // std::runtime_error for fatal initialization errors
 #include <string>
 #include <fstream>
 #include <filesystem>
@@ -153,7 +155,8 @@ void **__cudaRegisterFatBinary(void **fatCubinHandle, void *fat_bin,
     long size = readlink("/proc/self/exe", self_exe_path, 1024);
     if (size == -1) {
         PTX_ERROR_CUDART("Could not read /proc/self/exe");
-        exit(1);
+        // P1-3: throw instead of exit(1) so callers can catch fatal init errors.
+        throw std::runtime_error("cudart: could not read /proc/self/exe");
     }
     self_exe_path[size] = '\0';
 

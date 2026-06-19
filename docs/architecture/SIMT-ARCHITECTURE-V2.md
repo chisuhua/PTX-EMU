@@ -1119,11 +1119,11 @@ if (threads[i].is_exited || !threads[i].is_active) {
 防止无限嵌套分支导致栈溢出：
 
 ```cpp
-static constexpr size_t MAX_DEPTH = 10;
+static constexpr size_t MAX_DEPTH = 32;
 ```
 
 **位置**: `simt_stack.h`
-**限制**: 最多 10 层嵌套
+**限制**: 最多 32 层嵌套
 
 ### D.6 废弃 API 标记
 

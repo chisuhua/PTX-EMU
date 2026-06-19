@@ -63,7 +63,7 @@
 
 **缺点**:
 - 需要维护栈状态（push/pop）
-- 栈深度限制（当前 MAX_DEPTH=10）
+- 栈深度限制（当前 MAX_DEPTH=32）
 
 **选择理由**: 与 NVIDIA 硬件 SIMT 栈的实现方式一致，是精确模拟现代 GPU 控制流管理的必要组件。
 
@@ -72,7 +72,7 @@
 ### 设计原则
 
 1. **栈条目包含完整分支上下文**：branch_pc、reconvergence_pc、active_mask、return_mask、return_pc
-2. **深度限制防止溢出**：MAX_DEPTH=10，足够覆盖实际 kernel 的嵌套深度
+2. **深度限制防止溢出**：MAX_DEPTH=32，足够覆盖实际 kernel 的嵌套深度
 3. **收敛检查跳过退出线程**：is_exited 或 !is_active 的线程不阻塞收敛
 
 ### 实现要点
@@ -101,7 +101,7 @@ struct SIMTStackEntry {
 };
 
 class SIMTStack {
-    static constexpr size_t MAX_DEPTH = 10;
+    static constexpr size_t MAX_DEPTH = 32;
     std::vector<SIMTStackEntry> entries_;
     
     void push(const SIMTStackEntry& entry) {
@@ -211,7 +211,7 @@ void WarpContext::handle_branch(const std::string& predicate,
 
 | 风险 | 概率 | 影响 | 缓解措施 |
 |------|------|------|---------|
-| SIMT 栈溢出 | 极低 | 高 | MAX_DEPTH=10 足够覆盖实际 kernel；溢出时抛异常 |
+| SIMT 栈溢出 | 极低 | 高 | MAX_DEPTH=32 足够覆盖实际 kernel；溢出时抛异常 |
 | reconvergence 检查遗漏 | 低 | 高 | 单元测试覆盖嵌套分支场景 |
 | active_mask 计算错误 | 中 | 高 | 与 CFG post-dominator 结果交叉验证 |
 
@@ -234,6 +234,7 @@ void WarpContext::handle_branch(const std::string& predicate,
 | 2026-05-05 | 初始版本 | PTX-EMU Team |
 | 2026-05-06 | 添加 while 循环收敛模式说明、更新合规检查项 | PTX-EMU Team |
 | 2026-05-06 | 添加 handle_branch PC 过滤说明、更新合规检查项 | PTX-EMU Team |
+| 2026-06-19 | 同步 MAX_DEPTH 文档与代码（10 → 32，P1-1 quickwin） | Sisyphus |
 
 ## 参考
 

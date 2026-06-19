@@ -1,4 +1,5 @@
 #include "ptxsim/instruction_handlers.h"
+#include "ptxsim/ptx_exceptions.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/utils/qualifier_utils.h"
 #include "ptxsim/utils/type_utils.h"
@@ -1277,6 +1278,11 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
         break;
     }
     default:
-        assert(0 && "Unsupported destination size for CVT instruction");
+        // P1-6: throw instead of assert(0) so callers (cudart_sim try/catch)
+        // receive a structured UnsupportedInstructionException rather than
+        // an immediate SIGABRT. Reachable only via malformed PTX (dst_bytes
+        // not in {1,2,4,8}).
+        throw UnsupportedInstructionException(
+            "cvt", "unsupported destination size for CVT instruction");
     }
 }
