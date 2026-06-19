@@ -2,8 +2,10 @@
 
 > **版本**: v1.0
 > **日期**: 2026-04-30
-> **状态**: 待实现
+> **状态**: 待实现（已弃用）
 > **作者**: PTX-EMU Architecture Team
+
+> ⚠️ **DEPRECATED (2026-06-19)** — 本文档描述的 `tests/three_mode_testing/` 路径已随 P1-4 清理被移除。本文档保留作为历史参考，**不要按其实施**；如需 PTX 解析流程请参考 [`GETTING-STARTED.md`](./GETTING-STARTED.md) 与 `src/ptx_parser/` 实际代码。
 
 ---
 

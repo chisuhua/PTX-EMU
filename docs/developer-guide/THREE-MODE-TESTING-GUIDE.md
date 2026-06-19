@@ -3,6 +3,12 @@
 **版本**: v1.1
 **最后更新**: 2026-05-01
 
+> ⚠️ **DEPRECATED (2026-06-19)** — 本文档描述的 `tests/three_mode_testing/` 框架已随 P1-4 清理被移除（见 commit 7c583c3 之后的 archive 删除）。其内容已迁移至：
+> - `tests/e2e/kernel/`（原 three_mode_testing 整体迁移）
+> - `tests/integration/divergence/` + `tests/integration/barrier/`（指令序列场景）
+>
+> 本文档保留作为历史参考；新开发请参考 [`TESTING-GUIDE.md`](./TESTING-GUIDE.md)。
+
 ---
 
 ## 概述

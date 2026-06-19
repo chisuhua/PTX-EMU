@@ -36,8 +36,6 @@ tests/
 ├── instructions/         # 指令测试（保留）
 ├── ptxir/                # PTXIR 序列化测试
 ├── common/               # 通用工具源码
-├── archive/              # 历史归档（不再构建）
-│   └── three_mode_testing/  # 旧 E2E 实现 → 已迁移至 e2e/kernel/
 └── catch_amalgamated.cpp/hpp  # Catch2 测试框架
 ```
 

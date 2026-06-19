@@ -188,13 +188,15 @@ J5: active_count matches active_mask bits
 
 #### 2.6.2 Test 3 Deadlock 复现测试
 
-| 测试文件 | 标签 | 测试目的 |
+> **状态变更 (2026-06-19)**：本节列出的 `test3_reproduction.cpp` 与 `test_syncthreads_test3_full.cpp` 已随 `tests/archive/` 整体清理而删除（见 P1-4 清理 commit）。其覆盖的测试场景已迁移至 `tests/integration/divergence/` 与 `tests/integration/barrier/` 下的对应测试。
+
+| 测试文件 | 状态 | 替代测试 |
 |---------|------|---------|
-| `test3_reproduction.cpp` | `test3;deadlock` | CFG post-dominator、屏障转换、分支 divergency、get_lanes_by_pc |
-| `test_syncthreads_test3_repro.cpp` | `test3` | 直接 Wbar 操作的 Test 3 复现 |
-| `test_syncthreads_test3_isolated.cpp` | `test3` | 完整执行环境的 Test 3 隔离测试 |
-| `test_syncthreads_test3_full.cpp` | `test3` | SE→BRA predicate 评估的 Test 3 |
-| `test_syncthreads_test3_full_integration.cpp` | `test3;integration` | 完整 GPU 集成的 Test 3 |
+| ~~`test3_reproduction.cpp`~~ | ❌ 已删除（archive 清理） | `tests/integration/divergence/test_post_barrier_divergence.cpp` |
+| ~~`test_syncthreads_test3_full.cpp`~~ | ❌ 已删除（archive 清理） | `tests/integration/barrier/test_*_barrier_*.cpp` |
+| `test_syncthreads_test3_repro.cpp` | 保留 | — |
+| `test_syncthreads_test3_isolated.cpp` | 保留 | — |
+| `test_syncthreads_test3_full_integration.cpp` | 保留 | — |
 
 #### 2.6.3 屏障交互测试
 

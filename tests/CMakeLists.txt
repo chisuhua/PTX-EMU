@@ -9,7 +9,6 @@
 #   instructions/ - 指令测试（已存在）
 #   ptxir/       - PTXIR 序列化（已存在）
 #   common/      - 通用工具（已存在）
-#   archive/     - 历史归档
 
 set(CMAKE_CUDA_RUNTIME_LIBRARY Shared)
 set(CMAKE_CUDA_PTX_COMPILATION ON)       # 全局强制PTX模式

@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+# DEPRECATED (2026-06-19, P1-4 cleanup): This script writes to tests/three_mode_testing/
+# which was deleted in the archive cleanup. The four-mode test framework has been
+# migrated to tests/e2e/kernel/. Running this script will recreate the deleted
+# directory and pollute the workspace. Aborting to prevent silent regression.
+import sys
+sys.exit("DEPRECATED: four-mode test framework moved to tests/e2e/kernel/. "
+         "See docs/developer-guide/TESTING-GUIDE.md for current test workflow.")
+
 """
 Four-Mode Test Generator for PTX-EMU
 
@@ -1071,7 +1079,7 @@ def main():
     if args.dry_run:
         print("\n[DRY RUN] Would generate:")
         file_name = _strip_test_prefix(test_name)
-all_modes = ['mode1', 'mode2', 'mode3a', 'mode3b', 'mode3c', 'mode4']
+        all_modes = ['mode1', 'mode2', 'mode3a', 'mode3b', 'mode3c', 'mode4']
         target_modes = [args.mode] if args.mode else all_modes
         for m in target_modes:
             print(f"  - tests/three_mode_testing/test_{file_name}_{m}.cpp")
