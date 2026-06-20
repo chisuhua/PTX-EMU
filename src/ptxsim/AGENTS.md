@@ -39,7 +39,7 @@ src/ptxsim/
 - Instruction handlers use snake_case (e.g., `process_add`)
 - X-Macro dispatch via `ptx_op.def`
 - ThreadContext holds per-thread state
-- **Barrier handlers** (`BarHandler`, `BarWarpSyncHandler`) MUST route through `BarrierModule` API — never directly manipulate `warp_state.wbars[]` or `SMContext::synchronize_barrier` (legacy path)
+- **Barrier handlers** (`BarHandler`, `BarWarpSyncHandler`) MUST route through `BarrierModule` API — `BarHandler` already migrated (commit `b04cdb2`); `BarWarpSyncHandler` still uses `warp_state.wbars[]` (Phase 5 deferred, see `cleanup-deprecated-barrier-apis` change)
 
 ## ANTI-PATTERNS
 - DO NOT call ThreadContext methods from WarpContext without proper locking

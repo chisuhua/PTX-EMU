@@ -378,11 +378,11 @@ API（`step_warp`）。本次更新将这些断言的期望值改为与 warp-级
 
 | 项 | 状态 | 计划 |
 |---|------|------|
-| `include/ptxsim/wbar.h` 旧 `Wbar` 结构体 | ⚠️ `[[deprecated]]` 标记 | 测试迁移完成后删除 |
+| `include/ptxsim/wbar.h` 旧 `Wbar` 结构体 | ⚠️ `[[deprecated]]` 标记 | Phase 5 独立 change 处理完整迁移 |
 | `warp_state.h::wbars[]` + `current_wbar_id` 字段 | ⚠️ 保留（向后兼容）| 同上 |
-| `SMContext::synchronize_barrier` 方法 | ⚠️ 死代码（handler 不再调用）| 未来 sprint 清理 |
-| `SMContext::barrier_waiting_threads` / `barrier_thread_counts` / `barrier_mutex_` | ⚠️ 同上 | 同上 |
-| `sm_context.cpp:200-260` periodic barrier check | ⚠️ 同上 | 同上 |
+| `SMContext::synchronize_barrier` 方法 | ✅ **已删除**(2026-06-20, `cleanup-deprecated-barrier-apis` commit `7914764`) | — |
+| `SMContext::barrier_waiting_threads` / `barrier_thread_counts` / `barrier_mutex_` | ✅ **已删除**(同上) | — |
+| `sm_context.cpp:204-242` periodic barrier check | ✅ **已删除**(同上;保留 lines 244+ warp 调度维护) | — |
 
 ### 合规检查项
 
@@ -414,3 +414,54 @@ openspec/changes/integrate-barrier-module-cta-warp/
 │   └── barrier-handler-bugfix/spec.md      (4 Requirements)
 └── tasks.md                 (8 phases × 35 atomic tasks)
 ```
+
+---
+
+## 2026-06-20 追加：Phase 6 Partial Cleanup (`cleanup-deprecated-barrier-apis`)
+
+本变更（commit `8a5573d` + `7914764`，3 commits）完成 Phase 6 partial cleanup：
+
+### 删除项
+
+- `BsyncManager` 类 + `BsyncState` 结构体（`include/ptxsim/bsync_state.h` + `src/ptxsim/core/bsync_state.cpp`）
+- 3 个单元测试（`test_bsync_state.cpp` / `test_barrier_scenarios.cpp` / `test_barrier_active_mask_preserved.cpp`）
+- `SMContext::synchronize_barrier()` 方法体（`sm_context.cpp:605-705`，约 100 行）
+- SM 级全局 barrier 状态字段（`barrier_waiting_threads` / `barrier_thread_counts` / `barrier_mutex_`）
+- `sm_context.cpp:204-242` 周期 barrier 检查块（**保留** lines 244+ 的 `decrement_blocked_cycles` + `update_active_mask` warp 调度维护）
+
+### 迁移项
+
+- `warp_context.cpp:283-296` BAR_SYNC fallback 从 `sm_context_->synchronize_barrier()` 迁移到 `cta_context_->get_barrier_module().arrive_at_cta_barrier()`（保留 lessons-learned §1 BAR_SYNC 翻译链：`ThreadState::Blocked` → `state = BAR_SYNC` → `is_blocked = true`）
+- `DivergenceExecutionMode` 枚举从 `bsync_state.h` 迁移到 `warp_scheduler.h`（`bsync_state.h` 删除后保留此类型，因 `WarpScheduler` 类直接使用）
+
+### 保留项
+
+- `Wbar` struct（`include/ptxsim/wbar.h`）仍 `[[deprecated]]`
+- `warp_state.h::wbars[]` + `current_wbar_id` 字段
+- `BarWarpSyncHandler` 仍用 `warp_state.wbars[0]`（Phase 5 推迟到独立 change `migrate-bar-warp-sync-to-barrier-module`）
+- 19 个 include `ptxsim/wbar.h` 的测试文件全部保留
+- `tests/integration/divergence/test_post_barrier_divergence.cpp` 已知 BUG 回归测试保留
+
+### 决策
+
+**`thread->bar_id` 语义验证**（Phase 6 BLOCKING gate）：实施前 grep 验证 `thread->bar_id` 字段在生产代码中**永远为 0**（无任何代码主动设置，仅 `thread_context.cpp:49` 初始化为 0）。这与 `BarrierModule::arrive_at_cta_barrier(0, thread)` 语义一致，因此 fallback 替换是安全的。
+
+**`bsync_state.h` 双重职责问题**（实施中发现）：原 `bsync_state.h` 不仅包含 `BsyncManager` 类（要删除），还包含 `DivergenceExecutionMode` 枚举（要保留）。解决方案：把 `DivergenceExecutionMode` + `divergence_execution_mode_to_string` 移到 `warp_scheduler.h`（`WarpScheduler` 类直接使用）。
+
+**`sm_context.cpp:200-260` 行范围澄清**（ADR-0008 之前错误标注）：实际仅 lines 204-242 是周期 barrier 检查；lines 244-260 是 `decrement_blocked_cycles` + `update_active_mask`（warp 调度维护，必须保留）。本变更的"废弃/暂留项"表已修正。
+
+### 验证
+
+8 个关键测试全部 PASS：
+- `unit_barrier_module` ✓
+- `unit_post_barrier_two_halves`（BUG-POSTBARRIER-TWOHALVES 回归）✓
+- `unit_barrier_reconvergence` ✓
+- `unit_barrier_pc_overwrite` ✓
+- `unit_barrier_divergence_reconvergence_simplegemm`（BUG-RECONVERGENCE-SIMPLEGEMM 回归）✓
+- `integration_barrier_module` ✓
+- `integration_barrier_full_lifecycle` ✓
+- `integration_post_barrier_divergence`（已知 BUG 回归）✓
+
+### 后续工作
+
+- `migrate-bar-warp-sync-to-barrier-module`（独立 change）：将 `BarWarpSyncHandler` 完整迁移到 `BarrierModule` API，删除 `Wbar` struct + `warp_state.wbars[]` 字段

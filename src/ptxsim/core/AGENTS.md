@@ -19,7 +19,7 @@ GPUContext
 |------|----------|-------|
 | Per-thread PC management | `thread_context.cpp` | `get_pc()`, `commit_pc()`, `force_set_pc()` |
 | Warp scheduling | `warp_scheduler.cpp` | `is_warp_ready_to_fetch()` |
-| Barrier sync | `sm_context.cpp` | `synchronize_barrier()` |
+| Barrier sync | `cta_context.cpp` | `cta_context->get_barrier_module()` |
 | Thread execution | `thread_context.cpp` | `execute_thread_instruction()` |
 
 ## KEY FILES
@@ -82,8 +82,11 @@ warp_ctx->set_active_mask(
 Regression tests: `tests/unit/barrier/test_post_barrier_two_halves.cpp` (unit) + `tests/integration/divergence/test_post_barrier_two_halves.cpp` (smoke).
 
 ### HISTORICAL
-// synchronize_barrier() may not update active_mask correctly after barrier release
-// See: tests/integration/divergence/test_post_barrier_divergence.cpp (2 TEST_CASE documenting the issue)
+// Original synchronize_barrier() had a known issue where it did not call update_active_mask() correctly
+// after barrier release. The fix was committed in f033312 (lessons-learned §1 cross-module state translation).
+// The synchronize_barrier method itself was removed in commit 7914764
+// (cleanup-deprecated-barrier-apis, 2026-06-20); CTA-level barriers now go through BarrierModule.
+// See: tests/integration/divergence/test_post_barrier_divergence.cpp (preserved as regression coverage)
 
 ## COMMANDS
 ```bash

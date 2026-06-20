@@ -18,7 +18,7 @@ tests/
 │   ├── memory/           #   内存管理
 │   ├── exec/             #   exec_mask、active_mask
 │   ├── pc/               #   PC 管理
-│   ├── sync/             #   同步原语
+│   ├── sync/             #   同步原语（`test_bsync_state.cpp` / `test_barrier_active_mask_preserved.cpp` / `test_barrier_scenarios.cpp` 已删除于 commit `8a5573d`）
 │   ├── common/           #   解析器、调度器配置等通用工具
 │   └── ptx/              #   PTX 指令 (.cu)
 ├── integration/          # 类型二：指令序列集成测试
