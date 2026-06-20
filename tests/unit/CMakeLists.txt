@@ -23,11 +23,6 @@ add_catch_test(unit_warp_barrier
 )
 set_tests_properties(unit_warp_barrier PROPERTIES LABELS "unit;wbar")
 
-add_catch_test(unit_barrier_scenarios
-    barrier/test_barrier_scenarios.cpp
-)
-set_tests_properties(unit_barrier_scenarios PROPERTIES LABELS "unit;barrier;regression")
-
 add_catch_test(unit_barrier_reconvergence
     barrier/test_barrier_reconvergence.cpp
 )
@@ -278,20 +273,10 @@ add_catch_test(unit_sync_mechanism
 )
 set_tests_properties(unit_sync_mechanism PROPERTIES LABELS "unit;sync;simt_entry")
 
-add_catch_test(unit_barrier_active_mask_preserved
-    sync/test_barrier_active_mask_preserved.cpp
-)
-set_tests_properties(unit_barrier_active_mask_preserved PROPERTIES LABELS "unit;barrier")
-
 add_catch_test(unit_barrier_pc_overwrite
     sync/test_barrier_pc_overwrite.cpp
 )
 set_tests_properties(unit_barrier_pc_overwrite PROPERTIES LABELS "unit;barrier")
-
-add_catch_test(unit_bsync_state
-    sync/test_bsync_state.cpp
-)
-set_tests_properties(unit_bsync_state PROPERTIES LABELS "unit;bsync")
 
 add_catch_test(unit_syncthreads_direction
     sync/test_syncthreads_direction.cpp

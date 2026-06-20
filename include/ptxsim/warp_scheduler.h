@@ -2,9 +2,27 @@
 #define WARP_SCHEDULER_H
 
 #include "warp_context.h"
-#include "ptxsim/bsync_state.h"
 #include <vector>
 #include <queue>
+
+namespace ptxsim {
+
+enum class DivergenceExecutionMode {
+    Sequential,
+    Interleaved,
+    ShortestFirst
+};
+
+inline const char* divergence_execution_mode_to_string(DivergenceExecutionMode mode) {
+    switch (mode) {
+        case DivergenceExecutionMode::Sequential:    return "sequential";
+        case DivergenceExecutionMode::Interleaved:   return "interleaved";
+        case DivergenceExecutionMode::ShortestFirst: return "shortest_first";
+        default:                                      return "unknown";
+    }
+}
+
+} // namespace ptxsim
 
 class WarpScheduler {
 public:

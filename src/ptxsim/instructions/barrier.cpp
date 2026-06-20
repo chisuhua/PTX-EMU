@@ -185,9 +185,6 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
         init_wbar.arrive(lane_id);
 
         if (init_wbar.is_complete() && warp_state.current_wbar_id >= 0) {
-            if (sm_ctx) {
-                sm_ctx->bsync_manager_.release(0);
-            }
             warp_ctx->set_exec_mask(init_wbar.arrived_mask);
             for (int i = 0; i < WarpContext::WARP_SIZE; ++i) {
                 if ((init_wbar.arrived_mask & (1u << i)) && warp_state.threads[i].is_active) {
@@ -235,19 +232,11 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
 
     wbar.arrive(lane_id);
 
-    SMContext* sm_ctx = warp_ctx->get_sm_context();
-    if (sm_ctx) {
-        sm_ctx->bsync_manager_.bsync(wbar_id, lane_id, current_pc);
-    }
-
     // BUG-CUTE-RMSNORM-BROADCAST-SKIP: current_wbar_id < 0 means the wbar
     // was already released (current_wbar_id is set to -1 on release).
     // Re-checking is_complete() here would re-release the same lanes,
     // skipping the broadcast instruction at reconvergence_pc.
     if (wbar.is_complete() && warp_state.current_wbar_id >= 0) {
-        if (sm_ctx) {
-            sm_ctx->bsync_manager_.release(wbar_id);
-        }
         if (reconvergence_pc < 0) {
             PTX_ERROR_EMU("bar.warp.sync: Invalid reconvergence_pc=%d at barrier completion, skipping PC update", reconvergence_pc);
             return;

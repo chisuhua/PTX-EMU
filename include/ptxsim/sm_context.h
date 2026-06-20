@@ -3,7 +3,6 @@
 
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/common_types.h"
-#include "ptxsim/bsync_state.h"
 #include "ptxsim/cta_context.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/warp_context.h"
@@ -191,8 +190,6 @@ private:
     // 保护 barrier 数据结构的 mutex
     mutable std::mutex barrier_mutex_;
 
-    // BsyncManager for warp barrier tracking
-    ptxsim::BsyncManager bsync_manager_;
     friend class BarWarpSyncHandler;
 
     // Divergence execution mode

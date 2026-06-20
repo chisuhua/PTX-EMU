@@ -1,5 +1,4 @@
 #include "ptxsim/warp_scheduler.h"
-#include "ptxsim/bsync_state.h"
 #include <algorithm>
 
 using namespace ptxsim;
