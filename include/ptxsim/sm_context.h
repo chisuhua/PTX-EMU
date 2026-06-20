@@ -109,9 +109,6 @@ public:
     // 打印资源使用情况
     void print_resource_usage() const;
 
-    // 新增：barrier同步功能
-    bool synchronize_barrier(int barId, ThreadContext *thread);
-
     // 新增：调试打印函数，用于显示warp状态信息
     void print_warp_status() const;
     void print_warp_status(const WarpContext *warp,
@@ -183,12 +180,6 @@ private:
 
     // 周期计数器（每执行一次 exe_once 递增）
     uint64_t cycle_counter_;
-
-    // 新增：barrier同步数据结构
-    std::map<int, std::set<ThreadContext *>> barrier_waiting_threads;
-    std::map<int, int> barrier_thread_counts; // 每个barrier需要等待的线程数
-    // 保护 barrier 数据结构的 mutex
-    mutable std::mutex barrier_mutex_;
 
     friend class BarWarpSyncHandler;
 

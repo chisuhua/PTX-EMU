@@ -20,7 +20,6 @@
 #include "ptxsim/warp_context.h"
 #include "ptxsim/warp_state.h"
 #include "ptxsim/wbar.h"
-#include "ptxsim/sm_context.h"
 #include "ptx_ir/ptx_types.h"
 #include "ptx_ir/statement_context.h"
 #include "utils/logger.h"
@@ -160,8 +159,6 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
 
         warp_state.current_wbar_id = 0;
         ptxsim::Wbar& init_wbar = warp_state.wbars[0];
-
-        SMContext* sm_ctx = warp_ctx->get_sm_context();
 
         // 在分歧路径中，部分线程不在 barrier PC，动态掩码不完整。
         // 应使用 PTX 指令的 static_mask 作为参与掩码，确保所有指定线程被计入。
@@ -371,7 +368,6 @@ void BarHandler::executeBarrier(ThreadContext* context, const BarrierInstr& inst
         // Mark thread as waiting at barrier so the executor (warp_context.cpp:267)
         // recognizes BAR_SYNC and skips re-execution. Without this, sync_to_warp_state()
         // keeps is_blocked=false and the scheduler spins on the barrier instruction.
-        // (Mirrors legacy SMContext::synchronize_barrier at sm_context.cpp:703.)
         context->set_state(BAR_SYNC);
         context->set_next_pc(context->get_pc());
         PTX_DEBUG_THREAD("Thread [%u,%u,%u] waiting at barrier_id=%d",

@@ -771,7 +771,7 @@ void ThreadContext::sync_to_warp_state() {
     // 如果线程已经在 barrier 等待（is_blocked=true 或 status=Blocked），
     // 则只同步 next_pc，不覆盖 blocked 状态。
     // 注意：如果 barrier 主动通过 set_state(RUN) + 清除 is_blocked 来释放线程，
-    // 则应该在调用本函数之前清除 is_blocked（参见 sm_context.cpp synchronize_barrier）。
+    // 则应该在调用本函数之前清除 is_blocked（参见 BarrierModule::arrive_at_cta_barrier）。
     bool already_blocked = (thread_state.is_blocked ||
                             thread_state.status == ptxsim::ThreadStatus::Blocked);
 
