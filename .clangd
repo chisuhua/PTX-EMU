@@ -1,0 +1,19 @@
+---
+# clangd project configuration (T0-1)
+# Required because compile_commands.json alone doesn't tell clangd about
+# project-specific include paths. AGENTS.md declares lsp_* toolchain
+# depends on this for full editor integration.
+
+CompileFlags:
+  Add:
+    - -Iinclude
+    - -Iinclude/ptxsim
+    - -Iinclude/ptx_ir
+    - -Iinclude/utils
+    - -Iinclude/cudart
+    # CUDA headers (required for .cu compilation analysis)
+    - -I/usr/local/cuda/include
+  Compiler: clang++
+
+Index:
+  Background: Build
