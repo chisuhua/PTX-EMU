@@ -1,119 +1,70 @@
 # PTX-EMU
 
-PTX-EMU is a simple emulator for CUDA program.
+> **状态**：SIMT v2.0 (Phase 10 进行中)
+> **核心特性**：C++20/CUDA PTX 模拟器，ANTLR4 解析 PTX，fake libcudart.so 拦截 CUDA runtime
+> **文档入口**：[docs/README.md](./docs/README.md)
 
-You can use it to generate image by simulating rendering program.
+PTX-EMU 是一个 PTX（Parallel Thread Execution）指令级模拟器，用于在无 NVIDIA GPU 环境下仿真执行 CUDA 程序。
 
-![](assets/pic/output.bmp)
+## 快速开始
 
-# dependence
-- cmake (test with 3.27.2)
-- make (test with 4.3)
-- cuda (test with 11.4.4)
-- gcc (test with 10.2.0)
-- java
-
-# Usage
-
-## Set up env
-
-```
-export CUDA_PATH=/your-path-to-cuda
+```bash
+# 1. 设置环境（必须！）
 . env.sh
-```
 
-## Configure and Build with CMake
-
-```
-cmake -S . -B build
+# 2. 配置 + 构建
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
+
+# 3. 跑测试
+cd build && ctest --output-on-failure
 ```
 
-## Run test
-run full test
-```
-make test
-```
-run single test
-```
-# make <name of benchmark>
-make RAY
-```
+## 架构概览
 
-## Run single program
-After setting up the env, just run it.
-```
-./bin/RAY 256 256
-```
+- **执行层次**：GPUContext → SMContext → CTAContext → WarpContext → ThreadContext
+- **PTX 解析**：ANTLR4 → IR (StatementContext) → 解释执行
+- **测试三类物理隔离**：
+  - `tests/unit/` — 直接单元测试（数据结构/算法）
+  - `tests/integration/` — 指令序列集成测试（通过 `execute_warp_instruction`）
+  - `tests/e2e/` — CUDA Kernel 端到端测试（nvcc 编译 + 拦截）
 
-# Mode
+## 文档导航
 
-## release (default)
-Fast execution time
-```
-cmake --build build
-```
+| 类别 | 路径 |
+|---|---|
+| 项目总入口 | [AGENTS.md](./AGENTS.md) |
+| 文档索引 | [docs/README.md](./docs/README.md) |
+| SIMT 架构 | [docs/architecture/SIMT-ARCHITECTURE-V2.md](./docs/architecture/SIMT-ARCHITECTURE-V2.md) |
+| 开发指南 | [docs/developer-guide/](./docs/developer-guide/) |
+| ADR 索引 | [docs/adr/README.md](./docs/adr/README.md) |
+| 健康审计 | [docs/audits/HEALTH-AUDIT-2026-06-21.md](./docs/audits/HEALTH-AUDIT-2026-06-21.md) |
+| 审计勘误 | [docs/audits/HEALTH-AUDIT-2026-06-21-ERRATA.md](./docs/audits/HEALTH-AUDIT-2026-06-21-ERRATA.md) |
+| Roadmap | [openspec/changes/](./openspec/changes/)（活跃 changes 即未来 roadmap 项）|
 
-## debug
-Used with gdb
-```
-cmake --build build --config Debug
-```
+## 已知限制
 
-## step
-Similar to gdb mode.
-```
-cmake --build build --config RelWithDebInfo
-```
+- **PTX 指令覆盖**：核心 ISA ~67%（详见审计 §3）
+- **WMMA / Tensor Core**：是 stub
+- **ANTLR 版本**：4.11.1 完全 vendored
+- **CUDA Toolkit**：11.4.4 测试通过
 
-# 相关技术和架构
+## 贡献指南
 
-## cuda运行时库替换
+新增 PTX 指令时，遵循三步流程：
 
-cudart 为cuda运行时库(cuda runtime)，在nvcc编译过程中默认情况会静态链接cudart，而通过编译参数的修改 `--cudart shared` 或 `-lcudart` 可以实现动态链接cudart(libcudart.so)。LD_LIBRARY_PATH 为linux程序动态链接库的搜索路径，我们可以先生成fake cudart，之后将fake cudart的路径加入LD_LIBRARY_PATH来实现程序运行时链接到fake cudart。
+1. 在 `include/ptx_ir/ptx_op.def` 添加 X-Macro 条目
+2. 在 `src/ptxsim/instructions/<category>.cpp` 实现 handler
+3. 添加测试（unit + integration + e2e 三层）
 
-## cuda运行时模拟
-
-可以先实现几个关键的cuda运行时函数，之后再逐渐完善。
-一些关键的运行时函数包括
-
-- __cudaRegisterFatBinary 由于NVIDIA并没有公布fatcubin的解析方法，所以我们可以利用`/proc/self/exe`获得当前程序的绝对路径，再利用NVIDIA提供的反汇编工具cuobjdump获得kernel的PTX代码，之后再通过仿真执行kernel的PTX代码实现整个cuda程序的仿真。
-- cudaMalloc 和 cudaMallocManaged 可以直接通过 malloc 实现
-- cudaMemcpy 和 cudaMemcpyToSymbol 可以直接通过 memcpy 实现
-- cudaMemset 可以直接通过 memset 实现
-- cudaFree 可以直接通过 free 实现
-- __cudaPushCallConfiguration 记录下gridDim，blockDim，共享内存大小和stream
-- cudaLaunchKernel 启动对应kernel的PTX仿真
-- cudaRegisterVar 记录const变量的地址
-
-## PTX仿真
-
-为什么要在PTX级别上仿真而不是在SASS层面？因为NVIDIA对于PTX有着详尽的指令集描述，而对于SASS层面信息寥寥无几(在cuda binary utilities上每条指令仅有简单的一句话描述)。
-
-如何实现PTX仿真？常见的仿真器或解释器的实现方式为词法分析，语法分析，语义提取，解释执行。PTX作为一个汇编语言在词法和语法上并不是很复杂，所以实现的重点是在语义提取和解释执行上。常见的词法语法分析框架有flex和bison以及antlr4。
-
-## PTX-EMU
-
-PTX-EMU的主要架构和之前的描述一致，其中PTX仿真部分采用的是antlr4来进行词法语法分析，antlr4会自动生成一颗语法树，可以通过遍历这个语法树来实现语义提取，而最重要的解释执行大体上来说就是定义抽象层级kernel(包涵kernel参数等抽象)，thread block(包含shared memory等抽象) 和 thread(包含寄存器等抽象)，遍历每个线程然后依次仿真每一条PTX指令。
-
-目前已经可以通过一些复杂程序的测试(包含上千条PTX指令的kernel仿真)，比如光线追踪程序可以仿真生成图片。
+详见 [docs/developer-guide/](./docs/developer-guide/)。
 
 ## 相关参考
 
-- gpgpu-sim https://github.com/accel-sim/gpgpu-sim_distribution
-- cudart https://docs.nvidia.com/cuda/cuda-runtime-api/index.html
-- SASS https://docs.nvidia.com/cuda/cuda-binary-utilities/index.html#instruction-set-reference
-- PTX-isa https://docs.nvidia.com/cuda/parallel-thread-execution/index.html
-- cuda https://docs.nvidia.com/cuda/
+- [PTX ISA 规范](https://docs.nvidia.com/cuda/parallel-thread-execution/index.html)
+- [CUDA Runtime API](https://docs.nvidia.com/cuda/cuda-runtime-api/index.html)
+- [GPGPU-Sim](https://github.com/accel-sim/gpgpu-sim_distribution)
 
-## 项目开发计划
+## 许可证
 
-- 目前PTX-EMU仅支持到Ampere架构，新推出的Hopper架构(引入新的线程抽象层次thread block cluster)并不支持，可以考虑支持新的架构
-  
-- 目前PTX-EMU支持的PTX指令有限，例如并没有支持tensor core相关的指令(wmma 和 mma)，可以考虑扩展demo支持的PTX指令
-  
-- 目前PTX-EMU支持的CUDA runtime API并不完善，比如关于event相关的API会直接返回，并没有实现相关逻辑，可以考虑完善扩展支持的CUDA runtime API
-  
-- 目前关于PTX-EMU的文档并不详尽，可以考虑增加使用说明和开发说明文档
-  
-- 目前CUDA程序测例并不是很多，可以考虑增加CUDA程序测例
+[按项目实际情况填写]
