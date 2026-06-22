@@ -131,7 +131,14 @@
     };
 
 // All other instruction types map to SimpleHandler
-#define IMPLEMENT_MEMBAR_INSTR_HANDLER(Name)     IMPLEMENT_SIMPLE_HANDLER(Name)
+// T1-4: membar handler — no-op + logging in single-threaded SC memory model.
+// Per docs/superpowers/plans/2026-06-22-phase2-critical-debt.md Task 4: membar's
+// memory barrier semantics are implicit in PC advancement; no barrier API needed.
+#define IMPLEMENT_MEMBAR_INSTR_HANDLER(Name) \
+    __attribute__((weak)) void Name##Handler::ExecPipe(ThreadContext *context, StatementContext &stmt) { \
+        PTX_DEBUG_EMU("membar handler: no-op in single-threaded SC model"); \
+        SimpleHandler::ExecPipe(context, stmt); \
+    }
 
 // WARP_BARRIER handlers - use GenericPipelineHandler pattern
 #define IMPLEMENT_WARP_BARRIER_HANDLER(Name) \
@@ -146,7 +153,11 @@
         return; \
     };
 
-#define IMPLEMENT_FENCE_INSTR_HANDLER(Name)      IMPLEMENT_SIMPLE_HANDLER(Name)
+#define IMPLEMENT_FENCE_INSTR_HANDLER(Name) \
+    __attribute__((weak)) void Name##Handler::ExecPipe(ThreadContext *context, StatementContext &stmt) { \
+        PTX_DEBUG_EMU("fence handler: no-op in single-threaded SC model"); \
+        SimpleHandler::ExecPipe(context, stmt); \
+    }
 #define IMPLEMENT_REDUX_INSTR_HANDLER(Name)      IMPLEMENT_SIMPLE_HANDLER(Name)
 #define IMPLEMENT_MBARRIER_INSTR_HANDLER(Name)   IMPLEMENT_SIMPLE_HANDLER(Name)
 #define IMPLEMENT_PREDICATE_PREFIX_HANDLER(Name) IMPLEMENT_SIMPLE_HANDLER(Name)
