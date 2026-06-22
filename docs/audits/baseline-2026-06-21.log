@@ -350,3 +350,19 @@ The following tests FAILED:
 	 98 - integration_cute_rmsnorm_bar_sync_pattern (Failed)
 	131 - cute_rmsnorm (Failed)
 Errors while running CTest
+
+==========================================
+CI XFAIL TRACKING (appended 2026-06-22)
+==========================================
+
+Phase 1 T0-2 policy: xfail does NOT block PR merge
+Each failed test has a corresponding GitHub issue (label: xfail)
+
+NOTE: CI environment not available in current sandbox.
+xfail issues to be created manually once PR is opened:
+  - xfail: unit_simt_stack_stale_entry_blocks_lane0
+  - xfail: integration_cute_rmsnorm_bar_sync_pattern
+  - xfail: cute_rmsnorm
+
+Each issue tracks a baseline failure. Fix plans are tied to
+roadmap Phase 2 (T1-1 to T1-5) and Phase 3 (T2-x) tasks.
