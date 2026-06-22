@@ -34,7 +34,7 @@ inline int step_warp(WarpContext* w, std::vector<StatementContext>& v) {
 // make_kernel_request — 从 StatementContext 向量创建 KernelLaunchRequest
 inline KernelLaunchRequest make_kernel_request(
     std::vector<StatementContext>& statements,
-    std::map<std::string, Symtable*>& name2Sym,
+    std::map<std::string, std::unique_ptr<Symtable>>& name2Sym,
     std::map<std::string, int>& label2pc,
     void** args = nullptr,
     Dim3 gridDim = {1, 1, 1},
@@ -46,7 +46,7 @@ inline KernelLaunchRequest make_kernel_request(
   req.gridDim = gridDim;
   req.blockDim = blockDim;
   req.statements = &statements;
-  req.name2Sym = std::make_shared<std::map<std::string, Symtable*>>(name2Sym);
+  req.name2Sym = std::make_shared<std::map<std::string, std::unique_ptr<Symtable>>>(std::move(name2Sym));
   req.label2pc = std::make_shared<std::map<std::string, int>>(label2pc);
   req.shared_mem_size = sharedMem;
   return req;

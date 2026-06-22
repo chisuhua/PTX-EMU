@@ -160,7 +160,7 @@ TEST_CASE("test_syncthreads Test 3: exact nested sync execution sequence",
     Dim3 blockIdx = {0, 0, 0};
     Dim3 gridDim = {1, 1, 1};
     Dim3 blockDim = {16, 1, 1};
-    std::map<std::string, Symtable*> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
 
     WarpContext warp;
@@ -314,7 +314,7 @@ TEST_CASE("Barrier execution: direct Wbar test with 16 threads",
     Dim3 blockIdx = {0, 0, 0};
     Dim3 gridDim = {1, 1, 1};
     Dim3 blockDim = {16, 1, 1};
-    std::map<std::string, Symtable*> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
 
     WarpContext warp;

@@ -27,7 +27,7 @@ static void init_warp_with_threads(WarpContext& warp, int num_threads = 32) {
     std::vector<StatementContext> statements;
     statements.push_back(make_nop_stmt());
     statements.push_back(make_nop_stmt());
-    std::map<std::string, Symtable*> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
 
     for (int i = 0; i < num_threads; i++) {

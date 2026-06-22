@@ -83,7 +83,7 @@ WarpContext *setup_block(SMContext &sm, std::vector<StatementContext> &stmts) {
     Dim3 b{32, 1, 1};
     Dim3 bi{0, 0, 0};
     std::map<std::string, int> l2pc;
-    std::map<std::string, Symtable *> n2s;
+    std::map<std::string, std::unique_ptr<Symtable>> n2s;
     blk->init(g, b, bi, stmts, &n2s, l2pc);
     bool ok = sm.add_block(std::move(blk));
     REQUIRE(ok);

@@ -141,7 +141,7 @@ static WarpContext *setup_block(SMContext &sm,
     Dim3 g{1, 1, 1};
     Dim3 b{32, 1, 1};
     Dim3 bi{0, 0, 0};
-    std::map<std::string, Symtable *> n2s;
+    std::map<std::string, std::unique_ptr<Symtable>> n2s;
     blk->init(g, b, bi, stmts, &n2s, l2pc);
     // sharedMemBytes is auto-computed from S_SHARED declarations by
     // CTAContext::init: 2 * (32 * 4) = 256 bytes. SMContext::add_block will

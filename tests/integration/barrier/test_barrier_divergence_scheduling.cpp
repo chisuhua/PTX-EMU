@@ -92,7 +92,7 @@ TEST_CASE("test_barrier_divergence_scheduling: Barrier blocks lanes and schedule
     Dim3 gridDim = {1, 1, 1};
     Dim3 blockDim = {16, 1, 1};
 
-    std::map<std::string, Symtable*> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
 
     auto statements = build_barrier_divergence_statements();

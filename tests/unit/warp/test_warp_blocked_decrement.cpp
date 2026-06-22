@@ -51,7 +51,7 @@ std::unique_ptr<WarpContext> make_warp_with_one_thread() {
     Dim3 blockDim  = {32, 1, 1};
 
     std::vector<StatementContext> statements;
-    std::map<std::string, Symtable*> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
 
     auto thread = std::make_unique<ThreadContext>();

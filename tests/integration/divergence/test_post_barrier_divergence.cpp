@@ -111,7 +111,7 @@ TEST_CASE("KNOWN-ISSUE: bar.warp.sync releases threads but active_mask not updat
     std::vector<StatementContext> statements;
 
 
-    std::map<std::string, Symtable*> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
 
     // Create 32 threads
@@ -258,7 +258,7 @@ TEST_CASE("WORKAROUND-VERIFY: Manual set_active_mask fixes post-barrier executio
     Dim3 gridDim = {1, 1, 1};
     Dim3 blockDim = {32, 1, 1};
     std::vector<StatementContext> statements;
-    std::map<std::string, Symtable*> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
 
     for (int lane = 0; lane < 32; lane++) {

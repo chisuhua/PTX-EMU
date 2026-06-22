@@ -52,7 +52,7 @@ void test_warp_thread_addition() {
     Dim3 blockDim = {32, 1, 1};
 
     std::vector<StatementContext> statements;
-    std::map<std::string, Symtable *> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
 
     auto thread = std::make_unique<ThreadContext>();

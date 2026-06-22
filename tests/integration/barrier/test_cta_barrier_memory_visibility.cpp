@@ -219,7 +219,7 @@ setup_block(SMContext &sm, std::vector<StatementContext> &stmts,
     Dim3 g{1, 1, 1};
     Dim3 b{64, 1, 1}; // 64 threads = 2 warps
     Dim3 bi{0, 0, 0};
-    std::map<std::string, Symtable *> n2s;
+    std::map<std::string, std::unique_ptr<Symtable>> n2s;
     blk->init(g, b, bi, stmts, &n2s, l2pc);
     // sharedMemBytes is auto-computed from S_SHARED declarations by
     // CTAContext::init: 2 * (64 * 4) = 512 bytes. SMContext::add_block will

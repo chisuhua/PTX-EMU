@@ -26,7 +26,7 @@ void add_thread(WarpContext& warp, int lane, bool is_exited = false) {
     Dim3 blockDim = {32, 1, 1};
     std::vector<StatementContext> stmts;
     stmts.push_back(make_nop_stmt());
-    std::map<std::string, Symtable*> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
     thread->init(blockIdx, threadIdx, gridDim, blockDim, stmts, &name2Sym,
                  label2pc, nullptr, nullptr);

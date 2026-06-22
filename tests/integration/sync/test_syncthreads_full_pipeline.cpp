@@ -98,7 +98,7 @@ TEST_CASE("Full pipeline: InstructionFactory with real handlers",
         Dim3 blockIdx = {0, 0, 0};
         Dim3 gridDim = {1, 1, 1};
         Dim3 blockDim = {16, 1, 1};
-        std::map<std::string, Symtable*> name2Sym;
+        std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
         std::map<std::string, int> label2pc;
 
         auto register_bank = std::make_shared<RegisterBankManager>(4, 32);
@@ -175,7 +175,7 @@ TEST_CASE("Full pipeline: SMContext with ResourceManager",
     Dim3 blockIdx = {0, 0, 0};
     Dim3 gridDim = {1, 1, 1};
     Dim3 blockDim = {16, 1, 1};
-    std::map<std::string, Symtable*> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
 
     auto register_bank = std::make_shared<RegisterBankManager>(4, 32);
@@ -212,7 +212,7 @@ TEST_CASE("Full pipeline: Warp scheduler simulation",
     Dim3 blockIdx = {0, 0, 0};
     Dim3 gridDim = {1, 1, 1};
     Dim3 blockDim = {16, 1, 1};
-    std::map<std::string, Symtable*> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
 
     auto register_bank = std::make_shared<RegisterBankManager>(4, 32);
@@ -268,7 +268,7 @@ TEST_CASE("Full pipeline: Complete barrier execution sequence",
     Dim3 blockIdx = {0, 0, 0};
     Dim3 gridDim = {1, 1, 1};
     Dim3 blockDim = {16, 1, 1};
-    std::map<std::string, Symtable*> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
 
     auto register_bank = std::make_shared<RegisterBankManager>(4, 32);

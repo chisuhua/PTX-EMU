@@ -156,7 +156,7 @@ TEST_CASE("I-1: cute_rmsnorm broadcast pattern — every lane executes "
         {"L_TID0", PC_TID0},
         {"L_CONV", PC_CONV},
     };
-    std::map<std::string, Symtable*> n2s;
+    std::map<std::string, std::unique_ptr<Symtable>> n2s;
     blk->init(g, b, bi, v, &n2s, l2pc);
     blk->sharedMemBytes = 1024;
 
@@ -318,7 +318,7 @@ TEST_CASE("I-2: cute_rmsnorm reduction loop + broadcast barrier — full pattern
         {"L_WR2", 8}, {"L_BAR2", 9},
         {"L_TID0_W", 13}, {"L_BCONV", PC_BCONV},
     };
-    std::map<std::string, Symtable*> n2s;
+    std::map<std::string, std::unique_ptr<Symtable>> n2s;
     blk->init(g, b, bi, v, &n2s, l2pc);
     blk->sharedMemBytes = 1024;
 

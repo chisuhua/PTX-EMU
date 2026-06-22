@@ -53,7 +53,7 @@ static std::unique_ptr<CTAContext> create_block(
     Dim3 blockIdx = {0, 0, 0}) {
 
     auto block = std::make_unique<CTAContext>();
-    std::map<std::string, Symtable*> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
     block->init(gridDim, blockDim, blockIdx, statements, &name2Sym, label2pc);
     return block;

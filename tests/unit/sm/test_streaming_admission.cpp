@@ -45,7 +45,7 @@ std::unique_ptr<CTAContext> make_block(Dim3 blockIdx, int threads,
 
     auto block = std::make_unique<CTAContext>();
     std::vector<StatementContext> stmts;
-    std::map<std::string, Symtable *> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
     block->init(gridDim, blockDim, blockIdx, stmts, &name2Sym, label2pc,
                 nullptr, 0, 0);

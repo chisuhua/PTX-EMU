@@ -112,7 +112,7 @@ TEST_CASE("test_nested_predication: Full warp execution with nested setp+selp", 
     Dim3 gridDim = {1, 1, 1};
     Dim3 blockDim = {8, 1, 1};
 
-    std::map<std::string, Symtable*> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
 
     auto statements = build_nested_divergence_statements();

@@ -231,7 +231,7 @@ create_block(std::vector<StatementContext> &statements,
              Dim3 gridDim = {1, 1, 1}, Dim3 blockDim = {32, 1, 1},
              Dim3 blockIdx = {0, 0, 0}) {
     auto block = std::make_unique<CTAContext>();
-    std::map<std::string, Symtable *> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc = build_label2pc(statements);
     block->init(gridDim, blockDim, blockIdx, statements, &name2Sym, label2pc);
     return block;
@@ -458,7 +458,7 @@ TEST_CASE(
 
         auto blk = std::make_unique<CTAContext>();
         Dim3 g{1, 1, 1}, b{32, 1, 1}, bi{0, 0, 0};
-        std::map<std::string, Symtable *> n2s;
+        std::map<std::string, std::unique_ptr<Symtable>> n2s;
         blk->init(g, b, bi, stmts, &n2s, l2pc);
         blk->sharedMemBytes = 1024;
         bool ok = sm.add_block(std::move(blk));

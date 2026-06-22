@@ -236,7 +236,7 @@ TEST_CASE("ptx_lane_verification: 精简序列执行 + ExecutionTracer",
     Dim3 blockDim{32, 1, 1};
     Dim3 blockIdx{0, 0, 0};
 
-    std::map<std::string, Symtable*> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     block->init(gridDim, blockDim, blockIdx, stmts, &name2Sym, label2pc);
     block->sharedMemBytes = 4096;
 

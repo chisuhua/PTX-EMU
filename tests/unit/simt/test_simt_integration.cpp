@@ -166,7 +166,7 @@ TEST_CASE("I6: divergent warp executes one PC group per cycle", "[integration][d
         {OperandContext{RegOperand{"r", 5}}, OperandContext{ImmOperand{"4"}}},
         "mov.u32 %r5, 4;"));
 
-    std::map<std::string, Symtable*> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
     block->init(gridDim, blockDim, blockIdx, statements, &name2Sym, label2pc);
 

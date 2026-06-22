@@ -49,7 +49,7 @@ void test_sm_context_block_addition() {
     Dim3 blockIdx = {0, 0, 0};
 
     std::vector<StatementContext> statements;
-    std::map<std::string, Symtable *> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
 
     block->init(gridDim, blockDim, blockIdx, statements, &name2Sym, label2pc);
@@ -100,7 +100,7 @@ void test_sm_context_resource_limits() {
     Dim3 blockIdx = {0, 0, 0};
 
     std::vector<StatementContext> statements;
-    std::map<std::string, Symtable *> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
 
     block->init(gridDim, blockDim, blockIdx, statements, &name2Sym, label2pc);

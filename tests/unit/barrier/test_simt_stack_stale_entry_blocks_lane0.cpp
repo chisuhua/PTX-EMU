@@ -112,7 +112,7 @@ TEST_CASE("U-1: stale SIMT entry with reconv=X does not block PC=X+1",
     auto blk = std::make_unique<CTAContext>();
     Dim3 g{1, 1, 1}, b{32, 1, 1}, bi{0, 0, 0};
     std::map<std::string, int> l2pc = {};
-    std::map<std::string, Symtable*> n2s;
+    std::map<std::string, std::unique_ptr<Symtable>> n2s;
     blk->init(g, b, bi, v, &n2s, l2pc);
     blk->sharedMemBytes = 1024;
 
@@ -230,7 +230,7 @@ TEST_CASE("U-2: non-stale SIMT entry with reconv=X blocks lane at PC=X",
     auto blk = std::make_unique<CTAContext>();
     Dim3 g{1, 1, 1}, b{32, 1, 1}, bi{0, 0, 0};
     std::map<std::string, int> l2pc = {};
-    std::map<std::string, Symtable*> n2s;
+    std::map<std::string, std::unique_ptr<Symtable>> n2s;
     blk->init(g, b, bi, v, &n2s, l2pc);
     blk->sharedMemBytes = 1024;
 

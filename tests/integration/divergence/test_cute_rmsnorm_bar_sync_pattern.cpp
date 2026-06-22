@@ -139,7 +139,7 @@ TEST_CASE("I-3: cute_rmsnorm S_BAR (bar.sync 0) reduction + broadcast — "
 
     auto blk = std::make_unique<CTAContext>();
     Dim3 g{1, 1, 1}, b{32, 1, 1}, bi{0, 0, 0};
-    std::map<std::string, Symtable*> n2s;
+    std::map<std::string, std::unique_ptr<Symtable>> n2s;
     blk->init(g, b, bi, v, &n2s, l2pc);
     blk->sharedMemBytes = 1024;
 

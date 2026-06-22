@@ -78,7 +78,7 @@ inline WarpContext* create_warp_with_threads(int num_lanes) {
     Dim3 gridDim{1, 1, 1};
     Dim3 blockDim{(uint32_t)num_lanes, 1, 1};
 
-    std::map<std::string, Symtable*> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
     std::vector<StatementContext> stmts;
 
@@ -119,7 +119,7 @@ inline void setup_warp(WarpContext& warp,
     Dim3 gridDim = {1, 1, 1};
     Dim3 blockDim = {(uint32_t)num_lanes, 1, 1};
 
-    std::map<std::string, Symtable*> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
     std::vector<StatementContext> stmts;
 

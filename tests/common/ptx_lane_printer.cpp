@@ -448,7 +448,7 @@ static void print_kernel_lane_traces(
     Dim3 gridDim{1, 1, 1};
     Dim3 blockDim{32, 1, 1};
     Dim3 blockIdx{0, 0, 0};
-    std::map<std::string, Symtable*> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
 
     block->init(gridDim, blockDim, blockIdx, exec_stmts, &name2Sym, label2pc);
 
