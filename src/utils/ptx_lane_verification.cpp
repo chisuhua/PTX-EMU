@@ -35,7 +35,7 @@ WarpContext* create_execution_warp(
 
     auto block = std::make_unique<CTAContext>();
     std::vector<StatementContext> statements;
-    std::map<std::string, Symtable*> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
 
     block->init(gridDim, blockDim, blockIdx, statements, &name2Sym, const_cast<std::map<std::string, int>&>(config.label2pc));
 

@@ -31,8 +31,8 @@ class ThreadContext {
 public:
     // 资源管理
     std::vector<StatementContext> *statements;
-    std::map<std::string, Symtable *> *name2Sym;
-    std::map<std::string, Symtable *> *name2Share; // 添加共享内存符号表引用
+    std::map<std::string, std::unique_ptr<Symtable>> *name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> *name2Share; // 添加共享内存符号表引用
 
     // 使用寄存器银行管理器或独立寄存器管理器
     std::shared_ptr<RegisterBankManager> register_bank_manager_;
@@ -74,9 +74,9 @@ public:
 
     void init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim, Dim3 BlockDim,
               std::vector<StatementContext> &statements,
-              std::map<std::string, Symtable *> *name2Sym,
+              std::map<std::string, std::unique_ptr<Symtable>> *name2Sym,
               std::map<std::string, int> &label2pc,
-              std::map<std::string, Symtable *> *name2Share = nullptr,
+              std::map<std::string, std::unique_ptr<Symtable>> *name2Share = nullptr,
               CTAContext *cta_ctx = nullptr);
 
     // EXE_STATE exe_once();

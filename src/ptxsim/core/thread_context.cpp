@@ -34,9 +34,9 @@ extern bool IFLOG();
 void ThreadContext::init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim,
                          Dim3 BlockDim,
                          std::vector<StatementContext> &statements,
-                         std::map<std::string, Symtable *> *name2Sym,
+                         std::map<std::string, std::unique_ptr<Symtable>> *name2Sym,
                          std::map<std::string, int> &label2pc,
-                         std::map<std::string, Symtable *> *name2Share,
+                         std::map<std::string, std::unique_ptr<Symtable>> *name2Share,
                          CTAContext *cta_ctx) {
     this->BlockIdx = blockIdx;
     this->ThreadIdx = threadIdx;
@@ -240,7 +240,7 @@ void *ThreadContext::acquire_operand(const OperandContext &operand,
             if (share_it != name2Share->end()) {
                 PTX_DEBUG_EMU("Reading shared memory symbol: name=%s, "
                               "symbol_table_entry=%p, offset=0x%lx",
-                              varOp.name.c_str(), share_it->second,
+                              varOp.name.c_str(), share_it->second.get(),
                               share_it->second->val);
                 return &(share_it->second->val);
             }
@@ -263,7 +263,7 @@ void *ThreadContext::acquire_operand(const OperandContext &operand,
                 PTX_DEBUG_EMU("Reading local memory from name2Local: name=%s, "
                               "symbol_table_entry=%p, stored_value=0x%lx, "
                               "local_mem_space=0x%lx",
-                              varOp.name.c_str(), local_it->second, ret,
+                              varOp.name.c_str(), local_it->second.get(), ret,
                               local_mem_space);
                 return ret;
             }
@@ -283,7 +283,7 @@ void *ThreadContext::acquire_operand(const OperandContext &operand,
         PTX_DEBUG_EMU("Reading kernel name2Sym from name2Sym: name=%s, "
                       "symbol_table_entry=%p, stored_value=0x%lx, "
                       "dereferenced_value=0x%lx",
-                      varOp.name.c_str(), sym_it->second,
+                      varOp.name.c_str(), sym_it->second.get(),
                       sym_it->second->val,
                       *(uint64_t *)(sym_it->second->val));
         return &(sym_it->second->val);
@@ -638,8 +638,8 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
                                   "get_memory_addr: name=%s, "
                                   "symbol_table_entry=%p, stored_value=0x%lx, "
                                   "local_mem_space=0x%lx",
-                                  lookupName.c_str(), local_it->second, ret,
-                                  local_mem_space);
+                                  lookupName.c_str(), local_it->second.get(),
+                                  ret, local_mem_space);
 
                 } else {
                     // 对于本地内存访问，如果在name2Local中没找到，说明可能尚未初始化

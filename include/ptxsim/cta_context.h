@@ -37,12 +37,12 @@ public:
     // 本地内存相关变量
     size_t localMemBytesPerThread = 0; // 每个线程的本地内存大小
     std::vector<void *> localMemSpaces; // 每个线程的本地内存空间指针
-    std::map<std::string, Symtable *> name2Local; // 本地内存符号表
-    std::map<std::string, Symtable *> name2Share; // 本地内存符号表
+    std::map<std::string, std::unique_ptr<Symtable>> name2Local; // 本地内存符号表
+    std::map<std::string, std::unique_ptr<Symtable>> name2Share; // 本地内存符号表
 
     void init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
               std::vector<StatementContext> &statements,
-              std::map<std::string, Symtable *> *name2Sym,
+              std::map<std::string, std::unique_ptr<Symtable>> *name2Sym,
               std::map<std::string, int> &label2pc,
               void *local_memory_base = nullptr,
               size_t local_mem_per_thread = 0,

@@ -52,7 +52,7 @@ void PtxInterpreter::launchPtxInterpreter(PtxContext &ptx, std::string &kernel,
         return;
     }
 
-    std::map<std::string, Symtable *> name2Sym;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
 
     funcInterpreter(name2Sym, label2pc, ptx, kernel, args, gridDim, blockDim, sharedMem);
@@ -61,7 +61,7 @@ void PtxInterpreter::launchPtxInterpreter(PtxContext &ptx, std::string &kernel,
 }
 
 void PtxInterpreter::funcInterpreter(
-    std::map<std::string, Symtable *> &name2Sym,
+    std::map<std::string, std::unique_ptr<Symtable>> &name2Sym,
     std::map<std::string, int> &label2pc, PtxContext &ptx, std::string &kernel,
     void **args, Dim3 &gridDim, Dim3 &blockDim, size_t sharedMem) {
     // Setup symbols
@@ -209,8 +209,8 @@ void PtxInterpreter::funcInterpreter(
                 param_size = ((param_size / 8) + 1) * 8;
             }
 
-            // 创建Symtable对象
-            Symtable *s = new Symtable();
+            // 创建Symtable对象（unique_ptr 自动管理生命周期）
+            auto s = std::make_unique<Symtable>();
             s->name = param_name;
             s->symType = paramDecl->dataType;
             s->elementNum = 1; // 默认为1，可根据需要调整
@@ -224,16 +224,16 @@ void PtxInterpreter::funcInterpreter(
                 s->val = 0; // 如果param空间分配失败，设为0
             }
 
-            // 添加到符号表（如果已有同名符号，替换它）
-            if (name2Sym.find(s->name) != name2Sym.end()) {
-                // 删除旧的Symtable对象以避免内存泄漏
-                delete name2Sym[s->name];
-            }
-            name2Sym[s->name] = s;
+            // 添加到符号表（unique_ptr 替换旧值时自动释放旧 Symtable）
+            // Capture logging values before std::move(s) invalidates s
+            const std::string log_name = s->name;
+            const uint64_t log_val = s->val;
+            const size_t log_byteNum = s->byteNum;
+            name2Sym[s->name] = std::move(s);
 
             PTX_DEBUG_EMU("Added param symbol: name=%s, addr=%p, size=%zu, "
                           "offset=%zu",
-                          s->name.c_str(), (void *)s->val, s->byteNum,
+                          log_name.c_str(), (void *)log_val, log_byteNum,
                           current_param_offset);
 
             // 更新偏移
@@ -298,8 +298,8 @@ void PtxInterpreter::funcInterpreter(
                 var_size = ((var_size / 8) + 1) * 8;
             }
 
-            // 创建Symtable对象
-            Symtable *s = new Symtable();
+            // 创建Symtable对象（unique_ptr 自动管理生命周期）
+            auto s = std::make_unique<Symtable>();
             s->name = global_name;
             s->symType = globalDecl->dataType;
             s->elementNum = array_size;
@@ -313,16 +313,17 @@ void PtxInterpreter::funcInterpreter(
                 s->val = 0; // 如果全局空间分配失败，设为0
             }
 
-            // 添加到符号表（如果已有同名符号，替换它）
-            if (name2Sym.find(s->name) != name2Sym.end()) {
-                // 删除旧的Symtable对象以避免内存泄漏
-                delete name2Sym[s->name];
-            }
-            name2Sym[s->name] = s;
+            // 添加到符号表（unique_ptr 替换旧值时自动释放旧 Symtable）
+            // Capture logging + loop values before std::move(s) invalidates s
+            const std::string log_name = s->name;
+            const uint64_t log_val = s->val;
+            const size_t log_byteNum = s->byteNum;
+            const size_t log_elementNum = s->elementNum;
+            name2Sym[s->name] = std::move(s);
 
             PTX_DEBUG_EMU("Added global symbol: name=%s, addr=%p, "
                           "size=%zu, offset=%zu",
-                          s->name.c_str(), (void *)s->val, s->byteNum,
+                          log_name.c_str(), (void *)log_val, log_byteNum,
                           current_global_offset);
 
             // 初始化全局变量的值（如果有的话）
@@ -331,7 +332,7 @@ void PtxInterpreter::funcInterpreter(
                                            current_global_offset);
 
                 for (size_t i = 0; i < globalDecl->initValues.size() &&
-                                   i < s->elementNum;
+                                   i < log_elementNum;
                      ++i) {
                     switch (globalDecl->dataType) {
                     case Qualifier::Q_B8:
@@ -407,9 +408,11 @@ void PtxInterpreter::funcInterpreter(
         };
 
         // 在所有符号（params, globals等）都添加到name2Sym之后，再创建共享指针
-        // 这样可以确保KernelLaunchRequest获得的是包含完整符号信息的拷贝
+        // 这样可以确保KernelLaunchRequest获得的是包含完整符号信息的 map
+        // 注意：name2Sym 的所有权已转移到 name2sym_ptr（map 含 unique_ptr 不可拷贝）
         auto name2sym_ptr =
-            std::make_shared<std::map<std::string, Symtable *>>(name2Sym);
+            std::make_shared<std::map<std::string, std::unique_ptr<Symtable>>>(
+                std::move(name2Sym));
         auto label2pc_ptr =
             std::make_shared<std::map<std::string, int>>(label2pc);
 
@@ -432,7 +435,7 @@ void PtxInterpreter::funcInterpreter(
 }
 
 void PtxInterpreter::setupConstantSymbols(
-    std::map<std::string, Symtable *> &name2Sym) {
+    std::map<std::string, std::unique_ptr<Symtable>> &name2Sym) {
     if (!ptxContext) {
         PTX_DEBUG_EMU("ptxContext is null in setupConstantSymbols");
         return;
@@ -440,7 +443,7 @@ void PtxInterpreter::setupConstantSymbols(
 
     for (const auto &e : ptxContext->ptxStatements) {
         if (e.type == S_CONST || e.type == S_GLOBAL) {
-            Symtable *s = new Symtable();
+            auto s = std::make_unique<Symtable>();
             const auto &decl = std::get<DeclarationInstr>(e.data);
 
             s->name = decl.name;
@@ -449,14 +452,13 @@ void PtxInterpreter::setupConstantSymbols(
             s->byteNum = Q2bytes(decl.dataType);
             s->val = constName2addr[s->name];
             if (!s->val) {
-                delete s;
-                continue;
+                continue;  // unique_ptr 自动释放
             }
-            name2Sym[s->name] = s;
+            name2Sym[s->name] = std::move(s);
         } else if (e.type == S_SHARED) {
             // 处理全局S_SHARED声明（如.extern __shared__）
             // 这些符号的地址将由CTAContext在运行时设置（动态共享内存）
-            Symtable *s = new Symtable();
+            auto s = std::make_unique<Symtable>();
             const auto &decl = std::get<DeclarationInstr>(e.data);
 
             s->name = decl.name;
@@ -464,13 +466,13 @@ void PtxInterpreter::setupConstantSymbols(
             s->elementNum = decl.array_size;  // 对于extern shared为0
             s->byteNum = Q2bytes(decl.dataType) * (decl.array_size > 0 ? decl.array_size : 1);
             s->val = 0;  // 动态共享内存地址在CTAContext中设置
-            name2Sym[s->name] = s;
+            name2Sym[s->name] = std::move(s);
         }
     }
 }
 
 void PtxInterpreter::setupKernelArguments(
-    std::map<std::string, Symtable *> &name2Sym) {
+    std::map<std::string, std::unique_ptr<Symtable>> &name2Sym) {
     PTX_DEBUG_EMU("Setting up %zu kernel arguments",
                   kernelContext->kernelParams.size());
 
@@ -547,7 +549,7 @@ void PtxInterpreter::setupKernelArguments(
     size_t offset = 0;
     for (int i = 0; i < kernelContext->kernelParams.size(); i++) {
         auto e = kernelContext->kernelParams[i];
-        Symtable *s = new Symtable();
+        auto s = std::make_unique<Symtable>();
         s->name = e.paramName;
         s->elementNum = e.paramNum;
         s->symType = get_param_type(e);
@@ -557,8 +559,7 @@ void PtxInterpreter::setupKernelArguments(
                 "Cannot infer kernel parameter byte size during mapping: "
                 "index=%d name=%s",
                 i, e.paramName.c_str());
-            delete s;
-            return;
+            return;  // unique_ptr 在 s 析构时自动释放
         }
         s->byteNum = static_cast<int>(param_bytes);
 
@@ -575,20 +576,25 @@ void PtxInterpreter::setupKernelArguments(
             s->val = (uint64_t)kernelArgs[i];
         }
 
-        name2Sym[s->name] = s;
+        // Capture values before std::move(s) invalidates the unique_ptr
+        const std::string log_name = s->name;
+        const uint64_t log_val = s->val;
+        const size_t log_byteNum = s->byteNum;
+        const Symtable* log_s_ptr = s.get();
+        name2Sym[s->name] = std::move(s);
         offset += param_size;
         uint64_t first8Bytes = 0;
-        if (param_size > 0 && s->val != 0) {
+        if (param_size > 0 && log_val != 0) {
             size_t previewSize = std::min(param_size, sizeof(first8Bytes));
-            memcpy(&first8Bytes, reinterpret_cast<void *>(s->val), previewSize);
+            memcpy(&first8Bytes, reinterpret_cast<void *>(log_val), previewSize);
         }
 
         PTX_DEBUG_EMU(
             "Added kernel argument to name2Sym: name=%s, "
             "symbol_table_entry = %p, stored_value = 0x%llx,"
             "first_8_bytes_of_data = 0x%llx, param_size=%d, param_bytes=%d ",
-            s->name.c_str(), s, s->val, first8Bytes, param_size,
-            s->byteNum);
+            log_name.c_str(), log_s_ptr, log_val, first8Bytes, param_size,
+            log_byteNum);
     }
 
     PTX_DEBUG_EMU("setupKernelArguments completed: symbol_count=%zu",

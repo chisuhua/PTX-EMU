@@ -175,7 +175,7 @@ void GPUContext::submit_kernel_request(KernelLaunchRequest &&request) {
 bool GPUContext::execute_kernel_internal(
     void **args, Dim3 &gridDim, Dim3 &blockDim,
     std::vector<StatementContext> &statements,
-    std::map<std::string, Symtable *> &name2Sym,
+    std::map<std::string, std::unique_ptr<Symtable>> &name2Sym,
     std::map<std::string, int> &label2pc, const KernelLaunchRequest &request) {
     int ctaNum = gridDim.x * gridDim.y * gridDim.z;
 
@@ -301,14 +301,9 @@ EXE_STATE GPUContext::exe_once() {
                 it->second.on_complete();
             }
 
-            // 清理 Symtable 内存泄漏
-            // name2Sym 中的 Symtable* 是裸指针，需要手动释放
-            if (it->second.name2Sym) {
-                for (auto &kv : *it->second.name2Sym) {
-                    delete kv.second;
-                }
-                it->second.name2Sym->clear();
-            }
+            // name2Sym 由 std::shared_ptr<std::map<..., unique_ptr<Symtable>>>
+            // 持有，map 析构时 unique_ptr 自动 delete Symtable。
+            // 此处不再手动 delete（否则 unique_ptr 析构会 double-free）。
 
             // 请求已完成，从执行映射中移除
             it = executing_requests.erase(it);

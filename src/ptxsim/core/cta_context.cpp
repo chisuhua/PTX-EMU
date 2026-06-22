@@ -22,7 +22,7 @@ extern bool IFLOG();
 
 void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
                       std::vector<StatementContext> &statements,
-                      std::map<std::string, Symtable *> *name2Sym,
+                      std::map<std::string, std::unique_ptr<Symtable>> *name2Sym,
                       std::map<std::string, int> &label2pc,
                       void *local_memory_base, size_t local_mem_per_thread,
                       size_t dynamic_shared_mem_size) {
@@ -70,8 +70,7 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
     for (const auto &stmt : statements) {
         if (stmt.type == S_SHARED) {
             const DeclarationInstr &ss = std::get<DeclarationInstr>(stmt.data);
-            // 使用new操作符创建Symtable实例
-            Symtable *s = new Symtable();
+            auto s = std::make_unique<Symtable>();
             s->byteNum = (ss.array_size > 0) ? (Q2bytes(ss.dataType) * ss.array_size) : 0;
             s->elementNum = ss.array_size;
             s->name = ss.name;
@@ -82,13 +81,19 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
             // 暂时设置地址为0，等待SMContext分配后填入
             s->val = 0;
 
+            // Capture for logging before std::move(s) invalidates s
+            const std::string log_name = s->name;
+            const size_t log_elementNum = s->elementNum;
+            const size_t log_byteNum = s->byteNum;
+
+            name2Share[s->name] = std::move(s);
+
             PTX_DEBUG_EMU("Prepared shared memory variable: name=%s, "
                           "elementNum=%d, byteNum=%d, "
                           "var_size=%zu, shared_mem_offset=%zu",
-                          s->name.c_str(), s->elementNum, s->byteNum, var_size,
+                          log_name.c_str(), log_elementNum, log_byteNum, var_size,
                           shared_offset);
 
-            name2Share[s->name] = s;
             if (ss.array_size > 0) {
                 shared_offset += var_size;
             }
@@ -100,8 +105,7 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
     for (const auto &stmt : statements) {
         if (stmt.type == S_LOCAL) {
             const DeclarationInstr &ls = std::get<DeclarationInstr>(stmt.data);
-            // 使用new操作符创建Symtable实例
-            Symtable *s = new Symtable();
+            auto s = std::make_unique<Symtable>();
             s->byteNum = Q2bytes(ls.dataType) * ls.array_size;
             s->elementNum = ls.array_size;
             s->name = ls.name;
@@ -112,13 +116,19 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
             // 设置本地内存变量的偏移量
             s->val = local_offset;
 
+            // Capture for logging before std::move(s) invalidates s
+            const std::string log_name = s->name;
+            const size_t log_elementNum = s->elementNum;
+            const size_t log_byteNum = s->byteNum;
+
+            name2Local[s->name] = std::move(s);
+
             PTX_DEBUG_EMU("Prepared local memory variable: name=%s, "
                           "elementNum=%d, byteNum=%d, "
                           "var_size=%zu, local_mem_offset=%zu",
-                          s->name.c_str(), s->elementNum, s->byteNum, var_size,
+                          log_name.c_str(), log_elementNum, log_byteNum, var_size,
                           local_offset);
 
-            name2Local[s->name] = s;
             local_offset += var_size;
         }
     }
@@ -252,7 +262,7 @@ void CTAContext::build_shared_memory_symbol_table(void *shared_mem_space) {
             const DeclarationInstr &ss = std::get<DeclarationInstr>(stmt.data);
             auto it = name2Share.find(ss.name);
             if (it != name2Share.end()) {
-                Symtable *s = it->second;
+                Symtable *s = it->second.get();
                 if (s->elementNum > 0) {  // 静态共享内存
                     static_shared_mem_size += s->byteNum;
                 }
@@ -270,7 +280,7 @@ void CTAContext::build_shared_memory_symbol_table(void *shared_mem_space) {
             // 查找对应的Symtable并设置地址
             auto it = name2Share.find(ss.name);
             if (it != name2Share.end()) {
-                Symtable *s = it->second;
+                Symtable *s = it->second.get();
 
                 size_t var_size = s->byteNum;  // byteNum already includes array_size
 

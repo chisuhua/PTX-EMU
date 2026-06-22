@@ -36,7 +36,7 @@ public:
                               Dim3 &gridDim, Dim3 &blockDim, size_t sharedMem = 0);
 
     // 内部方法，接收必要的参数用于构建KernelLaunchRequest
-    void funcInterpreter(std::map<std::string, Symtable *> &name2Sym,
+    void funcInterpreter(std::map<std::string, std::unique_ptr<Symtable>> &name2Sym,
                          std::map<std::string, int> &label2pc, PtxContext &ptx,
                          std::string &kernel, void **args, Dim3 &gridDim,
                          Dim3 &blockDim, size_t sharedMem = 0);
@@ -44,8 +44,8 @@ public:
     PtxContext &get_ptx_context();
 
 private:
-    void setupConstantSymbols(std::map<std::string, Symtable *> &name2Sym);
-    void setupKernelArguments(std::map<std::string, Symtable *> &name2Sym);
+    void setupConstantSymbols(std::map<std::string, std::unique_ptr<Symtable>> &name2Sym);
+    void setupKernelArguments(std::map<std::string, std::unique_ptr<Symtable>> &name2Sym);
     void setupLabels(std::map<std::string, int> &label2pc);
 
     // 持有PtxContext的副本，以避免悬垂引用问题
