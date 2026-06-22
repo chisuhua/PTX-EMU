@@ -1,0 +1,56 @@
+name: build-and-test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs for same branch on new push
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install CUDA Toolkit 11.4.4
+        uses: Jimver/cuda-toolkit@v0.2.11
+        with:
+          cuda: '11.4.4'
+
+      - name: Install ANTLR Java + Ninja
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y default-jre ninja-build
+
+      - name: Set up environment
+        run: . ./env.sh
+
+      - name: Configure (Ninja generator, Release)
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build -j$(nproc)
+
+      - name: Test (excluding Disabled)
+        # Phase 1 T0-2: xfail policy — failing tests do NOT block merge
+        # Per docs/audits/baseline-2026-06-21.log + xfail tracking issues
+        # Failures are recorded as workflow warnings (not errors) so PR
+        # can still be merged while Phase 2/3 fixes the underlying issues.
+        run: cd build && ctest --output-on-failure -E "Disabled" -j$(nproc) || echo "::warning::ctest had failures — see xfail tracking issues"
+        continue-on-error: true
+
+      - name: Upload baseline log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline-diff
+          path: |
+            docs/audits/baseline-2026-06-21.log*

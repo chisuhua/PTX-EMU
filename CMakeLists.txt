@@ -13,6 +13,11 @@ enable_language(CUDA)
 # ==============================
 project(PTX-EMU LANGUAGES CXX CUDA)
 
+# Enable compile_commands.json for LSP/clang-tidy/IDE tooling (T0-1)
+# MUST be set after project() but BEFORE add_subdirectory() so all targets
+# are captured (setting it after add_subdirectory() misses targets).
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # ==============================
 # 🛠️ 全局设置
 # ==============================
@@ -113,4 +118,3 @@ install(DIRECTORY lib/
 install(DIRECTORY bin/
         DESTINATION bin
         FILES_MATCHING PATTERN "*")
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

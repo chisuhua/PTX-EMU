@@ -1,0 +1,368 @@
+
+[0;36m========================================[0m
+[0;36mPTX-EMU Sanity Test Suite[0m
+[0;36m========================================[0m
+
+Build: build | Mode: quick=false full=false ptx=false tier=all
+Tiers: 1-10
+
+[1;33m[WARN][0m ptxsim not built, building core libs...
+[ 14%] Built target ptx_ir
+[100%] Built target ptxsim
+[  3%] Built target GenerateParser
+[  3%] Built target ptx_ir
+[ 26%] Built target ptxsim
+[ 30%] Built target ptx_parser
+[ 92%] Built target antlr4_shared
+[100%] Built target cudart
+[  0%] Built target GenerateParser
+[ 50%] Built target ptx_ir
+[100%] Built target ptx_parser
+
+[0;36m========================================[0m
+[0;36mTier 1: Smoke Tests (build verification)[0m
+[0;36m========================================[0m
+
+[0;32m[PASS][0m Build directory verified: build
+
+[0;36m========================================[0m
+[0;36mTier 2: Pure Data Structures (memory, register)[0m
+[0;36m========================================[0m
+
+[0;34m[TEST][0m Memory manager (regex: test_memory_manager)
+[0;32m[PASS][0m Memory manager
+[0;34m[TEST][0m Memory bounds (regex: test_memory_bounds)
+[0;32m[PASS][0m Memory bounds
+
+[0;36m========================================[0m
+[0;36mTier 3: Single Instruction Tests (PTX ops)[0m
+[0;36m========================================[0m
+
+[0;34m[TEST][0m PTX instructions (integer/float/bitwise/cvt/ld_st/cvta) (label: ptx)
+[0;32m[PASS][0m PTX instructions (integer/float/bitwise/cvt/ld_st/cvta)
+[0;34m[TEST][0m Standalone instruction tests (ADD/SUBC/BRA) (regex: test_addc_subc_handler|test_ptx_bra)
+[0;32m[PASS][0m Standalone instruction tests (ADD/SUBC/BRA)
+[0;34m[TEST][0m Standalone PTX tests (generic + printf) (regex: test-ptx|test_printf)
+[0;32m[PASS][0m Standalone PTX tests (generic + printf)
+
+[0;36m========================================[0m
+[0;36mTier 4: Warp/PC Scheduling Unit (context, config)[0m
+[0;36m========================================[0m
+
+[0;34m[TEST][0m PC management (unit/advanced/integrated) (regex: test_pc_management|test_pc_management_integrated|test_pc_management_advanced)
+[0;32m[PASS][0m PC management (unit/advanced/integrated)
+[0;34m[TEST][0m Scheduler config (regex: test_scheduler_config)
+[0;32m[PASS][0m Scheduler config
+[0;34m[TEST][0m WarpContext (regex: test_warp_context)
+[0;32m[PASS][0m WarpContext
+[0;34m[TEST][0m WarpScheduler (regex: test_warp_scheduler)
+[0;32m[PASS][0m WarpScheduler
+[0;34m[TEST][0m SMContext (regex: test_sm_context)
+[0;32m[PASS][0m SMContext
+
+[0;36m========================================[0m
+[0;36mTier 5: SIMT Execution Model (exec_mask, SIMT stack, state)[0m
+[0;36m========================================[0m
+
+[0;34m[TEST][0m BUG-001: exec_mask restore (regex: test_exec_mask)
+[0;32m[PASS][0m BUG-001: exec_mask restore
+[0;34m[TEST][0m BUG-002: SIMT stack exit (regex: test_simt_stack_entry)
+[0;32m[PASS][0m BUG-002: SIMT stack exit
+[0;34m[TEST][0m ISSUE-004: active_mask consistency (regex: test_active_mask_consistency)
+[0;32m[PASS][0m ISSUE-004: active_mask consistency
+[0;34m[TEST][0m Specific bugs unit tests (regex: test_specific_bugs_unit)
+[0;32m[PASS][0m Specific bugs unit tests
+[0;34m[TEST][0m SIMT Stack tests (core + integrated) (regex: test_simt|test_simt_stack_entry_integrated|test_simt_thread_pc|test_simt_thread_pc_integrated|unit_simt_integration)
+[0;32m[PASS][0m SIMT Stack tests (core + integrated)
+[0;34m[TEST][0m Branch + SIMT integration (unit) (regex: unit_handle_branch)
+[0;32m[PASS][0m Branch + SIMT integration (unit)
+[0;34m[TEST][0m Warp state (unit + integrated) (regex: test_warp_state|test_warp_state_integrated)
+[0;32m[PASS][0m Warp state (unit + integrated)
+[0;34m[TEST][0m Execution layer hypotheses (E1-E3/H1-H4, unit) (regex: unit_exec_layer_e1_e3|unit_exec_integration_h1_h4)
+[0;32m[PASS][0m Execution layer hypotheses (E1-E3/H1-H4, unit)
+[0;34m[TEST][0m BUG-RETHANG: ret handler on divergent warp (regex: unit_ret_handler_divergent)
+[0;32m[PASS][0m BUG-RETHANG: ret handler on divergent warp
+[0;34m[TEST][0m BUG-POSTBARRIER-TWOHALVES: barrier two-halves (unit) (regex: unit_post_barrier_two_halves)
+[0;32m[PASS][0m BUG-POSTBARRIER-TWOHALVES: barrier two-halves (unit)
+
+[0;36m========================================[0m
+[0;36mTier 6: Multi-Instruction Flows (barrier, sync)[0m
+[0;36m========================================[0m
+
+[0;34m[TEST][0m Barrier reconvergence (regex: test_barrier_reconvergence)
+[0;32m[PASS][0m Barrier reconvergence
+[0;34m[TEST][0m Syncthreads direction (unit) (regex: unit_syncthreads_direction)
+[0;32m[PASS][0m Syncthreads direction (unit)
+[0;34m[TEST][0m Barrier SIMT integration (unit) (regex: unit_barrier_simt)
+[0;32m[PASS][0m Barrier SIMT integration (unit)
+[0;34m[TEST][0m Barrier scenarios (unit + integrated) (regex: test_barrier_scenarios|test_barrier_scenarios_integrated)
+[0;32m[PASS][0m Barrier scenarios (unit + integrated)
+[0;34m[TEST][0m Barrier verification (unit + integrated) (regex: test_barrier_verification|test_barrier_verification_integrated)
+[0;32m[PASS][0m Barrier verification (unit + integrated)
+[0;34m[TEST][0m Barrier PC overwrite protection (regex: test_barrier_pc)
+[0;32m[PASS][0m Barrier PC overwrite protection
+[0;34m[TEST][0m Barrier active_mask preserved (regex: test_barrier_active_mask)
+[0;32m[PASS][0m Barrier active_mask preserved
+[0;34m[TEST][0m Barrier warp/interaction (integrated + unit) (regex: test_warp_barrier_integrated|test_warp_barrier_extended|test_post_barrier_divergence|unit_barrier_interaction)
+[0;32m[PASS][0m Barrier warp/interaction (integrated + unit)
+[0;34m[TEST][0m Sync mechanism (unit + integrated) (regex: test_sync_mechanism|test_sync_mechanism_integrated)
+[0;32m[PASS][0m Sync mechanism (unit + integrated)
+[0;34m[TEST][0m BUG-POSTBARRIER-TWOHALVES: barrier two-halves (integrated) (regex: integration_post_barrier_two_halves)
+[0;32m[PASS][0m BUG-POSTBARRIER-TWOHALVES: barrier two-halves (integrated)
+
+[0;36m========================================[0m
+[0;36mTier 7: Divergence & Reconvergence[0m
+[0;36m========================================[0m
+
+[0;34m[TEST][0m Divergence + barrier sync (standalone) (regex: test_divergence_sync_standalone)
+[0;32m[PASS][0m Divergence + barrier sync (standalone)
+
+[0;36m========================================[0m
+[0;36mTier 8: Cross-Component Integration (full warp flows)[0m
+[0;36m========================================[0m
+
+[0;34m[TEST][0m Barrier full lifecycle (init/arrive/release/reset) (regex: integration_barrier_full_lifecycle)
+[0;32m[PASS][0m Barrier full lifecycle (init/arrive/release/reset)
+
+[0;36m========================================[0m
+[0;36mTier 9: PTX Syntax Validation[0m
+[0;36m========================================[0m
+
+[0;34m[TEST][0m PTX syntax test (test_all_ptx.sh)
+测试 test_divergent_small_cta.ptx ... [PASS]
+测试 test_e4_runtime_divergent.ptx ... [PASS]
+测试 test_e5_post_merge_pc_consistency.ptx ... [PASS]
+测试 test_e8_integration.ptx ... [PASS]
+测试 test_if_else.ptx ... [PASS]
+测试 test_loop.ptx ... [PASS]
+测试 test_loop_while.ptx ... [PASS]
+测试 test_mixed.ptx ... [PASS]
+测试 test_mov_b64_multi_target.ptx ... [PASS]
+测试 test_multipath_4ways.ptx ... [PASS]
+测试 test_nested_3levels.ptx ... [PASS]
+测试 test_nested_sync_isolated.ptx ... [PASS]
+测试 test_printf.ptx ... [PASS]
+测试 test_ptx_cvt.1.sm_100.ptx ... [PASS]
+测试 test_ptx_cvt.2.sm_100.ptx ... [PASS]
+测试 test_reconvergence.ptx ... [PASS]
+测试 test_reconvergence_verify.ptx ... [PASS]
+测试 test_shared_memory_small_cta.ptx ... [PASS]
+测试 test_shared_store.ptx ... [PASS]
+测试 test_syncthreads.ptx ... [PASS]
+测试 test_syncthreads_simple.ptx ... [PASS]
+
+========================================
+测试结果汇总
+========================================
+总数：33
+通过：33
+失败：0
+
+[SUCCESS] 全部通过！
+[0;32m[PASS][0m PTX syntax test
+
+[0;36m========================================[0m
+[0;36mTier 10: Shared Memory 专项 (ld/st/cvta/barrier/dynamic)[0m
+[0;36m========================================[0m
+
+[0;34m[TEST][0m Shared Memory (ld/st/cvta/barrier/dynamic) (label: shared_memory)
+[0;32m[PASS][0m Shared Memory (ld/st/cvta/barrier/dynamic)
+
+[0;36m========================================[0m
+[0;36mSummary[0m
+[0;36m========================================[0m
+
+[0;32m[PASS][0m All tests passed!
+
+==========================================
+CTEST STATE SUMMARY (appended 2026-06-22)
+==========================================
+
+--- All Tests (ctest -N) ---
+Test project /workspace/project/ptx-emu-foundation/build
+  Test   #1: test_warp_context
+  Test   #2: test_warp_scheduler
+  Test   #3: test_sm_context
+  Test   #4: test_addc_subc_handler
+  Test   #5: test_printf
+  Test   #6: test-ptx
+  Test   #7: test_ptx_bra
+  Test   #8: test_cfg_edge_cases
+  Test   #9: test_simt_stack_integration
+  Test  #10: dummy
+  Test  #11: dummy-args
+  Test  #12: dummy-add
+  Test  #13: dummy-float
+  Test  #14: dummy-grid
+  Test  #15: dummy-mul
+  Test  #16: dummy-sub
+  Test  #17: dummy-condition
+  Test  #18: dummy-long
+  Test  #19: dummy-sieve
+  Test  #20: dummy-share
+  Test  #21: dummy-loop
+  Test  #22: dummy-ldglobal
+  Test  #23: test_syncthreads
+  Test  #24: test_warp_divergence
+  Test  #25: test_shared_memory
+  Test  #26: test_divergence_sync_standalone
+  Test  #27: simpleGEMM-int
+  Test  #28: simpleGEMM-float
+  Test  #29: simpleGEMM-double
+  Test  #30: simpleCONV-int
+  Test  #31: simpleCONV-float
+  Test  #32: simpleCONV-double
+  Test  #33: 2Dentropy
+  Test  #34: aligned-types
+  Test  #35: all-pairs-distance
+  Test  #36: bitonic
+  Test  #37: bfs
+  Test  #38: unit_barrier_module
+  Test  #39: unit_warp_barrier
+  Test  #40: unit_barrier_reconvergence
+  Test  #41: unit_barrier_interaction
+  Test  #42: unit_barrier_scenarios_integrated
+  Test  #43: unit_barrier_verification
+  Test  #44: unit_broadcast_after_barrier
+  Test  #45: unit_simt_stack_stale_entry_blocks_lane0
+  Test  #46: unit_post_barrier_two_halves
+  Test  #47: unit_barrier_divergence_reconvergence_simplegemm
+  Test  #48: unit_simt_stack_entry
+  Test  #49: unit_simt_stack_entry_integrated
+  Test  #50: unit_simt_stack_catch2
+  Test  #51: unit_simt_thread_pc
+  Test  #52: unit_simt_integration
+  Test  #53: unit_handle_branch_two_level_divergence
+  Test  #54: unit_handle_branch
+  Test  #55: unit_barrier_simt
+  Test  #56: unit_warp_state
+  Test  #57: unit_warp_blocked_decrement
+  Test  #58: unit_memory_manager
+  Test  #59: unit_memory_bounds
+  Test  #60: unit_st_handler_data_size
+  Test  #61: unit_get_memory_addr_shared
+  Test  #62: unit_vec_op_phy_addrs_stack
+  Test  #63: unit_exec_mask
+  Test  #64: unit_active_mask_consistency
+  Test  #65: unit_exec_integration_h1_h4
+  Test  #66: unit_exec_layer_e1_e3
+  Test  #67: unit_bra_pred_divergent
+  Test  #68: unit_ret_handler_divergent
+  Test  #69: unit_pc_management
+  Test  #70: unit_pc_management_advanced
+  Test  #71: unit_streaming_admission
+  Test  #72: unit_sync_mechanism
+  Test  #73: unit_barrier_pc_overwrite
+  Test  #74: unit_syncthreads_direction
+  Test  #75: unit_syncthreads_test3_repro
+  Test  #76: unit_logger_cudart_component
+  Test  #77: unit_cc_register
+  Test  #78: unit_specific_bugs_unit
+  Test  #79: unit_instruction_latency_table
+  Test  #80: unit_instruction_latency_config_load
+  Test  #81: unit_scheduler_config
+  Test  #82: unit_parse_immediate
+  Test  #83: unit_warp_trace_formatter
+  Test  #84: unit_divergence_sync_standalone_integrated
+  Test  #85: unit_memory_test_utils
+  Test  #86: integration_barrier_module
+  Test  #87: integration_barrier_verification
+  Test  #88: integration_barrier_divergence_scheduling
+  Test  #89: integration_warp_barrier
+  Test  #90: integration_barrier_full_lifecycle
+  Test  #91: integration_warp_barrier_memory_visibility (Disabled)
+  Test  #92: integration_cta_barrier_memory_visibility (Disabled)
+  Test  #93: integration_simt_thread_pc
+  Test  #94: integration_divergence_sync_convergence
+  Test  #95: integration_nested_divergence
+  Test  #96: integration_post_barrier_divergence
+  Test  #97: integration_broadcast_after_barrier
+  Test  #98: integration_cute_rmsnorm_bar_sync_pattern
+  Test  #99: integration_post_barrier_two_halves
+  Test #100: integration_post_barrier_reconvergence_simplegemm
+  Test #101: integration_warp_state
+  Test #102: integration_ptx_lane_verification
+  Test #103: integration_ldglobal_no_hang
+  Test #104: integration_pc_management
+  Test #105: integration_sync_mechanism
+  Test #106: integration_syncthreads_full_pipeline
+  Test #107: integration_ptx_ld_st_shared
+  Test #108: integration_ptx_ld_st_latency_table
+  Test #109: integration_ptx_vec_ld_st_isolation
+  Test #110: integration_ptx_integer_arith
+  Test #111: integration_ptx_bitwise
+  Test #112: integration_ptx_atom_global_add
+  Test #113: integration_ptx_cvt
+  Test #114: integration_ptx_float_arith
+  Test #115: integration_ptx_extended
+  Test #116: integration_ptx_cvta
+  Test #117: integration_shared_memory_layout
+  Test #118: integration_local_memory (Disabled)
+  Test #119: integration_dynamic_shared_memory
+  Test #120: e2e_test3_cfg_full
+  Test #121: e2e_barrier_warp_sync
+  Test #122: e2e_ldglobal_simple
+  Test #123: e2e_divergence
+  Test #124: e2e_divergence_sync
+  Test #125: e2e_shared_memory_dynamic
+  Test #126: e2e_shared_memory_multi_buffer
+  Test #127: e2e_shared_memory_divergence_visibility
+  Test #128: cute_hello_col_major
+  Test #129: cute_hello_tensor
+  Test #130: cute_hello_tiled_copy
+  Test #131: cute_rmsnorm
+
+Total Tests: 131
+
+--- Disabled Tests ---
+  Test  #91: integration_warp_barrier_memory_visibility (Disabled)
+  Test  #92: integration_cta_barrier_memory_visibility (Disabled)
+  Test #118: integration_local_memory (Disabled)
+
+--- Test Run (excluding Disabled) ---
+sm                                 =   0.01 sec*proc (1 test)
+state                              =   0.01 sec*proc (1 test)
+streaming                          =   0.01 sec*proc (1 test)
+sub                                =   0.01 sec*proc (1 test)
+subc                               =   0.03 sec*proc (2 tests)
+sync                               =   0.02 sec*proc (2 tests)
+syncthreads                        =   0.03 sec*proc (3 tests)
+testing                            =   0.01 sec*proc (1 test)
+thread_pc                          =   0.01 sec*proc (1 test)
+tier8                              =   0.02 sec*proc (1 test)
+unit                               =   0.52 sec*proc (48 tests)
+vec                                =   0.03 sec*proc (2 tests)
+visibility                         =   0.15 sec*proc (1 test)
+warp                               =   0.46 sec*proc (3 tests)
+warp_state                         =   0.01 sec*proc (1 test)
+warp_trace_formatter               =   0.01 sec*proc (1 test)
+wbar                               =   0.03 sec*proc (2 tests)
+
+Total Test time (real) =  36.44 sec
+
+The following tests did not run:
+	 91 - integration_warp_barrier_memory_visibility (Disabled)
+	 92 - integration_cta_barrier_memory_visibility (Disabled)
+	118 - integration_local_memory (Disabled)
+
+The following tests FAILED:
+	 45 - unit_simt_stack_stale_entry_blocks_lane0 (Failed)
+	 98 - integration_cute_rmsnorm_bar_sync_pattern (Failed)
+	131 - cute_rmsnorm (Failed)
+Errors while running CTest
+
+==========================================
+CI XFAIL TRACKING (appended 2026-06-22)
+==========================================
+
+Phase 1 T0-2 policy: xfail does NOT block PR merge
+Each failed test has a corresponding GitHub issue (label: xfail)
+
+NOTE: CI environment not available in current sandbox.
+xfail issues to be created manually once PR is opened:
+  - xfail: unit_simt_stack_stale_entry_blocks_lane0
+  - xfail: integration_cute_rmsnorm_bar_sync_pattern
+  - xfail: cute_rmsnorm
+
+Each issue tracks a baseline failure. Fix plans are tied to
+roadmap Phase 2 (T1-1 to T1-5) and Phase 3 (T2-x) tasks.
