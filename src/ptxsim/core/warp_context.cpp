@@ -279,12 +279,14 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt, int target_pc
         }
         
         thread->sync_from_warp_state();
-        
+
         if (thread->get_state() == BAR_SYNC) {
             if (cta_context_ != nullptr) {
                 bool is_warp_barrier = (warp_state.current_wbar_id >= 0);
+                // Use BarrierModule API instead of warp_state.wbars[] (deprecated).
                 bool warp_barrier_complete = is_warp_barrier &&
-                    warp_state.wbars[warp_state.current_wbar_id].is_complete();
+                    cta_context_->get_barrier_module().is_warp_barrier_complete(
+                        warp_state.current_wbar_id);
 
                 if (!warp_barrier_complete) {
                     PTX_WARN_EMU("Fallback CTA sync: lane %d, wbar %d incomplete",

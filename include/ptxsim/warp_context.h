@@ -209,6 +209,11 @@ public:
     const ptxsim::SIMTStack& get_simt_stack() const { return simt_stack; }
 
     // 【NEW】Warp 级屏障访问
+    // DEPRECATED: Use cta_context->get_barrier_module()->get_warp_barrier() instead.
+    // This accessor is part of Phase 5 deprecated barrier API cleanup
+    // (see AGENTS.md: BarWarpSyncHandler still uses wbars[] — cleanup pending).
+    // Will be removed once BarWarpSyncHandler migrates to BarrierModule.
+    [[deprecated("Use cta_context->get_barrier_module()->get_warp_barrier() instead")]]
     ptxsim::Wbar& get_wbar(int wbar_id) {
         if (wbar_id >= 0 && wbar_id < 4) {
             return warp_state.wbars[wbar_id];
