@@ -396,3 +396,14 @@ set_tests_properties(unit_divergence_sync_standalone_integrated PROPERTIES LABEL
 #     ptx/ptx_cvta.cu
 # )
 # set_tests_properties(unit_ptx_cvta PROPERTIES LABELS "unit;ptx;cvta")
+
+# ============================================================================
+# CUDA Runtime 拦截单元测试 (T1-2)
+# 验证 cudaStream/cudaEvent destroy 实现正确
+# 审计 §2.2.1 声称 destroy 是 STUB，但 cudart_sim.cpp:692/721 实际有 delete。
+# 真实问题（Errata §1.7）: type-unsafe reinterpret_cast + fake sync。
+# ============================================================================
+add_catch_test(unit_cuda_stream_handle
+    cudart/test_cuda_stream_handle.cu
+)
+set_tests_properties(unit_cuda_stream_handle PROPERTIES LABELS "unit;cudart;stream")
