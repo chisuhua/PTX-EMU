@@ -145,6 +145,7 @@ add_subdirectory(unit/testing)
 
 # Type 2: 指令序列集成测试
 add_subdirectory(integration)
+add_subdirectory(integration/memory)
 
 # Type 3: CUDA Kernel E2E 测试
 add_subdirectory(e2e)
