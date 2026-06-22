@@ -181,6 +181,8 @@ private:
     // 周期计数器（每执行一次 exe_once 递增）
     uint64_t cycle_counter_;
 
+    friend class BarWarpSyncHandler;
+
     // Divergence execution mode
     ptxsim::DivergenceExecutionMode divergence_mode_ = ptxsim::DivergenceExecutionMode::Sequential;
 
