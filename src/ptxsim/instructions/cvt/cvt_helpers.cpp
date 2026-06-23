@@ -38,14 +38,24 @@ float half_to_float(uint16_t h) {
             // ±0
             f = sign << 31;
         } else {
-            // Subnormal numbers
-            exp = 127 - 15;
-            while ((mantissa & 0x400) == 0) {
-                mantissa <<= 1;
-                exp--;
+            // Subnormal (denormal) numbers: value = mantissa × 2^-24
+            // Shift the 10-bit mantissa until bit 9 is set; the number of
+            // shifts (lz) is the leading-zero count in the 10-bit value.
+            // The high bit of the original mantissa is at position (9 - lz),
+            // so exp_f = 103 + (9 - lz) = 112 - lz, and the 9 remaining
+            // fraction bits (m & 0x1FF) become the float32 mantissa shifted
+            // up by 14 to fill the 23-bit fraction field.
+            // For mantissa=1 (lz=9): exp_f=103, frac=0 → 0x33800000 = 2^-24
+            // For mantissa=0x3FF (lz=0): exp_f=112, frac=0x7FE000
+            uint32_t m = mantissa;
+            int lz = 0;
+            while ((m & 0x200) == 0) {
+                m <<= 1;
+                lz++;
             }
-            mantissa &= 0x3ff;
-            f = (sign << 31) | ((exp + 127) << 23) | (mantissa << 13);
+            uint32_t frac = (m & 0x1FF) << 14;
+            uint32_t exp_f = 112 - lz;
+            f = (sign << 31) | (exp_f << 23) | frac;
         }
     } else if (exp == 31) {
         if (mantissa == 0) {

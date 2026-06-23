@@ -14,6 +14,8 @@ using ptxsim::cvt_helpers::half_to_float;
 using ptxsim::cvt_helpers::round_half_to_even;
 using ptxsim::cvt_helpers::should_saturate_uint32;
 
+using Catch::Approx;
+
 TEST_CASE("round_half_to_even basic cases", "[cvt][helpers][rounding]") {
     REQUIRE(round_half_to_even(0.0f) == 0.0f);
     REQUIRE(round_half_to_even(0.5f) == 0.0f); // banker's rounding
@@ -30,17 +32,51 @@ TEST_CASE("round_half_to_even edge cases", "[cvt][helpers][rounding]") {
             std::numeric_limits<float>::infinity());
 }
 
-TEST_CASE("half_to_float zero/inf/nan/denormal", "[cvt][helpers][half]") {
+TEST_CASE("half_to_float zero/inf/nan", "[cvt][helpers][half]") {
     REQUIRE(half_to_float(0x0000) == 0.0f);
     REQUIRE(half_to_float(0x8000) == -0.0f);
     REQUIRE(half_to_float(0x7C00) == std::numeric_limits<float>::infinity());
     REQUIRE(half_to_float(0xFC00) == -std::numeric_limits<float>::infinity());
     REQUIRE(std::isnan(half_to_float(0x7E00)));
-    // Pre-existing inline bug: denormal magnitude is ~5e30, not ~6e-8.
-    REQUIRE(half_to_float(0x0001) > 0.0f);
-    REQUIRE(std::isfinite(half_to_float(0x0001)));
-    REQUIRE(half_to_float(0x8001) < 0.0f);
-    REQUIRE(std::isfinite(half_to_float(0x8001)));
+}
+
+TEST_CASE("half_to_float denormal smallest positive", "[cvt][helpers][half]") {
+    // smallest positive denormal half = 2^-24
+    float result = half_to_float(0x0001);
+    REQUIRE(std::isfinite(result));
+    REQUIRE(result > 0.0f);
+    // 2^-24 = 5.9604644775390625e-08
+    REQUIRE(result == Approx(5.9604644775390625e-08f).epsilon(0.01f));
+}
+
+TEST_CASE("half_to_float denormal largest", "[cvt][helpers][half]") {
+    // largest denormal half = 0x03FF = (1 - 2^-10) * 2^-14
+    float result = half_to_float(0x03FF);
+    REQUIRE(std::isfinite(result));
+    REQUIRE(result > 0.0f);
+    REQUIRE(result == Approx(6.0975551605224609e-05f).epsilon(0.01f));
+}
+
+TEST_CASE("half_to_float negative denormal", "[cvt][helpers][half]") {
+    // negative denormal = 0x8001
+    float result = half_to_float(0x8001);
+    REQUIRE(std::isfinite(result));
+    REQUIRE(result < 0.0f);
+    REQUIRE(result == Approx(-5.9604644775390625e-08f).epsilon(0.01f));
+}
+
+TEST_CASE("half_to_float denormal mid range monotonic",
+          "[cvt][helpers][half]") {
+    // Verify denormal path is monotonic and reasonably scaled
+    float r1 = half_to_float(0x0001);
+    float r2 = half_to_float(0x0002);
+    float r3 = half_to_float(0x0100);
+    float r4 = half_to_float(0x03FF);
+    REQUIRE(r1 < r2);
+    REQUIRE(r2 < r3);
+    REQUIRE(r3 < r4);
+    // r2 = 2*r1 (both denormal)
+    REQUIRE(r2 == Approx(2.0f * r1).epsilon(0.01f));
 }
 
 TEST_CASE("float_to_half zero/inf/nan/denormal", "[cvt][helpers][half]") {
