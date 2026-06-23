@@ -2,8 +2,8 @@
 #ifndef PTXSIM_TESTING_INSTRUCTION_HELPERS_H
 #define PTXSIM_TESTING_INSTRUCTION_HELPERS_H
 
-#include "ptx_ir/ptx_types.h"
 #include "ptx_ir/operand_context.h"
+#include "ptx_ir/ptx_types.h"
 #include "ptx_ir/statement_context.h"
 
 #include <cstdint>
@@ -17,15 +17,18 @@ namespace ptxsim::testing {
 // Build StatementContext objects for PTX simulation testing
 // ============================================================================
 
-inline StatementContext make_bar_warp_sync(uint32_t mask, int reconvergence_pc) {
+inline StatementContext make_bar_warp_sync(uint32_t mask,
+                                           int reconvergence_pc) {
     StatementContext ctx;
     ctx.type = S_BAR_WARP_SYNC;
     BarWarpSyncInstr instr;
     instr.qualifiers = {Qualifier::Q_B32};
     instr.operands.push_back(OperandContext{ImmOperand{std::to_string(mask)}});
-    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(reconvergence_pc)}});
+    instr.operands.push_back(
+        OperandContext{ImmOperand{std::to_string(reconvergence_pc)}});
     ctx.data = instr;
-    ctx.instructionText = "bar.warp.sync.b32 0x" + std::to_string(mask) + ", " + std::to_string(reconvergence_pc) + ";";
+    ctx.instructionText = "bar.warp.sync.b32 0x" + std::to_string(mask) + ", " +
+                          std::to_string(reconvergence_pc) + ";";
     return ctx;
 }
 
@@ -39,7 +42,8 @@ inline StatementContext make_bar_sync(int bar_id = 0) {
     return ctx;
 }
 
-inline StatementContext make_mov(const std::string& dst, const std::string& src) {
+inline StatementContext make_mov(const std::string &dst,
+                                 const std::string &src) {
     StatementContext ctx;
     ctx.type = S_MOV;
     GenericInstr instr;
@@ -51,7 +55,7 @@ inline StatementContext make_mov(const std::string& dst, const std::string& src)
     return ctx;
 }
 
-inline StatementContext make_mov_imm(const std::string& dst, int64_t imm) {
+inline StatementContext make_mov_imm(const std::string &dst, int64_t imm) {
     StatementContext ctx;
     ctx.type = S_MOV;
     GenericInstr instr;
@@ -63,7 +67,9 @@ inline StatementContext make_mov_imm(const std::string& dst, int64_t imm) {
     return ctx;
 }
 
-inline StatementContext make_add(const std::string& dst, const std::string& src1, const std::string& src2) {
+inline StatementContext make_add(const std::string &dst,
+                                 const std::string &src1,
+                                 const std::string &src2) {
     StatementContext ctx;
     ctx.type = S_ADD;
     GenericInstr instr;
@@ -76,7 +82,9 @@ inline StatementContext make_add(const std::string& dst, const std::string& src1
     return ctx;
 }
 
-inline StatementContext make_mul(const std::string& dst, const std::string& src1, const std::string& src2) {
+inline StatementContext make_mul(const std::string &dst,
+                                 const std::string &src1,
+                                 const std::string &src2) {
     StatementContext ctx;
     ctx.type = S_MUL;
     GenericInstr instr;
@@ -89,8 +97,9 @@ inline StatementContext make_mul(const std::string& dst, const std::string& src1
     return ctx;
 }
 
-inline StatementContext make_sub(const std::string& dst, const std::string& src1,
-                                  const std::string& src2) {
+inline StatementContext make_sub(const std::string &dst,
+                                 const std::string &src1,
+                                 const std::string &src2) {
     StatementContext ctx;
     ctx.type = S_SUB;
     GenericInstr instr;
@@ -103,8 +112,9 @@ inline StatementContext make_sub(const std::string& dst, const std::string& src1
     return ctx;
 }
 
-inline StatementContext make_and(const std::string& dst, const std::string& src1,
-                                  const std::string& src2) {
+inline StatementContext make_and(const std::string &dst,
+                                 const std::string &src1,
+                                 const std::string &src2) {
     StatementContext ctx;
     ctx.type = S_AND;
     GenericInstr instr;
@@ -117,8 +127,8 @@ inline StatementContext make_and(const std::string& dst, const std::string& src1
     return ctx;
 }
 
-inline StatementContext make_or(const std::string& dst, const std::string& src1,
-                                 const std::string& src2) {
+inline StatementContext make_or(const std::string &dst, const std::string &src1,
+                                const std::string &src2) {
     StatementContext ctx;
     ctx.type = S_OR;
     GenericInstr instr;
@@ -131,8 +141,9 @@ inline StatementContext make_or(const std::string& dst, const std::string& src1,
     return ctx;
 }
 
-inline StatementContext make_xor(const std::string& dst, const std::string& src1,
-                                  const std::string& src2) {
+inline StatementContext make_xor(const std::string &dst,
+                                 const std::string &src1,
+                                 const std::string &src2) {
     StatementContext ctx;
     ctx.type = S_XOR;
     GenericInstr instr;
@@ -145,8 +156,8 @@ inline StatementContext make_xor(const std::string& dst, const std::string& src1
     return ctx;
 }
 
-inline StatementContext make_shl(const std::string& dst, const std::string& src,
-                                  const std::string& shift) {
+inline StatementContext make_shl(const std::string &dst, const std::string &src,
+                                 const std::string &shift) {
     StatementContext ctx;
     ctx.type = S_SHL;
     GenericInstr instr;
@@ -159,8 +170,8 @@ inline StatementContext make_shl(const std::string& dst, const std::string& src,
     return ctx;
 }
 
-inline StatementContext make_shr(const std::string& dst, const std::string& src,
-                                  const std::string& shift) {
+inline StatementContext make_shr(const std::string &dst, const std::string &src,
+                                 const std::string &shift) {
     StatementContext ctx;
     ctx.type = S_SHR;
     GenericInstr instr;
@@ -173,7 +184,8 @@ inline StatementContext make_shr(const std::string& dst, const std::string& src,
     return ctx;
 }
 
-inline StatementContext make_not(const std::string& dst, const std::string& src) {
+inline StatementContext make_not(const std::string &dst,
+                                 const std::string &src) {
     StatementContext ctx;
     ctx.type = S_NOT;
     GenericInstr instr;
@@ -186,10 +198,10 @@ inline StatementContext make_not(const std::string& dst, const std::string& src)
 }
 
 // Bit Field Extract: bfe.type dst, src, pos, len
-inline StatementContext make_bfe_u32(const std::string& dst,
-                                     const std::string& src,
-                                     const std::string& pos,
-                                     const std::string& len) {
+inline StatementContext make_bfe_u32(const std::string &dst,
+                                     const std::string &src,
+                                     const std::string &pos,
+                                     const std::string &len) {
     StatementContext ctx;
     ctx.type = S_BFE;
     GenericInstr instr;
@@ -199,16 +211,17 @@ inline StatementContext make_bfe_u32(const std::string& dst,
     instr.operands.push_back(OperandContext{RegOperand{pos, -1}});
     instr.operands.push_back(OperandContext{RegOperand{len, -1}});
     ctx.data = instr;
-    ctx.instructionText = "bfe.u32 " + dst + ", " + src + ", " + pos + ", " + len + ";";
+    ctx.instructionText =
+        "bfe.u32 " + dst + ", " + src + ", " + pos + ", " + len + ";";
     return ctx;
 }
 
 // Atomic add on global memory: atom.global.add.u32 dst, [addr], src
 // Address is read from a 64-bit register (matches ld.global / st.global
 // pattern: register holds the host pointer).
-inline StatementContext make_atom_global_add_u32(const std::string& dst,
-                                                 const std::string& addr_reg,
-                                                 const std::string& src) {
+inline StatementContext make_atom_global_add_u32(const std::string &dst,
+                                                 const std::string &addr_reg,
+                                                 const std::string &src) {
     StatementContext ctx;
     ctx.type = S_ATOM;
     AtomInstr instr;
@@ -224,16 +237,16 @@ inline StatementContext make_atom_global_add_u32(const std::string& dst,
     instr.operands.push_back(OperandContext{addr});
     instr.operands.push_back(OperandContext{RegOperand{src, -1}});
     ctx.data = instr;
-    ctx.instructionText = "atom.global.add.u32 " + dst + ", [" + addr_reg +
-                          "], " + src + ";";
+    ctx.instructionText =
+        "atom.global.add.u32 " + dst + ", [" + addr_reg + "], " + src + ";";
     return ctx;
 }
 
 // Atomic exchange on global memory: atom.global.exch.u32 dst, [addr], src
 // Returns the old value at addr to dst, writes src to addr.
-inline StatementContext make_atom_global_exch_u32(const std::string& dst,
-                                                  const std::string& addr_reg,
-                                                  const std::string& src) {
+inline StatementContext make_atom_global_exch_u32(const std::string &dst,
+                                                  const std::string &addr_reg,
+                                                  const std::string &src) {
     StatementContext ctx;
     ctx.type = S_ATOM;
     AtomInstr instr;
@@ -249,40 +262,115 @@ inline StatementContext make_atom_global_exch_u32(const std::string& dst,
     instr.operands.push_back(OperandContext{addr});
     instr.operands.push_back(OperandContext{RegOperand{src, -1}});
     ctx.data = instr;
-    ctx.instructionText = "atom.global.exch.u32 " + dst + ", [" + addr_reg +
-                          "], " + src + ";";
+    ctx.instructionText =
+        "atom.global.exch.u32 " + dst + ", [" + addr_reg + "], " + src + ";";
     return ctx;
 }
 
-inline StatementContext make_cvt(const std::string& dst, const std::string& src,
-                                 Qualifier dst_dtype, Qualifier src_dtype) {
+inline StatementContext
+make_cvt(const std::string &dst, const std::string &src, Qualifier dst_dtype,
+         Qualifier src_dtype, const std::vector<Qualifier> &extra_quals = {}) {
     StatementContext ctx;
     ctx.type = S_CVT;
     GenericInstr instr;
     instr.qualifiers = {dst_dtype, src_dtype};
+    for (auto q : extra_quals) {
+        instr.qualifiers.push_back(q);
+    }
     instr.operands.push_back(OperandContext{RegOperand{dst, -1}});
     instr.operands.push_back(OperandContext{RegOperand{src, -1}});
     ctx.data = instr;
     auto qual_name = [](Qualifier q) -> std::string {
         switch (q) {
-            case Qualifier::Q_S32: return "s32";
-            case Qualifier::Q_F32: return "f32";
-            case Qualifier::Q_F64: return "f64";
-            case Qualifier::Q_S64: return "s64";
-            case Qualifier::Q_B32: return "b32";
-            case Qualifier::Q_B64: return "b64";
-            default: return "b32";
+        case Qualifier::Q_S32:
+            return "s32";
+        case Qualifier::Q_F32:
+            return "f32";
+        case Qualifier::Q_F64:
+            return "f64";
+        case Qualifier::Q_S64:
+            return "s64";
+        case Qualifier::Q_B32:
+            return "b32";
+        case Qualifier::Q_B64:
+            return "b64";
+        case Qualifier::Q_RP:
+            return "rp";
+        case Qualifier::Q_RPI:
+            return "rpi";
+        case Qualifier::Q_RN:
+            return "rn";
+        case Qualifier::Q_RNI:
+            return "rni";
+        case Qualifier::Q_RZ:
+            return "rz";
+        case Qualifier::Q_RZI:
+            return "rzi";
+        case Qualifier::Q_RM:
+            return "rm";
+        case Qualifier::Q_RMI:
+            return "rmi";
+        case Qualifier::Q_SAT:
+            return "sat";
+        default:
+            return "";
         }
     };
-    ctx.instructionText = "cvt." + qual_name(dst_dtype) + "." +
-                          qual_name(src_dtype) + " " + dst + ", " + src + ";";
+    std::string text =
+        "cvt." + qual_name(dst_dtype) + "." + qual_name(src_dtype);
+    for (auto q : extra_quals) {
+        std::string name = qual_name(q);
+        if (!name.empty()) {
+            text += "." + name;
+        }
+    }
+    text += " " + dst + ", " + src + ";";
+    ctx.instructionText = text;
     return ctx;
 }
 
-inline StatementContext make_fadd(const std::string& dst, const std::string& src1,
-                                  const std::string& src2) {
+// cvt with saturation (.sat) — emits e.g. "cvt.u32.f32.sat"
+inline StatementContext make_cvt_sat(const std::string &dst,
+                                     const std::string &src,
+                                     Qualifier dst_dtype, Qualifier src_dtype) {
     StatementContext ctx;
-    ctx.type = S_ADD;  // Float reuses integer opcode; Q_F32 selects float path
+    ctx.type = S_CVT;
+    GenericInstr instr;
+    instr.qualifiers = {dst_dtype, src_dtype, Qualifier::Q_SAT};
+    instr.operands.push_back(OperandContext{RegOperand{dst, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{src, -1}});
+    ctx.data = instr;
+    auto qual_name = [](Qualifier q) -> std::string {
+        switch (q) {
+        case Qualifier::Q_S32:
+            return "s32";
+        case Qualifier::Q_U32:
+            return "u32";
+        case Qualifier::Q_F32:
+            return "f32";
+        case Qualifier::Q_F64:
+            return "f64";
+        case Qualifier::Q_S64:
+            return "s64";
+        case Qualifier::Q_B32:
+            return "b32";
+        case Qualifier::Q_B64:
+            return "b64";
+        default:
+            return "b32";
+        }
+    };
+    ctx.instructionText = "cvt." + qual_name(dst_dtype) + "." +
+                          qual_name(src_dtype) + ".sat " + dst + ", " + src +
+                          ";";
+    return ctx;
+}
+
+inline StatementContext make_fadd(const std::string &dst,
+                                  const std::string &src1,
+                                  const std::string &src2) {
+    StatementContext ctx;
+    ctx.type = S_ADD; // Float reuses integer opcode; Q_F32 selects float path
     GenericInstr instr;
     instr.qualifiers = {Qualifier::Q_F32};
     instr.operands.push_back(OperandContext{RegOperand{dst, -1}});
@@ -293,8 +381,9 @@ inline StatementContext make_fadd(const std::string& dst, const std::string& src
     return ctx;
 }
 
-inline StatementContext make_fsub(const std::string& dst, const std::string& src1,
-                                  const std::string& src2) {
+inline StatementContext make_fsub(const std::string &dst,
+                                  const std::string &src1,
+                                  const std::string &src2) {
     StatementContext ctx;
     ctx.type = S_SUB;
     GenericInstr instr;
@@ -307,8 +396,9 @@ inline StatementContext make_fsub(const std::string& dst, const std::string& src
     return ctx;
 }
 
-inline StatementContext make_fmul(const std::string& dst, const std::string& src1,
-                                  const std::string& src2) {
+inline StatementContext make_fmul(const std::string &dst,
+                                  const std::string &src1,
+                                  const std::string &src2) {
     StatementContext ctx;
     ctx.type = S_MUL;
     GenericInstr instr;
@@ -321,8 +411,9 @@ inline StatementContext make_fmul(const std::string& dst, const std::string& src
     return ctx;
 }
 
-inline StatementContext make_fdiv(const std::string& dst, const std::string& src1,
-                                  const std::string& src2) {
+inline StatementContext make_fdiv(const std::string &dst,
+                                  const std::string &src1,
+                                  const std::string &src2) {
     StatementContext ctx;
     ctx.type = S_DIV;
     GenericInstr instr;
@@ -335,9 +426,10 @@ inline StatementContext make_fdiv(const std::string& dst, const std::string& src
     return ctx;
 }
 
-inline StatementContext make_ffma(const std::string& dst,
-                                  const std::string& src1, const std::string& src2,
-                                  const std::string& src3) {
+inline StatementContext make_ffma(const std::string &dst,
+                                  const std::string &src1,
+                                  const std::string &src2,
+                                  const std::string &src3) {
     StatementContext ctx;
     ctx.type = S_FMA;
     GenericInstr instr;
@@ -347,12 +439,14 @@ inline StatementContext make_ffma(const std::string& dst,
     instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
     instr.operands.push_back(OperandContext{RegOperand{src3, -1}});
     ctx.data = instr;
-    ctx.instructionText = "fma.rn.f32 " + dst + ", " + src1 + ", " + src2 + ", " + src3 + ";";
+    ctx.instructionText =
+        "fma.rn.f32 " + dst + ", " + src1 + ", " + src2 + ", " + src3 + ";";
     return ctx;
 }
 
-inline StatementContext make_addc(const std::string& dst, const std::string& src1,
-                                   const std::string& src2) {
+inline StatementContext make_addc(const std::string &dst,
+                                  const std::string &src1,
+                                  const std::string &src2) {
     StatementContext ctx;
     ctx.type = S_ADDC;
     GenericInstr instr;
@@ -365,8 +459,9 @@ inline StatementContext make_addc(const std::string& dst, const std::string& src
     return ctx;
 }
 
-inline StatementContext make_subc(const std::string& dst, const std::string& src1,
-                                   const std::string& src2) {
+inline StatementContext make_subc(const std::string &dst,
+                                  const std::string &src1,
+                                  const std::string &src2) {
     StatementContext ctx;
     ctx.type = S_SUBC;
     GenericInstr instr;
@@ -379,9 +474,10 @@ inline StatementContext make_subc(const std::string& dst, const std::string& src
     return ctx;
 }
 
-inline StatementContext make_mad(const std::string& dst,
-                                  const std::string& src1, const std::string& src2,
-                                  const std::string& src3) {
+inline StatementContext make_mad(const std::string &dst,
+                                 const std::string &src1,
+                                 const std::string &src2,
+                                 const std::string &src3) {
     StatementContext ctx;
     ctx.type = S_MAD;
     GenericInstr instr;
@@ -391,12 +487,14 @@ inline StatementContext make_mad(const std::string& dst,
     instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
     instr.operands.push_back(OperandContext{RegOperand{src3, -1}});
     ctx.data = instr;
-    ctx.instructionText = "mad.lo.s32 " + dst + ", " + src1 + ", " + src2 + ", " + src3 + ";";
+    ctx.instructionText =
+        "mad.lo.s32 " + dst + ", " + src1 + ", " + src2 + ", " + src3 + ";";
     return ctx;
 }
 
-inline StatementContext make_mul24(const std::string& dst, const std::string& src1,
-                                    const std::string& src2) {
+inline StatementContext make_mul24(const std::string &dst,
+                                   const std::string &src1,
+                                   const std::string &src2) {
     StatementContext ctx;
     ctx.type = S_MUL24;
     GenericInstr instr;
@@ -409,7 +507,8 @@ inline StatementContext make_mul24(const std::string& dst, const std::string& sr
     return ctx;
 }
 
-inline StatementContext make_cvta_to_global(const std::string& dst, const std::string& src) {
+inline StatementContext make_cvta_to_global(const std::string &dst,
+                                            const std::string &src) {
     StatementContext ctx;
     ctx.type = S_CVTA;
     GenericInstr instr;
@@ -421,7 +520,8 @@ inline StatementContext make_cvta_to_global(const std::string& dst, const std::s
     return ctx;
 }
 
-inline StatementContext make_cvta_to_shared(const std::string& dst, const std::string& src) {
+inline StatementContext make_cvta_to_shared(const std::string &dst,
+                                            const std::string &src) {
     StatementContext ctx;
     ctx.type = S_CVTA;
     GenericInstr instr;
@@ -433,10 +533,13 @@ inline StatementContext make_cvta_to_shared(const std::string& dst, const std::s
     return ctx;
 }
 
-// NOTE: make_ld_shared / make_st_shared (VariableOperand form) have been removed.
-// Use memory_test_utils.h::make_ld_shared_addr / make_st_shared_addr with AddrOperand form instead.
+// NOTE: make_ld_shared / make_st_shared (VariableOperand form) have been
+// removed. Use memory_test_utils.h::make_ld_shared_addr / make_st_shared_addr
+// with AddrOperand form instead.
 
-inline StatementContext make_setp_lt(const std::string& pred, const std::string& src1, const std::string& src2) {
+inline StatementContext make_setp_lt(const std::string &pred,
+                                     const std::string &src1,
+                                     const std::string &src2) {
     StatementContext ctx;
     ctx.type = S_SETP;
     GenericInstr instr;
@@ -445,11 +548,13 @@ inline StatementContext make_setp_lt(const std::string& pred, const std::string&
     instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
     instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
     ctx.data = instr;
-    ctx.instructionText = "setp.lt.u32 " + pred + ", " + src1 + ", " + src2 + ";";
+    ctx.instructionText =
+        "setp.lt.u32 " + pred + ", " + src1 + ", " + src2 + ";";
     return ctx;
 }
 
-inline StatementContext make_bra(const std::string& target, int reconvergence_pc = -1) {
+inline StatementContext make_bra(const std::string &target,
+                                 int reconvergence_pc = -1) {
     StatementContext ctx;
     ctx.type = S_BRA;
     BranchInstr instr;
@@ -462,7 +567,9 @@ inline StatementContext make_bra(const std::string& target, int reconvergence_pc
     return ctx;
 }
 
-inline StatementContext make_bra_pred(const std::string& target, const std::string& pred, bool neg = false, int reconvergence_pc = -1) {
+inline StatementContext make_bra_pred(const std::string &target,
+                                      const std::string &pred, bool neg = false,
+                                      int reconvergence_pc = -1) {
     StatementContext ctx;
     ctx.type = S_BRA;
     BranchInstr instr;
@@ -477,7 +584,7 @@ inline StatementContext make_bra_pred(const std::string& target, const std::stri
     return ctx;
 }
 
-inline StatementContext make_label(const std::string& name) {
+inline StatementContext make_label(const std::string &name) {
     StatementContext ctx;
     ctx.type = S_LABEL;
     ctx.data = LabelInstr{name};

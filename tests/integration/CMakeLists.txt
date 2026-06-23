@@ -248,6 +248,12 @@ add_catch_test(integration_ptx_cvt
 )
 set_tests_properties(integration_ptx_cvt PROPERTIES LABELS "integration;ptx;cvt")
 
+add_catch_test(integration_ptx_cvt_edge_cases
+    ptx/test_cvt_edge_cases.cpp
+)
+set_tests_properties(integration_ptx_cvt_edge_cases PROPERTIES
+    LABELS "integration;ptx;cvt;edge_case")
+
 add_catch_test(integration_ptx_float_arith
     ptx/test_float_arith.cpp
 )
