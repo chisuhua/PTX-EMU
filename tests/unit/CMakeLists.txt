@@ -356,6 +356,14 @@ add_catch_test(unit_cvt_helpers
 )
 set_tests_properties(unit_cvt_helpers PROPERTIES LABELS "unit;ptx;cvt;helpers")
 
+# T2-6 Sub-task 3: CvtContext + build_context() tests for CVT strategy pattern
+# Validates qualifier extraction (dst_bytes/src_bytes/is_float/is_half/is_signed
+# and all 11 rounding/saturation flags) into CvtContext struct.
+add_catch_test(unit_cvt_context
+    ptx/test_cvt_context.cpp
+)
+set_tests_properties(unit_cvt_context PROPERTIES LABELS "unit;ptx;cvt;context")
+
 # ---------------------------------------------------------------------------
 # A2 cleanup (2026-06): the 7 tests below all `<<<1, 1>>>` real GPU kernels
 # and verify NVIDIA's PTX semantics — they do NOT exercise the PTX-EMU
