@@ -238,6 +238,11 @@ add_catch_test(integration_ptx_atom_global_add
 )
 set_tests_properties(integration_ptx_atom_global_add PROPERTIES LABELS "integration;ptx;atom")
 
+add_catch_test(integration_ptx_atom_global_exch
+    ptx/test_atom_exch.cpp
+)
+set_tests_properties(integration_ptx_atom_global_exch PROPERTIES LABELS "integration;ptx;atom;exch")
+
 add_catch_test(integration_ptx_cvt
     ptx/test_cvt.cpp
 )
