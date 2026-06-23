@@ -115,6 +115,14 @@ add_library(ptxsim SHARED
     ptxsim/barrier/warp_barrier.cpp
     ptxsim/barrier/cta_barrier.cpp
     ptxsim/barrier/barrier_module.cpp
+    # T2-3: POD placeholder sources for contexts/ (data-only structs)
+    ptxsim/contexts/exec_state.cpp
+    ptxsim/contexts/register_predicate.cpp
+    ptxsim/contexts/memory_ref.cpp
+    ptxsim/contexts/program_ref.cpp
+    ptxsim/contexts/lane_mask.cpp
+    ptxsim/contexts/warp_identity.cpp
+    ptxsim/contexts/backend_links.cpp
 )
 target_link_libraries(ptxsim ptx_ir)
 

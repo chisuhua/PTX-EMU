@@ -476,3 +476,43 @@ add_catch_test(unit_half_utils_consistency
     utils/test_half_utils_consistency.cpp
 )
 set_tests_properties(unit_half_utils_consistency PROPERTIES LABELS "unit;half;utils;consistency;cvt")
+
+# ============================================================================
+# T2-3: god-class POD split contexts unit tests
+# Validates POD struct field groupings and defaults from ThreadContext/WarpContext
+# refactor. Each POD test is independent (no shared mutable state).
+# ============================================================================
+add_catch_test(unit_exec_state_pod
+    contexts/test_exec_state_pod.cpp
+)
+set_tests_properties(unit_exec_state_pod PROPERTIES LABELS "unit;contexts;pod")
+
+add_catch_test(unit_register_predicate_pod
+    contexts/test_register_predicate_pod.cpp
+)
+set_tests_properties(unit_register_predicate_pod PROPERTIES LABELS "unit;contexts;pod")
+
+add_catch_test(unit_memory_ref_pod
+    contexts/test_memory_ref_pod.cpp
+)
+set_tests_properties(unit_memory_ref_pod PROPERTIES LABELS "unit;contexts;pod")
+
+add_catch_test(unit_program_ref_pod
+    contexts/test_program_ref_pod.cpp
+)
+set_tests_properties(unit_program_ref_pod PROPERTIES LABELS "unit;contexts;pod")
+
+add_catch_test(unit_lane_mask_pod
+    contexts/test_lane_mask_pod.cpp
+)
+set_tests_properties(unit_lane_mask_pod PROPERTIES LABELS "unit;contexts;pod")
+
+add_catch_test(unit_warp_identity_pod
+    contexts/test_warp_identity_pod.cpp
+)
+set_tests_properties(unit_warp_identity_pod PROPERTIES LABELS "unit;contexts;pod")
+
+add_catch_test(unit_backend_links_pod
+    contexts/test_backend_links_pod.cpp
+)
+set_tests_properties(unit_backend_links_pod PROPERTIES LABELS "unit;contexts;pod")
