@@ -78,7 +78,7 @@ float half_to_float(uint16_t h) {
 // values in [4294967295.0, 4294967296.0), causing values like 4294967295.4f to
 // become 4294967296.0f in float32 representation.
 bool should_saturate_uint32(float temp, float sat_high) {
-    return temp >= 4294967295.0f && temp < sat_high;
+    return temp >= 4294967295.0f && temp <= sat_high;
 }
 
 // 自定义float到half的转换函数

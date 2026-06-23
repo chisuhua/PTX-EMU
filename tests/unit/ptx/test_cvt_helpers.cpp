@@ -90,15 +90,20 @@ TEST_CASE("float_to_half zero/inf/nan/denormal", "[cvt][helpers][half]") {
 TEST_CASE("should_saturate_uint32 boundaries", "[cvt][helpers][sat]") {
     REQUIRE_FALSE(should_saturate_uint32(0.0f, 4294967295.0f));
     REQUIRE_FALSE(should_saturate_uint32(100.5f, 4294967295.0f));
-    // Pre-existing inline bug: strict `<` for sat_high + float32 rounds
-    // 4294967295.0f up to 4294967296.0f. With sat_high == 4294967295.0f,
-    // the upper-bound check always fails; the function never returns true
-    // for these inputs. A future fix is tracked separately.
-    REQUIRE_FALSE(should_saturate_uint32(4294967295.0f, 4294967295.0f));
+    // 4294967295.0f in float32 rounds up to 4294967296.0f. When sat_high is
+    // 4294967295.0f, the float32 representation is also 4294967296.0f, so
+    // temp == sat_high in float32, and the value at the boundary should
+    // saturate to UINT32_MAX.
+    REQUIRE(should_saturate_uint32(4294967295.0f, 4294967295.0f));
+    // Strictly above sat_high (1e10 > 4294967296.0f) — already outside
+    // UINT32_MAX range, not in the saturate-band.
     REQUIRE_FALSE(should_saturate_uint32(1e10f, 4294967295.0f));
     REQUIRE_FALSE(should_saturate_uint32(std::numeric_limits<float>::infinity(),
                                          4294967295.0f));
+    // In-band: 5e9 < 1e10 (saturate).
     REQUIRE(should_saturate_uint32(5e9f, 1e10f));
-    REQUIRE_FALSE(should_saturate_uint32(5e9f, 5e9f));
+    // Boundary with smaller sat_high: 5e9 == 5e9 → at the boundary.
+    REQUIRE(should_saturate_uint32(5e9f, 5e9f));
+    // Above sat_high.
     REQUIRE_FALSE(should_saturate_uint32(5e9f, 4e9f));
 }
