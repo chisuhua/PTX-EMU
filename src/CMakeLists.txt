@@ -105,6 +105,7 @@ add_library(ptxsim SHARED
     ptxsim/instructions/arithmetic_conversion.cpp
     ptxsim/instructions/cvt/cvt_helpers.cpp
     ptxsim/instructions/cvt/cvt_strategy.cpp
+    ptxsim/instructions/cvt/cvt_float_to_float.cpp
     ptxsim/instructions/data_transfer.cpp
     ptxsim/instructions/call.cpp
     ptxsim/instructions/barrier.cpp

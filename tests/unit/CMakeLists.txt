@@ -364,6 +364,14 @@ add_catch_test(unit_cvt_context
 )
 set_tests_properties(unit_cvt_context PROPERTIES LABELS "unit;ptx;cvt;context")
 
+# T2-6 Sub-task 4a: FloatToFloatStrategy unit tests
+# Locks in behavior of f16/f32/f64 mutual conversions (incl. .sat NaN handling,
+# half-precision round-trips) before extraction from GeneralCvtStrategy.
+add_catch_test(unit_cvt_float_to_float
+    ptx/test_cvt_float_to_float.cpp
+)
+set_tests_properties(unit_cvt_float_to_float PROPERTIES LABELS "unit;ptx;cvt;strategy;f2f")
+
 # ---------------------------------------------------------------------------
 # A2 cleanup (2026-06): the 7 tests below all `<<<1, 1>>>` real GPU kernels
 # and verify NVIDIA's PTX semantics — they do NOT exercise the PTX-EMU
