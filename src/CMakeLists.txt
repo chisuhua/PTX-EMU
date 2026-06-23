@@ -102,7 +102,6 @@ add_library(ptxsim SHARED
     ptxsim/instructions/atomic.cpp
     ptxsim/instructions/tensor.cpp
     ptxsim/instructions/arithmetic_ext.cpp
-    ptxsim/instructions/arithmetic_conversion.cpp
     ptxsim/instructions/cvt/cvt_helpers.cpp
     ptxsim/instructions/cvt/cvt_strategy.cpp
     ptxsim/instructions/cvt/cvt_float_to_float.cpp

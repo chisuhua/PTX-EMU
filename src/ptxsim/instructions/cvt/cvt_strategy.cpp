@@ -16,6 +16,7 @@
 // =============================================================================
 
 #include "ptxsim/instructions/cvt/cvt_strategy.h"
+#include "ptxsim/instruction_handlers.h"
 #include "ptxsim/instructions/cvt/cvt_float_to_float.h"
 #include "ptxsim/instructions/cvt/cvt_float_to_int.h"
 #include "ptxsim/instructions/cvt/cvt_helpers.h"
@@ -1046,3 +1047,15 @@ const ConversionStrategy &select_strategy(const CvtContext &ctx) {
 
 } // namespace cvt_strategy
 } // namespace ptxsim
+
+void CvtHandler::processOperation(
+    ThreadContext * /*context*/, void **operands,
+    const std::vector<Qualifier> &qualifiers,
+    const std::vector<char> * /*operand_is_immediate*/) {
+    void *dst = operands[0];
+    void *src = operands[1];
+
+    auto ctx = ptxsim::cvt_strategy::build_context(qualifiers);
+    const auto &strategy = ptxsim::cvt_strategy::select_strategy(ctx);
+    strategy.convert(dst, src, ctx);
+}
