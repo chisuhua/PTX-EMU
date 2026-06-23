@@ -416,3 +416,13 @@ add_catch_test(unit_cuda_stream_handle
     cudart/test_cuda_stream_handle.cu
 )
 set_tests_properties(unit_cuda_stream_handle PROPERTIES LABELS "unit;cudart;stream")
+
+# ============================================================================
+# half-precision utility tests (phase3-half-precision-bugfix)
+# Validates f16_to_f32 / f32_to_f16 denormal/subnormal path correctness
+# in include/ptxsim/utils/half_utils.h.
+# ============================================================================
+add_catch_test(unit_half_utils
+    utils/test_half_utils.cpp
+)
+set_tests_properties(unit_half_utils PROPERTIES LABELS "unit;half;utils")
