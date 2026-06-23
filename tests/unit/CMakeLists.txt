@@ -426,3 +426,14 @@ add_catch_test(unit_half_utils
     utils/test_half_utils.cpp
 )
 set_tests_properties(unit_half_utils PROPERTIES LABELS "unit;half;utils")
+
+# ============================================================================
+# half-precision cross-implementation consistency
+# Sweeps all 65536 possible half inputs and asserts that half_utils.h::
+# f16_to_f32 and cvt_helpers.cpp::half_to_float produce bit-identical output.
+# Gate test for T2-6 Step 2 (reuse half_utils.h for cvt_helpers).
+# ============================================================================
+add_catch_test(unit_half_utils_consistency
+    utils/test_half_utils_consistency.cpp
+)
+set_tests_properties(unit_half_utils_consistency PROPERTIES LABELS "unit;half;utils;consistency;cvt")
