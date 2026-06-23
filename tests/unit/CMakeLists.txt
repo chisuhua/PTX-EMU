@@ -347,6 +347,15 @@ set_tests_properties(unit_divergence_sync_standalone_integrated PROPERTIES LABEL
 
 # ============================================================================
 # PTX 指令单元测试
+# ============================================================================
+# T2-6 Step 1: helper extraction unit tests for CVT instruction
+# Validates 4 helpers (round_half_to_even / half_to_float / float_to_half /
+# should_saturate_uint32) before/after extraction from arithmetic_conversion.cpp
+add_catch_test(unit_cvt_helpers
+    ptx/test_cvt_helpers.cpp
+)
+set_tests_properties(unit_cvt_helpers PROPERTIES LABELS "unit;ptx;cvt;helpers")
+
 # ---------------------------------------------------------------------------
 # A2 cleanup (2026-06): the 7 tests below all `<<<1, 1>>>` real GPU kernels
 # and verify NVIDIA's PTX semantics — they do NOT exercise the PTX-EMU
