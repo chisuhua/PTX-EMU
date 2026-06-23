@@ -209,17 +209,11 @@ public:
     const ptxsim::SIMTStack& get_simt_stack() const { return simt_stack; }
 
     // 【NEW】Warp 级屏障访问
-    // DEPRECATED: Use cta_context->get_barrier_module()->get_warp_barrier() instead.
-    // This accessor is part of Phase 5 deprecated barrier API cleanup
-    // (see AGENTS.md: BarWarpSyncHandler still uses wbars[] — cleanup pending).
-    // Will be removed once BarWarpSyncHandler migrates to BarrierModule.
+    // Compat shim for tests still using legacy Wbar API. Syncs BarrierModule
+    // state on access so field reads (.is_complete(), .participation_mask, etc.)
+    // reflect the WarpBarrier canonical state.
     [[deprecated("Use cta_context->get_barrier_module()->get_warp_barrier() instead")]]
-    ptxsim::Wbar& get_wbar(int wbar_id) {
-        if (wbar_id >= 0 && wbar_id < 4) {
-            return warp_state.wbars[wbar_id];
-        }
-        return warp_state.wbars[0];
-    }
+    ptxsim::Wbar& get_wbar(int wbar_id);
 
     // 【BARRIER RECONVERGENCE】Force all non-exited threads to reconverge at barrier_pc + 1.
     // This matches hardware behavior per sm90_100.md:294: "bar.sync — 未汇合的 Warp 会在此被强制汇合"

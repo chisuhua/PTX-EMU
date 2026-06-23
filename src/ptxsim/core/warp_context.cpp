@@ -1,4 +1,6 @@
 #include "ptxsim/warp_context.h"
+#include "ptxsim/cta_context.h"
+#include "ptxsim/barrier/barrier_module.h"
 #include "ptxsim/sm_context.h"
 #include "ptxsim/ptx_config.h"
 #include "ptxsim/execution_trace.h"
@@ -465,4 +467,21 @@ void WarpContext::decrement_blocked_cycles(ptxsim::WarpState& ws) {
             }
         }
     }
+}
+
+// Legacy Wbar mirror populated from BarrierModule for test compatibility.
+ptxsim::Wbar& WarpContext::get_wbar(int wbar_id) {
+    int idx = (wbar_id >= 0 && wbar_id < 4) ? wbar_id : 0;
+    if (cta_context_ != nullptr) {
+        auto* wb = cta_context_->get_barrier_module().get_warp_barrier(idx);
+        if (wb != nullptr && wb->is_initialized()) {
+            warp_state.wbars[idx].participation_mask = wb->get_participation_mask();
+            warp_state.wbars[idx].arrived_mask = wb->get_arrived_mask();
+            warp_state.wbars[idx].reconvergence_pc = wb->get_reconvergence_pc();
+            warp_state.wbars[idx].barrier_pc = wb->get_barrier_pc();
+            warp_state.wbars[idx].is_initialized = true;
+            warp_state.wbars[idx].expected_count = wb->get_expected_count();
+        }
+    }
+    return warp_state.wbars[idx];
 }
