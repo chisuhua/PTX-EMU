@@ -81,23 +81,6 @@ public:
     };
     std::optional<TCGenState> tcgenState;
 
-    // === Utility: Query if kernel uses async memory ops ===
-    bool usesAsyncStore() const {
-        for (const auto &stmt : kernelStatements) {
-            if (stmt.type == S_ST_ASYNC)
-                return true;
-        }
-        return false;
-    }
-
-    bool usesRedAsync() const {
-        for (const auto &stmt : kernelStatements) {
-            if (stmt.type == S_RED_ASYNC)
-                return true;
-        }
-        return false;
-    }
-
     // Constructor
     KernelContext()
         : ifVisibleKernel(false), ifEntryKernel(false), minnctapersm(0),
