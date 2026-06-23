@@ -139,10 +139,8 @@ TEST_CASE("integration_ptx_cvt_s32_from_f32",
     }
 }
 
-// KNOWN ISSUE: P1-4.1 — CvtHandler does not write r2 in f32->s32 and f64->s64
-// paths. The r2 register reads back as 0 (uninitialized) for non-zero source
-// bits. Test body is preserved for when the handler is fixed; SKIP for now. See
-// docs/developer-guide/KNOWN_ISSUES.md §P1-4.1 for details and fix steps.
+// P1-4.1 fix verified by T2-6 Sub-task 5 (FloatToIntStrategy). The new
+// strategy correctly writes r2 in f32->s32 path. Test enabled.
 TEST_CASE("integration_ptx_cvt_f32_from_s32",
           "[integration][ptx][cvt][f32_s32]") {
     init_instruction_factory_once();

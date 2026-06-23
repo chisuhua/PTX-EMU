@@ -254,6 +254,38 @@ add_catch_test(integration_ptx_cvt_edge_cases
 set_tests_properties(integration_ptx_cvt_edge_cases PROPERTIES
     LABELS "integration;ptx;cvt;edge_case")
 
+# T2-6 Sub-task 5: 94 new integration tests across 5 files
+# (cvt_int_to_int + cvt_int_to_float + cvt_float_to_int + cvt_float_to_float + cvt_saturation)
+add_catch_test(integration_ptx_cvt_int_to_int
+    ptx/test_cvt_int_to_int.cpp
+)
+set_tests_properties(integration_ptx_cvt_int_to_int PROPERTIES
+    LABELS "integration;ptx;cvt;i2i")
+
+add_catch_test(integration_ptx_cvt_int_to_float
+    ptx/test_cvt_int_to_float.cpp
+)
+set_tests_properties(integration_ptx_cvt_int_to_float PROPERTIES
+    LABELS "integration;ptx;cvt;i2f")
+
+add_catch_test(integration_ptx_cvt_float_to_int
+    ptx/test_cvt_float_to_int.cpp
+)
+set_tests_properties(integration_ptx_cvt_float_to_int PROPERTIES
+    LABELS "integration;ptx;cvt;f2i")
+
+add_catch_test(integration_ptx_cvt_float_to_float
+    ptx/test_cvt_float_to_float.cpp
+)
+set_tests_properties(integration_ptx_cvt_float_to_float PROPERTIES
+    LABELS "integration;ptx;cvt;f2f")
+
+add_catch_test(integration_ptx_cvt_saturation
+    ptx/test_cvt_saturation.cpp
+)
+set_tests_properties(integration_ptx_cvt_saturation PROPERTIES
+    LABELS "integration;ptx;cvt;sat")
+
 add_catch_test(integration_ptx_float_arith
     ptx/test_float_arith.cpp
 )

@@ -42,22 +42,30 @@ static void write_sat_dst(void *dst, int64_t value, int dst_bytes,
                           bool dst_signed) {
     if (dst_signed) {
         switch (dst_bytes) {
-        case 1:
+        case 1: {
+            int8_t v;
             if (value > 127)
-                *(int8_t *)dst = 127;
+                v = 127;
             else if (value < -128)
-                *(int8_t *)dst = -128;
+                v = -128;
             else
-                *(int8_t *)dst = (int8_t)value;
+                v = (int8_t)value;
+            // Sign-extend int8 to full 32-bit register
+            *(int32_t *)dst = (int32_t)v;
             return;
-        case 2:
+        }
+        case 2: {
+            int16_t v;
             if (value > 32767)
-                *(int16_t *)dst = 32767;
+                v = 32767;
             else if (value < -32768)
-                *(int16_t *)dst = -32768;
+                v = -32768;
             else
-                *(int16_t *)dst = (int16_t)value;
+                v = (int16_t)value;
+            // Sign-extend int16 to full 32-bit register
+            *(int32_t *)dst = (int32_t)v;
             return;
+        }
         case 4:
             if (value > 2147483647LL)
                 *(int32_t *)dst = 2147483647;
@@ -74,13 +82,12 @@ static void write_sat_dst(void *dst, int64_t value, int dst_bytes,
     } else {
         // dst unsigned: clamp to [0, MAX]
         if (value < 0) {
-            // negative → 0 (or per PTX spec for u64 large, but src is int64)
             switch (dst_bytes) {
             case 1:
-                *(uint8_t *)dst = 0;
+                *(uint32_t *)dst = 0;
                 return;
             case 2:
-                *(uint16_t *)dst = 0;
+                *(uint32_t *)dst = 0;
                 return;
             case 4:
                 *(uint32_t *)dst = 0;
@@ -92,18 +99,18 @@ static void write_sat_dst(void *dst, int64_t value, int dst_bytes,
             }
         }
         switch (dst_bytes) {
-        case 1:
-            if (value > 255)
-                *(uint8_t *)dst = 255;
-            else
-                *(uint8_t *)dst = (uint8_t)value;
+        case 1: {
+            uint8_t v = (value > 255) ? (uint8_t)255 : (uint8_t)value;
+            // Zero-extend uint8 to full 32-bit register
+            *(uint32_t *)dst = (uint32_t)v;
             return;
-        case 2:
-            if (value > 65535)
-                *(uint16_t *)dst = 65535;
-            else
-                *(uint16_t *)dst = (uint16_t)value;
+        }
+        case 2: {
+            uint16_t v = (value > 65535) ? (uint16_t)65535 : (uint16_t)value;
+            // Zero-extend uint16 to full 32-bit register
+            *(uint32_t *)dst = (uint32_t)v;
             return;
+        }
         case 4:
             if (value > 4294967295LL)
                 *(uint32_t *)dst = 4294967295U;
@@ -119,16 +126,24 @@ static void write_sat_dst(void *dst, int64_t value, int dst_bytes,
 }
 
 // 模板辅助: 无 .sat, 写 dst (应用 5 舍入或默认 truncation)
+// 注意: PTX 寄存器总是 32-bit (b8/b16 类型自动零扩展/符号扩展到 32-bit 寄存器)
+// 所以 s8/s16 结果必须符号扩展 (signed) 或零扩展 (unsigned) 到 full register
 static void write_trunc_dst(void *dst, int64_t value, int dst_bytes,
                             bool dst_signed) {
     if (dst_signed) {
         switch (dst_bytes) {
-        case 1:
-            *(int8_t *)dst = (int8_t)value;
+        case 1: {
+            int8_t v = (int8_t)value;
+            // Sign-extend int8 to full 32-bit register
+            *(int32_t *)dst = (int32_t)v;
             return;
-        case 2:
-            *(int16_t *)dst = (int16_t)value;
+        }
+        case 2: {
+            int16_t v = (int16_t)value;
+            // Sign-extend int16 to full 32-bit register
+            *(int32_t *)dst = (int32_t)v;
             return;
+        }
         case 4:
             *(int32_t *)dst = (int32_t)value;
             return;
@@ -138,15 +153,19 @@ static void write_trunc_dst(void *dst, int64_t value, int dst_bytes,
             return;
         }
     } else {
-        // Unsigned: if value < 0 (signed→unsigned cross), behavior is
-        // impl-defined PTX without .sat: source value is treated as bit pattern
         switch (dst_bytes) {
-        case 1:
-            *(uint8_t *)dst = (uint8_t)value;
+        case 1: {
+            uint8_t v = (uint8_t)value;
+            // Zero-extend uint8 to full 32-bit register
+            *(uint32_t *)dst = (uint32_t)v;
             return;
-        case 2:
-            *(uint16_t *)dst = (uint16_t)value;
+        }
+        case 2: {
+            uint16_t v = (uint16_t)value;
+            // Zero-extend uint16 to full 32-bit register
+            *(uint32_t *)dst = (uint32_t)v;
             return;
+        }
         case 4:
             *(uint32_t *)dst = (uint32_t)value;
             return;
