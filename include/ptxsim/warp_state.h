@@ -5,26 +5,28 @@
 #include "ptxsim/wbar.h"
 #include <array>
 #include <cstdint>
-#include <map>
-#include <string>
 
 namespace ptxsim {
 
 struct WarpState {
+    // T2-3 A2: Reduced from 6 fields to 4 fields (threads[] + exec_mask + 2
+    // deprecated). thread_predicates (0 production refs) and warp_pc
+    // (0 production refs) physically removed.
     std::array<ThreadState, 32> threads;
     uint32_t exec_mask = 0xFFFFFFFF;
-    std::map<std::string, std::array<bool, 32>> thread_predicates;
-    // T2-1 Task 5: Deprecated — production barrier handlers (BarHandler,
-    // BarWarpSyncHandler) now route through BarrierModule + WarpBarrier
-    // (see include/ptxsim/barrier/barrier_module.h). These fields remain
-    // temporarily for test code that still references the legacy API.
-    // Physical removal scheduled for T2-3 (god-class POD split).
+
+    // T2-1 Task 5 + T2-3 A2/A5: Deprecated. Production barrier handlers
+    // (BarHandler, BarWarpSyncHandler at src/ptxsim/instructions/barrier.cpp
+    // still route through this legacy API). integrate-barrier-module-cta-warp
+    // is the blocker change. Once that change is merged, T2-3 A5 will
+    // physically remove wbars[] + current_wbar_id.
     [[deprecated("Use BarrierModule::get_warp_barrier() instead — will be "
-                 "removed in T2-3")]]
+                 "removed in T2-3 A5 after integrate-barrier-module-cta-warp "
+                 "merges")]]
     std::array<Wbar, 4> wbars;
-    [[deprecated("Use BarrierModule state instead — will be removed in T2-3")]]
+    [[deprecated("Use BarrierModule state instead — will be removed in T2-3 A5 "
+                 "after integrate-barrier-module-cta-warp merges")]]
     int current_wbar_id = -1;
-    uint32_t warp_pc = 0;
     // pc_stack 和 pc_stack_depth 已移除 — 使用 WarpContext::pc_stacks 或
     // warp_state.threads[i].pc 替代
 
@@ -33,12 +35,10 @@ struct WarpState {
             thread.reset();
         }
         exec_mask = 0xFFFFFFFF;
-        thread_predicates.clear();
         for (auto &wbar : wbars) {
             wbar.reset();
         }
         current_wbar_id = -1;
-        warp_pc = 0;
     }
 
     int count_active_lanes() const {
