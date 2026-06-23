@@ -1,8 +1,18 @@
 # T2-6 — CVT 策略模式重构 (Tasks)
 
+> **状态**: ✅ **COMPLETED** (2026-06-23)
 > **总工期**: 3.5 天 | **依赖**: T1-1..T1-5 ✅, T2-2/4-Step-1/5/7 ✅, P1-4.1 修复（Step 5 前）
 
 > **TDD 三阶段**: 严格遵循 AGENTS.md §TDD 流程（写测试→验失败→实现→验通过→commit）。
+
+> **完成提交链**（共 7 commits on main）:
+> - `86e0786` (Sub-task 1 Red: helper unit tests)
+> - `d3c77b5` (Sub-task 1 Green: extract 4 helpers to cvt_helpers)
+> - `2f3c150` (Sub-task 2: delegate half_to_float/float_to_half to half_utils.h)
+> - `620d066` + `edbce54` (Sub-task 3: CvtContext + select_strategy skeleton)
+> - `fc3c352` + `9837d44` + `d6123e0` (Sub-task 4: 5 strategies + unit tests)
+> - `204b5cd` (Sub-task 5: P1-4.1 fix + 94 integration tests)
+> - `40b331b` (Sub-task 6: delete arithmetic_conversion.cpp)
 
 ## Sub-task 1: TDD 驱动提取 helpers（0.5 天）— **当前立即执行**
 
@@ -15,7 +25,7 @@
 - Modify: `src/ptxsim/instructions/arithmetic_conversion.cpp:1-139`（删除 4 个 inline helper）
 - Modify: `src/CMakeLists.txt:105`（注册新 cpp 文件）
 
-- [ ] **Step 1: 读取当前 helpers 完整实现**
+- [x] **Step 1: 读取当前 helpers 完整实现**
 
 ```bash
 cd /workspace/project/PTX-EMU
@@ -24,7 +34,7 @@ sed -n '1,140p' src/ptxsim/instructions/arithmetic_conversion.cpp
 
 预期看到 4 个 inline helper：`round_half_to_even` (11-22) / `half_to_float` (25-58) / `should_saturate_uint32` (67-69) / `float_to_half` (72-139)。
 
-- [ ] **Step 2: 写 helper 单元测试（Red 阶段）**
+- [x] **Step 2: 写 helper 单元测试（Red 阶段）**
 
 创建 `tests/unit/ptx/test_cvt_helpers.cpp`：
 
@@ -88,7 +98,7 @@ TEST_CASE("should_saturate_uint32 boundaries", "[cvt][helpers][sat]") {
 }
 ```
 
-- [ ] **Step 3: 编译验证测试失败（Red 阶段，缺 cvt_helpers.h）**
+- [x] **Step 3: 编译验证测试失败（Red 阶段，缺 cvt_helpers.h）**
 
 ```bash
 cd /workspace/project/PTX-EMU && . env.sh
@@ -97,7 +107,7 @@ cmake --build build --target test_cvt_helpers 2>&1 | tail -10
 
 预期：编译失败（`cvt_helpers.h` 不存在）。这是 TDD Red 阶段的正确表现。
 
-- [ ] **Step 4: 提交测试脚手架（Red 阶段）**
+- [x] **Step 4: 提交测试脚手架（Red 阶段）**
 
 ```bash
 cd /workspace/project/PTX-EMU
@@ -105,7 +115,7 @@ git add tests/unit/ptx/test_cvt_helpers.cpp tests/unit/ptx/CMakeLists.txt
 git commit -m "test(cvt): add 5 helper unit tests for T2-6 (TDD Red phase)"
 ```
 
-- [ ] **Step 5: 创建 cvt_helpers.h（声明）**
+- [x] **Step 5: 创建 cvt_helpers.h（声明）**
 
 创建 `include/ptxsim/instructions/cvt/cvt_helpers.h`：
 
@@ -142,7 +152,7 @@ bool should_saturate_uint32(float temp, float sat_high);
 #endif  // PTXSIM_INSTRUCTIONS_CVT_CVT_HELPERS_H
 ```
 
-- [ ] **Step 6: 创建 cvt_helpers.cpp（实现）— **第一版用本地实现，验证零行为变更**
+- [x] **Step 6: 创建 cvt_helpers.cpp（实现）— **第一版用本地实现，验证零行为变更**
 
 创建 `src/ptxsim/instructions/cvt/cvt_helpers.cpp`（内容为原 arithmetic_conversion.cpp line 11-139 的实现，仅 namespace 调整）：
 
@@ -181,7 +191,7 @@ uint16_t float_to_half(float f) {
 }  // namespace ptxsim
 ```
 
-- [ ] **Step 7: 编译验证（Red→Green）**
+- [x] **Step 7: 编译验证（Red→Green）**
 
 ```bash
 cd /workspace/project/PTX-EMU && . env.sh
@@ -191,7 +201,7 @@ grep "error:" /tmp/cvt_helpers_build.log | head -10
 
 预期：编译成功（namespace 调整后，签名匹配测试）。
 
-- [ ] **Step 8: 跑测试（Green 阶段）**
+- [x] **Step 8: 跑测试（Green 阶段）**
 
 ```bash
 cd /workspace/project/PTX-EMU/build && ctest -R "cvt_helpers" -V 2>&1 | tail -30
@@ -199,7 +209,7 @@ cd /workspace/project/PTX-EMU/build && ctest -R "cvt_helpers" -V 2>&1 | tail -30
 
 预期：5 个 TEST_CASE 全部通过。
 
-- [ ] **Step 9: 删除 arithmetic_conversion.cpp 内的 4 个 inline helper + 注册新文件**
+- [x] **Step 9: 删除 arithmetic_conversion.cpp 内的 4 个 inline helper + 注册新文件**
 
 修改 `src/ptxsim/instructions/arithmetic_conversion.cpp`：
 - 删除 line 11-139（4 个 inline helper + should_saturate_uint32）
@@ -215,7 +225,7 @@ ptxsim/instructions/arithmetic_conversion.cpp
 ptxsim/instructions/cvt/cvt_helpers.cpp
 ```
 
-- [ ] **Step 10: 编译 + 跑全量 CVT 测试（验证零行为变更）**
+- [x] **Step 10: 编译 + 跑全量 CVT 测试（验证零行为变更）**
 
 ```bash
 cd /workspace/project/PTX-EMU && . env.sh
@@ -226,7 +236,7 @@ cd build && ctest -L "ptx;cvt" -V 2>&1 | tail -30
 
 预期：0 编译错误；现有 `integration_cvt` 等测试全部通过（**零行为变更验证**）。
 
-- [ ] **Step 11: 提交（Sub-task 1 完成）**
+- [x] **Step 11: 提交（Sub-task 1 完成）**
 
 ```bash
 cd /workspace/project/PTX-EMU
@@ -242,7 +252,7 @@ git commit -m "refactor(cvt): extract 4 helpers to cvt_helpers (T2-6 Step 1)"
 - Modify: `src/ptxsim/instructions/cvt/cvt_helpers.cpp`（删除本地 `half_to_float`/`float_to_half`，改用 `half_utils.h`）
 - Modify: `tests/unit/ptx/test_cvt_helpers.cpp`（新增边界 case 对比测试）
 
-- [ ] **Step 1: 读取 half_utils.h 现有实现**
+- [x] **Step 1: 读取 half_utils.h 现有实现**
 
 ```bash
 cd /workspace/project/PTX-EMU
@@ -250,7 +260,7 @@ cat include/ptxsim/utils/half_utils.h
 grep -A 20 "f16_to_f32\|f32_to_f16" include/ptxsim/utils/half_utils.h
 ```
 
-- [ ] **Step 2: 对比精度（关键！）**
+- [x] **Step 2: 对比精度（关键！）**
 
 在 `tests/unit/ptx/test_cvt_helpers.cpp` 新增 4 个对比测试，验证 `half_utils.h::f16_to_f32` 与原 `half_to_float` 输出**位完全相同**（建议用 uint32_t 转换对比）：
 
@@ -273,7 +283,7 @@ TEST_CASE("half_utils.h vs cvt_helpers equivalence", "[cvt][helpers][equiv]") {
 
 跑测试验证：应通过（两者都是 IEEE 754 兼容实现）。
 
-- [ ] **Step 3: 删除 cvt_helpers.cpp 内的 half_to_float / float_to_half 本地实现**
+- [x] **Step 3: 删除 cvt_helpers.cpp 内的 half_to_float / float_to_half 本地实现**
 
 修改 `src/ptxsim/instructions/cvt/cvt_helpers.cpp`：
 ```cpp
@@ -294,7 +304,7 @@ inline uint16_t float_to_half(float f) { return ptxsim::half_utils::f32_to_f16(f
 }  // namespace ptxsim
 ```
 
-- [ ] **Step 4: 编译 + 跑测试 + sanity**
+- [x] **Step 4: 编译 + 跑测试 + sanity**
 
 ```bash
 cd /workspace/project/PTX-EMU && . env.sh
@@ -305,7 +315,7 @@ cd build && ctest -L "ptx;cvt" -V 2>&1 | tail -30
 
 预期：0 错误；现有测试全过；sanity 全过。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 cd /workspace/project/PTX-EMU
@@ -321,15 +331,15 @@ git commit -m "refactor(cvt): delegate half_to_float/float_to_half to half_utils
 - New: `include/ptxsim/instructions/cvt/cvt_strategy.h`（`ConversionStrategy` 基类 + `CvtContext` struct + `select_strategy()` 工厂）
 - Modify: `src/ptxsim/instructions/arithmetic_conversion.cpp:141-220`（提取 qualifiers + has_* 标志到 `build_context()`）
 
-- [ ] **Step 1: 写 CvtContext 单元测试（Red）**
+- [x] **Step 1: 写 CvtContext 单元测试（Red）**
 
 创建 `tests/unit/ptx/test_cvt_context.cpp`（约 10 TEST_CASE），覆盖 `build_context()` 的所有 qualifiers 组合（.sat / .rni / .rzi / .rmi / .rpi / .rna / .rs / 各种 size / 各种 signed/unsigned / f16/f32/f64）。
 
-- [ ] **Step 2: 实现 cvt_strategy.h 骨架（声明 ConversionStrategy + CvtContext + select_strategy 返回 nullptr）**
+- [x] **Step 2: 实现 cvt_strategy.h 骨架（声明 ConversionStrategy + CvtContext + select_strategy 返回 nullptr）**
 
-- [ ] **Step 3: 编译 + 跑测试（Green）**
+- [x] **Step 3: 编译 + 跑测试（Green）**
 
-- [ ] **Step 4: 提交**
+- [x] **Step 4: 提交**
 
 ```bash
 git commit -m "refactor(cvt): add CvtContext + select_strategy() skeleton (T2-6 Step 3)"
@@ -343,12 +353,12 @@ git commit -m "refactor(cvt): add CvtContext + select_strategy() skeleton (T2-6 
 - New: `include/ptxsim/instructions/cvt/{cvt_float_to_float,cvt_int_to_float,cvt_int_to_int,cvt_float_to_int,cvt_rounding,cvt_saturation}.h`
 - New: `src/ptxsim/instructions/cvt/{cvt_float_to_float,cvt_int_to_float,cvt_int_to_int,cvt_float_to_int,cvt_rounding,cvt_saturation}.cpp`
 
-- [ ] **Step 4a: FloatToFloatStrategy（最简单，~30 行）** + 单元测试
-- [ ] **Step 4b: IntToFloatStrategy（~80 行）** + 单元测试
-- [ ] **Step 4c: FloatToIntStrategy 的 .sat 子路径**（先简化，~60 行）+ 单元测试
-- [ ] **Step 4d: FloatToIntStrategy 的 5 个舍入模式**（最复杂，~120 行）+ 单元测试
-- [ ] **Step 4e: IntToIntStrategy（4×4×4 模板化，最后处理，~200 行）** + 单元测试
-- [ ] **Step 4f: 提交**
+- [x] **Step 4a: FloatToFloatStrategy（最简单，~30 行）** + 单元测试
+- [x] **Step 4b: IntToFloatStrategy（~80 行）** + 单元测试
+- [x] **Step 4c: FloatToIntStrategy 的 .sat 子路径**（先简化，~60 行）+ 单元测试
+- [x] **Step 4d: FloatToIntStrategy 的 5 个舍入模式**（最复杂，~120 行）+ 单元测试
+- [x] **Step 4e: IntToIntStrategy（4×4×4 模板化，最后处理，~200 行）** + 单元测试
+- [x] **Step 4f: 提交**
 
 ```bash
 git commit -m "refactor(cvt): implement 5 strategies (T2-6 Step 4)"
@@ -368,7 +378,7 @@ git commit -m "refactor(cvt): implement 5 strategies (T2-6 Step 4)"
 - Modify: `tests/integration/CMakeLists.txt:247`（注册新测试）
 - Modify: `tests/integration/ptx/test_cvt.cpp:142-145`（删除 P1-4.1 SKIP 注释）
 
-- [ ] **Step 1: 修复 P1-4.1 bug（f32→s32 / f64→s64 写 r2）**
+- [x] **Step 1: 修复 P1-4.1 bug（f32→s32 / f64→s64 写 r2）**
 
 ```bash
 cd /workspace/project/PTX-EMU
@@ -376,15 +386,15 @@ grep -n "case 4:\|case 8:\|warp_state.threads" src/ptxsim/instructions/cvt/cvt_f
 # 找到 f32→s32 / f64→s64 分支，补 advance_thread_pc 或 sync_to_warp_state 调用
 ```
 
-- [ ] **Step 2: 启用现有 SKIP 测试（`integration_ptx_cvt_f32_from_s32`）**
+- [x] **Step 2: 启用现有 SKIP 测试（`integration_ptx_cvt_f32_from_s32`）**
 
 删除 `tests/integration/ptx/test_cvt.cpp:142-145` 的 SKIP 注释。
 
-- [ ] **Step 3: 写 94 个新 integration tests**
+- [x] **Step 3: 写 94 个新 integration tests**
 
 按 explore 报告 F.4 的优先级矩阵分 5 个文件。
 
-- [ ] **Step 4: 跑全量 ctest 验证**
+- [x] **Step 4: 跑全量 ctest 验证**
 
 ```bash
 cd /workspace/project/PTX-EMU && . env.sh
@@ -393,7 +403,7 @@ cd build && ctest -L "ptx;cvt" -V 2>&1 | tail -30
 
 预期：~97 个 ctest 目标全过（3 个原 + 94 个新）。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git commit -m "feat(cvt): 94 new integration tests + fix P1-4.1 (T2-6 Step 5)"
@@ -406,7 +416,7 @@ git commit -m "feat(cvt): 94 new integration tests + fix P1-4.1 (T2-6 Step 5)"
 **Files:**
 - Modify: `src/ptxsim/instructions/arithmetic_conversion.cpp:220-1284`（删除 1063 行 switch，CvtHandler::processOperation 收缩到 ~50 行）
 
-- [ ] **Step 1: 删除原 switch 大块代码**
+- [x] **Step 1: 删除原 switch 大块代码**
 
 ```cpp
 void CvtHandler::processOperation(...) {
@@ -417,7 +427,7 @@ void CvtHandler::processOperation(...) {
 }
 ```
 
-- [ ] **Step 2: 跑全量验证**
+- [x] **Step 2: 跑全量验证**
 
 ```bash
 cd /workspace/project/PTX-EMU && . env.sh
@@ -428,7 +438,7 @@ cd build && ctest -L "ptx;cvt" -V 2>&1 | tail -30
 wc -l /workspace/project/PTX-EMU/src/ptxsim/instructions/arithmetic_conversion.cpp  # 应 < 300
 ```
 
-- [ ] **Step 3: 提交**
+- [x] **Step 3: 提交**
 
 ```bash
 git commit -m "refactor(cvt): collapse 1063-line switch to 50-line strategy dispatch (T2-6 Step 6)"
@@ -438,7 +448,7 @@ git commit -m "refactor(cvt): collapse 1063-line switch to 50-line strategy disp
 
 ## Sub-task 7: Phase 3 验证 + ADR（0.2 天）
 
-- [ ] **Step 1: 跑 ./scripts/sanity.sh（完整回归）**
+- [x] **Step 1: 跑 ./scripts/sanity.sh（完整回归）**
 
 ```bash
 cd /workspace/project/PTX-EMU
@@ -447,7 +457,7 @@ cd /workspace/project/PTX-EMU
 
 预期：全部通过。
 
-- [ ] **Step 2: 跑 ASan 验证**
+- [x] **Step 2: 跑 ASan 验证**
 
 ```bash
 cd /workspace/project/PTX-EMU
@@ -458,11 +468,11 @@ cd build-asan && ctest -L "cvt;barrier" -V 2>&1 | tail -30
 
 预期：无 LeakSanitizer 报告。
 
-- [ ] **Step 3: 写 ADR-XXXX-cvt-strategy-pattern.md**
+- [x] **Step 3: 写 ADR-XXXX-cvt-strategy-pattern.md**
 
 在 `docs/adr/` 新建 ADR，记录为何选 Composition 而非拆分 Handler（X-Macro 约束）。
 
-- [ ] **Step 4: 最终提交 + 更新 Phase 3 完成门禁**
+- [x] **Step 4: 最终提交 + 更新 Phase 3 完成门禁**
 
 ```bash
 git commit -m "docs(adr): record CVT strategy pattern Composition decision (T2-6 closure)"

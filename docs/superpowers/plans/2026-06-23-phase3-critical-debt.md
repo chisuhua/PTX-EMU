@@ -150,14 +150,14 @@
 ```yaml
 phase_3_complete:
   cvt_refactor:
-    - [ ] Task 1 (T2-6):
-        - [ ] cvt_helpers.h/cpp 抽离 + 复用 half_utils.h
-        - [ ] CvtContext + select_strategy() 骨架
-        - [ ] 5 个具体策略（IntToInt, IntToFloat, FloatToFloat, FloatToInt, RoundingMode）
-        - [ ] CvtHandler::processOperation 收缩到 ~50 行
-        - [ ] 94 个新 integration tests 全过
-        - [ ] P1-4.1 bug 修复（f32→int 写 r2）
-        - [ ] ctest -L "ptx;cvt" 全过 + sanity.sh --quick 全过
+    - [x] Task 1 (T2-6): ✅ COMPLETED 2026-06-23 (commits 86e0786, d3c77b5, 2f3c150, 620d066+edbce54, fc3c352+9837d44+d6123e0, 204b5cd, 40b331b; ADR-0015)
+        - [x] cvt_helpers.h/cpp 抽离 + 复用 half_utils.h
+        - [x] CvtContext + select_strategy() 骨架
+        - [x] 5 个具体策略（IntToInt, IntToFloat, FloatToFloat, FloatToInt, RoundingMode）
+        - [x] CvtHandler::processOperation 收缩到 31 行 (Sub-task 3) → 0 行 (Sub-task 6 删除 arithmetic_conversion.cpp)
+        - [x] 94 个新 integration tests 全过
+        - [x] P1-4.1 bug 修复（f32→int 写 r2）
+        - [x] ctest -L "ptx;cvt" 全过 + sanity.sh --quick 全过
 
   active_mask_unify:
     - [ ] Task 2 (T2-1):

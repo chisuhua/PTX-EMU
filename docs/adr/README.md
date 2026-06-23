@@ -52,6 +52,7 @@ docs/adr/
 | [0009](./0009-xmacro-instruction-dispatch.md) | X-Macro + Weak Symbol 指令分发模式 | Active | 2026-05-05 | Phase 0-9 |
 | [0010](./0010-fake-cuda-runtime.md) | Fake CUDA Runtime 拦截机制 | Active | 2026-05-05 | Phase 0 |
 | [0012](./0012-per-thread-pc.md) | Per-Thread PC 设计（Volta+ SIMT 模型） | Active | 2026-05-05 | Phase 3 |
+| [0015](./0015-cvt-strategy-pattern.md) | CVT 指令策略模式重构 (Composition over Inheritance) | Active | 2026-06-23 | T2-6 (Phase 3) |
 
 ### Proposed (规划中)
 
@@ -89,13 +90,14 @@ docs/adr/
 ---
 
 **维护**: PTX-EMU Architecture Team  
-**最后更新**: 2026-05-06  
-**ADR 总数**: 12
+**最后更新**: 2026-06-23  
+**ADR 总数**: 14
 
 ## 最近更新
 
 | 日期 | 更新内容 | 关联 ADR |
 |------|---------|---------|
+| 2026-06-23 | 添加 CVT 策略模式重构 ADR (T2-6 完成) | 0015 |
 | 2026-05-06 | 添加 pc_overridden_ 机制说明、while 循环收敛模式、Fallback 策略 | 0006, 0007, 0008 |
 | 2026-05-06 | 补充 barrier 场景回归测试覆盖 | 0008 |
 | 2026-05-06 | 添加 handle_branch PC 过滤说明、更新合规检查项 | 0006 |
