@@ -1,15 +1,15 @@
 #ifndef WARP_CONTEXT_H
 #define WARP_CONTEXT_H
 
-#include "warp_state.h"
+#include "register/register_bank_manager.h"
 #include "simt_stack.h"
 #include "thread_context.h"
-#include "register/register_bank_manager.h"
+#include "warp_state.h"
 #include <array>
+#include <map>
 #include <memory>
 #include <queue>
 #include <vector>
-#include <map>
 
 // Forward declarations to avoid circular includes
 class SMContext;
@@ -31,10 +31,8 @@ public:
     void execute_warp_instruction(StatementContext &stmt, int target_pc = -1);
 
     // 【SIMT v2.0】处理分支指令 (warp 级操作)
-    void handle_branch(const std::string& predicate,
-                       bool predicate_negated,
-                       int target_pc,
-                       int reconvergence_pc,
+    void handle_branch(const std::string &predicate, bool predicate_negated,
+                       int target_pc, int reconvergence_pc,
                        int current_inst_pc = -1);
 
     // 获取 warp 中的线程
@@ -56,11 +54,15 @@ public:
 
     // 获取 PC 值（向后兼容，返回 warp 级 PC）
     [[deprecated("Use warp_state.threads[lane_id].pc for per-thread PC")]]
-    int get_pc() const { return pc; }
+    int get_pc() const {
+        return pc;
+    }
 
     // 设置 PC 值（向后兼容）
     [[deprecated("Use advance_thread_pc() or advance_all_threads() instead")]]
-    void set_pc(int new_pc) { pc = new_pc; }
+    void set_pc(int new_pc) {
+        pc = new_pc;
+    }
 
     // 【NEW】获取每线程 PC
     uint32_t get_thread_pc(int lane_id) const {
@@ -72,14 +74,16 @@ public:
 
     // 【NEW】设置每线程 PC (legacy, does NOT sync ThreadContext)
     // Prefer advance_thread_to() which keeps both sources consistent
-    [[deprecated("Use advance_thread_pc() instead — unified PC advancement path")]]
+    [[deprecated(
+        "Use advance_thread_pc() instead — unified PC advancement path")]]
     void set_thread_pc(int lane_id, uint32_t new_pc) {
         advance_thread_pc(lane_id, new_pc);
     }
 
     // 【UNIFIED PC】 Advance a single thread's PC, updating both warp_state
     // and ThreadContext simultaneously to prevent dual-PC inconsistencies.
-    // This is the only approved way to change a thread's PC after initialization.
+    // This is the only approved way to change a thread's PC after
+    // initialization.
     void advance_thread_pc(int lane_id, int new_pc);
 
     // 【NEW】获取执行掩码
@@ -105,29 +109,32 @@ public:
     std::map<int, std::vector<int>> get_lanes_by_pc() const;
     std::vector<int> get_unique_pcs() const;
 
-    // 【SIMT v2.0】Check if divergent threads have reconverged, pop SIMT stack if so.
-    // Returns true if an entry was popped, false otherwise.
+    // 【SIMT v2.0】Check if divergent threads have reconverged, pop SIMT stack
+    // if so. Returns true if an entry was popped, false otherwise.
     bool check_reconvergence();
 
-    bool check_and_block_at_reconvergence_point(int target_pc,
-                                               std::vector<int>& blocked_lanes);
+    bool
+    check_and_block_at_reconvergence_point(int target_pc,
+                                           std::vector<int> &blocked_lanes);
 
     // 更新活跃掩码（例如，遇到分支指令时）
     void update_active_mask();
 
-    // 【NEW】Decrement blocked_cycles_remaining for all threads and unblock when count hits 0.
-    // Extracted from sm_context.cpp:180-197 (B4.1 Bug #2 + #3 fix) so it can be unit-tested
-    // without depending on sm_context internals. This function does NOT update WarpContext::active_count
-    // — the caller must invoke update_active_mask() afterwards if needed.
-    static void decrement_blocked_cycles(ptxsim::WarpState& ws);
+    // 【NEW】Decrement blocked_cycles_remaining for all threads and unblock
+    // when count hits 0. Extracted from sm_context.cpp:180-197 (B4.1 Bug #2 +
+    // #3 fix) so it can be unit-tested without depending on sm_context
+    // internals. This function does NOT update WarpContext::active_count — the
+    // caller must invoke update_active_mask() afterwards if needed.
+    static void decrement_blocked_cycles(ptxsim::WarpState &ws);
 
     // 设置活跃掩码
     void set_active_mask(int lane_id, bool active);
 
-    // 检查特定 lane 是否活跃（从 active_mask[] 读取——调度掩码）
-    // 所有修改 active_mask 的操作都会同时同步到 warp_state.threads[i].is_active
+    // 检查特定 lane 是否活跃（委托给 warp_state 权威源，避免 active_mask[]
+    // 缓存滞后） 详见 ISSUE-005 — 必须立即反映 warp_state
+    // 变更（屏障释放、退出等），不能等下一周期 update_active_mask() 同步。
     bool is_lane_active(int lane_id) const {
-        return lane_id >= 0 && lane_id < WARP_SIZE && active_mask[lane_id];
+        return is_lane_schedulable(lane_id);
     }
 
     // 获取 warp 内线程 ID
@@ -173,13 +180,13 @@ public:
     }
 
     // 获取 warp 中所有线程的引用
-    const std::vector<std::unique_ptr<ThreadContext>>& get_threads() const {
+    const std::vector<std::unique_ptr<ThreadContext>> &get_threads() const {
         return threads;
     }
 
     // 获取指定范围内的活跃线程
-    std::vector<ThreadContext*> get_active_threads() const {
-        std::vector<ThreadContext*> active_threads;
+    std::vector<ThreadContext *> get_active_threads() const {
+        std::vector<ThreadContext *> active_threads;
         for (int i = 0; i < threads.size(); ++i) {
             if (is_lane_active(i) && threads[i]) {
                 active_threads.push_back(threads[i].get());
@@ -201,37 +208,44 @@ public:
     CTAContext *get_cta_context() const { return cta_context_; }
 
     // 【NEW】获取 warp state 引用
-    ptxsim::WarpState& get_warp_state() { return warp_state; }
-    const ptxsim::WarpState& get_warp_state() const { return warp_state; }
+    ptxsim::WarpState &get_warp_state() { return warp_state; }
+    const ptxsim::WarpState &get_warp_state() const { return warp_state; }
 
     // 【NEW】SIMT Stack 访问
-    ptxsim::SIMTStack& get_simt_stack() { return simt_stack; }
-    const ptxsim::SIMTStack& get_simt_stack() const { return simt_stack; }
+    ptxsim::SIMTStack &get_simt_stack() { return simt_stack; }
+    const ptxsim::SIMTStack &get_simt_stack() const { return simt_stack; }
 
     // 【NEW】Warp 级屏障访问
     // Compat shim for tests still using legacy Wbar API. Syncs BarrierModule
-    // state on access so field reads (.is_complete(), .participation_mask, etc.)
-    // reflect the WarpBarrier canonical state.
-    [[deprecated("Use cta_context->get_barrier_module()->get_warp_barrier() instead")]]
-    ptxsim::Wbar& get_wbar(int wbar_id);
+    // state on access so field reads (.is_complete(), .participation_mask,
+    // etc.) reflect the WarpBarrier canonical state.
+    [[deprecated(
+        "Use cta_context->get_barrier_module()->get_warp_barrier() instead")]]
+    ptxsim::Wbar &get_wbar(int wbar_id);
 
-    // 【BARRIER RECONVERGENCE】Force all non-exited threads to reconverge at barrier_pc + 1.
-    // This matches hardware behavior per sm90_100.md:294: "bar.sync — 未汇合的 Warp 会在此被强制汇合"
-    // For multi-warp CTAs, threads may arrive at barrier in different reconvergence states.
-    // This method forces them all to continue from the instruction after the barrier.
+    // 【BARRIER RECONVERGENCE】Force all non-exited threads to reconverge at
+    // barrier_pc + 1. This matches hardware behavior per sm90_100.md:294:
+    // "bar.sync — 未汇合的 Warp 会在此被强制汇合" For multi-warp CTAs, threads
+    // may arrive at barrier in different reconvergence states. This method
+    // forces them all to continue from the instruction after the barrier.
     void force_reconvergence_at_barrier(int barrier_pc);
 
 private:
     std::vector<std::unique_ptr<ThreadContext>>
-        threads;                                // warp 中的线程 unique_ptr
+        threads; // warp 中的线程 unique_ptr
     // 活跃掩码 — 与 warp_state.exec_mask 是两个独立机制，共同维护：
-    // - exec_mask: WarpState 中的 uint32_t，用于 PTX activemask 指令返回值和 SIMT stack 管理
-    // - active_mask[]: WarpContext 中的 bool[WARP_SIZE]，用于调度器的 is_lane_active() 判断
-    // 两者在以下时序点同步：
-    //   1. barrier 释放时：barrier.cpp 同时调用 set_exec_mask() 和 set_active_mask()
-    //   2. 线程退出/阻塞时：update_active_mask() 根据 is_exited/is_blocked 重建 active_mask[]
-    // 注意：handle_branch() 发散时只更新 exec_mask，active_mask[] 在下一 execute_warp_instruction()
-    //       周期通过 update_active_mask() 重建。这是已知行为，由 test_post_barrier_divergence 测试验证。
+    // - exec_mask: WarpState 中的 uint32_t，用于 PTX activemask 指令返回值和
+    // SIMT stack 管理
+    // - active_mask[]: WarpContext 中的 bool[WARP_SIZE]，用于调度器的
+    // is_lane_active() 判断 两者在以下时序点同步：
+    //   1. barrier 释放时：barrier.cpp 同时调用 set_exec_mask() 和
+    //   set_active_mask()
+    //   2. 线程退出/阻塞时：update_active_mask() 根据 is_exited/is_blocked 重建
+    //   active_mask[]
+    // 注意：handle_branch() 发散时只更新 exec_mask，active_mask[] 在下一
+    // execute_warp_instruction()
+    //       周期通过 update_active_mask() 重建。这是已知行为，由
+    //       test_post_barrier_divergence 测试验证。
     std::array<bool, WARP_SIZE> active_mask;
     std::array<int, WARP_SIZE> warp_thread_ids; // 对应的线程 ID
     int active_count;                           // 活跃线程数量
@@ -240,7 +254,7 @@ private:
     int physical_warp_id;                       // 物理 warp ID
     int physical_block_id;                      // 物理 block ID
 
-    bool divergence_detected;              // 分歧检测标志
+    bool divergence_detected; // 分歧检测标志
 
     // 寄存器银行管理器
     std::shared_ptr<RegisterBankManager> register_bank_manager_;
@@ -257,7 +271,7 @@ private:
 
     // 【NEW】SIMT 架构升级：每线程状态
     ptxsim::WarpState warp_state;
-    ptxsim::SIMTStack simt_stack;  // SIMT control flow stack
+    ptxsim::SIMTStack simt_stack; // SIMT control flow stack
 
 public:
     // 调度状态相关方法

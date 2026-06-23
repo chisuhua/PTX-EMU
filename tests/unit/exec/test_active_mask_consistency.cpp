@@ -1,9 +1,9 @@
 #include "catch_amalgamated.hpp"
+#include "ptx_ir/statement_context.h"
+#include "ptxsim/execution_types.h"
+#include "ptxsim/thread_context.h"
 #include "ptxsim/warp_context.h"
 #include "ptxsim/warp_state.h"
-#include "ptxsim/thread_context.h"
-#include "ptxsim/execution_types.h"
-#include "ptx_ir/statement_context.h"
 
 #include <memory>
 
@@ -18,7 +18,7 @@ StatementContext make_nop_stmt() {
     return stmt;
 }
 
-void add_thread(WarpContext& warp, int lane, bool is_exited = false) {
+void add_thread(WarpContext &warp, int lane, bool is_exited = false) {
     auto thread = std::make_unique<ThreadContext>();
     Dim3 blockIdx = {0, 0, 0};
     Dim3 threadIdx = {(uint32_t)lane, 0, 0};
@@ -34,7 +34,7 @@ void add_thread(WarpContext& warp, int lane, bool is_exited = false) {
     warp.add_thread(std::move(thread), lane);
 }
 
-void init_full_warp(WarpContext& warp) {
+void init_full_warp(WarpContext &warp) {
     for (int i = 0; i < 32; i++) {
         add_thread(warp, i);
     }
@@ -50,8 +50,10 @@ TEST_CASE("J1: default active_mask matches exec_mask", "[active_mask]") {
 TEST_CASE("J2: active_mask unchanged during divergence", "[active_mask]") {
     WarpContext warp;
     SIMTStackEntry entry;
-    entry.branch_pc = 10; entry.reconvergence_pc = 30;
-    entry.active_mask = 0x0000FFFF; entry.return_mask = 0xFFFFFFFF;
+    entry.branch_pc = 10;
+    entry.reconvergence_pc = 30;
+    entry.active_mask = 0x0000FFFF;
+    entry.return_mask = 0xFFFFFFFF;
     entry.return_pc = 30;
     warp.get_simt_stack().push(entry);
     warp.set_exec_mask(0x0000FFFF);
@@ -80,13 +82,16 @@ TEST_CASE("J3: thread exit updates active_mask", "[active_mask]") {
 TEST_CASE("J4: active_mask consistent after convergence", "[active_mask]") {
     WarpContext warp;
     SIMTStackEntry entry;
-    entry.branch_pc = 10; entry.reconvergence_pc = 30;
-    entry.active_mask = 0x0000FFFF; entry.return_mask = 0xFFFFFFFF;
+    entry.branch_pc = 10;
+    entry.reconvergence_pc = 30;
+    entry.active_mask = 0x0000FFFF;
+    entry.return_mask = 0xFFFFFFFF;
     entry.return_pc = 30;
     warp.get_simt_stack().push(entry);
     warp.set_exec_mask(0x0000FFFF);
 
-    for (int i = 0; i < 32; i++) warp.set_thread_pc(i, 30);
+    for (int i = 0; i < 32; i++)
+        warp.set_thread_pc(i, 30);
     warp.check_reconvergence();
 
     REQUIRE(warp.get_exec_mask() == 0xFFFFFFFF);
@@ -114,7 +119,8 @@ TEST_CASE("J5: active_count matches active_mask bits", "[active_mask]") {
     REQUIRE(warp.get_active_count() == 8);
 }
 
-TEST_CASE("J6: update_active_mask syncs is_active to warp_state", "[active_mask][issue-004]") {
+TEST_CASE("J6: update_active_mask syncs is_active to warp_state",
+          "[active_mask][issue-004]") {
     WarpContext warp;
     init_full_warp(warp);
 
@@ -130,7 +136,9 @@ TEST_CASE("J6: update_active_mask syncs is_active to warp_state", "[active_mask]
     }
 }
 
-TEST_CASE("J7: update_active_mask keeps is_lane_active and is_schedulable consistent", "[active_mask][issue-004]") {
+TEST_CASE(
+    "J7: update_active_mask keeps is_lane_active and is_schedulable consistent",
+    "[active_mask][issue-004]") {
     WarpContext warp;
     init_full_warp(warp);
 
@@ -151,7 +159,8 @@ TEST_CASE("J7: update_active_mask keeps is_lane_active and is_schedulable consis
     }
 }
 
-TEST_CASE("J8: sync_to_warp_state RUN sets is_active=true after barrier", "[active_mask][issue-004]") {
+TEST_CASE("J8: sync_to_warp_state RUN sets is_active=true after barrier",
+          "[active_mask][issue-004]") {
     WarpContext warp;
     init_full_warp(warp);
 
@@ -161,8 +170,9 @@ TEST_CASE("J8: sync_to_warp_state RUN sets is_active=true after barrier", "[acti
     warp.get_thread(lane)->set_state(BAR_SYNC);
     warp.get_thread(lane)->sync_to_warp_state();
 
-    // 【修复】遵循 sync_to_warp_state 契约：caller 必须在 set_state(RUN) 前显式清 is_blocked 和 status
-    // 参考 sm_context.cpp:609-610 的生产调用方模式（必须同时清两者，否则 already_blocked 仍为 true）
+    // 【修复】遵循 sync_to_warp_state 契约：caller 必须在 set_state(RUN)
+    // 前显式清 is_blocked 和 status 参考 sm_context.cpp:609-610
+    // 的生产调用方模式（必须同时清两者，否则 already_blocked 仍为 true）
     warp.get_warp_state().threads[lane].is_blocked = false;
     warp.get_warp_state().threads[lane].status = ptxsim::ThreadStatus::Active;
     warp.get_thread(lane)->set_state(RUN);
@@ -203,7 +213,8 @@ TEST_CASE("J9: blocked warp is not finished", "[active_mask][b4-1]") {
     REQUIRE(warp.is_finished() == false);
 }
 
-TEST_CASE("J10: mixed exited+blocked warp is not finished", "[active_mask][b4-1]") {
+TEST_CASE("J10: mixed exited+blocked warp is not finished",
+          "[active_mask][b4-1]") {
     // B4.1 Bug #1: a warp with some exited and some blocked threads must
     // not be considered finished — the blocked threads still need to
     // resume and reach bar.sync. Destroying the warp early produces
@@ -231,4 +242,57 @@ TEST_CASE("J10: mixed exited+blocked warp is not finished", "[active_mask][b4-1]
     // 16 threads are merely blocked and have not yet exited.
     REQUIRE(warp.get_active_count() == 0);
     REQUIRE(warp.is_finished() == false);
+}
+
+// ============================================================================
+// T2-1 Task 2: is_lane_active() delegation to is_lane_schedulable() (ISSUE-005)
+// ----------------------------------------------------------------------------
+// is_lane_active() must read from the authoritative source
+// (warp_state.threads[i].is_schedulable()), NOT from the derived active_mask[].
+// This guarantees that any direct mutation of warp_state (e.g., barrier release
+// via force_set_pc + set_state(RUN)) is immediately reflected in
+// is_lane_active() without waiting for the next update_active_mask() cycle.
+// ============================================================================
+
+TEST_CASE(
+    "J11: is_lane_active() delegates to warp_state without update_active_mask",
+    "[active_mask][issue-005]") {
+    WarpContext warp;
+    init_full_warp(warp);
+
+    // Mutate warp_state directly. Do NOT call update_active_mask() — we want to
+    // prove is_lane_active() reflects warp_state immediately.
+    for (int i = 0; i < 8; i++) {
+        warp.get_warp_state().threads[i].is_blocked = true;
+        warp.get_warp_state().threads[i].is_active = false;
+    }
+
+    for (int i = 0; i < 8; i++) {
+        REQUIRE(warp.is_lane_active(i) == false);
+        REQUIRE(warp.is_lane_schedulable(i) == false);
+    }
+    for (int i = 8; i < 32; i++) {
+        REQUIRE(warp.is_lane_active(i) == true);
+    }
+    for (int i = 0; i < 32; i++) {
+        REQUIRE(warp.is_lane_active(i) == warp.is_lane_schedulable(i));
+    }
+}
+
+TEST_CASE("J12: is_lane_active() reflects exited flag from warp_state",
+          "[active_mask][issue-005]") {
+    WarpContext warp;
+    init_full_warp(warp);
+
+    for (int i = 0; i < 16; i++) {
+        warp.get_warp_state().threads[i].is_exited = true;
+        warp.get_warp_state().threads[i].is_active = false;
+    }
+
+    for (int i = 0; i < 16; i++) {
+        REQUIRE(warp.is_lane_active(i) == false);
+    }
+    for (int i = 16; i < 32; i++) {
+        REQUIRE(warp.is_lane_active(i) == true);
+    }
 }
