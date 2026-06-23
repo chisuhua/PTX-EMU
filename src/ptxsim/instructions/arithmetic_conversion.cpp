@@ -1,4 +1,5 @@
 #include "ptxsim/instruction_handlers.h"
+#include "ptxsim/instructions/cvt/cvt_helpers.h"
 #include "ptxsim/ptx_exceptions.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/utils/qualifier_utils.h"
@@ -7,140 +8,10 @@
 #include <cmath>
 #include <limits>
 
-
-// 银行家舍入法（Round half to even）- 用于 RNI 修饰符
-inline float round_half_to_even(float x) {
-    float rounded = std::round(x);
-    float diff = std::abs(x - rounded);
-    
-    // 如果正好是 0.5，使用 ties to even
-    if (diff == 0.5f) {
-        // 如果结果是奇数，调整到偶数
-        if (std::fmod(std::abs(rounded), 2.0f) == 1.0f) {
-            return rounded - (x > 0 ? 1.0f : -1.0f);
-        }
-    }
-    return rounded;
-}
-
-// 自定义half到float的转换函数
-inline float half_to_float(uint16_t h) {
-    uint32_t sign = ((h >> 15) & 0x1);
-    uint32_t exp = ((h >> 10) & 0x1f);
-    uint32_t mantissa = (h & 0x3ff);
-    uint32_t f;
-
-    if (exp == 0) {
-        if (mantissa == 0) {
-            // ±0
-            f = sign << 31;
-        } else {
-            // Subnormal numbers
-            exp = 127 - 15;
-            while ((mantissa & 0x400) == 0) {
-                mantissa <<= 1;
-                exp--;
-            }
-            mantissa &= 0x3ff;
-            f = (sign << 31) | ((exp + 127) << 23) | (mantissa << 13);
-        }
-    } else if (exp == 31) {
-        if (mantissa == 0) {
-            // ±infinity
-            f = (sign << 31) | (0xFF << 23);
-        } else {
-            // NaN
-            f = (sign << 31) | (0xFF << 23) | (mantissa << 13);
-        }
-    } else {
-        // Normalized number
-        f = (sign << 31) | ((exp + 127 - 15) << 23) | (mantissa << 13);
-    }
-
-    return *reinterpret_cast<float *>(&f);
-}
-
-// Check if a float value should saturate to UINT32_MAX when converting to uint32.
-// Handles the precision issue where float32 cannot exactly represent values
-// in [4294967295.0, 4294967296.0), causing values like 4294967295.4f to
-// become 4294967296.0f in float32 representation.
-static inline bool should_saturate_uint32(float temp, float sat_high) {
-    return temp >= 4294967295.0f && temp < sat_high;
-}
-
-// 自定义float到half的转换函数
-inline uint16_t float_to_half(float f) {
-    uint32_t bits = *reinterpret_cast<uint32_t *>(&f);
-    uint16_t sign = (bits >> 16) & 0x8000;
-    uint32_t exp = (bits >> 23) & 0xFF;
-    uint32_t mantissa = bits & 0x7FFFFF;
-
-    uint16_t result;
-
-    if (exp == 0) {
-        // Zero or subnormal
-        if (mantissa == 0) {
-            result = sign; // +0 or -0
-        } else {
-            // Float subnormal -> half might be normal or subnormal
-            // Need to normalize the mantissa and calculate the new exponent
-            int shift = 0;
-            while ((mantissa & 0x800000) == 0) {
-                mantissa <<= 1;
-                shift++;
-            }
-            exp = 127 - shift;    // original exp was 0, so real exp is -126
-            exp = exp - 127 + 15; // Convert to half exponent
-            if (exp <= 0) {
-                // Result is subnormal in half
-                mantissa = (mantissa & 0x7FFFFF) >> 13;
-                if (exp == 0) {
-                    // Check if we need to shift right based on exponent
-                    // difference
-                    mantissa |= 0x400; // Add the implicit bit
-                    mantissa >>= 1;
-                } else {
-                    mantissa >>= (1 - exp);
-                }
-                result = sign | mantissa;
-            } else {
-                // Normal half number
-                mantissa >>= 13;
-                result = sign | (exp << 10) | (mantissa & 0x3FF);
-            }
-        }
-    } else if (exp == 0xFF) {
-        // infinity or NaN
-        result = sign | (0x1F << 10) | (mantissa != 0 ? 0x200 : 0);
-    } else {
-        // Normal float number
-        exp = exp - 127 + 15; // Convert to half exponent
-        if (exp >= 0x1F) {
-            // Overflow - infinity
-            result = sign | (0x1F << 10);
-        } else if (exp <= 0) {
-            // Underflow - subnormal or zero
-            if (exp <= -10) {
-                // Rounds to zero
-                result = sign;
-            } else {
-                // Convert to subnormal
-                mantissa = (mantissa | 0x800000) >>
-                           (12 - exp); // Add implicit bit and shift
-                result = sign | (mantissa >> 13);
-            }
-        } else {
-            // Normal half number
-            result = sign | (exp << 10) | (mantissa >> 13);
-        }
-    }
-
-    return result;
-}
-
-void CvtHandler::processOperation(ThreadContext *context, void **operands,
-                                   const std::vector<Qualifier> &qualifiers,
-                                   const std::vector<char> *operand_is_immediate) {
+void CvtHandler::processOperation(
+    ThreadContext *context, void **operands,
+    const std::vector<Qualifier> &qualifiers,
+    const std::vector<char> *operand_is_immediate) {
     void *dst = operands[0];
     void *src = operands[1];
     std::vector<Qualifier> dst_qualifiers, src_qualifiers;
@@ -230,7 +101,7 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
                 if (src_is_half) {
                     // 源是half类型，转换为float后再处理
                     uint16_t h_temp = *reinterpret_cast<uint16_t *>(src);
-                    temp = half_to_float(h_temp);
+                    temp = ptxsim::cvt_helpers::half_to_float(h_temp);
                 } else if (src_bytes == 4) {
                     temp = *(float *)src;
                 } else {
@@ -282,7 +153,7 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
                 if (src_is_half) {
                     // 源是half类型，转换为float后再处理
                     uint16_t h_temp = *reinterpret_cast<uint16_t *>(src);
-                    temp = half_to_float(h_temp);
+                    temp = ptxsim::cvt_helpers::half_to_float(h_temp);
                 } else if (src_bytes == 4) {
                     temp = *(float *)src;
                 } else {
@@ -304,8 +175,8 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
                     // 不使用sat时，应用舍入模式
                     if (has_rni ||
                         has_rn) { // 使用RNI或RN进行四舍五入（用于整数转换）
-                        *(uint8_t *)dst =
-                            static_cast<uint8_t>(round_half_to_even(temp));
+                        *(uint8_t *)dst = static_cast<uint8_t>(
+                            ptxsim::cvt_helpers::round_half_to_even(temp));
                     } else if (
                         has_rzi ||
                         has_rz) { // 使用RZI或RZ进行向零舍入（用于整数转换）
@@ -374,7 +245,8 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
                                 }
                             } else if (has_rni || has_rn) {
                                 *(int8_t *)dst = static_cast<int8_t>(
-                                    round_half_to_even(static_cast<float>(src_val)));
+                                    ptxsim::cvt_helpers::round_half_to_even(
+                                        static_cast<float>(src_val)));
                             } else if (has_rzi || has_rz) {
                                 *(int8_t *)dst = static_cast<int8_t>(
                                     std::trunc(static_cast<float>(src_val)));
@@ -573,26 +445,32 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
                     } else if (src_bytes == 4) {
                         // 源是float类型，转换为half
                         float src_val = *(float *)src;
-                        *(uint16_t *)dst = float_to_half(src_val);
+                        *(uint16_t *)dst =
+                            ptxsim::cvt_helpers::float_to_half(src_val);
                     } else {
                         // 源是double类型，先转为float再转为half
                         float src_val = (float)*(double *)src;
-                        *(uint16_t *)dst = float_to_half(src_val);
+                        *(uint16_t *)dst =
+                            ptxsim::cvt_helpers::float_to_half(src_val);
                     }
                 } else {
                     // 源是整型 - 根据推断出的字节大小进行转换
                     if (src_bytes == 1) {
                         float src_val = (float)*(int8_t *)src;
-                        *(uint16_t *)dst = float_to_half(src_val);
+                        *(uint16_t *)dst =
+                            ptxsim::cvt_helpers::float_to_half(src_val);
                     } else if (src_bytes == 2) {
                         float src_val = (float)*(int16_t *)src;
-                        *(uint16_t *)dst = float_to_half(src_val);
+                        *(uint16_t *)dst =
+                            ptxsim::cvt_helpers::float_to_half(src_val);
                     } else if (src_bytes == 4) {
                         float src_val = (float)*(int32_t *)src;
-                        *(uint16_t *)dst = float_to_half(src_val);
+                        *(uint16_t *)dst =
+                            ptxsim::cvt_helpers::float_to_half(src_val);
                     } else {
                         float src_val = (float)*(int64_t *)src;
-                        *(uint16_t *)dst = float_to_half(src_val);
+                        *(uint16_t *)dst =
+                            ptxsim::cvt_helpers::float_to_half(src_val);
                     }
                 }
             } else {
@@ -602,7 +480,8 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
                     if (src_is_half) {
                         // 源是half类型，转换为float
                         uint16_t h_temp = *reinterpret_cast<uint16_t *>(src);
-                        *(float *)dst = half_to_float(h_temp);
+                        *(float *)dst =
+                            ptxsim::cvt_helpers::half_to_float(h_temp);
                     } else if (src_bytes == 4) {
                         *(float *)dst = *(float *)src;
                     } else {
@@ -628,7 +507,7 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
                 if (src_is_half) {
                     // 源是half类型，转换为float后再处理
                     uint16_t h_temp = *reinterpret_cast<uint16_t *>(src);
-                    temp = half_to_float(h_temp);
+                    temp = ptxsim::cvt_helpers::half_to_float(h_temp);
                 } else if (src_bytes == 4) {
                     temp = *(float *)src;
                 } else {
@@ -650,8 +529,8 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
                 } else {
                     if (has_rni ||
                         has_rn) { // 使用RNI或RN进行四舍五入（用于整数转换）
-                        *(uint16_t *)dst =
-                            static_cast<uint16_t>(round_half_to_even(temp));
+                        *(uint16_t *)dst = static_cast<uint16_t>(
+                            ptxsim::cvt_helpers::round_half_to_even(temp));
                     } else if (
                         has_rzi ||
                         has_rz) { // 使用RZI或RZ进行向零舍入（用于整数转换）
@@ -866,7 +745,7 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
                 if (src_is_half) {
                     // 源是half类型，转换为float
                     uint16_t h_temp = *reinterpret_cast<uint16_t *>(src);
-                    *(float *)dst = half_to_float(h_temp);
+                    *(float *)dst = ptxsim::cvt_helpers::half_to_float(h_temp);
                 } else if (src_bytes == 4) {
                     *(float *)dst = *(float *)src;
                 } else {
@@ -891,7 +770,7 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
                 if (src_is_half) {
                     // 源是half类型，转换为float
                     uint16_t h_temp = *reinterpret_cast<uint16_t *>(src);
-                    temp = half_to_float(h_temp);
+                    temp = ptxsim::cvt_helpers::half_to_float(h_temp);
                 } else if (src_bytes == 4) {
                     temp = *(float *)src;
                 } else {
@@ -911,20 +790,24 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
                     }
                 } else {
                     // Float to uint32 without saturation
-                    // Handle precision issue: float32 cannot exactly represent values in
-                    // [4294967295.0, 4294967296.0), causing values like 4294967295.4f
-                    // to become 4294967296.0f in float32 representation.
+                    // Handle precision issue: float32 cannot exactly represent
+                    // values in [4294967295.0, 4294967296.0), causing values
+                    // like 4294967295.4f to become 4294967296.0f in float32
+                    // representation.
                     if (has_rni || has_rn) {
                         // RNI/RN: round to nearest, ties to even
-                        if (should_saturate_uint32(temp, 4294967295.5f)) {
+                        if (ptxsim::cvt_helpers::should_saturate_uint32(
+                                temp, 4294967295.5f)) {
                             *(uint32_t *)dst = 4294967295U;
                         } else {
                             *(uint32_t *)dst = static_cast<uint32_t>(
-                                round_half_to_even(static_cast<double>(temp)));
+                                ptxsim::cvt_helpers::round_half_to_even(
+                                    static_cast<double>(temp)));
                         }
                     } else if (has_rzi || has_rz) {
                         // RZI/RZ: round towards zero (truncation)
-                        if (should_saturate_uint32(temp, 4294967296.0f)) {
+                        if (ptxsim::cvt_helpers::should_saturate_uint32(
+                                temp, 4294967296.0f)) {
                             *(uint32_t *)dst = 4294967295U;
                         } else {
                             *(uint32_t *)dst = static_cast<uint32_t>(
@@ -932,7 +815,8 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
                         }
                     } else if (has_rmi || has_rm) {
                         // RMI/RM: round towards negative infinity (floor)
-                        if (should_saturate_uint32(temp, 4294967296.0f)) {
+                        if (ptxsim::cvt_helpers::should_saturate_uint32(
+                                temp, 4294967296.0f)) {
                             *(uint32_t *)dst = 4294967295U;
                         } else {
                             *(uint32_t *)dst = static_cast<uint32_t>(
@@ -940,9 +824,11 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
                         }
                     } else if (has_rpi || has_rp) {
                         // RPI/RP: round towards positive infinity (ceil)
-                        // Note: saturation range is [4294967294.0, 4294967295.0) because
-                        // ceil of a value in [4294967294.0, 4294967295.0) is 4294967295
-                        if (should_saturate_uint32(temp, 4294967295.0f)) {
+                        // Note: saturation range is [4294967294.0,
+                        // 4294967295.0) because ceil of a value in
+                        // [4294967294.0, 4294967295.0) is 4294967295
+                        if (ptxsim::cvt_helpers::should_saturate_uint32(
+                                temp, 4294967295.0f)) {
                             *(uint32_t *)dst = 4294967295U;
                         } else {
                             *(uint32_t *)dst = static_cast<uint32_t>(
@@ -1105,7 +991,8 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
                 if (src_is_half) {
                     // 源是half类型，先转为float再转为double
                     uint16_t h_temp = *reinterpret_cast<uint16_t *>(src);
-                    *(double *)dst = (double)half_to_float(h_temp);
+                    *(double *)dst =
+                        (double)ptxsim::cvt_helpers::half_to_float(h_temp);
                 } else if (src_bytes == 4) {
                     *(double *)dst = (double)*(float *)src;
                 } else {
@@ -1130,7 +1017,7 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
                 if (src_is_half) {
                     // 源是half类型，先转为float再转为double
                     uint16_t h_temp = *reinterpret_cast<uint16_t *>(src);
-                    temp = (double)half_to_float(h_temp);
+                    temp = (double)ptxsim::cvt_helpers::half_to_float(h_temp);
                 } else if (src_bytes == 4) {
                     temp = (double)*(float *)src;
                 } else {
@@ -1152,8 +1039,8 @@ void CvtHandler::processOperation(ThreadContext *context, void **operands,
                 } else {
                     if (has_rni ||
                         has_rn) { // 使用RNI或RN进行四舍五入（用于整数转换）
-                        *(uint64_t *)dst =
-                            static_cast<uint64_t>(round_half_to_even(temp));
+                        *(uint64_t *)dst = static_cast<uint64_t>(
+                            ptxsim::cvt_helpers::round_half_to_even(temp));
                     } else if (
                         has_rzi ||
                         has_rz) { // 使用RZI或RZ进行向零舍入（用于整数转换）
