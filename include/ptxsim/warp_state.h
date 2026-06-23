@@ -14,24 +14,33 @@ struct WarpState {
     std::array<ThreadState, 32> threads;
     uint32_t exec_mask = 0xFFFFFFFF;
     std::map<std::string, std::array<bool, 32>> thread_predicates;
+    // T2-1 Task 5: Deprecated — production barrier handlers (BarHandler,
+    // BarWarpSyncHandler) now route through BarrierModule + WarpBarrier
+    // (see include/ptxsim/barrier/barrier_module.h). These fields remain
+    // temporarily for test code that still references the legacy API.
+    // Physical removal scheduled for T2-3 (god-class POD split).
+    [[deprecated("Use BarrierModule::get_warp_barrier() instead — will be "
+                 "removed in T2-3")]]
     std::array<Wbar, 4> wbars;
+    [[deprecated("Use BarrierModule state instead — will be removed in T2-3")]]
     int current_wbar_id = -1;
     uint32_t warp_pc = 0;
-    // pc_stack 和 pc_stack_depth 已移除 — 使用 WarpContext::pc_stacks 或 warp_state.threads[i].pc 替代
+    // pc_stack 和 pc_stack_depth 已移除 — 使用 WarpContext::pc_stacks 或
+    // warp_state.threads[i].pc 替代
 
     void reset() {
-        for (auto& thread : threads) {
+        for (auto &thread : threads) {
             thread.reset();
         }
         exec_mask = 0xFFFFFFFF;
         thread_predicates.clear();
-        for (auto& wbar : wbars) {
+        for (auto &wbar : wbars) {
             wbar.reset();
         }
         current_wbar_id = -1;
         warp_pc = 0;
     }
-    
+
     int count_active_lanes() const {
         int count = 0;
         for (int i = 0; i < 32; ++i) {
@@ -41,7 +50,7 @@ struct WarpState {
         }
         return count;
     }
-    
+
     int count_schedulable_lanes() const {
         int count = 0;
         for (int i = 0; i < 32; ++i) {
@@ -51,21 +60,21 @@ struct WarpState {
         }
         return count;
     }
-    
+
     bool is_all_exited() const {
-        for (const auto& thread : threads) {
+        for (const auto &thread : threads) {
             if (!thread.is_exited) {
                 return false;
             }
         }
         return true;
     }
-    
+
     bool has_schedulable_threads() const {
         return count_schedulable_lanes() > 0;
     }
 };
 
-}
+} // namespace ptxsim
 
 #endif

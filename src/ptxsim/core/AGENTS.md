@@ -46,18 +46,26 @@ GPUContext
 
 ## KNOWN ISSUES
 
-### DUAL STATE MECHANISM (critical invariant)
-`WarpContext` maintains **TWO parallel state representations** for lane activity:
+### SINGLE SOURCE OF TRUTH (T2-1, 2026-06)
 
-| State | Type | Read by | Written by |
-|-------|------|---------|------------|
-| `active_mask[]` (bool[32]) | scheduler mask | `is_lane_active()` → scheduler | `set_active_mask()`, `update_active_mask()` |
-| `warp_state.threads[i].is_active` | per-thread | `update_active_mask()` source | `set_active_mask()`, `update_active_mask()` |
-| `warp_state.exec_mask` (uint32_t) | activemask instr | PTX `activemask` | `set_exec_mask()` |
+Lane-activity state has **ONE authoritative source** + two derived caches:
 
-**Key invariant**: `update_active_mask()` at the END of every `execute_warp_instruction()` recomputes `active_mask[]` from `warp_state.threads[i].is_active`. This means **bugs that temporarily corrupt `active_mask[]` (e.g., BUG-POSTBARRIER-TWOHALVES where `set_active_mask(arrived_mask)` overwrites) are SELF-HEALED by the next instruction**.
+| Field | Role | Authority | Notes |
+|-------|------|-----------|-------|
+| `warp_state.threads[i].is_schedulable()` | **AUTHORITATIVE** | `thread_state.h:54-59` | `is_active && !is_exited && !is_blocked && (status == Active) && blocked_cycles_remaining == 0` |
+| `active_mask[]` (bool[32]) | derived cache | `warp_context.cpp:316-329` `update_active_mask()` | Recomputed at end of every `execute_warp_instruction()` |
+| `active_count` (int) | derived counter | `warp_context.cpp:331` `set_active_mask(int,bool)` | Maintained by `set_active_mask()` for fast `is_finished()` check |
+| `warp_state.exec_mask` (uint32_t) | **INDEPENDENT** | PTX `activemask` instruction | NOT unified with `is_active` — these are semantically different concepts |
 
-**Consequence**: End-to-end integration tests may PASS even with subtle bugs, because the self-healing masks the issue at the warp-finish level. **Unit tests that directly assert `get_active_mask()` after a specific call catch these bugs; integration tests that only check `is_finished()` do NOT.**
+**Key invariants (T2-1 contract):**
+1. **`is_lane_active(lane_id)` delegates to `is_lane_schedulable(lane_id)`** — reads `warp_state` directly, no cache lag (ISSUE-005 fix). All scheduler/gate decisions see warp_state mutations immediately.
+2. **`update_active_mask()` is bidirectional**: reads from `warp_state.threads[i]` AND writes back `is_active` after computing the `active` bool. This keeps `active_mask[]` and `warp_state.is_active` synchronized even when callers mutate warp_state directly (barrier release, etc.).
+3. **`sync_to_warp_state(RUN)` sets `is_active = true`** — barrier release correctly marks threads active in warp_state before `is_lane_active()` reads.
+4. **`set_active_mask(uint32_t mask)` is overwrite semantics** — ret handler at `src/ptxsim/instructions/call.cpp:29` uses `set_active_mask(0u)` to clear all lanes after `ret`. **DO NOT change to OR-merge** — barrier handlers in `src/ptxsim/instructions/barrier.cpp` already OR externally before calling (`warp_ctx->set_active_mask(get_active_mask() | arrived_mask)`).
+
+**Exception: `warp_state.exec_mask`** is PTX `activemask` instruction's independent source. It is not unified with `is_active` — these are semantically different concepts (exec_mask is set by PTX code, is_active is set by barrier/exit/divergence machinery). See `get_exec_mask()` / `set_exec_mask()`.
+
+**Why the dual-source pattern was removed (T2-1):** Before T2-1, `is_lane_active()` read from `active_mask[]` which lagged warp_state mutations until the next `update_active_mask()` cycle. This caused subtle bugs (e.g., BUG-POSTBARRIER-TWOHALVES where post-barrier lanes were missed because `is_lane_active()` saw stale `active_mask[]`). The T2-1 delegation makes `is_lane_active()` immediate.
 
 ### BUG-RETHANG (FIXED 2026-06)
 `RetHandler::processOperation` only set `state=EXIT` for the currently executing lane. Inactive lanes (stalled on divergent paths) kept `state != EXIT`, so `WarpContext::is_finished()` returned false and the scheduler looped forever.
