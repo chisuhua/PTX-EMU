@@ -372,6 +372,29 @@ add_catch_test(unit_cvt_float_to_float
 )
 set_tests_properties(unit_cvt_float_to_float PROPERTIES LABELS "unit;ptx;cvt;strategy;f2f")
 
+# T2-6 Sub-task 4b: IntToFloatStrategy unit tests
+# Locks in behavior of s8/s16/s32/s64/u8/u16/u32/u64 -> f16/f32/f64 conversions
+add_catch_test(unit_cvt_int_to_float
+    ptx/test_cvt_int_to_float.cpp
+)
+set_tests_properties(unit_cvt_int_to_float PROPERTIES LABELS "unit;ptx;cvt;strategy;i2f")
+
+# T2-6 Sub-task 4c+4d: FloatToIntStrategy unit tests
+# Locks in behavior of f16/f32/f64 -> s8/s16/s32/s64/u8/u16/u32/u64 conversions
+# incl. .sat saturation and 5 rounding modes (.rn/.rz/.rm/.rp/.rna)
+add_catch_test(unit_cvt_float_to_int
+    ptx/test_cvt_float_to_int.cpp
+)
+set_tests_properties(unit_cvt_float_to_int PROPERTIES LABELS "unit;ptx;cvt;strategy;f2i")
+
+# T2-6 Sub-task 4d: IntToIntStrategy unit tests
+# Locks in behavior of 4x4 dimension matrix (s8/s16/s32/s64 + u8/u16/u32/u64)
+# x 4 (dst_bytes) + .sat + 5 rounding modes
+add_catch_test(unit_cvt_int_to_int
+    ptx/test_cvt_int_to_int.cpp
+)
+set_tests_properties(unit_cvt_int_to_int PROPERTIES LABELS "unit;ptx;cvt;strategy;i2i")
+
 # ---------------------------------------------------------------------------
 # A2 cleanup (2026-06): the 7 tests below all `<<<1, 1>>>` real GPU kernels
 # and verify NVIDIA's PTX semantics — they do NOT exercise the PTX-EMU

@@ -16,7 +16,11 @@
 // =============================================================================
 
 #include "ptxsim/instructions/cvt/cvt_strategy.h"
+#include "ptxsim/instructions/cvt/cvt_float_to_float.h"
+#include "ptxsim/instructions/cvt/cvt_float_to_int.h"
 #include "ptxsim/instructions/cvt/cvt_helpers.h"
+#include "ptxsim/instructions/cvt/cvt_int_to_float.h"
+#include "ptxsim/instructions/cvt/cvt_int_to_int.h"
 #include "ptxsim/ptx_exceptions.h"
 #include "ptxsim/utils/qualifier_utils.h"
 #include "ptxsim/utils/type_utils.h"
@@ -1026,9 +1030,18 @@ public:
     const char *name() const override { return "GeneralCvtStrategy"; }
 };
 
-const ConversionStrategy &select_strategy(const CvtContext & /*ctx*/) {
-    static const GeneralCvtStrategy instance;
-    return instance;
+const ConversionStrategy &select_strategy(const CvtContext &ctx) {
+    static const FloatToFloatStrategy f2f;
+    static const FloatToIntStrategy f2i;
+    static const IntToFloatStrategy i2f;
+    static const IntToIntStrategy i2i;
+
+    if (ctx.dst_is_float) {
+        return ctx.src_is_float ? static_cast<const ConversionStrategy &>(f2f)
+                                : static_cast<const ConversionStrategy &>(i2f);
+    }
+    return ctx.src_is_float ? static_cast<const ConversionStrategy &>(f2i)
+                            : static_cast<const ConversionStrategy &>(i2i);
 }
 
 } // namespace cvt_strategy
