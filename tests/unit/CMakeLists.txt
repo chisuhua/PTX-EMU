@@ -516,3 +516,9 @@ add_catch_test(unit_backend_links_pod
     contexts/test_backend_links_pod.cpp
 )
 set_tests_properties(unit_backend_links_pod PROPERTIES LABELS "unit;contexts;pod")
+
+# T2-3 A3a: ThreadContext 4-POD facade members (additive, defaults only)
+add_catch_test(unit_thread_context_pod_facade
+    contexts/test_thread_context_pod_facade.cpp
+)
+set_tests_properties(unit_thread_context_pod_facade PROPERTIES LABELS "unit;contexts;pod;thread_context")

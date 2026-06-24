@@ -5,6 +5,10 @@
 #include "ptx_ir/ptx_types.h"
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/common_types.h" // 包含通用类型定义
+#include "ptxsim/contexts/exec_state.h"
+#include "ptxsim/contexts/memory_ref.h"
+#include "ptxsim/contexts/program_ref.h"
+#include "ptxsim/contexts/register_predicate.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/ptx_config.h"
 #include "ptxsim/warp_state.h"
@@ -32,7 +36,8 @@ public:
     // 资源管理
     std::vector<StatementContext> *statements;
     std::map<std::string, std::unique_ptr<Symtable>> *name2Sym;
-    std::map<std::string, std::unique_ptr<Symtable>> *name2Share; // 添加共享内存符号表引用
+    std::map<std::string, std::unique_ptr<Symtable>>
+        *name2Share; // 添加共享内存符号表引用
 
     // 使用寄存器银行管理器或独立寄存器管理器
     std::shared_ptr<RegisterBankManager> register_bank_manager_;
@@ -51,9 +56,10 @@ public:
     // for VEC 就 push 一个新向量（最多 4 个槽位，PTX 最大 V4）。handler 通过
     // op[0]/op[1] 拿到的指针直接指向这里，cast 成 void** 后按 V2/V4 限定符
     // 迭代。
-    // BUGFIX: 之前用 std::queue<FIFO>，导致 mov.b64 带 vector 源会 push 不 pop，
-    // 留下 stale entry，下一条 V4 LD/ST pop 到错误 entry。改成 per-ThreadContext
-    // 栈式存储（push 必配 pop）后，vector LD/ST 始终读自己刚 push 的 buffer。
+    // BUGFIX: 之前用 std::queue<FIFO>，导致 mov.b64 带 vector 源会 push 不
+    // pop， 留下 stale entry，下一条 V4 LD/ST pop 到错误 entry。改成
+    // per-ThreadContext 栈式存储（push 必配 pop）后，vector LD/ST 始终读自己刚
+    // push 的 buffer。
     std::vector<std::vector<void *>> vecOp_phy_addrs;
 
     // warp和lane标识
@@ -72,12 +78,13 @@ public:
     // 函数调用栈
     std::stack<int> call_stack;
 
-    void init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim, Dim3 BlockDim,
-              std::vector<StatementContext> &statements,
-              std::map<std::string, std::unique_ptr<Symtable>> *name2Sym,
-              std::map<std::string, int> &label2pc,
-              std::map<std::string, std::unique_ptr<Symtable>> *name2Share = nullptr,
-              CTAContext *cta_ctx = nullptr);
+    void
+    init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim, Dim3 BlockDim,
+         std::vector<StatementContext> &statements,
+         std::map<std::string, std::unique_ptr<Symtable>> *name2Sym,
+         std::map<std::string, int> &label2pc,
+         std::map<std::string, std::unique_ptr<Symtable>> *name2Share = nullptr,
+         CTAContext *cta_ctx = nullptr);
 
     // EXE_STATE exe_once();
     void clear_temporaries();
@@ -130,9 +137,9 @@ public:
         operand_collected; // collect operand addr  from BASE_INSTR operands
 
     // Track which operands are immediate (vs register/variable)
-    // For immediate operands, operand_collected[i] is a pointer to the immediate value
-    // For register/variable operands, operand_collected[i] is the actual value/address
-    // Usage example:
+    // For immediate operands, operand_collected[i] is a pointer to the
+    // immediate value For register/variable operands, operand_collected[i] is
+    // the actual value/address Usage example:
     //   if (operand_is_immediate_[i]) {
     //       // Direct access: operand_collected[i] points to immediate value
     //       int val = *static_cast<int*>(operand_collected[i]);
@@ -140,7 +147,8 @@ public:
     //       // Register/variable access: operand_collected[i] is the address
     //       int val = *static_cast<int*>(operand_collected[i]);
     //   }
-    // Note: Using char instead of bool to avoid std::vector<bool> bit compression
+    // Note: Using char instead of bool to avoid std::vector<bool> bit
+    // compression
     std::vector<char> operand_is_immediate_;
 
     // 新增：打印指令状态
@@ -239,7 +247,7 @@ public:
         return statements ? static_cast<int>(statements->size()) : 0;
     }
 
-    StatementContext* get_statement_at(int p) {
+    StatementContext *get_statement_at(int p) {
         if (statements != nullptr && p >= 0 &&
             p < static_cast<int>(statements->size())) {
             return &(*statements)[p];
@@ -272,7 +280,9 @@ public:
     int get_warp_id() const { return warp_id_; }
 
     // Set during collect_operands, read by SetpHandler for predicate writes
-    const std::string& get_dst_operand_reg_name() const { return dst_operand_reg_name_; }
+    const std::string &get_dst_operand_reg_name() const {
+        return dst_operand_reg_name_;
+    }
 
     // 设置warp上下文
     void set_warp_context(WarpContext *warp_ctx) { warp_context_ = warp_ctx; }
@@ -296,6 +306,14 @@ private:
     CTAContext *cta_context_ = nullptr;
 
     std::string dst_operand_reg_name_;
+
+    // T2-3 A3a invariant: POD members are POD-only (no methods) and the
+    // legacy fields above remain the canonical source until A3c removes
+    // them. A3b populates these PODs from init() / reset() / accessors.
+    ptxsim::contexts::ExecStatePod exec_state_;
+    ptxsim::contexts::RegisterPredicatePod reg_pred_;
+    ptxsim::contexts::MemoryPod memory_;
+    ptxsim::contexts::ProgramRefPod program_ref_;
 };
 
 #endif // THREAD_CONTEXT_H
