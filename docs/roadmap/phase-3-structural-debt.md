@@ -1,8 +1,9 @@
 # Phase 3 Structural Debt — T2-4 Scope Document
 
 > **Purpose**: Detail T2-4 Steps 2-7 scope for Phase 4 planning.
-> **Status**: Step 1 complete; Steps 2-7 deferred to Phase 4 (multi-day ANTLR regeneration).
+> **Status (2026-06-24)**: ✅ **ALL STEPS COMPLETE**. T2-4 Steps 1-7 fully executed in this session.
 > **Ref**: T2-4 Step 1 commit `2e339ea` ("refactor(kernel-context): remove unused usesAsyncStore/usesRedAsync")
+> **Ref**: T2-4 Steps 2-7 commit `c9096c8` ("refactor(ptx): remove PTX 8.7+ placeholder instructions (T2-4 Steps 2-7)")
 
 ## Context
 
@@ -12,7 +13,7 @@ PTX 8.7+ instructions were added as **placeholders** during initial grammar boot
 
 Remove `KernelContext::usesAsyncStore()` and `KernelContext::usesRedAsync()` — zero callers, removed from `include/ptx_ir/kernel_context.h`.
 
-## Steps 2-7 ⏸ Phase 4 (multi-day)
+## Steps 2-7 ✅ DONE (commit `c9096c8`, 2026-06-24)
 
 ### Step 2: Remove X-macro entries from `include/ptx_ir/ptx_op.def`
 
