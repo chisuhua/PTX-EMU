@@ -27,6 +27,7 @@ namespace {
 using namespace ptxir::factory;
 using ptxsim::BarrierModule;
 using ptxsim::CTABarrier;
+using ptxsim::WarpBarrier;
 
 static void init_factory_once() {
     static bool done = false;
@@ -101,29 +102,24 @@ TEST_CASE("BarrierModule multi-warp CTA barrier sharing", "[barrier_module][inte
     REQUIRE(warp0->get_warp_id() == 0);
 }
 
-TEST_CASE("BarrierModule arrive semantics via Wbar", "[barrier_module][integrated]") {
+TEST_CASE("BarrierModule arrive semantics", "[barrier_module][integrated]") {
     init_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    auto statements = build_simple_barrier_statements();
+    BarrierModule mod;
+    WarpBarrier* wbar =
+        mod.init_warp_barrier(0, 0x0000FFFF, 1, 0);
 
-    SMContext sm(4, 128, 4096, 0);
-    auto register_bank = std::make_shared<RegisterBankManager>(4, 32);
-    WarpContext* warp = create_warp_with_threads(sm, create_block(statements), register_bank);
-
-    ptxsim::Wbar& wbar = warp->get_wbar(0);
-
-    wbar.init(0x0000FFFF, 1);
-    REQUIRE(wbar.count_participants() == 16);
-    REQUIRE(!wbar.is_complete());
+    REQUIRE(wbar->get_expected_count() == 16);
+    REQUIRE(!wbar->is_complete());
 
     for (int i = 0; i < 15; i++) {
-        wbar.arrive(i);
-        REQUIRE(!wbar.is_complete());
+        mod.arrive_at_warp_barrier(0, i);
+        REQUIRE(!wbar->is_complete());
     }
 
-    wbar.arrive(15);
-    REQUIRE(wbar.is_complete());
+    mod.arrive_at_warp_barrier(0, 15);
+    REQUIRE(wbar->is_complete());
 }
 
 // ============================================================================
