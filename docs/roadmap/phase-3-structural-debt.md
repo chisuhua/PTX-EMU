@@ -67,12 +67,21 @@ cmake --build build --target GenerateParser
 | `src/ptxsim/InstructionFactory` | Handlers not registered (no `process_*` funcs exist) | ✅ no dispatch impact |
 | `src/cudart/` | No consumer of these instruction types | ✅ no runtime impact |
 | `include/ptx_ir/statement_context.h:223,231` | `AsyncStoreInstr`, `AsyncReduceInstr` struct definitions | ⚠️ ORPHAN — become unused if X-macro entries removed |
-| `src/ptxir/ptxir_writer.cpp:371,385` | `if constexpr (std::is_same_v<T, AsyncStoreInstr/AsyncReduceInstr>)` template specializations | ⚠️ ORPHAN — become dead code if X-macro entries removed |
+| `include/ptx_ir/statement_context.h` (Tcgen/Tensormap structs) | Defined inline via X-macro expansion in struct_kind dispatch | ⚠️ ORPHAN — no consumers found in ptxir_writer.cpp |
+| `src/ptx_ir/ptxir_writer.cpp:371,385` | `if constexpr (std::is_same_v<T, AsyncStoreInstr/AsyncReduceInstr>)` template specializations | ⚠️ ORPHAN — become dead code if X-macro entries removed |
+| **`src/ptx_parser/ptx_visitor_async.cpp` (34 lines)** | Visitor implementation for st.async/red.async | ⚠️ **NEW DISCOVERY** — DELETE entire file when grammar rules removed |
+| **`src/ptx_parser/ptx_visitor_tensor.cpp` (34 lines)** | Visitor implementation for tcgen.*/tensormap | ⚠️ **NEW DISCOVERY** — DELETE entire file when grammar rules removed |
 
-**Orphan cleanup scope (additional Step 8)**:
-- Remove `struct AsyncStoreInstr { ... }` and `struct AsyncReduceInstr { ... }` from `include/ptx_ir/statement_context.h` (lines 223-237 approx)
-- Remove template specializations in `src/ptxir/ptxir_writer.cpp` lines 371 and 385
-- Note: TCGEN and TENSORMAP structs may exist similarly — need full audit before Step 2
+**Updated atomic removal scope (8 files, was 6)**:
+1. `include/ptx_ir/ptx_op.def` — remove 10 X-macro entries (§13-15)
+2. `include/ptx_ir/statement_factory.h` — remove 2+ factory functions (makeAsyncStoreInstr, makeAsyncReduceInstr, +tcgen makeTcgenInstr if applicable)
+3. `include/ptx_ir/statement_context.h` — remove struct definitions for AsyncStoreInstr, AsyncReduceInstr (lines 223, 231 + ~10 lines each) + Tcgen*/Tensormap structs
+4. `src/ptx_ir/ptxir_writer.cpp` — remove `if constexpr` specializations at lines 371, 385
+5. `src/grammar/ptxInstructions.g4` — remove 11 rule definitions + qualifiers + tcgenInst alternatives (lines 461-499)
+6. `src/grammar/ptxLexer.g4` — remove 10 token definitions (lines 387-396)
+7. **`src/ptx_parser/ptx_visitor_async.cpp` — DELETE entire file**
+8. **`src/ptx_parser/ptx_visitor_tensor.cpp` — DELETE entire file**
+9. Regenerate ANTLR parser (cmake --build build --target GenerateParser)
 
 **⚠️ S_ST_BULK is OUT OF SCOPE**:
 - `X(S_ST_BULK, stBulk, StBulk, 3, GENERIC_INSTR, tcgen)` at line 188 of ptx_op.def is NOT a PTX 8.7+ placeholder
