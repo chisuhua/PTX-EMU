@@ -155,3 +155,53 @@ T2-4 Step 1 commit (`2e339ea`) message references this roadmap file but it was n
 - PTX op definitions: `include/ptx_ir/ptx_op.def` §13-15 (lines 164-180)
 - Grammar: `src/grammar/ptxInstructions.g4` lines 461-499
 - Lexer: `src/grammar/ptxLexer.g4` lines 387-388
+
+## Pre-Phase 4 Prerequisite: Missing Infrastructure
+
+**⚠️ `docs/ptx/` directory does NOT exist (verified 2026-06-24)**
+
+The `ptx-grammar-modification` skill (`.opencode/skills/ptx-grammar-modification/SKILL.md`) mandates:
+
+> "□ 2. 阅读 docs/ptx/ 对应章节"
+
+Before any grammar modification, the corresponding PTX documentation section MUST be read. For T2-4 Steps 2-7, this would mean:
+- `docs/ptx/st-async.md` (PTX 8.7+ st.async instruction spec)
+- `docs/ptx/red-async.md` (PTX 8.7+ red.async instruction spec)
+- `docs/ptx/tcgen05.md` (PTX 9.0+ tcgen05.mma family spec)
+- `docs/ptx/tensormap.md` (PTX 8.7+ tensormap.replace instruction spec)
+
+**None of these docs exist** — `docs/ptx/` is completely missing. This means the proper ptx-grammar-modification TDD workflow **cannot be followed** without first creating this infrastructure.
+
+**Implication for Phase 4 pickup**:
+1. Phase 4 must begin by creating `docs/ptx/` directory + extracting relevant PTX 8.7+ spec sections (from NVIDIA PTX ISA reference at https://docs.nvidia.com/cuda/parallel-thread-execution/)
+2. THEN follow TDD workflow per ptx-grammar-modification skill: add negative test case → modify grammar → regenerate → verify
+3. THEN proceed with Steps 2-7 atomic removal
+
+**Estimated additional Phase 4 effort for docs/ptx/**:
+- Create directory structure: 30 min
+- Extract PTX 8.7+ st.async/red.async sections: 2-3 hours
+- Extract PTX 9.0+ tcgen05.* sections: 4-6 hours (most complex)
+- Extract PTX 8.7+ tensormap.replace section: 1-2 hours
+- Total: ~1 working day BEFORE T2-4 Steps 2-7 can begin
+
+This finding further validates the original "multi-day" assessment and confirms T2-4 Steps 2-7 should be deferred to a dedicated Phase 4 session with proper preparation.
+
+## Summary: Why This Document Has 4 Commits of Evidence
+
+This roadmap file has been incrementally expanded as skeptical re-examination revealed new facts:
+
+| Commit | Finding | Implication |
+|--------|---------|-------------|
+| `b2a0a75` | Initial scope breakdown (10 X-macros, 4 files) | Baseline scope |
+| `21a3187` | Experimental build break (Step 2 alone) | Atomicity proven |
+| `c811b6b` | Orphan types in statement_context.h:223,231 + ptxir_writer.cpp:371,385 | Scope +1 step (Step 8 orphan cleanup) |
+| (pending) | `docs/ptx/` directory missing | Phase 4 prerequisite ~1 day extra effort |
+
+**Total Phase 4 effort estimate** (revised):
+- docs/ptx/ infrastructure: 1 day
+- Steps 2-7 atomic removal: 1-2 days (master plan)
+- Step 8 orphan cleanup: 0.5 day
+- Verification + iterative debugging: 1 day
+- **Total: 3.5-4.5 working days**
+
+This revised estimate (4 days vs original 1-2 days) strengthens the case for dedicated Phase 4 session rather than attempting within Phase 3 closeout.
