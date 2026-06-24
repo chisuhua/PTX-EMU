@@ -1,26 +1,28 @@
 #include "ptxsim/warp_context.h"
-#include "ptxsim/cta_context.h"
 #include "ptxsim/barrier/barrier_module.h"
-#include "ptxsim/sm_context.h"
-#include "ptxsim/ptx_config.h"
+#include "ptxsim/cta_context.h"
 #include "ptxsim/execution_trace.h"
+#include "ptxsim/ptx_config.h"
+#include "ptxsim/sm_context.h"
 #include "ptxsim/warp_trace_formatter.h"
 #include <algorithm>
 #include <cassert>
 #include <cstring>
 
-void WarpContext::handle_branch(const std::string& predicate,
-                                 bool predicate_negated,
-                                 int target_pc,
-                                 int reconvergence_pc,
-                                 int current_inst_pc) {
-    assert(current_inst_pc >= 0 && "handle_branch: current_inst_pc must be non-negative, got default -1");
+void WarpContext::handle_branch(const std::string &predicate,
+                                bool predicate_negated, int target_pc,
+                                int reconvergence_pc, int current_inst_pc) {
+    assert(
+        current_inst_pc >= 0 &&
+        "handle_branch: current_inst_pc must be non-negative, got default -1");
     uint32_t taken_mask = 0;
     uint32_t not_taken_mask = 0;
-    
+
     for (int i = 0; i < 32; i++) {
-        if (!warp_state.threads[i].is_active) continue;
-        if (warp_state.threads[i].pc != current_inst_pc) continue;
+        if (!warp_state.threads[i].is_active)
+            continue;
+        if (warp_state.threads[i].pc != current_inst_pc)
+            continue;
 
         bool should_branch = true;
 
@@ -31,9 +33,10 @@ void WarpContext::handle_branch(const std::string& predicate,
             }
 
             if (register_bank_manager_) {
-                void *reg_addr = register_bank_manager_->get_register(pred_name, warp_id, i);
+                void *reg_addr =
+                    register_bank_manager_->get_register(pred_name, warp_id, i);
                 if (reg_addr) {
-                    uint8_t pred_value = *static_cast<uint8_t*>(reg_addr);
+                    uint8_t pred_value = *static_cast<uint8_t *>(reg_addr);
                     bool pred_bool = (pred_value != 0);
                     should_branch = predicate_negated ? !pred_bool : pred_bool;
                 }
@@ -61,10 +64,13 @@ void WarpContext::handle_branch(const std::string& predicate,
         simt_stack.push(entry);
 
         // SIMT栈push跟踪
-        if (ptxsim::DebugConfig::get().is_trace_simt_stack_enabled() && sm_context_) {
+        if (ptxsim::DebugConfig::get().is_trace_simt_stack_enabled() &&
+            sm_context_) {
             PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_simt_push(
-                sm_context_->get_cycle_count(), sm_context_->get_sm_id(), warp_id,
-                entry, taken_mask, simt_stack).c_str());
+                                    sm_context_->get_cycle_count(),
+                                    sm_context_->get_sm_id(), warp_id, entry,
+                                    taken_mask, simt_stack)
+                                    .c_str());
         }
 
         for (int i = 0; i < 32; i++) {
@@ -92,23 +98,25 @@ void WarpContext::handle_branch(const std::string& predicate,
 }
 
 void WarpContext::advance_thread_pc(int lane_id, int new_pc) {
-    if (lane_id < 0 || lane_id >= WARP_SIZE) return;
+    if (lane_id < 0 || lane_id >= WARP_SIZE)
+        return;
     warp_state.threads[lane_id].pc = new_pc;
     warp_state.threads[lane_id].next_pc = new_pc;
 }
 
 bool WarpContext::check_reconvergence() {
-    if (simt_stack.empty()) return false;
+    if (simt_stack.empty())
+        return false;
 
     size_t depth_before = simt_stack.depth();
-    
+
     // 检查是否收敛，如果收敛则记录被弹出的条目用于跟踪
     ptxsim::SIMTStackEntry popped_entry;
     bool will_pop = simt_stack.top().is_converged(warp_state.threads);
     if (will_pop) {
         popped_entry = simt_stack.top();
     }
-    
+
     simt_stack.check_reconvergence(warp_state.threads);
 
     if (simt_stack.depth() < depth_before) {
@@ -127,30 +135,37 @@ bool WarpContext::check_reconvergence() {
             warp_state.exec_mask = simt_stack.top().active_mask;
         }
         // SIMT栈pop跟踪
-        if (ptxsim::DebugConfig::get().is_trace_simt_stack_enabled() && sm_context_) {
-            PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_simt_pop(
-                sm_context_->get_cycle_count(), sm_context_->get_sm_id(), warp_id,
-                popped_entry).c_str());
+        if (ptxsim::DebugConfig::get().is_trace_simt_stack_enabled() &&
+            sm_context_) {
+            PTX_DEBUG_EMU("%s",
+                          ptxsim::WarpTraceFormatter::format_simt_pop(
+                              sm_context_->get_cycle_count(),
+                              sm_context_->get_sm_id(), warp_id, popped_entry)
+                              .c_str());
         }
         return true;
     }
     return false;
 }
 
-bool WarpContext::check_and_block_at_reconvergence_point(int target_pc,
-                                                         std::vector<int>& blocked_lanes) {
+bool WarpContext::check_and_block_at_reconvergence_point(
+    int target_pc, std::vector<int> &blocked_lanes) {
     blocked_lanes.clear();
-    if (simt_stack.empty()) return false;
+    if (simt_stack.empty())
+        return false;
 
-    const ptxsim::SIMTStackEntry& top = simt_stack.top();
+    const ptxsim::SIMTStackEntry &top = simt_stack.top();
     int reconv_pc = top.reconvergence_pc;
-    if (target_pc != reconv_pc) return false;
+    if (target_pc != reconv_pc)
+        return false;
 
     int lanes_not_at_reconv = 0;
     int lanes_at_reconv = 0;
     for (int i = 0; i < WARP_SIZE; i++) {
-        if (!(top.active_mask & (1u << i))) continue;
-        if (warp_state.threads[i].is_exited) continue;
+        if (!(top.active_mask & (1u << i)))
+            continue;
+        if (warp_state.threads[i].is_exited)
+            continue;
         if ((int)warp_state.threads[i].pc == reconv_pc) {
             lanes_at_reconv++;
         } else {
@@ -158,7 +173,8 @@ bool WarpContext::check_and_block_at_reconvergence_point(int target_pc,
         }
     }
 
-    if (lanes_not_at_reconv == 0) return false;
+    if (lanes_not_at_reconv == 0)
+        return false;
 
     for (int i = 0; i < WARP_SIZE; i++) {
         if (!warp_state.threads[i].is_exited &&
@@ -203,31 +219,43 @@ void WarpContext::add_thread(std::unique_ptr<ThreadContext> thread,
                 threads[lane_id]->ThreadIdx.y * threads[lane_id]->BlockDim.x +
                 threads[lane_id]->ThreadIdx.z * threads[lane_id]->BlockDim.x *
                     threads[lane_id]->BlockDim.y;
-            
+
             warp_state.threads[lane_id].is_active = true;
             active_mask[lane_id] = true;
             active_count++;
+
+            // T2-3 A4b: Mirror LaneMaskPod fields only. backend_links_
+            // .threads is left empty until A4c consolidates thread
+            // ownership from WarpContext::threads to BackendLinksPod.
+            lane_mask_.warp_thread_ids[lane_id] = warp_thread_ids[lane_id];
+            lane_mask_.active_mask[lane_id] = active_mask[lane_id];
+            lane_mask_.active_count = active_count;
         } else {
             warp_thread_ids[lane_id] = -1;
+            lane_mask_.warp_thread_ids[lane_id] = -1;
         }
     }
 }
 
-void WarpContext::execute_warp_instruction(StatementContext &stmt, int target_pc) {
+void WarpContext::execute_warp_instruction(StatementContext &stmt,
+                                           int target_pc) {
     std::vector<int> blocked_lanes;
     if (check_and_block_at_reconvergence_point(target_pc, blocked_lanes)) {
         // 在 update_active_mask 之前获取 lanes，否则被阻塞的线程会被过滤掉
         auto current_lanes_before_block = get_lanes_by_pc();
         update_active_mask();
         // 汇聚点调试输出：有线程到达汇聚点但仍有分歧路径未到达
-        if (ptxsim::DebugConfig::get().is_trace_convergence_enabled() && sm_context_) {
+        if (ptxsim::DebugConfig::get().is_trace_convergence_enabled() &&
+            sm_context_) {
             auto current_lanes = current_lanes_before_block;
             if (current_lanes.size() > 1) {
                 // 找出下一条非阻塞的调度路径（跳过汇聚点自身的 PC 组）
                 int next_pc = -1;
                 uint32_t next_mask = 0;
-                for (const auto& [candidate_pc, candidate_lanes] : current_lanes) {
-                    if (candidate_pc == target_pc) continue; // 跳过汇聚点（已阻塞）
+                for (const auto &[candidate_pc, candidate_lanes] :
+                     current_lanes) {
+                    if (candidate_pc == target_pc)
+                        continue; // 跳过汇聚点（已阻塞）
                     bool has_non_blocked = false;
                     for (int lane : candidate_lanes) {
                         if (!warp_state.threads[lane].is_blocked) {
@@ -246,14 +274,17 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt, int target_pc
                 }
                 // 构建剩余分歧路径（排除汇聚点 PC 组）
                 std::map<int, std::vector<int>> remaining_lanes;
-                for (const auto& [pc_val, lane_list] : current_lanes) {
+                for (const auto &[pc_val, lane_list] : current_lanes) {
                     if (pc_val != target_pc) {
                         remaining_lanes[pc_val] = lane_list;
                     }
                 }
                 if (!remaining_lanes.empty() && next_pc >= 0) {
-                    PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_convergence_remaining(
-                        target_pc, remaining_lanes, next_pc, next_mask).c_str());
+                    PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::
+                                            format_convergence_remaining(
+                                                target_pc, remaining_lanes,
+                                                next_pc, next_mask)
+                                                .c_str());
                 }
             }
         }
@@ -273,26 +304,29 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt, int target_pc
         if (!lane_active && !blocked_at_barrier) {
             continue;
         }
-        
+
         // Only execute for lanes at the target PC.
         // Must use warp_state.pc to match get_lanes_by_pc() source.
         if (warp_state.threads[i].pc != static_cast<uint32_t>(target_pc)) {
             continue;
         }
-        
+
         thread->sync_from_warp_state();
 
         if (thread->get_state() == BAR_SYNC) {
             if (cta_context_ != nullptr) {
                 bool is_warp_barrier = (warp_state.current_wbar_id >= 0);
-                // Use BarrierModule API instead of warp_state.wbars[] (deprecated).
-                bool warp_barrier_complete = is_warp_barrier &&
+                // Use BarrierModule API instead of warp_state.wbars[]
+                // (deprecated).
+                bool warp_barrier_complete =
+                    is_warp_barrier &&
                     cta_context_->get_barrier_module().is_warp_barrier_complete(
                         warp_state.current_wbar_id);
 
                 if (!warp_barrier_complete) {
-                    PTX_WARN_EMU("Fallback CTA sync: lane %d, wbar %d incomplete",
-                                  thread->lane_id_, warp_state.current_wbar_id);
+                    PTX_WARN_EMU(
+                        "Fallback CTA sync: lane %d, wbar %d incomplete",
+                        thread->lane_id_, warp_state.current_wbar_id);
                     cta_context_->get_barrier_module().arrive_at_cta_barrier(
                         thread->bar_id, thread);
                 }
@@ -300,16 +334,16 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt, int target_pc
             thread->sync_to_warp_state();
             continue;
         }
-        
+
         thread->execute_thread_instruction();
         thread->sync_to_warp_state();
 
         if (ptxsim::ExecutionTracer::is_enabled()) {
-          ptxsim::ExecutionTracer::record(
-              i, warp_state.threads[i].pc, stmt.instructionText);
+            ptxsim::ExecutionTracer::record(i, warp_state.threads[i].pc,
+                                            stmt.instructionText);
         }
     }
-    
+
     update_active_mask();
 }
 
@@ -317,13 +351,15 @@ void WarpContext::update_active_mask() {
     active_count = 0;
     for (int i = 0; i < WARP_SIZE; i++) {
         if (i < threads.size() && threads[i] != nullptr) {
-            bool active = warp_state.threads[i].is_active &&
-                          !warp_state.threads[i].is_exited &&
-                          !warp_state.threads[i].is_blocked &&
-                          (warp_state.threads[i].status == ptxsim::ThreadStatus::Active);
+            bool active =
+                warp_state.threads[i].is_active &&
+                !warp_state.threads[i].is_exited &&
+                !warp_state.threads[i].is_blocked &&
+                (warp_state.threads[i].status == ptxsim::ThreadStatus::Active);
             active_mask[i] = active;
             warp_state.threads[i].is_active = active;
-            if (active) active_count++;
+            if (active)
+                active_count++;
         }
     }
 }
@@ -351,7 +387,8 @@ bool WarpContext::is_finished() const {
 
 bool WarpContext::is_warp_ready_to_fetch() const {
     for (int i = 0; i < WARP_SIZE; i++) {
-        if (!warp_state.threads[i].is_active) continue;
+        if (!warp_state.threads[i].is_active)
+            continue;
         if (warp_state.threads[i].pc != warp_state.threads[i].next_pc) {
             return false;
         }
@@ -421,7 +458,7 @@ std::map<int, std::vector<int>> WarpContext::get_lanes_by_pc() const {
 
     for (int lane = 0; lane < WARP_SIZE; lane++) {
         if (lane < (int)threads.size() && threads[lane] != nullptr &&
-            warp_state.threads[lane].is_active && 
+            warp_state.threads[lane].is_active &&
             !warp_state.threads[lane].is_exited) {
             int pc = warp_state.threads[lane].pc;
             pc_to_lanes[pc].push_back(lane);
@@ -435,7 +472,7 @@ std::vector<int> WarpContext::get_unique_pcs() const {
     std::vector<int> pcs;
     auto lanes_by_pc = get_lanes_by_pc();
 
-    for (const auto& [pc, lanes] : lanes_by_pc) {
+    for (const auto &[pc, lanes] : lanes_by_pc) {
         pcs.push_back(pc);
     }
 
@@ -452,10 +489,10 @@ void WarpContext::force_reconvergence_at_barrier(int barrier_pc) {
     // 注释掉的代码（advance_thread_pc）曾导致 E2E 测试中共享内存数据丢失。
 }
 
-void WarpContext::decrement_blocked_cycles(ptxsim::WarpState& ws) {
+void WarpContext::decrement_blocked_cycles(ptxsim::WarpState &ws) {
     // (B4.1 Bug #2 + #3: must run every tick, even for warps not yet selected,
     // so that newly-unblocked lanes become schedulable in the SAME tick).
-    for (auto& thread : ws.threads) {
+    for (auto &thread : ws.threads) {
         if (thread.is_blocked && thread.blocked_cycles_remaining > 0) {
             thread.blocked_cycles_remaining--;
             if (thread.blocked_cycles_remaining == 0) {
@@ -470,12 +507,13 @@ void WarpContext::decrement_blocked_cycles(ptxsim::WarpState& ws) {
 }
 
 // Legacy Wbar mirror populated from BarrierModule for test compatibility.
-ptxsim::Wbar& WarpContext::get_wbar(int wbar_id) {
+ptxsim::Wbar &WarpContext::get_wbar(int wbar_id) {
     int idx = (wbar_id >= 0 && wbar_id < 4) ? wbar_id : 0;
     if (cta_context_ != nullptr) {
-        auto* wb = cta_context_->get_barrier_module().get_warp_barrier(idx);
+        auto *wb = cta_context_->get_barrier_module().get_warp_barrier(idx);
         if (wb != nullptr && wb->is_initialized()) {
-            warp_state.wbars[idx].participation_mask = wb->get_participation_mask();
+            warp_state.wbars[idx].participation_mask =
+                wb->get_participation_mask();
             warp_state.wbars[idx].arrived_mask = wb->get_arrived_mask();
             warp_state.wbars[idx].reconvergence_pc = wb->get_reconvergence_pc();
             warp_state.wbars[idx].barrier_pc = wb->get_barrier_pc();
