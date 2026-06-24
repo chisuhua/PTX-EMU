@@ -28,13 +28,13 @@
 | T0-3 | baseline 存档 | 6274b1e | ✅ |
 | T1-1 | Symtable → unique_ptr | c3d8fd3 | ✅ |
 | T1-2 | cudaStream/Event handle 验证 | eeab07d | ✅ |
-| T1-3 | BarWarpSyncHandler → BarrierModule | bcadf32, eb2195e | ✅（openspec integrate-barrier-module-cta-warp 仍活跃收尾）|
+| T1-3 | BarWarpSyncHandler → BarrierModule | bcadf32, eb2195e | ✅ (openspec integrate-barrier-module-cta-warp 已归档 e0735ff) |
 | T1-4 | membar/fence handler 真实现 | 95ffc23 | ✅ |
 | T1-5 | 根 README 重写 | 04a62c4 | ✅ |
 | T2-2 | ampere_a100.json 默认 | 41030d8 | ✅ |
 | T2-1 | active_mask 三源统一 + DUAL STATE 改写 | `8b1d23b` `5e0e315` | ✅ |
-| T2-3 A1-A4+B1-B2+C1 | god class 拆 7 POD (A5 blocked on integrate-barrier-module-cta-warp) | `7054593` `5617665` `7952120` `67ad828` `8b9b025` `2a3b48a` `33e1f99` `8248303` `ccbbe2a` `2d24403` | ✅ (A5 ⏸) |
-| T2-4 Step 1 | usesAsyncStore/usesRedAsync 清理 | 2e339ea | ✅（Steps 2-7 待 multi-day 推进，本次不启动）|
+| T2-3 A1-A4+B1-B2+C1 | god class 拆 7 POD (A5 Phase 5 deferred per AGENTS.md) | `7054593` `5617665` `7952120` `67ad828` `8b9b025` `2a3b48a` `33e1f99` `8248303` `ccbbe2a` `2d24403` `421eec9` (A5 PoC) | ✅ (A5 ⏸ Phase 5) |
+| T2-4 | PTX 8.7+ 占位清理 (完整 7 步) | `2e339ea` `c9096c8` `daf1a7d` (6 docs commits: `b2a0a75` `21a3187` `c811b6b` `a1cbd4e` `9d32e89` `c87a6c6`) | ✅ (全部完成，commits atomic) |
 | T2-5 | atom.global.exch.u32 tests | f4570c2 | ✅ |
 | T2-6 | CVT handler 策略模式重构 (5 策略 + ADR-0015) | `86e0786`..`40b331b` | ✅ |
 | T2-7 | drop BarWarpSyncHandler friend | 7e667cd | ✅ |
@@ -45,7 +45,7 @@
 
 > **DO NOT 改 `set_active_mask(0u)` 为 OR-merge**：RetHandler 依赖覆写语义（`call.cpp:29`），用 `set_active_mask(0u)` 清空所有 lane。T2-1 必须保留 `set_active_mask` 的"双模式"接口（覆写 vs OR-merge）— `warp_state.threads[i].is_active` 是覆写的 canonical 源，OR-merge 由 `BarrierModule::release_warp_barrier` 内部承担（`barrier_module.cpp:107-112` 已实现）。
 
-> **DO NOT 删除 `WarpState.wbars[]` + `current_wbar_id` 直到 integrate-barrier-module-cta-warp 合并**：`barrier.cpp:161,215` + `warp_context.cpp:287` 仍使用，3 处必须先迁移。T2-1 仅标记 `[[deprecated]]`，T2-3 才物理删除。
+> **DO NOT 在 Phase 3 删除 `WarpState.wbars[]` + `current_wbar_id`**：AGENTS.md 已将物理删除 A5 标记为 Phase 5 deferred；`barrier.cpp:161,215` + `warp_context.cpp:287` 仍使用，需先迁移 `BarWarpSyncHandler::processOperation` 14+ 处调用。T2-1 仅标记 `[[deprecated]]`，T2-3 保留字段但已提取 `WbarSnapshot` / `BarrierModule` 统一接口。
 
 > **DO NOT 拆 CvtHandler 类**：X-Macro 在 `instruction_factory.cpp:14-17` 实例化 `new CvtHandler()`，多 Handler 会改变注册机制。T2-6 必须用 **Composition over Inheritance** — 策略在 CvtHandler 内部。
 
@@ -109,7 +109,7 @@
 
 **RISK**：🔴 高（涉及 BUG-POSTBARRIER-TWOHALVES / BUG-RETHANG 已知问题）
 
-**前置依赖**：✅ `integrate-barrier-module-cta-warp` 必须合并（OR-merge 在 `barrier_module.cpp` 内置后才能安全统一）
+**前置依赖**：✅ `integrate-barrier-module-cta-warp` 已归档 (e0735ff)；OR-merge 在 `barrier_module.cpp` 内置后已安全统一。
 
 **详细 tasks**：见 `openspec/changes/phase3-t2-1-active-mask-unify/tasks.md`（基于 `docs/superpowers/plans/2026-05-07-active-mask-consistency.md`）
 
@@ -142,7 +142,7 @@
 
 **RISK**：🔴🔴 HIGHEST（影响面最大：所有指令执行路径，调度/屏障/寄存器读写/PC 同步全链路）
 
-**前置依赖**：✅ T1-1（unique_ptr 迁移）/ ✅ T2-1（active_mask 统一）/ ✅ `integrate-barrier-module-cta-warp` 合并（删 wbars[]）
+**前置依赖**：✅ T1-1（unique_ptr 迁移）/ ✅ T2-1（active_mask 统一）/ ✅ `integrate-barrier-module-cta-warp` 已归档 (e0735ff) / ⚠️ A5 物理删除 `wbars[]` 已明确延迟到 Phase 5（AGENTS.md 第 42 行）
 
 **详细 tasks**：见 `openspec/changes/phase3-t2-3-god-class-split/tasks.md`
 
@@ -173,18 +173,18 @@ phase_3_complete:
         - [x] src/ptxsim/core/AGENTS.md §DUAL STATE 改写
 
   god_class_split:
-    - [x] Task 3 (T2-3) — A1-A4 + B1-B2 + C1 完成 2026-06-24 (A5 阻塞于 integrate-barrier-module-cta-warp):
+    - [x] Task 3 (T2-3) — A1-A4 + B1-B2 + C1 完成 2026-06-24 (A5 Phase 5 deferred per AGENTS.md):
         - [x] ThreadContext 拆 4 POD (ExecState/RegisterPredicate/Memory/ProgramRef) — A1+A3 (commits `7054593` `7952120` `67ad828`)
         - [x] WarpContext 拆 3 POD (LaneMask/Identity/BackendLinks) — A1+A4 (commits `7054593` `8b9b025` `2a3b48a`)
         - [x] WarpState 精简 4 字段 (threads[] + exec_mask + deprecated wbars + deprecated current_wbar_id) — A2 (commit `5617665`)
-        - [ ] 删除 deprecated wbars + current_wbar_id + thread_predicates + warp_pc — A5 阻塞于 `integrate-barrier-module-cta-warp` 合并
+        - [-] 删除 deprecated wbars + current_wbar_id + thread_predicates + warp_pc — A5 **Phase 5 deferred** (`src/ptxsim/AGENTS.md:42`；14+ 处 `BarWarpSyncHandler::processOperation` 调用 + 2 个 BUG workaround 需先迁移)
         - [x] 122 个测试文件编译通过 (B1+B2 commits `33e1f99` `8248303`) — 测试基础设施已用 POD 访问器，仅 2 处 `t->state = RUN` 改 `t->set_state(RUN)`
         - [x] ctest 全过（除 7 pre-existing KNOWN_ISSUES）+ sanity.sh 全过
         - [x] ASan 无 LeakSanitizer 报告 (commit `2d24403` — InstructionFactory atexit cleanup)
         - [ ] ASan 无 heap-buffer-overflow 报告（5 pre-existing at `ThreadContext::collect_operands:393`，独立跟踪）
 ```
 
-**Phase 3 完成后可启动 Phase 4 T2-4**（PTX 8.7+ ANTLR 占位清理，multi-day）。
+**Phase 3 已完成 T2-4**（PTX 8.7+ ANTLR 占位清理，commit `c9096c8`，6 个原子文档 commits）。Phase 4 开始时可专注 Phase 5 基础设施清理与半精度扩展。
 
 ---
 
@@ -193,7 +193,7 @@ phase_3_complete:
 | # | 风险 | 概率 | 影响 | 缓解 |
 |---|------|:---:|:---:|------|
 | 1.1 | `set_active_mask` OR-merge 破坏 RetHandler 覆写语义 | 🟡 中 | 🔴 高 | T2-1 锁定 set_active_mask(0u) 语义（专门写测试覆盖 `call.cpp:29`）|
-| 1.2 | wbars[] 删除时机不当触发 BUG-POSTBARRIER-TWOHALVES | 🟡 中 | 🔴 高 | 等 integrate-barrier-module-cta-warp 合并；T2-1 仅 `[[deprecated]]` |
+| 1.2 | wbars[] 删除时机不当触发 BUG-POSTBARRIER-TWOHALVES | 🟡 中 | 🔴 高 | A5 已延迟到 Phase 5；T2-1/T2-3 仅 `[[deprecated]]` + POD 封装，不物理删除 |
 | 1.3 | 拆分后 SIMT stack 行为不匹配 | 🟢 低 | 🔴 高 | 保留 ctest barrier/simt 完整覆盖；T2-3 步骤 5 必跑 |
 | 2.1 | strategy 模式误用继承而非组合 | 🟢 低 | 🟡 中 | 强制 Composition 模式（X-Macro 约束 `instruction_factory.cpp:14-17`）|
 | 2.2 | 94 个新测试因 P1-4.1 全部 SKIP | 🔴 高 | 🟡 中 | T2-6 Step 5 先修 P1-4.1 bug，再补测试 |
@@ -208,7 +208,7 @@ phase_3_complete:
 - [ ] Phase 1+2 完成门禁全部勾选
 - [ ] CI workflow 在最近一次 commit 触发成功
 - [ ] baseline-2026-06-21.log 存档可用
-- [ ] integrate-barrier-module-cta-warp 已合并（Task 2 启动前）
+- [x] integrate-barrier-module-cta-warp 已归档（Task 2 启动前无需再等合并；A5 物理删除推迟到 Phase 5）
 - [ ] P1-4.1 bug 修复（Task 1 Step 5 启动前）
 - [ ] `include/ptxsim/utils/half_utils.h` 边界 case 对比测试通过（Task 1 Step 1 启动前）
 
@@ -217,9 +217,10 @@ phase_3_complete:
 ## 与 Phase 2/4 的衔接
 
 - **承接 Phase 2**：T1-1..T1-5 + T2-2, T2-4 Step 1, T2-5, T2-7 完成
-- **承接 active openspec change**：integrate-barrier-module-cta-warp 合并后启动 T2-1
-- **交付给 Phase 4**：T2-4 Steps 2-7（PTX 8.7+ 占位清理）— multi-day，独立推进
-- **不再回退**：T2-1 的 `update_active_mask()` 统一数据源是不可逆的；T2-3 物理删除 `wbars[]`/`current_wbar_id`/`thread_predicates`/`warp_pc` 是不可逆的
+- **T2-1/T2-3 与 integrate-barrier-module-cta-warp 关系**：该 openspec change 已归档 (e0735ff)；T2-3 A5 物理删除 `wbars[]`/`current_wbar_id` 已明确延迟到 Phase 5，不再阻塞 Phase 3
+- **Phase 3 内新增完成**：T2-4 Steps 2-7 (c9096c8)、T2-3 A1-A4+B1-B2+C1 (7054593..2d24403 + 421eec9 A5 PoC)、T2-6 CVT 策略模式 (86e0786..40b331b + 精度修复)
+- **交付给 Phase 4/5**：Phase 5 基础设施清理（wbars[] 物理删除、ret handler 迁移）+ 半精度边界扩展
+- **不再回退**：T2-1 的 `update_active_mask()` 统一数据源是不可逆的；T2-3 物理删除 `wbars[]`/`current_wbar_id`/`thread_predicates`/`warp_pc` 是不可逆的（已推迟到 Phase 5）
 
 ---
 
