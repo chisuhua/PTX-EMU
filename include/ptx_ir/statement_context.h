@@ -218,39 +218,6 @@ struct PrefetchInstr {
 };
 
 // -----------------------------------------------------------------------------
-// Async Store Instruction (S_ST_ASYNC → ASYNC_STORE)
-// -----------------------------------------------------------------------------
-struct AsyncStoreInstr {
-    std::vector<Qualifier> qualifiers;
-    std::vector<OperandContext> operands; // [addr, value]
-};
-
-// -----------------------------------------------------------------------------
-// Async Reduction Instruction (S_RED_ASYNC → ASYNC_REDUCE)
-// -----------------------------------------------------------------------------
-struct AsyncReduceInstr {
-    std::vector<Qualifier> qualifiers;
-    std::vector<OperandContext> operands; // [addr, value, (optional) old]
-};
-
-// -----------------------------------------------------------------------------
-// Tensor Core Generator Instructions (S_TCGEN_* → TCGEN_INSTR)
-// -----------------------------------------------------------------------------
-struct TcgenInstr {
-    std::string opName; // "alloc", "mma", etc.
-    std::vector<Qualifier> qualifiers;
-    std::vector<OperandContext> operands;
-};
-
-// -----------------------------------------------------------------------------
-// Tensor Map Replace (S_TENSORMAP_REPLACE → TENSORMAP_INSTR)
-// -----------------------------------------------------------------------------
-struct TensormapInstr {
-    std::vector<Qualifier> qualifiers;
-    std::vector<OperandContext> operands; // e.g., [handle, desc_ptr, layout]
-};
-
-// -----------------------------------------------------------------------------
 // ABI Preserve Directive (S_ABI_PRESERVE → ABI_DIRECTIVE)
 // Operand is register number (e.g., 15 → %r15)
 // -----------------------------------------------------------------------------
@@ -293,10 +260,6 @@ using InstrVariant =
                  ReductionInstr,       // REDUCTION_INSTR
                  PrefetchInstr,        // PREFETCH_INSTR
                  CpAsyncInstr,         // CP_ASYNC_INSTR
-                 AsyncStoreInstr,      // ASYNC_STORE
-                 AsyncReduceInstr,     // ASYNC_REDUCE
-                 TcgenInstr,           // TCGEN_INSTR
-                 TensormapInstr,       // TENSORMAP_INSTR
                  AbiDirective          // ABI_DIRECTIVE
                  >;
 class StatementContext {

@@ -368,62 +368,6 @@ void PtxirWriter::write_instruction(const StatementContext& stmt) {
                     write_u32(out_, 0xFFFFFFFF);
                 }
             }
-        } else if constexpr (std::is_same_v<T, AsyncStoreInstr>) {
-            write_u8(out_, static_cast<uint8_t>(instr.qualifiers.size()));
-            for (const auto& q : instr.qualifiers) {
-                write_u16(out_, static_cast<uint16_t>(q));
-            }
-            write_u8(out_, static_cast<uint8_t>(instr.operands.size()));
-            for (const auto& op : instr.operands) {
-                if (op.kind() == OperandKind::REG) {
-                    const auto& reg = std::get<RegOperand>(op.data);
-                    write_u32(out_, get_reg_id(reg.fullName()));
-                } else {
-                    write_u32(out_, 0xFFFFFFFF);
-                }
-            }
-        } else if constexpr (std::is_same_v<T, AsyncReduceInstr>) {
-            write_u8(out_, static_cast<uint8_t>(instr.qualifiers.size()));
-            for (const auto& q : instr.qualifiers) {
-                write_u16(out_, static_cast<uint16_t>(q));
-            }
-            write_u8(out_, static_cast<uint8_t>(instr.operands.size()));
-            for (const auto& op : instr.operands) {
-                if (op.kind() == OperandKind::REG) {
-                    const auto& reg = std::get<RegOperand>(op.data);
-                    write_u32(out_, get_reg_id(reg.fullName()));
-                } else {
-                    write_u32(out_, 0xFFFFFFFF);
-                }
-            }
-        } else if constexpr (std::is_same_v<T, TcgenInstr>) {
-            write_u8(out_, static_cast<uint8_t>(instr.qualifiers.size()));
-            for (const auto& q : instr.qualifiers) {
-                write_u16(out_, static_cast<uint16_t>(q));
-            }
-            write_u8(out_, static_cast<uint8_t>(instr.operands.size()));
-            for (const auto& op : instr.operands) {
-                if (op.kind() == OperandKind::REG) {
-                    const auto& reg = std::get<RegOperand>(op.data);
-                    write_u32(out_, get_reg_id(reg.fullName()));
-                } else {
-                    write_u32(out_, 0xFFFFFFFF);
-                }
-            }
-        } else if constexpr (std::is_same_v<T, TensormapInstr>) {
-            write_u8(out_, static_cast<uint8_t>(instr.qualifiers.size()));
-            for (const auto& q : instr.qualifiers) {
-                write_u16(out_, static_cast<uint16_t>(q));
-            }
-            write_u8(out_, static_cast<uint8_t>(instr.operands.size()));
-            for (const auto& op : instr.operands) {
-                if (op.kind() == OperandKind::REG) {
-                    const auto& reg = std::get<RegOperand>(op.data);
-                    write_u32(out_, get_reg_id(reg.fullName()));
-                } else {
-                    write_u32(out_, 0xFFFFFFFF);
-                }
-            }
         } else if constexpr (std::is_same_v<T, AbiDirective>) {
         }
     });

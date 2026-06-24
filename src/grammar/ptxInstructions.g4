@@ -458,42 +458,12 @@ videoSimdInst
 vsetOp : EQ | NE | LT | LE | GT | GE | LTU | LEU | GTU | GEU ;
 
 // New instruction rules
-stAsyncInst: ST_ASYNC stAsyncQualifiers typeSpecifier vectorSpec? addressExpr COMMA operand SEMI;
-redAsyncInst: RED_ASYNC redAsyncQualifiers redOp typeSpecifier vectorSpec? operand COMMA addressExpr COMMA operand SEMI;
-tcgenAllocInst: TCGEN_ALLOC tcgenSpace typeSpecifier vectorSpec? operand COMMA operand SEMI;
-tcgenDeallocInst: TCGEN_DEALLOC tcgenSpace typeSpecifier vectorSpec? operand SEMI;
-tcgenRelinquishInst: TCGEN_RELINQUISH tcgenSpace typeSpecifier vectorSpec? operand SEMI;
-tcgenCpInst: TCGEN_CP tcgenSpace typeSpecifier vectorSpec? operand COMMA operand SEMI;
-tcgenShiftInst: TCGEN_SHIFT tcgenSpace typeSpecifier vectorSpec? operand COMMA operand SEMI;
-tcgenMmaInst: TCGEN_MMA tcgenSpace typeSpecifier vectorSpec? operand (COMMA operand)* SEMI;
-tcgenCommitInst: TCGEN_COMMIT tcgenSpace typeSpecifier vectorSpec? operand SEMI;
-tensormapReplaceInst: TENSORMAP_REPLACE tensormapSpace typeSpecifier vectorSpec? operand COMMA operand SEMI;
 stBulkInst: ST_BULK stBulkQualifiers typeSpecifier vectorSpec? addressExpr COMMA operand SEMI;
 
 tcgenInst
-    : stAsyncInst
-    | redAsyncInst
-    | tcgenAllocInst
-    | tcgenDeallocInst
-    | tcgenRelinquishInst
-    | tcgenCpInst
-    | tcgenShiftInst
-    | tcgenMmaInst
-    | tcgenCommitInst
-    | tensormapReplaceInst
-    | stBulkInst
+    : stBulkInst
     ;
 
-stAsyncQualifiers
-    : spaceQualifier? cacheOperator* memoryOrderQualifier? scopeQualifier?
-    ;
-
-redAsyncQualifiers
-    : spaceQualifier? cacheOperator* memoryOrderQualifier? scopeQualifier?
-    ;
-
-tcgenSpace : GLOBAL | SHARED ;
-tensormapSpace : GLOBAL ;
 stBulkQualifiers : spaceQualifier? cacheOperator* ;
 
 // ============================================================================

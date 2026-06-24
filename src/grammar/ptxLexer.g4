@@ -384,16 +384,6 @@ DP4A        : 'dp4a';
 DP2A        : 'dp2a';
 
 // NEW INSTRUCTIONS (PTX 8.7–9.1)
-ST_ASYNC    : 'st.async';
-RED_ASYNC   : 'red.async';
-TCGEN_ALLOC        : 'tcgen05.alloc';
-TCGEN_DEALLOC      : 'tcgen05.dealloc';
-TCGEN_RELINQUISH   : 'tcgen05.relinquish_alloc_permit';
-TCGEN_CP           : 'tcgen05.cp';
-TCGEN_SHIFT        : 'tcgen05.shift';
-TCGEN_MMA          : 'tcgen05.mma';
-TCGEN_COMMIT       : 'tcgen05.commit';
-TENSORMAP_REPLACE  : 'tensormap.replace';
 ST_BULK            : 'st.bulk';
 
 // ============================================================================

@@ -866,11 +866,6 @@ std::any PtxVisitor::visitInstruction(ptxparser::ptxParser::InstructionContext *
 // 包含内存相关指令实现
 #include "ptx_visitor_memory.cpp"
 
-// 包含异步指令实现
-#include "ptx_visitor_async.cpp"
-
-// 包含Tensor相关指令实现
-#include "ptx_visitor_tensor.cpp"
 #include "ptx_visitor_warp.cpp"
 
 // 包含 ABI 指令实现

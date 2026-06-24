@@ -372,44 +372,6 @@ inline StatementContext makeCpAsyncInstr(
         S_CP_ASYNC, qualifiers, operands, text);
 }
 
-inline StatementContext makeAsyncStoreInstr(
-    const std::vector<Qualifier> &qualifiers,
-    const std::vector<OperandContext> &operands,
-    const std::string &text = "") {
-    return makeInstrWithQualifiersAndOperands<AsyncStoreInstr>(
-        S_ST_ASYNC, qualifiers, operands, text);
-}
-
-inline StatementContext makeAsyncReduceInstr(
-    const std::vector<Qualifier> &qualifiers,
-    const std::vector<OperandContext> &operands,
-    const std::string &text = "") {
-    return makeInstrWithQualifiersAndOperands<AsyncReduceInstr>(
-        S_RED_ASYNC, qualifiers, operands, text);
-}
-
-// --- 2.23 Tensor Core 指令 ---
-inline StatementContext makeTcgenInstr(
-    StatementType type,
-    const std::string &opName,
-    const std::vector<Qualifier> &qualifiers,
-    const std::vector<OperandContext> &operands,
-    const std::string &text = "") {
-    TcgenInstr instr;
-    instr.opName = opName;
-    instr.qualifiers = qualifiers;
-    instr.operands = operands;
-    return makeStatementContext(type, std::move(instr), text);
-}
-
-inline StatementContext makeTensormapInstr(
-    const std::vector<Qualifier> &qualifiers,
-    const std::vector<OperandContext> &operands,
-    const std::string &text = "") {
-    return makeInstrWithQualifiersAndOperands<TensormapInstr>(
-        S_TENSORMAP_REPLACE, qualifiers, operands, text);
-}
-
 } // namespace ptxir::factory
 
 #endif // STATEMENT_FACTORY_H
