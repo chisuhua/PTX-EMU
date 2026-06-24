@@ -1,6 +1,6 @@
 #include "ptxsim/thread_context.h"
-#include "ptx_ir/ptx_types.h"
 #include "ptx_ir/ptx_syntax_utils.h"
+#include "ptx_ir/ptx_types.h"
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/cta_context.h"
 #include "ptxsim/execution_types.h"
@@ -31,13 +31,13 @@ extern bool sync_thread;
 extern bool IFLOG();
 #endif
 
-void ThreadContext::init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim,
-                         Dim3 BlockDim,
-                         std::vector<StatementContext> &statements,
-                         std::map<std::string, std::unique_ptr<Symtable>> *name2Sym,
-                         std::map<std::string, int> &label2pc,
-                         std::map<std::string, std::unique_ptr<Symtable>> *name2Share,
-                         CTAContext *cta_ctx) {
+void ThreadContext::init(
+    Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim, Dim3 BlockDim,
+    std::vector<StatementContext> &statements,
+    std::map<std::string, std::unique_ptr<Symtable>> *name2Sym,
+    std::map<std::string, int> &label2pc,
+    std::map<std::string, std::unique_ptr<Symtable>> *name2Share,
+    CTAContext *cta_ctx) {
     this->BlockIdx = blockIdx;
     this->ThreadIdx = threadIdx;
     this->GridDim = GridDim;
@@ -46,7 +46,7 @@ void ThreadContext::init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim,
     this->name2Sym = name2Sym;
     this->name2Share = name2Share; // 设置共享内存符号表引用
     this->label2pc = label2pc;
-    this->bar_id = 0;  // Initialize barrier ID to default
+    this->bar_id = 0; // Initialize barrier ID to default
     this->state = RUN;
     operand_collected.resize(ThreadContext::MAX_OPERANDS_PER_INSTR);
     operand_is_immediate_.resize(ThreadContext::MAX_OPERANDS_PER_INSTR);
@@ -59,6 +59,23 @@ void ThreadContext::init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim,
 
     // 设置CTAContext指针，用于访问本地内存符号表
     this->cta_context_ = cta_ctx;
+
+    // T2-3 A3b: Mirror legacy field writes into the 4 POD members.
+    // PODs become a secondary view (still write-validated against legacy
+    // fields). Legacy fields remain canonical until A3c removal.
+    exec_state_.BlockIdx = blockIdx;
+    exec_state_.ThreadIdx = threadIdx;
+    exec_state_.GridDim = GridDim;
+    exec_state_.BlockDim = BlockDim;
+    exec_state_.warp_id_ = this->warp_id_;
+    exec_state_.lane_id_ = this->lane_id_;
+    exec_state_.state = RUN;
+    exec_state_.bar_id = 0;
+    memory_.cta_context_ = cta_ctx;
+    program_ref_.statements = &statements;
+    program_ref_.name2Sym = name2Sym;
+    program_ref_.name2Share = name2Share;
+    program_ref_.label2pc = label2pc;
 
     // 注意：寄存器管理现在完全由RegisterBankManager负责
     // 寄存器预分配现在由CTAContext统一处理
@@ -131,8 +148,7 @@ void ThreadContext::_execute_once() {
 //     ptxsim::PTXDebugger::get().get_perf_stats().record_instruction(opcode);
 // }
 
-void ThreadContext::clear_temporaries() {
-}
+void ThreadContext::clear_temporaries() {}
 
 void ThreadContext::prepare_breakpoint_context(
     std::unordered_map<std::string, std::any> &context) {
@@ -204,7 +220,7 @@ void ThreadContext::dump_state(std::ostream &os) const {
 void ThreadContext::reset() {
     set_pc(0);
     set_next_pc(0);
-    bar_id = 0;  // Reset barrier ID
+    bar_id = 0; // Reset barrier ID
     state = RUN;
     cc_reg = ConditionCodeRegister{}; // 重置条件码寄存器
 
@@ -272,21 +288,23 @@ void *ThreadContext::acquire_operand(const OperandContext &operand,
         // 如果在name2Share中没找到，再到name2Sym中查找（参数、局部变量等）
         auto sym_it = name2Sym->find(varOp.name);
         if (sym_it != name2Sym->end()) {
-            // For PARAM space, return the GPU address directly so printf can read from GPU memory
-            // For other spaces, return the address of the val field (for symbol addresses)
-            if (varOp.name.find("param") != std::string::npos || 
+            // For PARAM space, return the GPU address directly so printf can
+            // read from GPU memory For other spaces, return the address of the
+            // val field (for symbol addresses)
+            if (varOp.name.find("param") != std::string::npos ||
                 varOp.name.find("retval") != std::string::npos) {
-            // For parameters/retval, return the GPU address where the value is stored
-            // This way, when printf reads *formatPtrAddr, it reads from GPU memory
-            return (void *)sym_it->second->val;
-        }
-        PTX_DEBUG_EMU("Reading kernel name2Sym from name2Sym: name=%s, "
-                      "symbol_table_entry=%p, stored_value=0x%lx, "
-                      "dereferenced_value=0x%lx",
-                      varOp.name.c_str(), sym_it->second.get(),
-                      sym_it->second->val,
-                      *(uint64_t *)(sym_it->second->val));
-        return &(sym_it->second->val);
+                // For parameters/retval, return the GPU address where the value
+                // is stored This way, when printf reads *formatPtrAddr, it
+                // reads from GPU memory
+                return (void *)sym_it->second->val;
+            }
+            PTX_DEBUG_EMU("Reading kernel name2Sym from name2Sym: name=%s, "
+                          "symbol_table_entry=%p, stored_value=0x%lx, "
+                          "dereferenced_value=0x%lx",
+                          varOp.name.c_str(), sym_it->second.get(),
+                          sym_it->second->val,
+                          *(uint64_t *)(sym_it->second->val));
+            return &(sym_it->second->val);
         }
 
         break;
@@ -375,8 +393,9 @@ void ThreadContext::collect_operands(
                      operands[i].toString(bytes).c_str());
 
         // Track whether this operand is immediate
-        // For immediate operands: operand_collected[i] is a pointer to the immediate value
-        // For register/variable operands: operand_collected[i] is the actual value/address
+        // For immediate operands: operand_collected[i] is a pointer to the
+        // immediate value For register/variable operands: operand_collected[i]
+        // is the actual value/address
         operand_is_immediate_[i] = (operands[i].kind() == OperandKind::IMM);
 
         // 获取当前操作数的物理地址
@@ -434,8 +453,9 @@ void *ThreadContext::acquire_register(const RegOperand &reg,
         register_bank_manager_->get_register(combinedName, warp_id_, lane_id_);
 
     if (reg_data == nullptr) {
-      throw InvalidMemoryAccessException(0, 0, "null register data",
-          "Register not found in bank manager: " + combinedName);
+        throw InvalidMemoryAccessException(
+            0, 0, "null register data",
+            "Register not found in bank manager: " + combinedName);
     }
 
     return reg_data;
@@ -522,8 +542,7 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
         }
     } else {
         // 直接通过ID查找符号表或共享内存；如果ID为空，回退到baseSymbol
-        const std::string &lookupName =
-            fa.id.empty() ? fa.baseSymbol : fa.id;
+        const std::string &lookupName = fa.id.empty() ? fa.baseSymbol : fa.id;
 
         // get_memory_addr debug logs - disabled for clarity
 #if 0
@@ -532,8 +551,10 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
                       lookupName.c_str(), qualifiers.size());
 #endif
 
-        // [REFACT] Check if lookupName is a register name (for handling [%rd4+4] register base + immediate offset)
-        // NOTE: This assumes register names do not conflict with symbol names in name2Sym/name2Share
+        // [REFACT] Check if lookupName is a register name (for handling
+        // [%rd4+4] register base + immediate offset) NOTE: This assumes
+        // register names do not conflict with symbol names in
+        // name2Sym/name2Share
         RegOperand regOp;
         if (ptx::syntax::parseRegisterFromText(lookupName, regOp)) {
             // lookupName is a register, read base address from register bank
@@ -546,8 +567,8 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
             for (const auto &q : qualifiers) {
                 if (q == Qualifier::Q_SHARED) {
                     mem_qualifier = Qualifier::Q_U32;
-                } else if (q == Qualifier::Q_GLOBAL || q == Qualifier::Q_PARAM ||
-                           q == Qualifier::Q_LOCAL) {
+                } else if (q == Qualifier::Q_GLOBAL ||
+                           q == Qualifier::Q_PARAM || q == Qualifier::Q_LOCAL) {
                     mem_qualifier = Qualifier::Q_U64;
                 }
             }
@@ -557,21 +578,26 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
 
             void *regAddr = acquire_register(regOp, {mem_qualifier});
             if (!regAddr) {
-                PTX_DEBUG_EMU("Failed to acquire register: %s", lookupName.c_str());
+                PTX_DEBUG_EMU("Failed to acquire register: %s",
+                              lookupName.c_str());
                 return nullptr;
             }
 
-            // For shared memory address calculation, we need to handle signed offsets correctly.
-            // PTX allows negative offsets in address expressions like [%r5+124] where %r5 can be negative.
-            // Read register value as signed 32-bit for shared memory, then sign-extend to 64-bit.
+            // For shared memory address calculation, we need to handle signed
+            // offsets correctly. PTX allows negative offsets in address
+            // expressions like [%r5+124] where %r5 can be negative. Read
+            // register value as signed 32-bit for shared memory, then
+            // sign-extend to 64-bit.
             int64_t base_value;
-            if (QvecHasQ(qualifiers, Qualifier::Q_SHARED) && mem_qualifier == Qualifier::Q_U32) {
-                // For shared memory with 32-bit registers, read as signed to support negative offsets
+            if (QvecHasQ(qualifiers, Qualifier::Q_SHARED) &&
+                mem_qualifier == Qualifier::Q_U32) {
+                // For shared memory with 32-bit registers, read as signed to
+                // support negative offsets
                 base_value = (int64_t)*(int32_t *)regAddr;
             } else {
                 base_value = (mem_qualifier == Qualifier::Q_U32)
-                    ? (int64_t)*(uint32_t *)regAddr
-                    : (int64_t)*(uint64_t *)regAddr;
+                                 ? (int64_t)*(uint32_t *)regAddr
+                                 : (int64_t)*(uint64_t *)regAddr;
             }
 
             // For shared memory, add shared_mem_space to the base value
@@ -579,13 +605,16 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
                 if (shared_mem_space != nullptr) {
                     ret = (void *)((uint64_t)shared_mem_space + base_value);
                 } else {
-                    PTX_DEBUG_EMU("get_memory_addr: Q_SHARED but shared_mem_space is null!");
+                    PTX_DEBUG_EMU("get_memory_addr: Q_SHARED but "
+                                  "shared_mem_space is null!");
                     return nullptr;
                 }
             } else {
                 ret = (void *)base_value;
             }
-            PTX_DEBUG_EMU("Register %s contains base value: 0x%lx, final ret: %p", lookupName.c_str(), base_value, ret);
+            PTX_DEBUG_EMU(
+                "Register %s contains base value: 0x%lx, final ret: %p",
+                lookupName.c_str(), base_value, ret);
 
             // Skip symbol table lookup, jump directly to offset handling
             goto handle_offset;
@@ -664,7 +693,7 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
         // 对于本地内存，地址也已经在上面的逻辑中正确处理了
     }
 
-    handle_offset:
+handle_offset:
     // 处理偏移量
     if (!fa.immediateOffset.empty()) {
         // 直接解析偏移量字符串，避免创建临时立即数操作数
@@ -693,13 +722,13 @@ void ThreadContext::initialize_shared_memory(const std::string &name,
                                              uint64_t address) {
     extern uint64_t SHMEMADDR;
     if (SHMEMADDR) {
-      if (address >> 32 != SHMEMADDR) {
-        throw InvalidMemoryAccessException(
-            address, 0, "invalid shared memory address",
-            "Address high bits do not match SHMEMADDR constant");
-      }
+        if (address >> 32 != SHMEMADDR) {
+            throw InvalidMemoryAccessException(
+                address, 0, "invalid shared memory address",
+                "Address high bits do not match SHMEMADDR constant");
+        }
     } else {
-      SHMEMADDR = address >> 32;  // 只保存高32位
+        SHMEMADDR = address >> 32; // 只保存高32位
     }
 }
 
@@ -730,53 +759,60 @@ void ThreadContext::print_instruction_status(StatementContext &stmt) {
 
 // 【Stage 4】从 warp_state 同步状态到 ThreadContext
 void ThreadContext::sync_from_warp_state() {
-    if (!warp_context_) return;
+    if (!warp_context_)
+        return;
 
     int lane_id = lane_id_;
-    if (lane_id < 0 || lane_id >= WarpContext::WARP_SIZE) return;
+    if (lane_id < 0 || lane_id >= WarpContext::WARP_SIZE)
+        return;
 
-    ptxsim::ThreadState& thread_state = warp_context_->get_warp_state().threads[lane_id];
+    ptxsim::ThreadState &thread_state =
+        warp_context_->get_warp_state().threads[lane_id];
 
     // PC 通过 get_pc()/get_next_pc() 直接从 warp_state 读取，无需同步
     // sync_to_warp_state() 的 next_pc 同步保持一致性
 
     // 同步状态
     switch (thread_state.status) {
-        case ptxsim::ThreadStatus::Active:
-            state = RUN;
-            break;
-        case ptxsim::ThreadStatus::Blocked:
-            state = BAR_SYNC;
-            break;
-        case ptxsim::ThreadStatus::Exited:
-            state = EXIT;
-            break;
-        case ptxsim::ThreadStatus::Yielded:
-            // Yielded 状态暂时映射到 RUN
-            state = RUN;
-            break;
+    case ptxsim::ThreadStatus::Active:
+        state = RUN;
+        break;
+    case ptxsim::ThreadStatus::Blocked:
+        state = BAR_SYNC;
+        break;
+    case ptxsim::ThreadStatus::Exited:
+        state = EXIT;
+        break;
+    case ptxsim::ThreadStatus::Yielded:
+        // Yielded 状态暂时映射到 RUN
+        state = RUN;
+        break;
     }
 }
 
 // 【Stage 4】将 ThreadContext 的状态同步到 warp_state
 void ThreadContext::sync_to_warp_state() {
-    if (!warp_context_) return;
+    if (!warp_context_)
+        return;
 
     int lane_id = lane_id_;
-    if (lane_id < 0 || lane_id >= WarpContext::WARP_SIZE) return;
+    if (lane_id < 0 || lane_id >= WarpContext::WARP_SIZE)
+        return;
 
-
-    ptxsim::ThreadState& thread_state = warp_context_->get_warp_state().threads[lane_id];
+    ptxsim::ThreadState &thread_state =
+        warp_context_->get_warp_state().threads[lane_id];
 
     // 如果线程已经在 barrier 等待（is_blocked=true 或 status=Blocked），
     // 则只同步 next_pc，不覆盖 blocked 状态。
     // 注意：如果 barrier 主动通过 set_state(RUN) + 清除 is_blocked 来释放线程，
-    // 则应该在调用本函数之前清除 is_blocked（参见 BarrierModule::arrive_at_cta_barrier）。
-    bool already_blocked = (thread_state.is_blocked ||
-                            thread_state.status == ptxsim::ThreadStatus::Blocked);
+    // 则应该在调用本函数之前清除 is_blocked（参见
+    // BarrierModule::arrive_at_cta_barrier）。
+    bool already_blocked =
+        (thread_state.is_blocked ||
+         thread_state.status == ptxsim::ThreadStatus::Blocked);
 
-    // 屏障完成处理会通过 warp_ctx->advance_thread_pc() 或 force_set_pc() 直接更新 warp_state
-    // 此处只同步 ThreadContext 自己维护的 next_pc 状态
+    // 屏障完成处理会通过 warp_ctx->advance_thread_pc() 或 force_set_pc()
+    // 直接更新 warp_state 此处只同步 ThreadContext 自己维护的 next_pc 状态
     thread_state.next_pc = get_next_pc();
 
     // 如果已经 blocked，只同步 next_pc，不修改状态
@@ -786,63 +822,71 @@ void ThreadContext::sync_to_warp_state() {
 
     // 同步状态
     switch (state) {
-        case RUN:
-            thread_state.status = ptxsim::ThreadStatus::Active;
-            thread_state.is_blocked = false;
-            thread_state.is_active = true;
-            break;
-        case BAR_SYNC:
-            thread_state.status = ptxsim::ThreadStatus::Blocked;
-            thread_state.is_blocked = true;
-            break;
-        case EXIT:
-            thread_state.status = ptxsim::ThreadStatus::Exited;
-            thread_state.is_exited = true;
-            thread_state.is_active = false;
-            thread_state.is_blocked = false;
-            break;
-        default:
-            break;
+    case RUN:
+        thread_state.status = ptxsim::ThreadStatus::Active;
+        thread_state.is_blocked = false;
+        thread_state.is_active = true;
+        break;
+    case BAR_SYNC:
+        thread_state.status = ptxsim::ThreadStatus::Blocked;
+        thread_state.is_blocked = true;
+        break;
+    case EXIT:
+        thread_state.status = ptxsim::ThreadStatus::Exited;
+        thread_state.is_exited = true;
+        thread_state.is_active = false;
+        thread_state.is_blocked = false;
+        break;
+    default:
+        break;
     }
 }
 
 // PC accessors - delegate to WarpState via WarpContext
 int ThreadContext::get_pc() const {
-    if (!warp_context_) return 0;
+    if (!warp_context_)
+        return 0;
     int lane = lane_id_;
-    if (lane < 0 || lane >= 32) return 0;
+    if (lane < 0 || lane >= 32)
+        return 0;
     return warp_context_->get_warp_state().threads[lane].pc;
 }
 
 void ThreadContext::set_pc(int new_pc) {
-    if (!warp_context_) return;
+    if (!warp_context_)
+        return;
     int lane = lane_id_;
-    if (lane < 0 || lane >= 32) return;
+    if (lane < 0 || lane >= 32)
+        return;
     warp_context_->get_warp_state().threads[lane].pc = new_pc;
     warp_context_->get_warp_state().threads[lane].next_pc = new_pc;
 }
 
 int ThreadContext::get_next_pc() const {
-    if (!warp_context_) return 0;
+    if (!warp_context_)
+        return 0;
     int lane = lane_id_;
-    if (lane < 0 || lane >= 32) return 0;
+    if (lane < 0 || lane >= 32)
+        return 0;
     return warp_context_->get_warp_state().threads[lane].next_pc;
 }
 
 void ThreadContext::set_next_pc(int new_next_pc) {
-    if (!warp_context_) return;
+    if (!warp_context_)
+        return;
     int lane = lane_id_;
-    if (lane < 0 || lane >= 32) return;
+    if (lane < 0 || lane >= 32)
+        return;
     warp_context_->get_warp_state().threads[lane].next_pc = new_next_pc;
 }
 
 void ThreadContext::force_set_pc(int new_pc) {
-    if (!warp_context_) return;
+    if (!warp_context_)
+        return;
     int lane = lane_id_;
-    if (lane < 0 || lane >= 32) return;
+    if (lane < 0 || lane >= 32)
+        return;
     warp_context_->get_warp_state().threads[lane].pc = new_pc;
 }
 
-void ThreadContext::commit_pc() {
-    set_pc(get_next_pc());
-}
+void ThreadContext::commit_pc() { set_pc(get_next_pc()); }

@@ -307,9 +307,13 @@ private:
 
     std::string dst_operand_reg_name_;
 
-    // T2-3 A3a invariant: POD members are POD-only (no methods) and the
-    // legacy fields above remain the canonical source until A3c removes
-    // them. A3b populates these PODs from init() / reset() / accessors.
+public:
+    // T2-3 A3a: POD-only members at the END of class. Destruction is
+    // reverse of declaration order, so PODs (with default-constructed
+    // POD types) destroy first, then legacy fields (including
+    // shared_ptr<>s and containers). Placed in a re-opened public
+    // section so tests can read POD defaults. Legacy fields above
+    // remain the canonical source until A3c removes them.
     ptxsim::contexts::ExecStatePod exec_state_;
     ptxsim::contexts::RegisterPredicatePod reg_pred_;
     ptxsim::contexts::MemoryPod memory_;

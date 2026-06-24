@@ -58,3 +58,44 @@ TEST_CASE("ThreadContext facade: 4 POD members exist with default values",
     REQUIRE(tc.program_ref_.label2pc.empty());
     REQUIRE(tc.program_ref_.call_stack.empty());
 }
+
+TEST_CASE("ThreadContext facade: init() populates 4 PODs from parameters",
+          "[thread_context][facade][pod][init]") {
+    ThreadContext tc;
+
+    // Prepare init() parameters matching a typical thread in warp 0, lane 5
+    Dim3 blockIdx = {0, 1, 0};
+    Dim3 threadIdx = {5, 0, 0};
+    Dim3 gridDim = {2, 2, 1};
+    Dim3 blockDim = {32, 1, 1};
+    std::vector<StatementContext> stmts; // empty
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
+    std::map<std::string, int> label2pc;
+    label2pc["L1"] = 10;
+    std::map<std::string, std::unique_ptr<Symtable>> name2Share;
+
+    tc.init(blockIdx, threadIdx, gridDim, blockDim, stmts, &name2Sym, label2pc,
+            &name2Share, nullptr);
+
+    // ExecStatePod populated: BlockIdx/ThreadIdx/GridDim/BlockDim/state/bar_id
+    REQUIRE(tc.exec_state_.BlockIdx.x == 0);
+    REQUIRE(tc.exec_state_.BlockIdx.y == 1);
+    REQUIRE(tc.exec_state_.ThreadIdx.x == 5);
+    REQUIRE(tc.exec_state_.GridDim.x == 2);
+    REQUIRE(tc.exec_state_.GridDim.y == 2);
+    REQUIRE(tc.exec_state_.BlockDim.x == 32);
+    REQUIRE(tc.exec_state_.state == RUN);
+    REQUIRE(tc.exec_state_.bar_id == 0);
+    REQUIRE(tc.exec_state_.warp_id_ == 0); // 5/32 = 0
+    REQUIRE(tc.exec_state_.lane_id_ == 5);
+
+    // ProgramRefPod populated: statements pointer, name2Sym/Share, label2pc
+    REQUIRE(tc.program_ref_.statements == &stmts);
+    REQUIRE(tc.program_ref_.name2Sym == &name2Sym);
+    REQUIRE(tc.program_ref_.name2Share == &name2Share);
+    REQUIRE(tc.program_ref_.label2pc.size() == 1);
+    REQUIRE(tc.program_ref_.label2pc["L1"] == 10);
+
+    // MemoryPod populated: cta_context_ (still null since nullptr passed)
+    REQUIRE(tc.memory_.cta_context_ == nullptr);
+}
