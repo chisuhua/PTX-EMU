@@ -1,6 +1,8 @@
 #include "ptxsim/instruction_factory.h"
 #include "ptxsim/instruction_handlers.h"
 
+#include <cstdlib>
+
 std::unordered_map<StatementType, InstructionHandler *>
     InstructionFactory::handler_map;
 bool InstructionFactory::initialized = false;
@@ -17,6 +19,12 @@ void InstructionFactory::initialize() {
 #undef X
 
     initialized = true;
+
+    static bool atexit_registered = false;
+    if (!atexit_registered) {
+        std::atexit(&InstructionFactory::cleanup);
+        atexit_registered = true;
+    }
 }
 
 InstructionHandler *InstructionFactory::get_handler(StatementType type) {
