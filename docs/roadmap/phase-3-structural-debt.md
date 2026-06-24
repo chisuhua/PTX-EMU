@@ -66,6 +66,20 @@ cmake --build build --target GenerateParser
 | `src/ptxsim/instructions/*.cpp` | 0 `process_stAsync\|process_redAsync\|process_tcgen` handlers | ✅ no handler impact |
 | `src/ptxsim/InstructionFactory` | Handlers not registered (no `process_*` funcs exist) | ✅ no dispatch impact |
 | `src/cudart/` | No consumer of these instruction types | ✅ no runtime impact |
+| `include/ptx_ir/statement_context.h:223,231` | `AsyncStoreInstr`, `AsyncReduceInstr` struct definitions | ⚠️ ORPHAN — become unused if X-macro entries removed |
+| `src/ptxir/ptxir_writer.cpp:371,385` | `if constexpr (std::is_same_v<T, AsyncStoreInstr/AsyncReduceInstr>)` template specializations | ⚠️ ORPHAN — become dead code if X-macro entries removed |
+
+**Orphan cleanup scope (additional Step 8)**:
+- Remove `struct AsyncStoreInstr { ... }` and `struct AsyncReduceInstr { ... }` from `include/ptx_ir/statement_context.h` (lines 223-237 approx)
+- Remove template specializations in `src/ptxir/ptxir_writer.cpp` lines 371 and 385
+- Note: TCGEN and TENSORMAP structs may exist similarly — need full audit before Step 2
+
+**⚠️ S_ST_BULK is OUT OF SCOPE**:
+- `X(S_ST_BULK, stBulk, StBulk, 3, GENERIC_INSTR, tcgen)` at line 188 of ptx_op.def is NOT a PTX 8.7+ placeholder
+- Uses `GENERIC_INSTR` (not `ASYNC_STORE`/`TCGEN_INSTR`)
+- Has `stBulkInst` rule in ptxInstructions.g4:471 + `ST_BULK` token in ptxLexer.g4:397
+- Has its own qualifier rule `stBulkQualifiers`
+- KEEP all S_ST_BULK related entries (not part of T2-4 scope)
 
 ## Risk Assessment
 
