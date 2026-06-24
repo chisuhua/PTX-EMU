@@ -146,7 +146,7 @@ inline void reset_warp(WarpContext& warp, int num_lanes) {
         auto* t = warp.get_thread(i);
         if (!t) continue;
         t->set_pc(0);
-        t->state = RUN;
+        t->set_state(RUN);
         warp.get_warp_state().threads[i].pc = 0;
         warp.get_warp_state().threads[i].next_pc = 0;
         warp.get_warp_state().threads[i].is_blocked = false;
