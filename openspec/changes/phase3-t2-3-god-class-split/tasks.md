@@ -8,7 +8,7 @@
 
 > **详细 plan 与 explore 报告**: 见 `docs/superpowers/plans/2026-06-23-phase3-critical-debt.md` §Task 3 + bg_7169b052 16m43s explore 报告（8 sections A-H）
 
-> **状态 (2026-06-24)**: Phase A1-A4 + B1-B2 + C1 完成 (8 commits)。**A5 阻塞**于 integrate-barrier-module-cta-warp 未合并，将在那个 PR merge 后执行。
+> **状态 (2026-06-24)**: Phase A1-A4 + B1-B2 + C1 完成 (8 commits)。**A5 PoC 进展**: 1 commit (`421eec9` pushed) 迁移 `test_barrier_module_integrated.cpp` 到 direct BarrierModule API，验证通过。**A5 真实阻塞**: `BarWarpSyncHandler::processOperation` (`src/ptxsim/instructions/barrier.cpp:140-280`) 主体逻辑仍使用 legacy `warp_state.wbars[]` + `current_wbar_id`，BarrierModule 状态未被更新。详见 `docs/superpowers/findings/2026-06-24-t2-3-a5-blocker-discovery.md`。
 
 ---
 
@@ -82,7 +82,24 @@
 - [ ] **Step 4**: 物理删除字段
 - [ ] **Step 5**: `git commit -m "refactor(state): unify EXE_STATE to warp_state.threads[].status, remove dead fields (T2-3 A5)"`
 
-> **⛔ BLOCKED on integrate-barrier-module-cta-warp merge**. 物理删除 `wbars[]` + `current_wbar_id` 需要 BarWarpSyncHandler 完全迁移到 BarrierModule API，而该迁移在 `cleanup-deprecated-barrier-apis` change 中跟踪，未合并。
+> **⛔ BLOCKED: 真因 = `BarWarpSyncHandler::processOperation` 仍用 legacy state**.
+>
+> **Discovery (2026-06-24)**: 调查 `tests/integration/pc/test_pc_management_integrated.cpp` 迁移失败时发现：
+> - `barrier.cpp:140-280` 主体逻辑使用 `warp_state.wbars[idx]` + `warp_state.current_wbar_id`（lines 145, 157, 160-161, 184, 198, 215-263）
+> - `barrier_module` 仅在 line 358 一个子函数被引用
+> - 因此 `warp->get_wbar(0).is_complete() == true`（legacy 路径返回正确），但 `warp->get_cta_context()->get_barrier_module().get_warp_barrier(0)->is_complete()` 返回 false（BarrierModule 未被 handler 更新）
+>
+> **真阻塞 = handler 本身需要迁移**（~140 行, 14+ legacy field uses, 含 2 个 BUG workaround paths）:
+> - BUG-RECONVERGENCE-SIMPLEGEMM: divergent warp hit barrier with 2 unique PCs
+> - BUG-CUTE-RMSNORM-BROADCAST-SKIP: `current_wbar_id < 0` check after release
+>
+> **实际步骤** (3-5 天人工):
+> 1. 迁移 `BarWarpSyncHandler::processOperation` 到使用 BarrierModule 作为单一 source of truth（dual-write 过渡期）
+> 2. 迁移 test files (60+ call sites 跨 7 文件)
+> 3. 物理删除 `wbars[]` + `current_wbar_id` 字段
+> 4. 物理删除 `get_wbar()` shim + `[[deprecated]]` markers
+>
+> **PoC 进展**: `tests/integration/barrier/test_barrier_module_integrated.cpp` 已迁移 (commit `421eec9`)，是纯 BarrierModule 单元测试，可作为模板。详见 `docs/superpowers/findings/2026-06-24-t2-3-a5-blocker-discovery.md`。
 
 ---
 
@@ -145,7 +162,7 @@
 ## Phase 3 验证门禁
 
 - [x] A1-A4 全部完成（6 commits: `7054593` `5617665` `7952120` `67ad828` `8b9b025` `2a3b48a`）
-- [ ] A5 完成（blocked on integrate-barrier-module-cta-warp）
+- [ ] A5 完成（blocked on BarWarpSyncHandler migration - 真因。PoC 部分完成 `421eec9`）
 - [x] B1-B2 全部完成（2 commits: `33e1f99` `8248303`）
 - [x] C1-C2 全部完成（1 commit: `2d24403`）
 - [x] ctest 全过（除 7 pre-existing）+ sanity.sh 全过
