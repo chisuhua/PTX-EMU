@@ -125,7 +125,7 @@ TEST_CASE("T2-1-FIX: bar.warp.sync releases all 32 threads via warp_state",
         for (int i = 0; i < 32; i++) {
             auto *t = warp.get_thread(i);
             t->set_pc(0);
-            t->state = RUN;
+            t->set_state(RUN);
             warp.get_warp_state().threads[i].pc = 0;
             warp.get_warp_state().threads[i].is_blocked = false;
             warp.get_warp_state().threads[i].status = ThreadStatus::Active;
@@ -151,7 +151,7 @@ TEST_CASE("T2-1-FIX: bar.warp.sync releases all 32 threads via warp_state",
         for (int i = 0; i < 32; i++) {
             auto *t = warp.get_thread(i);
             t->set_pc(0);
-            t->state = RUN;
+            t->set_state(RUN);
             warp.get_warp_state().threads[i].pc = 0;
             warp.get_warp_state().threads[i].is_blocked = false;
             warp.get_warp_state().threads[i].status = ThreadStatus::Active;
