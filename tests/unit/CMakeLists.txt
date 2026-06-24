@@ -152,6 +152,12 @@ add_catch_test(unit_warp_state
 )
 set_tests_properties(unit_warp_state PROPERTIES LABELS "unit;warp;state;simt_entry")
 
+# T2-3 A4a: WarpContext 3-POD facade members (additive, defaults only)
+add_catch_test(unit_warp_context_pod_facade
+    contexts/test_warp_context_pod_facade.cpp
+)
+set_tests_properties(unit_warp_context_pod_facade PROPERTIES LABELS "unit;contexts;pod;warp_context")
+
 # BUG-001: active_count staleness after WarpContext::decrement_blocked_cycles()
 # drains blocked cycles. RED phase: this test MUST FAIL on unpatched code
 # (active_count remains 0 → scheduler skips a schedulable warp → hang).

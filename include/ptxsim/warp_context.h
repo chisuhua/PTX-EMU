@@ -1,6 +1,9 @@
 #ifndef WARP_CONTEXT_H
 #define WARP_CONTEXT_H
 
+#include "ptxsim/contexts/backend_links.h"
+#include "ptxsim/contexts/lane_mask.h"
+#include "ptxsim/contexts/warp_identity.h"
 #include "register/register_bank_manager.h"
 #include "simt_stack.h"
 #include "thread_context.h"
@@ -284,6 +287,14 @@ public:
 
     void set_physical_block_id(int id) { physical_block_id = id; }
     int get_physical_block_id() const { return physical_block_id; }
+
+    // T2-3 A4a: LaneMaskPod at END of class. Same destruction order
+    // rationale as ThreadContext A3a: POD (default-constructed types)
+    // destroys first, then legacy fields. Legacy fields above remain
+    // canonical source until A4c removes them.
+    ptxsim::contexts::LaneMaskPod lane_mask_;
+    ptxsim::contexts::WarpIdentityPod warp_identity_;
+    ptxsim::contexts::BackendLinksPod backend_links_;
 };
 
 #endif // WARP_CONTEXT_H
