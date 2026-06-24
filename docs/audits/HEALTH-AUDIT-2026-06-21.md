@@ -30,6 +30,7 @@
 2. **CI 几乎不存在**：唯一的 `.github/workflows/generate-ptxir.yml` 核心步骤是空循环 `TODO` —— 项目实际无 CI 保障，债务没人拦截
 3. **5 类裸 `new` 无对应 `delete`**（Symtable 5 处、KernelContext 2 处、cudaStream/cudaEvent 句柄、OperandContext 8+ 处）：每次 kernel launch 泄漏，ASan 一跑就抓
 4. **god class 三巨头**：ThreadContext 108 public 字段 / WarpContext 78 public + 三重 active_mask 状态 / SMContext 27+ 方法 + friend class 破封装 —— 是后续大量 bug 的隐性根源
+   - **2026-06-24 更新 (T2-3)**: ThreadContext + WarpContext 已拆为 7 个 POD（commit `7054593` + `5617665` + `7952120` + `67ad828` + `8b9b025` + `2a3b48a`）。**SMContext 仍待 T2-4**（deferred to Phase 4）。Active_mask 三重状态已通过 T2-1 (commit `8b1d23b`) 收敛为 warp_state 单一源。
 5. **Doxygen 覆盖率仅 16%**（12/77 头文件含 `@brief`）+ **根 README 严重过时**（2026-05-26 仍描述光线追踪 demo，与 SIMT v2.0 脱节）—— 新人 onboarding 风险
 
 ### 0.3 总体健康度雷达图
@@ -100,8 +101,8 @@
 | # | 位置 | 问题 | 严重度 | 工作量 |
 |:---:|---|:---:|:---:|:---:|
 | **M1** | `include/ptx_parser/ptx_visiter.h` | **拼写错误** "visiter"，14 个 .cpp 引用 | 🟡 M | 小（git mv + 全项目 include 替换） |
-| **M2** | `include/ptxsim/thread_context.h`（108 个 public 成员）/ `src/ptxsim/core/thread_context.cpp`（848 行） | god class，违反 SRP | 🟡 M | 大（拆 4 个 POD） |
-| **M3** | `include/ptxsim/warp_context.h`（78 public）/ `src/ptxsim/core/warp_context.cpp`（466 行） | god class + **三重 active_mask 状态**（`active_mask[]` / `warp_state.threads[i].is_active` / `warp_state.exec_mask`）—— AGENTS.md 已自承"DUAL STATE MECHANISM" | 🟡 M | 中（合并为单一 source of truth） |
+| **M2** | `include/ptxsim/thread_context.h`（108 个 public 成员）/ `src/ptxsim/core/thread_context.cpp`（848 行） | god class，违反 SRP | ✅ FIXED 2026-06-24 (T2-3 A1+A3) | 拆 4 个 POD：ExecState/RegisterPredicate/Memory/ProgramRef。A5 物理删除 `EXE_STATE state` 字段待 `integrate-barrier-module-cta-warp` 合并后执行 |
+| **M3** | `include/ptxsim/warp_context.h`（78 public）/ `src/ptxsim/core/warp_context.cpp`（466 行） | god class + **三重 active_mask 状态**（`active_mask[]` / `warp_state.threads[i].is_active` / `warp_state.exec_mask`）—— AGENTS.md 已自承"DUAL STATE MECHANISM" | ✅ FIXED 2026-06-24 (T2-3 A1+A4) | 拆 3 个 POD：LaneMask/Identity/BackendLinks。三重 active_mask 已通过 T2-1 (commit `8b1d23b`) + T2-3 A1+A4 收敛为 warp_state 单一源。`exec_mask` 保留独立（PTX `activemask` 指令语义需要）。A5 物理删除 `wbars[]` 字段待 `integrate-barrier-module-cta-warp` 合并后执行 |
 | **M4** | `include/ptxsim/sm_context.h` | 27+ 方法 + `friend class BarWarpSyncHandler;` 破封装 | 🟡 M | 中（拆 debug 接口 + 删除 friend） |
 | **M5** | `src/ptxsim/instructions/arithmetic_conversion.cpp` | 1288 行单文件，1063 行巨型 `switch (dst_bytes)` | 🟡 M | 中（按指令族拆 5+ 文件） |
 | **M6** | `src/ptx_parser/ptx_visitor.cpp` | 1019 行 X-Macro 文件 + 14 个 `ptx_visitor_*.cpp` 通过 `#include` 文本包含 | 🟡 M | 大（改为独立 TU 编译） |
@@ -585,7 +586,7 @@ ANTLR 4.11.1 完全 vendored + 升级路径断裂 + H1（cudart 双角色）→ 
 ```yaml
 # 1 月
 - [ ] cudart_sim.cpp 双角色拆分（H1 架构债）
-- [ ] ThreadContext / WarpContext god class 拆分（M2/M3）
+- [x] ThreadContext / WarpContext god class 拆分（M2/M3） — ✅ 2026-06-24 (T2-3 A1-A4 done, A5 blocked on integrate-barrier-module-cta-warp)
 - [ ] SMContext friend class 破封装消除（M4）
 - [ ] 补 Doxygen 注释（目标 ≥ 80%）
 - [ ] cudart → ptx_parser → cudart 库边界拆分（H3）

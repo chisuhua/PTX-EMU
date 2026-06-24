@@ -32,8 +32,11 @@
 | T1-4 | membar/fence handler 真实现 | 95ffc23 | ✅ |
 | T1-5 | 根 README 重写 | 04a62c4 | ✅ |
 | T2-2 | ampere_a100.json 默认 | 41030d8 | ✅ |
+| T2-1 | active_mask 三源统一 + DUAL STATE 改写 | `8b1d23b` `5e0e315` | ✅ |
+| T2-3 A1-A4+B1-B2+C1 | god class 拆 7 POD (A5 blocked on integrate-barrier-module-cta-warp) | `7054593` `5617665` `7952120` `67ad828` `8b9b025` `2a3b48a` `33e1f99` `8248303` `ccbbe2a` `2d24403` | ✅ (A5 ⏸) |
 | T2-4 Step 1 | usesAsyncStore/usesRedAsync 清理 | 2e339ea | ✅（Steps 2-7 待 multi-day 推进，本次不启动）|
 | T2-5 | atom.global.exch.u32 tests | f4570c2 | ✅ |
+| T2-6 | CVT handler 策略模式重构 (5 策略 + ADR-0015) | `86e0786`..`40b331b` | ✅ |
 | T2-7 | drop BarWarpSyncHandler friend | 7e667cd | ✅ |
 
 ---
@@ -160,23 +163,25 @@ phase_3_complete:
         - [x] ctest -L "ptx;cvt" 全过 + sanity.sh --quick 全过
 
   active_mask_unify:
-    - [ ] Task 2 (T2-1):
-        - [ ] update_active_mask() 改为统一从 warp_state 读取
-        - [ ] is_lane_active() 委托 is_lane_schedulable()
-        - [ ] sync_to_warp_state(RUN) 补 is_active=true
-        - [ ] WarpState.wbars[] 标记 [[deprecated]]（不删）
-        - [ ] J1-J10 测试全过
-        - [ ] test_post_barrier_divergence + test_post_barrier_two_halves 不回归
-        - [ ] src/ptxsim/core/AGENTS.md §DUAL STATE 改写
+    - [x] Task 2 (T2-1):
+        - [x] update_active_mask() 改为统一从 warp_state 读取
+        - [x] is_lane_active() 委托 is_lane_schedulable()
+        - [x] sync_to_warp_state(RUN) 补 is_active=true
+        - [x] WarpState.wbars[] 标记 [[deprecated]]（不删）
+        - [x] J1-J10 测试全过
+        - [x] test_post_barrier_divergence + test_post_barrier_two_halves 不回归
+        - [x] src/ptxsim/core/AGENTS.md §DUAL STATE 改写
 
   god_class_split:
-    - [ ] Task 3 (T2-3):
-        - [ ] ThreadContext 拆 4 POD (ExecState/RegisterPredicate/Memory/ProgramRef)
-        - [ ] WarpContext 拆 3-4 POD (LaneMask/Identity/BarrierControl/BackendLinks)
-        - [ ] WarpState 精简到 2 字段（threads[] + exec_mask）
-        - [ ] 删除 deprecated wbars + current_wbar_id + thread_predicates + warp_pc
-        - [ ] 69 个测试文件更新通过
-        - [ ] ctest 全过 + ASan 跑 e2e_barrier_warp_sync 无泄漏
+    - [x] Task 3 (T2-3) — A1-A4 + B1-B2 + C1 完成 2026-06-24 (A5 阻塞于 integrate-barrier-module-cta-warp):
+        - [x] ThreadContext 拆 4 POD (ExecState/RegisterPredicate/Memory/ProgramRef) — A1+A3 (commits `7054593` `7952120` `67ad828`)
+        - [x] WarpContext 拆 3 POD (LaneMask/Identity/BackendLinks) — A1+A4 (commits `7054593` `8b9b025` `2a3b48a`)
+        - [x] WarpState 精简 4 字段 (threads[] + exec_mask + deprecated wbars + deprecated current_wbar_id) — A2 (commit `5617665`)
+        - [ ] 删除 deprecated wbars + current_wbar_id + thread_predicates + warp_pc — A5 阻塞于 `integrate-barrier-module-cta-warp` 合并
+        - [x] 122 个测试文件编译通过 (B1+B2 commits `33e1f99` `8248303`) — 测试基础设施已用 POD 访问器，仅 2 处 `t->state = RUN` 改 `t->set_state(RUN)`
+        - [x] ctest 全过（除 7 pre-existing KNOWN_ISSUES）+ sanity.sh 全过
+        - [x] ASan 无 LeakSanitizer 报告 (commit `2d24403` — InstructionFactory atexit cleanup)
+        - [ ] ASan 无 heap-buffer-overflow 报告（5 pre-existing at `ThreadContext::collect_operands:393`，独立跟踪）
 ```
 
 **Phase 3 完成后可启动 Phase 4 T2-4**（PTX 8.7+ ANTLR 占位清理，multi-day）。
