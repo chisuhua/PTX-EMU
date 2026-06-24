@@ -69,39 +69,69 @@ cmake --build build --target GenerateParser
 
 ## Risk Assessment
 
-**Low risk** because:
+**Low overall risk** because:
 - Zero test coverage means no test regression
 - Zero handlers means no dispatch regression
 - Zero consumers means no runtime regression
 - Only risk is **parser regeneration** introducing subtle grammar conflicts
 
+**⚠️ CRITICAL: Steps 2-7 are ATOMIC — cannot be done incrementally**
+
+**Experimental validation (2026-06-24)**:
+Tried removing only `X(S_ST_ASYNC, ...)` from `include/ptx_ir/ptx_op.def` to test if Steps 2-3 could be done in isolation. **Build immediately broke** with:
+```
+src/CMakeFiles/ptxsim.dir/utils/ptx_lane_verification.cpp.o: Error 1
+src/CMakeFiles/ptxsim.dir/all: Error 2
+```
+
+**Root cause**: X-macro is consumed by `include/ptx_parser/ptx_visiter.h:95` to generate `visit*Inst` method declarations:
+```cpp
+#define X(enum_val, type_name, opstr, op_count, struct_kind, instr_kind) \
+    std::any visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) override;
+#include "ptx_ir/ptx_op.def"
+```
+
+Removing the X-macro entry removes the visitor override, leaving the ANTLR-generated `ptxParser` base class's pure virtual method unimplemented → compile error. **Reverted immediately, no commit.**
+
+**Implication**: Must do Steps 2-7 (or at minimum Steps 2 + 4-6) atomically in single commit/branch. Any partial implementation creates broken state.
+
 **Mitigation**:
-- Do Steps 4-6 in isolation (single feature branch)
-- Run full PTX syntax test suite after each .g4 edit
+- Apply Steps 2-7 as single atomic commit (NOT incremental)
+- Use feature branch `refactor/t2-4-ptx-87-cleanup` for isolation
+- After commit, verify build + sanity + PTX tests in one shot
+- If anything breaks, revert entire commit (not partial)
 - Keep ANTLR-generated files in `build/antlr4_generated_src/` regenerable from .g4 sources
 - Diff generated parser before/after to verify minimal change
 
 ## Estimated Effort
 
-- Steps 2-3: 1 hour (mechanical removal from C++ files)
-- Step 4: 2-3 hours (grammar understanding + careful edits)
-- Step 5: 30 minutes (lexer rule removal)
-- Step 6: 4-8 hours (ANTLR regen + iterative debugging)
-- Step 7: 2-3 hours (test verification)
-
-**Total: 1-2 working days** (matches "multi-day" assessment in master plan)
+- **Atomic Steps 2-7 sequence**: 1-2 working days
+  - Step 2 (C++ X-macro removal): 30 min
+  - Step 3 (statement_factory.h): 30 min
+  - Step 4 (grammar edits): 2-3 hours
+  - Step 5 (lexer edits): 30 min
+  - Step 6 (ANTLR regen + iterative debugging): 4-8 hours ← **largest risk**
+  - Step 7 (test verification): 2-3 hours
+- Cannot parallelize any steps (each depends on prior)
+- Cannot incrementally commit (atomic only)
 
 ## Phase 4 Handoff Notes
 
 When picking up T2-4 Steps 2-7 in Phase 4:
-1. Read this document + T2-4 Step 1 commit message
-2. Use `git worktree add ../ptx-emu-t2-4 -b refactor/t2-4-ptx-87-cleanup` (per master plan §worktree guidance, but note user 2026-06-23 chose direct push to main — adapt as needed)
-3. Apply Steps 2-3 first (C++ cleanup, safe), verify build
-4. Apply Step 4 (grammar), regenerate parser, verify sanity
-5. Apply Step 5 (lexer), regenerate, verify sanity
-6. Apply Step 6 (regen), run full regression
-7. Apply Step 7 (tests + verify)
-8. Single commit or split per step (recommend single commit for atomicity)
+1. Read this document + T2-4 Step 1 commit message + this experimental evidence section
+2. Use `git worktree add ../ptx-emu-t2-4 -b refactor/t2-4-ptx-87-cleanup` (note: user 2026-06-23 chose direct push to main — adapt as needed)
+3. **CRITICAL**: Apply Steps 2-7 atomically in single feature branch — DO NOT attempt incremental commits
+4. Verify in one shot: build + sanity.sh + test_all_ptx.sh
+5. Single commit for atomicity (commit message: `refactor(ptx): remove PTX 8.7+ placeholder instructions (T2-4 Steps 2-7)`)
+6. If any step fails, revert entire commit and debug
+
+## Why This Document Exists
+
+T2-4 Step 1 commit (`2e339ea`) message references this roadmap file but it was never created. This document fills that gap with:
+- Complete Steps 2-7 scope breakdown
+- Critical experimental evidence that incremental work breaks build (2026-06-24)
+- Atomicity requirement based on actual build verification
+- Concrete handoff notes for Phase 4 pickup
 
 ## Cross-References
 
