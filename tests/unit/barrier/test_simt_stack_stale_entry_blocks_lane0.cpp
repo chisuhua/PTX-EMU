@@ -47,38 +47,38 @@
  */
 
 #include "catch_amalgamated.hpp"
-#include "ptxsim/sm_context.h"
-#include "ptxsim/warp_context.h"
-#include "ptxsim/thread_context.h"
-#include "ptxsim/cta_context.h"
+#include "memory/resource_manager.h"
+#include "ptx_ir/operand_context.h"
+#include "ptx_ir/statement_context.h"
+#include "ptx_ir/statement_factory.h"
 #include "ptxsim/common_types.h"
+#include "ptxsim/cta_context.h"
+#include "ptxsim/execution_trace.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/instruction_factory.h"
 #include "ptxsim/register_analyzer.h"
-#include "ptxsim/execution_trace.h"
-#include "ptxsim/testing/scheduler_utils.h"
+#include "ptxsim/sm_context.h"
 #include "ptxsim/testing/instruction_helpers.h"
-#include "ptxsim/testing/predicates.h"
 #include "ptxsim/testing/memory_test_utils.h"
-#include "ptx_ir/statement_context.h"
-#include "ptx_ir/statement_factory.h"
-#include "ptx_ir/operand_context.h"
-#include "memory/resource_manager.h"
+#include "ptxsim/testing/predicates.h"
+#include "ptxsim/testing/scheduler_utils.h"
+#include "ptxsim/thread_context.h"
+#include "ptxsim/warp_context.h"
 #include "register/register_bank_manager.h"
 
-#include <vector>
-#include <memory>
-#include <map>
-#include <string>
 #include <cstdint>
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
 
 using namespace ptxir::factory;
-using ptxsim::testing::step_warp;
-using ptxsim::testing::setup_pred;
-using ptxsim::testing::make_nop;
-using ptxsim::testing::make_st_shared_addr;
-using ptxsim::testing::make_ret;
 using ptxsim::ExecutionTracer;
+using ptxsim::testing::make_nop;
+using ptxsim::testing::make_ret;
+using ptxsim::testing::make_st_shared_addr;
+using ptxsim::testing::setup_pred;
+using ptxsim::testing::step_warp;
 
 // ============================================================================
 // U-1: A stale SIMTStackEntry with reconvergence_pc=X does NOT block
@@ -90,19 +90,20 @@ using ptxsim::ExecutionTracer;
 // the gate should mean the entry doesn't block — but we want to verify
 // the gate only checks `reconvergence_pc` of the TOP entry, not deeper.
 // ============================================================================
-TEST_CASE("U-1: stale SIMT entry with reconv=X does not block PC=X+1",
-          "[barrier][dispatch][simt][regression][BUG-DISPATCH-GATE-LANE0-SKIP]")
-{
+TEST_CASE(
+    "U-1: stale SIMT entry with reconv=X does not block PC=X+1",
+    "[barrier][dispatch][simt][regression][BUG-DISPATCH-GATE-LANE0-SKIP]") {
     ptxsim::testing::init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
     // Minimal instruction sequence: just one st.shared for lane 0
     constexpr int PC_ST_SHARED = 0;
-    constexpr int PC_RET       = 1;
-    constexpr int NUM_STMTS    = 2;
+    constexpr int PC_RET = 1;
+    constexpr int NUM_STMTS = 2;
 
     std::vector<StatementContext> v(NUM_STMTS);
-    for (auto& s : v) s = make_nop();
+    for (auto &s : v)
+        s = make_nop();
 
     // PC=0: st.shared.b32 [sdata+0], r_val (lane 0 write)
     v[PC_ST_SHARED] = ptxsim::testing::make_st_shared_addr(
@@ -119,11 +120,32 @@ TEST_CASE("U-1: stale SIMT entry with reconv=X does not block PC=X+1",
     SMContext sm(4, 128, 4096, 0);
     bool ok = sm.add_block(std::move(blk));
     REQUIRE(ok);
-    WarpContext* w = sm.get_warp(0);
+    WarpContext *w = sm.get_warp(0);
     REQUIRE(w != nullptr);
 
+    // Set up r_tid and r_val registers so the st.shared instruction can
+    // execute without throwing "Register not found in bank manager". The
+    // RegisterAnalyzer does not extract registers from AddrOperand (it only
+    // handles RegOperand/VecOperand), so any register referenced only via
+    // [base+reg] addressing must be pre-created manually.
+    {
+        auto rbm = w->get_register_bank_manager();
+        rbm->create_register("r_tid", 4);
+        rbm->create_register("r_val", 4);
+        for (int i = 0; i < 32; i++) {
+            auto *tid =
+                static_cast<uint32_t *>(rbm->get_register("r_tid", 0, i));
+            if (tid)
+                *tid = static_cast<uint32_t>(i);
+            auto *val =
+                static_cast<uint32_t *>(rbm->get_register("r_val", 0, i));
+            if (val)
+                *val = 0xDEADBEEFu;
+        }
+    }
+
     // Manually set up the warp state: lane 0 at PC=0, lanes 1-31 at PC=1
-    auto& ws = w->get_warp_state();
+    auto &ws = w->get_warp_state();
     ws.threads[0].pc = PC_ST_SHARED;
     ws.threads[0].next_pc = PC_ST_SHARED;
     ws.threads[0].is_active = true;
@@ -145,9 +167,10 @@ TEST_CASE("U-1: stale SIMT entry with reconv=X does not block PC=X+1",
     // (reconv=loop_exit) was never popped, and the dispatcher incorrectly
     // classifies the lane 0 st.shared PC as a reconvergence point.
     ptxsim::SIMTStackEntry stale_entry;
-    stale_entry.branch_pc = 999;  // some old branch
-    stale_entry.reconvergence_pc = PC_ST_SHARED;  // KEY: matches the st.shared PC
-    stale_entry.active_mask = 0xFFFFFFFEu;  // lanes 1-31 (already past, at PC=1)
+    stale_entry.branch_pc = 999; // some old branch
+    stale_entry.reconvergence_pc =
+        PC_ST_SHARED;                      // KEY: matches the st.shared PC
+    stale_entry.active_mask = 0xFFFFFFFEu; // lanes 1-31 (already past, at PC=1)
     stale_entry.return_mask = 0xFFFFFFFEu;
     stale_entry.return_pc = PC_ST_SHARED;
     w->get_simt_stack().push(stale_entry);
@@ -165,37 +188,31 @@ TEST_CASE("U-1: stale SIMT entry with reconv=X does not block PC=X+1",
     int picked_pc = step_warp(w, v);
 
     ptxsim::ExecutionTracer::disable();
-    const auto& trace = ptxsim::ExecutionTracer::get_trace();
+    const auto &trace = ptxsim::ExecutionTracer::get_trace();
 
     INFO("step_warp picked PC=" << picked_pc);
     INFO("Lane 0 PC after: " << w->get_thread(0)->get_pc());
     INFO("Lane 0 is_blocked: " << ws.threads[0].is_blocked);
     INFO("Lane 0 is_active: " << ws.threads[0].is_active);
     INFO("Trace lane 0 PCs: ");
-    for (const auto& e : trace.threads[0].entries) {
+    for (const auto &e : trace.threads[0].entries) {
         INFO("  PC=" << e.pc << " instr=" << e.instruction_text);
     }
 
-    // CORE ASSERTION: lane 0's st.shared at PC=0 must have been dispatched
-    // (i.e. lane 0 must appear in the trace at PC=0).
-    //
-    // If the dispatch gate incorrectly classified PC=0 as a reconvergence
-    // point (because the stale entry's reconv=0 matched), `check_and_block`
-    // would block lane 0, the early-return path in `execute_warp_instruction`
-    // would fire, and the tracer would have NO entry for lane 0 at PC=0.
+    // CORE ASSERTION: lane 0's st.shared at PC=0 must have been dispatched.
+    // The trace records post-execution PC (= PC_ST_SHARED + 1) since
+    // commit_pc() advances warp_state.threads[i].pc before the record.
+    // Pre-fix (buggy): gate blocks lane 0 → no record → lane0_dispatched=false.
+    // Post-fix: gate ignores lane 0 (not in entry's active_mask) → st.shared
+    // runs → trace entry at pc=1 → lane0_dispatched=true.
     bool lane0_dispatched = false;
-    for (const auto& e : trace.threads[0].entries) {
-        if (e.pc == static_cast<uint32_t>(PC_ST_SHARED)) {
+    for (const auto &e : trace.threads[0].entries) {
+        if (e.pc == static_cast<uint32_t>(PC_ST_SHARED + 1)) {
             lane0_dispatched = true;
             break;
         }
     }
 
-    // This is a HYPOTHESIS test: if it passes, the stale entry did NOT block
-    // the st.shared, meaning the bug is elsewhere. If it fails, the gate IS
-    // the bug and we need to fix `check_and_block_at_reconvergence_point` to
-    // ignore entries whose active_mask lanes have all passed the
-    // reconvergence_pc.
     CHECK(lane0_dispatched);
     CHECK(picked_pc == PC_ST_SHARED);
     CHECK(!ws.threads[0].is_blocked);
@@ -211,18 +228,18 @@ TEST_CASE("U-1: stale SIMT entry with reconv=X does not block PC=X+1",
 // until everyone arrives). It is a complementary "definition" test.
 // ============================================================================
 TEST_CASE("U-2: non-stale SIMT entry with reconv=X blocks lane at PC=X",
-          "[barrier][dispatch][simt][definition]")
-{
+          "[barrier][dispatch][simt][definition]") {
     ptxsim::testing::init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
     constexpr int PC_ST_SHARED = 0;
-    constexpr int PC_OTHER     = 5;  // divergent lane 1 is at PC=5
-    constexpr int PC_RET       = 1;
-    constexpr int NUM_STMTS    = 2;
+    constexpr int PC_OTHER = 5; // divergent lanes 1-31 are at PC=5
+    constexpr int PC_RET = 1;
+    constexpr int NUM_STMTS = 2;
 
     std::vector<StatementContext> v(NUM_STMTS);
-    for (auto& s : v) s = make_nop();
+    for (auto &s : v)
+        s = make_nop();
     v[PC_ST_SHARED] = ptxsim::testing::make_st_shared_addr(
         "sdata", "r_tid", "r_val", Qualifier::Q_B32);
     v[PC_RET] = make_ret();
@@ -237,10 +254,29 @@ TEST_CASE("U-2: non-stale SIMT entry with reconv=X blocks lane at PC=X",
     SMContext sm(4, 128, 4096, 0);
     bool ok = sm.add_block(std::move(blk));
     REQUIRE(ok);
-    WarpContext* w = sm.get_warp(0);
+    WarpContext *w = sm.get_warp(0);
     REQUIRE(w != nullptr);
 
-    auto& ws = w->get_warp_state();
+    // Pre-create r_tid/r_val registers (the RegisterAnalyzer does not
+    // extract from AddrOperand, so st.shared's [sdata+r_tid] alone won't
+    // cause the registers to be allocated).
+    {
+        auto rbm = w->get_register_bank_manager();
+        rbm->create_register("r_tid", 4);
+        rbm->create_register("r_val", 4);
+        for (int i = 0; i < 32; i++) {
+            auto *tid =
+                static_cast<uint32_t *>(rbm->get_register("r_tid", 0, i));
+            if (tid)
+                *tid = static_cast<uint32_t>(i);
+            auto *val =
+                static_cast<uint32_t *>(rbm->get_register("r_val", 0, i));
+            if (val)
+                *val = 0xDEADBEEFu;
+        }
+    }
+
+    auto &ws = w->get_warp_state();
     ws.threads[0].pc = PC_ST_SHARED;
     ws.threads[0].next_pc = PC_ST_SHARED;
     ws.threads[0].is_active = true;
@@ -248,7 +284,7 @@ TEST_CASE("U-2: non-stale SIMT entry with reconv=X blocks lane at PC=X",
     ws.threads[0].is_exited = false;
     ws.threads[0].status = ptxsim::ThreadStatus::Active;
     for (int i = 1; i < 32; i++) {
-        ws.threads[i].pc = PC_OTHER;  // divergent path
+        ws.threads[i].pc = PC_OTHER; // divergent path
         ws.threads[i].next_pc = PC_OTHER;
         ws.threads[i].is_active = true;
         ws.threads[i].is_blocked = false;
@@ -257,13 +293,16 @@ TEST_CASE("U-2: non-stale SIMT entry with reconv=X blocks lane at PC=X",
     }
     w->update_active_mask();
 
-    // *** Inject a NON-stale entry: lane 1 (active_mask=0xFFFFFFFE) is still
-    // on a divergent path at PC=PC_OTHER != reconv_pc=PC_ST_SHARED ***
+    // *** Inject a NON-stale entry whose active_mask INCLUDES lane 0.
+    // Lanes 1-31 are still divergent (at PC=5, not at reconv_pc=0), so the
+    // gate must block lane 0 (which is in active_mask AND at reconv_pc).
+    // This is the *intended* SIMT-semantic blocking behavior — opposite of
+    // U-1's stale-entry scenario.
     ptxsim::SIMTStackEntry entry;
     entry.branch_pc = 999;
     entry.reconvergence_pc = PC_ST_SHARED;
-    entry.active_mask = 0xFFFFFFFEu;  // lanes 1-31: divergent, NOT at reconv
-    entry.return_mask = 0xFFFFFFFEu;
+    entry.active_mask = 0xFFFFFFFFu; // ALL lanes tracked (lane 0 included)
+    entry.return_mask = 0xFFFFFFFFu;
     entry.return_pc = PC_ST_SHARED;
     w->get_simt_stack().push(entry);
 
@@ -273,22 +312,24 @@ TEST_CASE("U-2: non-stale SIMT entry with reconv=X blocks lane at PC=X",
     int picked_pc = step_warp(w, v);
 
     ptxsim::ExecutionTracer::disable();
-    const auto& trace = ptxsim::ExecutionTracer::get_trace();
+    const auto &trace = ptxsim::ExecutionTracer::get_trace();
 
     INFO("step_warp picked PC=" << picked_pc);
     INFO("Lane 0 is_blocked: " << ws.threads[0].is_blocked);
 
-    // The dispatcher should have recognized the reconvergence point
-    // and blocked lane 0 (because lane 1 is still on the divergent path).
-    // lane 0's st.shared at PC=0 should NOT be dispatched.
+    // The dispatcher should have recognized the reconvergence point and
+    // blocked lane 0 (it is inside active_mask AND at reconv_pc, while
+    // lanes 1-31 are still divergent at PC=5). lane 0's st.shared at PC=0
+    // must NOT be dispatched. Trace is therefore empty for lane 0.
     bool lane0_dispatched = false;
-    for (const auto& e : trace.threads[0].entries) {
-        if (e.pc == static_cast<uint32_t>(PC_ST_SHARED)) {
+    for (const auto &e : trace.threads[0].entries) {
+        if (e.pc == static_cast<uint32_t>(PC_ST_SHARED) ||
+            e.pc == static_cast<uint32_t>(PC_ST_SHARED + 1)) {
             lane0_dispatched = true;
             break;
         }
     }
 
-    CHECK(!lane0_dispatched);     // gated: st.shared blocked
-    CHECK(ws.threads[0].is_blocked);  // lane 0 blocked
+    CHECK(!lane0_dispatched);        // gated: st.shared blocked
+    CHECK(ws.threads[0].is_blocked); // lane 0 blocked
 }

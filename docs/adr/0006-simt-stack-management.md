@@ -73,7 +73,26 @@
 
 1. **栈条目包含完整分支上下文**：branch_pc、reconvergence_pc、active_mask、return_mask、return_pc
 2. **深度限制防止溢出**：MAX_DEPTH=32，足够覆盖实际 kernel 的嵌套深度
-3. **收敛检查跳过退出线程**：is_exited 或 !is_active 的线程不阻塞收敛
+3. **收敛检查只跳过真正退出线程**：仅 `is_exited` 的 lane 跳过；
+   `!is_active`（内存停顿、barrier 等待等瞬态失活）**不能**跳过，
+   否则会过早弹出栈条目，导致失活的 lane 在恢复后被孤立（Fix 3，2026-06-25）
+
+### 三个字段的角色分工（Fix 1 + Fix 3 后澄清）
+
+`SIMTStackEntry` 有三个易混淆字段，**绝对不能互换使用**：
+
+| 字段 | 含义 | 在哪里使用 |
+|------|------|-----------|
+| `active_mask` | 走了分支的 lane 子集 | `is_converged()` 的收敛判定循环 |
+| `return_mask` | 整个分歧组（taken + not-taken） | gate `check_and_block_at_reconvergence_point()`；`check_reconvergence()` 弹出后恢复 `exec_mask` |
+| `is_active` | lane 当前是否在 warp 中活跃 | `update_active_mask()` 双向同步（self-heal） |
+
+**为什么这样分工**：
+- 收敛判定只关心"走了分支的 lane 是否都到齐"——fall-through lane 本来就没分支
+- gate 阻塞必须覆盖所有到达 reconv_pc 的 lane（包括 fall-through），
+  否则 fall-through lane 会越过 reconv_pc 跑掉造成乱序（Fix 1）
+- `exec_mask` 弹出后取 `return_mask`（整个分歧组），这样后续 PTX
+  `activemask` 指令返回值包含所有应该一起执行的 lane
 
 ### 实现要点
 
@@ -86,12 +105,16 @@ struct SIMTStackEntry {
     int return_pc;              // 汇合后继续执行的 PC
     
     bool is_converged(const std::array<ThreadState, 32>& threads) const {
-        for (int i = 0; i < 32; i++) {
-            if (threads[i].is_exited || !threads[i].is_active) {
-                continue;  // 跳过退出线程
-            }
-            if (return_mask & (1u << i)) {
-                if (threads[i].pc != reconvergence_pc) {
+        for (size_t i = 0; i < 32; i++) {
+            if (active_mask & (1u << i)) {
+                // Only skip lanes that have exited the kernel.
+                // A lane that is temporarily inactive (e.g., memory stall,
+                // blocked at barrier) is still part of the active convergence
+                // group and must reach reconvergence_pc before we pop.
+                if (threads[i].is_exited) {
+                    continue;
+                }
+                if ((int)threads[i].pc != reconvergence_pc) {
                     return false;
                 }
             }
@@ -138,11 +161,14 @@ bool WarpContext::check_reconvergence() {
     simt_stack.check_reconvergence(warp_state.threads);
 
     if (simt_stack.depth() < depth_before) {
-        // An entry was popped, update exec_mask
+        // An entry was popped, update exec_mask.
+        // IMPORTANT: use return_mask (full divergence group), not
+        // active_mask (taken-subset), so that subsequent PTX `activemask`
+        // returns all lanes that should now be executing together.
         if (simt_stack.empty()) {
             warp_state.exec_mask = 0xFFFFFFFF;  // All lanes converged
         } else {
-            warp_state.exec_mask = simt_stack.top().active_mask;
+            warp_state.exec_mask = simt_stack.top().return_mask;
         }
         return true;
     }
@@ -221,7 +247,11 @@ void WarpContext::handle_branch(const std::string& predicate,
 
 - [ ] 分支指令执行时正确 push SIMT 栈
 - [ ] reconvergence 时正确 pop SIMT 栈
-- [ ] check_reconvergence 跳过退出线程
+- [ ] **`is_converged` 只跳 `is_exited`，绝对不跳 `!is_active`**（Fix 3）
+- [ ] **`is_converged` 循环使用 `active_mask`**（不是 `return_mask`）
+- [ ] **gate 使用 `return_mask`** 阻塞所有到达 reconv_pc 的 lane（Fix 1）
+- [ ] **`check_reconvergence` 弹出后 `exec_mask` 取新栈顶 `return_mask`**
+- [ ] 三个字段（`active_mask` / `return_mask` / `is_active`）的角色分工清晰
 - [ ] 栈深度不超过 MAX_DEPTH
 - [ ] barrier 后使用 while 循环处理所有收敛条目
 - [ ] check_reconvergence 返回 bool 表示是否有条目被 pop
@@ -235,6 +265,7 @@ void WarpContext::handle_branch(const std::string& predicate,
 | 2026-05-06 | 添加 while 循环收敛模式说明、更新合规检查项 | PTX-EMU Team |
 | 2026-05-06 | 添加 handle_branch PC 过滤说明、更新合规检查项 | PTX-EMU Team |
 | 2026-06-19 | 同步 MAX_DEPTH 文档与代码（10 → 32，P1-1 quickwin） | Sisyphus |
+| 2026-06-25 | Fix 3：`is_converged` 不再跳 `!is_active`；澄清三个字段（active_mask/return_mask/is_active）的角色分工；`exec_mask` 弹出后取 `return_mask`；修正 is_converged / check_reconvergence 的代码示例与决策原则 | Sisyphus |
 
 ## 参考
 

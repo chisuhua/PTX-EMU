@@ -1404,6 +1404,89 @@ memory.cpp:29-41           — LdHandler blocking (where is_blocked=true origina
 
 ---
 
+## B4.2 — `simpleCONV-{int,float,double}` hang at SIMT stack reconvergence point (FIXED 2026-06-25)
+
+**Status:** FIXED — Fix 3 (premature reconvergence due to `!is_active` skip)
+
+**症状：** 三个 `simpleCONV` 测试 baseline 即超时挂死（`exit 124` after `timeout 5`），
+即使 B4.1 修复后 kernel 已经能跑过 `ld.global + bar.sync + compute` 也不会停下。
+挂死位置：所有 warp 的 `lane 1-31` 卡在 PC=45（`$L__BB0_4`），lane 0 单独跑到 PC=46，
+scheduler 永远在 `Cycle 257864+` 反复打印 `divergence: PC=45 [FFFFFFFE], PC=46 [00000001]`。
+
+**根因链路：**
+
+1. simpleCONV 内层循环 `@%p4 bra $L__BB0_3`（PC=44，回跳到 PC=37）在 lane 0 单 lane 上发散
+2. `handle_branch` 压栈：`return_mask=0xFFFFFFFF`、`active_mask=0x00000001`、`reconvergence_pc=45`
+3. lane 0 在循环体执行 `ld.global.u32 %r53,[%rd24]`（PC=38），`PipelineHandler::ExecPipe`
+   进入流水线但因数据未就绪触发**流水线重试**——`update_active_mask()` 在每周期末
+   把 lane 0 的 `is_active` 暂时写回 `false`（因为 `is_blocked=true`）
+4. 调度器下一轮走到栈顶汇聚点 PC=45，`check_and_block_at_reconvergence_point()`
+   正确阻塞 lanes 1-31；然后 `check_reconvergence()` 调用 `is_converged()`
+5. **BUG**：`is_converged` 旧实现 `if (is_exited || !is_active) continue;` →
+   lane 0 因 `!is_active` 被错误跳过；只有 lanes 1-31 在 `active_mask` 检查范围之外
+   → 函数返回 **true**（假阳性）
+6. 栈条目被弹出，lanes 1-31 被解锁；lane 0 恢复活跃后回到 PC=38，
+   栈已空→门控失效→lane 0 越过 PC=45 到达 PC=46；lanes 1-31 永远卡在 PC=45
+
+**修复：**
+
+`src/ptxsim/core/simt_stack.cpp:7-25` 的 `SIMTStackEntry::is_converged()` 改为：
+
+```cpp
+if (active_mask & (1u << i)) {
+    if (threads[i].is_exited) {       // ← 仅跳 exit
+        continue;
+    }
+    if ((int)threads[i].pc != reconvergence_pc) {
+        return false;
+    }
+}
+```
+
+**为何只跳 `is_exited` 而不跳 `!is_active`**：内存停顿、barrier 等待等
+瞬态失活的 lane 仍属于 active 分歧组，必须到达 `reconvergence_pc` 才能算
+"已收敛"；错误跳过会导致过早弹出栈条目，让瞬态失活的 lane 在恢复后
+被孤立（无法被任何 gate 阻塞），造成不可恢复的死锁。
+
+**同类陷阱**（Fix 1 + Fix 3 后形成的**铁律**）：
+
+| 字段 | 唯一的正确使用位置 |
+|------|--------------------|
+| `active_mask` | `is_converged()` 收敛判定循环（只关心 taken 子集） |
+| `return_mask` | `check_and_block_at_reconvergence_point()` 阻塞循环 + `check_reconvergence()` 弹出后恢复 `exec_mask` |
+| `is_active` | `update_active_mask()` 双向同步（self-heal，per `src/ptxsim/core/AGENTS.md` §T2-1） |
+
+混淆 `active_mask` 与 `return_mask` 会引入回归——见 ADR-0006 §三个字段的角色分工。
+
+**验证：**
+
+```bash
+timeout 60 ./build/bin/simpleCONV-int    # exit 0（修复前 exit 124）
+timeout 60 ./build/bin/simpleCONV-float  # exit 0
+timeout 60 ./build/bin/simpleCONV-double # exit 0
+
+./scripts/sanity.sh --full --verbose   # 70 PASS, 0 新 FAIL
+```
+
+**受影响文件：**
+- `src/ptxsim/core/simt_stack.cpp` — `is_converged`（核心修复）
+- `src/ptxsim/core/warp_context.cpp` — `check_reconvergence` 的 `exec_mask` 恢复（用 `return_mask` 而非 `active_mask`）
+- `tests/unit/simt/test_simt_stack_entry.cpp` — B2 测试语义澄清
+- `tests/unit/simt/test_simt_integration.cpp` — I2 测试 `exec_mask` 期望值更新
+
+**完整 postmortem：** [`postmortem-fix-3-is-converged-skip-inactive.md`](./postmortem-fix-3-is-converged-skip-inactive.md)
+
+**诊断经验沉淀：**
+1. 看到"多个 lane 卡在不同 PC + 栈深度异常"的挂死，先怀疑 `is_converged`
+   错误返回 true（跳过 lane / 字段混淆）
+2. **同一 SM 上同 `warp_id` 可对应多个 CTA 的多个 `WarpContext` 对象**——
+   调试时必须在 `get_lanes_by_pc()` 后立刻打印 `this=%p` 区分，否则会
+   误以为状态在周期之间被重置（实际是不同 CTA 的 warp 各自调度）
+3. `update_active_mask()` 每周期对所有 warp 调用，所以"lane 的 `is_active`
+   暂时为 false"是正常的流水线重试现象，不要当作状态损坏
+
+---
+
 ## How to Add a New Entry
 
 ```markdown

@@ -7,8 +7,13 @@ namespace ptxsim {
 bool SIMTStackEntry::is_converged(const std::array<ThreadState, 32>& threads) const {
     for (size_t i = 0; i < 32; i++) {
         if (active_mask & (1u << i)) {
-            // 跳过已退出或非活跃的线程 (修复 BUG-002)
-            if (threads[i].is_exited || !threads[i].is_active) {
+            // Only skip lanes that have exited the kernel.
+            // A lane that is temporarily inactive (e.g., memory stall,
+            // blocked at barrier) is still part of the active convergence
+            // group and must reach reconvergence_pc before we pop.
+            // Skipping inactive-but-not-exited lanes causes premature
+            // reconvergence, orphaning the stalled lane.
+            if (threads[i].is_exited) {
                 continue;
             }
             if ((int)threads[i].pc != reconvergence_pc) {

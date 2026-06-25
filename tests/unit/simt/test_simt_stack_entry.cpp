@@ -61,27 +61,27 @@ TEST_CASE("B1: all threads at reconvergence PC", "[simt_entry]") {
     REQUIRE(stack.empty() == true);
 }
 
-TEST_CASE("B2: partial convergence (only active_mask threads count)", "[simt_entry]") {
+TEST_CASE("B2: active_mask lanes not all arrived",
+          "[simt_entry]") {
     SIMTStack stack;
     std::array<ThreadState, 32> threads;
     for (int i = 0; i < 32; i++) {
         threads[i].is_active = true;
         threads[i].is_exited = false;
     }
-    // 线程 0-15 在收敛点,线程 16-31 不在(但不在 active_mask 内)
     for (int i = 0; i < 16; i++) threads[i].pc = 20;
     for (int i = 16; i < 32; i++) threads[i].pc = 15;
 
     SIMTStackEntry entry;
     entry.branch_pc = 10;
     entry.reconvergence_pc = 20;
+    entry.active_mask = 0x0000FFFF;
     entry.return_mask = 0xFFFFFFFF;
     entry.return_pc = 20;
-    entry.active_mask = 0x0000FFFF;  // 仅线程 0-15 走了分支
     stack.push(entry);
 
     bool converged = stack.check_reconvergence(threads);
-    REQUIRE(converged == true);  // active_mask 内线程全部收敛
+    REQUIRE(converged == true);
     REQUIRE(stack.empty() == true);
 }
 

@@ -67,12 +67,12 @@ TEST_CASE("I2: nested branches with multiple levels", "[integration]") {
     for (int i = 0; i < 8; i++) warp.set_thread_pc(i, 35);
     warp.check_reconvergence();
     REQUIRE(warp.get_simt_stack().depth() == 2);
-    REQUIRE(warp.get_exec_mask() == 0x000000FF);
+    REQUIRE(warp.get_exec_mask() == 0x0000FFFF);
 
     for (int i = 0; i < 16; i++) warp.set_thread_pc(i, 40);
     warp.check_reconvergence();
     REQUIRE(warp.get_simt_stack().depth() == 1);
-    REQUIRE(warp.get_exec_mask() == 0x0000FFFF);
+    REQUIRE(warp.get_exec_mask() == 0xFFFFFFFF);
 
     for (int i = 0; i < 32; i++) warp.set_thread_pc(i, 50);
     warp.check_reconvergence();

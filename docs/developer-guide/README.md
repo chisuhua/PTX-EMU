@@ -21,6 +21,28 @@
 | [THREE-MODE-TESTING-GUIDE.md](./THREE-MODE-TESTING-GUIDE.md) | 测试工程师 | ✅ 四模式 |
 | [BARRIER-PROGRAMMING-REFERENCE.md](./BARRIER-PROGRAMMING-REFERENCE.md) | 所有开发者 | ✅ Barrier 参考 |
 
+### 🛠️ 修复 Postmortem / Open Issue 文档
+
+**Postmortem（已修复，作为经验沉淀保留）**
+
+| 文档 | 修复内容 | 关键结论 |
+|------|---------|---------|
+| [postmortem-fix-1-gate-active-vs-return-mask.md](./postmortem-fix-1-gate-active-vs-return-mask.md) | Fix 1 — gate 阻塞范围 | 门控用 `return_mask`（非 `active_mask`）；处方必须覆盖 taken + fall-through 两条路径 |
+| [postmortem-fix-3-is-converged-skip-inactive.md](./postmortem-fix-3-is-converged-skip-inactive.md) | Fix 3 — `is_converged` 不应跳过暂时不活跃的 lane | `is_converged` 只跳 `is_exited`，不跳 `!is_active` |
+
+**Open Issue（未实现，待后续修复）**
+
+| 文档 | 问题 | 状态 |
+|------|------|------|
+| [open-fix-2-sbar-deadlock.md](./open-fix-2-sbar-deadlock.md) | Fix 2 — `S_BAR` 死锁（`bar.sync 0`） | **OPEN**：`cute_rmsnorm` / `integration_cute_rmsnorm_bar_sync_pattern` 仍 FAIL |
+
+> **铁律（Fix 1 + Fix 3 后确立）**：SIMTStackEntry 的三个字段**绝对不能互换**：
+> - `active_mask` — 收敛判定（`is_converged`）
+> - `return_mask` — 门控阻塞（gate）+ `exec_mask` 恢复（`check_reconvergence`）
+> - `is_active` — `update_active_mask` 双向同步（self-heal）
+>
+> 详见 [ADR-0006 §"三个字段的角色分工"](../adr/0006-simt-stack-management.md) 与 [KNOWN_ISSUES §B4.2](./KNOWN_ISSUES.md)。
+
 ---
 
 ## 🚀 快速导航

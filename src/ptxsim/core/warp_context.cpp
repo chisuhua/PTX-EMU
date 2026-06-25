@@ -132,7 +132,7 @@ bool WarpContext::check_reconvergence() {
         if (simt_stack.empty()) {
             warp_state.exec_mask = 0xFFFFFFFF;
         } else {
-            warp_state.exec_mask = simt_stack.top().active_mask;
+            warp_state.exec_mask = simt_stack.top().return_mask;
         }
         // SIMT栈pop跟踪
         if (ptxsim::DebugConfig::get().is_trace_simt_stack_enabled() &&
@@ -148,21 +148,32 @@ bool WarpContext::check_reconvergence() {
     return false;
 }
 
+// BUG-DISPATCH-GATE-LANE0-SKIP (fix): only block lanes that belong to the
+// top entry's divergence group (return_mask). Lanes outside return_mask are
+// on an unrelated path (or have already converged past reconv_pc) and must
+// continue executing. Without this guard, the gate incorrectly blocks any
+// lane sitting at reconv_pc, including those on unrelated paths — this was
+// the root cause of cute_rmsnorm's lane 0 st.shared being skipped (lanes
+// 1-31 had stale @%p10 back-edge entries whose return_mask did not include
+// lane 0, but the gate blocked lane 0 anyway because lane 0's PC ==
+// entry.reconvergence_pc).
 bool WarpContext::check_and_block_at_reconvergence_point(
     int target_pc, std::vector<int> &blocked_lanes) {
     blocked_lanes.clear();
-    if (simt_stack.empty())
+    if (simt_stack.empty()) {
         return false;
+    }
 
     const ptxsim::SIMTStackEntry &top = simt_stack.top();
     int reconv_pc = top.reconvergence_pc;
-    if (target_pc != reconv_pc)
+    if (target_pc != reconv_pc) {
         return false;
+    }
 
     int lanes_not_at_reconv = 0;
     int lanes_at_reconv = 0;
     for (int i = 0; i < WARP_SIZE; i++) {
-        if (!(top.active_mask & (1u << i)))
+        if (!(top.return_mask & (1u << i)))
             continue;
         if (warp_state.threads[i].is_exited)
             continue;
@@ -173,10 +184,20 @@ bool WarpContext::check_and_block_at_reconvergence_point(
         }
     }
 
-    if (lanes_not_at_reconv == 0)
+    // Block every lane at the reconvergence point so the last arrival
+    // cannot execute past it before check_reconvergence() pops the entry.
+    if (lanes_at_reconv == 0)
         return false;
 
     for (int i = 0; i < WARP_SIZE; i++) {
+        // Block all lanes in return_mask that sit at reconv_pc. This includes
+        // both the "taken" (active_mask) lanes and the "fallthrough" lanes —
+        // both must wait until the entry pops before advancing past the
+        // convergence point. Without this, fallthrough lanes can execute
+        // instructions at reconv_pc before the taken lanes have converged,
+        // causing out-of-order execution at the reconvergence point.
+        if (!(top.return_mask & (1u << i)))
+            continue;
         if (!warp_state.threads[i].is_exited &&
             (int)warp_state.threads[i].pc == reconv_pc &&
             !warp_state.threads[i].is_blocked) {

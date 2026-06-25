@@ -1,6 +1,17 @@
-# Handoff Document: Fix 2 — S_BAR 死锁（scheduler 应推进所有 lane 到 barrier PC）
+# Open Issue: Fix 2 — S_BAR 死锁（scheduler 应推进所有 lane 到 barrier PC）
 
-## Goal
+> **Status (2026-06-25):** **OPEN / NOT IMPLEMENTED**. 本文档记录的 `S_BAR`
+> scheduler/barrier 深度修复尚未完成。
+>
+> **失败证据（截至 2026-06-25）**：
+> - `integration_cute_rmsnorm_bar_sync_pattern` — FAIL（`75% tests passed, 1 tests failed out of 4`）
+> - `cute_rmsnorm` — FAIL（`Mismatch at [0]: got 0, expected 1.27534`）
+>
+> **关联已知问题**：[KNOWN_ISSUES.md §"cute_rmsnorm — broadcast-after-barrier skipped"](./KNOWN_ISSUES.md) 持续记录此 E2E 失败。
+>
+> **前置依赖**：[postmortem-fix-1-gate-active-vs-return-mask.md](./postmortem-fix-1-gate-active-vs-return-mask.md) 已完成（门控改用 `return_mask`），但**不足以**恢复 `cute_rmsnorm`。剩余失败位于 CTA-level `bar.sync` / `synchronize_barrier` 路径，需要本文档下文所述的架构性工作。
+
+## Goal（修复目标）
 修复 S_BAR handler（`bar.sync 0`）的死锁问题：当只有部分 lane 到达 barrier 时，scheduler 应该把其他 lane 推进到 barrier PC（而不是让先到的 lane 阻塞等待）。
 
 ## Background / Root Cause
@@ -234,7 +245,7 @@ cd /workspace/project/PTX-EMU/build && ctest -R cute_rmsnorm -V
 - `bench/cute/cute_rmsnorm.ptx:109-145` — cute_rmsnorm PTX 实际模式
 - `bench/cute/cute_rmsnorm.cu:113-121` — cute_rmsnorm 启动参数（blockSize=32）
 - `docs/developer-guide/KNOWN_ISSUES.md §"cute_rmsnorm"` — 完整 bug 上下文
-- `handoff-fix-1-dispatch-gate-active-mask.md` — **必须先完成的 Fix 1**
+- [postmortem-fix-1-gate-active-vs-return-mask.md](./postmortem-fix-1-gate-active-vs-return-mask.md) — **已完成**（门控改用 `return_mask`，见 postmortem 文档）
 
 ### 关键发现笔记
 - S_BAR 与 S_BAR_WARP_SYNC 是两个完全不同的代码路径
@@ -245,15 +256,13 @@ cd /workspace/project/PTX-EMU/build && ctest -R cute_rmsnorm -V
 - 但这个设计假设在单 warp + S_BAR 场景下不成立
 
 ### 顺序建议
-**必须先做 Fix 1 再做 Fix 2**：
-- Fix 1 修复 dispatch gate 的 active_mask 检查
-- Fix 2 修复 S_BAR 死锁
-- 两者独立，但 Fix 1 是 Fix 2 的前置条件（否则即使推进所有 lane 到 barrier PC，dispatch gate 仍会阻塞）
+**状态**：Fix 1 已完成（门控改用 `return_mask`），但单独不足以恢复 `cute_rmsnorm`。
+Fix 2（`S_BAR` 死锁）**仍然 OPEN**，需要实施本文档 §"Step 4: 实施修复" 的方案。
 
 ## 任务完成判定
 
 修复成功的标志：
-- [ ] Fix 1 已完成（dispatch gate 已修）
+- [x] Fix 1 已完成（门控改用 `return_mask`，见 [postmortem-fix-1](./postmortem-fix-1-gate-active-vs-return-mask.md)）
 - [ ] I-3 集成测试从 RED 转 GREEN
 - [ ] cute_rmsnorm E2E 测试 PASS（首次）
 - [ ] 全量 `./scripts/sanity.sh` 通过
