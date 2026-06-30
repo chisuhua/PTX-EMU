@@ -151,7 +151,16 @@ void HardwareMemoryManager::access(void *dev_ptr, void *data, size_t size,
     case MemorySpace::PARAM:
     case MemorySpace::LOCAL:
     case MemorySpace::CONST: {
-        // 对于其他内存空间，获取偏移量并使用SimpleMemory访问
+        // LOCAL 是 per-thread 真实指针；若 simple_memory_ 未注册
+        // （如 setup_block 单元测试），直接 memcpy 避免 nullptr 解引用
+        if (space == MemorySpace::LOCAL && simple_memory_ == nullptr) {
+            if (is_write) {
+                std::memcpy(dev_ptr, data, size);
+            } else {
+                std::memcpy(data, dev_ptr, size);
+            }
+            break;
+        }
         simple_memory_->direct_access((uint64_t)dev_ptr, data, size, is_write);
         break;
     }

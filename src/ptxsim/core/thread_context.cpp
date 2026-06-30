@@ -516,18 +516,11 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
                 return nullptr;
             }
         } else if (QvecHasQ(qualifiers, Qualifier::Q_LOCAL)) {
-            // BUGFIX: 本地内存访问修复
-            // cute_hello_tiled_copy 等使用 NVCC 自动溢出到 .local
-            // 存储的 C 数组 (e.g. `__local_depot0[8]`) 的 kernel
-            // 会通过 register offset 模式 (mov %SPL, __local_depot0;
-            // st.local [%SPL]) 访问本地内存,需要在 register 值之上
-            // 加上每线程的 local_mem_space 基址,否则会写到错误的
-            // 地址(0 或与全局内存重叠)。
             if (local_mem_space != nullptr) {
                 uint64_t offset = reg_value;
-                if (name2Share != nullptr && !fa.baseSymbol.empty()) {
-                    auto it = name2Share->find(fa.baseSymbol);
-                    if (it != name2Share->end()) {
+                if (cta_context_ != nullptr && !fa.baseSymbol.empty()) {
+                    auto it = cta_context_->name2Local.find(fa.baseSymbol);
+                    if (it != cta_context_->name2Local.end()) {
                         offset += it->second->val;
                     }
                 }
