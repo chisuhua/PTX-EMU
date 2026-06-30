@@ -185,6 +185,7 @@ TEST_CASE("integration_ldglobal_no_hang",
         // Simulate the SM tick: drain blocked cycles for this warp.
         // (In the real SMContext, this loop runs over ALL warps each tick.)
         WarpContext::decrement_blocked_cycles(w->get_warp_state());
+        w->update_active_mask();
 
         // Drive one warp instruction via the scheduler simulator.
         last_pc = step_warp(w, stmts);

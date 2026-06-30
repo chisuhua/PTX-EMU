@@ -84,6 +84,27 @@ using ptxsim::testing::make_ld_shared_addr;
 using ptxsim::testing::make_ret;
 using ptxsim::ExecutionTracer;
 
+static void preset_u32_register(WarpContext* w, const std::string& reg_name,
+                                uint32_t value) {
+    auto rbm = w->get_register_bank_manager();
+    rbm->create_register(reg_name, sizeof(uint32_t));
+    for (int lane = 0; lane < 32; ++lane) {
+        auto* p = static_cast<uint32_t*>(rbm->get_register(reg_name, 0, lane));
+        REQUIRE(p != nullptr);
+        *p = value;
+    }
+}
+
+static void preset_tid_register(WarpContext* w) {
+    auto rbm = w->get_register_bank_manager();
+    rbm->create_register("r_tid", sizeof(uint32_t));
+    for (int lane = 0; lane < 32; ++lane) {
+        auto* p = static_cast<uint32_t*>(rbm->get_register("r_tid", 0, lane));
+        REQUIRE(p != nullptr);
+        *p = static_cast<uint32_t>(lane);
+    }
+}
+
 constexpr int PC_PER_LANE_ST = 0;
 constexpr int PC_BAR1       = 1;
 constexpr int PC_LTID0_DVRG = 2;
@@ -110,7 +131,10 @@ static std::vector<StatementContext> build_cute_rmsnorm_pattern(
          OperandContext{RegOperand{"r_tid", -1}},
          OperandContext{ImmOperand{"0"}}},
         "setp.ne.s32 %p3, %r_tid, 0;");
-    v[PC_LTID0_DVRG + 1] = make_bra_pred("L_TID0_DVRG_W", "p3", false, /*reconv*/ PC_LTID0_DVRG + 2);
+    // Use negated predicate @!p3 bra: lane 0 (r_tid=0 → p3=0) takes the
+    // branch to L_TID0_DVRG_W (PC_TID0_DVRG). Lanes 1-31 (r_tid!=0 →
+    // p3=1) fall through to the unconditional bra L_BCONV.
+    v[PC_LTID0_DVRG + 1] = make_bra_pred("L_TID0_DVRG_W", "p3", true, /*reconv*/ PC_LTID0_DVRG + 2);
     v[PC_LTID0_DVRG + 2] = make_bra("L_BCONV");
     v[PC_TID0_DVRG] = ptxsim::testing::make_st_shared_addr(
         "sdata", "r_tid", "r_rsqrt", Qualifier::Q_B32);
@@ -148,6 +172,11 @@ TEST_CASE("I-3: cute_rmsnorm S_BAR (bar.sync 0) reduction + broadcast — "
     REQUIRE(ok);
     WarpContext* w = sm.get_warp(0);
     REQUIRE(w != nullptr);
+
+    // r_tid: lane id per lane (needed by setp.ne + st.shared offset)
+    preset_tid_register(w);
+    preset_u32_register(w, "r_val", 0x42);
+    preset_u32_register(w, "r_rsqrt", 0x7F);
 
     // Predicates: lane 0 only (matches cute_rmsnorm pattern)
     setup_pred(w, 0x00000001u);

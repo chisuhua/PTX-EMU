@@ -73,7 +73,10 @@ TEST_CASE("F5: nested divergence exec_mask recovery", "[exec_mask][nested]") {
     outer.branch_pc = 10;
     outer.reconvergence_pc = 50;
     outer.active_mask = 0x0000FFFF;
-    outer.return_mask = 0xFFFFFFFF;
+    // check_reconvergence reads return_mask from the NEW top (parent)
+    // after popping, so outer.return_mask is what exec_mask will be
+    // restored to when inner converges.
+    outer.return_mask = 0x0000FFFF;
     outer.return_pc = 50;
     warp.get_simt_stack().push(outer);
     warp.set_exec_mask(0x0000FFFF);
