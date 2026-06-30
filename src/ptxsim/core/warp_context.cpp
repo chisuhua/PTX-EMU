@@ -311,34 +311,44 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt,
         }
         return;
     }
+    // Snapshot lanes to process BEFORE any handler runs.
+    std::vector<int> lanes_to_process;
     for (int i = 0; i < WARP_SIZE; i++) {
-        if (i >= threads.size() || threads[i] == nullptr) {
+        if (i >= (int)threads.size() || threads[i] == nullptr)
             continue;
-        }
-
-        ThreadContext *thread = threads[i].get();
         bool lane_active = is_lane_active(i);
-        bool blocked_at_barrier = (thread->get_state() == BAR_SYNC);
-
-        // Hybrid fix: allow blocked threads to enter even if not lane_active
-        // so BAR_SYNC fallback handling can unblock them
-        if (!lane_active && !blocked_at_barrier) {
+        bool blocked_at_barrier = (threads[i]->get_state() == BAR_SYNC);
+        if ((!lane_active && !blocked_at_barrier) ||
+            warp_state.threads[i].pc != static_cast<uint32_t>(target_pc))
             continue;
-        }
+        lanes_to_process.push_back(i);
+    }
 
-        // Only execute for lanes at the target PC.
-        // Must use warp_state.pc to match get_lanes_by_pc() source.
-        if (warp_state.threads[i].pc != static_cast<uint32_t>(target_pc)) {
-            continue;
-        }
+    for (int i : lanes_to_process) {
+        ThreadContext *thread = threads[i].get();
 
         thread->sync_from_warp_state();
+
+        // Re-check PC after sync: a previous lane's divergent branch
+        // handling (e.g. bra_pred) may have moved this lane's PC away
+        // from target_pc. The snapshot pattern would otherwise re-execute
+        // the divergence, double-jumping lanes.
+        if (warp_state.threads[i].pc != static_cast<uint32_t>(target_pc)) {
+            thread->sync_to_warp_state();
+            continue;
+        }
+
+        // Skip already-exited lanes: warp-level handlers (ret) mark ALL
+        // lanes as exited, but sync_to_warp_state would otherwise re-run
+        // the handler on each lane, double-advancing PC.
+        if (thread->get_state() == EXIT) {
+            thread->sync_to_warp_state();
+            continue;
+        }
 
         if (thread->get_state() == BAR_SYNC) {
             if (cta_context_ != nullptr) {
                 bool is_warp_barrier = (warp_state.current_wbar_id >= 0);
-                // Use BarrierModule API instead of warp_state.wbars[]
-                // (deprecated).
                 bool warp_barrier_complete =
                     is_warp_barrier &&
                     cta_context_->get_barrier_module().is_warp_barrier_complete(

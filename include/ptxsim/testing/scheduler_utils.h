@@ -18,7 +18,12 @@ enum class StepResult { Continue, BarrierHit, Converged, Diverged, Complete };
 // Returns the PC that was executed
 inline int step_warp(WarpContext* w, std::vector<StatementContext>& v) {
     auto m = w->get_lanes_by_pc();
-    // REQUIRE_FALSE(m.empty());
+    // No schedulable lanes this tick (e.g. all blocked on ld.global latency
+    // or at a barrier). A real SMContext skips the warp; do the same here
+    // instead of dereferencing m.begin() on an empty map (UB).
+    if (m.empty()) {
+        return -1;
+    }
     int pick = m.begin()->first;
     auto& ws = w->get_warp_state();
     for (auto& [pc, lanes] : m) {
