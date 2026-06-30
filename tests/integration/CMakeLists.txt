@@ -314,19 +314,13 @@ add_catch_test(integration_shared_memory_layout
 )
 set_tests_properties(integration_shared_memory_layout PROPERTIES LABELS "integration;memory;shared;layout;shared_memory")
 
-# ---------------------------------------------------------------------------
-# KNOWN FAILING (pre-existing, see KNOWN_ISSUES.md §"B1.3 Local Memory Path")
-# ---------------------------------------------------------------------------
-# Test was written to verify ld.local / st.local round-trip on the simulator.
-# SEGFAULTs on main because get_memory_addr() LOCAL path is commented out
-# in thread_context.cpp:480-488 (the st.local handler is wired but the
-# address resolution is no-op'd). Tracked separately; excluded from
-# baseline gate via DISABLED. Re-enable after the LOCAL path is restored.
+# Test re-enabled: Q_LOCAL branch restored in thread_context.cpp:518-539.
+# Verifies ld.local / st.local round-trip on the simulator.
 add_catch_test(integration_local_memory
-    memory/test_local_memory.cpp
+memory/test_local_memory.cpp
 )
 set_tests_properties(integration_local_memory
-    PROPERTIES LABELS "integration;memory;local;ld_st" DISABLED True)
+PROPERTIES LABELS "integration;memory;local;ld_st")
 
 # ============================================================================
 # Dynamic Shared Memory Integration Test

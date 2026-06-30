@@ -37,7 +37,9 @@
 #include "memory/resource_manager.h"
 #include "register/register_bank_manager.h"
 
+#include <algorithm>
 #include <cstdint>
+#include <cstdlib>
 #include <map>
 #include <memory>
 #include <string>
@@ -185,13 +187,36 @@ inline StatementContext make_ld_local_addr(const std::string &dst_reg,
 
 inline WarpContext *setup_block(SMContext &sm,
                                  std::vector<StatementContext> &stmts) {
+    // Calculate per-thread local memory size from .local declarations
+    size_t localMemBytesPerThread = 0;
+    for (const auto &stmt : stmts) {
+        if (stmt.type == S_LOCAL) {
+            const DeclarationInstr &ls = std::get<DeclarationInstr>(stmt.data);
+            size_t elemSize = Q2bytes(ls.dataType);
+            size_t varBytes = elemSize * ls.array_size;
+            if (localMemBytesPerThread < varBytes) {
+                localMemBytesPerThread = varBytes;
+            }
+        }
+    }
+    // Allocate backing buffer for local memory (32 threads)
+    void *localMemBasePtr = nullptr;
+    if (localMemBytesPerThread > 0) {
+        size_t totalBytes = 32 * localMemBytesPerThread;
+        localMemBasePtr = malloc(totalBytes);
+        if (localMemBasePtr) {
+            memset(localMemBasePtr, 0, totalBytes);
+        }
+    }
+
     auto blk = std::make_unique<CTAContext>();
     Dim3 g{1, 1, 1};
     Dim3 b{32, 1, 1};
     Dim3 bi{0, 0, 0};
     std::map<std::string, int> l2pc;
     std::map<std::string, std::unique_ptr<Symtable>> n2s;
-    blk->init(g, b, bi, stmts, &n2s, l2pc);
+    blk->init(g, b, bi, stmts, &n2s, l2pc, localMemBasePtr,
+               localMemBytesPerThread);
     bool ok = sm.add_block(std::move(blk));
     REQUIRE(ok);
     return sm.get_warp(0);
