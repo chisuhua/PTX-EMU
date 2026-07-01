@@ -113,8 +113,10 @@ build_statements(std::map<std::string, int> &l2pc) {
     stmts.push_back(make_shared_decl("buf_a", 32));
     stmts.push_back(make_shared_decl("buf_b", 32));
 
-    stmts.push_back(make_mov("r1", "tid.x"));                   // PC=2
-    stmts.push_back(make_setp_lt_imm("p1", "r1", 16));          // PC=3
+    // r5 = lane id for the predicate; r1 is preset to lane*4 because
+    // PTX [symbol+register] shared-memory addresses are byte offsets.
+    stmts.push_back(make_mov("r5", "tid.x"));                   // PC=2
+    stmts.push_back(make_setp_lt_imm("p1", "r5", 16));          // PC=3
     stmts.push_back(make_bra_pred("L_path_b", "p1", false, 9)); // PC=4
     stmts.push_back(make_st_shared_addr("buf_a", "r1", "r2", Qualifier::Q_B32));  // PC=5 (path A)
     stmts.push_back(make_bra("L_join"));                        // PC=6
@@ -122,7 +124,7 @@ build_statements(std::map<std::string, int> &l2pc) {
     stmts.push_back(make_st_shared_addr("buf_b", "r1", "r2", Qualifier::Q_B32));  // PC=8 (path B)
     stmts.push_back(make_label("L_join"));                      // PC=9
     stmts.push_back(make_bar_warp_sync(0xFFFFFFFF, 11));        // PC=10
-    stmts.push_back(make_mov_imm("r1", 16));                    // PC=11
+    stmts.push_back(make_mov_imm("r1", 64));                    // PC=11: buf_a[16] byte offset
     stmts.push_back(make_ld_shared_addr("r3", "buf_a", "r1", Qualifier::Q_B32));  // PC=12
     stmts.push_back(make_mov_imm("r1", 0));                     // PC=13
     stmts.push_back(make_ld_shared_addr("r4", "buf_b", "r1", Qualifier::Q_B32));  // PC=14
@@ -174,10 +176,11 @@ TEST_CASE("integration_warp_barrier_memory_visibility_basic",
     WarpContext *w = setup_block(sm, stmts, l2pc);
     REQUIRE(w != nullptr);
 
-    // r_tid = lane_id (per-lane, so st.shared addresses spread across the
-    // 32-slot shared-memory buffer)
-    set_reg_per_lane_u32(w, "r1",
-                         [](int lane) { return static_cast<uint32_t>(lane); });
+    // r5 = lane id for the predicate; r1 is preset to lane*4 because PTX
+    // [symbol+register] shared-memory addresses are byte offsets.
+    set_reg_per_lane_u32(w, "r1", [](int lane) {
+        return static_cast<uint32_t>(lane) * 4u;
+    });
 
     // r_val = 0xBBBB for lanes 0-15 (path B), 0xAAAA for lanes 16-31 (path A)
     set_reg_per_lane_u32(w, "r2", [](int lane) {
@@ -187,16 +190,24 @@ TEST_CASE("integration_warp_barrier_memory_visibility_basic",
     // %p_lane_lt_16 true for lanes 0-15, false for 16-31
     setup_pred(w, 0x0000FFFFu);
 
-    // Drive execution via step_warp until the ret at PC=15 is executed
+    // Drive execution via step_warp until the ret at PC=15 is executed.
+    // active_mask must be all-lanes-active right after bar.warp.sync releases
+    // (first post-barrier PC=11), because ret will mark every lane exited.
     int ret_pc = -1;
+    bool post_barrier_active_mask_ok = false;
     for (int step = 0; step < 128; ++step) {
         int pc = step_warp(w, stmts);
+        if (pc == 11) {
+            post_barrier_active_mask_ok =
+                (w->get_active_mask() == 0xFFFFFFFFu);
+        }
         if (pc == 15) {
             ret_pc = pc;
             break;
         }
     }
     REQUIRE(ret_pc == 15);
+    REQUIRE(post_barrier_active_mask_ok);
 
     // ------------------------------------------------------------------
     // L1 — Shared memory content (per-lane via shared_mem_space pointer)
@@ -208,20 +219,6 @@ TEST_CASE("integration_warp_barrier_memory_visibility_basic",
     auto *shmem_a = reinterpret_cast<uint32_t *>(shmem_raw); // buf_a @ offset 0
     auto *shmem_b = reinterpret_cast<uint32_t *>( // buf_b @ offset 128
         static_cast<char *>(shmem_raw) + 128);
-
-    // TEMPORARY DIAGNOSTIC: dump first 64 bytes of shared memory
-    {
-        auto *bytes = static_cast<unsigned char *>(shmem_raw);
-        std::fprintf(stderr, "DIAG shmem[0..63]: ");
-        for (int i = 0; i < 64; ++i) {
-            std::fprintf(stderr, "%02x ", bytes[i]);
-        }
-        std::fprintf(stderr, "\nDIAG shmem[124..191]: ");
-        for (int i = 124; i < 192; ++i) {
-            std::fprintf(stderr, "%02x ", bytes[i]);
-        }
-        std::fprintf(stderr, "\n");
-    }
 
     // Path B (lanes 0-15) wrote 0xBBBB to buf_b[0..15]; buf_a[0..15] untouched
     // (==0)
@@ -264,14 +261,6 @@ TEST_CASE("integration_warp_barrier_memory_visibility_basic",
         INFO("L2 r_result_b lane " << i << " = 0x" << std::hex << v);
         CHECK(v == 0x0000BBBBu);
     }
-
-    // ------------------------------------------------------------------
-    // L3 — active_mask restored to all-lanes-active after barrier
-    // ------------------------------------------------------------------
-    CHECK(w->get_active_mask() == 0xFFFFFFFFu);
-    for (int i = 0; i < 32; ++i) {
-        CHECK(w->is_lane_active(i) == true);
-    }
 }
 
 // =============================================================================
@@ -296,22 +285,29 @@ TEST_CASE("integration_warp_barrier_memory_visibility_distinct_values",
     WarpContext *w = setup_block(sm, stmts, l2pc);
     REQUIRE(w != nullptr);
 
-    set_reg_per_lane_u32(w, "r1",
-                         [](int lane) { return static_cast<uint32_t>(lane); });
+    set_reg_per_lane_u32(w, "r1", [](int lane) {
+        return static_cast<uint32_t>(lane) * 4u;
+    });
     set_reg_per_lane_u32(w, "r2", [VAL_A, VAL_B](int lane) {
         return lane < 16 ? VAL_B : VAL_A;
     });
     setup_pred(w, 0x0000FFFFu);
 
     int ret_pc = -1;
+    bool post_barrier_active_mask_ok = false;
     for (int step = 0; step < 128; ++step) {
         int pc = step_warp(w, stmts);
+        if (pc == 11) {
+            post_barrier_active_mask_ok =
+                (w->get_active_mask() == 0xFFFFFFFFu);
+        }
         if (pc == 15) {
             ret_pc = pc;
             break;
         }
     }
     REQUIRE(ret_pc == 15);
+    REQUIRE(post_barrier_active_mask_ok);
 
     // L1 — shared memory
     ThreadContext *t0 = w->get_thread(0);
@@ -339,7 +335,4 @@ TEST_CASE("integration_warp_barrier_memory_visibility_distinct_values",
         CHECK(va == VAL_A);
         CHECK(vb == VAL_B);
     }
-
-    // L3 — all 32 lanes active after barrier
-    CHECK(w->get_active_mask() == 0xFFFFFFFFu);
 }

@@ -137,6 +137,7 @@ static void set_reg_per_lane_u32_2warps(
 // other warp.
 static int run_warp_until_ret_or_stuck(WarpContext *w,
                                        std::vector<StatementContext> &stmts,
+                                       bool *post_barrier_mask_ok = nullptr,
                                        int barrier_pc = 10,
                                        int post_barrier_pc = 11,
                                        int max_steps = 64) {
@@ -165,6 +166,10 @@ static int run_warp_until_ret_or_stuck(WarpContext *w,
         }
         int pc = step_warp(w, stmts);
         last_pc = pc;
+        if (pc == post_barrier_pc && post_barrier_mask_ok != nullptr) {
+            *post_barrier_mask_ok =
+                (w->get_active_mask() == 0xFFFFFFFFu);
+        }
         if (pc == 15) {
             return pc;
         }
@@ -191,8 +196,10 @@ build_statements(std::map<std::string, int> &l2pc) {
     stmts.push_back(make_shared_decl("buf_a", 64));
     stmts.push_back(make_shared_decl("buf_b", 64));
 
-    stmts.push_back(make_mov("r1", "tid.x"));                   // PC=2
-    stmts.push_back(make_setp_lt_imm("p1", "r1", 32));          // PC=3
+    // r5 = lane id for the predicate; r1 is preset to tid*4 because PTX
+    // [symbol+register] shared-memory addresses are byte offsets.
+    stmts.push_back(make_mov("r5", "tid.x"));                   // PC=2
+    stmts.push_back(make_setp_lt_imm("p1", "r5", 32));          // PC=3
     stmts.push_back(make_bra_pred("L_path_b", "p1", false, 9)); // PC=4
     stmts.push_back(make_st_shared_addr("buf_a", "r1", "r2", Qualifier::Q_B32));  // PC=5 (path A)
     stmts.push_back(make_bra("L_join"));                        // PC=6
@@ -200,7 +207,7 @@ build_statements(std::map<std::string, int> &l2pc) {
     stmts.push_back(make_st_shared_addr("buf_b", "r1", "r2", Qualifier::Q_B32));  // PC=8 (path B)
     stmts.push_back(make_label("L_join"));                      // PC=9
     stmts.push_back(make_bar_sync(0));       // PC=10 (CTA-level)
-    stmts.push_back(make_mov_imm("r1", 32)); // PC=11
+    stmts.push_back(make_mov_imm("r1", 128)); // PC=11: buf_a[32] byte offset
     stmts.push_back(make_ld_shared_addr("r3", "buf_a", "r1", Qualifier::Q_B32)); // PC=12
     stmts.push_back(make_mov_imm("r1", 0));                    // PC=13
     stmts.push_back(make_ld_shared_addr("r4", "buf_b", "r1", Qualifier::Q_B32)); // PC=14
@@ -268,6 +275,12 @@ TEST_CASE("integration_cta_barrier_memory_visibility_basic",
             return (warp == 0) ? 0x0000BBBBu : 0x0000AAAAu;
         });
 
+    // r1 = byte offset for .b32 shared-memory accesses (tid * 4).
+    set_reg_per_lane_u32_2warps(
+        w0, w1, "r1", [](int warp, int lane) -> uint32_t {
+            return static_cast<uint32_t>(warp * 32 + lane) * 4u;
+        });
+
     // p1 will be OVERWRITTEN by the setp.lt at PC=3 for each warp, so this
     // initial setup is only used by the divergence path between PC=0..2 (none
     // in this test). Kept for consistency with the warp-level sister test.
@@ -279,16 +292,17 @@ TEST_CASE("integration_cta_barrier_memory_visibility_basic",
     // warp's loop when it gets stuck at the barrier (so we don't spin
     // forever on the same PC).
     int ret0 = -1, ret1 = -1;
+    bool mask0_ok = false, mask1_ok = false;
     for (int step = 0; step < 512; ++step) {
         if (ret0 == -1) {
-            int pc = run_warp_until_ret_or_stuck(w0, stmts);
+            int pc = run_warp_until_ret_or_stuck(w0, stmts, &mask0_ok);
             if (pc == 15)
                 ret0 = 15;
             if (pc == -1)
                 ret0 = -2; // stuck at barrier
         }
         if (ret1 == -1) {
-            int pc = run_warp_until_ret_or_stuck(w1, stmts);
+            int pc = run_warp_until_ret_or_stuck(w1, stmts, &mask1_ok);
             if (pc == 15)
                 ret1 = 15;
             if (pc == -1)
@@ -301,7 +315,7 @@ TEST_CASE("integration_cta_barrier_memory_visibility_basic",
     // give them another chance now that the barrier has released.
     if (ret0 != 15) {
         for (int step = 0; step < 64; ++step) {
-            int pc = run_warp_until_ret_or_stuck(w0, stmts);
+            int pc = run_warp_until_ret_or_stuck(w0, stmts, &mask0_ok);
             if (pc == 15) {
                 ret0 = 15;
                 break;
@@ -312,7 +326,7 @@ TEST_CASE("integration_cta_barrier_memory_visibility_basic",
     }
     if (ret1 != 15) {
         for (int step = 0; step < 64; ++step) {
-            int pc = run_warp_until_ret_or_stuck(w1, stmts);
+            int pc = run_warp_until_ret_or_stuck(w1, stmts, &mask1_ok);
             if (pc == 15) {
                 ret1 = 15;
                 break;
@@ -324,6 +338,8 @@ TEST_CASE("integration_cta_barrier_memory_visibility_basic",
 
     REQUIRE(ret0 == 15);
     REQUIRE(ret1 == 15);
+    REQUIRE(mask0_ok);
+    REQUIRE(mask1_ok);
 
     // ------------------------------------------------------------------
     // L1 — Shared memory content (per-lane via shared_mem_space pointer)
@@ -337,32 +353,6 @@ TEST_CASE("integration_cta_barrier_memory_visibility_basic",
     auto *shmem_a = reinterpret_cast<uint32_t *>(shmem_raw); // buf_a @ offset 0
     auto *shmem_b = reinterpret_cast<uint32_t *>( // buf_b @ offset 256
         static_cast<char *>(shmem_raw) + 256);
-
-    // TEMPORARY DIAGNOSTIC: dump relevant shared memory regions
-    {
-        auto *bytes_a = static_cast<unsigned char *>(shmem_raw);
-        std::fprintf(stderr, "DIAG buf_a[0..63] (32 B/line):\n");
-        for (int row = 0; row < 4; ++row) {
-            std::fprintf(stderr, "  [%2d..%2d]: ", row * 8, row * 8 + 7);
-            for (int col = 0; col < 8; ++col) {
-                int i = row * 8 + col;
-                uint32_t v = shmem_a[i];
-                std::fprintf(stderr, "%08x ", v);
-            }
-            std::fprintf(stderr, "\n");
-        }
-        (void)bytes_a;
-        std::fprintf(stderr, "DIAG buf_b[0..63]:\n");
-        for (int row = 0; row < 4; ++row) {
-            std::fprintf(stderr, "  [%2d..%2d]: ", row * 8, row * 8 + 7);
-            for (int col = 0; col < 8; ++col) {
-                int i = row * 8 + col;
-                uint32_t v = shmem_b[i];
-                std::fprintf(stderr, "%08x ", v);
-            }
-            std::fprintf(stderr, "\n");
-        }
-    }
 
     // Path A (warp 1, tids 32-63) wrote 0xAAAA to buf_a[32..63].
     // Path B (warp 0, tids 0-31)  wrote 0xBBBB to buf_b[0..31].
@@ -412,18 +402,6 @@ TEST_CASE("integration_cta_barrier_memory_visibility_basic",
             CHECK(v == 0x0000BBBBu);
         }
     }
-
-    // ------------------------------------------------------------------
-    // L3 — active_mask restored to all-lanes-active after CTA barrier
-    // ------------------------------------------------------------------
-    CHECK(w0->get_active_mask() == 0xFFFFFFFFu);
-    CHECK(w1->get_active_mask() == 0xFFFFFFFFu);
-    for (int w = 0; w < 2; ++w) {
-        WarpContext *wcur = (w == 0) ? w0 : w1;
-        for (int i = 0; i < 32; ++i) {
-            CHECK(wcur->is_lane_active(i) == true);
-        }
-    }
 }
 
 // =============================================================================
@@ -453,19 +431,24 @@ TEST_CASE("integration_cta_barrier_memory_visibility_distinct_values",
         w0, w1, "r2", [VAL_A, VAL_B](int warp, int /*lane*/) -> uint32_t {
             return (warp == 0) ? VAL_B : VAL_A;
         });
+    set_reg_per_lane_u32_2warps(
+        w0, w1, "r1", [](int warp, int lane) -> uint32_t {
+            return static_cast<uint32_t>(warp * 32 + lane) * 4u;
+        });
     setup_pred(w0, 0x0000FFFFu);
 
     int ret0 = -1, ret1 = -1;
+    bool mask0_ok = false, mask1_ok = false;
     for (int step = 0; step < 512; ++step) {
         if (ret0 == -1) {
-            int pc = run_warp_until_ret_or_stuck(w0, stmts);
+            int pc = run_warp_until_ret_or_stuck(w0, stmts, &mask0_ok);
             if (pc == 15)
                 ret0 = 15;
             if (pc == -1)
                 ret0 = -2;
         }
         if (ret1 == -1) {
-            int pc = run_warp_until_ret_or_stuck(w1, stmts);
+            int pc = run_warp_until_ret_or_stuck(w1, stmts, &mask1_ok);
             if (pc == 15)
                 ret1 = 15;
             if (pc == -1)
@@ -476,7 +459,7 @@ TEST_CASE("integration_cta_barrier_memory_visibility_distinct_values",
     }
     if (ret0 != 15) {
         for (int step = 0; step < 64; ++step) {
-            int pc = run_warp_until_ret_or_stuck(w0, stmts);
+            int pc = run_warp_until_ret_or_stuck(w0, stmts, &mask0_ok);
             if (pc == 15) {
                 ret0 = 15;
                 break;
@@ -487,7 +470,7 @@ TEST_CASE("integration_cta_barrier_memory_visibility_distinct_values",
     }
     if (ret1 != 15) {
         for (int step = 0; step < 64; ++step) {
-            int pc = run_warp_until_ret_or_stuck(w1, stmts);
+            int pc = run_warp_until_ret_or_stuck(w1, stmts, &mask1_ok);
             if (pc == 15) {
                 ret1 = 15;
                 break;
@@ -499,6 +482,8 @@ TEST_CASE("integration_cta_barrier_memory_visibility_distinct_values",
 
     REQUIRE(ret0 == 15);
     REQUIRE(ret1 == 15);
+    REQUIRE(mask0_ok);
+    REQUIRE(mask1_ok);
 
     // L1 — shared memory
     ThreadContext *t0 = w0->get_thread(0);
@@ -531,7 +516,4 @@ TEST_CASE("integration_cta_barrier_memory_visibility_distinct_values",
         }
     }
 
-    // L3 — all 64 lanes (32 per warp) active after CTA barrier
-    CHECK(w0->get_active_mask() == 0xFFFFFFFFu);
-    CHECK(w1->get_active_mask() == 0xFFFFFFFFu);
 }

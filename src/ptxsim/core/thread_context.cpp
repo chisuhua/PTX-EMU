@@ -110,7 +110,12 @@ void ThreadContext::_execute_once() {
     // 跟踪指令
     int current_pc = get_pc();
     StatementContext &statement = (*statements)[current_pc];
-
+    
+    // TEMP DEBUG
+    fprintf(stderr, "[THREAD_DEBUG] lane=%d pc=%d stmt_type=%d text=%s\n",
+            lane_id_, current_pc, static_cast<int>(statement.type),
+            statement.instructionText.c_str());
+    
     set_next_pc(current_pc + 1);
 
     // if (statement.state == InstructionState::READY) {

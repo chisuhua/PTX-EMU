@@ -328,6 +328,9 @@ void ActivemaskHandler::processOperation(ThreadContext* context, void** operands
 // =============================================================================
 
 void BarHandler::executeBarrier(ThreadContext* context, const BarrierInstr& instr) {
+    fprintf(stderr, "[BARRIER_ENTRY] lane=%d pc=%d barId=%d\n",
+            context->lane_id_, context->get_pc(),
+            instr.barId.has_value() ? instr.barId.value() : -1);
     int barId = 0;
     if (instr.barId.has_value()) {
         barId = instr.barId.value();

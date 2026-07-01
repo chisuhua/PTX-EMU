@@ -146,9 +146,15 @@ CTABarrier* BarrierModule::get_cta_barrier(int cta_barrier_id) {
 
 bool BarrierModule::arrive_at_cta_barrier(int cta_barrier_id, ThreadContext* thread) {
     CTABarrier* ctabar = get_cta_barrier(cta_barrier_id);
-    if (!ctabar) return false;
+    if (!ctabar) {
+        fprintf(stderr, "[BARRIER_DEBUG] arrive_at_cta_barrier id=%d NULL ctabar\n", cta_barrier_id);
+        return false;
+    }
 
-    return ctabar->arrive(thread);
+    bool complete = ctabar->arrive(thread);
+    fprintf(stderr, "[BARRIER_DEBUG] arrive id=%d thread=%p lane=%d complete=%d\n",
+            cta_barrier_id, (void*)thread, thread ? thread->lane_id_ : -1, (int)complete);
+    return complete;
 }
 
 bool BarrierModule::is_cta_barrier_complete(int cta_barrier_id) const {
@@ -179,22 +185,27 @@ void BarrierModule::release_cta_barrier(int cta_barrier_id,
     std::set<ThreadContext*> arrived = ctabar->get_waiting_threads();
     int released_count = 0;
 
+    fprintf(stderr, "[BARRIER_DEBUG] release id=%d arrived=%zu post_pc=%d\n",
+            cta_barrier_id, arrived.size(), post_barrier_pc);
     for (ThreadContext* thread : arrived) {
         if (!thread) continue;
         thread->set_state(RUN);
         if (thread->warp_context_ != nullptr) {
-            thread->warp_context_->advance_thread_pc(thread->lane_id_, post_barrier_pc);
+            int lane = thread->lane_id_;
+            auto& ts = thread->warp_context_->get_warp_state().threads[lane];
+            fprintf(stderr, "[BARRIER_DEBUG]   release thread=%p lane=%d old_pc=%u old_blocked=%d\n",
+                    (void*)thread, lane, ts.pc, (int)ts.is_blocked);
+            ts.is_blocked = false;
+            ts.status = ptxsim::ThreadStatus::Active;
+            thread->warp_context_->advance_thread_pc(lane, post_barrier_pc);
             released_count++;
-            PTX_DEBUG_EMU("  release_cta_barrier id=%d thread=%p lane=%d -> PC=%d",
-                          cta_barrier_id, (void*)thread, thread->lane_id_, post_barrier_pc);
         } else {
             PTX_ERROR_EMU("release_cta_barrier thread=%p has no warp_context_", (void*)thread);
         }
     }
 
-    PTX_INFO_EMU("BarrierModule::release_cta_barrier id=%d COMPLETE - "
-                 "released %d threads to PC=%d",
-                 cta_barrier_id, released_count, post_barrier_pc);
+    fprintf(stderr, "[BARRIER_DEBUG] release id=%d COMPLETE released=%d to PC=%d\n",
+            cta_barrier_id, released_count, post_barrier_pc);
 
     ctabar->reset();
 }

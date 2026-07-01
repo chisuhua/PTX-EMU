@@ -45,27 +45,30 @@ add_catch_test(integration_barrier_full_lifecycle
 set_tests_properties(integration_barrier_full_lifecycle PROPERTIES LABELS "integration;barrier;lifecycle;tier8")
 
 # ---------------------------------------------------------------------------
-# KNOWN FAILING (pre-existing, see KNOWN_ISSUES.md §"Pre-P0 Baseline Red")
+# integration_warp_barrier_memory_visibility was disabled because the test
+# used lane_id directly as the offset for .b32 shared-memory accesses. PTX
+# [symbol+register] addresses are byte offsets, so element N is at N*4; the
+# mismatch caused byte-replicated writes/reads and failed 236 assertions.
+# Fixed by presetting r1=lane_id*4 and using r5 for the lane-id predicate.
+# Re-enabled below.
 # ---------------------------------------------------------------------------
-# Tests added in commit 3c8c775. Both fail on main with 244-486 assertions
-# failing per test. Symptoms:
-#   - buf_b never written (path B's bra@PC=4 does not branch — bra_pred handler
-#     bug suspected, see also `barrier.cpp.bak` and `barrier.cpp.orig` artifacts)
-#   - buf_a byte pattern is anomalous (17 BB / 2 zero / 15 AA, not the 16 BB /
-#     16 AA expected from "all lanes fall through to path A")
-# Tracked separately; excluded from baseline gate via DISABLED so the rest of
-# the suite can run. Re-enable after bra_pred or st.shared data_size is fixed.
 add_catch_test(integration_warp_barrier_memory_visibility
     barrier/test_warp_barrier_memory_visibility.cpp
 )
 set_tests_properties(integration_warp_barrier_memory_visibility
-    PROPERTIES LABELS "integration;barrier;memory_visibility" DISABLED True)
+    PROPERTIES LABELS "integration;barrier;memory_visibility")
 
+# ---------------------------------------------------------------------------
+# integration_cta_barrier_memory_visibility is the CTA-level (S_BAR bar.sync 0)
+# sister of integration_warp_barrier_memory_visibility. It was disabled while
+# the S_BAR deadlock was under investigation; the byte-offset PTX shared-memory
+# pattern is now correct (see test source). Re-enabled for Fix 2 validation.
+# ---------------------------------------------------------------------------
 add_catch_test(integration_cta_barrier_memory_visibility
     barrier/test_cta_barrier_memory_visibility.cpp
 )
 set_tests_properties(integration_cta_barrier_memory_visibility
-    PROPERTIES LABELS "integration;barrier;memory_visibility" DISABLED True)
+    PROPERTIES LABELS "integration;barrier;memory_visibility")
 
 # ============================================================================
 # SIMT 集成测试

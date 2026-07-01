@@ -145,6 +145,13 @@ void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
         (threadNum + WarpContext::WARP_SIZE - 1) / WarpContext::WARP_SIZE;
     warpNum = numWarpsNeeded;
 
+    // 初始化默认 CTA barrier（bar.sync 0 使用 id=0）。
+    // 必须在此处设置 expected_threads_，否则 arrive_at_cta_barrier 第一次
+    // 到达就会因 1 >= 0 而误判为完成，导致其他 thread 永远无法同步。
+    if (threadNum > 0) {
+        barrier_module_->init_cta_barrier(0, threadNum, warpNum);
+    }
+
     // 创建寄存器银行管理器
     auto register_bank_manager = std::make_shared<RegisterBankManager>(
         numWarpsNeeded, WarpContext::WARP_SIZE);
