@@ -158,8 +158,18 @@ static int run_warp_until_ret_or_stuck(WarpContext *w,
                 }
             }
         }
+        // Only skip past the barrier when the CTA barrier has actually
+        // completed (i.e. all expected threads have arrived and it has been
+        // released). Without this check, the condition fires prematurely
+        // when threads first reach the barrier PC but haven't executed it,
+        // causing the warp to jump to post_barrier_pc without ever calling
+        // the bar.sync handler.
         if (all_at_barrier && any_unblocked && !m.empty()) {
-            return post_barrier_pc;
+            CTAContext* cta = w->get_cta_context();
+            if (cta != nullptr &&
+                cta->get_barrier_module().is_cta_barrier_complete(0)) {
+                return post_barrier_pc;
+            }
         }
         if (!any_unblocked && !m.empty()) {
             return -1;
@@ -336,6 +346,8 @@ TEST_CASE("integration_cta_barrier_memory_visibility_basic",
         }
     }
 
+    fprintf(stderr, "[DRIVER] FINAL: ret0=%d ret1=%d mask0_ok=%d mask1_ok=%d\n",
+            ret0, ret1, (int)mask0_ok, (int)mask1_ok);
     REQUIRE(ret0 == 15);
     REQUIRE(ret1 == 15);
     REQUIRE(mask0_ok);

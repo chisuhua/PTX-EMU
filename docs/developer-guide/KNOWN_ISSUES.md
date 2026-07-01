@@ -8,11 +8,15 @@ cause, and current workaround. Use this document to track failures that are
 
 ## Pre-P0 Baseline Red — `integration_*_barrier_memory_visibility`
 
-**Status:** DISABLED in `tests/integration/CMakeLists.txt` — 2026-06-08: root causes 2 and 3 fixed, root cause 1 under investigation
+**Status:** **FIXED (2026-07-01)** — all barrier tests 100% pass.
 
-**Affected tests:**
-- `integration_warp_barrier_memory_visibility` (ctest #84)
-- `integration_cta_barrier_memory_visibility` (ctest #85)
+**修复记录:** [postmortem-sbar-deadlock-fix.md](./postmortem-sbar-deadlock-fix.md)
+
+**Affected tests (all now PASS):**
+- `integration_warp_barrier` (ctest #107)
+- `integration_warp_barrier_memory_visibility` (ctest #109) — was #84
+- `integration_cta_barrier_memory_visibility` (ctest #110) — was #85
+- `integration_cute_rmsnorm_bar_sync_pattern` (ctest #116)
 
 **Origin:** Added in commit `3c8c775 test(barrier): add bar.warp.sync / bar.sync memory visibility tests`. Both tests fail on `main`.
 

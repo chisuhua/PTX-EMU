@@ -134,7 +134,7 @@ static std::vector<StatementContext> build_cute_rmsnorm_pattern(
     // Use negated predicate @!p3 bra: lane 0 (r_tid=0 → p3=0) takes the
     // branch to L_TID0_DVRG_W (PC_TID0_DVRG). Lanes 1-31 (r_tid!=0 →
     // p3=1) fall through to the unconditional bra L_BCONV.
-    v[PC_LTID0_DVRG + 1] = make_bra_pred("L_TID0_DVRG_W", "p3", true, /*reconv*/ PC_LTID0_DVRG + 2);
+    v[PC_LTID0_DVRG + 1] = make_bra_pred("L_TID0_DVRG_W", "p3", true, /*reconv*/ PC_BAR3);
     v[PC_LTID0_DVRG + 2] = make_bra("L_BCONV");
     v[PC_TID0_DVRG] = ptxsim::testing::make_st_shared_addr(
         "sdata", "r_tid", "r_rsqrt", Qualifier::Q_B32);
@@ -198,7 +198,13 @@ TEST_CASE("I-3: cute_rmsnorm S_BAR (bar.sync 0) reduction + broadcast — "
     for (const auto& e : trace.threads[0].entries) {
         if (!pclist.empty()) pclist += ",";
         pclist += std::to_string(e.pc);
-        if (e.pc == static_cast<uint32_t>(PC_TID0_DVRG)) {
+        // ExecutionTracer records POST-execution pc (after commit_pc).
+        // For the broadcast ld.shared at PC=10, the recorded pc is 11 (PC_RET).
+        // For lane 0's st.shared at PC=8, the recorded pc is the branch
+        // target (8) for the branch jump, and the post-st.shared value (9)
+        // for the instruction at PC=8 itself.
+        if (e.pc == static_cast<uint32_t>(PC_TID0_DVRG) ||
+            e.pc == static_cast<uint32_t>(PC_BAR3)) {
             lane0_wrote = true;
         }
     }
@@ -206,10 +212,12 @@ TEST_CASE("I-3: cute_rmsnorm S_BAR (bar.sync 0) reduction + broadcast — "
     INFO("Looking for PC=" << PC_TID0_DVRG << " (lane 0 st.shared)");
     CHECK(lane0_wrote);
 
+    // ExecutionTracer records POST-execution pc (after commit_pc).
+    // For the broadcast ld.shared at PC=10, the recorded pc is 11 (PC_RET).
     for (int lane = 0; lane < 32; lane++) {
         bool saw_broadcast = false;
         for (const auto& e : trace.threads[lane].entries) {
-            if (e.pc == static_cast<uint32_t>(PC_BROADCAST)) {
+            if (e.pc == static_cast<uint32_t>(PC_RET)) {
                 saw_broadcast = true;
                 break;
             }

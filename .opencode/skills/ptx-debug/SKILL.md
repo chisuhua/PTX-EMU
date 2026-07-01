@@ -915,5 +915,49 @@ arrived=16/32          # 停滞
 - 使用 CFG analysis 验证 reconvergence 点
 - 查看 `ptx_visitor_barrier.cpp` 中 `next_pc` 的计算
 
+### 场景 9: S_BAR 多 warp CTA 级 barrier 死锁 (新增 2026-07-01)
+
+**触发条件**:
+- CTA 级 barrier 测试（`integration_cta_barrier_*`, `integration_cute_rmsnorm_*`）卡住或 FAIL
+- 日志显示线程 blocked at barrier 但 barrier 永不完成
+
+**调试方法**:
+```bash
+# 1. 启用线程追踪（替代全局 fprintf，受 debug config 控制）
+# configs/debug_config.ini 中 component.thread=debug
+./build/bin/test_xxx 2>&1 | grep "\[thread\]" | grep -E "bar.sync|barrier|blocked|released" | head -30
+
+# 2. 检查 CTABarrier 到达情况
+./build/bin/test_xxx 2>&1 | grep -E "arrive|complete|uninitialized"
+
+# 3. 检查调度器是否能看到释放的线程
+./build/bin/test_xxx 2>&1 | grep -E "lanes_by_pc|active_mask" | head -20
+```
+
+**常见问题诊断表**:
+
+| 现象 | 可能原因 | 排查步骤 |
+|------|---------|---------|
+| `arrive called on uninitialized barrier` | `CTABarrier::reset()` 清除了 `is_initialized_` | 检查 reset() 是否保持初始化状态 |
+| barrier complete 但 warp 无法前进 | `is_active` 未被 barrier release 恢复 | 检查 `release_cta_barrier` 中的 `ts.is_active` 设置 |
+| warp 跳过 barrier handler | 测试 driver 提前返回 `post_barrier_pc` | 添加 `is_cta_barrier_complete()` 门控 |
+| divergence + bar.sync 卡住 | `reconvergence_pc` 指向错误位置 | 检查 `make_bra_pred` 的 reconv 参数是否等于真实汇聚点 |
+
+**关键代码位置**:
+```
+src/ptxsim/barrier/barrier_module.cpp  - release_cta_barrier (is_active 恢复)
+src/ptxsim/barrier/cta_barrier.cpp     - reset() (保留初始化状态)
+include/ptxsim/testing/scheduler_utils.h - step_warp (PC 边界检查)
+```
+
+**调试命令速查**:
+```bash
+# 打印 per-lane 指令执行序列
+./build/bin/test_xxx 2>&1 | grep "\[thread\]" | grep -oP 'lane=\d+ pc=\d+' | sort | uniq -c
+
+# 打印所有 barrier 操作时间线
+./build/bin/test_xxx 2>&1 | grep -E "\[CLK:\d+.*arrive|complete|release|reset" | awk '{print $1,$2,$NF}'
+```
+
 ---
 

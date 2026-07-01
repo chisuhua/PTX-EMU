@@ -111,10 +111,11 @@ void ThreadContext::_execute_once() {
     int current_pc = get_pc();
     StatementContext &statement = (*statements)[current_pc];
     
-    // TEMP DEBUG
-    fprintf(stderr, "[THREAD_DEBUG] lane=%d pc=%d stmt_type=%d text=%s\n",
-            lane_id_, current_pc, static_cast<int>(statement.type),
-            statement.instructionText.c_str());
+    // Controlled by debug config: configs/debug_config.ini component.thread=debug
+    // or configs/verbose_trace_config.ini component.thread=trace
+    PTX_DEBUG_THREAD("lane=%d pc=%d stmt_type=%d text=%s",
+                     lane_id_, current_pc, static_cast<int>(statement.type),
+                     statement.instructionText.c_str());
     
     set_next_pc(current_pc + 1);
 

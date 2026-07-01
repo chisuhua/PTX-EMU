@@ -147,13 +147,13 @@ CTABarrier* BarrierModule::get_cta_barrier(int cta_barrier_id) {
 bool BarrierModule::arrive_at_cta_barrier(int cta_barrier_id, ThreadContext* thread) {
     CTABarrier* ctabar = get_cta_barrier(cta_barrier_id);
     if (!ctabar) {
-        fprintf(stderr, "[BARRIER_DEBUG] arrive_at_cta_barrier id=%d NULL ctabar\n", cta_barrier_id);
+        PTX_ERROR_EMU("arrive_at_cta_barrier id=%d NULL ctabar", cta_barrier_id);
         return false;
     }
 
     bool complete = ctabar->arrive(thread);
-    fprintf(stderr, "[BARRIER_DEBUG] arrive id=%d thread=%p lane=%d complete=%d\n",
-            cta_barrier_id, (void*)thread, thread ? thread->lane_id_ : -1, (int)complete);
+    PTX_DEBUG_EMU("arrive_at_cta_barrier id=%d thread=%p lane=%d complete=%d",
+                  cta_barrier_id, (void*)thread, thread ? thread->lane_id_ : -1, (int)complete);
     return complete;
 }
 
@@ -185,18 +185,15 @@ void BarrierModule::release_cta_barrier(int cta_barrier_id,
     std::set<ThreadContext*> arrived = ctabar->get_waiting_threads();
     int released_count = 0;
 
-    fprintf(stderr, "[BARRIER_DEBUG] release id=%d arrived=%zu post_pc=%d\n",
-            cta_barrier_id, arrived.size(), post_barrier_pc);
     for (ThreadContext* thread : arrived) {
         if (!thread) continue;
         thread->set_state(RUN);
         if (thread->warp_context_ != nullptr) {
             int lane = thread->lane_id_;
             auto& ts = thread->warp_context_->get_warp_state().threads[lane];
-            fprintf(stderr, "[BARRIER_DEBUG]   release thread=%p lane=%d old_pc=%u old_blocked=%d\n",
-                    (void*)thread, lane, ts.pc, (int)ts.is_blocked);
             ts.is_blocked = false;
             ts.status = ptxsim::ThreadStatus::Active;
+            ts.is_active = true;  // required: get_lanes_by_pc() filters on is_active
             thread->warp_context_->advance_thread_pc(lane, post_barrier_pc);
             released_count++;
         } else {
@@ -204,8 +201,16 @@ void BarrierModule::release_cta_barrier(int cta_barrier_id,
         }
     }
 
-    fprintf(stderr, "[BARRIER_DEBUG] release id=%d COMPLETE released=%d to PC=%d\n",
-            cta_barrier_id, released_count, post_barrier_pc);
+    // Call update_active_mask on each affected warp so get_lanes_by_pc()
+    // sees the released threads as schedulable on their next tick.
+    std::set<WarpContext*> updated_warps;
+    for (ThreadContext* thread : arrived) {
+        if (thread && thread->warp_context_) {
+            if (updated_warps.insert(thread->warp_context_).second) {
+                thread->warp_context_->update_active_mask();
+            }
+        }
+    }
 
     ctabar->reset();
 }

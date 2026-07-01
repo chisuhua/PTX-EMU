@@ -65,11 +65,9 @@ bool CTABarrier::is_complete() const {
 
 void CTABarrier::reset() {
     std::lock_guard<std::mutex> lock(mutex_);
-    barrier_id_ = 0;
-    expected_threads_ = 0;
-    warp_count_ = 0;
     arrived_threads_.clear();
-    is_initialized_ = false;
+    // Keep is_initialized_ and expected_threads_ so the barrier is reusable
+    // after release (bar.sync 0 can appear multiple times in PTX code).
 }
 
 #ifdef PTX_DEBUG

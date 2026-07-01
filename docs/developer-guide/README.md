@@ -29,12 +29,13 @@
 |------|---------|---------|
 | [postmortem-fix-1-gate-active-vs-return-mask.md](./postmortem-fix-1-gate-active-vs-return-mask.md) | Fix 1 — gate 阻塞范围 | 门控用 `return_mask`（非 `active_mask`）；处方必须覆盖 taken + fall-through 两条路径 |
 | [postmortem-fix-3-is-converged-skip-inactive.md](./postmortem-fix-3-is-converged-skip-inactive.md) | Fix 3 — `is_converged` 不应跳过暂时不活跃的 lane | `is_converged` 只跳 `is_exited`，不跳 `!is_active` |
+| [postmortem-sbar-deadlock-fix.md](./postmortem-sbar-deadlock-fix.md) | Fix 2 — S_BAR 死锁修复 (7 bugs) | `release_cta_barrier` 需显式恢复 `is_active`；`CTABarrier::reset()` 不清 `is_initialized_`；`step_warp` 需边界检查 |
 
 **Open Issue（未实现，待后续修复）**
 
 | 文档 | 问题 | 状态 |
 |------|------|------|
-| [open-fix-2-sbar-deadlock.md](./open-fix-2-sbar-deadlock.md) | Fix 2 — `S_BAR` 死锁（`bar.sync 0`） | **OPEN**：`cute_rmsnorm` / `integration_cute_rmsnorm_bar_sync_pattern` 仍 FAIL |
+| [open-fix-2-sbar-deadlock.md](./open-fix-2-sbar-deadlock.md) | Fix 2 — `S_BAR` 死锁（`bar.sync 0`） | **FIXED (2026-07-01)** → 见 [postmortem-sbar-deadlock-fix.md](./postmortem-sbar-deadlock-fix.md) |
 
 > **铁律（Fix 1 + Fix 3 后确立）**：SIMTStackEntry 的三个字段**绝对不能互换**：
 > - `active_mask` — 收敛判定（`is_converged`）

@@ -13,6 +13,7 @@
 #include "ptx_ir/statement_factory.h"
 #include "memory/resource_manager.h"
 #include "ptxsim/testing/scheduler_utils.h"
+#include "ptxsim/testing/instruction_helpers.h"
 #include <map>
 #include <memory>
 #include <vector>
@@ -129,22 +130,26 @@ TEST_CASE("integrated_multiple_barrier_registers", "[wbar][multi][integrated]") 
     ResourceManager::instance().initialize(1, 8192);
 
     std::vector<StatementContext> statements;
-    statements.push_back(make_mov_stmt());
-    statements.push_back(makeBarWarpSyncInstr(0x0000000F, 4));
-    statements.push_back(make_mov_stmt());
-    statements.push_back(makeBarWarpSyncInstr(0x000000F0, 6));
-    statements.push_back(make_mov_stmt());
-    statements.push_back(makeBarWarpSyncInstr(0x00000F00, 8));
-    statements.push_back(make_mov_stmt());
-    statements.push_back(makeBarWarpSyncInstr(0x0000F000, 10));
+    statements.push_back(make_mov_stmt());                        // PC=0
+    statements.push_back(makeBarWarpSyncInstr(0x0000000F, 2));   // PC=1: barrier→PC=2
+    statements.push_back(make_mov_stmt());                        // PC=2
+    statements.push_back(makeBarWarpSyncInstr(0x000000F0, 4));   // PC=3: barrier→PC=4
+    statements.push_back(make_mov_stmt());                        // PC=4
+    statements.push_back(makeBarWarpSyncInstr(0x00000F00, 6));   // PC=5: barrier→PC=6
+    statements.push_back(make_mov_stmt());                        // PC=6
+    statements.push_back(makeBarWarpSyncInstr(0x0000F000, 8));   // PC=7: barrier→PC=8
+    statements.push_back(ptxsim::testing::make_ret());            // PC=8: ret (marks warp finished)
 
     SMContext sm(4, 128, 4096, 0);
     WarpContext* warp = create_warp_with_threads(sm, create_block(statements));
 
     REQUIRE(warp->get_warp_state().wbars.size() == 4);
 
-    step_warp(warp, statements);  // mov: all → PC=1
-    step_warp(warp, statements);  // barrier 0x0F: lanes 0-3 → PC=4
+    step_warp(warp, statements);  // mov at PC=0: all → PC=1
+
+    // BUG-POSTBARRIER-TWOHALVES fix means ALL 32 active lanes pass through
+    // every barrier (warp-level arrival), not just the lanes in the mask.
+    step_warp(warp, statements);  // barrier 0x0F at PC=1: all 32 arrive → all PC=2
 
     // 第一个 barrier 完成后立即验证 wbar[0] 状态
     CHECK(warp->get_wbar(0).is_complete() == true);
@@ -153,19 +158,21 @@ TEST_CASE("integrated_multiple_barrier_registers", "[wbar][multi][integrated]") 
     CHECK(warp->get_wbar(0).participation_mask == 0x0000000F);
     CHECK(warp->get_wbar(0).count_participants() == 4);
 
-    // 后续 barrier 指令（PC 3/5/7）在当前单 wbar 实现中
-    // 部分可能重新初始化 wbar[0]，覆盖之前的完成状态
-    step_warp(warp, statements);  // mov: no lanes at PC=2, no-op
-    step_warp(warp, statements);  // barrier: no lanes at PC=3, no-op
-    step_warp(warp, statements);  // mov: lanes 0-3 → PC=5
-    step_warp(warp, statements);  // barrier 0xF00: lanes 0-3 arrive, barrier can't complete (needs lanes 12-15)
-    step_warp(warp, statements);  // mov: no lanes at PC=6
-    step_warp(warp, statements);  // barrier 0xF000: no lanes at PC=7
+    step_warp(warp, statements);  // mov at PC=2: all → PC=3
+    step_warp(warp, statements);  // barrier 0xF0 at PC=3: all 32 arrive → all PC=4
+    step_warp(warp, statements);  // mov at PC=4: all → PC=5
+    step_warp(warp, statements);  // barrier 0xF00 at PC=5: all 32 arrive → all PC=6
+    step_warp(warp, statements);  // mov at PC=6: all → PC=7
+    step_warp(warp, statements);  // barrier 0xF000 at PC=7: all 32 arrive → all PC=8
+    step_warp(warp, statements);  // ret at PC=8: all lanes exit
 
-    // wbar[1]、wbar[2]、wbar[3] 不会被使用（当前单 wbar 实现）
+    // wbar[1]、wbar[2]、wbar[3] 不会被使用（当前单 wbar 实现，只使用 wbar[0]）
     CHECK(warp->get_wbar(1).is_complete() == false);
     CHECK(warp->get_wbar(2).is_complete() == false);
     CHECK(warp->get_wbar(3).is_complete() == false);
+
+    // All lanes should have exited after ret
+    CHECK(warp->is_finished() == true);
 }
 
 TEST_CASE("integrated_wbar_partial_participation", "[wbar][partial][integrated]") {

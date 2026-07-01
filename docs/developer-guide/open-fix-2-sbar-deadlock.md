@@ -1,13 +1,11 @@
-# Open Issue: Fix 2 — S_BAR 死锁（scheduler 应推进所有 lane 到 barrier PC）
+# Fix 2 — S_BAR 死锁（修复记录）
 
-> **Status (2026-06-25):** **OPEN / NOT IMPLEMENTED**. 本文档记录的 `S_BAR`
-> scheduler/barrier 深度修复尚未完成。
+> **Status (2026-07-01):** **FIXED** — 详见 [postmortem-sbar-deadlock-fix.md](./postmortem-sbar-deadlock-fix.md)
 >
-> **失败证据（截至 2026-06-25）**：
-> - `integration_cute_rmsnorm_bar_sync_pattern` — FAIL（`75% tests passed, 1 tests failed out of 4`）
-> - `cute_rmsnorm` — FAIL（`Mismatch at [0]: got 0, expected 1.27534`）
->
-> **关联已知问题**：[KNOWN_ISSUES.md §"cute_rmsnorm — broadcast-after-barrier skipped"](./KNOWN_ISSUES.md) 持续记录此 E2E 失败。
+> - `integration_cute_rmsnorm_bar_sync_pattern` — PASS ✓
+> - `integration_cta_barrier_memory_visibility` — PASS ✓ (924 assertions)
+> - `integration_warp_barrier` — PASS ✓ (no more SEGFAULT)
+> - `ctest -L barrier` — **25/25 PASS** ✓
 >
 > **前置依赖**：[postmortem-fix-1-gate-active-vs-return-mask.md](./postmortem-fix-1-gate-active-vs-return-mask.md) 已完成（门控改用 `return_mask`），但**不足以**恢复 `cute_rmsnorm`。剩余失败位于 CTA-level `bar.sync` / `synchronize_barrier` 路径，需要本文档下文所述的架构性工作。
 

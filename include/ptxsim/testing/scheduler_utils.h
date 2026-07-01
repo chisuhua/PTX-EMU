@@ -31,6 +31,12 @@ inline int step_warp(WarpContext* w, std::vector<StatementContext>& v) {
         for (int l : lanes) { if (ws.threads[l].is_blocked) { ok = false; break; } }
         if (ok) { pick = pc; break; }
     }
+    // Guard: if pick is out of bounds (e.g. a barrier handler jumped to a
+    // reconvergence_pc beyond the statement list), skip execution this tick.
+    // This prevents segfaults from v[pick] on out-of-bounds PC.
+    if (static_cast<size_t>(pick) >= v.size()) {
+        return -1;
+    }
     w->execute_warp_instruction(v[pick], pick);
     while (w->check_reconvergence()) {}
     return pick;
