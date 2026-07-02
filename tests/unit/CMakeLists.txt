@@ -401,6 +401,26 @@ add_catch_test(unit_cvt_int_to_int
 )
 set_tests_properties(unit_cvt_int_to_int PROPERTIES LABELS "unit;ptx;cvt;strategy;i2i")
 
+# ============================================================================
+# PTX Math Instruction Unit Tests (2026-07-01)
+# Verify fma.rn.f32 / rsqrt.approx.f32 / ld.global / st.global correctness
+# as part of cute_rmsnorm basic-math investigation.
+# ============================================================================
+add_catch_test(unit_math_fma_rn_f32
+    ptx/test_fma_rn_f32.cpp
+)
+set_tests_properties(unit_math_fma_rn_f32 PROPERTIES LABELS "unit;ptx;math;fma")
+
+add_catch_test(unit_math_rsqrt_approx_f32
+    ptx/test_rsqrt_approx_f32.cpp
+)
+set_tests_properties(unit_math_rsqrt_approx_f32 PROPERTIES LABELS "unit;ptx;math;rsqrt")
+
+add_catch_test(unit_memory_global_f32
+    ptx/test_ld_st_global_f32.cpp
+)
+set_tests_properties(unit_memory_global_f32 PROPERTIES LABELS "unit;ptx;memory;global")
+
 # ---------------------------------------------------------------------------
 # A2 cleanup (2026-06): the 7 tests below all `<<<1, 1>>>` real GPU kernels
 # and verify NVIDIA's PTX semantics — they do NOT exercise the PTX-EMU
