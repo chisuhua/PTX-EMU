@@ -126,6 +126,36 @@ void release_cta_barrier(int cta_barrier_id, CTAContext* cta_ctx);
 | `CTAContext` 新增成员影响 CTA 创建/销毁的对称性 | 低 | 中 | 在 `CTAContext` 构造函数初始化 `BarrierModule`，析构时依赖 unique_ptr 自动清理；编写 `tests/unit/cta/test_cta_context_lifecycle.cpp` 验证 |
 | `sm_context.cpp:200-260` 周期 barrier 检查逻辑依赖 `barrier_mutex_` 与全局 `barrier_waiting_threads` map | 中 | 高 | 完整 audit `sm_context.cpp` 中所有 `barrier_mutex_` 引用；删除时同时移除 `barrier_mutex_` 字段与周期检查代码块；CTA 同步由 `CTAContext::barrier_module_` 完全接管 |
 
+## 已实现的 Phase 5 推迟（2026-06-18）
+
+> 详细 postmortem 见 [`docs/adr/0008-barrier-semantics.md` §2026-06-18 Postmortem](../../../docs/adr/0008-barrier-semantics.md#2026-06-18-postmortemplase-5-推迟决策) 和 [`docs/dev-process/lessons-learned.md`](../../../docs/dev-process/lessons-learned.md)。
+
+**实际状态**：
+- Phase 5 实施 commit `36dbb9a` 引入 6 个分歧/集成测试回归（基线 `00f698f` 通过）
+- 已在 commit `f033312` 中 revert
+- `Wbar` 标记 `[[deprecated]]`，旧 `BarWarpSyncHandler` 路径仍为生产路径
+- 旧 `bsync_manager_` 保留（Phase 5.4 推迟）
+
+**推迟原因**：
+- `BarWarpSyncHandler` 涉及 `force_reconvergence` 路径与正常 barrier 释放路径的交互
+- 单 PC（非分歧）barrier 路径通过
+- 分歧场景（lanes 0-15 vs 16-31 走不同路径后到达同一 barrier）的 `force_reconvergence` 重置 + arrived 计数交互有问题
+- 未能在本次 change 中彻底解决，强行合并会引入更多 bug
+
+**未来实施指引**：
+- 单独建 change：`migrate-bar-warp-sync-to-barrier-module`
+- 优先解决分歧场景的 `force_reconvergence` + barrier 计数交互
+- 实施前必读 `lessons-learned.md` §1（跨模块间接状态翻译）和 §4（分 Phase commit 纪律）
+
+**本次 change 完成的实际范围**：
+- ✅ Phase 1-4：BarHandler（CTA 路径）切换到 BarrierModule
+- ✅ Phase 6：保留 `Wbar` 但标记 `[[deprecated]]`（部分完成）
+- ❌ Phase 5：BarWarpSyncHandler 切换推迟
+- ❌ `bsync_manager_` 删除推迟
+- ❌ `warp_state.wbars[]` 字段删除推迟
+
+---
+
 ## Migration Plan
 
 ### Phase 1: 准备工作（半天）
