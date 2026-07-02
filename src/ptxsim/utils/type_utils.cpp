@@ -7,8 +7,12 @@ bool TypeUtils::is_float_type(const std::vector<Qualifier> &qualifiers) {
     if (qualifiers.empty())
         return false;
 
-    Qualifier type = qualifiers.back();
-    return (type == Qualifier::Q_F32 || type == Qualifier::Q_F64);
+    for (const auto &q : qualifiers) {
+        if (q == Qualifier::Q_F32 || q == Qualifier::Q_F64 ||
+            q == Qualifier::Q_F16 || q == Qualifier::Q_BF16)
+            return true;
+    }
+    return false;
 }
 
 Qualifier
