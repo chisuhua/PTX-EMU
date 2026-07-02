@@ -29,6 +29,17 @@ int compute_actual_thread_count(KernelContext* kernel) {
 // Returns true if CTA has <= 32 threads (1 warp)
 bool isWarpLevelBarrier(KernelContext* kernel) {
     if (!kernel) return false;
+    // Only translate when thread count is explicitly specified in the PTX source.
+    // If neither .reqntid nor .maxntid directives are present, the thread count
+    // is unknown at parse time and the decision must be deferred to the
+    // interpreter which has access to the launch-time blockDim.
+    // (e.g., cute_rmsnorm with blockDim=256 has no .reqntid in PTX,
+    // yet the visitor would incorrectly translate bar.sync to bar.warp.sync
+    // and break multi-warp CTA synchronization.)
+    bool has_known_thread_count =
+        (kernel->reqntid.x > 0 || kernel->reqntid.y > 0 || kernel->reqntid.z > 0) ||
+        (kernel->maxntid.x > 0 && kernel->maxntid.y > 0 && kernel->maxntid.z > 0);
+    if (!has_known_thread_count) return false;
     return compute_actual_thread_count(kernel) <= 32;
 }
 } // anonymous namespace

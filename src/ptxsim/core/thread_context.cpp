@@ -540,7 +540,7 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
             ret = (void *)reg_value;
         }
     } else {
-        // 直接通过ID查找符号表或共享内存；如果ID为空，回退到baseSymbol
+// 直接通过ID查找符号表或共享内存；如果ID为空，回退到baseSymbol
         const std::string &lookupName = fa.id.empty() ? fa.baseSymbol : fa.id;
 
         // get_memory_addr debug logs - disabled for clarity
@@ -629,6 +629,19 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
                           sym_it->second->val);
 #endif
             ret = (void *)sym_it->second->val;
+            // For shared memory accesses, resolve to absolute shared-
+            // memory address. S_SHARED symbols in name2Sym carry a
+            // relative offset (typically 0 for extern-shared); the
+            // absolute address must include shared_mem_space.
+            if (QvecHasQ(qualifiers, Qualifier::Q_SHARED)) {
+                if (shared_mem_space != nullptr) {
+                    ret = (void *)((uint64_t)ret + (uint64_t)shared_mem_space);
+                } else {
+                    PTX_DEBUG_EMU("get_memory_addr: Q_SHARED from name2Sym "
+                                  "but shared_mem_space is null");
+                    return nullptr;
+                }
+            }
         } else if (name2Share != nullptr) {
             // 如果在name2Sym中没找到，继续在name2Share中查找
             auto share_it = name2Share->find(lookupName);

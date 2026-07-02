@@ -195,6 +195,12 @@ void BarrierModule::release_cta_barrier(int cta_barrier_id,
             ts.status = ptxsim::ThreadStatus::Active;
             ts.is_active = true;  // required: get_lanes_by_pc() filters on is_active
             thread->warp_context_->advance_thread_pc(lane, post_barrier_pc);
+            // Sync thread_context.next_pc with the warp_state advance.
+            // Without this, sync_to_warp_state() would overwrite
+            // warp_state.next_pc with the stale thread_context value
+            // (the barrier's blocking PC), breaking is_warp_ready_to_fetch()
+            // and causing the scheduler to permanently skip this warp.
+            thread->set_next_pc(post_barrier_pc);
             released_count++;
         } else {
             PTX_ERROR_EMU("release_cta_barrier thread=%p has no warp_context_", (void*)thread);
