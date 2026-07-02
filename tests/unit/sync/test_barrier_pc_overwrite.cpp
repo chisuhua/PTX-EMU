@@ -1,5 +1,5 @@
+#include "ptxsim/barrier/barrier_module.h"
 #include "catch_amalgamated.hpp"
-#include "ptxsim/cta_context.h"
 #include "ptxsim/warp_context.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/common_types.h"
@@ -66,14 +66,12 @@ TEST_CASE("bar_warp_sync_next_pc_not_overwritten", "[barrier][pipeline][bug]") {
     }
 
     auto& warp_state = warp.get_warp_state();
-    auto* cta_ctx = warp.get_cta_context();
-    REQUIRE(cta_ctx);
-    auto* wbar = cta_ctx->get_barrier_module().get_warp_barrier(0);
-    cta_ctx->get_barrier_module().init_warp_barrier(0, 0x0000FFFFu, 7, 5);
+    ptxsim::BarrierModule bm;
+    bm.init_warp_barrier(0, 0x0000FFFFu, 7, 5);
     for (int lane = 0; lane < 16; lane++) {
-        wbar->arrive(lane);
+        bm.get_warp_barrier(0)->arrive(lane);
     }
-    REQUIRE(wbar->is_complete() == true);
+    REQUIRE(bm.is_warp_barrier_complete(0) == true);
 
     warp.execute_warp_instruction(statements[6], 6);
 
