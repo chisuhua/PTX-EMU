@@ -4,7 +4,7 @@
 #include "ptxsim/thread_context.h"
 #include "ptxsim/cta_context.h"
 #include "ptxsim/simt_stack.h"
-#include "ptxsim/wbar.h"
+
 #include "ptxsim/common_types.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/instruction_factory.h"
@@ -388,7 +388,7 @@ TEST_CASE("integrated_barrier_lifecycle", "[barrier][lifecycle][integrated]") {
     step_warp(warp, statements);
 
     // 验证：第一个 barrier 完成后 — 所有线程在 PC=2
-    CHECK(warp->get_warp_state().current_wbar_id == -1);
+    CHECK(!warp->get_cta_context()->get_barrier_module().get_warp_barrier(0)->is_initialized());
     for (int i = 0; i < 32; i++) {
         CHECK(warp->get_thread(i)->get_pc() == 2);
     }
@@ -400,7 +400,7 @@ TEST_CASE("integrated_barrier_lifecycle", "[barrier][lifecycle][integrated]") {
     step_warp(warp, statements);
 
     // 验证：第二个 barrier 完成后 — 所有线程在 PC=4
-    CHECK(warp->get_warp_state().current_wbar_id == -1);
+    CHECK(!warp->get_cta_context()->get_barrier_module().get_warp_barrier(0)->is_initialized());
     for (int i = 0; i < 32; i++) {
         CHECK(warp->get_thread(i)->get_pc() == 4);
     }

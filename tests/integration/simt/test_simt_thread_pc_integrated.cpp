@@ -4,7 +4,7 @@
 #include "ptxsim/thread_context.h"
 #include "ptxsim/cta_context.h"
 #include "ptxsim/simt_stack.h"
-#include "ptxsim/wbar.h"
+
 #include "ptxsim/common_types.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/instruction_factory.h"

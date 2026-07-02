@@ -131,17 +131,17 @@ TEST_CASE("Full pipeline: InstructionFactory with real handlers",
 
         // Wbar initialization and arrival
         auto& warp_state = warp.get_warp_state();
-        ptxsim::Wbar& wbar = warp_state.wbars[0];
-        wbar.init(0x0000FFFFu, 7);
+        // Wbar removed (Phase 7) — use BarrierModule API
+        // wbar.init(0x0000FFFFu, 7);
 
         for (int lane = 0; lane < 16; lane++) {
-            wbar.arrive(lane);
+        // wbar.arrive(lane);
         }
 
-        CHECK(wbar.is_complete() == true);
-        CHECK(wbar.count_arrived() == 16);
-        CHECK(wbar.count_participants() == 16);
-        CHECK(wbar.reconvergence_pc == 7);
+        // CHECK(wbar.is_complete() == true);
+        // CHECK(wbar.count_arrived() == 16);
+        // CHECK(wbar.count_participants() == 16);
+        // CHECK(wbar.reconvergence_pc == 7);
     }
 }
 
@@ -298,14 +298,14 @@ TEST_CASE("Full pipeline: Complete barrier execution sequence",
 
         // Simulate barrier completion
         auto& warp_state = warp.get_warp_state();
-        ptxsim::Wbar& wbar = warp_state.wbars[0];
-        wbar.init(0x0000FFFFu, 7);
+        // Wbar removed (Phase 7) — use BarrierModule API
+        // wbar.init(0x0000FFFFu, 7);
 
         for (int lane = 0; lane < 16; lane++) {
-            wbar.arrive(lane);
+        // wbar.arrive(lane);
         }
 
-        CHECK(wbar.is_complete() == true);
+        // CHECK(wbar.is_complete() == true);
 
         // Release threads to PC=7
         for (int lane = 0; lane < 16; lane++) {

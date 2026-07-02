@@ -190,7 +190,7 @@ TEST_CASE("U-1: divergent warp broadcast barrier — all 32 lanes released to "
         CHECK(ws.threads[i].next_pc == RECONV_PC);
         CHECK(!ws.threads[i].is_blocked);
     }
-    CHECK(warp.get_warp_state().current_wbar_id == -1);
+    CHECK(!warp.get_cta_context()->get_barrier_module().get_warp_barrier(0)->is_initialized());
     // All 32 lanes should be schedulable at RECONV_PC for the broadcast load
     CHECK(warp.is_warp_ready_to_fetch());
 }

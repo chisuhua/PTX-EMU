@@ -4,7 +4,7 @@
 #include "ptxsim/thread_context.h"
 #include "ptxsim/cta_context.h"
 #include "ptxsim/simt_stack.h"
-#include "ptxsim/wbar.h"
+
 #include "ptxsim/common_types.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/instruction_factory.h"
@@ -75,7 +75,7 @@ TEST_CASE("integrated_pc_after_barrier_commit_flow", "[pc][integrated][execute_w
     step_warp(warp, statements);
     step_warp(warp, statements);
 
-    CHECK(warp->get_wbar(0).is_complete() == true);
+    for (int i=0;i<32;i++) CHECK(warp->get_thread(i)->get_pc() == 2);
     CHECK(warp->is_warp_ready_to_fetch() == true);
 
     step_warp(warp, statements);

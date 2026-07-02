@@ -2,6 +2,7 @@
 //
 // Unit test for the BUG: force_reconvergence + scheduler collaboration in
 // simpleGEMM-style divergent paths.
+#include "ptxsim/cta_context.h"
 //
 // simpleGEMM-int PC layout (matches runtime log):
 //   $L__BB0_2 at PC=27  (a_tile loop start)
@@ -58,17 +59,12 @@ void add_thread(WarpContext& warp, int lane) {
 
 // Mimics the post-completion release path (matches barrier.cpp:232-240)
 void simulate_release(WarpContext& warp, int reconv_pc) {
-    auto& ws = warp.get_warp_state();
-    Wbar& wbar = ws.wbars[0];
-    for (int i = 0; i < 32; i++) {
-        if ((wbar.arrived_mask & (1u << i)) && ws.threads[i].is_active) {
-            ws.threads[i].pc = reconv_pc;
-            ws.threads[i].next_pc = reconv_pc;
-            ws.threads[i].is_blocked = false;
-            ws.threads[i].status = ThreadStatus::Active;
-        }
-    }
-    warp.set_active_mask(warp.get_active_mask() | wbar.arrived_mask);
+    auto* cta = warp.get_cta_context();
+    if (!cta) return;
+    auto& bm = cta->get_barrier_module();
+    auto* wb = bm.get_warp_barrier(0);
+    uint32_t arrived = wb->get_arrived_mask();
+    bm.release_warp_barrier(0, &warp);
 }
 
 }  // namespace
@@ -161,25 +157,28 @@ TEST_CASE("U-2: simpleGEMM pattern — wbar accumulates arrivals across halves",
     warp.set_active_mask(0xFFFFFFFFu);
 
     // Simulate the post-first-release wbar state (this is what the fix preserves):
-    Wbar& wbar = ws.wbars[0];
-    wbar.init(0xFFFFFFFFu, 70);
-    wbar.arrived_mask = 0xFFFF0000u;  // first half's arrivals preserved
-    ws.current_wbar_id = 0;
+    auto* cta = warp.get_cta_context(); REQUIRE(cta);
+    auto& bm = cta->get_barrier_module();
+    auto* wbar = bm.get_warp_barrier(0);
+    bm.init_warp_barrier(0, 0xFFFFFFFFu, 70, 50);
+    // Simulate first half arriving (lanes 16-31)
+    for (int i = 16; i < 32; i++) wbar->arrive(i);
+    // current_wbar_id removed — use BarrierModule API
 
-    INFO("Pre-second-half arrived_mask=0x" << std::hex << wbar.arrived_mask);
-    INFO("Pre-second-half participation_mask=0x" << std::hex << wbar.participation_mask);
+    INFO("Pre-second-half arrived_mask=0x" << std::hex << wbar->get_arrived_mask());
+    INFO("Pre-second-half participation_mask=0x" << std::hex << wbar->get_participation_mask());
 
     // Now lanes 0-15 arrive (the second divergent half)
-    for (int i = 0; i < 16; i++) wbar.arrive(i);
+    for (int i = 0; i < 16; i++) wbar->arrive(i);
 
-    INFO("Post-second-half arrived_mask=0x" << std::hex << wbar.arrived_mask);
-    INFO("is_complete()=" << std::dec << wbar.is_complete());
+    INFO("Post-second-half arrived_mask=0x" << std::hex << wbar->get_arrived_mask());
+    INFO("is_complete()=" << std::dec << wbar->is_complete());
 
     // CRITICAL assertions: the fix must preserve arrived_mask so the
     // second half's arrivals accumulate to the full 0xFFFFFFFF, making
     // the barrier completable for all 32 lanes.
-    REQUIRE(wbar.arrived_mask == 0xFFFFFFFFu);
-    REQUIRE(wbar.is_complete() == true);
+    REQUIRE(wbar->get_arrived_mask() == 0xFFFFFFFFu);
+    REQUIRE(wbar->is_complete() == true);
 
     // Now simulate the release path (barrier.cpp:232-240 logic).
     // All 32 lanes are is_active=true, so all 32 should be released.

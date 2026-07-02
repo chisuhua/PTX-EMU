@@ -13,13 +13,13 @@ TEST_CASE("C1: default initialization", "[warp_state]") {
         REQUIRE(ws.threads[i].is_blocked == false);
     }
     REQUIRE(ws.exec_mask == 0xFFFFFFFF);
-    REQUIRE(ws.current_wbar_id == -1);
+    
 }
 
 TEST_CASE("C2: reset restores defaults", "[warp_state]") {
     WarpState ws;
     ws.exec_mask = 0x0000FFFF;
-    ws.current_wbar_id = 2;
+    
     ws.threads[0].is_exited = true;
     ws.threads[0].is_active = false;
     ws.threads[0].pc = 99;
@@ -27,7 +27,7 @@ TEST_CASE("C2: reset restores defaults", "[warp_state]") {
     ws.reset();
 
     REQUIRE(ws.exec_mask == 0xFFFFFFFF);
-    REQUIRE(ws.current_wbar_id == -1);
+    
     REQUIRE(ws.threads[0].is_exited == false);
     REQUIRE(ws.threads[0].is_active == true);
     REQUIRE(ws.threads[0].pc == 0);

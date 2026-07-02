@@ -19,7 +19,6 @@
 #include "ptxsim/thread_context.h"
 #include "ptxsim/warp_context.h"
 #include "ptxsim/warp_state.h"
-#include "ptxsim/wbar.h"
 #include "ptx_ir/ptx_types.h"
 #include "ptx_ir/statement_context.h"
 #include "utils/logger.h"

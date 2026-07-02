@@ -3,7 +3,7 @@
 #include "ptxsim/thread_state.h"
 #include "ptxsim/warp_state.h"
 #include "ptxsim/exec_mask.h"
-#include "ptxsim/wbar.h"
+
 
 #include <iostream>
 #include <sstream>
@@ -151,76 +151,6 @@ TEST_CASE("ExecMask operations", "[simt][exec_mask]") {
     }
 }
 
-TEST_CASE("Wbar (Warp Barrier) operations", "[simt][wbar]") {
-    Wbar barrier;
-    
-    SECTION("Default initialization") {
-        REQUIRE(barrier.is_initialized == false);
-        REQUIRE(barrier.participation_mask == 0);
-        REQUIRE(barrier.arrived_mask == 0);
-        REQUIRE(barrier.reconvergence_pc == -1);
-    }
-    
-    SECTION("Initialize barrier") {
-        // Initialize with 4 participating threads (lanes 0-3)
-        barrier.init(0x0000000F, 100);
-        
-        REQUIRE(barrier.is_initialized == true);
-        REQUIRE(barrier.count_participants() == 4);
-        REQUIRE(barrier.reconvergence_pc == 100);
-        REQUIRE(barrier.expected_count == 4);
-    }
-    
-    SECTION("Barrier arrival tracking") {
-        barrier.init(0x0000000F, 100);
-        
-        // Thread 0 arrives
-        barrier.arrive(0);
-        REQUIRE(barrier.count_arrived() == 1);
-        REQUIRE(barrier.is_complete() == false);
-        
-        // Threads 1-3 arrive
-        barrier.arrive(1);
-        barrier.arrive(2);
-        barrier.arrive(3);
-        
-        REQUIRE(barrier.count_arrived() == 4);
-        REQUIRE(barrier.is_complete() == true);
-    }
-    
-    SECTION("Partial participation") {
-        // Only lanes 0, 8, 16, 24 participate
-        barrier.init((1 << 0) | (1 << 8) | (1 << 16) | (1 << 24), 200);
-        
-        REQUIRE(barrier.count_participants() == 4);
-        
-        // Lane 0 arrives
-        barrier.arrive(0);
-        REQUIRE(barrier.is_complete() == false);
-        
-        // Lane 1 arrives (not a participant, should not affect completion)
-        barrier.arrive(1);
-        REQUIRE(barrier.is_complete() == false);
-        
-        // All participants arrive
-        barrier.arrive(8);
-        barrier.arrive(16);
-        barrier.arrive(24);
-        REQUIRE(barrier.is_complete() == true);
-    }
-    
-    SECTION("Reset barrier") {
-        barrier.init(0x0000000F, 100);
-        barrier.arrive(0);
-        
-        barrier.reset();
-        
-        REQUIRE(barrier.is_initialized == false);
-        REQUIRE(barrier.participation_mask == 0);
-        REQUIRE(barrier.arrived_mask == 0);
-        REQUIRE(barrier.reconvergence_pc == -1);
-    }
-}
 
 TEST_CASE("WarpState per-thread PC", "[simt][warp_state]") {
     WarpState warp;

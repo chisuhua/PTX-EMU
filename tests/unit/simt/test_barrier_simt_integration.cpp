@@ -1,5 +1,6 @@
 #include "catch_amalgamated.hpp"
 #include "ptxsim/warp_context.h"
+#include "ptxsim/cta_context.h"
 #include "ptxsim/warp_state.h"
 
 using namespace ptxsim;
@@ -71,6 +72,6 @@ TEST_CASE("E4: wbar and simt_stack independent cleanup", "[barrier][simt]") {
 
     REQUIRE(warp.get_simt_stack().depth() == 1);
 
-    warp.get_warp_state().wbars[0].reset();
+    warp.get_cta_context()->get_barrier_module().get_warp_barrier(0)->reset();
     REQUIRE(warp.get_simt_stack().depth() == 1);
 }

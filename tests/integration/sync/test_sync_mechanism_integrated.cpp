@@ -4,7 +4,7 @@
 #include "ptxsim/thread_context.h"
 #include "ptxsim/cta_context.h"
 #include "ptxsim/simt_stack.h"
-#include "ptxsim/wbar.h"
+
 #include "ptxsim/common_types.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/instruction_factory.h"
@@ -96,8 +96,8 @@ TEST_CASE("integrated_sync_barrier_releases_all_threads", "[sync][barrier][integ
     step_warp(warp, statements);
     step_warp(warp, statements);
 
-    CHECK(warp->get_wbar(0).is_complete() == true);
-    CHECK(warp->get_wbar(0).count_arrived() == 32);
+    for (int i=0;i<32;i++) CHECK(warp->get_thread(i)->get_pc() == 2);
+    for (int i=0;i<32;i++) CHECK(!warp->get_warp_state().threads[i].is_blocked);
 
     int schedulable = 0;
     for (int i = 0; i < 32; i++) {

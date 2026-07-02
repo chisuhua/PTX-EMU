@@ -37,7 +37,7 @@
 #include "ptxsim/thread_context.h"
 #include "ptxsim/warp_context.h"
 #include "ptxsim/warp_state.h"
-#include "ptxsim/wbar.h"
+
 #include <array>
 #include <cstdint>
 #include <memory>
@@ -46,7 +46,6 @@ using namespace ptxir::factory;
 using ptxsim::ThreadState;
 using ptxsim::ThreadStatus;
 using ptxsim::WarpState;
-using ptxsim::Wbar;
 using ptxsim::testing::step_warp;
 
 static StatementContext make_mov_stmt() {
@@ -166,22 +165,24 @@ TEST_CASE("T2-1-FIX: bar.warp.sync releases all 32 threads via warp_state",
         StatementContext mov_stmt = make_mov_stmt();
         mov_stmt.instructionText = "mov.u32 %r1, %r2;";
 
-        Wbar &wbar = warp.get_warp_state().wbars[0];
-        wbar.init(0xFFFFFFFF, 1);
+        auto* cta = warp.get_cta_context();
+        REQUIRE(cta);
+        auto* wbar = cta->get_barrier_module().get_warp_barrier(0);
+        cta->get_barrier_module().init_warp_barrier(0, 0xFFFFFFFF, 1, 0);
 
         for (int i = 0; i < 32; i++) {
             warp.get_warp_state().threads[i].is_blocked = true;
             warp.get_warp_state().threads[i].status = ThreadStatus::Blocked;
-            wbar.arrive(i);
+            wbar->arrive(i);
         }
 
-        REQUIRE(wbar.is_complete() == true);
+        REQUIRE(wbar->is_complete() == true);
 
-        warp.set_exec_mask(wbar.arrived_mask);
+        warp.set_exec_mask(wbar->get_arrived_mask());
 
         // BarWarpSyncHandler completion: mutate warp_state directly
         for (int i = 0; i < 32; i++) {
-            if ((wbar.arrived_mask & (1u << i)) &&
+            if ((wbar->get_arrived_mask() & (1u << i)) &&
                 warp.get_warp_state().threads[i].is_active) {
                 warp.set_thread_pc(i, 1);
                 warp.get_warp_state().threads[i].is_blocked = false;

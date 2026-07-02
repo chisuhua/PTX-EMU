@@ -72,17 +72,20 @@ void BarWarpSyncHandler::processOperation(...) {
 
 | 文件 | 当前职责 | 目标职责 |
 |------|---------|---------|
-| `src/ptxsim/instructions/barrier.cpp` | `BarWarpSyncHandler::processOperation` 操作 `warp_state.wbars[0]` | 调用 `BarrierModule::init_warp_barrier / arrive_at_warp_barrier / release_warp_barrier` |
-| `src/ptxsim/barrier/warp_barrier.cpp` | `WarpBarrier::init` 直接覆盖（无 is_initialized_ 分支） | 增加 `is_initialized_` 分支：保留 arrived_mask |
-| `src/ptxsim/barrier/barrier_module.cpp` | `init_warp_barrier` 直接调用 `wbar->init(...)` | 调用更新后的 `wbar->init(...)`（带 is_initialized_ 分支） |
+| `src/ptxsim/instructions/barrier.cpp` | `BarWarpSyncHandler::processOperation` 操作 `warp_state.wbars[0]` + `sm_ctx->bsync_manager_` | 调用 `BarrierModule::init_warp_barrier / arrive_at_warp_barrier / release_warp_barrier` |
+| `src/ptxsim/barrier/warp_barrier.cpp` | `WarpBarrier::init` 已有 `is_initialized_` 分支（提前落地，commit `b04cdb2`） | 不变：本 change 仅验证现有实现正确 |
+| `src/ptxsim/barrier/barrier_module.cpp` | `release_warp_barrier` 已有 OR 逻辑（提前落地） | 不变 |
+| `include/ptxsim/wbar.h` | `Wbar` struct 仍存在，仅 `barrier.cpp` 和 `get_wbar()` 引用 | **删除**（Phase 7） |
+| `include/ptxsim/warp_state.h` | `wbars[]` + `current_wbar_id` 仍存在（`[[deprecated]]`） | **删除**（Phase 7） |
 
 ## Goals / Non-Goals
 
 **Goals:**
 - 完整统一：`BarWarpSyncHandler` 通过 `BarrierModule` API（与其他 handler 一致）
 - 修复 commit `36dbb9a` 失败案例：分歧 warp 两半 barrier 完成
-- 修复 BUG-RECONVERGENCE-SIMPLEGEMM 不被破坏：`WarpBarrier::init` 已初始化时保留 arrived_mask
-- 删除 `BsyncManager` 间接层（与 `cleanup-deprecated-barrier-apis` 协调）
+- 验证 BUG-RECONVERGENCE-SIMPLEGEMM 不变性：`WarpBarrier::init` `is_initialized_` 分支已提前落地（`warp_barrier.cpp:18-31`），本 change 确认其在新 handler 路径下正确
+- 移除 `BsyncManager` 调用残留：`barrier.cpp` 中 `bsync_manager_.bsync/release` 调用直接删除（`BsyncManager` 类已由 `cleanup-deprecated-barrier-apis` 删除）
+- **删除 `Wbar` struct 及所有残留引用**（Phase 7，P0-A5）：`wbar.h` 全文件、`warp_state.wbars[]`、`current_wbar_id`、`get_wbar()` compat shim
 
 **Non-Goals:**
 - **不实现 `bar.warp.sync` membermask 的 UB 检测**（已记录在 ADR-0008 未来工作）
@@ -174,11 +177,13 @@ bm->arrive(lane_id);  // 调用 WarpBarrier::arrive
 | 风险 | 概率 | 影响 | 缓解 |
 |------|------|------|------|
 | commit `36dbb9a` 失败原因未完整理解，再次实施踩同一坑 | **高** | **高** | **实施前必须做 root cause 分析**（task 1.0）：git blame `36dbb9a` + `f033312` commit message + 当时失败测试 log |
+| `release_warp_barrier` 迁移后缺失 per-lane 状态翻译（`is_blocked`/`status`/`is_active`/`set_pc_overridden`） | **高** | **高** | **已修复**（commit `barrier_module.cpp:117-125`）：`release_warp_barrier` 现已补全 `is_blocked=false` + `status=Active` + `is_active=true`（与 `release_cta_barrier` 对称）；`set_pc_overridden(true)` 由 handler 调用方在 `release_warp_barrier` 返回后执行（tasks.md 3.1/3.3 已说明） |
 | `WarpBarrier::init` is_initialized_ 分支破坏其他调用方 | 中 | 高 | task 1.1 全项目 grep `WarpBarrier::init` 调用点；逐个审计 |
 | `force_reconvergence` 重新进入时 arrived_mask 累积错乱 | 中 | 高 | 新增 task 3.4 单元测试覆盖 `force_reconvergence + barrier.init twice` 场景 |
 | 路径 A（分歧）与路径 B（正常）BarrierModule API 调用不一致 | 中 | 中 | 新增 task 3.5 集成测试覆盖两条路径都使用 BarrierModule API |
-| `BsyncManager` 删除（`cleanup-deprecated-barrier-apis`）与本 change 冲突 | 中 | 中 | **强制顺序**：先 `cleanup-deprecated-barrier-apis`，后本 change（或同时进行同一 worktree） |
+| `BsyncManager` 删除（`cleanup-deprecated-barrier-apis`，已归档 2026-06-20）与本 change 的集成 | 低 | 低 | **已解决**：cleanup 已归档（commits `8a5573d`/`7914764`/`6ec8efd`）；`bsync_manager_` 在生产代码中零匹配；Task 3.4 直接删除调用即可 |
 | `tests/integration/divergence/test_post_barrier_divergence.cpp` 已知 bug 测试失效 | 低 | 低 | 该测试已记录 BUG（`is_blocked` 不更新），由独立 change 处理 |
+| `current_wbar_id` 守卫条件（11+ 处 READ）迁移遗漏导致编译/逻辑错误 | 中 | 中 | tasks.md 3.2/3.3 已显式列出门卫替换计划（`< 0` → `!is_initialized()`, `>= 0` → `is_initialized()`）；task 7.13 grep 零残留验证 |
 
 ## Migration Plan
 
@@ -202,11 +207,13 @@ bm->arrive(lane_id);  // 调用 WarpBarrier::arrive
 - [ ] 1.5 创建 worktree：`git worktree add ../ptx-emu-warp-sync -b feat/migrate-bar-warp-sync`
 - [ ] 1.6 建立基线：`./scripts/sanity.sh --quick > baseline.txt`
 
-### Phase 2: WarpBarrier::init 增强（半天）
+### Phase 2: WarpBarrier::init 不变性验证（半天 → 已提前落地）
 
-- [ ] 2.1 修改 `src/ptxsim/barrier/warp_barrier.cpp::WarpBarrier::init`：增加 `is_initialized_` 分支处理（Decision 1）
-- [ ] 2.2 验证：`cmake --build build --target ptxsim` 编译通过
-- [ ] 2.3 新增 `tests/unit/barrier/test_warp_barrier.cpp` 测试 `WarpBarrier::init preserves arrived_mask when re-init`：init → arrive(0) → init again → 验证 arrived_mask 仍含 lane 0
+> **⚠️ Decision 1 的 `is_initialized_` 分支已于 main 提前实施**（commit `b04cdb2`，`warp_barrier.cpp:18-31`）。Phase 2 仅需**验证**，无需重写代码。
+
+- [x] 2.1 WarpBarrier::init `is_initialized_` 分支 → 已在 main 实现
+- [x] 2.2 编译验证 → main 编译通过
+- [x] 2.3 `WarpBarrier::init preserves arrived_mask` 测试 → 已在 `test_barrier_module.cpp` 实现
 - [ ] 2.4 `ctest -R "WarpBarrier::init preserves" -V` PASS
 - [ ] 2.5 `ctest -R "post_barrier_reconvergence_simplegemm" -V` 不回归
 
@@ -214,13 +221,17 @@ bm->arrive(lane_id);  // 调用 WarpBarrier::arrive
 
 - [ ] 3.1 修改 `src/ptxsim/instructions/barrier.cpp::BarWarpSyncHandler::processOperation` 路径 A（force_reconvergence）：
   - 替换 `warp_state.wbars[0]` 为 `warp_ctx->get_cta_context()->get_barrier_module().get_warp_barrier(0)`
-  - 替换 `init_wbar.init(...)` 为 `bm->init(...)`（自动处理 is_initialized_ 分支）
+  - 替换 `init_wbar.init(...)` 为 `bm->init(participation_mask, reconvergence_pc, current_pc)`（自动处理 is_initialized_ 分支）
   - 替换 `init_wbar.arrive(lane_id)` 为 `bm->arrive(lane_id)`
   - 替换 `init_wbar.is_complete()` 为 `bm->is_complete()`
   - 替换 `init_wbar.arrived_mask` 为 `bm->get_arrived_mask()`
   - 替换 `init_wbar.count_*` 为 `bm->get_*_count()`
+  - 替换完成分支为 `bm->release_warp_barrier(0, warp_ctx);` + `context->set_pc_overridden(true);`
+  - 替换守卫 `warp_state.current_wbar_id < 0` → `!bm->is_initialized()`
 - [ ] 3.2 修改 `src/ptxsim/instructions/barrier.cpp::BarWarpSyncHandler::processOperation` 路径 B（正常）：
   - 同样替换为 `BarrierModule` API
+  - 完成分支：`bm->release_warp_barrier(wbar_id, warp_ctx);` + `context->set_pc_overridden(true);`
+  - 替换守卫 `current_wbar_id < 0` / `>= 0` → `bm->is_initialized()` 检查
 - [ ] 3.3 移除 `sm_ctx->bsync_manager_.bsync/release` 调用（依赖 `cleanup-deprecated-barrier-apis` 已完成）
 - [ ] 3.4 验证：`cmake --build build && ctest -R "barrier" -V` 全部 PASS
 - [ ] 3.5 新增 `tests/integration/divergence/test_post_barrier_two_halves_barrier_module.cpp`：覆盖分歧 warp 两半分别到达 barrier 场景，验证 BarrierModule API 路径下 barrier 正常完成（commit `36dbb9a` 失败案例的复现 + 修复验证）
@@ -234,18 +245,33 @@ bm->arrive(lane_id);  // 调用 WarpBarrier::arrive
 
 ### Phase 5: 文档 + 发布（半天）
 
-- [ ] 5.1 更新 `docs/adr/0008-barrier-semantics.md`：追加 §"2026-06-19 追加：BarWarpSyncHandler 迁移 + WarpBarrier::init 不变性"
-- [ ] 5.2 更新 `docs/research/barrier-semantics/04-ptx-emu-current-implementation.md`：描述 `BarrierModule` 统一管理 CTA + Warp barrier
-- [ ] 5.3 在 worktree 中创建最终 commit：`git add . && git commit -m "feat(barrier): migrate BarWarpSyncHandler to BarrierModule API + fix WarpBarrier::init re-init semantics"`
+- [ ] 5.1 更新 `docs/adr/0008-barrier-semantics.md`：追加 §"BarWarpSyncHandler 迁移 + Wbar 删除"
+- [ ] 5.2 更新 `src/ptxsim/instructions/AGENTS.md` + `src/ptxsim/core/AGENTS.md`：移除 `Wbar` / `warp_state.wbars[]` 相关描述
+- [ ] 5.3 在 worktree 中创建最终 commit：`git add . && git commit -m "feat(barrier): migrate BarWarpSyncHandler to BarrierModule API + delete legacy Wbar"`
 - [ ] 5.4 合并到主分支：`git checkout main && git merge --no-ff feat/migrate-bar-warp-sync -m "Merge..."`
 - [ ] 5.5 清理 worktree
+
+### Phase 7: Wbar 最终删除（P0-A5，半天）
+
+> **来源**：`docs/audits/debt-audit-2026-07-02.md` §P0-A5。前置 change `cleanup-deprecated-barrier-apis` 删除了 `BsyncManager` / `synchronize_barrier`，但未删除 `Wbar` struct 本身。本 Phase 完成 barrier cleanup chain 的最后一步。
+>
+> **前置条件**：Phase 3 完成（`BarWarpSyncHandler` 已迁移，`barrier.cpp` 中零处 `warp_state.wbars[]` 引用）
+
+- [ ] 7.1 **删除 `include/ptxsim/wbar.h`**（121 行）：`Wbar` struct 所有生产引用已迁移
+- [ ] 7.2 **删除 `include/ptxsim/warp_state.h` 的 `wbars[]`** 字段（L23-26）+ `current_wbar_id` 字段（L27-29）+ `#include "ptxsim/wbar.h"`（L5）+ reset() 中的对应逻辑（L38-41）
+- [ ] 7.3 **删除 `include/ptxsim/warp_context.h` 的 `get_wbar()`** compat shim 声明（L222-227）
+- [ ] 7.4 **删除 `src/ptxsim/core/warp_context.cpp` 的 `get_wbar()`** 实现（L540-556）
+- [ ] 7.5 编译 + 全量 barrier 测试回归 PASS
+- [ ] 7.6 全项目 grep 零残留：`grep -rn "wbar\.h\|warp_state\.wbars\|current_wbar_id\|get_wbar(" include/ src/ tests/`
+- [ ] 7.7 独立 commit：`chore(barrier): delete legacy Wbar struct, warp_state.wbars[], current_wbar_id, get_wbar()`
 
 ### Rollback Strategy
 
 > **来自 lessons-learned.md §4**：任何已有测试回归 → 立即 revert 该 Phase，不混入后续 commit
 
 - **Phase 2 失败**（WarpBarrier::init 破坏）：git revert 到 Phase 1（仅审计）
-- **Phase 3 失败**（BarWarpSyncHandler 破坏）：git revert 到 Phase 2 完成点（WarpBarrier::init 已增强但未使用）
+- **Phase 3 失败**（BarWarpSyncHandler 破坏）：git revert 到 Phase 2 完成点（WarpBarrier::init 已验证但未使用）
+- **Phase 7 失败**（Wbar 删除导致编译失败）：git revert 该 commit，检查是否有遗漏的 `warp_state.wbars[]` 引用
 - **任何 Phase 严重问题**：`git stash` + 报告用户 + 询问是否回滚
 - **如 commit `36dbb9a` 失败模式重现**：立即停止，参考 postmortem 重做 root cause 分析
 
@@ -255,4 +281,4 @@ bm->arrive(lane_id);  // 调用 WarpBarrier::arrive
 2. **`force_reconvergence_at_barrier` 是否在 BarrierModule 迁移后还需要独立管理 `current_wbar_id`/`barrier_active` 状态**？还是统一由 `is_initialized_` 替代？
 3. **`WarpBarrier::needs_to_wait()` 两个重载（无参 vs 有参）是否都被新 handler 路径需要**？task 1.1 审计
 4. **路径 A 的 arrived_mask 累积是否需要持久化到 BarrierModule 跨 `release` 调用**？当前决策是不需要，但需验证 `tests/integration/divergence/test_post_barrier_two_halves` 不依赖此
-5. **`cleanup-deprecated-barrier-apis` 与本 change 的 worktree 是否合并**？推荐同步进行以减少集成风险
+5. ~~`cleanup-deprecated-barrier-apis` 与本 change 的 worktree 是否合并？推荐同步进行以减少集成风险~~ → **已解决**：cleanup 已归档（2026-06-20），`BsyncManager` 在生产代码中零匹配。本 change 独立实施即可。

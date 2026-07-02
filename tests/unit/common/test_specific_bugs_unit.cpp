@@ -8,7 +8,7 @@
  */
 
 #include "catch_amalgamated.hpp"
-#include "ptxsim/wbar.h"
+
 #include "ptxsim/warp_state.h"
 #include "ptxsim/thread_state.h"
 #include "ptx_parser/cfg_builder.h"
@@ -19,7 +19,6 @@
 #include <vector>
 #include <cstring>
 
-using ptxsim::Wbar;
 using ptxsim::WarpState;
 using ptxsim::ThreadState;
 

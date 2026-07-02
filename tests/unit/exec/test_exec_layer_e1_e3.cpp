@@ -8,11 +8,9 @@
  */
 
 #include "catch_amalgamated.hpp"
-#include "ptxsim/wbar.h"
 #include <cstdint>
 #include <vector>
 
-using ptxsim::Wbar;
 
 // ============================================================
 // E1: Divergent branch scheduling with partial active lanes
@@ -87,66 +85,9 @@ TEST_CASE("E1c: 32-thread full warp divergent scheduling",
 // E2: Barrier completion logic with partial participation masks
 // ============================================================
 
-TEST_CASE("E2a: Wbar with 16-thread mask completes with 16 arrives",
-          "[exec][e2][wbar]") {
-    Wbar barrier;
-    barrier.init(0x0000FFFFu, 20);
 
-    REQUIRE(barrier.count_participants() == 16);
-    REQUIRE(!barrier.is_complete());
 
-    for (int l = 0; l < 16; l++) {
-        barrier.arrive(l);
-    }
 
-    REQUIRE(barrier.count_arrived() == 16);
-    REQUIRE(barrier.is_complete());
-}
-
-TEST_CASE("E2b: Wbar with 16-thread mask does NOT complete with 32 arrives",
-          "[exec][e2][overflow]") {
-    Wbar barrier;
-    barrier.init(0x0000FFFFu, 20);
-
-    // Only lanes 0-15 should matter
-    for (int l = 0; l < 32; l++) {
-        barrier.arrive(l);
-    }
-    REQUIRE(barrier.is_complete());
-    // Extra arrivals from lanes 16-31 are harmless (mask filters them)
-    REQUIRE(barrier.arrived_mask & 0xFFFF0000u);
-}
-
-TEST_CASE("E2c: Wbar with full mask requires all 32 lanes",
-          "[exec][e2][full_mask]") {
-    Wbar barrier;
-    barrier.init(0xFFFFFFFFu, 20);
-
-    REQUIRE(barrier.count_participants() == 32);
-    REQUIRE(!barrier.is_complete());
-
-    for (int l = 0; l < 31; l++) {
-        barrier.arrive(l);
-    }
-    REQUIRE(!barrier.is_complete());
-
-    barrier.arrive(31);
-    REQUIRE(barrier.is_complete());
-}
-
-TEST_CASE("E2d: Wbar reset clears all state",
-          "[exec][e2][reset]") {
-    Wbar barrier;
-    barrier.init(0x0000FFFFu, 20);
-    for (int l = 0; l < 16; l++) barrier.arrive(l);
-    REQUIRE(barrier.is_complete());
-
-    barrier.reset();
-    REQUIRE(!barrier.is_initialized);
-    REQUIRE(barrier.participation_mask == 0u);
-    REQUIRE(barrier.arrived_mask == 0u);
-    REQUIRE(barrier.reconvergence_pc == -1);
-}
 
 TEST_CASE("E2e: barrier_waiting_threads count matches CTA thread count",
           "[exec][e2][sm_context_logic]") {

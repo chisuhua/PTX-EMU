@@ -8,17 +8,18 @@
  */
 
 #include "catch_amalgamated.hpp"
-#include "ptxsim/wbar.h"
+
 #include "ptxsim/warp_state.h"
 #include "ptxsim/thread_state.h"
+#include "ptxsim/barrier/barrier_module.h"
 #include <cstdint>
 #include <map>
 #include <vector>
 
-using ptxsim::Wbar;
 using ptxsim::WarpState;
 using ptxsim::ThreadState;
 using ptxsim::ThreadStatus;
+using ptxsim::BarrierModule;
 
 // ============================================================
 // H1: sync_from_warp_state PC sync timing after barrier
@@ -184,25 +185,26 @@ TEST_CASE("H2c: sequential barrier execution — lanes at different stages",
     // Lanes 8-15 still processing earlier instructions (PC=10)
     for (int i = 8; i < 16; i++) { pc[i] = 10; is_active[i] = true; }
 
-    // Wbar state for 8 lanes so far
-    Wbar wbar;
-    wbar.init(0x0000FFFFu, 20);  // 16 participants, reconvergence at 20
+    // Barrier state for 8 lanes so far
+    BarrierModule bm;
+    auto* wbar = bm.get_warp_barrier(0);
+    bm.init_warp_barrier(0, 0x0000FFFFu, 20, 15);
     for (int i = 0; i < 8; i++) {
-        wbar.arrive(i);  // 8 arrived so far
+        wbar->arrive(i);
     }
-    REQUIRE(!wbar.is_complete());  // Not complete yet (only 8/16)
+    REQUIRE(!wbar->is_complete());  // Not complete yet (only 8/16)
 
     // Second pass: lanes 8-15 reach barrier
     for (int i = 8; i < 16; i++) {
-        wbar.arrive(i);
+        wbar->arrive(i);
         pc[i] = 12;
         is_blocked[i] = true;
     }
-    REQUIRE(wbar.is_complete());  // Now complete
+    REQUIRE(wbar->is_complete());  // Now complete
 
     // Barrier completion updates all to reconvergence_pc
     for (int i = 0; i < 16; i++) {
-        if (wbar.participation_mask & (1u << i)) {
+        if (wbar->get_participation_mask() & (1u << i)) {
             pc[i] = 20;
             is_blocked[i] = false;
         }

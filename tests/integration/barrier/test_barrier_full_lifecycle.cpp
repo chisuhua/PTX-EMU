@@ -30,7 +30,7 @@
 #include "ptxsim/testing/scheduler_utils.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/warp_context.h"
-#include "ptxsim/wbar.h"
+
 
 #include "ptx_ir/operand_context.h"
 #include "ptx_ir/statement_context.h"

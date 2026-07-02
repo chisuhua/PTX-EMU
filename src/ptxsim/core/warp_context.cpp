@@ -348,16 +348,16 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt,
 
         if (thread->get_state() == BAR_SYNC) {
             if (cta_context_ != nullptr) {
-                bool is_warp_barrier = (warp_state.current_wbar_id >= 0);
+                auto* wbar = cta_context_->get_barrier_module().get_warp_barrier(0);
+                bool is_warp_barrier = (wbar != nullptr && wbar->is_initialized());
                 bool warp_barrier_complete =
                     is_warp_barrier &&
-                    cta_context_->get_barrier_module().is_warp_barrier_complete(
-                        warp_state.current_wbar_id);
+                    cta_context_->get_barrier_module().is_warp_barrier_complete(0);
 
                 if (!warp_barrier_complete) {
                     PTX_WARN_EMU(
-                        "Fallback CTA sync: lane %d, wbar %d incomplete",
-                        thread->lane_id_, warp_state.current_wbar_id);
+                        "Fallback CTA sync: lane %d, wbar incomplete",
+                        thread->lane_id_);
                     cta_context_->get_barrier_module().arrive_at_cta_barrier(
                         thread->bar_id, thread);
                 }
@@ -535,22 +535,4 @@ void WarpContext::decrement_blocked_cycles(ptxsim::WarpState &ws) {
             }
         }
     }
-}
-
-// Legacy Wbar mirror populated from BarrierModule for test compatibility.
-ptxsim::Wbar &WarpContext::get_wbar(int wbar_id) {
-    int idx = (wbar_id >= 0 && wbar_id < 4) ? wbar_id : 0;
-    if (cta_context_ != nullptr) {
-        auto *wb = cta_context_->get_barrier_module().get_warp_barrier(idx);
-        if (wb != nullptr && wb->is_initialized()) {
-            warp_state.wbars[idx].participation_mask =
-                wb->get_participation_mask();
-            warp_state.wbars[idx].arrived_mask = wb->get_arrived_mask();
-            warp_state.wbars[idx].reconvergence_pc = wb->get_reconvergence_pc();
-            warp_state.wbars[idx].barrier_pc = wb->get_barrier_pc();
-            warp_state.wbars[idx].is_initialized = true;
-            warp_state.wbars[idx].expected_count = wb->get_expected_count();
-        }
-    }
-    return warp_state.wbars[idx];
 }

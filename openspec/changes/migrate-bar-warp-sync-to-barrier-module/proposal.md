@@ -9,17 +9,17 @@ PTX-EMU 在 commit `12390b7` 合并 `fix/barrier-architecture-migration` 后，`
 
 **前置 change（已归档）**：`openspec/changes/archive/2026-06-19-integrate-barrier-module-cta-warp/` Phase 5 DEFERRED。
 
-**关联 change（提议中）**：`cleanup-deprecated-barrier-apis` 删除 `Wbar` / `BsyncManager` / `synchronize_barrier`。本 change 假设该 cleanup 已完成（或同时进行），`warp_state.wbars[0]` 字段已迁移为 `warp_state.barrier`（`WarpBarrier` 实例）。
+**前置 change（已归档，2026-06-20）**：`openspec/changes/archive/2026-06-20-cleanup-deprecated-barrier-apis/` 删除了 `BsyncManager` / `synchronize_barrier` / `bsync_state.{h,cpp}`（commits `8a5573d`/`7914764`/`6ec8efd`，归档 commit `ded4f96`）。**注意**：cleanup 未删除 `Wbar` struct 和 `warp_state.wbars[]` —— 该工作由 **本 change 的 Phase 7** 完成。
 
-**前置依赖**：本 change 的实施顺序应在 `cleanup-deprecated-barrier-apis` 之后，或**同时进行**（确保字段名迁移已完成）。
+**前置依赖**：`cleanup-deprecated-barrier-apis` 已归档，`BsyncManager` 在生产代码中零匹配。可直接启动本 change。`barrier.cpp` 中残留的 `sm_ctx->bsync_manager_.bsync/release` 调用可直接删除。
 
 ## What Changes
 
-- **修改 `BarWarpSyncHandler::processOperation`**：所有 `wbar.arrive(lane_id)` 改为 `barrier_module.arrive_at_warp_barrier(0, lane_id)`；所有 `wbar.init(...)` 改为 `barrier_module.init_warp_barrier(0, ...)`；所有 `wbar.is_complete()` 改为 `barrier_module.is_warp_barrier_complete(0)`；所有 `wbar.reset()` 改为 `barrier_module` 内部 reset 或 `warp_state.barrier.reset()`
-- **修复 force_reconvergence 路径**：`force_reconvergence_at_barrier` 重新进入时 `wbar` 已初始化的场景（BUG-RECONVERGENCE-SIMPLEGEMM），通过 `WarpBarrier::init` 的 `is_initialized_` 分支处理（已设计在 `tasks.md:2.2c` 但未实施）
-- **删除 `BsyncManager` 调用**：移除 `sm_ctx->bsync_manager_.bsync/release` 调用（由 `cleanup-deprecated-barrier-apis` 负责删除类本身）
-- **新增 unit 测试**：覆盖 `WarpBarrier::init` 已初始化时保留 `arrived_mask` 的场景（task 2.2c.1）
-- **新增 e2e 测试**：覆盖分歧 warp 两半分别到达 barrier 后正常完成场景（BUG-POSTBARRIER-TWOHALVES + BUG-RECONVERGENCE-SIMPLEGEMM）
+- **修改 `BarWarpSyncHandler::processOperation`**：所有 `wbar.arrive(lane_id)` 改为 `barrier_module.arrive_at_warp_barrier(0, lane_id)`；所有 `wbar.init(...)` 改为 `barrier_module.init_warp_barrier(0, ...)`；所有 `wbar.is_complete()` 改为 `barrier_module.is_warp_barrier_complete(0)`；release 路径改为调用 `barrier_module.release_warp_barrier(0, warp_ctx)`（已包含 BUG-POSTBARRIER-TWOHALVES OR 逻辑）
+- **验证 force_reconvergence 不变性**：`WarpBarrier::init` 的 `is_initialized_` 分支（BUG-RECONVERGENCE-SIMPLEGEMM 修复）已于 main 提前落地（`warp_barrier.cpp:18-31`），本 change 验证其正确性
+- **删除 `BsyncManager` 调用**：移除 `barrier.cpp` 中 `sm_ctx->bsync_manager_.bsync/release` 调用（`BsyncManager` 类本身已于 `cleanup-deprecated-barrier-apis` 中删除）
+- **删除 `Wbar` struct 及残留引用**（Phase 7，P0-A5）：删除 `include/ptxsim/wbar.h` 全部内容；删除 `warp_state.wbars[]` + `current_wbar_id` 字段；删除 `get_wbar()` compat shim
+- **新增 integration 测试**：覆盖分歧 warp 两半通过 BarrierModule API 分别到达 barrier 后正常完成场景（commit `36dbb9a` 失败案例的复现 + 修复验证）
 
 ## Capabilities
 
@@ -34,15 +34,20 @@ PTX-EMU 在 commit `12390b7` 合并 `fix/barrier-architecture-migration` 后，`
 | 类别 | 影响 |
 |------|------|
 | `src/ptxsim/instructions/barrier.cpp` | **修改**：`BarWarpSyncHandler::processOperation` 调用 `BarrierModule` API；移除 `sm_ctx->bsync_manager_.bsync/release` 调用 |
-| `src/ptxsim/barrier/warp_barrier.cpp` | **修改**：`WarpBarrier::init` 增加 `is_initialized_` 分支处理（task 2.2c） |
-| `tests/unit/barrier/` | **新增**：`WarpBarrier::init preserves arrived_mask` 测试（task 2.2c.1） |
+| `src/ptxsim/barrier/warp_barrier.cpp` | **不变**：`WarpBarrier::init` 的 `is_initialized_` 分支已提前落地（commit `b04cdb2`），本 change 仅验证 |
+| `src/ptxsim/barrier/barrier_module.cpp` | **不变**：`release_warp_barrier` OR 逻辑已提前落地 |
+| `include/ptxsim/wbar.h` | **删除**（Phase 7）：整个文件（121 行），`Wbar` struct 无生产引用 |
+| `include/ptxsim/warp_state.h` | **修改**（Phase 7）：删除 `wbars[]` + `current_wbar_id` 字段 + reset 中的对应逻辑 |
+| `include/ptxsim/warp_context.h` | **修改**（Phase 7）：删除 `get_wbar()` compat shim 声明 |
+| `src/ptxsim/core/warp_context.cpp` | **修改**（Phase 7）：删除 `get_wbar()` 实现（L540-556） |
 | `tests/integration/divergence/` | **新增**：分歧 warp 两半 barrier 完整生命周期测试 |
-| `docs/adr/0008-barrier-semantics.md` | **追加**：`force_reconvergence + BarrierModule` 交互设计决策 |
+| `docs/adr/0008-barrier-semantics.md` | **追加**：`force_reconvergence + BarrierModule` 交互设计决策 + Wbar 删除记录 |
 
 ## References
 
 - 前置 change（已归档）：`openspec/changes/archive/2026-06-19-integrate-barrier-module-cta-warp/` Phase 5 DEFERRED
-- 前置 change（提议中）：`cleanup-deprecated-barrier-apis`（删除 `Wbar` / `BsyncManager`，提供 `warp_state.barrier` 字段）
+- 前置 change（已归档，2026-06-20）：`openspec/changes/archive/2026-06-20-cleanup-deprecated-barrier-apis/`（删除 `BsyncManager` / `synchronize_barrier`，commits `8a5573d`/`7914764`/`6ec8efd`）
+- 技术债务审计：`docs/audits/debt-audit-2026-07-02.md` §P0-A5（Wbar 未删除 gap）
 - 已失败尝试（参考）：commit `36dbb9a`（实施）+ commit `f033312`（revert）
 - Skill：`ptx-barrier-mechanism`（屏障机制全解，特别是 BUG-POSTBARRIER-TWOHALVES + BUG-RECONVERGENCE-SIMPLEGEMM 部分）
 - Skill：`ptx-instruction-pipeline`（指令执行流水线，特别是 `force_reconvergence_at_barrier` 部分）

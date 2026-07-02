@@ -4,7 +4,8 @@
 #include "ptxsim/thread_context.h"
 #include "ptxsim/cta_context.h"
 #include "ptxsim/simt_stack.h"
-#include "ptxsim/wbar.h"
+
+#include "ptxsim/cta_context.h"
 #include "ptxsim/common_types.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/instruction_factory.h"
@@ -150,7 +151,7 @@ TEST_CASE("integrated_multiple_barrier_registers", "[wbar][multi][integrated]") 
     SMContext sm(4, 128, 4096, 0);
     WarpContext* warp = create_warp_with_threads(sm, create_block(statements));
 
-    REQUIRE(warp->get_warp_state().wbars.size() == 4);
+    REQUIRE(warp->get_cta_context()->get_barrier_module().get_warp_barrier(0) != nullptr);
 
     step_warp(warp, statements);  // mov at PC=0: all → PC=1
 
@@ -355,5 +356,5 @@ TEST_CASE("integrated_full_barrier_execution_flow", "[wbar][full][integrated]") 
         CHECK(warp->get_thread(i)->get_pc() == 3);
     }
 
-    CHECK(warp->get_warp_state().current_wbar_id == -1);
+    CHECK(!warp->get_cta_context()->get_barrier_module().get_warp_barrier(0)->is_initialized());
 }

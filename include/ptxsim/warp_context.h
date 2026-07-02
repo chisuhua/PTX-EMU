@@ -218,14 +218,6 @@ public:
     ptxsim::SIMTStack &get_simt_stack() { return simt_stack; }
     const ptxsim::SIMTStack &get_simt_stack() const { return simt_stack; }
 
-    // 【NEW】Warp 级屏障访问
-    // Compat shim for tests still using legacy Wbar API. Syncs BarrierModule
-    // state on access so field reads (.is_complete(), .participation_mask,
-    // etc.) reflect the WarpBarrier canonical state.
-    [[deprecated(
-        "Use cta_context->get_barrier_module()->get_warp_barrier() instead")]]
-    ptxsim::Wbar &get_wbar(int wbar_id);
-
     // 【BARRIER RECONVERGENCE】Force all non-exited threads to reconverge at
     // barrier_pc + 1. This matches hardware behavior per sm90_100.md:294:
     // "bar.sync — 未汇合的 Warp 会在此被强制汇合" For multi-warp CTAs, threads
