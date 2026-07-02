@@ -197,6 +197,54 @@ bool is_float_type(const auto &qualifiers) {
 
 ---
 
+### 6. OpenSpec artifacts 提交遗漏 + Debt audit 必须 git verify（2026-07 新增）
+
+**问题模式**: 实施 OpenSpec change 时，工作区修改了 `openspec/changes/<name>/{design.md,tasks.md,spec.md}` 反映实施调整，但**这些 artifacts 修改从未 `git add`** — 仅源码 + commit message 描述了改动。fast-forward merge 后，OpenSpec 状态与代码不一致，需 commit `reconstruct` 补救。
+
+**触发场景**: `cleanup-deprecated-barrier-apis` (2026-06-20) — 3 个实施 commits (`8a5573d`/`7914764`/`6ec8efd`) 合并时未追踪 artifacts；12 天后 (`barrier-migration-amendment` 2026-07-02) 基于 untracked reconstructed artifacts 误判 4 条 P0-A 为 active debt。
+
+**关键经验**：
+- **实施 OpenSpec change 必须 2-Phase commit**：
+  1. Phase 0：`git add openspec/changes/<name>/` + commit "docs(openspec): <name> design adjustments" (artifacts FIRST)
+  2. Phase 1+：实施代码 + commit
+- **Debt audit 必须满足 2 个先决条件**：
+  1. 当前 git HEAD 状态（不是 working tree）— `git status` + `git log -- <path>` 验证
+  2. 引用 commit hash 而非文件路径
+- **OpenSpec archive = change 终态**：归档后任何修补需求应新建 `fix-*`/`refactor-*` change + `Ref: archive/<date>-<name>/`，不要 amend 已归档 change
+
+**诊断命令**：
+```bash
+# 验证 change 是否已归档
+git log --all --oneline -- "openspec/changes/<change-name>/"
+# 应包含 archive commit（如 ded4f96 chore(openspec): archive ...）
+
+# 验证 artifacts 是否 tracked（实施后必须）
+git ls-files openspec/changes/<change-name>/
+# 不应为空
+
+# 审计前自检
+git status openspec/changes/  # 未提交修改警告
+```
+
+**真实案例**:
+- `barrier-migration-amendment` (2026-07-02) — 试图 amend 已于 2026-06-20 归档的 `cleanup-deprecated-barrier-apis`
+- `.opencode/notes/debt-audit-2026-07-02.md` §1.1 P0-A1~A4 误标为 active debt — 实际已通过 commits `8a5573d`/`7914764`/`6ec8efd` 解决
+
+**修复模板**：
+```bash
+# 1. 删除 obsolete untracked dirs
+rm -rf openspec/changes/<obsolete-amendment>/ openspec/changes/<already-archived-as-reconstructed>/
+
+# 2. 更新 debt audit 标记为 RESOLVED
+# docs/audits/<audit>.md §1.1 添加"状态"列 + 引用 commits
+
+# 3. 沉淀 lesson
+# docs/dev-process/lessons-learned.md 添加新条目（按现象/教训/检查工具/真实案例结构）
+# .opencode/skills/ptx-lessons-learned/SKILL.md 添加 §核心经验 + Checklists E/F/G
+```
+
+---
+
 ## ✅ 可复用 Checklist
 
 ### Checklist A: 函数迁移
@@ -236,6 +284,42 @@ bool is_float_type(const auto &qualifiers) {
 □ ADR 是否需要追加
 □ OpenSpec tasks.md 是否需要更新
 □ commit message 列出独立的 fix 编号
+```
+
+### Checklist E: OpenSpec change 实施后（2026-07 新增）
+
+```
+□ 所有 OpenSpec artifacts (design.md / tasks.md / spec.md / proposal.md) 已 git-tracked
+  - 验证：git ls-files openspec/changes/<name>/ 不应为空
+□ commit message 列出独立 fix 编号（如 Fix #1, Fix #2）
+□ 每个 commit 独立可 revert（git revert HEAD 后编译通过）
+□ 实施 commits 合并后立即 git-tracked artifacts（避免 working tree 遗漏）
+□ 归档前 grep 验证 artifacts 与代码一致（无过期 task 编号）
+```
+
+### Checklist F: Debt audit 撰写（2026-07 新增）
+
+```
+□ 审计前 git log --since=<audit-date-1> -- <path> 验证所有引用 change 的实施状态
+  - 验证：git log --all --oneline -- openspec/changes/<change-name>/ 不应仅含 archive commit
+□ 引用 commit hash 而非文件路径
+  - 示例："P0-A1 RESOLVED by commit 8a5573d" 而非 "P0-A1 当前 design.md 已修复"
+□ 区分 "active debt"（影响实施）vs "stale debt"（已解决但审计未更新）
+□ 每次审计标注 "基于 HEAD <hash>" 而非 "当前状态"
+□ 审计撰写时若 working tree 与 git HEAD 不一致，必须明确标注：
+  - "基于 working tree 状态，可能与 HEAD 不一致"
+```
+
+### Checklist G: OpenSpec lifecycle 约束（2026-07 新增）
+
+```
+□ Proposed: 未实施，artifacts 可修改
+□ Accepted: 已批准实施，artifacts 可修改但需说明理由
+□ Active: 实施中，artifacts 可修改（带 progress 标记）
+□ Archived: 终态，artifacts 不可修改
+  - 若需修补 → 新建 fix-* / refactor-* change
+  - 引用方式：Ref: archive/<date>-<change-name>/
+  - 禁止 amend 已归档 change（违反 OpenSpec 生命周期）
 ```
 
 ---

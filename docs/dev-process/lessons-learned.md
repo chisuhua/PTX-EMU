@@ -538,3 +538,62 @@ grep -rn "qualifiers\[" src/
 - **关联 ADR**: `docs/adr/0008-barrier-semantics.md`（已追加 2026-06-18 postmortem）
 - **关联 plan**: `docs/superpowers/plans/2026-06-18-integrate-barrier-module-cta-warp-fix.md`
 - **关联 skills**: `.opencode/skills/ptx-barrier-mechanism/`, `.opencode/skills/regression-bisect/`, `.opencode/skills/state-modification-audit/`
+
+---
+
+## 18. OpenSpec artifacts 提交遗漏 + Debt audit 必须 git verify
+
+### 现象（OpenSpec artifacts commit 遗漏）
+
+`cleanup-deprecated-barrier-apis` change 的实施过程（2026-06-20, commits `8a5573d` / `7914764` / `6ec8efd`）中：
+
+1. 实施者在工作区修改了 `openspec/changes/cleanup-deprecated-barrier-apis/{design.md,tasks.md,specs/cleanup/spec.md}` 反映实施调整
+2. 但**这些 OpenSpec artifacts 修改从未 `git add`** — 仅源码 + commit message 描述了改动
+3. fast-forward merge 后，`openspec/changes/cleanup-deprecated-barrier-apis/` 目录仍是修改前的旧版本（untracked reconstructed artifacts）
+4. 补救：commit `4d38772`（14:05）重建 artifacts → commit `ded4f96`（14:07）归档 change
+5. **12 天后**（2026-07-02），Sisyphus agent 审计债务时基于 untracked reconstructed artifacts（而非 archive），误判 4 条 P0-A 仍为 active debt，并基于 stale audit 创建了 `barrier-migration-amendment` change 试图 amend 已归档 change — 触发本 lesson
+
+### 教训
+
+- **实施 OpenSpec change 时必须按 2-Phase commit 顺序**：
+  1. **Phase 0**：`git add openspec/changes/<name>/` + commit "docs(openspec): <name> design adjustments" (artifacts FIRST)
+  2. **Phase 1+**：实施代码 + commit
+- **任何 debt audit 必须满足 2 个先决条件**：
+  1. **当前 git HEAD 状态**（不是 working tree）— `git status` + `git log -- <path>` 验证
+  2. **commit hash 而非文件路径** — 引用 `git log --all -- <path>` 结果，不引用 working tree 内容
+- **OpenSpec archive = change 终态**：归档后任何修补需求应新建 `fix-*` 或 `refactor-*` change，并 `Ref: archive/<date>-<name>/`，不要 amend 已归档 change
+- **审计撰写时若 working tree 与 git HEAD 不一致，必须明确标注**："基于 working tree 状态，可能与 HEAD 不一致"
+
+### 检查工具
+
+```bash
+# 1. 验证 change 是否已归档
+git log --all --oneline -- "openspec/changes/<change-name>/"
+# 应包含 archive commit（如 ded4f96 chore(openspec): archive ...）
+
+# 2. 验证 change 实施状态
+git log --all --oneline -- <实施文件路径>
+# 列出所有改动该文件的 commits
+
+# 3. 验证 artifacts 是否 tracked（实施后必须）
+git ls-files openspec/changes/<change-name>/
+# 不应为空 — artifacts 应在 git 中
+
+# 4. 审计前自检
+git status openspec/changes/  # 工作区未提交修改警告
+git diff HEAD openspec/changes/  # 应无差异（若审计基于 HEAD）
+```
+
+### 真实案例
+
+- **触发**: `barrier-migration-amendment` change (2026-07-02) — 试图 amend 已于 2026-06-20 归档的 `cleanup-deprecated-barrier-apis`
+- **错位审计**: `.opencode/notes/debt-audit-2026-07-02.md` §1.1 P0-A1~A4 误标为 active debt — 实际已通过 commits `8a5573d`/`7914764`/`6ec8efd` 解决
+- **修复**:
+  1. 删除 `openspec/changes/barrier-migration-amendment/` 和 `openspec/changes/cleanup-deprecated-barrier-apis/` (untracked 重构副本)
+  2. 更新 `docs/audits/debt-audit-2026-07-02.md` §1.1 标记 P0-A1~A4 为 RESOLVED（引用 commits）
+  3. 本 lesson #18 + 配套 Checklists E/F/G（见 `.opencode/skills/ptx-lessons-learned/SKILL.md`）
+- **回归保护**:
+  - 任何 future OpenSpec change 实施时 apply Checklist E（artifacts commit FIRST）
+  - 任何 future debt audit 撰写时 apply Checklist F（git verify FIRST）
+
+---
