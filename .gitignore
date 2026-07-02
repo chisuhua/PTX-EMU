@@ -69,3 +69,4 @@ __pycache__/
 #   - 删除前需先 kill 所有 `python3 -m code_review_graph serve` 进程
 #   - 详见 .code-review-graph/README.md
 .code-review-graph/
+.understand-anything/

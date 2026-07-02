@@ -277,3 +277,136 @@ cat docs/adr/0006-simt-stack-management.md | grep -A 20 "合规检查"
 - [ADR-0008: Barrier 语义](../../adr/0008-barrier-semantics.md)
 - [ADR-0002: PC 权威源统一](../../adr/0002-pc-unification.md)
 - [SIMT 架构文档](../../architecture/SIMT-ARCHITECTURE-V2.md)
+
+---
+
+## 🔍 与 Lessons-Learned 的 Cross-Check (强制)
+
+> **加载 skill**: [`ptx-lessons-learned`](../ptx-lessons-learned/)
+> **来源**: 2026-06-18 commit `f033312` 实战经验沉淀
+> **目的**: 把 ADR 合规检查从"是否符合设计决策"扩展到"是否违反已知的失败模式"
+
+### 必查项（每个 ADR 合规检查时）
+
+在完成标准 ADR 合规检查清单后，**必须**额外 cross-check 以下 lessons-learned 失败模式（确保实现没有违反）：
+
+#### A. 跨模块状态翻译（Lessons 1）
+
+**触发条件**: 涉及 `ThreadContext` / `WarpState` / `set_state` / `sync_to_warp_state` 的改动
+
+**检查命令**：
+```bash
+# 列出修改的代码中所有 set_state 调用
+grep -n "set_state" <modified-files>
+# 列出所有消费该 state 的位置
+grep -rn "state == BAR_SYNC\|state == RUN\|state == EXIT\|is_at_barrier" src/ptxsim/
+# 比对：每个 set_state 必须有对应的消费者，没有遗漏
+```
+
+**判定标准**：
+- ❌ 有 `set_state(X)` 但找不到消费者 → 可能翻译不完整
+- ❌ 有消费者但上游代码没设 → 中间路径漏翻译（本次 bug 的模式）
+- ✅ 必须有完整的"set_state → consumer"对应关系
+
+**关联 invariant**: `src/ptxsim/core/AGENTS.md` DUAL STATE MECHANISM 章节
+
+#### B. 递归锁死锁（Lessons 2）
+
+**触发条件**: 涉及互斥量、`lock_guard`、新的 `mutex_` 字段
+
+**检查命令**：
+```bash
+# 列出所有锁点
+grep -n "lock_guard\|unique_lock\|lock()\|unlock()" <modified-files>
+# 检查是否有"持锁方法调用其他持锁方法"的模式
+# - 同一 mutex 上的多个 lock_guard 在不同方法中
+# - 一个方法内 lock 后调用同锁的另一方法
+```
+
+**判定标准**：
+- ❌ 持锁方法调用同锁的另一 public 方法 → 死锁风险
+- ❌ 新加的 mutex 字段没有 unique_ptr 包装 → 拷贝风险
+- ✅ 应使用 "internal unsafe" 模式或 `std::recursive_mutex`（明确标注）
+
+**关联修复模式**: lessons-learned.md §3
+
+#### C. set_active_mask 全局语义（Lessons 1 关联）
+
+**触发条件**: 涉及 barrier 释放、`release_warp_barrier`、`release_cta_barrier`、active_mask 修改
+
+**检查命令**：
+```bash
+# 列出所有 set_active_mask 调用
+grep -rn "set_active_mask" src/ptxsim/
+# 验证是否使用 OR 语义（而非 overwrite）
+grep -B2 "set_active_mask" src/ptxsim/barrier/ | grep "get_active_mask() |"
+```
+
+**判定标准**：
+- ❌ 在 barrier 释放路径用 `set_active_mask(arrived_mask)` 而非 OR → BUG-POSTBARRIER-TWOHALVES 回归
+- ✅ 必须用 `set_active_mask(get_active_mask() | arrived_mask)`（caller 层 OR）
+- ✅ ret handler 仍可用 `set_active_mask(0u)`（overwrite 是合法的，这里只查 barrier 路径）
+
+**关联 invariant**: `src/ptxsim/core/AGENTS.md` BUG-POSTBARRIER-TWOHALVES 章节
+
+#### D. Barrier 释放后状态恢复（Lessons 1 关联）
+
+**触发条件**: 涉及 `release_warp_barrier` / `release_cta_barrier`
+
+**检查命令**：
+```bash
+# 验证 release 后设置 state = RUN
+grep -A5 "release_warp_barrier\|release_cta_barrier" src/ptxsim/barrier/barrier_module.cpp | grep "set_state"
+# 验证 is_blocked 被显式清除
+grep -A10 "release_warp_barrier\|release_cta_barrier" src/ptxsim/barrier/barrier_module.cpp | grep "is_blocked"
+```
+
+**判定标准**：
+- ❌ release 路径只 set_state(RUN) 但没清除 is_blocked → `sync_to_warp_state()` 的 guard 会阻止 is_blocked 被清除
+- ✅ release 路径必须：set_state(RUN) + 显式清 is_blocked
+- ✅ release 路径必须调用 advance_thread_pc 推进 PC
+
+**关联 invariant**: `src/ptxsim/core/AGENTS.md` DUAL STATE MECHANISM 章节
+
+#### E. Wbar 废弃状态（Lessons 6 关联）
+
+**触发条件**: 涉及 `Wbar` 引用、bar.warp.sync 路径、`warp_state.wbars[]` 字段
+
+**检查命令**：
+```bash
+# 列出所有 Wbar 引用
+grep -rn "Wbar\b\|wbar\.\|warp_state.wbars\[" src/ include/ | grep -v "deprecated"
+# 检查是否被标记为 deprecated
+grep "deprecated" include/ptxsim/wbar.h
+```
+
+**判定标准**：
+- ❌ 新代码使用 `Wbar` 而非 `BarrierModule` → 违反废弃决策
+- ✅ 新代码应使用 `BarrierModule` / `WarpBarrier` / `CTABarrier`
+- ✅ 旧代码引用应标注 `// TODO: migrate to BarrierModule`
+
+**关联决策**: `docs/adr/0008-barrier-semantics.md` §"2026-06-18 Postmortem"（Phase 5 推迟决策）
+
+### 集成到 ADR 合规报告
+
+ADR 合规报告应包含 **Lessons-Learned Cross-Check** 章节：
+
+```markdown
+## Lessons-Learned Cross-Check
+
+- [ ] A. 跨模块状态翻译完整性
+- [ ] B. 递归锁死锁风险
+- [ ] C. set_active_mask 全局语义（barrier 路径）
+- [ ] D. Barrier 释放后状态恢复
+- [ ] E. Wbar 废弃状态（如涉及）
+
+<每个项的检查结果 + 证据>
+```
+
+如果任何项 ❌，**必须**在报告中标出，并在 commit 中修复（参考 lessons-learned.md 对应章节的修复模式）。
+
+### 与其他 skill 的关系
+
+- **`ptx-lessons-learned`**: 提供所有 cross-check 项的源
+- **`state-modification-audit`**: 增强 cross-check A 和 D 的检查（当怀疑状态被意外修改时）
+- **`regression-bisect`**: 增强 cross-check A 的诊断（当 `set_state` 漏掉导致测试回归时）

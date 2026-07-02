@@ -268,3 +268,75 @@ Lane X blocked at bar.warp.sync (arrived=N/32)
 2. **隔离问题**: test_syncthreads 有 3 个 kernel，先单独测试最简单的
 3. **接受现实**: 当前 94% 通过率已证明修复有效，剩余问题涉及深层架构
 
+---
+
+## 🔄 跨模块状态翻译检查（State Translation Check）
+
+> **新增于 2026-06-18**, 来自 `BarHandler::executeBarrier` 漏掉 `set_state(BAR_SYNC)` 的 bug 修复经验
+
+### 问题模式
+
+PTX-EMU 的状态管理采用**双轨制**：
+- `ThreadContext::state` (EXE_STATE 全局枚举) — 来自 `include/ptxsim/execution_types.h`
+- `warp_state.threads[i].*` (per-thread 字段) — 来自 `include/ptxsim/core/warp_state.h`
+
+这两个表示通过 `ThreadContext::sync_to_warp_state()` / `sync_from_warp_state()` 互译。如果某个 handler 设置了前者但漏掉翻译，调度器可能不识别。
+
+### 已知翻译规则
+
+| `ThreadContext::state` | `warp_state.threads[i].*` | 来源 |
+|----|----|----|
+| `RUN` | `is_blocked=false, status=Active, is_active=true` | `thread_context.cpp:789-792` |
+| `BAR_SYNC` | `is_blocked=true, status=Blocked` | `thread_context.cpp:794-796` |
+| `EXIT` | `is_exited=true, is_active=false, is_blocked=false, status=Exited` | `thread_context.cpp:798-803` |
+
+### 何时触发此检查
+
+| 症状 | 提示 |
+|------|------|
+| 集成测试断言 `is_blocked == false` 失败 | 调度器在 barrier 指令处死循环，缺 `set_state(BAR_SYNC)` |
+| `is_exited` / `is_finished()` 状态错乱 | ret / exit handler 漏掉 `set_state(EXIT)` |
+| 调度器跳过该执行的线程 | 缺 `set_state(BAR_SYNC)` |
+| 线程执行已退出 lane | 缺 `set_state(EXIT)` |
+
+### 诊断步骤
+
+```bash
+# 1. 找到所有 set_state 调用点
+grep -rn "set_state(" src/ptxsim/ include/ptxsim/ | grep -v "test"
+
+# 2. 找到所有读取 state 的位置（消费点）
+grep -rn "state == BAR_SYNC\|get_state()\|is_at_barrier" src/ptxsim/
+
+# 3. 比对：每个 set_state 应该有对应的翻译规则
+#    缺翻译 = 潜在 bug
+```
+
+### 修复模式
+
+发现漏掉 `set_state` 时，按以下模板修复：
+
+```cpp
+} else {
+    // Mark thread as waiting at <event> so the executor (<file>:<line>)
+    // recognizes <STATE> and skips re-execution. Without this,
+    // sync_to_warp_state() keeps is_<field>=false and the scheduler
+    // spins on the instruction. (Mirrors legacy <old-code> at <file>:<line>.)
+    context->set_state(<STATE>);
+    context->set_next_pc(context->get_pc());
+}
+```
+
+注释必须包含：
+1. 消费者位置（`<file>:<line>`）
+2. 失败模式（`is_<field>=false`）
+3. 旧代码对照（`<old-code> at <file>:<line>`）
+
+### 相关文档
+
+- [`lessons-learned.md`](lessons-learned.md) §1 跨模块间接状态翻译
+- [`src/ptxsim/core/AGENTS.md`](../../src/ptxsim/core/AGENTS.md) DUAL STATE MECHANISM 章节
+- `.opencode/skills/state-modification-audit/` — 状态变量交叉引用审计
+
+---
+
