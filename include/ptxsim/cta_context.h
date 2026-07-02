@@ -85,6 +85,14 @@ public:
     ptxsim::BarrierModule& get_barrier_module() { return *barrier_module_; }
     const ptxsim::BarrierModule& get_barrier_module() const { return *barrier_module_; }
 
+    // Ensure barrier_module_ is allocated (for tests that construct
+    // CTAContext manually without calling the full init() flow).
+    void ensure_barrier_module() {
+        if (!barrier_module_) {
+            barrier_module_ = std::make_unique<ptxsim::BarrierModule>();
+        }
+    }
+
     ~CTAContext();
 
 private:

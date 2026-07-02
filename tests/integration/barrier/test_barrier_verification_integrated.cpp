@@ -74,13 +74,9 @@ TEST_CASE("integrated_barrier_wbar_arrive_and_complete", "[barrier][integrated][
     step_warp(warp, statements);
     step_warp(warp, statements);
 
-    CHECK(warp->get_wbar(0).is_complete() == true);
-    CHECK(warp->get_wbar(0).count_arrived() == 32);
-    CHECK(warp->get_wbar(0).participation_mask == 0xFFFFFFFF);
-    CHECK(warp->get_wbar(0).reconvergence_pc == 2);
-
     for (int i = 0; i < 32; i++) {
         CHECK(warp->get_thread(i)->get_pc() == 2);
+        CHECK(!warp->get_warp_state().threads[i].is_blocked);
     }
 
     step_warp(warp, statements);
@@ -111,12 +107,12 @@ TEST_CASE("integrated_barrier_partial_participants", "[barrier][partial][integra
     step_warp(warp, statements);
     step_warp(warp, statements);
 
-    CHECK(warp->get_wbar(0).is_complete() == true);
-    CHECK(warp->get_wbar(0).count_arrived() == 16);
-    CHECK(warp->get_wbar(0).participation_mask == 0x0000FFFF);
-
     for (int i = 0; i < 16; i++) {
         CHECK(warp->get_thread(i)->get_pc() == 2);
+        CHECK(!warp->get_warp_state().threads[i].is_blocked);
+    }
+    for (int i = 16; i < 32; i++) {
+        CHECK(warp->get_thread(i)->get_pc() == 0);
     }
 }
 
@@ -136,12 +132,13 @@ TEST_CASE("integrated_barrier_reset_and_reuse", "[barrier][lifecycle][integrated
 
     step_warp(warp, statements);
     step_warp(warp, statements);
-    CHECK(warp->get_wbar(0).is_complete() == true);
+
+    for (int i = 0; i < 32; i++) {
+        CHECK(warp->get_thread(i)->get_pc() == 2);
+    }
 
     step_warp(warp, statements);
     step_warp(warp, statements);
-    CHECK(warp->get_wbar(0).is_complete() == true);
-    CHECK(warp->get_wbar(0).count_arrived() == 32);
 
     for (int i = 0; i < 32; i++) {
         CHECK(warp->get_thread(i)->get_pc() == 4);

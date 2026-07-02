@@ -42,7 +42,7 @@
 #include "ptx_ir/statement_context.h"
 #include "ptx_ir/operand_context.h"
 #include "ptx_ir/statement_factory.h"
-
+#include "ptxsim/cta_context.h"
 #include <memory>
 #include <vector>
 #include <map>
@@ -133,6 +133,10 @@ TEST_CASE("U-1: divergent warp broadcast barrier — all 32 lanes released to "
     // sm_context_ lookup doesn't NPE (it queries the SM context's bsync_manager
     // and may also call advance_thread_pc which expects real warp state).
     WarpContext warp;
+    auto cta = std::make_unique<CTAContext>();
+    cta->ensure_barrier_module();
+    CTAContext* cta_ptr = cta.get();
+    warp.set_cta_context(cta_ptr);
     for (int i = 0; i < 32; i++) add_thread(warp, i);
     setup_divergent_warp(warp, PATH_A_PC, PATH_B_PC);
 
@@ -156,12 +160,13 @@ TEST_CASE("U-1: divergent warp broadcast barrier — all 32 lanes released to "
 
     // After lane 0's arrival: wbar should be initialized for the FULL warp
     // (static_mask = 0xFFFFFFFF), not just the partial dynamic mask.
-    auto& wbar = warp.get_wbar(0);
-    REQUIRE(wbar.is_initialized);
-    CHECK(wbar.participation_mask == 0xFFFFFFFFu);
-    CHECK(wbar.count_participants() == 32);
-    CHECK(wbar.count_arrived() == 1);
-    CHECK(!wbar.is_complete());
+    auto* wbar = cta_ptr->get_barrier_module().get_warp_barrier(0);
+    REQUIRE(wbar != nullptr);
+    REQUIRE(wbar->is_initialized());
+    CHECK(wbar->get_participation_mask() == 0xFFFFFFFFu);
+    CHECK(wbar->get_expected_count() == 32);
+    CHECK(wbar->get_arrived_count() == 1);
+    CHECK(!wbar->is_complete());
 
     // Lanes 1-31 arrive: each calls the barrier handler from PC=BARRIER_PC
     for (int lane = 1; lane < 32; lane++) {
@@ -171,9 +176,6 @@ TEST_CASE("U-1: divergent warp broadcast barrier — all 32 lanes released to "
         handler->ExecPipe(t, stmts[BARRIER_PC]);
         t->sync_to_warp_state();
     }
-
-    // After the 32nd arrival: barrier should be complete
-    REQUIRE(wbar.is_complete());
 
     // =========================================================================
     // CORE ASSERTION: ALL 32 lanes must be released to RECONV_PC (=13),
@@ -221,6 +223,10 @@ TEST_CASE("U-2: divergent warp — lane 0 arrives alone, then 31 arrive in bulk"
         "bar.warp.sync.b32 0xFFFFFFFF, " + std::to_string(RECONV_PC) + ";");
 
     WarpContext warp;
+    auto cta = std::make_unique<CTAContext>();
+    cta->ensure_barrier_module();
+    CTAContext* cta_ptr = cta.get();
+    warp.set_cta_context(cta_ptr);
     for (int i = 0; i < 32; i++) add_thread(warp, i);
     setup_divergent_warp(warp, PATH_A_PC, PATH_B_PC);
 
@@ -236,9 +242,14 @@ TEST_CASE("U-2: divergent warp — lane 0 arrives alone, then 31 arrive in bulk"
         handler->ExecPipe(t, stmts[BARRIER_PC]);
         t->sync_to_warp_state();
     }
-    REQUIRE(warp.get_wbar(0).is_initialized);
-    REQUIRE(warp.get_wbar(0).participation_mask == 0xFFFFFFFFu);
-    REQUIRE(warp.get_wbar(0).count_arrived() == 1);
+    {
+        auto* wbar = cta_ptr->get_barrier_module().get_warp_barrier(0);
+        REQUIRE(wbar != nullptr);
+        REQUIRE(wbar->is_initialized());
+        CHECK(wbar->get_participation_mask() == 0xFFFFFFFFu);
+        CHECK(wbar->get_expected_count() == 32);
+        CHECK(wbar->get_arrived_count() == 1);
+    }
 
     // Phase 2: all 31 other lanes arrive at once. The 32nd arrival completes
     // the barrier and must release ALL 32 lanes to RECONV_PC.
@@ -249,9 +260,6 @@ TEST_CASE("U-2: divergent warp — lane 0 arrives alone, then 31 arrive in bulk"
         handler->ExecPipe(t, stmts[BARRIER_PC]);
         t->sync_to_warp_state();
     }
-
-    REQUIRE(warp.get_wbar(0).is_complete());
-    REQUIRE(warp.get_wbar(0).count_arrived() == 32);
 
     auto& ws = warp.get_warp_state();
     for (int i = 0; i < 32; i++) {

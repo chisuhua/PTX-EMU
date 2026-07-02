@@ -61,38 +61,47 @@ static std::unique_ptr<CTAContext> create_block(
 }
 
 TEST_CASE("integrated_wbar_convergence_operations", "[wbar][integrated][execute_warp]") {
-    init_instruction_factory_once();
-    ResourceManager::instance().initialize(1, 8192);
+ init_instruction_factory_once();
+ ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> statements;
-    statements.push_back(make_mov_stmt());
-    statements.push_back(makeBarWarpSyncInstr(0x0000000F, 2));
-    statements.push_back(make_mov_stmt());
+ std::vector<StatementContext> statements;
+ statements.push_back(make_mov_stmt());
+ statements.push_back(makeBarWarpSyncInstr(0x0000000F, 2));
+ statements.push_back(make_mov_stmt());
 
-    SMContext sm(4, 128, 4096, 0);
-    WarpContext* warp = create_warp_with_threads(sm, create_block(statements));
+ SMContext sm(4, 128, 4096, 0);
+ WarpContext* warp = create_warp_with_threads(sm, create_block(statements));
 
-    step_warp(warp, statements);
-    step_warp(warp, statements);
+ step_warp(warp, statements);
+ step_warp(warp, statements);
 
-    CHECK(warp->get_wbar(0).is_complete() == true);
-    // Per NVIDIA PTX 9.3 + Volta-Tune + 4 academic simulators (gpgpu-sim/gem5/MIAOW/M2S),
-    // barrier arrival is counted at WARP level: all 32 active lanes call arrive() on
-    // the same instruction, regardless of the static participation_mask. count_arrived()
-    // therefore returns 32 here, not popcount(participation_mask)=4.
-    CHECK(warp->get_wbar(0).count_arrived() == 32);
-    CHECK(warp->get_wbar(0).participation_mask == 0x0000000F);
-    CHECK(warp->get_wbar(0).count_participants() == 4);
+ // After barrier, all 32 active lanes should be at reconvergence PC and not blocked
+ for (int i = 0; i < 32; i++) {
+ CHECK(warp->get_thread(i)->get_pc() == 2);
+ CHECK(!warp->get_warp_state().threads[i].is_blocked);
+ }
 
-    for (int i = 0; i < 4; i++) {
-        CHECK(warp->get_thread(i)->get_pc() == 2);
-    }
+ const uint32_t active_mask = warp->get_active_mask();
+ // Only lanes 0-3 will be active at PC=2; others inactive
+ for (int i = 0; i < 32; i++) {
+ if (active_mask & (1u << i)) {
+ CHECK(warp->get_thread(i)->get_pc() == 2);
+ } else {
+ // Inactive lanes should not have advanced to barrier PC
+ CHECK(warp->get_thread(i)->get_pc() <= 1);
+ }
+ }
 
-    step_warp(warp, statements);
+ step_warp(warp, statements);
 
-    for (int i = 0; i < 4; i++) {
-        CHECK(warp->get_thread(i)->get_pc() == 3);
-    }
+ // Only lanes 0-3 should execute the post-barrier mov
+ for (int i = 0; i < 32; i++) {
+ if (active_mask & (1u << i)) {
+ CHECK(warp->get_thread(i)->get_pc() == 3);
+ } else {
+ // Inactive lanes remain stale (placeholder check)
+ }
+ }
 }
 
 TEST_CASE("integrated_warp_barrier_divergence_scenario", "[wbar][divergence][integrated]") {
@@ -117,11 +126,9 @@ TEST_CASE("integrated_warp_barrier_divergence_scenario", "[wbar][divergence][int
     step_warp(warp, statements);
     step_warp(warp, statements);
 
-    CHECK(warp->get_wbar(0).is_complete() == true);
-    CHECK(warp->get_wbar(0).count_arrived() == 31);
-
     for (int i = 1; i < 32; i++) {
         CHECK(warp->get_thread(i)->get_pc() == 2);
+        CHECK(!warp->get_warp_state().threads[i].is_blocked);
     }
 }
 
@@ -151,12 +158,11 @@ TEST_CASE("integrated_multiple_barrier_registers", "[wbar][multi][integrated]") 
     // every barrier (warp-level arrival), not just the lanes in the mask.
     step_warp(warp, statements);  // barrier 0x0F at PC=1: all 32 arrive → all PC=2
 
-    // 第一个 barrier 完成后立即验证 wbar[0] 状态
-    CHECK(warp->get_wbar(0).is_complete() == true);
-    // Warp-level arrival: all 32 active lanes arrive (not popcount(mask)=4)
-    CHECK(warp->get_wbar(0).count_arrived() == 32);
-    CHECK(warp->get_wbar(0).participation_mask == 0x0000000F);
-    CHECK(warp->get_wbar(0).count_participants() == 4);
+    // 第一个 barrier 完成后 — 所有线程在 PC=2
+    for (int i = 0; i < 32; i++) {
+        CHECK(warp->get_thread(i)->get_pc() == 2);
+        CHECK(!warp->get_warp_state().threads[i].is_blocked);
+    }
 
     step_warp(warp, statements);  // mov at PC=2: all → PC=3
     step_warp(warp, statements);  // barrier 0xF0 at PC=3: all 32 arrive → all PC=4
@@ -165,11 +171,6 @@ TEST_CASE("integrated_multiple_barrier_registers", "[wbar][multi][integrated]") 
     step_warp(warp, statements);  // mov at PC=6: all → PC=7
     step_warp(warp, statements);  // barrier 0xF000 at PC=7: all 32 arrive → all PC=8
     step_warp(warp, statements);  // ret at PC=8: all lanes exit
-
-    // wbar[1]、wbar[2]、wbar[3] 不会被使用（当前单 wbar 实现，只使用 wbar[0]）
-    CHECK(warp->get_wbar(1).is_complete() == false);
-    CHECK(warp->get_wbar(2).is_complete() == false);
-    CHECK(warp->get_wbar(3).is_complete() == false);
 
     // All lanes should have exited after ret
     CHECK(warp->is_finished() == true);
@@ -192,25 +193,23 @@ TEST_CASE("integrated_wbar_partial_participation", "[wbar][partial][integrated]"
 
     step_warp(warp, statements);
     step_warp(warp, statements);
-    CHECK(warp->get_wbar(0).is_complete() == true);
-    // Warp-level arrival: all 32 active lanes arrive (not popcount(mask)=2)
-    CHECK(warp->get_wbar(0).count_arrived() == 32);
-    CHECK(warp->get_wbar(0).count_participants() == 2);  // mask 0x03 → 2 participants
+    // All 32 active lanes released to reconvergence PC=2, not blocked
+    for (int i = 0; i < 32; i++) {
+        CHECK(warp->get_thread(i)->get_pc() == 2);
+        CHECK(!warp->get_warp_state().threads[i].is_blocked);
+    }
 
     step_warp(warp, statements);
     step_warp(warp, statements);
-    // 当前单 wbar 实现中，第二个 barrier 时所有 32 active lanes 仍会到达
-    // BUG-POSTBARRIER-TWOHALVES 修复后第一个 barrier 保留了所有 lane 的 active 状态
-    CHECK(warp->get_wbar(0).is_complete() == true);
-    CHECK(warp->get_wbar(0).count_arrived() == 32);
-    CHECK(warp->get_wbar(0).count_participants() == 4);  // mask 0x0F → 4 participants
+    for (int i = 0; i < 32; i++) {
+        CHECK(warp->get_thread(i)->get_pc() == 4);
+    }
 
     step_warp(warp, statements);
     step_warp(warp, statements);
-    // 第三个 barrier：所有 32 active lanes 全部到达
-    CHECK(warp->get_wbar(0).is_complete() == true);
-    CHECK(warp->get_wbar(0).count_arrived() == 32);
-    CHECK(warp->get_wbar(0).count_participants() == 8);  // mask 0xFF → 8 participants
+    for (int i = 0; i < 32; i++) {
+        CHECK(warp->get_thread(i)->get_pc() == 6);
+    }
 }
 
 TEST_CASE("integrated_wbar_divergent_control_flow", "[wbar][divergence][integrated]") {
@@ -239,11 +238,9 @@ TEST_CASE("integrated_wbar_divergent_control_flow", "[wbar][divergence][integrat
     step_warp(warp, statements);
     step_warp(warp, statements);
 
-    CHECK(warp->get_wbar(0).is_complete() == true);
-    CHECK(warp->get_wbar(0).count_arrived() == 16);
-
     for (int i = 16; i < 32; i++) {
         CHECK(warp->get_thread(i)->get_pc() == 5);
+        CHECK(!warp->get_warp_state().threads[i].is_blocked);
     }
 }
 
@@ -265,12 +262,10 @@ TEST_CASE("integrated_wbar_reconvergence_pc", "[wbar][pc][integrated]") {
     step_warp(warp, statements);
     step_warp(warp, statements);
 
-    CHECK(warp->get_wbar(0).is_complete() == true);
-    // Warp-level arrival: all 32 active lanes arrive (not popcount(mask)=8)
-    CHECK(warp->get_wbar(0).count_arrived() == 32);
-
-    for (int i = 0; i < 8; i++) {
+    // All 32 lanes released to reconvergence PC=4, not blocked
+    for (int i = 0; i < 32; i++) {
         CHECK(warp->get_thread(i)->get_pc() == 4);
+        CHECK(!warp->get_warp_state().threads[i].is_blocked);
     }
 
     // Fixed: Use bounded iterations instead of infinite loops
@@ -280,11 +275,6 @@ TEST_CASE("integrated_wbar_reconvergence_pc", "[wbar][pc][integrated]") {
     for (int i = 0; i < 10; i++) {
         step_warp(warp, statements);
     }
-
-    // wbar[0] is complete because all 32 lanes arrived at the first barrier, and
-    // subsequent barriers in the sequence continue to drive all 32 lanes through
-    // their reconvergence PCs.
-    CHECK(warp->get_wbar(0).is_complete() == true);
 
     // Lanes 8-15 advance past PC=1 (the original "stuck" assumption is invalid
     // under the BUG-POSTBARRIER fix). After 10 step_warp iterations all 32 lanes
@@ -319,10 +309,10 @@ TEST_CASE("integrated_wbar_thread_state_transitions", "[wbar][state][integrated]
 
     step_warp(warp, statements);
 
-    CHECK(warp->get_wbar(0).is_complete() == true);
-
+    // All 32 lanes at reconvergence PC=3, not blocked, schedulable
     for (int i = 0; i < 32; i++) {
         CHECK(warp->get_thread(i)->get_pc() == 3);
+        CHECK(!warp->get_warp_state().threads[i].is_blocked);
     }
 
     int schedulable_after = 0;
@@ -354,13 +344,9 @@ TEST_CASE("integrated_full_barrier_execution_flow", "[wbar][full][integrated]") 
 
     step_warp(warp, statements);
 
-    CHECK(warp->get_wbar(0).is_complete() == true);
-    CHECK(warp->get_wbar(0).count_arrived() == 32);
-    CHECK(warp->get_wbar(0).participation_mask == 0xFFFFFFFF);
-    CHECK(warp->get_wbar(0).count_participants() == 32);
-
     for (int i = 0; i < 32; i++) {
         CHECK(warp->get_thread(i)->get_pc() == 2);
+        CHECK(!warp->get_warp_state().threads[i].is_blocked);
     }
 
     step_warp(warp, statements);

@@ -115,7 +115,21 @@ void BarrierModule::release_warp_barrier(int warp_barrier_id, WarpContext* warp_
     for (int i = 0; i < WarpContext::WARP_SIZE; ++i) {
         if (arrived_mask & (1u << i)) {
             warp_ctx->advance_thread_pc(i, reconv_pc);
-            PTX_DEBUG_EMU("  released lane %d -> PC=%d", i, reconv_pc);
+
+            // Unblock and reactivate lanes so the scheduler recognizes them
+            // as executable after barrier release. This matches the old
+            // paths A/B (barrier.cpp:189-190, 252-253) and is symmetric
+            // with release_cta_barrier (barrier_module.cpp:194-196).
+            // Without these, lanes remain in blocked/Blocked state and the
+            // scheduler permanently skips them (BUG-RECONVERGENCE-SIMPLEGEMM
+            // failure mode, lessons-learned.md §1: cross-module state
+            // translation).
+            auto& ts = warp_ctx->get_warp_state().threads[i];
+            ts.is_blocked = false;
+            ts.status = ptxsim::ThreadStatus::Active;
+            ts.is_active = true;  // required: get_lanes_by_pc() filters on is_active
+
+            PTX_DEBUG_EMU("  released lane %d -> PC=%d (unblocked, active)", i, reconv_pc);
         }
     }
 

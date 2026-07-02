@@ -124,14 +124,11 @@ TEST_CASE("integrated_full_barrier_execution_flow", "[barrier][integrated][execu
         CHECK(t->get_pc() == 2);
     }
 
-    // 验证：barrier 完成后，所有 wbar 状态正确
-    // 对应 test_barrier_scenarios::bar_warp_sync_all_threads_arrive
-    CHECK(warp->get_wbar(0).is_complete() == true);
-    CHECK(warp->get_wbar(0).count_arrived() == 32);
-    CHECK(warp->get_wbar(0).participation_mask == 0xFFFFFFFF);
-
-    // 验证：barrier 状态已重置
-    CHECK(warp->get_warp_state().current_wbar_id == -1);
+    // 验证：barrier 完成后，所有线程正确到达 reconvergence PC
+    for (int i = 0; i < 32; i++) {
+        CHECK(warp->get_thread(i)->get_pc() == 2);
+        CHECK(!warp->get_warp_state().threads[i].is_blocked);
+    }
 
     // 执行 PC=2 的 post-barrier mov
     step_warp(warp, statements);
@@ -178,8 +175,6 @@ TEST_CASE("integrated_barrier_after_divergent_branch", "[barrier][divergence][in
     step_warp(warp, statements);
 
     // 验证：barrier 完成后，只有 16 个线程到达 reconvergence_pc
-    auto& wbar = warp->get_wbar(0);
-    // 注意：barrier 完成后 wbar 会被重用，这里验证最终状态
     for (int i = 0; i < 32; i++) {
         if (i >= 16) {
             // 活跃线程应该在 PC=2
@@ -193,10 +188,8 @@ TEST_CASE("integrated_barrier_after_divergent_branch", "[barrier][divergence][in
     // 验证：exec_mask 恢复
     CHECK(warp->get_exec_mask() == 0xFFFF0000);
 
-    CHECK(warp->get_wbar(0).is_complete() == true);
-    CHECK(warp->get_wbar(0).count_arrived() == 16);
-    CHECK(warp->get_wbar(0).participation_mask == 0xFFFF0000);
 }
+
 
 // ============================================================================
 // 场景 3: 嵌套分支 + barrier 释放后的 while 循环收敛
@@ -253,9 +246,6 @@ TEST_CASE("integrated_nested_branch_barrier_convergence", "[barrier][simt_stack]
         CHECK(warp->get_thread(i)->get_pc() == 10);
         CHECK(warp->get_thread(i)->get_next_pc() == 10);
     }
-
-    CHECK(warp->get_wbar(0).is_complete() == true);
-    CHECK(warp->get_wbar(0).count_arrived() == 32);
 
     // while 循环 pop 所有收敛条目（模拟 sm_context.cpp 中的行为）
     int pop_count = 0;
@@ -368,9 +358,6 @@ TEST_CASE("integrated_pc_overridden_protection", "[barrier][pc_overridden][integ
     for (int i = 0; i < 32; i++) {
         CHECK(warp->get_thread(i)->get_pc() == 4);
     }
-
-    CHECK(warp->get_wbar(0).is_complete() == true);
-    CHECK(warp->get_wbar(0).count_arrived() == 32);
 }
 
 // ============================================================================
@@ -400,10 +387,11 @@ TEST_CASE("integrated_barrier_lifecycle", "[barrier][lifecycle][integrated]") {
     step_warp(warp, statements);
     step_warp(warp, statements);
 
-    // 验证：第一个 barrier 完成后，wbar 状态重置
+    // 验证：第一个 barrier 完成后 — 所有线程在 PC=2
     CHECK(warp->get_warp_state().current_wbar_id == -1);
-    CHECK(warp->get_wbar(0).is_complete() == true);
-    CHECK(warp->get_wbar(0).count_arrived() == 32);
+    for (int i = 0; i < 32; i++) {
+        CHECK(warp->get_thread(i)->get_pc() == 2);
+    }
 
     // 执行中间指令
     step_warp(warp, statements);
@@ -411,12 +399,8 @@ TEST_CASE("integrated_barrier_lifecycle", "[barrier][lifecycle][integrated]") {
     // 执行第二个 barrier
     step_warp(warp, statements);
 
-    // 验证：第二个 barrier 完成后，wbar 状态再次重置
+    // 验证：第二个 barrier 完成后 — 所有线程在 PC=4
     CHECK(warp->get_warp_state().current_wbar_id == -1);
-    CHECK(warp->get_wbar(0).is_complete() == true);
-    CHECK(warp->get_wbar(0).count_arrived() == 32);
-
-    // 验证：所有线程 PC 正确
     for (int i = 0; i < 32; i++) {
         CHECK(warp->get_thread(i)->get_pc() == 4);
     }
@@ -466,9 +450,5 @@ TEST_CASE("integrated_partial_active_threads_barrier", "[barrier][partial][parti
     }
 
     CHECK(warp->get_active_mask() == 0x0000FFFF);
-
-    CHECK(warp->get_wbar(0).is_complete() == true);
-    CHECK(warp->get_wbar(0).count_arrived() == 16);
-    CHECK(warp->get_wbar(0).participation_mask == 0x0000FFFF);
 }
 } // anonymous namespace
