@@ -2,13 +2,13 @@
 
 ## 1. 审计与基线
 
-- [ ] 1.1 **C2 前置验证**（必须通过）：
+- [x] 1.1 **C2 前置验证**（必须通过）：
       ```bash
       grep -rn "get_wbar\|wbar\.h\|warp_state\.wbars\|current_wbar_id" \
         include/ src/ tests/
       ```
       输出必须为空。否则 STOP。
-- [ ] 1.2 **全量审计**（合并为一个命令）：
+- [x] 1.2 **全量审计**（合并为一个命令）：
       ```bash
       grep -rnE "force_set_pc|WarpContext::(get_pc|set_pc)|warp\.(get_pc|set_pc)\s*\(" \
         --include="*.cpp" --include="*.h" src/ include/ tests/ \
@@ -17,18 +17,18 @@
       ```
       预期：4 处 `force_set_pc`（全部在 `tests/unit/pc/`）+ 0 处
       `WarpContext::get_pc/set_pc` 实际引用。
-- [ ] 1.3 **构造 + reset 引用审计**：
+- [x] 1.3 **构造 + reset 引用审计**：
       ```bash
       grep -n "\bpc\b" src/ptxsim/core/warp_context.cpp include/ptxsim/warp_context.h \
         | grep -v "//\|Removed 2026"
       ```
       预期：`pc(0)` 初始化 + `pc = 0;` reset + `return pc;` set_pc 实现。
-- [ ] 1.4 **基线 worktree**（C1/C2 已有 `.worktrees/fix-pre-p0-baseline`，如不存在则建）：
+- [x] 1.4 **基线 worktree**（C1/C2 已有 `.worktrees/fix-pre-p0-baseline`，如不存在则建）：
       ```bash
       git worktree add .worktrees/baseline-dead-code HEAD 2>/dev/null \
         || git worktree list  # 复用已存在
       ```
-- [ ] 1.5 **基线测试快照**：
+- [x] 1.5 **基线测试快照**：
       ```bash
       .worktrees/baseline-dead-code/scripts/sanity.sh --quick > /tmp/sanity-baseline.txt
       ```
@@ -128,12 +128,12 @@
 
 ## 5. 全量验证（clean build + 回归）
 
-- [ ] 5.1 **clean build**（P0-10）：
+- [x] 5.1 **clean build**（P0-10）：
       ```bash
       rm -rf build && cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
         && cmake --build build -j$(nproc) 2>&1 | tee /tmp/build.log
       ```
-- [ ] 5.2 **warning 检查**（P1-4）：
+- [x] 5.2 **warning 检查**（P1-4）：
       ```bash
       grep -iE "deprecated|warning" /tmp/build.log \
         | grep -v "bench/" \
@@ -144,20 +144,20 @@
         | grep -v "Removed 2026-07")
       ```
       预期：命令退出码 0
-- [ ] 5.3 **ctest 完整回归**：
+- [x] 5.3 **ctest 完整回归**：
       ```bash
       cd build && ctest --output-on-failure
       ```
       预期：与 baseline 对比无新增 FAIL
-- [ ] 5.4 **sanity quick**：
+- [x] 5.4 **sanity quick**：
       ```bash
       ./scripts/sanity.sh --quick
       ```
-- [ ] 5.5 **PTX 语法全量**：
+- [x] 5.5 **PTX 语法全量**：
       ```bash
       ./tests/ptx/test_all_ptx.sh
       ```
-- [ ] 5.6 **zero-refs 终验**：
+- [x] 5.6 **zero-refs 终验**：
       ```bash
       grep -rnE "force_set_pc|WarpContext::(get_pc|set_pc)|warp\.(get_pc|set_pc)\s*\(" \
         --include="*.cpp" --include="*.h" src/ include/ \
@@ -167,27 +167,27 @@
 
 ## 6. 合并与归档
 
-- [ ] 6.1 确认 3 个 commit 各自独立可 revert：
+- [x] 6.1 确认 3 个 commit 各自独立可 revert：
       ```bash
       for sha in $(git log --format=%H -3); do
         git revert --no-commit $sha  # 干跑
         git revert --abort
       done
       ```
-- [ ] 6.2 切换到 main：
+- [x] 6.2 切换到 main：
       ```bash
       git checkout main
       git merge --no-ff refactor/dead-code-cleanup \
         -m "Merge: dead-code-cleanup (Fix #1-#4)"
       ```
-- [ ] 6.3 触发 OpenSpec archive 流程，**生成 postmortem**（P2-4）：
+- [x] 6.3 触发 OpenSpec archive 流程，**生成 postmortem**（P2-4）：
       将"set_pc / force_set_pc 文档矛盾" 模式追加到
       `docs/dev-process/lessons-learned.md` 失败模式表
-- [ ] 6.4 清理 worktree：
+- [x] 6.4 清理 worktree：
       ```bash
       git worktree remove .worktrees/baseline-dead-code --force
       ```
-- [ ] 6.5 验证根 `AGENTS.md` 状态（更新 `Last Updated: 2026-07-XX`）
+- [x] 6.5 验证根 `AGENTS.md` 状态（更新 `Last Updated: 2026-07-XX`）
 
 ## 工时估算
 
