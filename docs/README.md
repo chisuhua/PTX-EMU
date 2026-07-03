@@ -89,7 +89,7 @@
 ### 调试人员路径
 
 1. **调试策略** → [`dev-process/debugging-strategy.md`](./dev-process/debugging-strategy.md)
-2. **PTX 调试技能** → [`.opencode/skills/ptx-debug/`](../../.opencode/skills/ptx-debug/)
+2. **PTX 调试技能** → [`.opencode/skills/ptx-debug/`](../.opencode/skills/ptx-debug/)
 3. **失败案例 postmortem** → [`developer-guide/`](./developer-guide/)
 
 ---
@@ -104,7 +104,7 @@
 
 **项目归档副本**: [`archive/ptx-instruction-reference/`](./archive/ptx-instruction-reference/)（13 个文件，已与外部规范重复，参考用）
 
-**修改 PTX 语法前必读**：[`.opencode/skills/ptx-grammar-modification/`](../../.opencode/skills/ptx-grammar-modification/)（强制 TDD 流程）
+**修改 PTX 语法前必读**：[`.opencode/skills/ptx-grammar-modification/`](../.opencode/skills/ptx-grammar-modification/)（强制 TDD 流程）
 
 ---
 
@@ -189,7 +189,7 @@ ctest -R unit_barrier_module -V
 ## 📞 联系与支持
 
 - **项目仓库**: `github.com/chisuhua/PTX-EMU`
-- **OpenSpec 活跃 changes**: [`openspec/changes/`](../../openspec/changes/)（即未来 roadmap 项）
+- **OpenSpec 活跃 changes**: [`openspec/changes/`](../openspec/changes/)（即未来 roadmap 项）
 - **最新审计**: [docs/audits/debt-audit-2026-07-02.md](./audits/debt-audit-2026-07-02.md)
 
 ---
