@@ -55,17 +55,9 @@ public:
     // 获取活跃线程数量
     int get_active_count() const { return active_count; }
 
-    // 获取 PC 值（向后兼容，返回 warp 级 PC）
-    [[deprecated("Use warp_state.threads[lane_id].pc for per-thread PC")]]
-    int get_pc() const {
-        return pc;
-    }
-
-    // 设置 PC 值（向后兼容）
-    [[deprecated("Use advance_thread_pc() or advance_all_threads() instead")]]
-    void set_pc(int new_pc) {
-        pc = new_pc;
-    }
+    // Removed 2026-07-XX — dead-code-cleanup (Fix #1)
+    // WarpContext::get_pc() and set_pc() removed — zero production refs.
+    // Replaced by: warp_state.threads[lane_id].pc + advance_thread_pc()
 
     // 【NEW】获取每线程 PC
     uint32_t get_thread_pc(int lane_id) const {
@@ -244,7 +236,6 @@ private:
     std::array<bool, WARP_SIZE> active_mask;
     std::array<int, WARP_SIZE> warp_thread_ids; // 对应的线程 ID
     int active_count;                           // 活跃线程数量
-    int pc;                                     // warp 级 PC (向后兼容)
     int warp_id;                                // warp ID
     int physical_warp_id;                       // 物理 warp ID
     int physical_block_id;                      // 物理 block ID

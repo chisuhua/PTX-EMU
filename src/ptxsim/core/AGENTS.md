@@ -17,7 +17,7 @@ GPUContext
 ## WHERE TO LOOK
 | Task | Location | Notes |
 |------|----------|-------|
-| Per-thread PC management | `thread_context.cpp` | `get_pc()`, `commit_pc()`, `force_set_pc()` |
+| Per-thread PC management | `thread_context.cpp` | `get_pc()`, `commit_pc()`, `set_pc()` |
 | Warp scheduling | `warp_scheduler.cpp` | `is_warp_ready_to_fetch()` |
 | Barrier sync | `cta_context.cpp` | `cta_context->get_barrier_module()` |
 | Thread execution | `thread_context.cpp` | `execute_thread_instruction()` |
@@ -35,13 +35,13 @@ GPUContext
 ## CONVENTIONS
 - PC access via `get_pc()` / `get_next_pc()` — read from warp_state directly
 - Normal PC advancement: `set_next_pc(pc+1)` → execute → `commit_pc()`
-- Barrier completion: `force_set_pc(reconvergence_pc)` + `set_next_pc(reconvergence_pc)`
+- Barrier completion: `set_pc(reconvergence_pc)` — writes both pc and next_pc
 - `is_warp_ready_to_fetch()` — warp selected only if all active threads have `pc == next_pc`
 
 ## ANTI-PATTERNS
 - DO NOT call `ThreadContext` methods from `WarpContext` without proper locking
 - DO NOT modify `active_mask` directly without barrier synchronization
-- DO NOT use `set_pc()` — use `commit_pc()` or `force_set_pc()`
+- DO NOT use `force_set_pc()` — use `set_pc()` for init/sync/reset, `commit_pc()` for normal advancement
 - `.bak` files in this directory are committed artifacts — do not edit
 
 ## KNOWN ISSUES

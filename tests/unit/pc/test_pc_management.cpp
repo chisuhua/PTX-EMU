@@ -78,19 +78,6 @@ TEST_CASE("is_warp_ready_to_fetch: inactive threads are skipped", "[pc][schedule
     REQUIRE(warp.is_warp_ready_to_fetch() == true);
 }
 
-TEST_CASE("force_set_pc: sets pc only, preserves next_pc", "[pc]") {
-    WarpContext warp;
-    init_warp_with_threads(warp);
-
-    warp.get_warp_state().threads[0].pc = 10;
-    warp.get_warp_state().threads[0].next_pc = 15;
-
-    warp.get_thread(0)->force_set_pc(20);
-
-    REQUIRE(warp.get_warp_state().threads[0].pc == 20);
-    REQUIRE(warp.get_warp_state().threads[0].next_pc == 15);
-}
-
 TEST_CASE("set_thread_pc: sets both pc and next_pc", "[pc]") {
     WarpContext warp;
     init_warp_with_threads(warp);
@@ -161,15 +148,14 @@ TEST_CASE("Greedy scheduler skips warp not ready to fetch", "[pc][scheduler]") {
     REQUIRE(scheduled->get_warp_id() == 1);
 }
 
-TEST_CASE("force_set_pc + set_next_pc + commit_pc: barrier current thread flow", "[pc][barrier][regression]") {
+TEST_CASE("set_pc + commit_pc: barrier current thread flow", "[pc][barrier][regression]") {
     WarpContext warp;
     init_warp_with_threads(warp);
 
     warp.get_warp_state().threads[0].pc = 5;
     warp.get_warp_state().threads[0].next_pc = 6;
 
-    warp.get_thread(0)->force_set_pc(10);
-    warp.get_thread(0)->set_next_pc(10);
+    warp.get_thread(0)->set_pc(10);
 
     REQUIRE(warp.get_warp_state().threads[0].pc == 10);
     REQUIRE(warp.get_warp_state().threads[0].next_pc == 10);
@@ -232,12 +218,10 @@ TEST_CASE("Barrier completion: all arrived threads set to reconvergence PC", "[p
 
     warp.get_warp_state().exec_mask = 0xFFFFFFFF;
 
-    warp.get_thread(0)->force_set_pc(RECONV_PC);
-    warp.get_thread(0)->set_next_pc(RECONV_PC);
+    warp.get_thread(0)->set_pc(RECONV_PC);
     warp.set_thread_pc(0, RECONV_PC);
 
-    warp.get_thread(1)->force_set_pc(RECONV_PC);
-    warp.get_thread(1)->set_next_pc(RECONV_PC);
+    warp.get_thread(1)->set_pc(RECONV_PC);
     warp.set_thread_pc(1, RECONV_PC);
 
     REQUIRE(warp.get_warp_state().threads[0].pc == RECONV_PC);

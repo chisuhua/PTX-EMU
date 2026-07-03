@@ -4,7 +4,7 @@
 // @file barrier.cpp
 // @brief Stage 3: bar.warp.sync 和 activemask 指令的实现
 // @details 实现 PTX ISA v6.0+ 的 warp 级收敛屏障机制
-//          使用 Wbar 数据结构实现线程同步
+//          通过 BarrierModule / WarpBarrier 实现线程同步
 // @author PTX-EMU Team
 // @date 2026-04-03
 // 

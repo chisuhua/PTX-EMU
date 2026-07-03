@@ -43,7 +43,7 @@ src/ptxsim/instructions/
 - `commit_pc()` is the only normal PC advancement - never call `set_pc()` directly
 
 ## ANTI-PATTERNS
-- DO NOT use `set_pc()` — use `commit_pc()` or `force_set_pc()`
+- DO NOT use `force_set_pc()` — use `set_pc()` for init/sync/reset, `commit_pc()` for normal advancement
 - DO NOT modify `active_mask` without barrier synchronization
 - DO NOT call `ThreadContext` methods from `WarpContext` without locking
 
