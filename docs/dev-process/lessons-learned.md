@@ -1,8 +1,8 @@
 # PTX-EMU 开发经验沉淀（Lessons Learned）
 
-> **来源**: `integrate-barrier-module-cta-warp` change 实施全过程（2026-06-18, commit `f033312`）
+> **来源**: `integrate-barrier-module-cta-warp` change 实施全过程（2026-06-18, commit `f033312`）+ `migrate-bar-warp-sync-to-barrier-module` 落地全过程（2026-07-03, commits `0e311566`+`f5640042`+`0bab6487`）
 > **目的**: 把本次工作的关键经验教训系统化，供后续重构/迁移任务参考
-> **互补文档**: [`debugging-strategy.md`](debugging-strategy.md)（问题分类与快速验证）、[`.opencode/skills/ptx-barrier-mechanism/`](../skills/)（领域知识）
+> **互补文档**: [`debugging-strategy.md`](debugging-strategy.md)（问题分类与快速验证）、[`.opencode/skills/ptx-barrier-mechanism/`](../skills/)（领域知识）、[`.opencode/skills/ptx-lessons-learned/SKILL.md`](../skills/ptx-lessons-learned/SKILL.md)（快速决策树 + Checklists）
 
 ---
 
@@ -595,5 +595,55 @@ git diff HEAD openspec/changes/  # 应无差异（若审计基于 HEAD）
 - **回归保护**:
   - 任何 future OpenSpec change 实施时 apply Checklist E（artifacts commit FIRST）
   - 任何 future debt audit 撰写时 apply Checklist F（git verify FIRST）
+
+---
+
+## 19. 成功应用 §1 跨模块状态翻译：BarWarpSyncHandler 迁移到 BarrierModule API
+
+### 现象
+
+`migrate-bar-warp-sync-to-barrier-module` change（commits `0e311566`+`f5640042`+`0bab6487`，2026-07-03）将 `BarWarpSyncHandler::processOperation`（路径 A force_reconvergence + 路径 B 正常 barrier）从直接操作 `warp_state.wbars[0]` + `sm_ctx->bsync_manager_` 迁移到 `BarrierModule::init_warp_barrier / arrive_at_warp_barrier / release_warp_barrier` API。
+
+之前 `commit 36dbb9a` 失败 + `f033312` revert，原因正是 §1 "跨模块间接状态翻译" — 漏掉了 release 路径的 `is_blocked=false` + `status=Active` + `is_active=true` 翻译以及 `set_pc_overridden(true)` PC 防双推进。
+
+### 教训
+
+**1. §1 的 fix 是这次成功的关键**: 迁移 `release_warp_barrier` 时严格按行级 diff 把 5 件事完整迁移：
+  - `set_active_mask(get_active_mask() | arrived_mask)` —— OR 逻辑保留（BUG-POSTBARRIER-TWOHALVES）
+  - `is_blocked=false` —— 解除阻塞
+  - `status=Active` —— 重新激活调度
+  - `is_active=true` —— 派发级 active
+  - `context->set_pc_overridden(true)` —— release 调用方的责任（防止 `commit_pc()` 二次推进）
+
+ 每一项都有对应的下游消费者（`grep "<state>\|is_<state>" src/...` 可查），看似"次要"的都不能丢。
+
+**2. Path A vs Path B 守卫条件对称翻译**: `current_wbar_id < 0` → `!init_wbar->is_initialized()`；`current_wbar_id >= 0` → `init_wbar->is_initialized()`。在两条路径中**保持一致** —— 不一致的守卫条件会破坏 force_reconvergence 重新进入的语义（BUG-RECONVERGENCE-SIMPLEGEMM）。
+
+**3. P0-A5 Wbar 删除 = 单一来源**: 删除 `wbar.h`、`warp_state.wbars[]`、`current_wbar_id`、`get_wbar()` compat shim 后，所有 barrier 状态集中到 `CTAContext::barrier_module_`。代码层面 grep 零残留（`grep -rn "wbar\.h\|warp_state\.wbars\|current_wbar_id\|get_wbar(" include/ src/ tests/` → 仅剩注释引用）。
+
+### 真实案例
+
+- **触发 commit**: `0e311566`（feat）+ `f5640042`（chore, P0-A5 删除 Wbar）+ `0bab6487`（tests 修复）
+- **§1 fix 的应用**: `src/ptxsim/barrier/barrier_module.cpp:111-134` `release_warp_barrier` —— OR 逻辑、is_blocked/status/is_active 全部在一个函数体内集中
+- **§1 fix 的迁移验证**: 23/23 barrier 测试包括 `unit_post_barrier_two_halves`（BUG-POSTBARRIER-TWOHALVES）、`unit_barrier_reconvergence_simplegemm`（BUG-RECONVERGENCE-SIMPLEGEMM）、`e2e_barrier_warp_sync` 全部 PASS
+- **ADR 更新**: `docs/adr/0008-barrier-semantics.md` §2026-07-03 追加完整 postmortem（含 Phase 3/Phase 7/Phase 7b 三 commit 拆分 + lessons §1/§2/§4 的应用证据）
+- **关键决策**: "OR logic 是单一所有者（single owner）"，不再分散到所有 barrier caller —— `BarrierModule::release_warp_barrier` 是唯一拥有 OR 语义的函数
+
+### 与 §1 §2 §4 的对比
+
+| 教训 | 之前（commit 36dbb9a 失败） | 之后（commits 0e311566+ 成功） |
+|------|---------------------------|-------------------------------|
+| §1 跨模块状态翻译 | 漏掉 release 路径的 OR + is_blocked/status/is_active 翻译 | 严格行级 diff 在 `release_warp_barrier` 内完整保留 5 件事 |
+| §2 递归锁 | 未触发（migration handler 未涉及 lock） | 同上 |
+| §4 复杂迁移分 Phase | 单个 commit 36dbb9a 同时改 + 跑测试 | Phase 3 (commit 0e311566) + Phase 7 (commit f5640042) + Phase 7b tests (commit 0bab6487) 三个独立 commit，失败独立可 revert |
+
+### 实战 checklist（apply 到任何"从 handler 直接状态字段迁移到 Module API"的工作）
+
+- [ ] **行级 diff 列出所有 baseline 函数中的 `set_*()` 调用**（不仅 main logic）
+- [ ] **确认新 Module API 内包含了所有翻译**（grep 对照调用点 vs 消费点数量应一致）
+- [ ] **检查 Path A vs Path B 守卫条件的对称性**（force_reconvergence 不应该有非对称的 guard）
+- [ ] **确认 release/cleanup path 由 caller 控制 PC 翻转**（`set_pc_overridden(true)`）
+- [ ] **删除 compat shim 前先 grep "全项目零匹配"**（`grep -rn "<old_name>\|<deprecated_field>" include/ src/ tests/`）
+- [ ] **独立 commit 拆分**（migrate 单 commit + delete 单 commit + tests 修复单 commit）
 
 ---
