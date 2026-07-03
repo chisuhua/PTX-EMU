@@ -534,7 +534,7 @@ openspec/changes/integrate-barrier-module-cta-warp/
 
 | 类别 | 描述 | 出处 |
 |------|------|------|
-| **lifecycle 单元测试** | 删除的 `test_syncthreads_test3_repro.cpp` (-190 行) + `test_exec_layer_e1_e3.cpp` (-59 行) 覆盖了 init→complete→reset→re-init + participation_mask 边界。已规划 follow-up change `barrier-module-lifecycle-tests` 重建这些单元测试 | Code Review Issue I1 |
+| **lifecycle 单元测试** | **✅ 2026-07-03 已补完** —— 通过 change `barrier-module-lifecycle-tests` 重建 7 个单元测试：3 个 `test_barrier_module_release.cpp`（release_warp_barrier 5 项状态翻译 + BUG-POSTBARRIER-TWOHALVES 两周期 OR）+ 2 个 `test_warp_barrier_lifecycle.cpp`（init→complete→reset→re-init + 多周期无状态泄漏）+ 2 个 `test_participation_mask_boundaries.cpp`（full-mask 31-arrival 不完整 + partial-mask 16-arrival 完整）。注：BUG-RECONVERGENCE-SIMPLEGEMM re-init 不变量仍由 `test_barrier_module.cpp::WarpBarrier::init preserves arrived_mask` 覆盖 | Code Review Issue I1（已关闭）|
 | **barrier.cpp 注释** | `barrier.cpp:105-228` 124 行单函数 Path A/B 注释不足，文档化 "force_reconvergence path" vs "normal sync path" 边界 | Code Review Issue M1 |
 | **exec_mask vs active_mask 文档** | `warp_context.h` 中参数命名歧义（注释，非代码） | Code Review Issue M2 |
 

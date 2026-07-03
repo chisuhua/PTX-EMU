@@ -84,11 +84,43 @@
 
 ### Decision 4: WarpContext mock 最小化
 
-**选择**: 测试用例构造的 `WarpContext` 使用真实的 mock 或简化 fake（`warp_state.threads[0..31]` 仅设置必要字段），不依赖完整 `SMContext` / `CTAContext` 栈。
+**选择**: 测试用例构造的 `WarpContext` 使用真实默认构造 + 直接修改 `warp_state.threads[]`，不依赖完整 `SMContext` / `CTAContext` 栈。
+
+**实现模式**（参考 `warp_context.cpp:211-225` 默认构造）：
+
+```cpp
+WarpContext warp_ctx;  // 默认构造：threads[32] 全部初始化 (is_blocked=false, is_active=false, status=Active)
+warp_ctx.set_active_mask(0xFFFF0000u);  // 预设 active_mask 模拟前置状态
+// 预设阻塞状态（模拟屏障等待中的 lane）
+for (int i = 0; i < 32; i++) {
+    auto& ts = warp_ctx.get_warp_state().threads[i];
+    ts.is_blocked = true;
+    ts.status = ptxsim::ThreadStatus::Blocked;
+    ts.is_active = false;
+}
+
+BarrierModule bm;
+bm.init_warp_barrier(0, 0x0000FFFFu, 21, 20);
+for (int i = 0; i < 16; i++) {
+    bm.arrive_at_warp_barrier(0, i);
+}
+bm.release_warp_barrier(0, &warp_ctx);
+
+// 验证 5 项状态翻译
+CHECK(warp_ctx.get_active_mask() == 0xFFFFFFFFu);  // OR
+for (int i = 0; i < 16; i++) {
+    auto& ts = warp_ctx.get_warp_state().threads[i];
+    CHECK(ts.is_blocked == false);
+    CHECK(ts.status == ptxsim::ThreadStatus::Active);
+    CHECK(ts.is_active == true);
+    CHECK(warp_ctx.get_thread_pc(i) == 21);  // reconv_pc
+}
+```
 
 **理由**:
 - **隔离 BarrierModule 测试**：本 change 是 BarrierModule 单元测试，不是 WarpContext 测试
-- **`BarrierModule::release_warp_barrier` 调用 WarpContext 的 5 个接口**：`get_active_mask()`、`set_active_mask(uint32_t)`、`get_warp_state().threads[i]`、`advance_thread_pc`（如果使用）。最小 mock 只暴露这些接口
+- **`WarpContext::WarpContext()` 默认构造函数**（`warp_context.cpp:211-225`）已初始化 `warp_state.threads[32]` + `active_mask[32]` + `exec_mask=0xFFFFFFFF` —— 单元测试**无需** `add_thread` / `SMContext` / `CTAContext`
+- **`BarrierModule::release_warp_barrier` 调用的 5 个 WarpContext 接口**全部就绪：`get_active_mask()` / `set_active_mask(uint32_t)` / `set_exec_mask(uint32_t)` / `advance_thread_pc(lane, pc)` / `get_warp_state().threads[i]`。直接 `warp_ctx.get_warp_state().threads[i]` 访问 mutable 引用（`warp_context.h` 中 `warp_state` 为 public 成员）
 - **现有 `test_barrier_module.cpp` 模式一致**：参考 `WarpBarrier::init preserves arrived_mask` 测试如何构造场景
 
 **替代方案考虑**:
