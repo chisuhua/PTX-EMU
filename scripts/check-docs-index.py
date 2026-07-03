@@ -15,6 +15,7 @@
 
 import re
 import os
+import subprocess
 import sys
 
 VERBOSE = '--verbose' in sys.argv
@@ -264,6 +265,59 @@ def check_6_skills_sync():
             log_fail(issue)
 
 
+def check_7_banner_body_unchanged():
+    print()
+    print('=== Check 7: banner commit preserves document body ===')
+    EXPECTED_BANNERED = [
+        'docs/audits/HEALTH-AUDIT-2026-06-21.md',
+        'docs/PROJECT-COMPLETION-SUMMARY.md',
+    ]
+    if not os.path.isdir('.git'):
+        log_warn('no .git/ — skipping Check 7 (mock fixture)')
+        return
+    issues = []
+    for relpath in EXPECTED_BANNERED:
+        if not os.path.isfile(relpath):
+            continue
+        result = subprocess.run(
+            ['git', 'log', '--diff-filter=M', '--format=%H', '-S', '⚠️', '--', relpath],
+            capture_output=True, text=True, cwd='.'
+        )
+        commit_hash = result.stdout.split('\n')[0].strip() if result.stdout.strip() else ''
+        if not commit_hash:
+            issues.append(relpath + ': no banner-adding commit found')
+            continue
+        parent_result = subprocess.run(
+            ['git', 'show', commit_hash + '^:' + relpath],
+            capture_output=True, text=True, cwd='.'
+        )
+        if parent_result.returncode != 0:
+            continue
+        current_content = open(relpath, encoding='utf-8').read()
+        pre_content = parent_result.stdout
+        pre_body = pre_content.split('\n', 1)[1] if '\n' in pre_content else pre_content
+        cur_lines = current_content.split('\n')
+        last_banner_idx = 0
+        in_banner = False
+        for i, line in enumerate(cur_lines[1:], start=1):
+            if line.startswith('> **⚠️') or line.startswith('>**⚠️'):
+                in_banner = True
+                last_banner_idx = i
+            elif line.startswith('>'):
+                continue
+            elif in_banner and not line.startswith('>'):
+                in_banner = False
+                break
+        cur_after_banner = '\n'.join(cur_lines[last_banner_idx + 1:]) if last_banner_idx else '\n'.join(cur_lines[1:])
+        if cur_after_banner.strip() != pre_body.strip():
+            issues.append(relpath + ': body changed in banner commit ' + commit_hash[:8])
+    if not issues:
+        log_pass('all bannered documents preserve body across banner commit')
+    else:
+        for issue in issues:
+            log_fail('BODY_CHANGED: ' + issue)
+
+
 if __name__ == '__main__':
     check_1_subdirs()
     check_2_links()
@@ -271,6 +325,7 @@ if __name__ == '__main__':
     check_4_orphans()
     check_5_banners()
     check_6_skills_sync()
+    check_7_banner_body_unchanged()
 
     print()
     print('=== Summary ===')

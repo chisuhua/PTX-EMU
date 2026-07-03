@@ -1,0 +1,41 @@
+# docs-validate.yml — Run scripts/check-docs-index.py on PR touching docs/
+#
+# Per docs-discoverability spec Req 8 (CI enforcement).
+#
+# Triggers: PR events (push/pr) that change docs/**, or .github/workflows/docs-validate.yml
+# Job: ubuntu-latest + Python 3.11 + full git history
+# Steps: checkout, setup-python, run check-docs-index.sh, run unit tests
+
+name: docs-validate
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - '.github/workflows/docs-validate.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+
+jobs:
+  validate:
+    name: docs-index + tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (full history for Check 7)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run docs-index validator (Checks 1-7)
+        run: bash scripts/check-docs-index.sh
+
+      - name: Run validator unit tests (8 tests)
+        run: bash tests/unit/scripts/run_all_tests.sh
