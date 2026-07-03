@@ -1,105 +1,248 @@
 #!/usr/bin/env python3
-# check-docs-index.py
-import re, os, sys
+# check-docs-index.py - per docs-discoverability spec (openspec/specs/)
+#
+# Usage:
+#   python3 scripts/check-docs-index.py              # check main project
+#   python3 scripts/check-docs-index.py --mock-root /tmp/test   # check temp fixture
+#   python3 scripts/check-docs-index.py --verbose    # show details
+#
+# Exit: 0 if all checks pass, 1 otherwise.
+#
+# Test fixture support: --mock-root=/path makes all paths relative to /path
+# instead of the current working directory. This allows tests to create
+# isolated temp directories with synthetic docs/, openspec/changes/archive/,
+# .opencode/skills/ for each check without polluting the real project.
+
+import re
+import os
+import sys
 
 VERBOSE = '--verbose' in sys.argv
+MOCK_ROOT = None
+for i, arg in enumerate(sys.argv):
+    if arg.startswith('--mock-root='):
+        MOCK_ROOT = arg.split('=', 1)[1]
+        break
+    if arg == '--mock-root' and i + 1 < len(sys.argv):
+        MOCK_ROOT = sys.argv[i + 1]
+        break
+
+ROOT = MOCK_ROOT if MOCK_ROOT else os.getcwd()
+os.chdir(ROOT) if MOCK_ROOT else None
+
 FAIL_COUNT = 0
 
-def log_pass(msg): print('  PASS ' + msg)
+
+def log_pass(msg):
+    print('  PASS ' + msg)
+
+
 def log_fail(msg):
     global FAIL_COUNT
     FAIL_COUNT += 1
     print('  FAIL ' + msg)
-def log_warn(msg): print('  WARN ' + msg)
 
-# Check 1
-print('=== Check 1: docs/ subdirs vs docs/README.md index ===')
-actual = sorted(d for d in os.listdir('docs') if os.path.isdir(os.path.join('docs', d)))
-with open('docs/README.md', encoding='utf-8') as f:
-    md_content = f.read()
 
-# Pattern: `[\`dir/\`](./dir/)` where dir is word chars + dash
-P_INDEX = r'\[[`\]]([a-z0-9_-]+)/[`\[]\]\(\./([a-z0-9_-]+)/\)'
-# Actually simpler: \[[`].*?\)\]
-INDEX_RE = re.compile(r'\[`([A-Za-z0-9_-]+)/`\]\(\./([A-Za-z0-9_-]+)/\)')
+def log_warn(msg):
+    print('  WARN ' + msg)
 
-indexed = sorted(set(m.group(1) for m in INDEX_RE.finditer(md_content)))
 
-if len(actual) == len(indexed):
-    log_pass('actual subdirs (' + str(len(actual)) + ') match indexed (' + str(len(indexed)) + ')')
-else:
-    log_fail('mismatch: ' + str(len(actual)) + ' actual vs ' + str(len(indexed)) + ' indexed')
-    for a in actual:
-        if a not in indexed:
-            print('      NOT_INDEXED: ' + a)
-    for i in indexed:
-        if i not in actual:
-            print('      STALE_INDEX: ' + i)
+def check_1_subdirs():
+    print('=== Check 1: docs/ subdirs vs docs/README.md index ===')
+    actual = sorted(d for d in os.listdir('docs') if os.path.isdir(os.path.join('docs', d)))
+    with open('docs/README.md', encoding='utf-8') as f:
+        md_content = f.read()
 
-if VERBOSE:
-    print('    Actual: ' + str(actual))
-    print('    Indexed: ' + str(indexed))
+    INDEX_RE = re.compile(r'\[`([A-Za-z0-9_-]+)/`\]\(\./([A-Za-z0-9_-]+)/\)')
+    indexed = sorted(set(m.group(1) for m in INDEX_RE.finditer(md_content)))
 
-# Check 2
-print()
-print('=== Check 2: docs/README.md internal links ===')
-clean = re.sub(r'```[\s\S]*?```', '', md_content)
-links_pat = re.compile(r'\[[^\]]+\]\(([^)]+)\)')
-all_links = links_pat.findall(clean)
-internal = [l for l in all_links if not l.startswith(('http://', 'https://', '#'))]
-broken = []
-for link in internal:
-    target = link.split('#')[0]
-    if not target:
-        continue
-    p = os.path.normpath(os.path.join('docs', target))
-    if not os.path.exists(p):
-        broken.append(link)
-if not broken:
-    log_pass('all ' + str(len(internal)) + ' internal links resolve')
-else:
-    log_fail(str(len(broken)) + ' of ' + str(len(internal)) + ' links broken')
+    if len(actual) == len(indexed):
+        log_pass('actual subdirs (' + str(len(actual)) + ') match indexed (' + str(len(indexed)) + ')')
+    else:
+        log_fail('mismatch: ' + str(len(actual)) + ' actual vs ' + str(len(indexed)) + ' indexed')
+        for a in actual:
+            if a not in indexed:
+                print('      NOT_INDEXED: ' + a)
+        for i in indexed:
+            if i not in actual:
+                print('      STALE_INDEX: ' + i)
 
-# Check 3
-print()
-print('=== Check 3: no hand-edited statistics ===')
-st_pat = re.compile(r'^\|[^|]*\b\d+(\.\d+)?\b[^|]*(测试|行|个|commit|LOC|tests)', re.M)
-he = st_pat.findall(md_content)
-if not he:
-    log_pass('no hand-edited statistics in markdown tables')
-else:
-    log_warn(str(len(he)) + ' possible hand-edited stat rows')
+    if VERBOSE:
+        print('    Actual: ' + str(actual))
+        print('    Indexed: ' + str(indexed))
 
-# Check 4
-print()
-print('=== Check 4: orphan archive changes have README.md ===')
-orphan_found = 0
-orphan_ok = 0
-orphan_missing = []
-if os.path.isdir('openspec/changes/archive'):
-    for d in sorted(os.listdir('openspec/changes/archive')):
-        if d.startswith('.'):
+
+def check_2_links():
+    print()
+    print('=== Check 2: docs/README.md internal links ===')
+    with open('docs/README.md', encoding='utf-8') as f:
+        md_content = f.read()
+
+    clean = re.sub(r'```[\s\S]*?```', '', md_content)
+    links_pat = re.compile(r'\[[^\]]+\]\(([^)]+)\)')
+    all_links = links_pat.findall(clean)
+    internal = [l for l in all_links if not l.startswith(('http://', 'https://', '#'))]
+    broken = []
+    for link in internal:
+        target = link.split('#')[0]
+        if not target:
             continue
-        dp = os.path.join('openspec/changes/archive', d)
-        if not os.path.isdir(dp):
-            continue
-        if os.path.isfile(os.path.join(dp, 'proposal.md')) and not os.path.isfile(os.path.join(dp, 'design.md')):
-            orphan_found += 1
-            if os.path.isfile(os.path.join(dp, 'README.md')):
-                orphan_ok += 1
-            else:
-                orphan_missing.append(d)
-if orphan_found == 0:
-    log_pass('no orphan changes detected')
-elif orphan_ok == orphan_found:
-    log_pass('all ' + str(orphan_found) + ' orphan changes have README.md')
-else:
-    log_fail(str(len(orphan_missing)) + ' of ' + str(orphan_found) + ' orphans lack README.md')
+        p = os.path.normpath(os.path.join('docs', target))
+        if not os.path.exists(p):
+            broken.append(link)
+    if not broken:
+        log_pass('all ' + str(len(internal)) + ' internal links resolve')
+    else:
+        log_fail(str(len(broken)) + ' of ' + str(len(internal)) + ' links broken')
 
-# Summary
-print()
-print('=== Summary ===')
-if FAIL_COUNT > 0:
-    print('  FAIL ' + str(FAIL_COUNT) + ' check(s) failed')
-    sys.exit(1)
-print('  PASS all checks passed')
+
+def check_3_stats():
+    print()
+    print('=== Check 3: no hand-edited statistics ===')
+    with open('docs/README.md', encoding='utf-8') as f:
+        md_content = f.read()
+
+    st_pat = re.compile(r'^\|[^|]*\b\d+(\.\d+)?\b[^|]*(测试|行|个|commit|LOC|tests)', re.M)
+    he = st_pat.findall(md_content)
+    if not he:
+        log_pass('no hand-edited statistics in markdown tables')
+    else:
+        log_warn(str(len(he)) + ' possible hand-edited stat rows')
+
+
+def check_4_orphans():
+    print()
+    print('=== Check 4: orphan archive changes have README.md ===')
+    orphan_found = 0
+    orphan_ok = 0
+    orphan_missing = []
+    if os.path.isdir('openspec/changes/archive'):
+        for d in sorted(os.listdir('openspec/changes/archive')):
+            if d.startswith('.'):
+                continue
+            dp = os.path.join('openspec/changes/archive', d)
+            if not os.path.isdir(dp):
+                continue
+            if os.path.isfile(os.path.join(dp, 'proposal.md')) and not os.path.isfile(os.path.join(dp, 'design.md')):
+                orphan_found += 1
+                if os.path.isfile(os.path.join(dp, 'README.md')):
+                    orphan_ok += 1
+                else:
+                    orphan_missing.append(d)
+    if orphan_found == 0:
+        log_pass('no orphan changes detected')
+    elif orphan_ok == orphan_found:
+        log_pass('all ' + str(orphan_found) + ' orphan changes have README.md')
+    else:
+        log_fail(str(len(orphan_missing)) + ' of ' + str(orphan_found) + ' orphans lack README.md')
+
+
+def check_5_banners():
+    print()
+    print('=== Check 5: stale documents have required banners ===')
+    EXPECTED_BANNERED = {
+        'docs/audits/HEALTH-AUDIT-2026-06-21.md': '8 个事实错误已修正',
+        'docs/PROJECT-COMPLETION-SUMMARY.md': '标记为过期',
+    }
+    BANNER_PATTERN = re.compile(r'^\s*>\s+\*\*⚠️')
+    existing = [(p, s) for p, s in EXPECTED_BANNERED.items() if os.path.isfile(p)]
+    if not existing:
+        log_pass('no stale documents present (Check 5 not applicable)')
+        return
+    missing = []
+    for relpath, expected_substr in existing:
+        with open(relpath, encoding='utf-8') as f:
+            lines = f.readlines()
+        banner_found = False
+        for line in lines[:15]:
+            if BANNER_PATTERN.match(line) and expected_substr in line:
+                banner_found = True
+                break
+        if not banner_found:
+            missing.append((relpath, 'expected banner containing "' + expected_substr + '"'))
+    if not missing:
+        log_pass('all ' + str(len(existing)) + ' stale documents have banners')
+    else:
+        for path, reason in missing:
+            log_fail('MISSING_BANNER: ' + path + ' (' + reason + ')')
+
+
+def check_6_skills_sync():
+    print()
+    print('=== Check 6: docs/skills mirrors .opencode/skills ===')
+    if not os.path.isdir('.opencode/skills'):
+        log_warn('.opencode/skills/ does not exist — skipping Check 6')
+        return
+    if not os.path.isdir('.opencode/skills.disable'):
+        os.makedirs('.opencode/skills.disable', exist_ok=True)
+    active_skills = sorted(
+        d for d in os.listdir('.opencode/skills')
+        if os.path.isdir(os.path.join('.opencode/skills', d)) and d != 'README.md'
+    )
+    disabled_skills = sorted(
+        d for d in os.listdir('.opencode/skills.disable')
+        if os.path.isdir(os.path.join('.opencode/skills.disable', d))
+    )
+    docs_readme = 'docs/skills/README.md'
+    if not os.path.isfile(docs_readme):
+        log_fail('MISSING: ' + docs_readme)
+        return
+    with open(docs_readme, encoding='utf-8') as f:
+        content = f.read()
+    doc_active = set()
+    doc_disabled = set()
+    for line in content.splitlines():
+        line = line.strip()
+        if not line.startswith('|'):
+            continue
+        # Skip table separator rows like "|---|---|"
+        if re.match(r'^\|[\s\-:|]+\|$', line):
+            continue
+        cells = [c.strip() for c in line.split('|')]
+        if len(cells) < 2:
+            continue
+        name_cell = cells[1]
+        m = re.match(r'`?([a-z0-9_-]+)`?', name_cell)
+        if m:
+            name = m.group(1)
+        else:
+            continue
+        is_disabled = '[disabled]' in line
+        if is_disabled:
+            doc_disabled.add(name)
+        else:
+            doc_active.add(name)
+    active_set = set(active_skills)
+    disabled_set = set(disabled_skills)
+    doc_active_set = doc_active
+    doc_disabled_set = doc_disabled
+    issues = []
+    for s in active_set - doc_active_set:
+        issues.append('MISSING_IN_DOCS (active): ' + s)
+    for s in doc_active_set - active_set:
+        issues.append('STALE_IN_DOCS (active): ' + s)
+    for s in disabled_set - doc_disabled_set:
+        issues.append('MISSING_IN_DOCS (disabled marker): ' + s)
+    for s in doc_disabled_set - disabled_set:
+        issues.append('STALE_IN_DOCS (disabled marker): ' + s)
+    if not issues:
+        log_pass('all skills in sync (' + str(len(active_skills)) + ' active + ' + str(len(disabled_skills)) + ' disabled)')
+    else:
+        for issue in issues:
+            log_fail(issue)
+
+
+if __name__ == '__main__':
+    check_1_subdirs()
+    check_2_links()
+    check_3_stats()
+    check_4_orphans()
+    check_5_banners()
+    check_6_skills_sync()
+
+    print()
+    print('=== Summary ===')
+    if FAIL_COUNT > 0:
+        print('  FAIL ' + str(FAIL_COUNT) + ' check(s) failed')
+        sys.exit(1)
+    print('  PASS all checks passed')

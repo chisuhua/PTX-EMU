@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# scripts/git-hooks/pre-commit-docs — docs index validator hook
+#
+# INSTALL (per-developer, runs once):
+#   bash scripts/install_git_hooks.sh
+#
+# BEHAVIOR:
+# - Triggers only when docs/ files are staged
+# - Runs `bash scripts/check-docs-index.sh` against staged + unstaged docs/
+# - Blocks commit if any check fails (provides skip-with-dry-run hint)
+#
+# Per docs-discoverability spec Req 7 (Pre-commit enforcement).
+# Per lessons-learned Checklist E: this file is in repo, .git/hooks/ is not.
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+STAGED_DOCS=$(git diff --cached --name-only | grep '^docs/' || true)
+if [[ -z "$STAGED_DOCS" ]]; then
+    exit 0
+fi
+
+echo "[pre-commit-docs] docs/ files staged, running check-docs-index..."
+if ! bash "$REPO_ROOT/scripts/check-docs-index.sh"; then
+    echo ""
+    echo "[pre-commit-docs] FAIL"
+    echo "Skip with: SKIP_DOCS_CHECK=1 git commit ..."
+    echo "Re-run check manually: bash scripts/check-docs-index.sh"
+    exit 1
+fi
+echo "[pre-commit-docs] PASS"
+exit 0
