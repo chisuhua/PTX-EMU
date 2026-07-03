@@ -823,7 +823,7 @@ void ThreadContext::sync_to_warp_state() {
         (thread_state.is_blocked ||
          thread_state.status == ptxsim::ThreadStatus::Blocked);
 
-    // 屏障完成处理会通过 warp_ctx->advance_thread_pc() 或 force_set_pc()
+    // 屏障完成处理会通过 warp_ctx->advance_thread_pc()
     // 直接更新 warp_state 此处只同步 ThreadContext 自己维护的 next_pc 状态
     thread_state.next_pc = get_next_pc();
 
@@ -892,13 +892,8 @@ void ThreadContext::set_next_pc(int new_next_pc) {
     warp_context_->get_warp_state().threads[lane].next_pc = new_next_pc;
 }
 
-void ThreadContext::force_set_pc(int new_pc) {
-    if (!warp_context_)
-        return;
-    int lane = lane_id_;
-    if (lane < 0 || lane >= 32)
-        return;
-    warp_context_->get_warp_state().threads[lane].pc = new_pc;
-}
-
 void ThreadContext::commit_pc() { set_pc(get_next_pc()); }
+
+// Removed 2026-07-XX — dead-code-cleanup (Fix #2)
+// ThreadContext::force_set_pc() implementation removed — zero production refs.
+// Replaced by: set_pc() which writes both pc and next_pc

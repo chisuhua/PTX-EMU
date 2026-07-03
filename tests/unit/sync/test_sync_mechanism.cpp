@@ -26,7 +26,7 @@ TEST_CASE("H3: branch PC not overwritten by sync", "[sync][branch]") {
     REQUIRE(warp.get_thread_pc(0) == 20);
 }
 
-TEST_CASE("H4: force_set_pc for barrier completion", "[sync][barrier]") {
+TEST_CASE("H4: set_thread_pc updates thread PC", "[sync][barrier]") {
     WarpContext warp;
     warp.set_thread_pc(0, 10);
     warp.set_thread_pc(0, 30);

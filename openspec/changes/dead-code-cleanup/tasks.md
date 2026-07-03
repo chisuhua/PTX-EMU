@@ -58,25 +58,25 @@
 
 ## 3. Commit 2 — 删除 `ThreadContext::force_set_pc` + 重写测试（Fix #2 + #3）
 
-- [ ] 3.1 删除 `include/ptxsim/thread_context.h:217-218` 的 `force_set_pc()` 声明
-- [ ] 3.2 删除 `src/ptxsim/core/thread_context.cpp` 中 `force_set_pc()` 实现（按 grep 定位）
-- [ ] 3.3 在 `thread_context.h:217` 处添加占位注释：
+- [x] 3.1 删除 `include/ptxsim/thread_context.h:217-218` 的 `force_set_pc()` 声明
+- [x] 3.2 删除 `src/ptxsim/core/thread_context.cpp` 中 `force_set_pc()` 实现（按 grep 定位）
+- [x] 3.3 在 `thread_context.h:217` 处添加占位注释：
       ```cpp
       // Removed 2026-07-XX — dead-code-cleanup (Fix #2)
       // Replaced by: set_pc() writes both pc and next_pc
       ```
-- [ ] 3.4 **`test_pc_management.cpp:81-92`**：删除整个 "force_set_pc: sets pc only,
+- [x] 3.4 **`test_pc_management.cpp:81-92`**：删除整个 "force_set_pc: sets pc only,
       preserves next_pc" 用例（语义已不存在）
-- [ ] 3.5 **`test_pc_management.cpp:164-182`**：将 `force_set_pc(10); set_next_pc(10);`
+- [x] 3.5 **`test_pc_management.cpp:164-182`**：将 `force_set_pc(10); set_next_pc(10);`
       合并为 `set_pc(10);`
-- [ ] 3.6 **`test_pc_management.cpp:227-248`**：同上
-- [ ] 3.7 **`test_sync_mechanism.cpp:29-34`**：重命名测试标题，移除
+- [x] 3.6 **`test_pc_management.cpp:227-248`**：同上
+- [x] 3.7 **`test_sync_mechanism.cpp:29-34`**：重命名测试标题，移除
       `force_set_pc` 误导（实际测 `set_thread_pc`）
-- [ ] 3.8 验证：`grep -rn "force_set_pc" tests/` 仅命中 `Removed 2026-07` 占位注释
-- [ ] 3.9 `cmake --build build` 编译通过
-- [ ] 3.10 `ctest -R unit_pc_management -V` 全部 PASS
-- [ ] 3.11 `ctest -L "pc;sync"` 全部 PASS
-- [ ] 3.12 commit：
+- [x] 3.8 验证：`grep -rn "force_set_pc" tests/` 仅命中 `Removed 2026-07` 占位注释
+- [x] 3.9 `cmake --build build` 编译通过
+- [x] 3.10 `ctest -R unit_pc_management -V` 全部 PASS
+- [x] 3.11 `ctest -L "pc;sync"` 全部 PASS
+- [x] 3.12 commit：
       ```bash
       git add -A
       git commit -m "refactor(pc): remove ThreadContext::force_set_pc and rewrite tests (Fix #2)

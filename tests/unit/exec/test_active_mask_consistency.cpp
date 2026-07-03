@@ -250,7 +250,7 @@ TEST_CASE("J10: mixed exited+blocked warp is not finished",
 // is_lane_active() must read from the authoritative source
 // (warp_state.threads[i].is_schedulable()), NOT from the derived active_mask[].
 // This guarantees that any direct mutation of warp_state (e.g., barrier release
-// via force_set_pc + set_state(RUN)) is immediately reflected in
+// via set_pc + set_state(RUN)) is immediately reflected in
 // is_lane_active() without waiting for the next update_active_mask() cycle.
 // ============================================================================
 
