@@ -107,15 +107,17 @@ def check_3_stats():
     if not he:
         log_pass('no hand-edited statistics in markdown tables')
     else:
-        log_warn(str(len(he)) + ' possible hand-edited stat rows')
+        log_fail(str(len(he)) + ' hand-edited stat rows (use scripts/check-docs-index.sh to verify)')
 
 
 def check_4_orphans():
     print()
-    print('=== Check 4: orphan archive changes have README.md ===')
+    print('=== Check 4: orphan archive changes have README.md + verifiable commit ===')
     orphan_found = 0
     orphan_ok = 0
     orphan_missing = []
+    orphan_invalid_hash = []
+    HASH_RE = re.compile(r'\*\*Implementation(?:\s+commits?|\s+commit|\s+commits)\*\*\s*:\s*`([0-9a-f]{7,40})`', re.I)
     if os.path.isdir('openspec/changes/archive'):
         for d in sorted(os.listdir('openspec/changes/archive')):
             if d.startswith('.'):
@@ -125,16 +127,46 @@ def check_4_orphans():
                 continue
             if os.path.isfile(os.path.join(dp, 'proposal.md')) and not os.path.isfile(os.path.join(dp, 'design.md')):
                 orphan_found += 1
-                if os.path.isfile(os.path.join(dp, 'README.md')):
-                    orphan_ok += 1
-                else:
+                readme_path = os.path.join(dp, 'README.md')
+                if not os.path.isfile(readme_path):
                     orphan_missing.append(d)
+                    continue
+                with open(readme_path, encoding='utf-8') as rf:
+                    readme_content = rf.read()
+                hash_match = HASH_RE.search(readme_content)
+                if hash_match:
+                    hash_val = hash_match.group(1)
+                    rc = os.system('git cat-file -t ' + hash_val + ' >/dev/null 2>&1')
+                    if rc == 0:
+                        orphan_ok += 1
+                    else:
+                        orphan_invalid_hash.append((d, hash_val))
+                else:
+                    multi_commit_pattern = re.compile(r'\*\*Implementation commits?\*\*', re.I)
+                    if multi_commit_pattern.search(readme_content):
+                        BACKTICK_HASH = re.compile(r'`([0-9a-f]{7,40})`')
+                        hashes = BACKTICK_HASH.findall(readme_content)
+                        verified = False
+                        for hash_val in hashes:
+                            rc = os.system('git cat-file -t ' + hash_val + ' >/dev/null 2>&1')
+                            if rc == 0:
+                                verified = True
+                                break
+                        if verified:
+                            orphan_ok += 1
+                        else:
+                            orphan_invalid_hash.append((d, 'no verifiable hash in multi-commit'))
+                    else:
+                        orphan_invalid_hash.append((d, 'no hash found'))
     if orphan_found == 0:
         log_pass('no orphan changes detected')
-    elif orphan_ok == orphan_found:
-        log_pass('all ' + str(orphan_found) + ' orphan changes have README.md')
-    else:
+    elif orphan_missing:
         log_fail(str(len(orphan_missing)) + ' of ' + str(orphan_found) + ' orphans lack README.md')
+    elif orphan_invalid_hash:
+        for name, hash_val in orphan_invalid_hash:
+            log_fail('INVALID_COMMIT: ' + name + ' -> ' + hash_val)
+    else:
+        log_pass('all ' + str(orphan_found) + ' orphan changes have valid README + commit hash')
 
 
 def check_5_banners():
