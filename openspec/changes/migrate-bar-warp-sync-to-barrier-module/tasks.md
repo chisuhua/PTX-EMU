@@ -72,9 +72,9 @@
 
 ## 5. 文档同步
 
-- [ ] 5.1 更新 `docs/adr/0008-barrier-semantics.md`：追加 §"BarWarpSyncHandler 迁移 + Wbar 删除"
-- [ ] 5.2 更新 `src/ptxsim/instructions/AGENTS.md`：将"barrier.cpp (指令分发入口) → barrier/barrier_module.cpp (实际状态管理)"标注 BarWarpSyncHandler 也走 BarrierModule API
-- [ ] 5.3 更新 `src/ptxsim/core/AGENTS.md`：移除 `Wbar` / `warp_state.wbars[]` 相关 ANTI-PATTERNS 条目
+- [x] 5.1 更新 `docs/adr/0008-barrier-semantics.md`：追加 §"BarWarpSyncHandler 迁移 + Wbar 删除"（2026-07-03 完成，see §2026-07-03）
+- [x] 5.2 更新 `src/ptxsim/instructions/AGENTS.md`：将"barrier.cpp (指令分发入口) → barrier/barrier_module.cpp (实际状态管理)"标注 BarWarpSyncHandler 也走 BarrierModule API（2026-07-03 完成 by docs(barrier): sync AGENTS.md）
+- [x] 5.3 更新 `src/ptxsim/core/AGENTS.md`：移除 `Wbar` / `warp_state.wbars[]` 相关 ANTI-PATTERNS 条目；澄清 `BUG-POSTBARRIER-TWOHALVES` fix 现在由 `BarrierModule::release_warp_barrier` 封装（2026-07-03 完成 by docs(barrier): sync AGENTS.md）
 
 ## 6. 验证与发布
 
@@ -101,8 +101,8 @@
 
 ### 7b. 更新文档
 
-- [ ] 7.9 **更新 `src/ptxsim/core/AGENTS.md`**：移除 ANTI-PATTERNS 中 "DO NOT add new uses of `Wbar` struct" 条目（`Wbar` 已不存在），移除 "DO NOT call methods from WarpContext" 中 `warp_state.wbars[]` 相关说明
-- [ ] 7.10 **更新 `src/ptxsim/AGENTS.md`** L42：删除 "`BarWarpSyncHandler` still uses `warp_state.wbars[]` (Phase 5 deferred)" 描述，改为 "`BarWarpSyncHandler` routes through `BarrierModule` API (migrated in `migrate-bar-warp-sync-to-barrier-module`)"
+- [x] 7.9 **更新 `src/ptxsim/core/AGENTS.md`**：移除 ANTI-PATTERNS 中 "DO NOT add new uses of `Wbar` struct" 条目（`Wbar` 已不存在），移除 "DO NOT call methods from WarpContext" 中 `warp_state.wbars[]` 相关说明（**2026-07-03 完成**：`BUG-POSTBARRIER-TWOHALVES` fix 描述更新为 BarrierModule 封装 OR 语义）
+- [x] 7.10 **更新 `src/ptxsim/AGENTS.md`** L42：删除 "`BarWarpSyncHandler` still uses `warp_state.wbars[]` (Phase 5 deferred)" 描述，改为 "`BarWarpSyncHandler` routes through `BarrierModule` API (migrated in `migrate-bar-warp-sync-to-barrier-module`)"（**2026-07-03 完成**：line 42, 48 都已更新）
 
 ### 7c. 验证与回归
 

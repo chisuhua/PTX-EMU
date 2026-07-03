@@ -436,10 +436,10 @@ openspec/changes/integrate-barrier-module-cta-warp/
 
 ### 保留项
 
-- `Wbar` struct（`include/ptxsim/wbar.h`）仍 `[[deprecated]]`
-- `warp_state.h::wbars[]` + `current_wbar_id` 字段
-- `BarWarpSyncHandler` 仍用 `warp_state.wbars[0]`（Phase 5 推迟到独立 change `migrate-bar-warp-sync-to-barrier-module`）
-- 19 个 include `ptxsim/wbar.h` 的测试文件全部保留
+- `Wbar` struct（`include/ptxsim/wbar.h`）仍 `[[deprecated]]`（**2026-07-03 已删除** — see ADR §2026-07-03 postmortem）
+- `warp_state.h::wbars[]` + `current_wbar_id` 字段（**2026-07-03 已删除**）
+- `BarWarpSyncHandler` 仍用 `warp_state.wbars[0]`（Phase 5 推迟到独立 change `migrate-bar-warp-sync-to-barrier-module`）（**2026-07-03 已完成迁移**）
+- 19 个 include `ptxsim/wbar.h` 的测试文件全部保留（**2026-07-03 已迁移/重写到 BarrierModule API**）
 - `tests/integration/divergence/test_post_barrier_divergence.cpp` 已知 BUG 回归测试保留
 
 ### 决策
@@ -464,4 +464,87 @@ openspec/changes/integrate-barrier-module-cta-warp/
 
 ### 后续工作
 
-- `migrate-bar-warp-sync-to-barrier-module`（独立 change）：将 `BarWarpSyncHandler` 完整迁移到 `BarrierModule` API，删除 `Wbar` struct + `warp_state.wbars[]` 字段
+- ~~`migrate-bar-warp-sync-to-barrier-module`（独立 change）：将 `BarWarpSyncHandler` 完整迁移到 `BarrierModule` API，删除 `Wbar` struct + `warp_state.wbars[]` 字段~~ — **2026-07-03 已完成**（commits `0e311566` + `f5640042` + `0bab6487`），详见下一节 §2026-07-03
+
+---
+
+## 2026-07-03 追加：BarWarpSyncHandler 迁移到 BarrierModule API + Wbar 完全删除
+
+### 目标
+
+完成两个独立但相关的清理：
+1. **Phase 3**: 将 `BarWarpSyncHandler::processOperation`（commit `36dbb9a` 失败后被 `f033312` revert 的工作）从直接操作 `warp_state.wbars[0]` + `sm_ctx->bsync_manager_` 迁移到 `BarrierModule` API
+2. **Phase 7 (P0-A5)**: 完整删除 `Wbar` struct + `warp_state.wbars[]` + `current_wbar_id` + `get_wbar()` compat shim
+
+### 实施
+
+#### Phase 3: BarWarpSyncHandler 迁移（commit `0e311566`）
+
+**修改路径**:
+- 路径 A（`force_reconvergence` 分歧场景）：`warp_state.wbars[0]` → `cta_context->get_barrier_module().get_warp_barrier(0)`
+- 路径 B（正常 barrier）：同样替换为 `BarrierModule` API
+
+**关键不变式**（**verified** by `tasks.md` / lessons-learned §1）:
+1. `WarpBarrier::init` 的 `is_initialized_` 分支保留 `arrived_mask` / `arrived_count` —— 满足 `BUG-RECONVERGENCE-SIMPLEGEMM`
+2. `release_warp_barrier` 调用方**必须**在返回值后调用 `context->set_pc_overridden(true)` —— 防止 `commit_pc()` 二次推进跳过 reconvergence point
+3. `release_warp_barrier` **必须**完整更新线程状态字段：`is_blocked=false` + `status=Active` + `is_active=true` —— 这是 lesson §1 "跨模块间接状态翻译" 的核心案例
+4. 守卫条件替换：`warp_state.current_wbar_id < 0` → `!init_wbar->is_initialized()`；`current_wbar_id >= 0` → `init_wbar->is_initialized()`
+
+**移除残留**: `BsyncManager` 调用残留在路径 A/B 全部删除（`BsyncManager` 类本身已于 `cleanup-deprecated-barrier-apis` commit `7914764` 删除）。
+
+#### Phase 7: Wbar 完全删除（commit `f5640042`, P0-A5）
+
+**删除**:
+- `include/ptxsim/wbar.h`（121 行）
+- `warp_state.h::wbars[]` 字段 + `current_wbar_id` 字段
+- `warp_state::reset()` 中相关循环
+- `warp_context.h::get_wbar()` compat shim 声明
+- `warp_context.cpp::get_wbar()` 实现
+- `warp_state.h` 中 `#include "ptxsim/wbar.h"`
+
+#### Phase 7b: 测试修复（commit `0bab6487`）
+
+5 个被 Phase 7 破坏的测试重写：从直接验证 `Wbar` 内部字段改为通过 `execute_warp_instruction` 约束的 `BarrierModule` API 行为验证。
+
+### 关键决策落实（验证 lessons-learned §1 应用）
+
+**跨模块状态翻译（Cross-module State Translation）** — 三大教训在本次迁移中正确应用:
+
+1. **不要迁移"主逻辑" — 行级 diff 是底线**: 旧 `barrier.cpp:139-141` 三行看似次要的 `set_active_mask` / `is_blocked` / `status` 翻译，迁移到 `release_warp_barrier` 内 (`barrier_module.cpp:119-134`) 一字不差。Comparison: 行 1 = 行 1.
+
+2. **递归锁 = 死锁**: `release_warp_barrier` 已持有 `cta_context->barrier_module_.mutex_`，由同锁 guard 的其他公共方法（如 `arrive_at_warp_barrier`）不能再被它的 caller 路径递归调用（本次迁移中确认所有迁移调用路径均正确）。
+
+3. **Phase 隔离 = 可回退**: Phase 3 和 Phase 7 在不同 commits，Phase 7 失败可单独 revert 不影响 Phase 3 逻辑。
+
+### 验证
+
+| 测试 | 状态 |
+|------|------|
+| 23/23 barrier 测试 | ✅ ALL PASS |
+| `unit_barrier_module` | ✅ |
+| `unit_post_barrier_two_halves` (BUG-POSTBARRIER-TWOHALVES) | ✅ |
+| `unit_barrier_reconvergence_simplegemm` (BUG-RECONVERGENCE-SIMPLEGEMM) | ✅ |
+| `e2e_barrier_warp_sync` | ✅ |
+| `e2e_test3_cfg_full` | ✅ |
+| `ctest -R "barrier"` (23 tests) | ✅ ALL PASS |
+
+**Wbar 残留检查**: `grep -rn "wbar\.h\|warp_state\.wbars\|current_wbar_id\|get_wbar(" include/ src/ tests/` → **代码层面零残留**，仅剩测试注释中的引用（已逐步清理）。
+
+### 已知未完成 / 后续工作
+
+| 类别 | 描述 | 出处 |
+|------|------|------|
+| **lifecycle 单元测试** | 删除的 `test_syncthreads_test3_repro.cpp` (-190 行) + `test_exec_layer_e1_e3.cpp` (-59 行) 覆盖了 init→complete→reset→re-init + participation_mask 边界。已规划 follow-up change `barrier-module-lifecycle-tests` 重建这些单元测试 | Code Review Issue I1 |
+| **barrier.cpp 注释** | `barrier.cpp:105-228` 124 行单函数 Path A/B 注释不足，文档化 "force_reconvergence path" vs "normal sync path" 边界 | Code Review Issue M1 |
+| **exec_mask vs active_mask 文档** | `warp_context.h` 中参数命名歧义（注释，非代码） | Code Review Issue M2 |
+
+### OpenSpec Change
+
+```text
+openspec/changes/migrate-bar-warp-sync-to-barrier-module/
+├── proposal.md              (Why/What: completed via commits 0e311566+f5640042+0bab6487)
+├── design.md                (Context/Decisions/Risks)
+├── specs/
+│   └── warp-barrier-unification/spec.md    (modified)
+└── tasks.md                 (8 phases, 3,5,7 fully landed; doc sync finalised 2026-07-03)
+```

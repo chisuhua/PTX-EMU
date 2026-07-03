@@ -39,13 +39,13 @@ src/ptxsim/
 - Instruction handlers use snake_case (e.g., `process_add`)
 - X-Macro dispatch via `ptx_op.def`
 - ThreadContext holds per-thread state
-- **Barrier handlers** (`BarHandler`, `BarWarpSyncHandler`) MUST route through `BarrierModule` API — `BarHandler` already migrated (commit `b04cdb2`); `BarWarpSyncHandler` still uses `warp_state.wbars[]` (Phase 5 deferred, see `cleanup-deprecated-barrier-apis` change)
+- **Barrier handlers** (`BarHandler`, `BarWarpSyncHandler`) MUST route through `BarrierModule` API — both migrated (`BarHandler` commit `b04cdb2`; `BarWarpSyncHandler` migrated by `migrate-bar-warp-sync-to-barrier-module`, commits `0e311566`+`f5640042`+`0bab6487`)
 
 ## ANTI-PATTERNS
 - DO NOT call ThreadContext methods from WarpContext without proper locking
 - DO NOT modify active_mask directly without barrier synchronization
 - **DO NOT call `set_active_mask` to OR with arrived_mask globally** — OR logic must live in `BarrierModule::release_warp_barrier` (caller layer). The ret handler relies on overwrite semantics (`set_active_mask(0u)` to clear).
-- **DO NOT add new uses of `Wbar` struct** (`include/ptxsim/wbar.h`) — it is `[[deprecated]]`. Use `BarrierModule` + `WarpBarrier`.
+- **DO NOT add new uses of `Wbar` struct** (`include/ptxsim/wbar.h`) — fully removed by `migrate-bar-warp-sync-to-barrier-module` (commit `f5640042`, P0-A5). Use `BarrierModule` + `WarpBarrier` exclusively.
 
 ## COMMANDS
 ```bash

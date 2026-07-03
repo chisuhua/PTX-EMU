@@ -61,7 +61,7 @@ Lane-activity state has **ONE authoritative source** + two derived caches:
 1. **`is_lane_active(lane_id)` delegates to `is_lane_schedulable(lane_id)`** — reads `warp_state` directly, no cache lag (ISSUE-005 fix). All scheduler/gate decisions see warp_state mutations immediately.
 2. **`update_active_mask()` is bidirectional**: reads from `warp_state.threads[i]` AND writes back `is_active` after computing the `active` bool. This keeps `active_mask[]` and `warp_state.is_active` synchronized even when callers mutate warp_state directly (barrier release, etc.).
 3. **`sync_to_warp_state(RUN)` sets `is_active = true`** — barrier release correctly marks threads active in warp_state before `is_lane_active()` reads.
-4. **`set_active_mask(uint32_t mask)` is overwrite semantics** — ret handler at `src/ptxsim/instructions/call.cpp:29` uses `set_active_mask(0u)` to clear all lanes after `ret`. **DO NOT change to OR-merge** — barrier handlers in `src/ptxsim/instructions/barrier.cpp` already OR externally before calling (`warp_ctx->set_active_mask(get_active_mask() | arrived_mask)`).
+4. **`set_active_mask(uint32_t mask)` is overwrite semantics** — ret handler at `src/ptxsim/instructions/call.cpp:29` uses `set_active_mask(0u)` to clear all lanes after `ret`. **DO NOT change to OR-merge** — OR logic is encapsulated in `BarrierModule::release_warp_barrier()` (`src/ptxsim/barrier/barrier_module.cpp`), now the single owner of `arrived_mask | existing_active_mask` semantics. Caller (`BarWarpSyncHandler`) just invokes release; the ret handler's overwrite semantics stay intact.
 
 **Exception: `warp_state.exec_mask`** is PTX `activemask` instruction's independent source. It is not unified with `is_active` — these are semantically different concepts (exec_mask is set by PTX code, is_active is set by barrier/exit/divergence machinery). See `get_exec_mask()` / `set_exec_mask()`.
 
@@ -76,16 +76,14 @@ Lane-activity state has **ONE authoritative source** + two derived caches:
 
 Regression test: `tests/unit/exec/test_ret_handler_divergent.cpp` (3 cases, 141 assertions).
 
-### BUG-POSTBARRIER-TWOHALVES (FIXED 2026-06)
+### BUG-POSTBARRIER-TWOHALVES (FIXED 2026-06, refined 2026-07)
 When a divergent warp splits into two halves that hit the same `bar.warp.sync` at different times, the second barrier release overwrote `active_mask` with only the currently arrived half, losing lanes already released by the first release.
 
-**Fix**: In `barrier.cpp`, at both barrier completion sites, OR the new `arrived_mask` with the existing `active_mask` BEFORE calling `set_active_mask`:
-```cpp
-warp_ctx->set_active_mask(
-    warp_ctx->get_active_mask() | arrived_mask);
-```
+**Original fix (2026-06, BarrierModule pre-migration)**: OR `arrived_mask` with existing `active_mask` BEFORE calling `set_active_mask` at both barrier completion sites in `barrier.cpp`.
 
-**Do NOT fix in `set_active_mask` itself** — changing its semantics globally breaks the ret handler which uses `set_active_mask(0u)` to explicitly clear. The fix must be in the CALLER.
+**Refined fix (2026-07, commit `0e311566`)**: OR logic migrated INTO `BarrierModule::release_warp_barrier()` — single owner of `arrived_mask | existing_active_mask` semantics. `BarWarpSyncHandler::processOperation` calls `release_warp_barrier(wbar_id, warp_ctx)` and the OR is encapsulated. Handler no longer needs to know the OR pattern.
+
+**Do NOT fix in `set_active_mask` itself** — changing its semantics globally breaks the ret handler which uses `set_active_mask(0u)` to explicitly clear. The fix lives in `BarrierModule::release_warp_barrier` — single owner, single test point.
 
 Regression tests: `tests/unit/barrier/test_post_barrier_two_halves.cpp` (unit) + `tests/integration/divergence/test_post_barrier_two_halves.cpp` (smoke).
 
