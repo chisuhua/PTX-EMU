@@ -105,7 +105,7 @@ class ThreadContext {
 | 场景 | 使用的函数 | 原因 |
 |------|-----------|------|
 | 正常指令执行完成 | `commit_pc()` | pc ← next_pc，标准推进 |
-| Barrier 完成（当前线程） | `force_set_pc(reconvergence_pc)` | 设置到聚合点 |
+| Barrier 完成（当前线程） | `set_pc(reconvergence_pc)` | 设置到聚合点（`force_set_pc` 已于 2026-07 移除） |
 | Barrier 完成（其他线程） | `WarpContext::set_thread_pc()` | 通过 WarpContext 批量设置 |
 | 分支指令 | 通过 PipelineHandler 间接处理 | 不直接操作 PC |
 | 线程初始化 | `set_pc(0)` | 设置初始值 |

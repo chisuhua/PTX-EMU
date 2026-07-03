@@ -91,19 +91,19 @@
 
 ## 4. Commit 3 — 文档同步解决 P0-D2（Fix #4）
 
-- [ ] 4.1 **`docs/adr/0003-commit-pc-pattern.md`**：在 "PC 写入入口" 章节追加
+- [x] 4.1 **`docs/adr/0003-commit-pc-pattern.md`**：在 "PC 写入入口" 章节追加
       "Removed 2026-07-XX: `force_set_pc`" 段落，明确由 `set_pc()` 取代
-- [ ] 4.2 **`docs/adr/0008-barrier-semantics.md`**：在引用 `force_set_pc` 的代码示例
+- [x] 4.2 **`docs/adr/0008-barrier-semantics.md`**：在引用 `force_set_pc` 的代码示例
       旁加 `// 历史实现，已移除` 注释（不删示例，保留历史）
-- [ ] 4.3 **`src/ptxsim/core/AGENTS.md`**：将
+- [x] 4.3 **`src/ptxsim/core/AGENTS.md`**：将
       "DO NOT use `set_pc()` — use `commit_pc()` or `force_set_pc()`"
       改为
       "DO NOT use `force_set_pc()` — use `set_pc()` for init/sync/reset,
       `commit_pc()` for normal advancement"
-- [ ] 4.4 **`src/ptxsim/instructions/AGENTS.md`**：同上修改
-- [ ] 4.5 **`src/ptxsim/instructions/barrier.cpp` 头注释**（P1-5）：移除
+- [x] 4.4 **`src/ptxsim/instructions/AGENTS.md`**：同上修改
+- [x] 4.5 **`src/ptxsim/instructions/barrier.cpp` 头注释**（P1-5）：移除
       "Wbar 数据结构" 描述，改为 "通过 `BarrierModule` / `WarpBarrier` 实现"
-- [ ] 4.6 验证：
+- [x] 4.6 验证：
       ```bash
       grep -rn "force_set_pc" docs/adr/0003-commit-pc-pattern.md \
         docs/adr/0008-barrier-semantics.md \
@@ -111,8 +111,8 @@
         src/ptxsim/instructions/AGENTS.md
       ```
       预期：仅命中 "Removed 2026-07" 或 "历史实现"，**无** "use `force_set_pc`"
-- [ ] 4.7 验证：更新根 `AGENTS.md` 引用（如有 `force_set_pc` 推荐）
-- [ ] 4.8 commit：
+- [x] 4.7 验证：更新根 `AGENTS.md` 引用（如有 `force_set_pc` 推荐）
+- [x] 4.8 commit：
       ```bash
       git add -A
       git commit -m "docs(pc): sync ADR/AGENTS after removing force_set_pc (Fix #4)

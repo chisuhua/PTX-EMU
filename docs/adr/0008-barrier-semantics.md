@@ -162,7 +162,7 @@ void BarWarpSyncHandler::execute(ThreadContext* context, const BarrierInstr& ins
     for (int i = 0; i < WARP_SIZE; i++) {
         if (warp_ctx->wbar.participation_mask & (1u << i)) {
             if (i == lane_id) {
-                // 当前线程使用 force_set_pc
+                // 当前线程使用 force_set_pc（历史实现，已移除）
                 context->force_set_pc(warp_ctx->wbar.reconvergence_pc);
                 context->set_next_pc(warp_ctx->wbar.reconvergence_pc);
             } else {
@@ -224,7 +224,7 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, ...) {
     if (wbar.is_complete()) {
         // barrier 完成，设置所有线程到 reconvergence PC
         if (i == context->lane_id_) {
-            context->force_set_pc(reconvergence_pc);  // 当前线程
+            context->force_set_pc(reconvergence_pc);  // 当前线程（历史实现，已移除）
             context->set_next_pc(reconvergence_pc);
         } else {
             warp_ctx->set_thread_pc(i, reconvergence_pc);  // 其他线程
