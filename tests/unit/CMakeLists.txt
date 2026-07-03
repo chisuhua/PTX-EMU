@@ -23,6 +23,30 @@ add_catch_test(unit_warp_barrier
 )
 set_tests_properties(unit_warp_barrier PROPERTIES LABELS "unit;wbar")
 
+# ============================================================================
+# barrier-module-lifecycle-tests (OpenSpec change 2026-07-03):
+# Direct unit coverage for BarrierModule::release_warp_barrier state
+# translation + WarpBarrier lifecycle + participation_mask boundaries.
+# Closes the coverage gap from migrate-bar-warp-sync-to-barrier-module
+# (review Issue I1). 7 tests across 3 files.
+# Refs: lessons-learned.md §1 (cross-module state translation), §19
+#       (BUG-POSTBARRIER-TWOHALVES / BUG-RECONVERGENCE-SIMPLEGEMM success)
+# ============================================================================
+add_catch_test(unit_participation_mask_boundaries
+    barrier/test_participation_mask_boundaries.cpp
+)
+set_tests_properties(unit_participation_mask_boundaries PROPERTIES LABELS "unit;barrier")
+
+add_catch_test(unit_warp_barrier_lifecycle
+    barrier/test_warp_barrier_lifecycle.cpp
+)
+set_tests_properties(unit_warp_barrier_lifecycle PROPERTIES LABELS "unit;barrier;lifecycle")
+
+add_catch_test(unit_barrier_module_release
+    barrier/test_barrier_module_release.cpp
+)
+set_tests_properties(unit_barrier_module_release PROPERTIES LABELS "unit;barrier;regression;BUG-POSTBARRIER-TWOHALVES")
+
 add_catch_test(unit_barrier_reconvergence
     barrier/test_barrier_reconvergence.cpp
 )
