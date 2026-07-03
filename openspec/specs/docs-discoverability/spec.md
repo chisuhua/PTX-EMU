@@ -1,4 +1,4 @@
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Documentation index covers all subdirectories
 `docs/README.md` SHALL list every direct subdirectory of `docs/` (excluding `docs/README.md` itself) in its index table, with each row containing: directory name (linked), 1-2 sentence purpose description, and primary content type (ADR/plan/audit/report/skill/reference).
