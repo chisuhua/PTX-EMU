@@ -3,7 +3,7 @@
 > **PTX 模拟器**: C++20/CUDA PTX 模拟器，ANTLR4 解析 PTX，fake libcudart.so 拦截 CUDA runtime
 > **C++ 标准**: C++20（含 CUDA 代码）
 > **ANTLR 版本**: 4.11.1（antlr-4.11.1-complete.jar）
-> **Generated**: 2026-05-05 | **Commit**: baa8c4e | **Branch**: main
+> **Generated**: 2026-07-03 | **Commit**: 4b9d6e1 | **Branch**: main
 
 ---
 

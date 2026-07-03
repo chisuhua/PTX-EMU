@@ -403,6 +403,7 @@ OpenSpec change `integrate-barrier-module-cta-warp` 设计了 3 个 spec + 13 �
 | 分歧场景一半 lanes 卡住 | 屏障释放逻辑覆盖了已释放 lanes | 检查 `set_active_mask` 是否 OR 而非 overwrite |
 | Phase N 测试通过但 Phase N+1 失败 | 跨 Phase invariant 冲突 | 用基线 worktree 隔离每个 Phase |
 | `git revert` 后 `git status` 异常 | stash/pop 改变了 staged 状态 | `git status` 验证 + 必要时 `git reset` |
+| ADR 与 AGENTS.md 对同一 API 推荐方向**互相矛盾** | 删除 deprecated API 后未同步文档 | `grep -rn "force_set_pc\|set_pc" docs/adr/ src/ --include="*.md"`，确认推荐方向一致 |
 
 ---
 
