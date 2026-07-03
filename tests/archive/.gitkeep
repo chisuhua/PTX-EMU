@@ -1,0 +1,20 @@
+# tests/archive/ — 历史测试归档目录
+#
+# 用途: 保留作为未来归档旧测试的占位目录
+#
+# 历史:
+#   - 原 tests/three_mode_testing/ 旧实现 (E2E 模式) 已迁移至
+#     tests/integration/ 与 tests/e2e/ 物理隔离三层 (commit ab55e06, 2026-06)
+#   - 部分过期单文件测试 (test_cfg_analysis.cpp, test_register_bank_subwarp.cpp,
+#     integration_cfg_benchmark.cpp) 已通过 commits 88e1526 / c86d0ea 归档删除
+#   - 本目录当前无文件, 但保留作为:
+#     1. 历史参考: 任何未来需要"暂时禁用但不删除"的测试可归档于此
+#     2. 文档一致性: 修复 AGENTS.md / HEALTH-AUDIT / KNOWN_ISSUES 等文档中
+#        对 tests/archive/ 的引用断链问题
+#
+# 维护规则:
+#   - 仅接受 .cpp / .h 归档测试 (不构建, 不执行)
+#   - 必须有对应的 README.md 说明归档原因
+#   - 不接受 src/ 或 docs/ 内容
+#
+# 相关 OpenSpec change: docs-readme-rebuild (Fix #3)

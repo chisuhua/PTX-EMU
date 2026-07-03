@@ -249,7 +249,9 @@ cd build && ctest -L "exec_mask|simt_entry" -V
 | 类型二：指令序列集成测试 | `tests/integration/` | `integration;...` | 指令执行流程 |
 | 类型三：CUDA Kernel E2E 测试 | `tests/e2e/` | `e2e;...` | 完整 kernel 端到端 |
 
-> **历史变更**：2026-06 起的三类测试目录重构（commit `ab55e06`）将原本混在一起的 `.cpp` 文件按类型物理分类到三个子目录；同时为 `add_catch_test` 目标统一加上了 `unit_` / `integration_` / `e2e_` 前缀以避免 ctest 命名冲突。原 `tests/three_mode_testing/` 下的 E2E 旧实现已迁移至 `tests/archive/three_mode_testing/`，**不再构建**。
+> **历史变更**：2026-06 起的三类测试目录重构（commit `ab55e06`）将原本混在一起的 `.cpp` 文件按类型物理分类到三个子目录；同时为 `add_catch_test` 目标统一加上了 `unit_` / `integration_` / `e2e_` 前缀以避免 ctest 命名冲突。原 `tests/three_mode_testing/` 下的 E2E 旧实现已迁移至 `tests/integration/` 与 `tests/e2e/` 的对应子目录。
+>
+> **`tests/archive/` 状态（2026-07 更新）**：作为未来归档旧测试的占位目录（`.gitkeep`），当前无文件。相关历史归档清理通过 commits `88e1526`（多文件删除）和 `c86d0ea`（integration 归档）完成。详见 [`tests/archive/.gitkeep`](tests/archive/.gitkeep)。
 
 #### 类型一：直接单元测试（Direct Unit Test）
 
