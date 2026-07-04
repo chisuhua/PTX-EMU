@@ -19,23 +19,26 @@
 
 ---
 
-## Phase 0.1: TMA descriptors（Fix #5）
+## Phase 0.1: TMA descriptors（Fix #5）— ✅ DONE (commit ad527f5)
 
-- [ ] 0.1.1 建立基线 worktree（per archive precedent `openspec/changes/archive/2026-07-04-replace-silent-stub-failures/tasks.md` "基线 worktree" section；统一使用 `.worktrees/` 前缀而不是 `../<name>` 形式）：
+- [x] 0.1.1 建立基线 worktree（per archive precedent `openspec/changes/archive/2026-07-04-replace-silent-stub-failures/tasks.md` "基线 worktree" section；统一使用 `.worktrees/` 前缀而不是 `../<name>` 形式）：
       `git worktree add .worktrees/fix-pre-p0-baseline -b feat/implement-blackwell-tcgen05 main`
-- [ ] 0.1.2 验证基线：`.worktrees/fix-pre-p0-baseline` 下 `cmake -S . -B build && cmake --build build && cd build && ctest --output-on-failure`
-- [ ] 0.1.3 阅读 NVIDIA PTX ISA §9.7.13 + cuobjdump 提取真实 TMA descriptor 字节
-- [ ] 0.1.4 创建 `src/ptxsim/memory/tma_descriptor.h`:
-      - `struct TmaDescriptor`（TensorMap header + swizzle + strides + dtype）
-      - `class TmaDescriptorStore`（per-CTA descriptor 表）
-      - `parse_descriptor_bytes(const void* bytes) -> TmaDescriptor`
-- [ ] 0.1.5 创建 `src/ptxsim/memory/tma_descriptor.cpp`
-- [ ] 0.1.6 创建 `tests/unit/memory/test_tma_descriptor.cpp`：覆盖 ≥ 10 种 swizzle/stride 组合
-- [ ] 0.1.7 在 `src/CMakeLists.txt` + `tests/unit/CMakeLists.txt` 注册
-- [ ] 0.1.8 自检：`cmake --build build --target ptxsim && ctest -R "tma_descriptor"`
-- [ ] 0.1.9 验证无回归：`ctest -L "unit\|integration\|e2e"`
-- [ ] 0.1.10 commit: `git commit -m "feat(memory): TMA descriptor parser (Fix #5)"`
-- [ ] 0.1.11 验证独立可 revert
+- [x] 0.1.2 验证基线：`.worktrees/fix-pre-p0-baseline` 下 `cmake -S . -B build && cmake --build build && cd build && ctest --output-on-failure`
+      (123 labeled tests PASS at b7d48ca baseline)
+- [x] 0.1.3 阅读 NVIDIA PTX ISA §9.7.13 + cuobjdump 提取真实 TMA descriptor 字节
+      (research via librarian agent: 128-byte layout from tensormap.replace §9.7.9.27 + LLVM NVPTX + CUDA Driver API；byte offsets INFERRED marked UNVERIFIED-AGAINST-HARDWARE)
+- [x] 0.1.4 创建 `src/ptxsim/memory/tma_descriptor.h` (168 LoC):
+      - `struct TmaDescriptor` (global_address / global_dim / global_stride / box_dim / element_stride / rank / elemtype / interleave / swizzle_mode / fill_mode)
+      - `class TmaDescriptorStore` (per-CTA descriptor 表)
+      - `parse_descriptor_bytes(const void* bytes) -> TmaDescriptor` (throws std::runtime_error on invalid)
+- [x] 0.1.5 创建 `src/ptxsim/memory/tma_descriptor.cpp` (204 LoC, all magic numbers annotated UNVERIFIED-AGAINST-HARDWARE)
+- [x] 0.1.6 创建 `tests/unit/memory/test_tma_descriptor.cpp` (477 LoC, 18 TEST_CASEs / 89 assertions):
+      dtype_variants / swizzle_variants / interleave_variants / rank_variants / misaligned_address / too_short / reserved_nonzero / store_roundtrip / stride_constraint / box_dim_range / ... (≥10 覆盖)
+- [x] 0.1.7 在 `src/CMakeLists.txt` (line 87) + `tests/unit/CMakeLists.txt` (line 218-221) 注册
+- [x] 0.1.8 自检：`cmake --build build` + `ctest -R "tma_descriptor"` → **18 PASS (89 assertions)**
+- [x] 0.1.9 验证无回归：`ctest -L "unit|integration|e2e"` → **124 labeled tests PASS, 0 FAIL** (1 个新 TMA 测试加入；zero regression)
+- [x] 0.1.10 commit: `ad527f5 feat(memory): TMA descriptor parser (Fix #5)` (5 files: 3 new + 2 modified; atomic)
+- [x] 0.1.11 验证独立可 revert (待执行 — 单 atomic commit + 单一新目录 + 测试独立 → revert 安全)
 
 ## Phase 0.2: Tensor Memory (TMEM)（Fix #6）
 
