@@ -6,6 +6,7 @@
 #include "ptxsim/common_types.h" // 包含通用类型定义
 #include "ptxsim/execution_types.h"
 #include "ptxsim/memory/tma_descriptor.h"
+#include "ptxsim/memory/tmem.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/warp_context.h"
 #include <map>
@@ -98,6 +99,10 @@ public:
     TmaDescriptorStore& tma_descriptor_store() { return tma_descriptor_store_; }
     const TmaDescriptorStore& tma_descriptor_store() const { return tma_descriptor_store_; }
 
+    // Phase 0.5.2 (Fix #9b): per-CTA TMEM accessor
+    Tmem& tmem() { return tmem_; }
+    const Tmem& tmem() const { return tmem_; }
+
     ~CTAContext();
 
 private:
@@ -118,6 +123,9 @@ private:
 
     // Phase 0.5.1 (Fix #9a): per-CTA TmaDescriptorStore
     TmaDescriptorStore tma_descriptor_store_;
+
+    // Phase 0.5.2 (Fix #9b): per-CTA TMEM
+    Tmem tmem_;
 };
 
 #endif // CTA_CONTEXT_H

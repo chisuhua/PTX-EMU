@@ -340,3 +340,11 @@ add_catch_test(integration_tma_with_cta_context
     tma/test_tma_with_cta_context.cpp
 )
 set_tests_properties(integration_tma_with_cta_context PROPERTIES LABELS "integration;tma;cta")
+
+# ============================================================================
+# Phase 0.5.2 (Fix #9b): TMEM integration with CTAContext
+# ============================================================================
+add_catch_test(integration_tmem_with_cta_context
+    tmem/test_tmem_with_cta_context.cpp
+)
+set_tests_properties(integration_tmem_with_cta_context PROPERTIES LABELS "integration;tmem;cta")
