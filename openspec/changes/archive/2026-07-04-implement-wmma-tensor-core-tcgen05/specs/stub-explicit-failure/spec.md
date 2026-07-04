@@ -69,6 +69,12 @@ instead of silently no-op'ing. This is **permanent** per ADR-0016.
 - **THEN** real fragment arithmetic executes
 - **AND** no exception is thrown
 
+## ADDED Requirements
+
+> **Delta scope**: 新增 Requirements 反映 ADR-0016 的 forward-looking policy
+> （永久不实现 pre-Blackwell WMMA）+ Phase 1-3 transitional e2e 验证。
+> 由 `implement-wmma-tensor-core-tcgen05` (Phase 1-3) change 引入。
+
 ### Requirement: Stub-Explicit-Failure-Permanent-Policy MUST
 
 The system SHALL NOT implement `wmma.mma.sync.*`, `wgmma.async.*`, or
@@ -97,18 +103,18 @@ change. Future Tensor Core work targets Blackwell `tcgen05.*` only.
 - **AND** the two paths do not interfere (throw on sm_80 does not corrupt
   TMEM state from sm_100, and vice versa)
 
-### Requirement: Phase-1-3-Transitional-E2E-Validation PASSES (TRANSITIONAL)
+### Requirement: Phase-1-3-Transitional-E2E-Validation MUST PASS (TRANSITIONAL)
 
-> **⚠️ TRANSITIONAL** — this scenario validates that the full e2e
-> execution pipeline works during the Phase 1-3 implementation window.
-> It SHALL be removed when `implement-wmma-tensor-core-tcgen05` is archived
-> and published as main specs.
+The system SHALL validate that the full e2e execution pipeline works
+correctly during the Phase 1-3 implementation window via the e2e GEMM
+kernel (`tests/e2e/kernel/test_blackwell_gemm.cu`, targeting sm_100),
+demonstrating that the ANTLR parser, WmmaHandler dispatch, and fake
+libcudart interception work end-to-end for a Blackwell-style kernel.
 
-The e2e GEMM kernel (`tests/e2e/kernel/test_blackwell_gemm.cu`,
-targeting sm_100) SHALL execute correctly through the Blackwell
-execution infrastructure, demonstrating that the ANTLR parser,
-WmmaHandler dispatch, and fake libcudart interception work
-end-to-end for a Blackwell-style kernel.
+> **⚠️ TRANSITIONAL** — this requirement validates the e2e pipeline
+> during the Phase 1-3 implementation window. It SHALL be removed when
+> `implement-wmma-tensor-core-tcgen05` is archived and published as
+> main specs.
 
 #### Scenario: e2e-gemm-ptx-parsed-and-executed-transitional
 - **GIVEN** Phase 1-3 tcgen05.mma + ld/st + commit/wait handlers are
