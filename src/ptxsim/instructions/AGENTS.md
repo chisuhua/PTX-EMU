@@ -16,9 +16,11 @@ src/ptxsim/instructions/
 ├── barrier.cpp       # bar.warp.sync, bar.sync
 ├── memory.cpp        # ld, st, atom, etc.
 ├── mov.cpp           # mov, shf, prmt, etc.
-├── wmma.cpp          # (stub) mma, wmma
 ├── atomic.cpp        # (stub) atom operations
-└── tensor.cpp       # (stub) tensor operations
+└── tensor.cpp        # WmmaHandler::processWmmaOperation throws
+                       # UnsupportedInstructionException (c5 Fix #1);
+                       # real WMMA / Tensor Core implementation tracked
+                       # by `fix/implement-wmma-tensor-core`.
 ```
 
 ## WHERE TO LOOK
@@ -53,9 +55,12 @@ cmake --build build --target ptxsim     # Build instruction handlers
 ```
 
 ## KNOWN STUBS
-- `wmma.cpp` — MMA/WMMA instructions not implemented
-- `atomic.cpp` — Atomic operations are stubs
-- `tensor.cpp` — Tensor operations not implemented
+- `atomic.cpp` — Atomic operations are stubs (no real atomicity)
+- `tensor.cpp` (WmmaHandler) — Throws `UnsupportedInstructionException`
+  instead of silently no-op'ing (c5 Fix #1). Catches wmma.* / mma.* /
+  tcgen05.* dispatch at runtime; dst register is left untouched.
+  See `replace-silent-stub-failures` change for full rationale; real
+  implementation tracked by `fix/implement-wmma-tensor-core`.
 
 ## KNOWN ISSUES
 
