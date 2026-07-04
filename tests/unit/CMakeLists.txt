@@ -221,6 +221,18 @@ add_catch_test(unit_tma_descriptor
 set_tests_properties(unit_tma_descriptor PROPERTIES LABELS "unit;memory;tma")
 
 # ============================================================================
+# Phase 0.2 (Fix #6): Blackwell per-CTA Tensor Memory (TMEM) unit tests.
+# 256 slot × 128 byte = 32 KB per CTA — per PTX ISA §9.7.13.
+# ≥10 TEST_CASEs cover default-zero, read/write round-trip, cross-CTA
+# isolation, bounds enforcement (slot_id, size), clear, non-clobbering
+# partial writes. Consumed by tcgen05.* in Phase 1-3.
+# ============================================================================
+add_catch_test(unit_tmem
+    memory/test_tmem.cpp
+)
+set_tests_properties(unit_tmem PROPERTIES LABELS "unit;memory;tmem")
+
+# ============================================================================
 # Memory Regression Tests (BUG-ST-OVERREAD, BUG-NAME2SHARE)
 # RED PHASE: These tests must FAIL on unpatched code.
 # ============================================================================

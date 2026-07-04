@@ -85,6 +85,10 @@ add_library(ptxsim SHARED
     # Lives in ptxsim/memory/ (NEW dir for Phase 0 infra, distinct from
     # legacy src/memory/). Consumed by tcgen05.ld in Phase 1-3.
     ptxsim/memory/tma_descriptor.cpp
+    # Phase 0.2 (Fix #6): Blackwell per-CTA Tensor Memory (TMEM).
+    # 256 slot × 128 byte = 32 KB per CTA, parallel to shared memory.
+    # Consumed by tcgen05.* in Phase 1-3.
+    ptxsim/memory/tmem.cpp
     ptxsim/debug/ptx_config.cpp
     ptxsim/debug/warp_trace_formatter.cpp
     ptxsim/debug/ptx_debugger.cpp
