@@ -245,6 +245,19 @@ add_catch_test(unit_cluster_mode
 set_tests_properties(unit_cluster_mode PROPERTIES LABELS "unit;cluster")
 
 # ============================================================================
+# Phase 0.4 (Fix #8): async tensor core command queue unit tests.
+# ≥14 TEST_CASEs cover default construction, commit-group monotonic counter,
+# wait() lane blocking + completion_pc capture, commit() per-lane unblock,
+# multi-waiter ordering, clear reset, concurrent commit thread-safety,
+# and completion_pc drift prevention.
+# Consumed by tcgen05.* async commit/wait in Phase 1-3.
+# ============================================================================
+add_catch_test(unit_tc_queue
+    async/test_tc_queue.cpp
+)
+set_tests_properties(unit_tc_queue PROPERTIES LABELS "unit;async;tc_queue")
+
+# ============================================================================
 # Memory Regression Tests (BUG-ST-OVERREAD, BUG-NAME2SHARE)
 # RED PHASE: These tests must FAIL on unpatched code.
 # ============================================================================

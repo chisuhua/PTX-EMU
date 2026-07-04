@@ -94,6 +94,11 @@ add_library(ptxsim SHARED
     # NO distributed_smem (DEFERRED to cta_group::2 per Oracle simplification).
     # Consumed by tcgen05.* in Phase 1-3.
     ptxsim/cluster/cluster_context.cpp
+    # Phase 0.4 (Fix #8): Blackwell per-CTA async tensor core command queue.
+    # std::atomic commit-group counter + per-warp pending_waiters for
+    # tcgen05.* async commit/wait primitives.
+    # Consumed by tcgen05.* in Phase 1-3.
+    ptxsim/async/tc_queue.cpp
     ptxsim/debug/ptx_config.cpp
     ptxsim/debug/warp_trace_formatter.cpp
     ptxsim/debug/ptx_debugger.cpp
