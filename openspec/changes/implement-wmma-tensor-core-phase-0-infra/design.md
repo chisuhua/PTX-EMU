@@ -192,7 +192,7 @@ contract：
 | TcQueue→WarpState state translation bugs (ptx-lessons-learned §1) | **Critical** (cross-module translation is #1 failure mode) | Decision 7 复用 BAR_SYNC + BarrierModule 路径；Phase 0.4.5 强制 `state-modification-audit` skill 执行；所有 `commit_group_counter` writers AND `is_blocked` consumers 必须审计 |
 | cluster mode + 现有 CTAContext 集成复杂 | High | Phase 0.3 子系统先 unit test 隔离行为；Phase 0.5.3 集成测试 |
 | Phase 0 工程量大 | Medium | 9 commits (4 standalone + 4 micro + 1 artifacts tracked): TMA/TMEM/cluster/async queue + 4 个逐子系统集成；cluster 简化 (800-1200 → 300-400 LoC) |
-| 现有 165 ctest regression | Low | Phase 0 添加新测试，不修改现有 handler paths |
+| 现有 123 labeled ctest (73 unit + 42 integration + 8 e2e) regression | Low | Phase 0 添加新测试，不修改现有 handler paths |
 | TMA host API 拦截策略 | Medium | ADR-0017 候选；Phase 0 用 fake descriptor |
 | cute header sm_100 编译性 | Medium | Phase 0 前手工 spike；失败则 propose `fix-cute-sm100-headers` (Open Question #5) |
 

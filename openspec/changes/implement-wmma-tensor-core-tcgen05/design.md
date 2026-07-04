@@ -28,7 +28,7 @@ pre-Blackwell WMMA 路径保持抛异常（per ADR-0016）。
 3. `tcgen05.commit/wait` 异步流（复用 Phase 0-archive TcQueue）
 4. cutlass 3.x / cute tcgen05 风格 16×16 GEMM e2e kernel
 5. AGENTS.md / spec publish（从 change 移到 main specs）
-6. 现有 165 ctest 无 regression
+6. 现有 123 labeled ctest (73 unit + 42 integration + 8 e2e) 无 regression
 
 **Non-Goals** (per ADR-0016):
 - pre-Blackwell WMMA 任何实现

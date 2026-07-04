@@ -136,7 +136,7 @@
       ```bash
       git ls-files openspec/changes/implement-wmma-tensor-core-phase-0-infra/
       ```
-- [ ] 4a.3 清理 worktree：`git worktree remove .worktrees/fix-pre-p0-baseline` (Phase 0 baseline；与 tasks.md:0.1.1 创建路径一致)
+- [ ] 4a.3 清理 worktree：`git worktree remove .worktrees/fix-pre-p0-baseline` (Phase 0 baseline；与 `openspec/changes/implement-wmma-tensor-core-phase-0-infra/tasks.md:0.1.1` 创建路径一致)
 - [ ] 4a.4 归档：`openspec archive "implement-wmma-tensor-core-phase-0-infra" --yes`
 
 ### Phase 4b: phase-1-3 change 实施
