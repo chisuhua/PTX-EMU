@@ -233,6 +233,18 @@ add_catch_test(unit_tmem
 set_tests_properties(unit_tmem PROPERTIES LABELS "unit;memory;tmem")
 
 # ============================================================================
+# Phase 0.3 (Fix #7): cluster arrive/wait unit tests.
+# ≥10 TEST_CASEs cover constructor validation, single-CTA arrive/wait,
+# multi-CTA blocking sync, duplicate arrive rejection,
+# wait-before-arrive rejection, cross-cluster isolation.
+# Consumed by cta_group::1 (Phase 1-3).
+# ============================================================================
+add_catch_test(unit_cluster_mode
+    cluster/test_cluster_mode.cpp
+)
+set_tests_properties(unit_cluster_mode PROPERTIES LABELS "unit;cluster")
+
+# ============================================================================
 # Memory Regression Tests (BUG-ST-OVERREAD, BUG-NAME2SHARE)
 # RED PHASE: These tests must FAIL on unpatched code.
 # ============================================================================

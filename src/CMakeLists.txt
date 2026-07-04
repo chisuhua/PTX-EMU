@@ -89,6 +89,11 @@ add_library(ptxsim SHARED
     # 256 slot × 128 byte = 32 KB per CTA, parallel to shared memory.
     # Consumed by tcgen05.* in Phase 1-3.
     ptxsim/memory/tmem.cpp
+    # Phase 0.3 (Fix #7): cluster mode arrive/wait synchronization.
+    # 1-8 CTA cluster identifier + arrive/wait primitives for cta_group::1.
+    # NO distributed_smem (DEFERRED to cta_group::2 per Oracle simplification).
+    # Consumed by tcgen05.* in Phase 1-3.
+    ptxsim/cluster/cluster_context.cpp
     ptxsim/debug/ptx_config.cpp
     ptxsim/debug/warp_trace_formatter.cpp
     ptxsim/debug/ptx_debugger.cpp
