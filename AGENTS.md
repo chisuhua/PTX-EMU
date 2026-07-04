@@ -502,7 +502,7 @@ GPUContext (全局内存, SM 列表)
 
 | 类别 | 状态 |
 |------|------|
-| WMMA/Tensor Core | pre-Blackwell 永久抛 `UnsupportedInstructionException` + `PTX_ERROR_EMU`（c5 Fix #1 + [ADR-0016](docs/adr/0016-blackwell-only-tcgen05.md)）。Blackwell `tcgen05.*` 实施中（`feat/implement-blackwell-tcgen05` change） |
+| WMMA/Tensor Core | Blackwell `tcgen05.*` 已实现（`feat/implement-tcgen05-handlers` change, Phase 1-3）。pre-Blackwell 永久抛 `UnsupportedInstructionException` + `PTX_ERROR_EMU`（c5 Fix #1 + [ADR-0016](docs/adr/0016-blackwell-only-tcgen05.md)）。 |
 | Atomic 操作 | 无真正原子性 (stub) |
 | Hopper (sm_90+) cluster | cluster 抽象未实现 — 实施中（[ADR-0016](docs/adr/0016-blackwell-only-tcgen05.md) Phase 0.3） |
 | Event/Stream API | fake 返回（不同步） |

@@ -106,6 +106,22 @@ small matrix-multiply.
 - **THEN** the e2e test verifies `C[i][j] == sum_k A[i][k] * B[k][j]`
   for all `i,j ∈ [0,16)²` within f32 rounding tolerance
 
+#### Scenario: e2e-kernel-compiles-and-runs-blackwell-path
+- **WHEN** `tests/e2e/kernel/test_blackwell_gemm.cu` is compiled for
+  sm_100 with cute headers from `bench/cute/include/` and executed via
+  `cudaLaunchKernel` (fake libcudart interception)
+- **THEN** the PTX is extracted, parsed by ANTLR, and executed by the
+  Blackwell execution infrastructure (TMA + TMEM + TcQueue ready)
+- **AND** `cudaDeviceSynchronize()` returns without timeout
+- **AND** both the 16×16 GEMM correctness test and the identity-matrix
+  sanity test pass with zero mismatches
+
+#### Scenario: e2e-kernel-no-regression-on-existing-tests
+- **WHEN** the e2e GEMM test is registered in the CMake build
+- **THEN** all existing ctest targets continue to pass (no regression
+  on `ctest -L "unit|integration|e2e"`)
+- **AND** `./scripts/sanity.sh --quick` returns 0 unexpected FAIL
+
 ### Requirement: File-Renamed-To-wmma-cpp MUST
 
 `src/ptxsim/instructions/wmma.cpp` SHALL be the file name. The previous

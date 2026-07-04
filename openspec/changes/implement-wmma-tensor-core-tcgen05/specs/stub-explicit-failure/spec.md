@@ -96,3 +96,36 @@ change. Future Tensor Core work targets Blackwell `tcgen05.*` only.
   executes real fragment arithmetic
 - **AND** the two paths do not interfere (throw on sm_80 does not corrupt
   TMEM state from sm_100, and vice versa)
+
+### Requirement: Phase-1-3-Transitional-E2E-Validation PASSES (TRANSITIONAL)
+
+> **⚠️ TRANSITIONAL** — this scenario validates that the full e2e
+> execution pipeline works during the Phase 1-3 implementation window.
+> It SHALL be removed when `implement-wmma-tensor-core-tcgen05` is archived
+> and published as main specs.
+
+The e2e GEMM kernel (`tests/e2e/kernel/test_blackwell_gemm.cu`,
+targeting sm_100) SHALL execute correctly through the Blackwell
+execution infrastructure, demonstrating that the ANTLR parser,
+WmmaHandler dispatch, and fake libcudart interception work
+end-to-end for a Blackwell-style kernel.
+
+#### Scenario: e2e-gemm-ptx-parsed-and-executed-transitional
+- **GIVEN** Phase 1-3 tcgen05.mma + ld/st + commit/wait handlers are
+  merged and built into `libcudart.so`
+- **WHEN** the 16×16 GEMM kernel is compiled by nvcc for sm_100 and
+  launched via `cudaLaunchKernel`
+- **THEN** the ANTLR parser successfully parses the PTX
+- **AND** the emulator executes all instructions without timeout
+- **AND** `cudaDeviceSynchronize()` returns cudaSuccess
+- **AND** the computed output matches the host-side reference within
+  f32 rounding tolerance
+
+#### Scenario: e2e-gemm-no-stub-fallback-transitional
+- **WHEN** the e2e GEMM kernel PTX is processed by WmmaHandler dispatch
+- **THEN** no `UnsupportedInstructionException` is thrown for any
+  instruction in the kernel (the standard CUDA ops are handled by
+  existing handlers; any tcgen05 ops dispatch through WmmaHandler
+  which executes real arithmetic)
+- **AND** the KNOWN STUBS section in `src/ptxsim/instructions/AGENTS.md`
+  no longer lists WMMA as a stub (marked as Blackwell implemented)

@@ -59,3 +59,14 @@ add_catch_test(e2e_shared_memory_divergence_visibility
     kernel/test_shared_memory_divergence_visibility.cu
 )
 set_tests_properties(e2e_shared_memory_divergence_visibility PROPERTIES LABELS "e2e;shared_memory;divergence;visibility")
+
+# ============================================================================
+# Blackwell tcgen05 GEMM E2E 测试 - 16x16 float kernel (sm_100)
+# ============================================================================
+add_catch_test(e2e_blackwell_gemm
+    kernel/test_blackwell_gemm.cu
+)
+set_tests_properties(e2e_blackwell_gemm PROPERTIES LABELS "e2e;tcgen05;gemm;sm100")
+target_include_directories(e2e_blackwell_gemm PRIVATE
+    ${PROJECT_SOURCE_DIR}/bench/cute/include
+)
