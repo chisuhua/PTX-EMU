@@ -1,6 +1,14 @@
-## ADDED Requirements
+# stub-explicit-failure Specification
 
-### Requirement: WMMA-Stub-Throws-Exception
+## Purpose
+TBD - created by archiving change replace-silent-stub-failures. Update Purpose after archive.
+## Requirements
+### Requirement: WMMA-Stub-Throws-Exception MUST
+
+The system SHALL throw `UnsupportedInstructionException` from
+`WmmaHandler::processWmmaOperation` (in `src/ptxsim/instructions/tensor.cpp`)
+upon any wmma.* instruction execution, replacing the prior silent
+no-op behavior that left dst registers with uninitialized values.
 
 `WmmaHandler::processWmmaOperation` 在 `src/ptxsim/instructions/tensor.cpp:8-15`
 **MUST** 调用 `PTX_ERROR_EMU` 日志宏 + `throw UnsupportedInstructionException`
@@ -23,10 +31,17 @@
 - **THEN** 目标寄存器**保持未初始化**（不写入任何值）
 - **AND** 其他 context state（PC, predicate）**不修改**
 
-### Requirement: TensorCore-Stub-Throws-Exception
+### Requirement: TensorCore-Stub-Throws-Exception MUST
+
+SHALL follow the WMMA-Stub-Throws-Exception contract: all Tensor Core
+handlers sharing `src/ptxsim/instructions/tensor.cpp` MUST throw
+`UnsupportedInstructionException` with `PtxEmuErrorCode::UNSUPPORTED_INSTRUCTION`
+instead of silently no-op'ing.
 
 `tensor.cpp` 中所有 Tensor Core 相关 handler（共享 `tensor.cpp` 文件）
-**MUST** 遵循 WMMA-Stub-Throws-Exception 同等约束。
+**MUST** 遵循 WMMA-Stub-Throws-Exception 同等约束：抛
+`UnsupportedInstructionException` with `PtxEmuErrorCode::UNSUPPORTED_INSTRUCTION`
+而非静默无操作。
 
 > 注：当前 `tensor.cpp` 唯一 handler 是 `WmmaHandler::processWmmaOperation`，
 > 文件名误导是已知技术债（应随真实实现一起改名 `tensor.cpp` → `wmma.cpp`）。
@@ -36,7 +51,7 @@
 - **THEN** 抛出 `UnsupportedInstructionException`
 - **AND** message 包含指令名（如 `"tcgen05.mma"`）
 
-### Requirement: MultiPTX-Extraction-Warns
+### Requirement: MultiPTX-Extraction-Warns MUST
 
 `src/utils/cubin_utils.cpp` 的 PTX section 提取循环**MUST** 维护 section
 计数器，当计数器 > 1 时调用 `PTX_WARN_EMU` 输出警告，提示用户二进制
@@ -56,7 +71,7 @@
 - **THEN** 无 `PTX_WARN_EMU` 输出
 - **AND** 行为与现状一致
 
-### Requirement: Dead-WmmaCpp-Removed
+### Requirement: Dead-WmmaCpp-Removed MUST
 
 `src/ptxsim/instructions/wmma.cpp` **MUST** 物理删除。
 
@@ -69,7 +84,12 @@
 - **AND** `src/CMakeLists.txt` 无需修改（本就未引用该文件）
 - **AND** `grep -rn "WMMA_Handler" src/ include/` 输出为空
 
-### Requirement: AGENTSMD-KnownStubs-Updated
+### Requirement: AGENTSMD-KnownStubs-Updated MUST
+
+SHALL sync documentation: the KNOWN STUBS section in
+`src/ptxsim/instructions/AGENTS.md` and the "已知限制" table in the
+root `AGENTS.md` MUST describe the new explicit-failure behavior
+(throw / warn) instead of "silent stub".
 
 `src/ptxsim/instructions/AGENTS.md` 的 KNOWN STUBS 章节 + 根 `AGENTS.md`
 的"已知限制"章节**MUST** 同步反映新行为：
@@ -86,7 +106,7 @@
 - **THEN** WMMA/Tensor Core 条目描述为"抛异常"而非"是 stub"
 - **AND** Multi-PTX cubins 条目描述为"输出 warning"
 
-### Requirement: No-Regression-AllTestsPass
+### Requirement: No-Regression-AllTestsPass MUST
 
 现有所有 ctest（unit + integration + e2e + PTX 语法测试）**MUST** 全部
 PASS，**禁止**任何新增 FAIL。
@@ -107,7 +127,12 @@ PASS，**禁止**任何新增 FAIL。
 - **THEN** 与 baseline (`.worktrees/fix-pre-p0-baseline`) 对比无新增 FAIL
 - **AND** 无 wmma/mma 相关测试被破坏
 
-### Requirement: Artifacts-Git-Tracked
+### Requirement: Artifacts-Git-Tracked MUST
+
+SHALL be `git add`-ed: all OpenSpec artifacts (`proposal.md` /
+`design.md` / `specs/` / `tasks.md`) MUST be tracked before the
+implementation commits merge into main. Untracked artifacts in the
+working tree after merge MUST NOT occur.
 
 OpenSpec artifacts (`proposal.md` / `design.md` / `specs/` / `tasks.md`)
 **MUST** 在实施 commits 合并前已 `git add` 并 tracked。**禁止** working tree
@@ -124,3 +149,4 @@ OpenSpec artifacts (`proposal.md` / `design.md` / `specs/` / `tasks.md`)
 - **WHEN** 实施完成归档时
 - **THEN** artifacts 中的 requirements 与代码实现一一对应
 - **AND** 无过期 task 编号（如已完成但仍标记 [ ]）
+
