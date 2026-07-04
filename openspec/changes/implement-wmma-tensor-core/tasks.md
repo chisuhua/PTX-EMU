@@ -27,8 +27,12 @@
 
 ### 0.1 TMA descriptors（Fix #5）
 
-- [ ] 0.1.1 建立基线 worktree：`git worktree add ../c5-impl feat/implement-blackwell-tcgen05`
-- [ ] 0.1.2 验证基线：`cmake --build build && ctest --output-on-failure`
+- [ ] 0.1.1 建立基线 worktree（与 `proposal.md:161` 路径一致）：
+      `git worktree add .worktrees/fix-pre-p0-baseline -b feat/implement-blackwell-tcgen05 main`
+      > **Oracle review fix (Q1)**: 原 `../c5-impl` 与 `proposal.md` 不一致；
+      > 统一为 `.worktrees/fix-pre-p0-baseline` 以保持 change 命名约定。
+      > 路径名 `fix-pre-p0-baseline` 指"Phase 0 实施前的基线快照"。
+- [ ] 0.1.2 验证基线：`.worktrees/fix-pre-p0-baseline` 下 `cmake -S . -B build && cmake --build build && cd build && ctest --output-on-failure`
 - [ ] 0.1.3 阅读 NVIDIA PTX ISA §9.7.13 + cuobjdump 提取真实 TMA descriptor 字节
 - [ ] 0.1.4 创建 `src/ptxsim/memory/tma_descriptor.h`：
       - `struct TmaDescriptor`（TensorMap header + swizzle + strides + dtype）
@@ -92,7 +96,16 @@
 > **Design rationale (Oracle review, 2026-07)**: 原设计将 4 个子系统在一个 commit
 > 中集成。Oracle 指出这违反 `ptx-lessons-learned` §3（独立可 revert）——revert
 > 后留下 4 个未引用子系统死代码。修复：拆为 4 个微 commit，每个只集成一个子系统。
-> Revert 任一微 commit 只丢失该子系统的 CTAContext 引用，其余 3 个仍正常工作。
+>
+> **Oracle review fix (Q2, 2026-07-04)**: 微 commit **不可独立 revert**。
+> 原因：`TcQueue::enqueue_mma()` 写入 TMEM slot，集成到 CTAContext 后
+> 0.5.4 (TcQueue) 隐式依赖 0.5.2 (TMEM) 和 0.5.1 (TMA) — 类比 `cta_context.h:112`
+> `BarrierModule` 模式但跨子系统引用破坏独立性。
+>
+> **Revert 单元 = 整个 Phase 0.5（4 commits 整体回退至 0.4.7 后状态）**。
+> 单个微 commit revert 会导致编译失败（未解析的 CTAContext 引用）。
+> 失败处理：任何 Phase 0.5 子系统 bug → `git revert <0.5.1-commit>..<0.5.4-commit>`
+> 整体回退，不单独 revert。
 
 #### 0.5.1 TMA descriptors → CTAContext（Fix #9a）
 
@@ -137,6 +150,11 @@
       - 复用 `include/ptxsim/utils/half_utils.h::f16_to_f32`
       - 8x4 输出片段写入 TMEM（保留 Blackwell fragment layout）
       - 委托给 `TcQueue::enqueue_mma`
+      - **Oracle review fix (Q4)**：每个输出 fragment 元素（32 lane × 8x4 矩阵 = 256 元素）
+        必须在 `wmma.cpp` 中添加 `// UNVERIFIED-AGAINST-HARDWARE` 注释，标注：
+        - `lane_idx → (row, col)` 映射
+        - PTX ISA §9.7.13 章节行号引用（必须人工对照 latest 规范）
+      - 单元测试 + 集成测试 PASS
 - [ ] 1.1.4 验证 divergent warp 行为（per design.md Decision 5：tcgen05 不在 fetch 时 throw，
       wait 时由 TcQueue 处理）
 - [ ] 1.1.5 commit: `git commit -m "feat(wmma): implement tcgen05.mma fragment arithmetic (Fix #10)"`
@@ -179,8 +197,15 @@
 ## Phase 3: e2e GEMM + AGENTS + spec publish（Fix #14）
 
 - [ ] 3.1 创建 `tests/e2e/kernel/test_blackwell_gemm.cu`：
-      - cutlass 3.x 风格 GEMM kernel，target sm_100
-      - 16×16 GEMM，验证 fragment 算术正确
+      - **Oracle review fix (Q5)**：原"cutlass 3.x 风格"描述不准确。
+        cute/cutlass headers 完整 vendored 于 `bench/cute/include/`
+        （`cute/arch/mma_sm100_*.hpp` + `cutlass/arch/mma_sm100.h` 已存在），
+        但**无现有 e2e 测试使用**——Phase 3 将是首个使用 Cute headers 的 e2e。
+      - **Cute tcgen05 风格** 16×16 GEMM kernel，target sm_100
+      - 使用 vendored Cute headers (`bench/cute/include/`) — 在 `tests/e2e/kernel/CMakeLists.txt`
+        添加 include path（参考 `bench/cute/CMakeLists.txt`）
+      - 验证 fragment 算术正确：16×16 矩阵乘 C[i][j] = sum_k A[i][k] * B[k][j]
+        host 端对比，f32 rounding tolerance
 - [ ] 3.2 在 `tests/e2e/kernel/CMakeLists.txt` 注册
 - [ ] 3.3 修改 `src/ptxsim/instructions/AGENTS.md` KNOWN STUBS：
       移除 `tensor.cpp (WmmaHandler)` 异常说明，标注 Blackwell tcgen05 已实现

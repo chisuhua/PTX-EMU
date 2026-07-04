@@ -47,30 +47,28 @@ and SHALL be independent from shared memory.
 - **THEN** an error is raised
 - **AND** no partial write occurs
 
-### Requirement: Cluster-Mode-Distributed-SMEM MUST
+### Requirement: Cluster-Mode-Arrive-Wait MUST
 
-The system SHALL provide a `ClusterContext` implementing distributed
-shared memory across 1-8 CTAs in a Hopper/Blackwell cluster. The
-context SHALL support `cta_cluster_arrive()` and `cta_cluster_wait()`
-synchronization primitives that block until all CTAs in the cluster
-have arrived.
+The system SHALL provide a `ClusterContext` with `cta_cluster_arrive()`
+and `cta_cluster_wait()` synchronization primitives that block until
+all CTAs in the cluster have arrived.
+
+> **Oracle review fix (Q3, 2026-07-04)**: 原 Requirement `Cluster-Mode-Distributed-SMEM`
+> 描述了 `distributed_smem.read()` 但 `design.md:108-109` Decision 4 **明确 deferred**
+> distributed_smem 到 `cta_group::2` 阶段（候选 ADR-0018）。本 change Phase 0.3
+> **仅**实现 arrive/wait 同步原语；distributed shared memory 留待后续 change。
+>
+> **Spec 范围**：arrive/wait 同步。distributed_smem scenarios 已移除（避免
+> OpenSpec validation 误标 NEVER-IMPLEMENTED）。
+>
+> **Distributed shared memory (`distributed_smem`) is out of scope** —
+> see ADR-0018 candidate for the future `cta_group::2` work.
 
 #### Scenario: cluster-arrive-wait-sync
 - **WHEN** CTA-0 calls `cta_cluster_arrive()` and CTA-1 calls `cta_cluster_arrive()`
 - **THEN** both calls return once each CTA's arrive count is reached
 - **AND** `cta_cluster_wait()` blocks on each CTA until all peer CTAs
   have arrived
-
-#### Scenario: cluster-distributed-smem-access
-- **WHEN** CTA-0 writes to its shared memory at offset 100
-- **AND** CTA-1 calls `distributed_smem.read(cta=0, offset=100)` (assuming
-  same cluster)
-- **THEN** CTA-1 sees the value written by CTA-0
-
-#### Scenario: cluster-no-cross-cta-write-without-arrive
-- **WHEN** CTA-1 attempts `distributed_smem.read(cta=0, ...)` without
-  calling `cta_cluster_arrive()` first
-- **THEN** the read throws (synchronization required)
 
 ### Requirement: Async-TcQueue-Commit-Wait MUST
 
@@ -106,12 +104,36 @@ multiplication, and write the result to TMEM, delegating to `TcQueue`
 for commit-group management. `include/ptxsim/utils/half_utils.h`
 MUST be reused for f16 ↔ f32 conversion.
 
+> **⚠️ FRAGMENT LAYOUT UNVERIFIED AGAINST HARDWARE (Oracle review Q4, 2026-07-04)**
+>
+> At the time of writing, PTX-EMU is the **primary source** for Blackwell
+> tcgen05 fragment layout interpretation. There is no real Blackwell
+> hardware available for cross-validation, and no second independent
+> reference implementation (GPGPU-Sim, MGPUSim, Accel-Sim do not yet
+> implement sm_100 tcgen05). The hand-computed reference in the e2e test
+> is derived from the same NVIDIA PTX ISA §9.7.13 specification that the
+> simulator implementation follows.
+>
+> **Risk**: implementer and test author may share the same interpretation
+> error — tests will pass while both are equally wrong against real hardware.
+>
+> **Mitigation**:
+> 1. Each output fragment element in `src/ptxsim/instructions/wmma.cpp` MUST
+>    carry a `// UNVERIFIED-AGAINST-HARDWARE` annotation with the lane→(row,col)
+>    mapping and the exact PTX ISA §9.7.13 line reference.
+> 2. Manual cross-check of every annotation against latest PTX ISA §9.7.13
+>    is required before merging Phase 1.
+> 3. When real Blackwell hardware becomes available, this entire requirement
+>    MUST be re-validated against actual hardware output.
+
 #### Scenario: full-fragment-correctness
 - **WHEN** `WmmaHandler::processWmmaOperation` is invoked with
   `tcgen05.mma.cta_group::1.kind::f16` qualifiers on a uniform warp
   loaded with deterministic A, B fragments and zero C accumulator
 - **THEN** all output fragment elements equal the hand-computed reference
-  (per NVIDIA PTX ISA §9.7.13 Blackwell fragment layout)
+  (per NVIDIA PTX ISA §9.7.13 Blackwell fragment layout, **UNVERIFIED-AGAINST-HARDWARE**)
+- **AND** each fragment element carries a `// UNVERIFIED-AGAINST-HARDWARE`
+  annotation referencing the PTX ISA §9.7.13 line
 - **AND** no element is left uninitialized
 
 #### Scenario: tcgen05-mma-divergent-warp-async-wait
