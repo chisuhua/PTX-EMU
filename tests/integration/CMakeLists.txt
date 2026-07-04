@@ -372,3 +372,11 @@ add_catch_test(integration_tcgen05_mma_sync
     tcgen05/test_tcgen05_mma_sync.cpp
 )
 set_tests_properties(integration_tcgen05_mma_sync PROPERTIES LABELS "integration;tcgen05;mma;fragment")
+
+# ============================================================================
+# Phase 2.2 (Fix #13): tcgen05 ld→mma→commit→wait→st integration test
+# ============================================================================
+add_catch_test(integration_tcgen05_ld_st_commit
+    tcgen05/test_tcgen05_ld_st_commit.cpp
+)
+set_tests_properties(integration_tcgen05_ld_st_commit PROPERTIES LABELS "integration;tcgen05;commit;wait;roundtrip;ld_st")

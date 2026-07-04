@@ -501,20 +501,53 @@ void execute_tcgen05_st(ThreadContext* context,
 
 void execute_tcgen05_commit(ThreadContext* context,
                              const std::vector<Qualifier>& qualifiers) {
-    (void)context;
     (void)qualifiers;
-    PTX_ERROR_EMU("tcgen05.commit: not yet implemented (Phase 2.2)");
-    throw UnsupportedInstructionException(
-        "wmma.commit",
-        "tcgen05.commit not yet implemented in ptx-emu");
+    // PTX ISA §9.7.13: tcgen05.commit — commit async tensor ops
+    // UNVERIFIED-AGAINST-HARDWARE — PTX ISA §9.7.13
+    WarpContext* warp = context->get_warp_context();
+    if (!warp) {
+        PTX_ERROR_EMU("tcgen05.commit: no WarpContext attached to thread");
+        throw UnsupportedInstructionException(
+            "wmma.commit",
+            "tcgen05.commit requires an active WarpContext");
+    }
+    CTAContext* cta = warp->get_cta_context();
+    if (!cta) {
+        PTX_ERROR_EMU("tcgen05.commit: no CTAContext attached to warp");
+        throw UnsupportedInstructionException(
+            "wmma.commit",
+            "tcgen05.commit requires an active CTAContext");
+    }
+
+    // UNVERIFIED-AGAINST-HARDWARE — group_id=1 per PTX ISA §9.7.13
+    cta->tc_queue().commit(1);
+
+    PTX_DEBUG_EMU("tcgen05.commit: group_id=1 committed");
 }
 
 void execute_tcgen05_wait(ThreadContext* context,
                            const std::vector<Qualifier>& qualifiers) {
-    (void)context;
     (void)qualifiers;
-    PTX_ERROR_EMU("tcgen05.wait: not yet implemented (Phase 2.2)");
-    throw UnsupportedInstructionException(
-        "wmma.wait",
-        "tcgen05.wait not yet implemented in ptx-emu");
+    // PTX ISA §9.7.13: tcgen05.wait — wait for async tensor ops completion
+    // UNVERIFIED-AGAINST-HARDWARE — PTX ISA §9.7.13
+    WarpContext* warp = context->get_warp_context();
+    if (!warp) {
+        PTX_ERROR_EMU("tcgen05.wait: no WarpContext attached to thread");
+        throw UnsupportedInstructionException(
+            "wmma.wait",
+            "tcgen05.wait requires an active WarpContext");
+    }
+    CTAContext* cta = warp->get_cta_context();
+    if (!cta) {
+        PTX_ERROR_EMU("tcgen05.wait: no CTAContext attached to warp");
+        throw UnsupportedInstructionException(
+            "wmma.wait",
+            "tcgen05.wait requires an active CTAContext");
+    }
+
+    // UNVERIFIED-AGAINST-HARDWARE — group_id=1, lane_id=0
+    // per PTX ISA §9.7.13
+    cta->tc_queue().wait(warp, 0, 1);
+
+    PTX_DEBUG_EMU("tcgen05.wait: waiting on group_id=1 for lane 0");
 }
