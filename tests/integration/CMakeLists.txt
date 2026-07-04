@@ -356,3 +356,11 @@ add_catch_test(integration_cluster_with_cta_context
     cluster/test_cluster_with_cta_context.cpp
 )
 set_tests_properties(integration_cluster_with_cta_context PROPERTIES LABELS "integration;cluster;cta")
+
+# ============================================================================
+# Phase 0.5.4 (Fix #9d): TcQueue integration with CTAContext
+# ============================================================================
+add_catch_test(integration_tc_queue_with_cta_context
+    async/test_tc_queue_with_cta_context.cpp
+)
+set_tests_properties(integration_tc_queue_with_cta_context PROPERTIES LABELS "integration;async;tc_queue;cta")

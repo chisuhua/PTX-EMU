@@ -8,6 +8,7 @@
 #include "ptxsim/memory/tma_descriptor.h"
 #include "ptxsim/memory/tmem.h"
 #include "ptxsim/cluster/cluster_context.h"
+#include "ptxsim/async/tc_queue.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/warp_context.h"
 #include <map>
@@ -120,6 +121,10 @@ public:
     }
     bool has_cluster_context() const { return cluster_context_.has_value(); }
 
+    // Phase 0.5.4 (Fix #9d): per-CTA TcQueue accessor
+    TcQueue& tc_queue() { return tc_queue_; }
+    const TcQueue& tc_queue() const { return tc_queue_; }
+
     ~CTAContext();
 
 private:
@@ -148,6 +153,10 @@ private:
     // std::optional — ClusterContext has explicit ctor unlike default-ctored
     // TmaDescriptorStore/Tmem. emplace() constructs in-place; no move/copy.)
     std::optional<ClusterContext> cluster_context_;
+
+    // Phase 0.5.4 (Fix #9d): per-CTA TcQueue (default ctor initializes
+    // atomic counter to 0, no additional init needed)
+    TcQueue tc_queue_;
 };
 
 #endif // CTA_CONTEXT_H
