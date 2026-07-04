@@ -236,6 +236,26 @@ Phase 0.5: 4 micro commits [整体 revert unit; 不可独立 revert 任何 micro
    `bench/cute/include/` 编译；失败则 propose `fix-cute-sm100-headers` change
    (per ptx-lessons-learned Checklist G "新建 fix-* change")
 
+   **Spike 结果 (2026-07-04, Gate G7)**:
+   ```bash
+   # Spike #1: 仅 include cute/arch/mma_sm100_umma.hpp
+   nvcc -arch=sm_100 -ptx -I bench/cute/include /tmp/spike_tcgen05.cu
+   # EXIT=0, /tmp/spike1.ptx 1205 bytes
+
+   # Spike #2: cute_rmsnorm_debug.cu (uses sm_100 per earlier grep)
+   nvcc -arch=sm_100 -ptx --expt-relaxed-constexpr -I bench/cute/include \
+        bench/cute/cute_rmsnorm_debug.cu
+   # EXIT=0, /tmp/spike2.ptx 6669 bytes
+   # 注意: cute_rmsnorm_debug 用 tiled_copy 而非 tcgen05,
+   # 但 baseline build 已编译,证明 sm_100 headers 语法有效
+
+   # Baseline (b7d48ca pre-split) full build also succeeds:
+   # build/bin/{cute_hello_col_major,cute_rmsnorm,cute_rmsnorm_debug} all built
+   ```
+
+   **Gate G7 决议**: **PASS** — cute headers 编译 sm_100 有效, Phase 3 e2e
+   `test_blackwell_gemm.cu` (cute tcgen05 style) 可推进。无需 propose `fix-cute-sm100-headers` change。
+
 ## Impact
 
 | 组件 | 影响类型 | 详情 |
