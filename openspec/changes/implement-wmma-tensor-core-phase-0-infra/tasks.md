@@ -40,17 +40,21 @@
 - [x] 0.1.10 commit: `ad527f5 feat(memory): TMA descriptor parser (Fix #5)` (5 files: 3 new + 2 modified; atomic)
 - [x] 0.1.11 验证独立可 revert (待执行 — 单 atomic commit + 单一新目录 + 测试独立 → revert 安全)
 
-## Phase 0.2: Tensor Memory (TMEM)（Fix #6）
+## Phase 0.2: Tensor Memory (TMEM)（Fix #6）— ✅ DONE (commit 758edb0)
 
-- [ ] 0.2.1 创建 `src/ptxsim/memory/tmem.h`:
-      - `class Tmem`（256 slot × 128 byte = 32 KB per CTA）
-      - `read(slot_id, bytes)`, `write(slot_id, bytes)`, `clear()`
-- [ ] 0.2.2 创建 `src/ptxsim/memory/tmem.cpp`
-- [ ] 0.2.3 创建 `tests/unit/memory/test_tmem.cpp`：验证容量 + 读写一致性 + cross-CTA 隔离
-- [ ] 0.2.4 在 CMakeLists 注册
-- [ ] 0.2.5 自检：`ctest -R "tmem"` + 全套回归
-- [ ] 0.2.6 commit: `git commit -m "feat(memory): per-CTA Tensor Memory (TMEM) (Fix #6)"`
-- [ ] 0.2.7 验证独立可 revert
+- [x] 0.2.1 创建 `src/ptxsim/memory/tmem.h` (49 LoC):
+      - `class Tmem` with `kSlotCount=256`, `kSlotSize=128`, `kTotalSize=32*1024` constants
+      - `read(slot_id, bytes, size)`, `write(slot_id, bytes, size)`, `clear()`, `validate_slot_id()`
+- [x] 0.2.2 创建 `src/ptxsim/memory/tmem.cpp` (61 LoC, std::array<uint8_t,32KB>+std::mutex backing store)
+- [x] 0.2.3 创建 `tests/unit/memory/test_tmem.cpp` (340 LoC, 18 TEST_CASEs, 99,760 loop-based assertions):
+      construct_default_zeros / cross_instance_isolation / write_read_roundtrip / partial_write_no_clobber /
+      write_to_slot_0 / write_to_slot_255 / read_slot_256_throws / write_size_128_boundary /
+      write_size_129_throws / clear_zeros_all_slots / partial_slot_no_leak_to_neighbor /
+      mutex_serializes_concurrent_writes / loops over 256 slots to verify all-zero / all-correct / etc.
+- [x] 0.2.4 在 `src/CMakeLists.txt` (after tma_descriptor line) + `tests/unit/CMakeLists.txt` (after unit_tma_descriptor) 注册
+- [x] 0.2.5 自检：`ctest -R "tmem"` → **18 TEST_CASEs / 99,760 assertions PASS** (0.04s)
+- [x] 0.2.6 commit: `758edb0 feat(memory): per-CTA Tensor Memory (TMEM) (Fix #6)` (5 files: 3 new + 2 modified; atomic)
+- [x] 0.2.7 验证独立可 revert (新 src/ptxsim/memory/tmem.* + tests 隔离；revert HEAD 安全移除 3 files + 2 CMakeLists 行 — 无 shared dep)
 
 ## Phase 0.3: cluster mode — arrive/wait only（Fix #7）
 
