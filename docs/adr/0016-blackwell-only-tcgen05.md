@@ -147,7 +147,7 @@ scope 是 `wmma.mma.sync.aligned.m8n8k4.row.col.f32.f16.f16.f32`（pre-Blackwell
 
 | Phase | scope | 估算 LoC | commit 粒度 |
 |-------|-------|---------|-----------|
-| Phase 0 | TMA + TMEM + cluster + async queue | ~3000-5000 | 4-5 个独立 commit（每个子系统 1 commit） |
+| Phase 0 | TMA + TMEM + cluster + async queue | ~3000-5000 | **9 commits** = 4 独立子系统 (TMA/TMEM/cluster/async queue) + 4 逐子系统集成微 commit (0.5.1~0.5.4 解决 ptx-lessons-learned §3) + 1 artifacts commit |
 | Phase 1 | tcgen05.mma fragment arithmetic | ~500-800 | 2 commits（impl + tests） |
 | Phase 2 | tcgen05.ld/st + commit/wait | ~600-1000 | 2 commits（load/store + commit/wait） |
 | Phase 3 | e2e GEMM + AGENTS sync + spec publish | ~300-500 | 1 commit |
@@ -190,3 +190,25 @@ scope 是 `wmma.mma.sync.aligned.m8n8k4.row.col.f32.f16.f16.f32`（pre-Blackwell
   - ADR-0017：`cuda::tma::desc` 拦截策略（如果 Phase 0 实现需要）
   - ADR-0018：cluster mode 的 distributed shared memory 模拟策略
   - ADR-0019：async tensor core queue 与现有 WarpState 集成模式
+
+## 更新记录
+
+### 2026-07-04 — Commit count 修正 (Oracle review C2 fix)
+
+**修订理由**：原 Phase 0 commit 粒度"4-5 个独立 commit"是 Oracle 审查前的初版。Oracle
+审查（commit `cf78fe6`，2026-07-04）发现 4 个子系统在单 commit 集成违反 `ptx-lessons-learned §3`
+（独立可 revert），拆为 4 个微 commit (0.5.1~0.5.4)。同时按 `experience 6` + Checklist E
+新增 1 个 artifacts 前置 commit。
+
+**Phase 0 commit 粒度演进**：
+- v1 (ADR 初版)：5 commits = TMA / TMEM / cluster / async queue / 集成
+- v2 (Oracle 后)：9 commits = 4 standalone + 4 集成微 commit + 1 artifacts
+
+**变更范围**：仅"实施路径"表格 Phase 0 行文字 + commit 粒度数字。**决策本身**（Blackwell-only、
+scope discipline、基础设施优先）**未变**。
+
+**Revert 单元澄清**（同样来自 Oracle Q2 fix）：
+- 0.1–0.4 + 1.1/1.2/2.1/2.2/3.1/0.artifacts 可独立 revert
+- 0.5.1–0.5.4 **不可独立 revert**（`TcQueue::enqueue_mma()` 写 TMEM slot，跨子系统引用
+  破坏独立性 — 见 `cta_context.h:112` `BarrierModule` 模式但 TcQueue 跨 4 子系统）
+- 整体 Phase 0.5 revert = `git revert <0.5.1-sha>..<0.5.4-sha>`

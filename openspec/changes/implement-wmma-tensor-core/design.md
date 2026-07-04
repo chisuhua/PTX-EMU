@@ -234,7 +234,7 @@ blocked warp at the wait instruction's PC.
 | TcQueue→WarpState state translation bugs (ptx-lessons-learned §1) | **Critical** (Oracle review: cross-module translation is the #1 failure mode in this codebase) | Decision 7 requires reusing BAR_SYNC + BarrierModule path. Tasks.md Phase 0.4.5 mandates state-modification-audit skill execution before commit. All commit_group_counter writers AND is_blocked consumers must be audited |
 | cluster mode + existing CTAContext integration bugs | High | Phase 0 unit tests verify isolation; cluster integration test in Phase 0.5.3 |
 | cute template sm_100 fallback to sm_90 wgmma | Medium | Out of scope — pre-Blackwell throw is expected per ADR-0016 |
-| Phase 0 工程量超估 | Medium | 9 commits (Oracle: was 5); each commit self-contained; cluster simplified from 800-1200 → 300-400 LoC via deferred distributed_smem |
+| Phase 0 工程量超估 | Medium | 9 commits for Phase 0 (Oracle: was 5 → 9 = 4 standalone + 4 micro + 1 artifacts); each commit self-contained; cluster simplified from 800-1200 → 300-400 LoC via deferred distributed_smem |
 | cute_rmsnorm future upgrade triggers Phase 0-2 dependency | Low | cute_rmsnorm upgrade blocked until Phase 0-2 done |
 | Existing 165 ctest regression risk | Low | Phase 0 adds new tests, doesn't modify existing handler paths |
 | sm_120 sparse requires cta_group::2 | Low | Phase 2 reserves `cta_group::2` extension point |
@@ -242,10 +242,15 @@ blocked warp at the wait instruction's PC.
 
 ## Migration Plan
 
-**4 Phases, 9 commits total** (Oracle review fix: Phase 0 grew from 5 to 9 commits to satisfy independent revertability — each subsystem integration is its own commit):
+**4 Phases, 14 commits total** (Oracle review C2 fix, 2026-07-04):
+- Phase 0 = 8 implementation commits (0.1–0.4 + 0.5.1–0.5.4) + 1 artifacts commit = 9
+- Phase 1 = 2 commits (1.1 + 1.2)
+- Phase 2 = 2 commits (2.1 + 2.2)
+- Phase 3 = 1 commit (3.1)
+- Phase 4 (merge/archive) not counted as implementation commit
 
 ```
-Phase 0: Infrastructure (9 commits, ~3000-5000 LoC)
+Phase 0: Infrastructure (8 implementation commits + 1 artifacts commit, ~3000-5000 LoC)
   Commit 0.1: feat(memory): TMA descriptor parser + storage
   Commit 0.2: feat(memory): Tensor Memory (TMEM) per-CTA storage
   Commit 0.3: feat(sim): cluster arrive/wait (simplified—no distributed smem)
@@ -254,7 +259,8 @@ Phase 0: Infrastructure (9 commits, ~3000-5000 LoC)
   Commit 0.5.2: feat(sim): integrate TMEM with CTAContext
   Commit 0.5.3: feat(sim): integrate cluster context with CTAContext
   Commit 0.5.4: feat(sim): integrate TcQueue with CTAContext
-  (Each 0.5.x revert removes only one subsystem ref; the other 3 stay live.)
+  [Plus 1 artifacts commit: docs(openspec) tracked before code, per
+   ptx-lessons-learned experience 6 / Checklist E]
 
 Phase 1: tcgen05.mma (2 commits, ~500-800 LoC)
   Commit 1.1: feat(wmma): implement tcgen05.mma fragment arithmetic
@@ -268,7 +274,16 @@ Phase 3: e2e + AGENTS + spec publish (1 commit, ~300-500 LoC)
   Commit 3.1: docs+test: e2e GEMM kernel + AGENTS sync + spec publish
 ```
 
-Each commit independently revertible (per ptx-lessons-learned §3).
+**Revert unit (Oracle Q2 fix, 2026-07-04)**:
+- Commits 0.1, 0.2, 0.3, 0.4 are independently revertible (each subsystem
+  is self-contained; `cta_context.cpp` is not yet touched).
+- Commits 0.5.1–0.5.4 are **NOT** independently revertible — they each
+  add a `CTAContext` member reference, and `TcQueue::enqueue_mma()` writes
+  to `Tmem` slots, creating cross-subsystem dependencies. **Revert unit
+  for Phase 0.5 = all 4 commits together** (`git revert <0.5.1-sha>..<0.5.4-sha>`).
+- Commits 1.1, 1.2, 2.1, 2.2, 3.1 are independently revertible.
+- The artifacts commit (Phase 0 start) is independently revertible.
+
 **Oracle review note**: Phase 1.2 integration test originally claimed to
 verify "mma + commit + wait" sequence, but commit/wait is Phase 2.2.
 Fixed to verify mma correctness by reading TMEM slots directly.

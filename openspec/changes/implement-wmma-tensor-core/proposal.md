@@ -149,7 +149,7 @@
 | cluster mode 与现有 CTAContext 集成复杂 | High | Phase 0 子系统先 unit test 验证隔离行为，再 e2e 集成 |
 | async queue 与 WarpState 集成产生 invariant 冲突 | High | `ptx-lessons-learned` §1 cross-module state translation 强制审计 |
 | cute 模板 sm_100 fallback 到 sm_90 wgmma 代码 | Medium | 不保证 cute 编译时不引用 sm_90 头文件；只保证 emit 的 PTX 走 Blackwell |
-| Phase 0 工程量大（~3000-4000 LoC，9 commits） | Medium | 9 个独立 commit（Oracle review 修正：5→9），每个子系统 1 commit + 4 个逐子系统集成微 commit，独立可 revert |
+| Phase 0 工程量大（~3000-4000 LoC，9 commits） | Medium | **Oracle review C2 fix (2026-07-04)**：Phase 0 = 9 commits = 4 standalone 子系统 (TMA/TMEM/cluster/async queue) + 4 micro-commits (0.5.1~0.5.4 逐子系统集成到 CTAContext) + 1 artifacts commit (前置 tracked)。**Revert 单元澄清**：0.1-0.4 + 1.1/1.2/2.1/2.2/3.1/0.artifacts 可独立 revert；**0.5.1~0.5.4 不可独立 revert**（TcQueue 跨子系统引用 Tmem/TMA，详见 tasks.md Phase 0.5 clarification box） |
 | sm_120 sparse variants 与 sm_100 fragment 不兼容 | Low | 预留 `cta_group::2` / `kind::*` 扩展点 |
 | TMA host API 拦截策略不明确 | Medium | Phase 0 用 fake descriptor；ADR-0017 候选后续单独决策 |
 | cute_rmsnorm 未来升级到 tcgen05 触发依赖 | Low | Phase 0-2 完成后才能升级 cute_rmsnorm |
@@ -160,7 +160,7 @@
 - [x] Phase 拆分：4 个 Phase（0=基础设施，1=mma，2=ld/st+commit/wait，3=e2e+AGENTS）
 - [x] 基线 worktree: 复用 `.worktrees/fix-pre-p0-baseline`
 - [x] 失败处理: 任何已有测试回归 → 立即 revert 该 Phase，不混入后续 commit
-- [x] Phase 0 子系统分独立 commit（5 commits = TMA / TMEM / cluster / async queue / 集成）
+- [x] Phase 0 子系统分独立 commit（**9 commits** = TMA / TMEM / cluster / async queue + 4 个逐子系统集成微 commit + 1 artifacts commit；Oracle review 2026-07 修正：5→9）
 
 ### 函数迁移完整性
 - `tensor.cpp::WmmaHandler::processWmmaOperation` 当前实现：抛异常
