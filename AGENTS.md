@@ -502,12 +502,12 @@ GPUContext (全局内存, SM 列表)
 
 | 类别 | 状态 |
 |------|------|
-| WMMA/Tensor Core (wmma, mma) | 解析但空实现 (stub) |
+| WMMA/Tensor Core (wmma, mma) | 解析后抛 `UnsupportedInstructionException` + `PTX_ERROR_EMU`（c5 Fix #1）。真实实现跟踪 `fix/implement-wmma-tensor-core` |
 | Atomic 操作 | 无真正原子性 (stub) |
 | Hopper (sm_90+) | cluster 抽象未实现 |
 | Event/Stream API | fake 返回（不同步） |
 | 函数调用 | 未完全实现 |
-| Multi-PTX cubins | 仅提取第一个 PTX (ptx_parser.cpp:59 FIXME) |
+| Multi-PTX cubins | 提取所有 sections + `PTX_WARN_EMU` 警告 section 数量（c5 Fix #3）。`ptx_parser.cpp:59 FIXME` 仍记录"取首"语义，但 `cubin_utils.cpp` 实际 append 所有 sections |
 | `assert(false)` | 多处 → 遇未处理代码路径会崩溃 |
 
 ### 安全假设

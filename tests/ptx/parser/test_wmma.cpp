@@ -1,3 +1,8 @@
+// Known broken (c5, 2026-07): references nonexistent tests/test_wmma.ptx
+// and is NOT registered in ctest. Do NOT add to CMakeLists.txt without
+// a fixtures/test_wmma.ptx first. Real WMMA coverage goes through
+// `fix/implement-wmma-tensor-core`.
+
 #include <cassert>
 #include <fstream>
 #include <iostream>
