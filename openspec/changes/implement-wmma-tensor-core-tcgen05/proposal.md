@@ -147,8 +147,10 @@
 
 - `stub-explicit-failure`: 修改 — pre-Blackwell 抛异常永久（per ADR-0016）;
   Blackwell `tcgen05.*` 走真实执行路径。delta spec in `specs/stub-explicit-failure/spec.md`。
-- `wmma-tensor-core-infrastructure` (from phase-0-archive): unchanged
-  — 本 change 不修改 Phase 0 交付的基础设施类型。
+
+> **未在此列出的 capability**：phase-0-archive 交付的 `wmma-tensor-core-infrastructure`
+> (TMA + TMEM + cluster + TcQueue 4 子系统类型) 不被本 change 修改。本 change **依赖**
+> 其 API 但不修改其 spec。本 change 实施前 phase-0-archive 必须先完成。
 
 ## Impact
 
@@ -170,7 +172,7 @@
 
 **影响范围**:
 - cute_rmsnorm 等 e2e 测试（无变化 — 不依赖 WMMA, 也不依赖 cute headers per phase-0 Open Question #5）
-- 现有 165 ctest（无变化 — Phase 1-3 仅修改 wmma.cpp handler，不动现有 test paths）
+- 现有 123 labeled ctest (73 unit + 42 integration + 8 e2e；无变化 — Phase 1-3 仅修改 wmma.cpp handler，不动现有 test paths)
 - Multi-PTX warning (`PTX_WARN_EMU` Fix #3)（无变化）
 
 ## Open Questions

@@ -21,7 +21,7 @@
 
 ## Phase 0.1: TMA descriptors（Fix #5）
 
-- [ ] 0.1.1 建立基线 worktree（与 `tasks.md:0.1.1` 路径一致）：
+- [ ] 0.1.1 建立基线 worktree（per archive precedent `openspec/changes/archive/2026-07-04-replace-silent-stub-failures/tasks.md` "基线 worktree" section；统一使用 `.worktrees/` 前缀而不是 `../<name>` 形式）：
       `git worktree add .worktrees/fix-pre-p0-baseline -b feat/implement-blackwell-tcgen05 main`
 - [ ] 0.1.2 验证基线：`.worktrees/fix-pre-p0-baseline` 下 `cmake -S . -B build && cmake --build build && cd build && ctest --output-on-failure`
 - [ ] 0.1.3 阅读 NVIDIA PTX ISA §9.7.13 + cuobjdump 提取真实 TMA descriptor 字节
@@ -33,7 +33,7 @@
 - [ ] 0.1.6 创建 `tests/unit/memory/test_tma_descriptor.cpp`：覆盖 ≥ 10 种 swizzle/stride 组合
 - [ ] 0.1.7 在 `src/CMakeLists.txt` + `tests/unit/CMakeLists.txt` 注册
 - [ ] 0.1.8 自检：`cmake --build build --target ptxsim && ctest -R "tma_descriptor"`
-- [ ] 0.1.9 验证无回归：`ctest -L "unit;integration;e2e"`
+- [ ] 0.1.9 验证无回归：`ctest -L "unit\|integration\|e2e"`
 - [ ] 0.1.10 commit: `git commit -m "feat(memory): TMA descriptor parser (Fix #5)"`
 - [ ] 0.1.11 验证独立可 revert
 
@@ -99,7 +99,7 @@
 ### 0.5.1 TMA descriptors → CTAContext（Fix #9a）
 - [ ] 0.5.1.1 修改 `src/ptxsim/core/cta_context.{h,cpp}`：添加 `tma_descriptor_store` 引用
 - [ ] 0.5.1.2 创建 `tests/integration/tma/test_tma_with_cta_context.cpp`：验证 CTAContext.tma 行为一致
-- [ ] 0.5.1.3 自检：`ctest -R "tma.*cta"` + `ctest -L "unit;integration;e2e"` 全套回归
+- [ ] 0.5.1.3 自检：`ctest -R "tma.*cta"` + `ctest -L "unit\|integration\|e2e"` 全套回归
 - [ ] 0.5.1.4 commit: `git commit -m "feat(sim): integrate TMA descriptor store with CTAContext (Fix #9a)"`
 - [ ] 0.5.1.5 验证 0.5.1 移除后 CTAContext 不引用 TMA（其余 3 子系统不变）
 
@@ -129,14 +129,14 @@
 
 ### Gate G1: 回归测试零失败
 ```bash
-cd build && ctest -L "unit;integration;e2e" --output-on-failure 2>&1 | grep -c "^FAILED"
+cd build && ctest -L "unit\|integration\|e2e" --output-on-failure 2>&1 | grep -c "^FAILED"
 # 期望: 0
 ```
 
 ### Gate G2: baseline worktree diff
 ```bash
-diff <(cd .worktrees/fix-pre-p0-baseline/build && ctest -L "unit;integration;e2e" 2>&1 | grep -E "Passed|Failed") \
-     <(cd build && ctest -L "unit;integration;e2e" 2>&1 | grep -E "Passed|Failed")
+diff <(cd .worktrees/fix-pre-p0-baseline/build && ctest -L "unit\|integration\|e2e" 2>&1 | grep -E "Passed\|Failed") \
+     <(cd build && ctest -L "unit\|integration\|e2e" 2>&1 | grep -E "Passed\|Failed")
 # 期望: 0 new FAIL
 ```
 
@@ -167,12 +167,19 @@ git ls-files openspec/changes/implement-wmma-tensor-core-phase-0-infra/
 # 期望: 0 unexpected FAIL + 含 PTX 语法测试通过
 ```
 
-### Gate G7: cute header spike (Open Question #5)
+### Gate G7: cute header spike (Open Question #5) — ✅ PASS (2026-07-04, commit f1bab6e)
 ```bash
-# Phase 0 实施前手工 spike: 验证 bench/cute/include/ 用 sm_100 target 编译
-nvcc -arch=sm_100 -ptx -I bench/cute/include -o /tmp/spike.ptx \
-    bench/cute/examples/mma_sm100.cu 2>&1 | head -20
-# 期望: exit 0 (或可文档化的失败模式——失败则 propose fix-cute-sm100-headers)
+# 实测命令 (per design.md Open Question #5 决议):
+# Spike #1: 仅 include cute/arch/mma_sm100_umma.hpp
+nvcc -arch=sm_100 -ptx -I bench/cute/include /tmp/spike_tcgen05.cu
+# EXIT=0 (1205 bytes output)
+
+# Spike #2: cute_rmsnorm_debug.cu (uses sm_100 per earlier grep)
+nvcc -arch=sm_100 -ptx --expt-relaxed-constexpr -I bench/cute/include \
+     bench/cute/cute_rmsnorm_debug.cu
+# EXIT=0 (6669 bytes output)
+
+# 期望: exit 0 (Gate G7 已 PASS；无需 propose fix-cute-sm100-headers change)
 ```
 
 ---

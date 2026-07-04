@@ -115,9 +115,9 @@ The class name `WmmaHandler` and X-Macro registration are unchanged.
 #### Scenario: rename-builds-and-tests-pass
 - **WHEN** the project is built
 - **THEN** `cmake --build build` succeeds with no source-level errors
-- **AND** `ctest -L "unit;integration;e2e"` passes with no regression
-- **AND** `grep -rn "tensor.cpp" src/CMakeLists.txt` does not return
-  the old filename
+- **AND** `ctest -L "unit|integration|e2e"` passes with no regression
+- **AND** `grep -rn "tensor.cpp" src/ docs/ tests/` does not return
+  the old filename (only post-rename references to `wmma.cpp` are valid)
 
 ### Requirement: AGENTS-Sync-Blackwell-Implemented MUST
 

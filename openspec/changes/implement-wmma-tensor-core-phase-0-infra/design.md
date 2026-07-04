@@ -137,7 +137,9 @@ synthetic cluster configurations。集成测试从 Phase 1-3（phase-1-3 change�
 
 ### Decision 7: tcgen05.wait blocking 复用 barrier 基础设施 via BAR_SYNC state translation
 
-> **此决策 carry over 自原 design.md，应用在 Phase 1-3 change 范围。本 change 仅预建 TcQueue 框架；Decision 7 的实际"commit → release_warp_barrier"翻译链由 Phase 1-3 commit/wait 实施触发。**
+> **本 change 范围 (Phase 0)**：定义 Decision 7 的 framework（即下面 TcQueue::commit/wait 的 contract + cross-module audit points）。Phase 0 实施 `TcQueue` 类并暴露 `commit()` / `wait()` 接口契约，但不挂接任何 `tcgen05.commit/wait` handler 调用。
+>
+> **Phase 1-3 change 范围**：实现 `tcgen05.commit` / `tcgen05.wait` PTX handler，调用本决策定义的 `TcQueue::commit()` / `wait()`，由此真正触发 Decision 7 "commit → release_warp_barrier" 翻译链的执行。
 
 **Context**: `TcQueue::wait(group_id)` 必须 block calling warp 直到 commit-group
 counter 达到 `group_id`。这要求 warp 进入 scheduler 能识别的 blocked 状态，并在

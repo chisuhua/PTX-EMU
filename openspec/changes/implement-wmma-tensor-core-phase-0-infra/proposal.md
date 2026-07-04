@@ -118,8 +118,8 @@ spec，因为 Phase 0 不改变 WmmaHandler 行为。
 
 | Gate | 命令 | 阈值 | 原理 |
 |------|------|------|------|
-| **G1** 回归测试 | `ctest -L "unit;integration;e2e" 2>&1 \| grep -c "^FAILED"` | `== 0` | 不打破现有 165 ctest |
-| **G2** baseline diff | `diff <(.worktrees/fix-pre-p0-baseline/build/ctest) (build/ctest)` | 0 new FAIL | lessons-learned §4 基线 worktree 对比 |
+| **G1** 回归测试 | `ctest -L "unit\|integration\|e2e" 2>&1 \| grep -c "^FAILED"` | `== 0` | 不打破现有 123 labeled ctest（73 unit + 42 integration + 8 e2e） |
+| **G2** baseline diff | `diff <(cd .worktrees/fix-pre-p0-baseline/build && ctest -L "unit\|integration\|e2e" 2>&1 \| grep -E "Passed\|Failed") <(cd build && ctest -L "unit\|integration\|e2e" 2>&1 \| grep -E "Passed\|Failed")` | 0 new FAIL | lessons-learned §4 基线 worktree 对比 |
 | **G3** state-modification-audit | `state-modification-audit` skill 输出 | `commit_group_counter` / `is_blocked` 写点 ⊆ `design.md §Decision 7` 声明集合 | lessons-learned §1 强制审计 |
 | **G4** artifacts tracked | `git ls-files openspec/changes/implement-wmma-tensor-core-phase-0-infra/` | 非空 | lessons-learned §6 / Checklist E |
 | **G5** Oracle re-review TMA | (manual) 对照 NVIDIA PTX ISA §9.7 TensorMap | TMA 解析逻辑站得住脚 | Critical risk #1 独有 |
@@ -146,7 +146,7 @@ spec，因为 Phase 0 不改变 WmmaHandler 行为。
 - `docs/architecture/sm90_100.md` (Phase 0 起引用 ADR-0016)
 
 **影响范围**:
-- 现有 165 ctest (无变化 — Phase 0 单元测试独立于现有测试)
+- 现有 123 labeled ctest (73 unit + 42 integration + 8 e2e；无变化 — Phase 0 单元测试独立于现有测试)
 - cute_rmsnorm 等 e2e 测试（无变化 — 不依赖 WMMA 也不依赖新基础设施）
 - Multi-PTX warning (`PTX_WARN_EMU` Fix #3)（无变化）
 - WmmaHandler behavior（**不变** — Phase 0 仅添加基础设施，不改 handler）

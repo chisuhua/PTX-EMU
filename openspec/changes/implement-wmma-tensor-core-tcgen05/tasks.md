@@ -24,8 +24,9 @@
 
 ## 0.0 Artifacts Tracking（必做 FIRST！）
 
-- [ ] 0.0.1 在 main 上创建分支：`git checkout -b feat/implement-tcgen05-handlers`
-      (从 `feat/implement-blackwell-tcgen05` branch out, after phase-0 archive)
+- [ ] 0.0.1 **等待 phase-0-infra-archive merge 到 main**，然后基于 main 创建 phase-1-3 分支：
+      `git checkout main && git checkout -b feat/implement-tcgen05-handlers`
+      (前置条件：phase-0-infra-archive 已 merge，per tasks.md:4b.1)
 - [ ] 0.0.2 `git add openspec/changes/implement-wmma-tensor-core-tcgen05/`
 - [ ] 0.0.3 `git status` 验证 artifacts tracked (proposal / design / specs/wmma-tensor-core/spec / specs/stub-explicit-failure/spec / tasks)
 - [ ] 0.0.4 commit: `git commit -m "docs(openspec): track implement-wmma-tensor-core-tcgen05 artifacts (Ref: archive/...phase-0-infra/)"`
@@ -135,7 +136,7 @@
       ```bash
       git ls-files openspec/changes/implement-wmma-tensor-core-phase-0-infra/
       ```
-- [ ] 4a.3 清理 worktree：`git worktree remove ../c5-impl` (Phase 0 baseline)
+- [ ] 4a.3 清理 worktree：`git worktree remove .worktrees/fix-pre-p0-baseline` (Phase 0 baseline；与 tasks.md:0.1.1 创建路径一致)
 - [ ] 4a.4 归档：`openspec archive "implement-wmma-tensor-core-phase-0-infra" --yes`
 
 ### Phase 4b: phase-1-3 change 实施
