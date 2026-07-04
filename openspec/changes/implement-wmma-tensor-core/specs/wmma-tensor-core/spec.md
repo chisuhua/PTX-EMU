@@ -200,17 +200,10 @@ throw behavior SHALL be documented as permanent per ADR-0016.
 - **THEN** the WMMA entry states "Blackwell tcgen05 已实现；
   pre-Blackwell 永久抛异常（ADR-0016）"
 
-### Requirement: Stub-Explicit-Failure-WMMA-Permanent MUST
-
-The `openspec/specs/stub-explicit-failure/spec.md` SHALL be modified
-so that the WMMA-Stub-Throws-Exception requirement reflects the new
-policy: pre-Blackwell variants throw `UnsupportedInstructionException`
-permanently (no future change), while Blackwell variants follow the
-real-execution path described in `wmma-tensor-core` spec.
-
-#### Scenario: spec-permanent-throw-for-pre-blackwell
-- **WHEN** reading `openspec/specs/stub-explicit-failure/spec.md`
-- **THEN** the WMMA requirement explicitly states that pre-Blackwell
-  variants throw permanently per ADR-0016
-- **AND** references the `wmma-tensor-core` capability for the
-  Blackwell execution path
+> **Oracle review fix (2026-07)**: The `Stub-Explicit-Failure-WMMA-Permanent`
+> requirement originally here was a near-duplicate of
+> `stub-explicit-failure/spec.md:Stub-Explicit-Failure-Permanent-Policy`.
+> Removed — one policy SHALL have one canonical location
+> (`stub-explicit-failure` spec). The `wmma-tensor-core` spec is the
+> "how Blackwell works" spec; `stub-explicit-failure` is the "what
+> pre-Blackwell does" policy spec.

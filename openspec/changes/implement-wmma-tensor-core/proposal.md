@@ -45,10 +45,9 @@
 - ~600-800 LoC
 
 **Cluster mode**（`src/ptxsim/cluster/{h,cpp}`）：
-- 跨 CTA 共享 memory 访问（distributed shared memory）
 - `cta_cluster_arrive` / `cta_cluster_wait` 同步原语
-- 与 `CTAContext` 集成
-- ~800-1200 LoC
+- **Deferred**: distributed shared memory（`cta_group::1` 不需要，仅 `cta_group::2` 需要）
+- ~300-400 LoC（Oracle review 简化：从 800-1200 削减至 arrive/wait only）
 
 **Async tensor core queue**（`src/ptxsim/async/tc_queue.{h,cpp}`）：
 - per-CTA 的命令队列（commit-group counter）
@@ -146,11 +145,11 @@
 
 | Risk | Severity | Mitigation |
 |------|----------|------------|
-| TMA descriptor 解析与 NVIDIA 实际二进制布局不匹配 | High | Phase 0 先用 cuobjdump 提取真实 descriptor 字节做参考；用 cuobjdump -ptx 反推 |
+| TMA descriptor 解析与 NVIDIA 实际二进制布局不匹配 | **Critical** (Oracle review: 无硬件交叉验证) | Phase 0 用 NVIDIA PTX ISA §9.7 TensorMap 字段定义手工构造 descriptor 字节；标注为 unverified-against-hardware。Phase 3 e2e 测试若失败则追溯 descriptor 解析 |
 | cluster mode 与现有 CTAContext 集成复杂 | High | Phase 0 子系统先 unit test 验证隔离行为，再 e2e 集成 |
 | async queue 与 WarpState 集成产生 invariant 冲突 | High | `ptx-lessons-learned` §1 cross-module state translation 强制审计 |
 | cute 模板 sm_100 fallback 到 sm_90 wgmma 代码 | Medium | 不保证 cute 编译时不引用 sm_90 头文件；只保证 emit 的 PTX 走 Blackwell |
-| Phase 0 工程量大（~3000-5000 LoC） | Medium | 5 个独立 commit，每个子系统 1 commit，独立可 revert |
+| Phase 0 工程量大（~3000-4000 LoC，9 commits） | Medium | 9 个独立 commit（Oracle review 修正：5→9），每个子系统 1 commit + 4 个逐子系统集成微 commit，独立可 revert |
 | sm_120 sparse variants 与 sm_100 fragment 不兼容 | Low | 预留 `cta_group::2` / `kind::*` 扩展点 |
 | TMA host API 拦截策略不明确 | Medium | Phase 0 用 fake descriptor；ADR-0017 候选后续单独决策 |
 | cute_rmsnorm 未来升级到 tcgen05 触发依赖 | Low | Phase 0-2 完成后才能升级 cute_rmsnorm |

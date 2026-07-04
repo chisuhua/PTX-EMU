@@ -95,24 +95,34 @@ The `cuda::tma::create_tensor_map` interception is deferred to ADR-0017.
 - ❌ Full API interception in Phase 0: scope creep
 - ❌ Reject all `cuda::tma::*` calls: blocks cutlass users
 
-### Decision 4: cluster mode = distributed shared memory across N CTAs
+### Decision 4: cluster mode — arrive/wait only, defer distributed_smem
 
 **Context**: Hopper cluster (sm_90) introduced 8-CTA clusters with distributed
 shared memory access. Blackwell extends this. PTX-EMU currently has
 `Hopper (sm_90+) | cluster 抽象未实现` per root AGENTS.md.
 
-**Choice**: Build `cluster::ClusterContext` per `CTAContext` that owns a
-`distributed_smem` view across 1-8 CTAs. `cta_cluster_arrive` / `cta_cluster_wait`
-synchronize across the cluster.
+However, `tcgen05.mma.cta_group::1` (Phase 1 target) operates within a
+single CTA — it does NOT need distributed shared memory. Only
+`cta_group::2` (2x1SM cluster, future Phase) requires cross-CTA smem access.
+
+**Choice**: Phase 0.3 implements only `ClusterContext` with
+`arrive`/`wait` primitives. `distributed_smem` is deferred to when
+`cta_group::2` is actually needed (separate change or Phase expansion).
+This cuts ~400-600 LoC from Phase 0.
 
 **Rationale**:
-- Matches NVIDIA hardware model
+- Oracle review confirmed: cute `mma_sm100_umma.hpp` cta_group::1
+  patterns operate single-CTA (no cross-CTA memory access)
 - `bar.sync` already handles single-CTA barriers (ADR-0008); cluster
-  barriers are an extension, not a replacement
+  arrive/wait are an extension, not a replacement
+- Deferred distributed_smem keeps Phase 0.3 under 400 LoC instead of
+  800-1200, accelerating Phase 0 delivery by ~20%
 
 **Alternatives considered**:
-- ❌ Implement only single-CTA cluster (skip distributed smem): defeats the purpose
-- ❌ Refactor existing CTAContext to cluster: invasive, breaks other tests
+- ❌ Implement full distributed_smem now: wastes ~600 LoC on code
+  nothing exercises until cta_group::2
+- ❌ Skip cluster entirely: tcgen05.wait still needs CTA-level
+  synchronization for the proxy flag; arrive/wait is the minimum
 
 ### Decision 5: Throw on divergent wmma, async wait on divergent tcgen05
 
@@ -154,35 +164,101 @@ start in Phase 1+ where real PTX can drive the simulator.
 - ❌ Wait for cuobjdump support: blocks Phase 0 indefinitely
 - ❌ Skip Phase 0 unit tests: regressions will only be caught in Phase 3
 
+### Decision 7: tcgen05.wait blocking reuses barrier infrastructure via BAR_SYNC state translation
+
+**Context**: `TcQueue::wait(group_id)` must block the calling warp until
+the commit-group counter reaches `group_id`. This requires the warp to
+enter a blocked state that the scheduler recognizes, and to be re-awakened
+when the counter advances. `ptx-lessons-learned` §1 warns that
+cross-module state translation (TcQueue state → WarpState blocking) is the
+single most bug-prone pattern in the codebase.
+
+**Choice**: `TcQueue::wait()` calls `WarpContext::set_warp_state(BAR_SYNC)`
+to mark the warp as blocked, reusing the existing barrier infrastructure
+(`BarrierModule` in `src/ptxsim/barrier/barrier_module.cpp`). When
+`TcQueue::commit(group_id)` advances the counter past the waited-for
+group, it calls `BarrierModule::release_warp_barrier(...)` to wake the
+blocked warp at the wait instruction's PC.
+
+**Rationale**:
+- Avoids inventing a new blocking mechanism — `BAR_SYNC` + `is_blocked`
+  is already well-tested (commit `f033312`, `migrate-bar-warp-sync`).
+- `ptx-lessons-learned` §1 explicitly requires auditing the set_state →
+  sync_to_warp_state translation chain. Reusing BAR_SYNC means the
+  existing translation is automatically correct.
+- `tcgen05.wait` at the PTX level is semantically the same as `bar.warp.sync`
+  for the waiting warp: block until condition met, then advance PC.
+
+**Implementation contract**:
+```cpp
+// In TcQueue::wait(group_id):
+//   1. If commit_group_counter >= group_id → no-op (already done).
+//   2. Else: call context->get_warp_context()->set_warp_state(
+//            BAR_SYNC, /* all lanes blocked at current PC */);
+//      The scheduler sees is_blocked=true and skips this warp.
+//   3. Store wait group_id in TcQueue's pending_waiters list.
+
+// In TcQueue::commit(group_id):
+//   1. commit_group_counter = max(counter, group_id).
+//   2. For each pending waiter with waited_group <= counter:
+//        BarrierModule::release_warp_barrier(waiter.warp_id, reconvergence_pc)
+//        → sets is_blocked=false, active_mask back to full.
+```
+
+**Cross-module audit** (must run `state-modification-audit` skill):
+- `TcQueue::commit_group_counter` — all writers are `TcQueue::commit()`.
+  Scheduler never reads this directly; it only sees `WarpState.is_blocked`.
+- `WarpState.threads[i].is_blocked` — set by `set_warp_state(BAR_SYNC)` in
+  `TcQueue::wait()`, cleared by `BarrierModule::release_warp_barrier()`
+  when TcQueue calls it.
+- Consumers of `is_blocked`: `sm_context.cpp scheduler` → reads it to
+  decide whether to skip the warp. No new consumers introduced.
+- **Audit checklist** (tasks.md Phase 0.4.5): grep all writers of both
+  variables; confirm translation chain is one-way and consistent.
+
+**Alternatives considered**:
+- ❌ New `TC_WAIT` exec state: requires modifying scheduler state machine,
+  untested path, violates lessons-learned §1 ("don't invent new state
+  when existing state covers the semantics").
+- ❌ Spin-wait (busy loop in handler): wastes cycles, breaks the scheduler
+  model.
+- ❌ Defer to Phase 2.2 discussion: risks implementing TcQueue without
+  a translation plan, which is the root cause of lessons-learned §1 bugs.
+
 ## Risks / Trade-offs
 
 | Risk | Severity | Mitigation |
 |------|----------|------------|
-| TMA descriptor binary layout mismatch with NVIDIA | High | Use cuobjdump-extracted real descriptors as ground truth; cross-validate against NVIDIA PTX ISA §9.7 |
-| cluster mode + existing CTAContext integration bugs | High | Phase 0 unit tests verify isolation; cluster integration test in Phase 1 |
-| async queue state translation bugs (ptx-lessons-learned §1) | High | Use `state-modification-audit` skill before each Phase commit; verify all consumers of `commit_group_counter` see consistent state |
-| TMA host API interception unclear | Medium | ADR-0017 deferred; Phase 0 uses fake descriptor |
-| Cute template sm_100 fallback to sm_90 wgmma | Medium | Out of scope — pre-Blackwell throw is expected per ADR-0016 |
+| TMA descriptor binary layout mismatch with NVIDIA | **Critical** (Oracle review: no HW to cross-validate) | Use NVIDIA PTX ISA §9.7 TensorMap field definitions to handcraft descriptor bytes; annotate header as "unverified against hardware". Phase 3 e2e failure triggers descriptor parse audit |
+| Fragment layout 解读错误无硬件交叉验证 | **Critical** (Oracle review: "hand-computed reference" correctness is actually self-consistency) | Annotate every fragment element's lane→(row,col) mapping with source PTX ISA §9.7.13 line references in wmma.cpp comments. Accept this risk: correctness = self-consistency until real hardware is available |
+| TcQueue→WarpState state translation bugs (ptx-lessons-learned §1) | **Critical** (Oracle review: cross-module translation is the #1 failure mode in this codebase) | Decision 7 requires reusing BAR_SYNC + BarrierModule path. Tasks.md Phase 0.4.5 mandates state-modification-audit skill execution before commit. All commit_group_counter writers AND is_blocked consumers must be audited |
+| cluster mode + existing CTAContext integration bugs | High | Phase 0 unit tests verify isolation; cluster integration test in Phase 0.5.3 |
+| cute template sm_100 fallback to sm_90 wgmma | Medium | Out of scope — pre-Blackwell throw is expected per ADR-0016 |
+| Phase 0 工程量超估 | Medium | 9 commits (Oracle: was 5); each commit self-contained; cluster simplified from 800-1200 → 300-400 LoC via deferred distributed_smem |
 | cute_rmsnorm future upgrade triggers Phase 0-2 dependency | Low | cute_rmsnorm upgrade blocked until Phase 0-2 done |
-| 5 Phase 0 commits × ~1000 LoC each = large merge surface | Medium | Each commit is self-contained; revert one doesn't break others |
 | Existing 165 ctest regression risk | Low | Phase 0 adds new tests, doesn't modify existing handler paths |
 | sm_120 sparse requires cta_group::2 | Low | Phase 2 reserves `cta_group::2` extension point |
+| TMA host API interception strategy unclear | Medium | ADR-0017 deferred; Phase 0 uses fake descriptor |
 
 ## Migration Plan
 
-**4 Phases, 9 commits total**:
+**4 Phases, 9 commits total** (Oracle review fix: Phase 0 grew from 5 to 9 commits to satisfy independent revertability — each subsystem integration is its own commit):
 
 ```
-Phase 0: Infrastructure (5 commits, ~3000-5000 LoC)
+Phase 0: Infrastructure (9 commits, ~3000-5000 LoC)
   Commit 0.1: feat(memory): TMA descriptor parser + storage
   Commit 0.2: feat(memory): Tensor Memory (TMEM) per-CTA storage
-  Commit 0.3: feat(sim): cluster mode + distributed shared memory
+  Commit 0.3: feat(sim): cluster arrive/wait (simplified—no distributed smem)
   Commit 0.4: feat(async): tc_queue commit-group + wait-aware scheduling
-  Commit 0.5: feat(sim): integrate TMA+TMEM+cluster+queue with CTAContext
+  Commit 0.5.1: feat(sim): integrate TMA descriptor store with CTAContext
+  Commit 0.5.2: feat(sim): integrate TMEM with CTAContext
+  Commit 0.5.3: feat(sim): integrate cluster context with CTAContext
+  Commit 0.5.4: feat(sim): integrate TcQueue with CTAContext
+  (Each 0.5.x revert removes only one subsystem ref; the other 3 stay live.)
 
 Phase 1: tcgen05.mma (2 commits, ~500-800 LoC)
   Commit 1.1: feat(wmma): implement tcgen05.mma fragment arithmetic
-  Commit 1.2: test(wmma): integration test for mma + commit sequence
+  Commit 1.2: test(wmma): integration test (read TMEM directly, no commit/wait)
 
 Phase 2: tcgen05.ld/st + commit/wait (2 commits, ~600-1000 LoC)
   Commit 2.1: feat(wmma): tcgen05.ld/st with TMA + TMEM integration
@@ -193,6 +269,9 @@ Phase 3: e2e + AGENTS + spec publish (1 commit, ~300-500 LoC)
 ```
 
 Each commit independently revertible (per ptx-lessons-learned §3).
+**Oracle review note**: Phase 1.2 integration test originally claimed to
+verify "mma + commit + wait" sequence, but commit/wait is Phase 2.2.
+Fixed to verify mma correctness by reading TMEM slots directly.
 
 ## Open Questions
 

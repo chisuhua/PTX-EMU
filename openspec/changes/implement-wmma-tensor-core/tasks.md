@@ -20,8 +20,10 @@
 
 ## Phase 0: 基础设施（TMA + TMEM + cluster + async queue）
 
-> 5 commits, ~3000-5000 LoC, 全部在写任何 tcgen05 handler 之前。
+> 9 commits (was 5), ~3000-5000 LoC, 全部在写任何 tcgen05 handler 之前。
 > 每个子系统独立可 revert（ptx-lessons-learned §3）。
+> Oracle review 修正：Phase 0.5 拆为 4 个微 commit（0.5.1~0.5.4）以修复
+> 集成 commit 与独立 revert 原则的结构性冲突。
 
 ### 0.1 TMA descriptors（Fix #5）
 
@@ -52,19 +54,22 @@
 - [ ] 0.2.6 commit: `git commit -m "feat(memory): per-CTA Tensor Memory (TMEM) (Fix #6)"`
 - [ ] 0.2.7 验证独立可 revert
 
-### 0.3 cluster mode（Fix #7）
+### 0.3 cluster mode — arrive/wait only（Fix #7）
+
+> **Oracle review simplification**: `cta_group::1` (Phase 1 target) does
+> NOT need distributed shared memory — only `cta_group::2` (future) does.
+> Phase 0.3 implements only `arrive`/`wait` primitives; distributed_smem
+> deferred to when `cta_group::2` is actually needed.
 
 - [ ] 0.3.1 创建 `src/ptxsim/cluster/cluster_context.h`：
-      - `class ClusterContext`（1-8 CTA 集群）
-      - `distributed_smem` 视图
+      - `class ClusterContext`（1-8 CTA 集群标识）
       - `cta_cluster_arrive()` / `cta_cluster_wait()` 同步原语
+      - **Deferred**: `distributed_smem` view（when cta_group::2 needed）
 - [ ] 0.3.2 创建 `src/ptxsim/cluster/cluster_context.cpp`
-- [ ] 0.3.3 修改 `src/ptxsim/core/cta_context.h` 添加 `cluster_context` 引用
-- [ ] 0.3.4 创建 `tests/unit/cluster/test_cluster_mode.cpp`
-- [ ] 0.3.5 CMakeLists 注册（含新建 `tests/unit/cluster/` 目录模板）
-- [ ] 0.3.6 自检：`ctest -R "cluster"` + 全套回归
-- [ ] 0.3.7 commit: `git commit -m "feat(sim): cluster mode + distributed shared memory (Fix #7)"`
-- [ ] 0.3.8 验证独立可 revert（关键：不能破坏现有 CTAContext 测试）
+- [ ] 0.3.3 创建 `tests/unit/cluster/test_cluster_mode.cpp`：验证 arrive/wait 同步
+- [ ] 0.3.4 CMakeLists 注册（含新建 `tests/unit/cluster/` 目录模板）
+- [ ] 0.3.5 自检：`ctest -R "cluster"` + 全套回归
+- [ ] 0.3.6 commit: `git commit -m "feat(sim): cluster arrive/wait primitives (Fix #7, simplified—no distributed smem)"`
 
 ### 0.4 async tensor core queue（Fix #8）
 
@@ -82,16 +87,41 @@
 - [ ] 0.4.7 commit: `git commit -m "feat(async): tc_queue commit-group + wait-aware scheduling (Fix #8)"`
 - [ ] 0.4.8 验证独立可 revert
 
-### 0.5 集成 TMA+TMEM+cluster+queue 与 CTAContext（Fix #9）
+### 0.5 逐子系统集成到 CTAContext（Fix #9a, #9b, #9c, #9d）
 
-- [ ] 0.5.1 修改 `src/ptxsim/core/cta_context.{h,cpp}`：
-      - 添加 `tma_descriptors` / `tmem` / `cluster_context` / `tc_queue` 引用
-      - 构造时初始化，析构时清理
-- [ ] 0.5.2 创建 `tests/integration/cluster/test_cluster_with_tc_queue.cpp`：
-      验证 4 个子系统集成后 commit/wait/distributed_smem 一致性
-- [ ] 0.5.3 自检：`ctest -R "cluster_with_tc_queue"` + 全套回归
-- [ ] 0.5.4 commit: `git commit -m "feat(sim): integrate TMA+TMEM+cluster+queue with CTAContext (Fix #9)"`
-- [ ] 0.5.5 验证集成 commit 独立可 revert（4 个子系统保留）
+> **Design rationale (Oracle review, 2026-07)**: 原设计将 4 个子系统在一个 commit
+> 中集成。Oracle 指出这违反 `ptx-lessons-learned` §3（独立可 revert）——revert
+> 后留下 4 个未引用子系统死代码。修复：拆为 4 个微 commit，每个只集成一个子系统。
+> Revert 任一微 commit 只丢失该子系统的 CTAContext 引用，其余 3 个仍正常工作。
+
+#### 0.5.1 TMA descriptors → CTAContext（Fix #9a）
+
+- [ ] 0.5.1.1 修改 `src/ptxsim/core/cta_context.{h,cpp}`：添加 `tma_descriptor_store` 引用
+- [ ] 0.5.1.2 创建 `tests/integration/tma/test_tma_with_cta_context.cpp`：验证 CTAContext.tma 与独立 TmaDescriptorStore 行为一致
+- [ ] 0.5.1.3 自检：`ctest -R "tma.*cta"` + `ctest -L "unit;integration;e2e"` 全套回归
+- [ ] 0.5.1.4 commit: `git commit -m "feat(sim): integrate TMA descriptor store with CTAContext (Fix #9a)"`
+- [ ] 0.5.1.5 验证独立可 revert（revert 后 CTAContext 不引用 TMA，其余 3 子系统不变）
+
+#### 0.5.2 TMEM → CTAContext（Fix #9b）
+
+- [ ] 0.5.2.1 修改 `src/ptxsim/core/cta_context.{h,cpp}`：添加 `tmem` 引用
+- [ ] 0.5.2.2 创建 `tests/integration/tmem/test_tmem_with_cta_context.cpp`：验证 CTAContext.tmem 隔离性
+- [ ] 0.5.2.3 自检：`ctest -R "tmem.*cta"` + 全套回归
+- [ ] 0.5.2.4 commit: `git commit -m "feat(sim): integrate TMEM with CTAContext (Fix #9b)"`
+
+#### 0.5.3 cluster → CTAContext（Fix #9c）
+
+- [ ] 0.5.3.1 修改 `src/ptxsim/core/cta_context.{h,cpp}`：添加 `cluster_context` 引用
+- [ ] 0.5.3.2 创建 `tests/integration/cluster/test_cluster_with_cta_context.cpp`：验证 arrive/wait 同步
+- [ ] 0.5.3.3 自检：`ctest -R "cluster.*cta"` + 全套回归
+- [ ] 0.5.3.4 commit: `git commit -m "feat(sim): integrate cluster context with CTAContext (Fix #9c)"`
+
+#### 0.5.4 TcQueue → CTAContext（Fix #9d）
+
+- [ ] 0.5.4.1 修改 `src/ptxsim/core/cta_context.{h,cpp}`：添加 `tc_queue` 引用
+- [ ] 0.5.4.2 创建 `tests/integration/async/test_tc_queue_with_cta_context.cpp`：验证 commit-group 顺序性
+- [ ] 0.5.4.3 自检：`ctest -R "tc_queue.*cta"` + 全套回归
+- [ ] 0.5.4.4 commit: `git commit -m "feat(sim): integrate TcQueue with CTAContext (Fix #9d)"`
 
 ---
 
@@ -113,13 +143,16 @@
 
 ### 1.2 集成测试
 
+> **Oracle review fix**: 原描述 "验证 uniform warp + mma + commit + wait 序列"
+> 但 commit/wait 在 Phase 2.2 才实现。修正为直接读 TMEM slot 验证 mma 结果。
+
 - [ ] 1.2.1 创建 `tests/integration/tcgen05/test_tcgen05_mma_sync.cpp`：
       - 使用 `execute_warp_instruction` 驱动
-      - 验证 uniform warp + mma + commit + wait 序列
+      - 验证 uniform warp 执行 mma 后 TMEM slot 值正确（直接读 TMEM，不经过 commit/wait）
       - 验证 32 lane 输出片段元素正确
 - [ ] 1.2.2 在 `tests/integration/CMakeLists.txt` 注册（含新建 `tests/integration/tcgen05/` 目录模板）
 - [ ] 1.2.3 自检：`ctest -R "tcgen05_mma_sync"` + 全套回归
-- [ ] 1.2.4 commit: `git commit -m "test(wmma): integration test for tcgen05.mma + commit sequence (Fix #11)"`
+- [ ] 1.2.4 commit: `git commit -m "test(wmma): integration test verifying tm09.mma writes correct TMEM slots (Fix #11)"`
 
 ---
 
@@ -182,7 +215,7 @@
 | Phase 0.2 (TMEM) | `git revert HEAD` → 仍能 build，无 TC memory → 抛异常 |
 | Phase 0.3 (cluster) | `git revert HEAD` → 必须跑 cluster 测试确认 CTAContext 未破坏 |
 | Phase 0.4 (tc_queue) | `git revert HEAD` → **关键**：跑全套回归 |
-| Phase 0.5 (集成) | `git revert HEAD` → 4 个子系统保留但 CTAContext 不引用 |
+| Phase 0.5.1~0.5.4 (逐子系统集成) | `git revert HEAD` → 仅从 CTAContext 移除该子系统引用；其余 3 个子系统 + 它们自己的 CTAContext 引用不受影响（Oracle fix: 原 0.5 revert 会留 4 个死代码子系统，修复后每个微 revert 只影响一个子系统） |
 | Phase 1 (mma 实现) | `git revert HEAD` → 回到 throw-only |
 | Phase 2 (ld/st+commit) | `git revert HEAD` → mma 仍工作，ld/st 抛异常 |
 | Phase 3 (e2e + AGENTS) | `git revert HEAD` → 仅回滚测试和文档 |

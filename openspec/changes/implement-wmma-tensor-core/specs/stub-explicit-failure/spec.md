@@ -108,3 +108,27 @@ Future Tensor Core work targets Blackwell `tcgen05.*` only.
 - **THEN** the WMMA entry MUST reference ADR-0016 as the policy basis
 - **AND** the root `AGENTS.md` "已知限制" table WMMA row MUST also reference
   ADR-0016
+
+#### Scenario: mixed-cubin-pre-blackwell-and-blackwell-coexist
+- **WHEN** a single cubin contains BOTH sm_80 `wmma.mma.sync` instructions
+  (from cute sm_80 fallback) AND sm_100 `tcgen05.mma` instructions (from
+  the primary path) — as can occur when cute templates link sm_80 fallback
+  alongside sm_100 code paths
+- **THEN** `WmmaHandler::processWmmaOperation` dispatches per-qualifier:
+  sm_80 path throws `UnsupportedInstructionException`, sm_100 path executes
+  real fragment arithmetic
+- **AND** the two paths do not interfere (throw on sm_80 does not corrupt
+  TMEM state from sm_100, and vice versa)
+
+#### Scenario: phase-0-blackwell-still-throws
+- **WHEN** Phase 0 (infrastructure) of `implement-wmma-tensor-core` is
+  merged to main, but Phase 1 (tcgen05.mma implementation) has not yet
+  been merged
+- **THEN** `WmmaHandler::processWmmaOperation` still throws
+  `UnsupportedInstructionException` for ALL wmma.* instructions including
+  Blackwell tcgen05.mma (temporary behavior)
+- **AND** the exception message includes a reference to
+  "implement-wmma-tensor-core Phase 1"
+- **NOTE**: this scenario MUST be removed during the archive of
+  `implement-wmma-tensor-core` (Phase 3), as it documents a transitional
+  state that expires when Phase 1 is complete
