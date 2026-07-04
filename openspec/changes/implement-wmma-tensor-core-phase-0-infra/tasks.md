@@ -78,21 +78,35 @@
 - [x] 0.3.5 自检：`ctest -R "cluster"` → **15 TEST_CASEs / 17 assertions PASS** (0.11s) ；回归 `ctest -L "unit|integration|e2e"` → **126 labeled PASS** (added 1 ctest target；zero regression)
 - [x] 0.3.6 commit: `e513235 feat(sim): cluster arrive/wait primitives (Fix #7, simplified—no distributed smem)` (5 files: 3 new + 2 modified; atomic)
 
-## Phase 0.4: async tensor core queue（Fix #8）
+## Phase 0.4: async tensor core queue（Fix #8）— ✅ DONE (commit c0fa43f)
 
-- [ ] 0.4.1 创建 `src/ptxsim/async/tc_queue.h`:
+- [x] 0.4.1 创建 `src/ptxsim/async/tc_queue.h` (74 LoC):
       - `class TcQueue`（per-CTA 命令队列）
-      - `commit(group_id)` → counter++
-      - `wait(group_id)` → 阻塞直到 `commit_group_counter >= group_id`
-      - `enqueue_mma(...)` 抽象
-- [ ] 0.4.2 创建 `src/ptxsim/async/tc_queue.cpp`
-- [ ] 0.4.3 创建 `tests/unit/async/test_tc_queue.cpp`：commit-group 顺序 + wait-aware 调度
-- [ ] 0.4.4 CMakeLists 注册（含新建 `tests/unit/async/` 目录模板）
-- [ ] 0.4.5 **关键审计**：使用 `state-modification-audit` skill 检查
-      `commit_group_counter` 的所有读写点（`ptx-lessons-learned` §1, `design.md §Decision 7`）
-- [ ] 0.4.6 自检：`ctest -R "tc_queue"` + 全套回归
-- [ ] 0.4.7 commit: `git commit -m "feat(async): tc_queue commit-group + wait-aware scheduling (Fix #8)"`
-- [ ] 0.4.8 验证独立可 revert
+      - `commit(group_id)` → atomic CAS fetch_max
+      - `wait(group_id, warp_ctx, lane_id)` → capture pc+1 store + per-warp_state set is_blocked+status
+      - `clear()` + `current_counter()` + `pending_count()` 测试/观测 API
+      - 注：`enqueue_mma()` 是 Phase 1-3 scope，留待 `tcgen05.mma` handler 接入
+- [x] 0.4.2 创建 `src/ptxsim/async/tc_queue.cpp` (108 LoC, std::atomic + std::mutex + std::vector<PendingWaiter>)
+- [x] 0.4.3 创建 `tests/unit/async/test_tc_queue.cpp` (315 LoC, 14 TEST_CASEs / 61 assertions):
+      construct_default_counter_zero / commit_advances_counter_monotonically /
+      commit_cas_idempotent_same_group / wait_block_lane_at_pc /
+      wait_stores_completion_pc_plus_one_in_pending /
+      wait_then_immediate_commit_releases_lane /
+      wait_continues_blocked_until_commit_reaches_group /
+      multiple_waiters_different_groups_release_in_order /
+      multiple_waiters_same_group_all_released / clear_resets_to_initial_state /
+      concurrent_commit_thread_safety / completion_pc_uses_stored_value_not_current /
+      no_set_active_mask_in_src_ptxsim_async / ...
+- [x] 0.4.4 CMakeLists 注册：`src/CMakeLists.txt` (new `ptxsim/async/` section after `ptxsim/cluster/cluster_context.cpp`) + `tests/unit/CMakeLists.txt` (new `tests/unit/async/` dir + `add_catch_test(unit_tc_queue async/test_tc_queue.cpp)` `LABELS "unit;async;tc_queue"`)
+- [x] 0.4.5 **关键审计**（Oracle Q1/Q2/Q3/Q4 hypotheses + state-modification-audit skill）
+      - commit_group_counter writers ⊆ {TcQueue::commit (+ init + clear())} ✅
+      - NO set_active_mask call from tc_queue.cpp (AGENTS.md ownership rule) ✅
+      - NO set_state(BAR_SYNC) call from tc_queue.cpp (Decision 7 reuse BAR_SYNC) ✅
+      - is_blocked= assignments: 2 (wait→true, commit→false per Oracle Q1 hypothesis 2)
+      - 复用 BarrierModule::release_warp_barrier post-unblock 模式 (advance_thread_pc + is_blocked=false + status=Active + is_active=true per lane)
+- [x] 0.4.6 自检：`ctest -R "tc_queue"` → **14/14 PASS (61 assertions, 0.01s)** ；回归 `ctest -L "unit|integration|e2e"` → **127 labeled PASS**（added 1 ctest target；zero regression）
+- [x] 0.4.7 commit: `c0fa43f feat(async): tc_queue commit-group + wait-aware scheduling (Fix #8)` (5 files: 3 new + 2 modified; atomic)
+- [x] 0.4.8 验证独立可 revert (新 src/ptxsim/async/tc_queue.* + tests 隔离；revert HEAD 安全移除 3 files + 2 CMakeLists 行 — **但 Phase 0.5.4 依赖 TcQueue，所以单独 revert 必须等到 0.5.4 撤销完成**)
 
 ## Phase 0.5: 逐子系统集成到 CTAContext（Fix #9a, #9b, #9c, #9d）
 
