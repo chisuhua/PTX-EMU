@@ -27,7 +27,7 @@ std::string S2s(StatementType s);
 
 enum OperandType { O_REG, O_VAR, O_IMM, O_VEC, O_FA, O_PRED };
 
-enum WmmaType { WMMA_LOAD, WMMA_STORE, WMMA_MMA };
+enum WmmaType { WMMA_LOAD, WMMA_STORE, WMMA_MMA, WMMA_COMMIT, WMMA_WAIT };
 
 enum class OperandKind { REG, VAR, IMM, VEC, ADDR, PRED };
 

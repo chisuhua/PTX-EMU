@@ -518,6 +518,14 @@ add_catch_test(unit_tcgen05_mma_fragment
 set_tests_properties(unit_tcgen05_mma_fragment PROPERTIES LABELS "unit;ptx;wmma;tcgen05;fragment")
 
 # ---------------------------------------------------------------------------
+# Phase 2.1 (Fix #12): tcgen05.ld/st unit tests.
+# ---------------------------------------------------------------------------
+add_catch_test(unit_tcgen05_ld_st
+    ptx/test_tcgen05_ld_st.cpp
+)
+set_tests_properties(unit_tcgen05_ld_st PROPERTIES LABELS "unit;ptx;wmma;tcgen05;ld_st")
+
+# ---------------------------------------------------------------------------
 # A2 cleanup (2026-06): the 7 tests below all `<<<1, 1>>>` real GPU kernels
 # and verify NVIDIA's PTX semantics — they do NOT exercise the PTX-EMU
 # simulator. They were moved to tests/reference/ptx_builtin/ as a

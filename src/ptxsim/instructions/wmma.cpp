@@ -1,4 +1,5 @@
 #include "memory/hardware_memory_manager.h"
+#include "memory/hardware_memory_manager.h"
 #include "ptxsim/instruction_handlers.h"
 #include "ptxsim/ptx_exceptions.h"
 #include "ptxsim/thread_context.h"
@@ -27,7 +28,35 @@ bool has_qualifier(const std::vector<Qualifier>& qualifiers, Qualifier q) {
 
 bool is_tcgen05_mma_f16(const std::vector<Qualifier>& qualifiers) {
     return has_qualifier(qualifiers, Qualifier::Q_CLUSTER) &&
-           has_qualifier(qualifiers, Qualifier::Q_F16);
+           has_qualifier(qualifiers, Qualifier::Q_F16) &&
+           !has_qualifier(qualifiers, Qualifier::Q_TCGEN05_LD) &&
+           !has_qualifier(qualifiers, Qualifier::Q_TCGEN05_ST) &&
+           !has_qualifier(qualifiers, Qualifier::Q_TCGEN05_COMMIT) &&
+           !has_qualifier(qualifiers, Qualifier::Q_TCGEN05_WAIT);
+}
+
+bool is_tcgen05_ld(const std::vector<Qualifier>& qualifiers) {
+    return has_qualifier(qualifiers, Qualifier::Q_CLUSTER) &&
+           has_qualifier(qualifiers, Qualifier::Q_F16) &&
+           has_qualifier(qualifiers, Qualifier::Q_TCGEN05_LD);
+}
+
+bool is_tcgen05_st(const std::vector<Qualifier>& qualifiers) {
+    return has_qualifier(qualifiers, Qualifier::Q_CLUSTER) &&
+           has_qualifier(qualifiers, Qualifier::Q_F16) &&
+           has_qualifier(qualifiers, Qualifier::Q_TCGEN05_ST);
+}
+
+bool is_tcgen05_commit(const std::vector<Qualifier>& qualifiers) {
+    return has_qualifier(qualifiers, Qualifier::Q_CLUSTER) &&
+           has_qualifier(qualifiers, Qualifier::Q_F16) &&
+           has_qualifier(qualifiers, Qualifier::Q_TCGEN05_COMMIT);
+}
+
+bool is_tcgen05_wait(const std::vector<Qualifier>& qualifiers) {
+    return has_qualifier(qualifiers, Qualifier::Q_CLUSTER) &&
+           has_qualifier(qualifiers, Qualifier::Q_F16) &&
+           has_qualifier(qualifiers, Qualifier::Q_TCGEN05_WAIT);
 }
 
 // UNVERIFIED-AGAINST-HARDWARE — fragment element lane 0 C[0][0] PTX ISA §9.7.13
@@ -289,9 +318,36 @@ bool is_tcgen05_mma_f16(const std::vector<Qualifier>& qualifiers) {
 
 }
 
+void execute_tcgen05_ld(ThreadContext* context,
+                         const std::vector<Qualifier>& qualifiers);
+void execute_tcgen05_st(ThreadContext* context,
+                         const std::vector<Qualifier>& qualifiers);
+void execute_tcgen05_commit(ThreadContext* context,
+                             const std::vector<Qualifier>& qualifiers);
+void execute_tcgen05_wait(ThreadContext* context,
+                           const std::vector<Qualifier>& qualifiers);
+
 void WmmaHandler::processWmmaOperation(ThreadContext *context, void **operands,
                                         const std::vector<Qualifier> &qualifiers) {
     (void)operands;
+
+    // Dispatch based on qualifier sub-operation markers
+    if (is_tcgen05_ld(qualifiers)) {
+        execute_tcgen05_ld(context, qualifiers);
+        return;
+    }
+    if (is_tcgen05_st(qualifiers)) {
+        execute_tcgen05_st(context, qualifiers);
+        return;
+    }
+    if (is_tcgen05_commit(qualifiers)) {
+        execute_tcgen05_commit(context, qualifiers);
+        return;
+    }
+    if (is_tcgen05_wait(qualifiers)) {
+        execute_tcgen05_wait(context, qualifiers);
+        return;
+    }
 
     if (!is_tcgen05_mma_f16(qualifiers)) {
         PTX_ERROR_EMU("WMMA / Tensor Core instruction not implemented "
@@ -362,4 +418,103 @@ void WmmaHandler::processWmmaOperation(ThreadContext *context, void **operands,
 
     PTX_DEBUG_EMU("tcgen05.mma.cta_group::1.kind::f16 executed "
                   "(32 lanes x 8x4 fragments)");
+}
+
+void execute_tcgen05_ld(ThreadContext* context,
+                         const std::vector<Qualifier>& qualifiers) {
+    (void)qualifiers;
+    // PTX ISA §9.7.13: tcgen05.ld — load from TMA descriptor to TMEM
+    // UNVERIFIED-AGAINST-HARDWARE — PTX ISA §9.7.13
+    WarpContext* warp = context->get_warp_context();
+    if (!warp) {
+        PTX_ERROR_EMU("tcgen05.ld: no WarpContext attached to thread");
+        throw UnsupportedInstructionException(
+            "wmma.ld", "tcgen05.ld requires an active WarpContext");
+    }
+    CTAContext* cta = warp->get_cta_context();
+    if (!cta) {
+        PTX_ERROR_EMU("tcgen05.ld: no CTAContext attached to warp");
+        throw UnsupportedInstructionException(
+            "wmma.ld", "tcgen05.ld requires an active CTAContext");
+    }
+
+    TmaDescriptorStore& desc_store = cta->tma_descriptor_store();
+    const TmaDescriptor* desc = desc_store.load(0);
+    if (!desc) {
+        PTX_ERROR_EMU("tcgen05.ld: no TMA descriptor found for cta_id=0");
+        throw UnsupportedInstructionException(
+            "wmma.ld", "tcgen05.ld requires a TMA descriptor");
+    }
+
+    // UNVERIFIED-AGAINST-HARDWARE — 128-byte transfer per PTX ISA §9.7.13
+    uint8_t tmp[Tmem::kSlotSize];
+    std::memcpy(tmp, reinterpret_cast<const void*>(desc->global_address),
+                Tmem::kSlotSize);
+
+    Tmem& tmem = cta->tmem();
+    // UNVERIFIED-AGAINST-HARDWARE — target slot 0 per PTX ISA §9.7.13
+    tmem.write(0, tmp, Tmem::kSlotSize);
+
+    PTX_DEBUG_EMU("tcgen05.ld: TMA desc global=0x%016lx → TMEM slot 0 "
+                  "(%zu bytes)",
+                  desc->global_address, Tmem::kSlotSize);
+}
+
+void execute_tcgen05_st(ThreadContext* context,
+                         const std::vector<Qualifier>& qualifiers) {
+    (void)qualifiers;
+    // PTX ISA §9.7.13: tcgen05.st — store from TMEM to TMA descriptor
+    // UNVERIFIED-AGAINST-HARDWARE — PTX ISA §9.7.13
+    WarpContext* warp = context->get_warp_context();
+    if (!warp) {
+        PTX_ERROR_EMU("tcgen05.st: no WarpContext attached to thread");
+        throw UnsupportedInstructionException(
+            "wmma.st", "tcgen05.st requires an active WarpContext");
+    }
+    CTAContext* cta = warp->get_cta_context();
+    if (!cta) {
+        PTX_ERROR_EMU("tcgen05.st: no CTAContext attached to warp");
+        throw UnsupportedInstructionException(
+            "wmma.st", "tcgen05.st requires an active CTAContext");
+    }
+
+    TmaDescriptorStore& desc_store = cta->tma_descriptor_store();
+    const TmaDescriptor* desc = desc_store.load(0);
+    if (!desc) {
+        PTX_ERROR_EMU("tcgen05.st: no TMA descriptor found for cta_id=0");
+        throw UnsupportedInstructionException(
+            "wmma.st", "tcgen05.st requires a TMA descriptor");
+    }
+
+    // UNVERIFIED-AGAINST-HARDWARE — 128-byte transfer per PTX ISA §9.7.13
+    uint8_t tmp[Tmem::kSlotSize];
+    Tmem& tmem = cta->tmem();
+    tmem.read(0, tmp, Tmem::kSlotSize);
+
+    std::memcpy(reinterpret_cast<void*>(desc->global_address),
+                tmp, Tmem::kSlotSize);
+
+    PTX_DEBUG_EMU("tcgen05.st: TMEM slot 0 → TMA desc global=0x%016lx "
+                  "(%zu bytes)",
+                  desc->global_address, Tmem::kSlotSize);
+}
+
+void execute_tcgen05_commit(ThreadContext* context,
+                             const std::vector<Qualifier>& qualifiers) {
+    (void)context;
+    (void)qualifiers;
+    PTX_ERROR_EMU("tcgen05.commit: not yet implemented (Phase 2.2)");
+    throw UnsupportedInstructionException(
+        "wmma.commit",
+        "tcgen05.commit not yet implemented in ptx-emu");
+}
+
+void execute_tcgen05_wait(ThreadContext* context,
+                           const std::vector<Qualifier>& qualifiers) {
+    (void)context;
+    (void)qualifiers;
+    PTX_ERROR_EMU("tcgen05.wait: not yet implemented (Phase 2.2)");
+    throw UnsupportedInstructionException(
+        "wmma.wait",
+        "tcgen05.wait not yet implemented in ptx-emu");
 }

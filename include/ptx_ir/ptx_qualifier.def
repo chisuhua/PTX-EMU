@@ -190,6 +190,12 @@ X(Q_KIND_MXF4NVF4, KIND_MXF4NVF4, ".kind::mxf4nvf4")
 X(Q_SCALE_VEC_SIZE, SCALE_VEC_SIZE, ".scale_vec_size")
 X(Q_BLOCK_SCALE, BLOCK_SCALE, ".block_scale")
 
+// tcgen05 sub-operation markers (distinguish mma/ld/st/commit/wait in WmmaHandler dispatch)
+X(Q_TCGEN05_LD, TCGEN05_LD, ".tcgen05_ld")
+X(Q_TCGEN05_ST, TCGEN05_ST, ".tcgen05_st")
+X(Q_TCGEN05_COMMIT, TCGEN05_COMMIT, ".tcgen05_commit")
+X(Q_TCGEN05_WAIT, TCGEN05_WAIT, ".tcgen05_wait")
+
 // -----------------------------------------------------------------------------
 // 14. New Shapes
 // -----------------------------------------------------------------------------
