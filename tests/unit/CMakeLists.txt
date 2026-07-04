@@ -208,6 +208,19 @@ add_catch_test(unit_memory_bounds
 set_tests_properties(unit_memory_bounds PROPERTIES LABELS "unit;memory")
 
 # ============================================================================
+# Phase 0.1 (Fix #5): TMA TensorMap descriptor parser unit tests.
+# Validates 128-byte CUtensorMap opaque descriptor parsing per PTX ISA §9.7.13
+# (all byte offsets UNVERIFIED-AGAINST-HARDWARE — see tma_descriptor.h).
+# 18 TEST_CASEs cover happy path + dtype/swizzle/interleave/rank variants +
+# invalid size/alignment/bounds + TmaDescriptorStore round-trip/isolation/
+# overwrite/clear. Consumed by tcgen05.ld in Phase 1-3.
+# ============================================================================
+add_catch_test(unit_tma_descriptor
+    memory/test_tma_descriptor.cpp
+)
+set_tests_properties(unit_tma_descriptor PROPERTIES LABELS "unit;memory;tma")
+
+# ============================================================================
 # Memory Regression Tests (BUG-ST-OVERREAD, BUG-NAME2SHARE)
 # RED PHASE: These tests must FAIL on unpatched code.
 # ============================================================================

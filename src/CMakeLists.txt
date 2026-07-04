@@ -81,6 +81,10 @@ add_library(ptxsim SHARED
     memory/simple_memory.cpp
     memory/shared_memory_manager.cpp
     memory/resource_manager.cpp
+    # Phase 0.1 (Fix #5): Blackwell TMA TensorMap descriptor parser.
+    # Lives in ptxsim/memory/ (NEW dir for Phase 0 infra, distinct from
+    # legacy src/memory/). Consumed by tcgen05.ld in Phase 1-3.
+    ptxsim/memory/tma_descriptor.cpp
     ptxsim/debug/ptx_config.cpp
     ptxsim/debug/warp_trace_formatter.cpp
     ptxsim/debug/ptx_debugger.cpp
