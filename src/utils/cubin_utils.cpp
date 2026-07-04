@@ -117,6 +117,11 @@ std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
 
     std::string ptx_codes;
     std::string ptx_file;
+    // Count how many .ptx sections cuobjdump found in the cubin. The
+    // extracted text is appended for all sections (legacy behavior, do
+    // not change to "first only" without breaking multi-cubin tests);
+    // the warning below is purely diagnostic. See c5 Fix #3.
+    int ptx_section_count = 0;
     while (std::getline(ptx_list_file, ptx_file)) {
         char extract_cmd[1024];
         snprintf(extract_cmd, 1024, CUOBJDUMP_PATH " -xptx %s %s",
@@ -142,11 +147,19 @@ std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
         }
         extracted_ptx_file.close();
 
+        ++ptx_section_count;
+
         char cleanup_cmd[1024];
         snprintf(cleanup_cmd, 1024, "rm %s", ptx_file_path.c_str());
         system(cleanup_cmd);
     }
     ptx_list_file.close();
+
+    if (ptx_section_count > 1) {
+        PTX_WARN_EMU("Multiple PTX sections found in cubin (count=%d) - "
+                     "all sections extracted (c5 Fix #3)",
+                     ptx_section_count);
+    }
 
     char cleanup_cmd[1024];
     snprintf(cleanup_cmd, 1024, "rm %s", ptx_list_path.c_str());
