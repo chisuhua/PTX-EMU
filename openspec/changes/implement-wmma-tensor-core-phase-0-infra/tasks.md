@@ -122,30 +122,35 @@
 > 单个微 commit revert 会导致编译失败（未解析的 CTAContext 引用）。
 > 失败处理：任何 Phase 0.5 子系统 bug → 整体回退，不单独 revert。
 
-### 0.5.1 TMA descriptors → CTAContext（Fix #9a）
-- [ ] 0.5.1.1 修改 `src/ptxsim/core/cta_context.{h,cpp}`：添加 `tma_descriptor_store` 引用
-- [ ] 0.5.1.2 创建 `tests/integration/tma/test_tma_with_cta_context.cpp`：验证 CTAContext.tma 行为一致
-- [ ] 0.5.1.3 自检：`ctest -R "tma.*cta"` + `ctest -L "unit\|integration\|e2e"` 全套回归
-- [ ] 0.5.1.4 commit: `git commit -m "feat(sim): integrate TMA descriptor store with CTAContext (Fix #9a)"`
-- [ ] 0.5.1.5 验证 0.5.1 移除后 CTAContext 不引用 TMA（其余 3 子系统不变）
+### 0.5.1 TMA descriptors → CTAContext（Fix #9a）— ✅ DONE (commit 1254a45)
+- [x] 0.5.1.1 修改 `include/ptxsim/cta_context.h`：添加 `tma_descriptor_store` 引用（default-init via `TmaDescriptorStore()=default` + in-class member；cta_context.cpp 不需改）
+- [x] 0.5.1.2 创建 `tests/integration/tma/test_tma_with_cta_context.cpp`（172 LoC, 5 TEST_CASEs, 35 assertions）
+- [x] 0.5.1.3 自检：`ctest -R "tma.*cta"` → 1/1 PASS ；回归 `ctest -L "unit|integration|e2e"` → 128 labeled PASS（added 1 ctest target；zero regression）
+- [x] 0.5.1.4 commit: `1254a45 feat(sim): integrate TMA descriptor store with CTAContext (Fix #9a)` (3 files: 1 new + 2 modified; atomic)
+- [x] 0.5.1.5 验证 0.5.1 移除后 CTAContext 不引用 TMA（其余 3 子系统不变）
 
-### 0.5.2 TMEM → CTAContext（Fix #9b）
-- [ ] 0.5.2.1 修改 `src/ptxsim/core/cta_context.{h,cpp}`：添加 `tmem` 引用
-- [ ] 0.5.2.2 创建 `tests/integration/tmem/test_tmem_with_cta_context.cpp`：验证 CTAContext.tmem 隔离性
-- [ ] 0.5.2.3 自检：`ctest -R "tmem.*cta"` + 全套回归
-- [ ] 0.5.2.4 commit: `git commit -m "feat(sim): integrate TMEM with CTAContext (Fix #9b)"`
+### 0.5.2 TMEM → CTAContext（Fix #9b）— ✅ DONE (commit 9f325ee)
+- [x] 0.5.2.1 修改 `include/ptxsim/cta_context.h`：添加 `tmem` 引用（default-init via `Tmem()` + in-class member）
+- [x] 0.5.2.2 创建 `tests/integration/tmem/test_tmem_with_cta_context.cpp`（172 LoC, 5 TEST_CASEs, 1926 assertions）
+- [x] 0.5.2.3 自检：`ctest -R "tmem.*cta"` → 1/1 PASS ；回归 → 129 labeled PASS（zero regression）
+- [x] 0.5.2.4 commit: `9f325ee feat(sim): integrate TMEM with CTAContext (Fix #9b)` (3 files: 1 new + 2 modified; atomic)
 
-### 0.5.3 cluster → CTAContext（Fix #9c）
-- [ ] 0.5.3.1 修改 `src/ptxsim/core/cta_context.{h,cpp}`：添加 `cluster_context` 引用
-- [ ] 0.5.3.2 创建 `tests/integration/cluster/test_cluster_with_cta_context.cpp`：验证 arrive/wait 同步
-- [ ] 0.5.3.3 自检：`ctest -R "cluster.*cta"` + 全套回归
-- [ ] 0.5.3.4 commit: `git commit -m "feat(sim): integrate cluster context with CTAContext (Fix #9c)"`
+### 0.5.3 cluster → CTAContext（Fix #9c）— ✅ DONE (commit 9891587)
+- [x] 0.5.3.1 修改 `include/ptxsim/cta_context.h`：添加 `std::optional<ClusterContext>` 成员（**Option A lazy-init** — `ClusterContext` 有显式 ctor `(root_id, num_ctas)`，不可 default-init；`std::optional::emplace()` 原地构造避免 move/copy）
+- [x] 0.5.3.2 创建 `tests/integration/cluster/test_cluster_with_cta_context.cpp`（140 LoC, 6 TEST_CASEs, 16 assertions）
+- [x] 0.5.3.3 自检：`ctest -R "cluster.*cta"` → 1/1 PASS ；回归 → 130 labeled PASS（zero regression）
+- [x] 0.5.3.4 commit: `9891587 feat(sim): integrate cluster context with CTAContext (Fix #9c)` (3 files: 1 new + 2 modified; atomic)
 
-### 0.5.4 TcQueue → CTAContext（Fix #9d）
-- [ ] 0.5.4.1 修改 `src/ptxsim/core/cta_context.{h,cpp}`：添加 `tc_queue` 引用
-- [ ] 0.5.4.2 创建 `tests/integration/async/test_tc_queue_with_cta_context.cpp`：验证 commit-group 顺序性
-- [ ] 0.5.4.3 自检：`ctest -R "tc_queue.*cta"` + 全套回归
-- [ ] 0.5.4.4 commit: `git commit -m "feat(sim): integrate TcQueue with CTAContext (Fix #9d)"`
+### 0.5.4 TcQueue → CTAContext（Fix #9d）— ✅ DONE (commit 6b2c465)
+- [x] 0.5.4.1 修改 `include/ptxsim/cta_context.h`：添加 `tc_queue` 引用（default-init via `TcQueue()` + in-class member）
+- [x] 0.5.4.2 创建 `tests/integration/async/test_tc_queue_with_cta_context.cpp`（87 LoC, 5 TEST_CASEs, 17 assertions）
+- [x] 0.5.4.3 自检：`ctest -R "tc_queue.*cta"` → 1/1 PASS ；回归 → **131 labeled PASS**（zero regression）
+- [x] 0.5.4.4 commit: `6b2c465 feat(sim): integrate TcQueue with CTAContext (Fix #9d)` (3 files: 1 new + 2 modified; atomic)
+
+**Phase 0.5 最终状态**（per 设计 Decision 9）:
+- 4 micro commits (`1254a45`, `9f325ee`, `9891587`, `6b2c465`) 形成非单独可 revert 集合
+- 任何 Phase 0.5 子系统 bug → 整体回退：`git revert 1254a45..6b2c465`
+- 单 micro commit revert 会导致编译失败（未解析 CTAContext 引用）
 
 ---
 
