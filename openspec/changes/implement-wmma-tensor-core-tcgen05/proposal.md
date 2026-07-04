@@ -2,8 +2,8 @@
 
 > **架构决策**: 本 change scope 由 [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) 锁定。
 >
-> **前置 change（硬依赖）**: `implement-wmma-tensor-core-phase-0-infra`
-> (本批 archive 后)
+> **前置 change**: `implement-wmma-tensor-core-phase-0-infra` (archived 2026-07-04)
+> **Ref**: archive/2026-07-04-implement-wmma-tensor-core-phase-0-infra/
 >
 > **本 change 交付**: Phase 1 (mma fragment arithmetic) + Phase 2 (ld/st + commit/wait async) +
 > Phase 3 (e2e GEMM + AGENTS sync + spec publish) = **5 commits**
@@ -11,7 +11,7 @@
 > **前置依赖**:
 > - `replace-silent-stub-failures` (archived 2026-07-04)：建立 `WmmaHandler` 抛 `UnsupportedInstructionException` 合约
 > - ADR-0016（Accepted 2026-07-04）：架构依据
-> - `implement-wmma-tensor-core-phase-0-infra`（本批 archive 后）：TMA + TMEM + cluster + TcQueue 基础设施
+> - `implement-wmma-tensor-core-phase-0-infra` (archived 2026-07-04)：TMA + TMEM + cluster + TcQueue 基础设施
 
 ## Why
 
