@@ -208,6 +208,56 @@ add_catch_test(unit_memory_bounds
 set_tests_properties(unit_memory_bounds PROPERTIES LABELS "unit;memory")
 
 # ============================================================================
+# Phase 0.1 (Fix #5): TMA TensorMap descriptor parser unit tests.
+# Validates 128-byte CUtensorMap opaque descriptor parsing per PTX ISA §9.7.13
+# (all byte offsets UNVERIFIED-AGAINST-HARDWARE — see tma_descriptor.h).
+# 18 TEST_CASEs cover happy path + dtype/swizzle/interleave/rank variants +
+# invalid size/alignment/bounds + TmaDescriptorStore round-trip/isolation/
+# overwrite/clear. Consumed by tcgen05.ld in Phase 1-3.
+# ============================================================================
+add_catch_test(unit_tma_descriptor
+    memory/test_tma_descriptor.cpp
+)
+set_tests_properties(unit_tma_descriptor PROPERTIES LABELS "unit;memory;tma")
+
+# ============================================================================
+# Phase 0.2 (Fix #6): Blackwell per-CTA Tensor Memory (TMEM) unit tests.
+# 256 slot × 128 byte = 32 KB per CTA — per PTX ISA §9.7.13.
+# ≥10 TEST_CASEs cover default-zero, read/write round-trip, cross-CTA
+# isolation, bounds enforcement (slot_id, size), clear, non-clobbering
+# partial writes. Consumed by tcgen05.* in Phase 1-3.
+# ============================================================================
+add_catch_test(unit_tmem
+    memory/test_tmem.cpp
+)
+set_tests_properties(unit_tmem PROPERTIES LABELS "unit;memory;tmem")
+
+# ============================================================================
+# Phase 0.3 (Fix #7): cluster arrive/wait unit tests.
+# ≥10 TEST_CASEs cover constructor validation, single-CTA arrive/wait,
+# multi-CTA blocking sync, duplicate arrive rejection,
+# wait-before-arrive rejection, cross-cluster isolation.
+# Consumed by cta_group::1 (Phase 1-3).
+# ============================================================================
+add_catch_test(unit_cluster_mode
+    cluster/test_cluster_mode.cpp
+)
+set_tests_properties(unit_cluster_mode PROPERTIES LABELS "unit;cluster")
+
+# ============================================================================
+# Phase 0.4 (Fix #8): async tensor core command queue unit tests.
+# ≥14 TEST_CASEs cover default construction, commit-group monotonic counter,
+# wait() lane blocking + completion_pc capture, commit() per-lane unblock,
+# multi-waiter ordering, clear reset, concurrent commit thread-safety,
+# and completion_pc drift prevention.
+# Consumed by tcgen05.* async commit/wait in Phase 1-3.
+# ============================================================================
+add_catch_test(unit_tc_queue
+    async/test_tc_queue.cpp
+)
+set_tests_properties(unit_tc_queue PROPERTIES LABELS "unit;async;tc_queue")
+
+# ============================================================================
 # Memory Regression Tests (BUG-ST-OVERREAD, BUG-NAME2SHARE)
 # RED PHASE: These tests must FAIL on unpatched code.
 # ============================================================================

@@ -5,10 +5,15 @@
 #include "ptxsim/barrier/barrier_module.h"
 #include "ptxsim/common_types.h" // 包含通用类型定义
 #include "ptxsim/execution_types.h"
+#include "ptxsim/memory/tma_descriptor.h"
+#include "ptxsim/memory/tmem.h"
+#include "ptxsim/cluster/cluster_context.h"
+#include "ptxsim/async/tc_queue.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/warp_context.h"
 #include <map>
 #include <memory>
+#include <optional>
 #include <vector>
 
 enum class CTAState {
@@ -93,6 +98,33 @@ public:
         }
     }
 
+    // Phase 0.5.1 (Fix #9a): per-CTA TMA descriptor store accessor
+    TmaDescriptorStore& tma_descriptor_store() { return tma_descriptor_store_; }
+    const TmaDescriptorStore& tma_descriptor_store() const { return tma_descriptor_store_; }
+
+    // Phase 0.5.2 (Fix #9b): per-CTA TMEM accessor
+    Tmem& tmem() { return tmem_; }
+    const Tmem& tmem() const { return tmem_; }
+
+    // Phase 0.5.3 (Fix #9c): per-CTA cluster context (lazy-init via
+    // std::optional — ClusterContext has explicit ctor, unlike
+    // TmaDescriptorStore/Tmem which have default ctors).
+    // Pre-condition: init_cluster_context() must be called before
+    // cluster_context() accessor. has_cluster_context() for explicit check.
+    void init_cluster_context(ClusterContext::cta_id_t root_id,
+                              ClusterContext::cluster_size_t num_ctas) {
+        cluster_context_.emplace(root_id, num_ctas);
+    }
+    ClusterContext& cluster_context() { return cluster_context_.value(); }
+    const ClusterContext& cluster_context() const {
+        return cluster_context_.value();
+    }
+    bool has_cluster_context() const { return cluster_context_.has_value(); }
+
+    // Phase 0.5.4 (Fix #9d): per-CTA TcQueue accessor
+    TcQueue& tc_queue() { return tc_queue_; }
+    const TcQueue& tc_queue() const { return tc_queue_; }
+
     ~CTAContext();
 
 private:
@@ -110,6 +142,21 @@ private:
 
     // 统一管理 CTA 内 16 个 named barrier（NVIDIA 硬件对齐）
     std::unique_ptr<ptxsim::BarrierModule> barrier_module_;
+
+    // Phase 0.5.1 (Fix #9a): per-CTA TmaDescriptorStore
+    TmaDescriptorStore tma_descriptor_store_;
+
+    // Phase 0.5.2 (Fix #9b): per-CTA TMEM
+    Tmem tmem_;
+
+    // Phase 0.5.3 (Fix #9c): per-CTA cluster context (lazy-init via
+    // std::optional — ClusterContext has explicit ctor unlike default-ctored
+    // TmaDescriptorStore/Tmem. emplace() constructs in-place; no move/copy.)
+    std::optional<ClusterContext> cluster_context_;
+
+    // Phase 0.5.4 (Fix #9d): per-CTA TcQueue (default ctor initializes
+    // atomic counter to 0, no additional init needed)
+    TcQueue tc_queue_;
 };
 
 #endif // CTA_CONTEXT_H

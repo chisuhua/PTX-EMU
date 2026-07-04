@@ -81,6 +81,24 @@ add_library(ptxsim SHARED
     memory/simple_memory.cpp
     memory/shared_memory_manager.cpp
     memory/resource_manager.cpp
+    # Phase 0.1 (Fix #5): Blackwell TMA TensorMap descriptor parser.
+    # Lives in ptxsim/memory/ (NEW dir for Phase 0 infra, distinct from
+    # legacy src/memory/). Consumed by tcgen05.ld in Phase 1-3.
+    ptxsim/memory/tma_descriptor.cpp
+    # Phase 0.2 (Fix #6): Blackwell per-CTA Tensor Memory (TMEM).
+    # 256 slot × 128 byte = 32 KB per CTA, parallel to shared memory.
+    # Consumed by tcgen05.* in Phase 1-3.
+    ptxsim/memory/tmem.cpp
+    # Phase 0.3 (Fix #7): cluster mode arrive/wait synchronization.
+    # 1-8 CTA cluster identifier + arrive/wait primitives for cta_group::1.
+    # NO distributed_smem (DEFERRED to cta_group::2 per Oracle simplification).
+    # Consumed by tcgen05.* in Phase 1-3.
+    ptxsim/cluster/cluster_context.cpp
+    # Phase 0.4 (Fix #8): Blackwell per-CTA async tensor core command queue.
+    # std::atomic commit-group counter + per-warp pending_waiters for
+    # tcgen05.* async commit/wait primitives.
+    # Consumed by tcgen05.* in Phase 1-3.
+    ptxsim/async/tc_queue.cpp
     ptxsim/debug/ptx_config.cpp
     ptxsim/debug/warp_trace_formatter.cpp
     ptxsim/debug/ptx_debugger.cpp

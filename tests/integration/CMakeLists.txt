@@ -332,3 +332,35 @@ add_catch_test(integration_dynamic_shared_memory
     memory/test_dynamic_shared_memory.cpp
 )
 set_tests_properties(integration_dynamic_shared_memory PROPERTIES LABELS "integration;memory;shared_memory;dynamic")
+
+# ============================================================================
+# Phase 0.5.1 (Fix #9a): TMA descriptor store integration with CTAContext
+# ============================================================================
+add_catch_test(integration_tma_with_cta_context
+    tma/test_tma_with_cta_context.cpp
+)
+set_tests_properties(integration_tma_with_cta_context PROPERTIES LABELS "integration;tma;cta")
+
+# ============================================================================
+# Phase 0.5.2 (Fix #9b): TMEM integration with CTAContext
+# ============================================================================
+add_catch_test(integration_tmem_with_cta_context
+    tmem/test_tmem_with_cta_context.cpp
+)
+set_tests_properties(integration_tmem_with_cta_context PROPERTIES LABELS "integration;tmem;cta")
+
+# ============================================================================
+# Phase 0.5.3 (Fix #9c): Cluster integration with CTAContext
+# ============================================================================
+add_catch_test(integration_cluster_with_cta_context
+    cluster/test_cluster_with_cta_context.cpp
+)
+set_tests_properties(integration_cluster_with_cta_context PROPERTIES LABELS "integration;cluster;cta")
+
+# ============================================================================
+# Phase 0.5.4 (Fix #9d): TcQueue integration with CTAContext
+# ============================================================================
+add_catch_test(integration_tc_queue_with_cta_context
+    async/test_tc_queue_with_cta_context.cpp
+)
+set_tests_properties(integration_tc_queue_with_cta_context PROPERTIES LABELS "integration;async;tc_queue;cta")
