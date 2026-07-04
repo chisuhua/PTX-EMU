@@ -348,3 +348,11 @@ add_catch_test(integration_tmem_with_cta_context
     tmem/test_tmem_with_cta_context.cpp
 )
 set_tests_properties(integration_tmem_with_cta_context PROPERTIES LABELS "integration;tmem;cta")
+
+# ============================================================================
+# Phase 0.5.3 (Fix #9c): Cluster integration with CTAContext
+# ============================================================================
+add_catch_test(integration_cluster_with_cta_context
+    cluster/test_cluster_with_cta_context.cpp
+)
+set_tests_properties(integration_cluster_with_cta_context PROPERTIES LABELS "integration;cluster;cta")

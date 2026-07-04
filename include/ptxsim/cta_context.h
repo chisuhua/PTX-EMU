@@ -7,10 +7,12 @@
 #include "ptxsim/execution_types.h"
 #include "ptxsim/memory/tma_descriptor.h"
 #include "ptxsim/memory/tmem.h"
+#include "ptxsim/cluster/cluster_context.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/warp_context.h"
 #include <map>
 #include <memory>
+#include <optional>
 #include <vector>
 
 enum class CTAState {
@@ -103,6 +105,21 @@ public:
     Tmem& tmem() { return tmem_; }
     const Tmem& tmem() const { return tmem_; }
 
+    // Phase 0.5.3 (Fix #9c): per-CTA cluster context (lazy-init via
+    // std::optional — ClusterContext has explicit ctor, unlike
+    // TmaDescriptorStore/Tmem which have default ctors).
+    // Pre-condition: init_cluster_context() must be called before
+    // cluster_context() accessor. has_cluster_context() for explicit check.
+    void init_cluster_context(ClusterContext::cta_id_t root_id,
+                              ClusterContext::cluster_size_t num_ctas) {
+        cluster_context_.emplace(root_id, num_ctas);
+    }
+    ClusterContext& cluster_context() { return cluster_context_.value(); }
+    const ClusterContext& cluster_context() const {
+        return cluster_context_.value();
+    }
+    bool has_cluster_context() const { return cluster_context_.has_value(); }
+
     ~CTAContext();
 
 private:
@@ -126,6 +143,11 @@ private:
 
     // Phase 0.5.2 (Fix #9b): per-CTA TMEM
     Tmem tmem_;
+
+    // Phase 0.5.3 (Fix #9c): per-CTA cluster context (lazy-init via
+    // std::optional — ClusterContext has explicit ctor unlike default-ctored
+    // TmaDescriptorStore/Tmem. emplace() constructs in-place; no move/copy.)
+    std::optional<ClusterContext> cluster_context_;
 };
 
 #endif // CTA_CONTEXT_H
