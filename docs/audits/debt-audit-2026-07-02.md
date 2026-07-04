@@ -50,7 +50,7 @@ PTX-EMU 在 Phase 3 结构债务修复中（commit `c9b1785~07dfd48` 期间）�
 
 | # | 债务 | 影响 |
 |---|------|------|
-| **P0-C1** | `cvt_strategy.cpp` **1061 行**，单函数 `convert()` **919 行** — god class，ADR-0015 策略模式落地不完整 | CVT 指令可维护性 |
+| **P0-C1** | ✅ **RESOLVED by `change fix-cvt-strategy-actual-split` (commit `f3ef891`)**。原误判：4 个 Strategy 类（`FloatToFloat`/`FloatToInt`/`IntToFloat`/`IntToInt`）已在 archive commits `fc3c352`/`9837d44`/`d6123e0` 实际部署，`select_strategy()` 持续 dispatch；剩余的 `GeneralCvtStrategy` god class ~920 行 = 死代码（grep 0 external callers）。修复：`cvt_strategy.cpp` 从 1061 行降至 133 行 dispatcher（pure deletion, 零行为变更） | CVT 指令可维护性 |
 | **P0-C2** | `cudart_sim.cpp` **933 行**，核心 CUDA runtime 入口（cudaLaunchKernel / __cudaRegisterFatBinary）**零直接单元测试** | CUDA API 拦截稳定性 |
 | **P0-C3** | `tests/unit/CMakeLists.txt:432-472` **7 个 PTX 单元测试被注释掉**：`unit_ptx_integer, _float, _extended, _bitwise, _cvt, _ld_st, _cvta`（注释说"移至 reference/"） | 7 类 PTX 语义无回归保障 |
 | **P0-C4** | `barrier.cpp` 仍 `#include "wbar.h"` 直接操作 `wbars[]` + `current_wbar_id` — 违反 AGENTS.md ANTI-PATTERNS | 屏障子系统一致性 |
@@ -191,7 +191,7 @@ PTX-EMU 在 Phase 3 结构债务修复中（commit `c9b1785~07dfd48` 期间）�
 建议：
 1. docs-readme-index-rebuild              — 修 D-1, D-2, D-3, D-4
 2. dead-code-cleanup                      — 修 A 系列 dead code (8 条)
-3. cvt-strategy-split                     — 修 P0-C1 + ADR-0015 Phase 2
+3. cvt-strategy-split                     — ✅ **DONE by `fix-cvt-strategy-actual-split` (commits `e8db807`+`f3ef891`)** 修 P0-C1
 4. ptx-stub-implementation                — 修 wmma/tensor/atomic/call (5 条)
 5. parser-completeness                    — 修 ptx_visitor 4 TODO + Multi-PTX (5 条)
 6. cudart-test-coverage                   — 修 P0-C2 cudart 单元测试

@@ -11,16 +11,25 @@ src/ptxsim/instructions/
 ├── arithmetic.cpp    # add, sub, mul, mad, etc.
 ├── bitwise.cpp       # and, or, xor, shf, etc.
 ├── comparison.cpp    # setp, slt, sgt, etc.
-├── conversion.cpp     # cvt, cvta
 ├── control.cpp       # bra, ret, call, exit
 ├── barrier.cpp       # bar.warp.sync, bar.sync
 ├── memory.cpp        # ld, st, atom, etc.
 ├── mov.cpp           # mov, shf, prmt, etc.
 ├── atomic.cpp        # (stub) atom operations
-└── wmma.cpp          # WmmaHandler::processWmmaOperation dispatches:
-                       #   Blackwell tcgen05.* → real fragment arithmetic
-                       #   pre-Blackwell wmma.* → throws UnsupportedInstructionException
-                       #   (per ADR-0016).
+├── wmma.cpp          # WmmaHandler::processWmmaOperation dispatches:
+│                      #   Blackwell tcgen05.* → real fragment arithmetic
+│                      #   pre-Blackwell wmma.* → throws UnsupportedInstructionException
+│                      #   (per ADR-0016).
+└── cvt/              # CVT 策略模式（per ADR-0015）
+   ├── cvt_strategy.{h,cpp}            # dispatcher (133 行) + ConversionStrategy 接口
+   ├── cvt_float_to_float.{h,cpp}      # FloatToFloatStrategy   (f32↔f64↔f16)
+   ├── cvt_float_to_int.{h,cpp}        # FloatToIntStrategy     (含 .sat/5 rounding/.ftz)
+   ├── cvt_int_to_float.{h,cpp}        # IntToFloatStrategy
+   ├── cvt_int_to_int.{h,cpp}          # IntToIntStrategy
+   └── cvt_helpers.{h,cpp}             # 4 helper 函数 (round_half_to_even 等)
+
+   2026-07 fix-cvt-strategy-actual-split 移除 ~920 行 GeneralCvtStrategy 死代码，
+   详见 ADR-0015 §2026-07 Fix 段 + debt-audit §P0-C1 (RESOLVED)。
 ```
 
 ## WHERE TO LOOK

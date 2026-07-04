@@ -1,15 +1,16 @@
 // cvt_strategy.h
 // =============================================================================
-// CVT 策略模式骨架 (T2-6 Sub-task 3)
+// CVT 策略模式 — 公共接口（per ADR-0015）
 //
-// 目的:
-//   - 把 arithmetic_conversion.cpp:11-90 的 Qualifier 解析抽离到
-//     build_context()，返回强类型 CvtContext。
-//   - 引入抽象 ConversionStrategy 基类 + select_strategy() 工厂。
-//   - Sub-task 3 仅搭骨架：select_strategy() 返回单一"通用策略"，
-//     行为完全等同原 switch 逻辑（zero behavior change）。
-//   - Sub-task 4 将通用策略拆为 5 个具体策略 (FloatToFloat /
-//     IntToFloat / FloatToInt / IntToInt + Rounding helpers)。
+// 状态（2026-07 更新）：
+//   - build_context():  从 Qualifier 列表构造强类型 CvtContext（替代原
+//     arithmetic_conversion.cpp:11-90 的 Qualifier 解析逻辑）
+//   - select_strategy(): 返回 4 个具体 Strategy 实例之一
+//     （FloatToFloat / FloatToInt / IntToFloat / IntToInt）
+//   - ConversionStrategy 抽象基类 + CvtContext 强类型上下文（公共 API）
+//
+// 2026-07 fix-cvt-strategy-actual-split: 移除过渡类 GeneralCvtStrategy 死代码
+// (~920 行 pure deletion，零行为变更)。详见 ADR-0015 §2026-07 Fix 段。
 //
 // 设计选择: Composition over Inheritance
 //   CvtHandler 仍由 X-Macro 单一注册，但内部持有 strategy 引用。

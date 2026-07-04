@@ -160,7 +160,7 @@ strategy.convert(dst, src, ctx)        // 实际写寄存器
 
 - **文件数 ↑**：cvt/ 子目录 6 个新文件（含 header），5 strategy 各自独立
 - **运行时多态开销**：1 次虚函数调用（~2ns/次）— 可忽略
-- **`GeneralCvtStrategy` 死代码**：Sub-task 3 过渡策略（保留 1063 行 switch），Sub-task 4 拆 5 strategies 后 select_strategy 永远不返回它。**待后续清理**（标注 TODO，不在 T2-6 范围）
+- **`GeneralCvtStrategy` 死代码**：~~Sub-task 3 过渡策略（保留 1063 行 switch）~~ **已于 2026-07 移除**（`change fix-cvt-strategy-actual-split`, commit `f3ef891`，1063 → 0 行 pure deletion）。详见 ADR 末尾"2026-07 Fix"段。
 
 ### 风险与缓解
 
@@ -170,7 +170,7 @@ strategy.convert(dst, src, ctx)        // 实际写寄存器
 | `.rna` / `.rs` modifier 边界条件 bug | 🟡 中 | 🟡 中 | 5 strategy 各自单测 + 8 integration 覆盖 cross-strategy |
 | 删 `arithmetic_conversion.cpp` 链接错误 | 🟢 低 | 🔴 高 | Sub-task 6 先把 `CvtHandler::processOperation` 移到 `cvt_strategy.cpp`（global scope），再删原文件 |
 | 5 strategies 文件数过多 | 🟢 低 | 🟢 低 | 各自 < 200 行，可读性 > 文件数 |
-| `GeneralCvtStrategy` 死代码浪费空间 | 🟢 低 | 🟢 低 | 标注 TODO，待 Phase 4 清理（不在 T2-6 范围） |
+| `GeneralCvtStrategy` 死代码浪费空间 | 🟢 低 | 🟢 低 | ✅ **RESOLVED 2026-07**（`fix-cvt-strategy-actual-split` commit `f3ef891`，pure deletion ~920 行） |
 
 ## 合规检查
 
@@ -179,13 +179,52 @@ strategy.convert(dst, src, ctx)        // 实际写寄存器
 - [ ] 新增 CVT modifier 时，在对应 strategy 内添加（不在 select_strategy）
 - [ ] 新增 CVT type 时（罕见），决定新增 strategy vs 扩现有 strategy
 - [ ] 修改 `CvtContext` 字段时，所有 5 strategies 必须同步（编译期强制）
-- [ ] `GeneralCvtStrategy` (cvt_strategy.cpp:108-1031) 是过渡死代码，**勿使用** select_strategy 已不返回它
+- [ ] `GeneralCvtStrategy` ~~是过渡死代码，勿使用~~ **已删除**（2026-07 `fix-cvt-strategy-actual-split` commit `f3ef891`）
 - [ ] 不要在 strategy 外直接调用 `half_to_float` / `float_to_half`，统一用 `half_utils.h`
+
+## 2026-07 Fix: 死代码清理（stale artifact 修复）
+
+`change fix-cvt-strategy-actual-split` 实施本 ADR 的最后遗留项 — 删除 `GeneralCvtStrategy` god class。
+
+### 背景
+
+ADR 颁布后（2026-06-23），5 个具体 Strategy 类（`FloatToFloat` / `FloatToInt` / `IntToFloat` / `IntToInt` 及外部 `cvt_sat_strategy` composition）在 archive commits `fc3c352`/`9837d44`/`d6123e0`/`204b5cd` 实际部署。`select_strategy()` 函数从 `Sub-task 4` 完成后即不再返回 `GeneralCvtStrategy`，该 god class 自我 ADR line 163 起就标注为"过渡死代码，待 Phase 4 清理"。
+
+然而 Phase 4 从未启动 — 2026-06-24 archive `2026-06-24-phase3-t2-6-cvt-strategy-pattern` 时 `tasks.md` 标记 ✅ COMPLETED 但 `GeneralCvtStrategy::convert()` 实际未拆分。2026-07-02 debt audit (§P0-C1) 误判为 active debt，因为只看 archive README 的"✅ 部分 RESOLVED"标记，未实证核实 select_strategy 是否仍返回过渡类。
+
+### Metis pre-implementation review（2026-07-05）的实证发现
+
+`change fix-cvt-strategy-actual-split` 在 OpenSpec-propose 阶段由 Metis 子代理审计后 scope 修订：
+- ❌ 原 6-Phase 计划假设"919 行 switch 块未拆分" → 与代码现实矛盾
+- ✅ 实证：`grep "GeneralCvtStrategy" src/ include/ tests/` 在 `cvt_strategy.cpp` 之外 0 调用点
+- ✅ `select_strategy()`（`cvt_strategy.cpp:1034-1046`）4 个 static 实例 dispatch 4 个活 Strategy
+
+### Resolution（commits `e8db807` + `f3ef891`）
+
+| Commit | 内容 |
+|--------|------|
+| `e8db807` | docs(openspec): add fix-cvt-strategy-actual-split artifacts（4 个 OpenSpec artifacts git-tracked，避免 lessons-learned §6 反模式） |
+| `f3ef891` | refactor(cvt): remove dead GeneralCvtStrategy class（929 行删除 + 11 行文件头重写 = net -918 行） |
+
+### 结果
+
+- `cvt_strategy.cpp` 从 1061 行 → 133 行 dispatcher
+- `GeneralCvtStrategy` 类完全移除（grep 0 残留）
+- 行为零变更：14 个 CVT 测试（6 unit + 8 integration）+ 33 个 PTX 语法测试 + e2e GEMM + 全套 178 tests PASS
+- `docs/audits/debt-audit-2026-07-02.md §P0-C1` 状态 active → ✅ RESOLVED
+
+### Lessons-learned §6 案例沉淀
+
+本 change 自身是 lessons-learned §6（OpenSpec artifacts 提交遗漏 + stale artifact 反模式）的修复案例：
+1. ✅ 严格遵守 Checklist E：artifacts FIRST (Phase 0 commit)，代码 SECOND (Phase 1 commit)
+2. ✅ 严格遵守 Checklist G：禁止 amend 已归档 change，新建 `fix-*` + `Ref: archive/` 链接
+3. ✅ debt audit 必须 `git log` 验证（Checklist F）—— 本 case 由 Metis pre-implementation review 完成实证
 
 ## 更新记录
 
 | 日期 | 更新内容 | 作者 |
 |------|---------|------|
+| 2026-07-05 | 2026-07 Fix: 移除 `GeneralCvtStrategy` 死代码（commit `f3ef891`） | Sisyphus orchestrator |
 | 2026-06-23 | 初始版本 | Sisyphus orchestrator |
 
 ## 参考
