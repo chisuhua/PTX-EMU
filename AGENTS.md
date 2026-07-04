@@ -502,9 +502,9 @@ GPUContext (全局内存, SM 列表)
 
 | 类别 | 状态 |
 |------|------|
-| WMMA/Tensor Core (wmma, mma) | 解析后抛 `UnsupportedInstructionException` + `PTX_ERROR_EMU`（c5 Fix #1）。真实实现跟踪 `fix/implement-wmma-tensor-core` |
+| WMMA/Tensor Core | pre-Blackwell 永久抛 `UnsupportedInstructionException` + `PTX_ERROR_EMU`（c5 Fix #1 + [ADR-0016](docs/adr/0016-blackwell-only-tcgen05.md)）。Blackwell `tcgen05.*` 实施中（`feat/implement-blackwell-tcgen05` change） |
 | Atomic 操作 | 无真正原子性 (stub) |
-| Hopper (sm_90+) | cluster 抽象未实现 |
+| Hopper (sm_90+) cluster | cluster 抽象未实现 — 实施中（[ADR-0016](docs/adr/0016-blackwell-only-tcgen05.md) Phase 0.3） |
 | Event/Stream API | fake 返回（不同步） |
 | 函数调用 | 未完全实现 |
 | Multi-PTX cubins | 提取所有 sections + `PTX_WARN_EMU` 警告 section 数量（c5 Fix #3）。`ptx_parser.cpp:59 FIXME` 仍记录"取首"语义，但 `cubin_utils.cpp` 实际 append 所有 sections |
