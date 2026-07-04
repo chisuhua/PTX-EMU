@@ -364,3 +364,11 @@ add_catch_test(integration_tc_queue_with_cta_context
     async/test_tc_queue_with_cta_context.cpp
 )
 set_tests_properties(integration_tc_queue_with_cta_context PROPERTIES LABELS "integration;async;tc_queue;cta")
+
+# ============================================================================
+# Phase 1.2 (Fix #11): tcgen05.mma integration test
+# ============================================================================
+add_catch_test(integration_tcgen05_mma_sync
+    tcgen05/test_tcgen05_mma_sync.cpp
+)
+set_tests_properties(integration_tcgen05_mma_sync PROPERTIES LABELS "integration;tcgen05;mma;fragment")
