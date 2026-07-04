@@ -63,15 +63,20 @@
 > Phase 0.3 仅实现 `arrive`/`wait` 原语；`distributed_smem` defer 到 `cta_group::2`
 > 真正需要时（独立 change 或 Phase expansion）。
 
-- [ ] 0.3.1 创建 `src/ptxsim/cluster/cluster_context.h`:
-      - `class ClusterContext`（1-8 CTA 集群标识）
-      - `cta_cluster_arrive()` / `cta_cluster_wait()` 同步原语
-      - **Deferred**: `distributed_smem` view（when cta_group::2 needed）
-- [ ] 0.3.2 创建 `src/ptxsim/cluster/cluster_context.cpp`
-- [ ] 0.3.3 创建 `tests/unit/cluster/test_cluster_mode.cpp`：验证 arrive/wait 同步
-- [ ] 0.3.4 CMakeLists 注册（含新建 `tests/unit/cluster/` 目录模板）
-- [ ] 0.3.5 自检：`ctest -R "cluster"` + 全套回归
-- [ ] 0.3.6 commit: `git commit -m "feat(sim): cluster arrive/wait primitives (Fix #7, simplified—no distributed smem)"`
+- [x] 0.3.1 创建 `src/ptxsim/cluster/cluster_context.h` (55 LoC):
+      - `class ClusterContext`（1-8 CTA 集群标识，root_id 0..7, num_ctas 1..8）
+      - `cta_cluster_arrive(cta_id)` / `cta_cluster_wait(cta_id)` 同步原语
+      - **Deferred**: `distributed_smem` view（when cta_group::2 needed）— ADR-0018 候选
+- [x] 0.3.2 创建 `src/ptxsim/cluster/cluster_context.cpp` (83 LoC, std::mutex+std::condition_variable 同步；NO busy-wait per lessons-learned §2)
+- [x] 0.3.3 创建 `tests/unit/cluster/test_cluster_mode.cpp` (195 LoC, 15 TEST_CASEs / 17 assertions):
+      construct_default_cluster_size_1 / construct_invalid_size_zero_throws / construct_invalid_size_9_throws /
+      construct_invalid_root_8_throws / arrive_then_wait_single_cta_immediate /
+      arrive_multiple_peer_ctas_wait_blocks_until_all / wait_before_arrive_throws /
+      wait_with_invalid_cta_id_throws / multiple_waits_after_all_arrived_succeeds /
+      duplicate_arrive_throws / cross_cluster_isolation / … ≥10 cases
+- [x] 0.3.4 CMakeLists 注册：`src/CMakeLists.txt` (new `ptxsim/cluster/` section after `ptxsim/memory/tmem.cpp`) + `tests/unit/CMakeLists.txt` (new `tests/unit/cluster/` dir + `add_catch_test(unit_cluster_mode cluster/test_cluster_mode.cpp)` `LABELS "unit;cluster"`)
+- [x] 0.3.5 自检：`ctest -R "cluster"` → **15 TEST_CASEs / 17 assertions PASS** (0.11s) ；回归 `ctest -L "unit|integration|e2e"` → **126 labeled PASS** (added 1 ctest target；zero regression)
+- [x] 0.3.6 commit: `e513235 feat(sim): cluster arrive/wait primitives (Fix #7, simplified—no distributed smem)` (5 files: 3 new + 2 modified; atomic)
 
 ## Phase 0.4: async tensor core queue（Fix #8）
 
