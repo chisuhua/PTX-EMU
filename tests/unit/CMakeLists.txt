@@ -508,6 +508,16 @@ add_catch_test(unit_wmma_not_implemented
 set_tests_properties(unit_wmma_not_implemented PROPERTIES LABELS "unit;ptx;wmma;stub")
 
 # ---------------------------------------------------------------------------
+# Phase 1.1 (Fix #10): tcgen05.mma fragment arithmetic unit test.
+# RED phase: this test MUST FAIL until wmma.cpp implements real fragment
+# arithmetic (currently throws UnsupportedInstructionException).
+# ---------------------------------------------------------------------------
+add_catch_test(unit_tcgen05_mma_fragment
+    ptx/test_tcgen05_mma_fragment.cpp
+)
+set_tests_properties(unit_tcgen05_mma_fragment PROPERTIES LABELS "unit;ptx;wmma;tcgen05;fragment")
+
+# ---------------------------------------------------------------------------
 # A2 cleanup (2026-06): the 7 tests below all `<<<1, 1>>>` real GPU kernels
 # and verify NVIDIA's PTX semantics — they do NOT exercise the PTX-EMU
 # simulator. They were moved to tests/reference/ptx_builtin/ as a

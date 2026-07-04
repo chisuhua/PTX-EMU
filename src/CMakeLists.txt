@@ -118,7 +118,7 @@ add_library(ptxsim SHARED
     ptxsim/instructions/control.cpp
     ptxsim/instructions/comparison.cpp
     ptxsim/instructions/atomic.cpp
-    ptxsim/instructions/tensor.cpp
+    ptxsim/instructions/wmma.cpp
     ptxsim/instructions/arithmetic_ext.cpp
     ptxsim/instructions/cvt/cvt_helpers.cpp
     ptxsim/instructions/cvt/cvt_strategy.cpp
