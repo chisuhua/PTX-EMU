@@ -332,3 +332,11 @@ add_catch_test(integration_dynamic_shared_memory
     memory/test_dynamic_shared_memory.cpp
 )
 set_tests_properties(integration_dynamic_shared_memory PROPERTIES LABELS "integration;memory;shared_memory;dynamic")
+
+# ============================================================================
+# Phase 0.5.1 (Fix #9a): TMA descriptor store integration with CTAContext
+# ============================================================================
+add_catch_test(integration_tma_with_cta_context
+    tma/test_tma_with_cta_context.cpp
+)
+set_tests_properties(integration_tma_with_cta_context PROPERTIES LABELS "integration;tma;cta")

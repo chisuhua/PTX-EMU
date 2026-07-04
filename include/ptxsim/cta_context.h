@@ -5,6 +5,7 @@
 #include "ptxsim/barrier/barrier_module.h"
 #include "ptxsim/common_types.h" // 包含通用类型定义
 #include "ptxsim/execution_types.h"
+#include "ptxsim/memory/tma_descriptor.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/warp_context.h"
 #include <map>
@@ -93,6 +94,10 @@ public:
         }
     }
 
+    // Phase 0.5.1 (Fix #9a): per-CTA TMA descriptor store accessor
+    TmaDescriptorStore& tma_descriptor_store() { return tma_descriptor_store_; }
+    const TmaDescriptorStore& tma_descriptor_store() const { return tma_descriptor_store_; }
+
     ~CTAContext();
 
 private:
@@ -110,6 +115,9 @@ private:
 
     // 统一管理 CTA 内 16 个 named barrier（NVIDIA 硬件对齐）
     std::unique_ptr<ptxsim::BarrierModule> barrier_module_;
+
+    // Phase 0.5.1 (Fix #9a): per-CTA TmaDescriptorStore
+    TmaDescriptorStore tma_descriptor_store_;
 };
 
 #endif // CTA_CONTEXT_H
