@@ -446,6 +446,18 @@ add_catch_test(unit_memory_global_f32
 set_tests_properties(unit_memory_global_f32 PROPERTIES LABELS "unit;ptx;memory;global")
 
 # ---------------------------------------------------------------------------
+# WMMA / Tensor Core stub (c5 - replace-silent-stub-failures, Fix #1):
+# WmmaHandler::processWmmaOperation now throws UnsupportedInstructionException
+# instead of silently no-op'ing. Locks in the explicit-failure contract so any
+# regression to silent no-op is caught at unit level.
+# Real WMMA / Tensor Core implementation tracked by `implement-wmma-tensor-core`.
+# ---------------------------------------------------------------------------
+add_catch_test(unit_wmma_not_implemented
+    ptx/test_wmma_not_implemented.cpp
+)
+set_tests_properties(unit_wmma_not_implemented PROPERTIES LABELS "unit;ptx;wmma;stub")
+
+# ---------------------------------------------------------------------------
 # A2 cleanup (2026-06): the 7 tests below all `<<<1, 1>>>` real GPU kernels
 # and verify NVIDIA's PTX semantics — they do NOT exercise the PTX-EMU
 # simulator. They were moved to tests/reference/ptx_builtin/ as a
