@@ -21,7 +21,7 @@
 | **Active changes** | 0 |
 | **已 RESOLVED 债务**（本次会话） | A-5, A-7, A-8, C-11, C-12 |
 | **剩余 A 系列债务** | 2（A-9 atomic CAS, A-10 嵌套分歧测试） |
-| **剩余 C 系列债务** | 22（god class + tests + includes） |
+| **剩余 C 系列债务** | 18（god class + tests + includes；C-19 已移除：测试已存在） |
 | **剩余 D 系列债务** | 6（docs README + OpenSpec 孤儿） |
 | **Oracle tests 新增** | `unit_multi_ptx` + `unit_extern_function`（parser series） |
 | **specs 已 promoted** | `parser-deadcode-cleanup`, `parser-multi-ptx-warning`, `extern-function-parse-coverage`, `stub-explicit-failure`, `wmma-tensor-core` 等 |
@@ -49,10 +49,10 @@
 
 | # | 债务 | 优先级 | 推荐 change 名 | 工时 |
 |---|------|--------|---------------|------|
-| C-1 | `thread_context.cpp` 904 行 22 个 include god class | 🟡 P1 | `god-class-refactor-thread-context` | 10h |
+| C-1 | `thread_context.cpp` **885 行**（parser-completeness 后 -19）22 个 include god class | 🟡 P1 | `god-class-refactor-thread-context` | 10h |
 | C-2 | `sm_context.cpp` 703 行 god class | 🟡 P2 | `god-class-refactor-sm-context` | 6h |
 | C-3 | `arithmetic.cpp` + `arithmetic_ext.cpp` 应合并 | 🟢 P3 | `merge-arithmetic-handlers` | 3h |
-| C-4 | `ptxir_writer.cpp::write_instruction()` 246 行 degree 184 | 🟡 P2 | `refactor-ptxir-writer` | 3h |
+| C-4 | `src/ptx_ir/ptxir_writer.cpp::write_instruction()` **函数 246 行**（文件 374 行）degree 184 | 🟡 P2 | `refactor-ptxir-writer` | 3h |
 | C-5 | 7 个子 AGENTS.md 与根 70%+ 重复 | 🟢 P3 | `consolidate-sub-agents-md` | 2h |
 | C-6 | `tests/unit/contexts/` 7 个 <50 行 POD 测试太浅 | 🟢 P3 | `strengthen-pod-tests` | 2h |
 | C-7 | `include/ptxsim/thread_context.h` 23 个 include | 🟢 P3 | `reduce-thread-context-includes` | 3h |
@@ -61,9 +61,8 @@
 | C-10 | 仅 1 个 cmake option（无 ASAN/UBSAN） | 🟢 P3 | `add-cmake-options` | 1h |
 | C-15 | `instruction_handlers.cpp` X-Macro 仅调用 1 次 | 🟢 P3 | `complete-x-macro-dispatch` | 3h |
 | C-16 | `atomic.cpp` 115 行 stub（CAS 缺失） | 🟢 P3 | (合并到 A-9) | 8h |
-| C-17 | `ptx_visitor.cpp` 1014 行 + 12 TODO | 🟡 P2 | `split-ptx-visitor-god-class` | 5h |
-| C-18 | `warp_context.cpp` 556 行 + 6 次/30 commits | 🟡 P2 | `refactor-warp-context` | 4h |
-| C-19 | `barrier_module.cpp` 缺独立 integration 测试 | 🟡 P1 | `barrier-module-integration-tests` | 3h |
+| C-17 | `ptx_visitor.cpp` **998 行**（parser-completeness 后 -16）+ 12 TODO | 🟡 P2 | `split-ptx-visitor-god-class` | 5h |
+| C-18 | `warp_context.cpp` **537 行**（清理后 -19）+ 6 次/30 commits | 🟡 P2 | `refactor-warp-context` | 4h |
 | C-20 | `ptx_visitor_atom.cpp:28` 硬编码 ptx_op.def 格式（DRY） | 🟢 P3 | `dedupe-ptx-op-def-format` | 0.5h |
 | C-21 | `assert(false && "...")` 3 处应改 throw | 🟢 P3 | `replace-assert-false-with-throw` | 1h |
 | C-22 | 6 个 "docs(t2-4)" commit 占最近 50 commit 12% | 🟢 P3 | (流程性，非 change) | — |
@@ -80,20 +79,35 @@
 | D-5 | `docs/skills/` vs `.opencode/skills/` 内容分叉 | 🟢 P3 | (合并到 D-1) | 1h |
 | D-6 | `HEALTH-AUDIT-2026-06-21.md` 8 个事实错误未合并 | 🟡 P2 | `merge-health-audit-errata` | 1h |
 
-### 1.4 优先级排序总结
+### 1.4 优先级排序总结与 Tier 映射规则
+
+**优先级定义**（按**风险 + 架构影响**排序）：
 
 ```
-🟡 P1（立即推进，3 条）:
-   A-9  atomic CAS                → 8h
-   C-19 barrier module integration → 3h
-   C-1  thread_context god class → 10h
+🟡 P1（架构影响大，2 条）:
+   A-9  atomic CAS                       → 8h
+   C-1  thread_context god class         → 10h
 
-🟡 P2（本月清理，~10 条）:
+🟡 P2（本月清理，8 条）:
    A-10, C-2, C-4, C-17, C-18, D-1, D-4, D-6
 
-🟢 P3（季度清理，~12 条）:
+🟢 P3（季度清理，13 条）:
    C-3, C-5, C-6, C-7, C-8, C-9, C-10, C-15, C-20, C-21, C-24, D-3, D-5
 ```
+
+**Tier vs Priority 映射**（工时时间箱）：
+
+| Tier | 时间窗口 | 选 P1 | 选 P2 | 选 P3 |
+|------|---------|-------|-------|-------|
+| **Tier 1** | 本周（< 4h 累计）| ✅ 满足 < 4h 的项 | — | — |
+| **Tier 2** | 本月（**月度预算** 15h 累计）| 单 Phase ≤ 15h，与其他 P1 项**累计 ≤ 15h** | ✅ 全部 | — |
+| **Tier 3** | 季度（按需） | 跨 Phase 大重构（如 C-1 拆 3 Phase） | ✓ 大块 | ✅ 全部 |
+
+**关键原则**：
+- P 是**风险等级**（high/medium/low），Tier 是**时间窗口**（week/month/quarter），二者正交
+- P1 项如工时超 Tier 1 预算 → 拆 Phase 进 Tier 2/3（保留 P1 风险标签）
+- P3 项如工时 ≤ 4h → 可前移至 Tier 1（quick win）
+- 当前（2026-07-05）：MR-1 修复后**Tier 1 无候选**，等 quick win 出现或 P1 拆 Phase
 
 ---
 
@@ -257,21 +271,13 @@ git merge --no-ff refactor/<change-name>
 
 ### 3.1 Tier 1 — 本周（< 4h 总工时）
 
-#### `barrier-module-integration-tests`（C-19，3h）⭐ **最高 ROI**
+> **当前 Tier 1 为空**：最近一次审计（2026-07-05, MR-1 修复后）移除 C-19（虚假债务）后，剩余 P1 项（A-9 = 8h, C-1 = 10h）的工时均超过 4h 单时间箱。
+>
+> **后续策略**：
+> - 等待 quick-win 类型的 P1 项（如 C-8 减少 test util includes 1h、C-21 替换 assert(false) 1h）出现
+> - 或将 P1 项 scope 拆分（如 A-9 拆为 Phase 1: CAS handler only，~3h）
 
-**Why**: barrier_module 是 PTX-EMU 核心，目前只有 unit + e2e 测试，**无 integration 中间层**覆盖。未来 barrier 重构可能引入 regression 而无 oracle。
-
-**Scope**（per Metis pre-impl 预期）：
-- Phase 1: 创建 `tests/integration/barrier/test_module_lifecycle.cpp`
-- Phase 2: 覆盖 `init_warp_barrier` / `arrive` / `release` / `reset` 全生命周期
-- Phase 3: 多 lane 分歧场景 + mask 边界
-
-**Lessons-learned 集成**:
-- ✅ Checklist H: 先 Metis review 验证 scope
-- ✅ Checklist E: artifacts-first 2-Phase commit
-- ✅ §22 parser 系列 pattern 可复用
-
-### 3.2 Tier 2 — 本月（~15h 总工时）
+### 3.2 Tier 2 — 本月（**15h 月度预算**，硬上限）
 
 #### `implement-atomic-cas-and-true-atomicity`（A-9 + C-16，8h）
 
@@ -290,7 +296,24 @@ git merge --no-ff refactor/<change-name>
 
 ### 3.3 Tier 3 — 季度（按需）
 
-参见 §1.2 完整列表，按工时 + 影响排序选择。
+#### `god-class-refactor-thread-context`（C-1，10h）🆕 **已从 §3 孤儿恢复**
+
+**Why**: `thread_context.cpp` 当前 885 行，单文件 22 个 include，跨 SIMT stack / 寄存器 / 内存 / 控制流 4 个子系统（§1.2 P1）。是 P1 中工时最大项（10h）。**虽 10h ≤ 15h 单 Phase 上限**，但 Tier 2 本月预算 15h 已部分被 A-9 (8h) 占用（A-9 + C-1 = 18h > 15h 月度累计），且 C-1 拆 3 Phase 后 Phase 3 (~3h) 需跨季度执行 — 故归入 Tier 3 季度窗口。
+
+**Scope**（待 Metis pre-impl 拆 Phase）：
+- Phase 1（~3h，Tier 2 可承载）: 提取 SIMT stack 状态到独立类
+- Phase 2（~4h）: 提取寄存器访问层
+- Phase 3（~3h，跨季度）: 提取内存访问 + 控制流
+
+**决策说明**：保留 P1 优先级（架构影响大），但实际执行分 Phase 跨季度，避免单 Phase 过大导致 lessons-learned §3 风险（Phases 必须独立可回退）。
+
+#### 其他 Tier 3 项
+
+参见 §1.2 完整列表，按工时 + 影响排序选择。优先序列：
+- 🟡 P2 高 ROI: C-2 (sm_context 6h), C-4 (ptxir_writer 函数 246 行 3h), C-17 (ptx_visitor 5h), C-18 (warp_context 4h)
+- 🟢 P3 流程性: 全部 C-5~C-10, C-15, C-20~C-22, C-24
+- 🟡 P2 文档: D-1, D-4, D-6
+- 🟢 P3 文档: D-3, D-5
 
 ---
 
@@ -469,6 +492,8 @@ grep -rn "<deleted_symbol>" src/ include/ tests/
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2026-07-05 | 初版：parser-completeness + add-extern-function-declaration + Quick Wins 后状态 |
+| 1.1 | 2026-07-05 | MR-1~MR-5 修复：移除 C-19 虚假债务，澄清 C-4 函数/文件行数，恢复 C-1 至 §3 Tier 3，添加 Tier↔Priority 映射规则，更新 §1.2 + 附录过期行数（C-1, C-17, C-18, C-4） |
+| 1.2 | 2026-07-05 | MR-N1~N3 (Oracle review)：MR-N1 修正 §3.3 C-1 rationale（澄清 Tier 3 的真实理由：A-9 (8h) 已占月度 15h 预算 + Phase 3 跨季度），MR-N2 修正 §1.4 P2/P3 计数（`~10` → 8, `~12` → 13），MR-N3 消除 §1.4 line 103 "≤ 15h 的子 Phase" 歧义（明确"月度预算累计" vs "per-Phase 上限"），§3.2 title 改为"15h 月度预算 硬上限" |
 
 ---
 
@@ -485,13 +510,12 @@ grep -rn "<deleted_symbol>" src/ include/ tests/
 
 | 文件 | 债务 | 行号/范围 | 优先级 |
 |------|------|----------|--------|
-| `src/ptxsim/core/thread_context.cpp` | god class | 全文 904 行 | 🟡 P1 |
+| `src/ptxsim/core/thread_context.cpp` | god class | 全文 **885 行**（parser-completeness 后 -19） | 🟡 P1 |
 | `src/ptxsim/core/sm_context.cpp` | god class | 全文 703 行 | 🟡 P2 |
-| `src/ptx_ir/ptxir_writer.cpp` | `write_instruction()` 长函数 | line 129 | 🟡 P2 |
-| `src/ptx_parser/ptx_visitor.cpp` | god class | 全文 1014 行 | 🟡 P2 |
-| `src/ptxsim/core/warp_context.cpp` | 多次修改的 god class | 全文 556 行 | 🟡 P2 |
+| `src/ptx_ir/ptxir_writer.cpp` | `write_instruction()` 长函数 | 函数 246 行（始于 line 129） | 🟡 P2 |
+| `src/ptx_parser/ptx_visitor.cpp` | god class | 全文 **998 行**（parser-completeness 后 -16） | 🟡 P2 |
+| `src/ptxsim/core/warp_context.cpp` | 多次修改的 god class | 全文 **537 行**（清理后 -19） | 🟡 P2 |
 | `src/ptxsim/instructions/arithmetic.cpp` + `arithmetic_ext.cpp` | 应合并 | 全文 | 🟢 P3 |
-| `src/ptxsim/barrier/barrier_module.cpp` | 缺 integration test | 全文 | 🟡 P1 |
 | `tests/unit/contexts/` 7 文件 | POD 测试太浅 | <50 行/文件 | 🟢 P3 |
 | 7 个 `src/**/AGENTS.md` | 与根 AGENTS.md 70%+ 重复 | 全文 | 🟢 P3 |
 | `include/ptxsim/thread_context.h` | 23 个 include | line 1-30 | 🟢 P3 |
@@ -526,7 +550,7 @@ grep -rn "<deleted_symbol>" src/ include/ tests/
 | 同步 | `sync-` | `sync-readme-after-tcgen05` |
 | 文档 | `docs-` | `docs-readme-fixes-remaining` |
 | 清理 | `cleanup-` | `cleanup-deprecated-barrier-apis`, `cleanup-openspec-orphans` |
-| 测试 | `add-*-tests` / `coverage-` | `barrier-module-integration-tests`, `add-nested-divergence-tests` |
+| 测试 | `add-*-tests` / `coverage-` | `add-nested-divergence-tests`, `expand-e2e-divergence-coverage` |
 
 **`Ref:` 约定**：任何修补已归档 change 的新 change，proposal.md 必须有：
 
