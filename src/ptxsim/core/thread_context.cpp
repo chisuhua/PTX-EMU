@@ -151,7 +151,6 @@ void ThreadContext::_execute_once() {
 
 //     // 记录性能统计
 //     //
-//     ptxsim::PTXDebugger::get().get_perf_stats().record_instruction(opcode);
 // }
 
 void ThreadContext::clear_temporaries() {}

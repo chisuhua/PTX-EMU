@@ -100,7 +100,6 @@ add_library(ptxsim SHARED
     ptxsim/async/tc_queue.cpp
     ptxsim/debug/ptx_config.cpp
     ptxsim/debug/warp_trace_formatter.cpp
-    ptxsim/debug/ptx_debugger.cpp
     ptxsim/core/simt_stack.cpp
     ptxsim/instruction_factory.cpp
     ptxsim/instruction_base.cpp

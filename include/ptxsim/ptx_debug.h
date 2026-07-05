@@ -5,6 +5,5 @@
 #include "debug_format.h"
 #include "perf_timer.h"
 #include "ptx_config.h"
-#include "ptx_debugger.h"
 
 #endif
