@@ -1,6 +1,6 @@
 # PTX-EMU
 
-> **状态**：SIMT v2.0 (Phase 10 进行中)
+> **状态**：SIMT v2.0 完成；Blackwell tcgen05 完整实施；H5 规划中
 > **核心特性**：C++20/CUDA PTX 模拟器，ANTLR4 解析 PTX，fake libcudart.so 拦截 CUDA runtime
 > **文档入口**：[docs/README.md](./docs/README.md)
 
