@@ -243,6 +243,47 @@ rm -rf openspec/changes/<obsolete-amendment>/ openspec/changes/<already-archived
 # .opencode/skills/ptx-lessons-learned/SKILL.md 添加 §核心经验 + Checklists E/F/G
 ```
 
+### 7. Pre-implementation Review：实施 OpenSpec change 前必须跑 Metis 审计（2026-07 新增）
+
+**问题模式**: 实施 OpenSpec change 时，proposal 基于"目录/文件存在性推断"而非实证撰写。archive README 的"✅ COMPLETED" + 文件未删除 ≠ "已完整实施"。
+
+**真实案例**: `fix-cvt-strategy-actual-split`（commits `e8db807`/`f3ef891`/`43edf55`，2026-07-05）原 6-Phase 计划基于错误前提：
+- ❌ 假设 919 行 switch 块未拆分 → 实证：4 个 Strategy 类已部署（`fc3c352`/`9837d44`/`d6123e0`）
+- ❌ 假设 `.worktrees/fix-pre-p0-baseline` 可复用 → 实证：worktree 目录为空
+- ❌ 假设 94 个 integration 测试为 oracle → 实证：仅 14 个
+- ❌ 假设 `select_strategy()` 返回 `unique_ptr` → 实证：返回 `const ConversionStrategy&`
+
+**关键经验**：
+- **OpenSpec proposal 必须基于实证**：`git log -- <file>` + `grep <api>` + `wc -l <file>`，**禁止用"存在/未存在"推断状态**
+- **必须区分"已实施但未清理"与"未实施"**：4 类表象对照见 `docs/dev-process/lessons-learned.md §20`
+- **实施 OpenSpec change 之前必须跑 Metis pre-implementation review**：本 case 的 5 项 MUST-RESOLVE 全是实施前的隐形炸弹（scope + 接口 + 测试 + worktree + 路径），由 Metis 一次 review 全部揭示
+- **archive "已归档"状态不可 amend**：任何修补必须新建 `fix-*` change + `Ref: archive/<date>-<name>/`（与 §6 互补）
+
+**诊断命令**：
+```bash
+# 1. 验证 proposal 引用的 API 真实存在
+grep -rn "<symbol>" src/ include/ tests/
+
+# 2. 验证 oracle 测试数量真实
+ctest -N -L "<label>" 2>&1 | tail -5
+
+# 3. 验证提到的工作目录/路径/工具真存在
+ls <worktree-path> 2>/dev/null
+test -f <path> && echo exists || echo missing
+
+# 4. 列出 baseline 文件的关键状态
+wc -l <file>
+git log --oneline -10 -- <file>
+git log --all --oneline -- "<change-dir>"
+```
+
+**修复模板**：
+1. 立即调用 Metis - Plan Consultant 子代理审计 4 个 OpenSpec artifacts
+2. 检查 Metis 输出 ⚠️ CONDITIONAL 决策的 MUST-RESOLVE 列表（≥3 项阻塞 apply）
+3. 重写 proposal/design/tasks.md 反映真实 scope（示例：6 Phase 拆分 → 3 Phase 死代码清理）
+4. 在每个 artifact §Ref 段加 "Metis pre-implementation review" 链接
+5. 沉淀到 lessons-learned.md §20 + ADR-0015 §2026-07 Fix 段
+
 ---
 
 ## ✅ 可复用 Checklist
@@ -320,6 +361,23 @@ rm -rf openspec/changes/<obsolete-amendment>/ openspec/changes/<already-archived
   - 若需修补 → 新建 fix-* / refactor-* change
   - 引用方式：Ref: archive/<date>-<change-name>/
   - 禁止 amend 已归档 change（违反 OpenSpec 生命周期）
+```
+
+### Checklist H: Pre-implementation Review 强制项（2026-07 新增）
+
+```
+□ 实施 OpenSpec change 前：调用 Metis - Plan Consultant 子代理
+  - 提供 4 个 artifacts 路径 + 真实文件路径/行号引用要求
+  - 要求输出：Hidden Intentions / Ambiguities / AI Failure Points / Missing Context
+  - 要求给出 GO / ⚠️ CONDITIONAL / ❌ NO-GO 决策
+□ Metis 输出 ⚠️ CONDITIONAL 时：5 项 MUST-RESOLVE 全部完成才能 apply
+□ 验证 proposal 的关键假设（实证）：
+  - wc -l 验证声称的"X 行"真实存在
+  - git log 验证 archive 中的"已实施 commits"真存在
+  - grep 验证引用的 API 真存在（0 matches = 假设错误）
+  - ctest -N 验证 oracle 数量（如 94 → 14 是常见偏差）
+  - ls 验证 worktree/路径真存在（空目录 ≠ "可复用现有"）
+□ 区分"已实施但未清理" vs "未实施"（4 类表象对照 §20）
 ```
 
 ---

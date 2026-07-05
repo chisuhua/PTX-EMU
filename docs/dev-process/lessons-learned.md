@@ -648,3 +648,97 @@ git diff HEAD openspec/changes/  # 应无差异（若审计基于 HEAD）
 - [ ] **独立 commit 拆分**（migrate 单 commit + delete 单 commit + tests 修复单 commit）
 
 ---
+
+## 20. Pre-implementation Review：实施 OpenSpec change 前必须跑 Metis 子代理审计（2026-07 新增）
+
+### 现象（OpenSpec scope 漂移）
+
+`fix-cvt-strategy-actual-split` change（2026-07-04/05，commits `e8db807`/`f3ef891`/`43edf55`）原 proposal 基于 **未实证** 的假设撰写：
+
+- 假设"`GeneralCvtStrategy::convert()` 919 行 switch 块**未拆分**"——计划 6 Phase 拆分出 5 个新 Strategy 类
+- 假设"`select_strategy()` 返回 `unique_ptr<ConversionStrategy>`"（与代码现状矛盾）
+- 假设"94 个 integration 测试为 oracle"（实际为 14 个）
+- 假设"`.worktrees/fix-pre-p0-baseline` 可复用"（实际 worktree 目录为空）
+- 假设"修复 `.opencode/notes/debt-audit-2026-07-02.md` §P0-C1"（实际文件在 `docs/audits/`）
+
+**Metis pre-implementation review**（Phase 0 后，apply 前）实证发现：4 个活 Strategy 类早已通过 commits `fc3c352`/`9837d44`/`d6123e0` 部署，`select_strategy()` 持续 dispatch，`GeneralCvtStrategy` 是**死代码**（grep 0 external callers）。
+
+若按原 plan 硬实施会：
+1. 浪费时间把已在用的 Strategy 类搬到新文件
+2. 引入 `CvtSatStrategy` 双重饱和 bug（4 个 Strategy 内部已处理 `.sat`，wrapper 会 double-saturate）
+3. 改 `select_strategy()` 接口破坏 Non-Goal（"不修改 `cvt_strategy.h`"）
+4. 引用 94 个虚构测试做 oracle（误判基线）
+
+### 教训
+
+**1. OpenSpec proposal 必须基于实证而非"目录/文件存在性推断"**：archive README 中的"✅ COMPLETED"标记 + 文件未删除 = 不等于"已完整实施"。必须 `git log -- <path>` + `grep <api>` + `wc -l <file>` 实证。
+
+**2. 必须区分"已实施但未清理"与"未实施"两种状态**：
+| 表象 | 实际状态 | 错误判断 | 正确判断 |
+|------|---------|---------|---------|
+| `tasks.md` 标记 ✅ + 文件未删除 | 已实施 + 死代码残留 | "未实施，需要拆分" | "已实施，应清理死代码" |
+| 文件 1061 行 + 注释声称"待拆分" | 拆分已部署到其他文件 | "switch 块未拆分" | "原位置是死代码，新位置才是活代码" |
+
+**3. 引用 "工作已完成" 作为 oracle 时需格外小心**：archive 中的 "94 个 integration tests" 可能是未来目标（如 P1-4.1 fix 启用后），不是现状。验证 oracle 必须 `ctest -N -L "<label>"` 实际查询。
+
+**4. Metis 子代理审计产出 ⚠️ CONDITIONAL 必须 5 项 MUST-RESOLVE**：本 case 的 5 项 MUST-RESOLVE 全是实施前的隐形炸弹（scope 错误 + 接口矛盾 + 测试数量虚构 + worktree 不存在 + 路径错误），由 Metis 一次 review 全部揭示。
+
+### 检查工具
+
+```bash
+# 实施 OpenSpec change 前必跑（Metis 子代理 prompt 模板）
+# 1. 列出 baseline 文件的关键状态
+wc -l <file>                              # 当前行数
+git log --oneline -10 -- <file>          # 实施历史
+git log --all --oneline -- "<change-dir>" # 归档状态
+
+# 2. 验证 proposal 引用的关键 API 确实按描述存在
+grep -rn "<symbol>" src/ include/ tests/  # 0 matches = API 不存在 = 假设错误
+
+# 3. 验证 oracle 测试数量真实
+ctest -N -L "<label>" 2>&1 | tail -5      # Total Tests 应等于 proposal 引用数
+
+# 4. 验证提到的文件/路径/工具真存在
+ls <worktree-path> 2>/dev/null            # empty = 不存在 = 不要假装"复用现有"
+test -f <path> && echo exists || echo missing
+```
+
+### 真实案例
+
+- **触发 change**: `fix-cvt-strategy-actual-split`（commits `e8db807`+`f3ef891`+`43edf55`，2026-07-05）
+- **Metis audit 触发**: 用户进入 Phase 0 后调用 Metis 子代理审计 artifacts
+- **5 项 MUST-RESOLVE before apply**:
+  1. Change scope 错误（实际是 dead code 删除 + 文档同步，非 6 Phase 拆分）
+  2. `CvtSatStrategy` 双重饱和（架构缺陷）
+  3. `select_strategy()` 返回 `const ref` vs `unique_ptr` 接口矛盾
+  4. 测试数量 94 → 14（oracle 虚构）
+  5. `.worktrees/fix-pre-p0-baseline` 不存在（worktree 引用虚构）
+- **修订后**:
+  - 6 Phase → 3 Phase（Phase 0 artifacts + Phase 1 delete dead code + Phase 2 doc sync）
+  - 预估工作量：~500 行拆分 → 实际 60 行（pure deletion + 文档同步）
+  - 实施 commits 全部 0 回归（14 CVT + 33 PTX + e2e GEMM + 全套 178 ctest PASS）
+- **沉淀位置**:
+  - `openspec/changes/fix-cvt-strategy-actual-split/{proposal,design,tasks}.md` §Scope 修订说明
+  - `docs/adr/0015-cvt-strategy-pattern.md` §2026-07 Fix 段（含 lessons-learned §18 案例沉淀）
+  - `.opencode/skills/ptx-lessons-learned/SKILL.md`（新增 §20 + Checklist H）
+  - 本 lessons-learned.md §20（本节）
+
+### 与 §18 的对比
+
+| 维度 | §18 案例（cleanup-deprecated-barrier-apis） | §20 案例（fix-cvt-strategy-actual-split） |
+|------|-------------------------------------------|---------------------------------------------|
+| 失败模式 | artifacts 提交遗漏，archive 后误判 active debt | proposal scope 错误，引用未实证的假设 |
+| 检测时机 | archive 后 12 天（reactive） | apply Phase 0 后（proactive） |
+| 检测手段 | debt audit 工作流（passive） | **Metis pre-implementation review**（proactive） |
+| 修复方式 | 重建 artifacts + debt audit RESOLVED | 重写 proposal/design/tasks + scope 修订 |
+| 工作量浪费 | commit `4d38772` 重建（~50 行） | 6 Phase 计划 → 3 Phase（避免 ~500 行无效迁移） |
+
+### 实战 checklist（apply 到任何"实施 OpenSpec change"的工作）
+
+- [ ] **实施前**：调用 Metis - Plan Consultant 子代理审计 proposal/design/tasks.md
+- [ ] **Metis 输出 CONDITIONAL 时**：5 项 MUST-RESOLVE 全部完成后才能 apply
+- [ ] **实施中**：每次 git log commit 后用 `git grep "<api>"` 验证假设持续成立
+- [ ] **实施后**：debt audit 的"基于 HEAD <hash>" 标注（Checklist F）
+- [ ] **归档时**：调用 openspec-archive-change skill（含 postmortem 选项）
+
+---
