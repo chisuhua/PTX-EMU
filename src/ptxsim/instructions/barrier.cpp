@@ -7,10 +7,11 @@
 //          通过 BarrierModule / WarpBarrier 实现线程同步
 // @author PTX-EMU Team
 // @date 2026-04-03
-// 
-// Stage 3 TODO:
-// 1. ✅ BarWarpSyncHandler::processOperation() - 实现 warp 级屏障同步
-// 2. ✅ ActivemaskHandler::processOperation() - 读取执行掩码
+//
+// 历史: Stage 3 全部子项已 ✅ 完成
+//   1. ✅ BarWarpSyncHandler::processOperation() - 实现 warp 级屏障同步
+//      (commit 0e31156 BarWarpSyncHandler 迁移)
+//   2. ✅ ActivemaskHandler::processOperation() - 读取执行掩码
 // =============================================================================
 
 #include "ptxsim/instruction_handlers.h"

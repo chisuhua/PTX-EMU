@@ -652,3 +652,9 @@ add_catch_test(unit_thread_context_pod_facade
     contexts/test_thread_context_pod_facade.cpp
 )
 set_tests_properties(unit_thread_context_pod_facade PROPERTIES LABELS "unit;contexts;pod;thread_context")
+
+# parser-completeness spec: multi-PTX cubin 累加 + warning oracle
+add_catch_test(unit_multi_ptx
+    parser/test_multi_ptx.cpp
+)
+set_tests_properties(unit_multi_ptx PROPERTIES LABELS "unit;parser;multi_ptx")

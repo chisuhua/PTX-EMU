@@ -815,3 +815,59 @@ grep -nE "[0-9]+%|第[一二三]" README.md
 - [ ] **postmortem 沉淀**：在 lessons-learned.md 追加 §N（本节作为 §21 模板），同步 .opencode/skills/ptx-lessons-learned/SKILL.md Checklist I
 
 ---
+
+## 22. multi-PTX cubin 静默截断 + Metis pre-impl review 完整落地（2026-07 新增）
+
+### 触发 change
+
+`parser-completeness`（commits `eafc70f`/`918891d`/`aed66e9`，2026-07-05）— 3-Phase 清理 + 1 P0 fix。
+
+### 现象
+
+PTX-EMU 解析 multi-section PTX cubin 时，`src/ptx_parser/ptx_parser.cpp:60` 的 `ptx_code = of_ptx.str();` 覆盖语义导致仅保留最后 section 的 PTX 代码，前 N-1 section 全部丢失，且**无任何 warning 告知用户**。同期 `src/utils/cubin_utils.cpp` 已正确实现 append-all 行为（c5 Fix #3），parser 层与 cubin_utils 行为不一致。
+
+### 教训
+
+1. **跨模块行为对齐**（§1 延伸）：parser 层与 cubin_utils 层对同一概念（"multi-section PTX"）采用不同语义（覆盖 vs append），导致数据丢失。修复必须使两层行为一致。
+2. **静默失败是最危险的失败模式**：无 warning 输出意味着用户不知道数据丢失。修复引入 `PTX_WARN_EMU` + section_count 计数器，确保多 section 时主动告知。
+3. **Metis pre-impl review + 3-Phase scope 修订 = 成功模式**：
+   - 原提案"10 条债务 + 6 Phase"被 Metis 一次 review 揭示为"12 条债务（其中仅 1 条真 P0）+ 死代码删除优先"
+   - 修订后的 3-Phase 落地：Phase 1 死代码清理（0 行为变更）→ Phase 2 P0 fix（multi-PTX warning）→ Phase 3 文档同步
+   - 实测耗时：~2h 实施 + oracle test（含 `__VA_ARGS__` 宏嵌套坑） + AGENTS.md 同步
+
+4. **`__VA_ARGS__` 宏嵌套陷阱**（新增）：Catch2 `REQUIRE_NOTHROW(PTX_WARN_EMU("fmt", args))` 因 `__VA_ARGS__` 嵌套展开失败编译。修复：用 lambda 包装 `auto warn_call = []() { PTX_WARN_EMU(...); }; REQUIRE_NOTHROW(warn_call());`。此 workaround 必须在测试文件中保留注释解释，避免未来 reader 移除 lambda。
+
+5. **oracle test 缺失是 scope 通胀信号**（§20 延伸）：Metis MR-4 揭示 `tests/unit/parser/` 不存在（proposal 声称"5+ oracle 测试"是假设）。处理：创建最小 oracle test（5 个 TEST_CASE 覆盖 multi-section / single-section / empty / smoke / regression），用 lambda 包装避免宏嵌套。
+
+### 真实案例
+
+- **OpenSpec change**: `openspec/changes/parser-completeness/`
+- **Fix commits**:
+  - `eafc70f` docs(openspec): add parser-completeness artifacts
+  - `918891d` refactor(parser): delete dead code + update 5 stale comments (Fix #1)
+  - `aed66e9` fix(parser): multi-PTX cubin warning + 累加语义 (Fix #2)
+- **测试**: `tests/unit/parser/test_multi_ptx.cpp` (5 TEST_CASE) — 注册为 `unit_multi_ptx`
+- **AGENTS.md**: line 510 "Multi-PTX cubins" 描述更新为"累加所有 sections + warning + 风险提示"
+- **关联 change**: `archive/2026-07-05-fix-cvt-strategy-actual-split/`（同 Metis pre-impl 模式先例）
+
+### 检查工具
+
+```bash
+# 1. 验证 multi-PTX 累加行为（已含 regression test）
+grep -n "ptx_code += of_ptx.str\|ptx_code = of_ptx.str" src/ptx_parser/ptx_parser.cpp
+# 期望：仅 += ，无裸 =
+
+# 2. 验证 PTX_WARN_EMU 触发条件
+grep -A1 "section_count > 1" src/ptx_parser/ptx_parser.cpp
+# 期望：包含 PTX_WARN_EMU 调用
+
+# 3. 验证 oracle test 存在 + PASS
+ctest -R "unit_multi_ptx" --output-on-failure
+# 期望：1/1 Passed
+
+# 4. 验证 AGENTS.md 描述一致
+grep -A1 "Multi-PTX cubins" AGENTS.md
+# 期望：描述包含"累加" + "PTX_WARN_EMU" + "潜在风险"
+```
+
+---

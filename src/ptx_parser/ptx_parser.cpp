@@ -39,6 +39,7 @@ std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
     std::string ptx_file;
     std::string ptx_code;
     char cmd[1024];
+    int section_count = 0;
 
     while (std::getline(infile, ptx_file)) {
         PTX_DEBUG("Extracting PTX file: %s", ptx_file.c_str());
@@ -57,9 +58,9 @@ std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
         while (if_ptx.get(ch)) {
             of_ptx.put(ch);
         }
-        // FIXME cubin have multiple ptx
-        // ptx_code += of_ptx.str(); // 累加所有PTX代码
-        ptx_code = of_ptx.str(); // 累加所有PTX代码
+        // Fix per parser-completeness spec: 累加 all sections (was: 覆盖丢失前 N-1 sections)
+        ptx_code += of_ptx.str();
+        section_count++;
 
         // Save PTX to file for debugging
         std::ofstream out_debug("extracted.ptx");
@@ -69,6 +70,14 @@ std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
         // 清理临时PTX文件
         // snprintf(cmd, 1024, "rm %s", ptx_file.c_str());
         // system(cmd);
+    }
+
+    // 多 section 警告（spec MultiPTX-Parser-Warn-Emits）
+    if (section_count > 1) {
+        PTX_WARN_EMU("Multiple PTX sections found in cubin (count=%d) — all sections accumulated "
+                     "(per parser-completeness spec). Note: different sections may define "
+                     "same-named symbols; verify PTX semantics.",
+                     section_count);
     }
 
     // 清理临时文件列表

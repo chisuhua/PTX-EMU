@@ -297,14 +297,6 @@ OperandContext PtxVisitor::createOperandFromContext(ptxparser::ptxParser::Operan
     return OperandContext{ImmOperand{"0"}};
 }
 
-void PtxVisitor::processFunctionAttributes(ptxparser::ptxParser::FunctionAttributeContext *ctx) {
-    if (!ctx || !currentKernel) return;
-    
-    // TODO: Implement based on new grammar
-    // For now, just log
-    PTX_DEBUG("Processing function attributes");
-}
-
 int PtxVisitor::extractIntFromToken(antlr4::Token *token) {
     if (!token) return 0;
     try {
@@ -317,11 +309,6 @@ int PtxVisitor::extractIntFromToken(antlr4::Token *token) {
 std::string PtxVisitor::extractStringFromToken(antlr4::Token *token) {
     if (!token) return "";
     return token->getText();
-}
-
-size_t PtxVisitor::calculateTypeSize(const std::vector<Qualifier> &types) {
-    // TODO: Implement proper type size calculation
-    return 4; // Default to 4 bytes for now
 }
 
 // ============================================================================
@@ -432,8 +419,7 @@ std::any PtxVisitor::visitVariableDecl(ptxparser::ptxParser::VariableDeclContext
         decl.name = ctx->ID()->getText();
     }
     if (decl.name.empty()) {
-        // P0 cleanup: silently using "TODO" as identifier was a bug — it created
-        // an anonymous declaration named "TODO" which collides across functions.
+        // 禁止使用 "TODO" 作为标识符——会创建跨函数冲突的匿名声明。
         // Throw explicitly so callers see the parse failure.
         throw PTXParseException(
             "Variable declaration missing identifier (ctx text: '" +
@@ -603,8 +589,6 @@ std::any PtxVisitor::visitFunctionDecl(ptxparser::ptxParser::FunctionDeclContext
             currentKernel->kernelParams.push_back(param);
         }
     }
-
-    // TODO: Process function attributes
 
     // 访问函数体：先处理寄存器声明，再处理指令，保证寄存器可预分配
     if (ctx->funcBody()) {

@@ -168,22 +168,7 @@ void ThreadContext::prepare_breakpoint_context(
         //                ThreadIdx.z * BlockDim.x * BlockDim.y) %
         //               WarpContext::WARP_SIZE;
 
-        // TODO
-        // // 遍历所有寄存器获取值
-        // auto all_registers = register_bank_manager_->get_all_registers();
-        // for (const auto &reg_name : all_registers) {
-        //     void *reg_data = register_bank_manager_->get_register(
-        //         reg_name, warp_id, lane_id);
-        //     if (reg_data) {
-        //         // 根据寄存器大小推测类型
-        //         //
-        //         这里假设寄存器大小不超过8字节，实际大小需要从RegisterBankManager获取
-        //         size_t reg_size = 8; // TODO: 获取实际寄存器大小
-        //         uint64_t val = 0;
-        //         memcpy(&val, reg_data, std::min(sizeof(val), reg_size));
-        //         context[reg_name] = val;
-        //     }
-        // }
+        // DEBUG STUB: register dump not implemented
     }
 
     // 添加其他上下文信息
@@ -407,8 +392,9 @@ void ThreadContext::collect_operands(
         // 获取当前操作数的物理地址
         operand_collected[i] = operands[i].operand_phy_addr;
     }
-    // FIXME should use stmt qualifier?
-    // stmt.qualifier = *qualifier;
+    // Design Decision (lessons-learned §6 template): instr.qualifiers 是
+    // operand qualifier 的 canonical source。stmt.qualifier 在 CFGBuilder
+    // 阶段可能未设置或过时。当前实现正确，无需修改。
 };
 
 void ThreadContext::commit_operand(StatementContext &stmt,
