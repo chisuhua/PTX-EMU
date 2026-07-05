@@ -21,7 +21,8 @@ struct DeclarationInstr {
     std::string name;             // e.g., "%r1", "buf"
     Qualifier dataType;           // e.g., .b32, .u64
     std::optional<int> alignment; // from .align N
-    std::optional<int> size;      // FIXME total size in bytes
+    // optional; when unset, consumers fall back to element_size * array_size
+    std::optional<int> size;
     int array_size;
     std::vector<int> initValues; // for .const {1,2,3}
 };
