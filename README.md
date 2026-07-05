@@ -42,12 +42,20 @@ cd build && ctest --output-on-failure
 | 审计勘误 | [docs/audits/HEALTH-AUDIT-2026-06-21-ERRATA.md](./docs/audits/HEALTH-AUDIT-2026-06-21-ERRATA.md) |
 | Roadmap | [openspec/changes/](./openspec/changes/)（活跃 changes 即未来 roadmap 项）|
 
+## 已实现功能
+
+- **Blackwell tcgen05**：完整实现 `.mma` / `.ld` / `.st` / `.commit` / `.wait`（commit `4151268` Fix #14）— 详见 [docs/adr/0016-blackwell-only-tcgen05.md](./docs/adr/0016-blackwell-only-tcgen05.md)
+- **TMA descriptors**：异步拷贝 descriptor 解析（commit `ad527f5` Fix #5）
+- **TMEM**：per-CTA Tensor Memory（commit `758edb0` Fix #6）
+- **Cluster arrive/wait**：分布式 shared memory 同步（commit `e513235` Fix #7）
+- **TcQueue**：commit-group + wait-aware scheduling（commit `c0fa43f` Fix #8）
+
 ## 已知限制
 
-- **PTX 指令覆盖**：核心 ISA ~67%（详见审计 §3）
-- **WMMA / Tensor Core**：是 stub
+- **PTX 指令覆盖**：参考 [docs/audits/debt-audit-2026-07-02.md](./audits/debt-audit-2026-07-02.md) 自动统计（避免硬编码）
+- **pre-Blackwell tcgen05**：永久抛 `UnsupportedInstructionException`（c5 Fix #1 + [ADR-0016](./docs/adr/0016-blackwell-only-tcgen05.md)）
 - **ANTLR 版本**：4.11.1 完全 vendored
-- **CUDA Toolkit**：11.4.4 测试通过
+- **CUDA Toolkit**：环境自适应（`env.sh` 自动检测 `$(which nvcc)`）
 
 ## 贡献指南
 
