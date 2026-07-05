@@ -67,10 +67,10 @@ PTX-EMU 在 Phase 3 结构债务修复中（commit `c9b1785~07dfd48` 期间）�
 | A-2 | `current_wbar_id` 11+ 处生产读写（`barrier.cpp:145,157,160,184,198,217,225,236,263` + `warp_context.cpp:351,355`） | 🔴 高 |
 | A-3 | WMMA stub 静默无操作 — `wmma.cpp:6-13` 遇指令得到未初始化值 | 🟡 中 |
 | A-4 | Tensor Core stub 静默无操作 — `tensor.cpp:8-15` | 🟡 中 |
-| A-5 | Multi-PTX cubins 静默截断（`ptx_parser.cpp:60`）无 warning | 🟡 中 |
+| A-5 | Multi-PTX cubins 静默截断（`ptx_parser.cpp:60`）无 warning | 🟡 中 | ✅ RESOLVED (parser-completeness commit `aed66e9`) |
 | A-6 | `call` 用户函数未实现（call.cpp ~20% 完整度）— 静默跳过 | 🟡 中 |
-| A-7 | `statement_context.h:24` size 字段未设置 → 类型大小为 0，运行时参数分配错误 | 🟡 中 |
-| A-8 | `ptx_visitor.cpp` 4 个 TODO（line 303 函数属性、323 类型大小硬编码、363 extern 声明、607 函数属性） | 🟡 中 |
+| A-7 | `statement_context.h:24` size 字段未设置 → 类型大小为 0，运行时参数分配错误 | 🟡 中 | ✅ RESOLVED (parser-completeness commit `918891d` Phase 1 — 注释更新为 optional 语义；`ptx_interpreter.cpp:124-145` 已 BUGFIX 处理) |
+| A-8 | `ptx_visitor.cpp` 4 个 TODO（line 303 函数属性、323 类型大小硬编码、363 extern 声明、607 函数属性） | 🟡 中 | ✅ PARTIAL (parser-completeness commit `918891d` Phase 1 — 303/323/607 死代码已删；363 extern 拆为独立 change `add-extern-function-declaration`) |
 | A-9 | atomic.cpp 80% 完整但 CAS 未实现，无真正原子性 | 🟡 中 |
 | A-10 | 嵌套分歧测试缺失（`test_nested_divergence.cpp:106`） | 🟡 中 |
 
