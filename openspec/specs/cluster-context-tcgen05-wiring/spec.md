@@ -9,8 +9,8 @@ The `ClusterContext` infrastructure (defined in `src/ptxsim/cluster/cluster_cont
 
 Specifically:
 1. `CTAContext::init_cluster_context()` MUST be callable from `GPUContext` after CTA creation
-2. `tcgen05.commit` handler (`WmmaHandler::processTcgen05Commit` in `src/ptxsim/instructions/wmma.cpp`) MUST call `cta->cluster_context().cta_cluster_arrive(cta_id)` IF `cta->has_cluster_context()` returns true
-3. `tcgen05.wait` handler (`WmmaHandler::processTcgen05Wait`) MUST call `cta->cluster_context().cta_cluster_wait(cta_id)` IF `cta->has_cluster_context()` returns true
+2. `tcgen05.commit` handler (`execute_tcgen05_commit` in `src/ptxsim/instructions/wmma.cpp`) MUST call `cta->cluster_context().cta_cluster_arrive(cta_id)` IF `cta->has_cluster_context()` returns true
+3. `tcgen05.wait` handler (`execute_tcgen05_wait`) MUST call `cta->cluster_context().cta_cluster_wait(cta_id)` IF `cta->has_cluster_context()` returns true
 
 The wiring MUST use opt-in pattern (guard via `has_cluster_context()`) so existing `cta_group::1` tests continue to pass without modification.
 
@@ -68,3 +68,4 @@ The wiring MUST be verified by oracle tests:
 - **WHEN** comparing baseline ctest output vs post-integration ctest output
 - **THEN** the only difference MUST be the addition of `unit_cluster_tcgen05_integration` test
 - **AND** zero existing tests MUST fail
+
