@@ -508,6 +508,7 @@ GPUContext (全局内存, SM 列表)
 | Event/Stream API | fake 返回（不同步） |
 | 函数调用 | 未完全实现 |
 | Multi-PTX cubins | 累加所有 sections + `PTX_WARN_EMU` 警告 section 数量（parser-completeness Fix #2 + c5 Fix #3）。潜在风险：不同 section 可能定义同名符号（warning 告知用户检查）。`ptx_parser.cpp:60` 与 `cubin_utils.cpp` 行为对齐 |
+| Extern 函数声明 | 已支持双路径：1) `PtxListener::exitExternFuncStatement` (`ptx_parser.cpp:996`) 填充 `ptxContext.externFuncs`；2) `PtxVisitor::visitFunctionDecl` (`ptx_visitor.cpp:486`) 处理 extern form (add-extern-function-declaration Fix #1)。oracle test: `unit_extern_function` |
 | `assert(false)` | 多处 → 遇未处理代码路径会崩溃 |
 
 ### 安全假设

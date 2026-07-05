@@ -347,8 +347,8 @@ std::any PtxVisitor::visitDeclaration(ptxparser::ptxParser::DeclarationContext *
     else if (ctx->abiPreserveDirective()) {
         return visitAbiPreserveDirective(ctx->abiPreserveDirective());
     }
-    // TODO: Add extern function declaration handling
-    
+    // function decl 由 visitFunctionDecl 直接处理（不在 declaration 上下文中）
+
     return nullptr;
 }
 

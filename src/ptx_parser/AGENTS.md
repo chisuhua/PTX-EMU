@@ -16,9 +16,10 @@ src/grammar/             # ptxLexer.g4, ptxParser.g4
 | Task | Location | Notes |
 |------|----------|-------|
 | Grammar files | `src/grammar/` | ptxLexer.g4, ptxParser.g4 |
-| Visitor implementation | `src/ptx_parser/` | PtxVisitor |
+| Visitor implementation | `src/ptx_parser/` | PtxVisitor (visitFunctionDecl 处理 extern form line 486) |
+| Listener implementation | `src/ptx_parser/ptx_parser.cpp` | PtxListener (exitExternFuncStatement line 996) |
 | CFG builder | `src/ptx_parser/cfg_builder.cpp` | Control flow graph |
-| Symbol table | `include/ptx_ir/` | Operand, statement contexts |
+| Symbol table | `include/ptx_ir/` | Operand, statement contexts, `ExternFuncDecl` (ptx_context.h:14) |
 
 ## KEY FILES
 | File | Purpose |
@@ -26,6 +27,7 @@ src/grammar/             # ptxLexer.g4, ptxParser.g4
 | `ptxLexer.g4` | ANTLR lexer grammar |
 | `ptxParser.g4` | ANTLR parser grammar |
 | `PtxVisitor.cpp` | AST traversal, builds IR |
+| `ptx_parser.cpp` | PtxListener (ANTLR tree walker) — handles `exitExternFuncStatement` (line 996) → `ptxContext.externFuncs` |
 
 ## CONVENTIONS (this dir)
 - Grammar uses ANTLR4 syntax
