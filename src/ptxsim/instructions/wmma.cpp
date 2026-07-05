@@ -522,6 +522,12 @@ void execute_tcgen05_commit(ThreadContext* context,
     // UNVERIFIED-AGAINST-HARDWARE — group_id=1 per PTX ISA §9.7.13
     cta->tc_queue().commit(1);
 
+    // Wire ClusterContext: opt-in cluster arrive (per ADR-0016 Phase 0.3)
+    if (cta->has_cluster_context()) {
+        PTX_DEBUG_EMU("tcgen05.commit: cluster arrive cta_id=%d", cta->blockIdx.x);
+        cta->cluster_context().cta_cluster_arrive(cta->blockIdx.x);
+    }
+
     PTX_DEBUG_EMU("tcgen05.commit: group_id=1 committed");
 }
 
@@ -548,6 +554,12 @@ void execute_tcgen05_wait(ThreadContext* context,
     // UNVERIFIED-AGAINST-HARDWARE — group_id=1, lane_id=0
     // per PTX ISA §9.7.13
     cta->tc_queue().wait(warp, 0, 1);
+
+    // Wire ClusterContext: opt-in cluster wait (per ADR-0016 Phase 0.3)
+    if (cta->has_cluster_context()) {
+        PTX_DEBUG_EMU("tcgen05.wait: cluster wait cta_id=%d", cta->blockIdx.x);
+        cta->cluster_context().cta_cluster_wait(cta->blockIdx.x);
+    }
 
     PTX_DEBUG_EMU("tcgen05.wait: waiting on group_id=1 for lane 0");
 }

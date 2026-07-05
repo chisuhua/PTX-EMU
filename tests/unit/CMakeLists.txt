@@ -238,6 +238,12 @@ add_catch_test(unit_cluster_mode
 )
 set_tests_properties(unit_cluster_mode PROPERTIES LABELS "unit;cluster")
 
+# wire-cluster-context-to-tcgen05: oracle test for opt-in cluster arrive/wait
+add_catch_test(unit_cluster_tcgen05_integration
+    cluster/test_cluster_tcgen05_integration.cpp
+)
+set_tests_properties(unit_cluster_tcgen05_integration PROPERTIES LABELS "unit;cluster;tcgen05")
+
 # ============================================================================
 # Phase 0.4 (Fix #8): async tensor core command queue unit tests.
 # ≥14 TEST_CASEs cover default construction, commit-group monotonic counter,
