@@ -329,7 +329,7 @@
   # 参考 .opencode/skills/openspec-archive-change/SKILL.md
   # 用户会被 prompt 询问生成 postmortem
   ```
-- [ ] 3.4 验证归档包含 .openspec.yaml
+- [x] 3.4 验证归档包含 .openspec.yaml
   ```bash
   # 归档后 git ls-files openspec/changes/archive/fix-cvt-strategy-actual-split/ 不应为空
   ```
