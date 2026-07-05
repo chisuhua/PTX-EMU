@@ -38,6 +38,8 @@ cd build && ctest --output-on-failure
 | SIMT 架构 | [docs/architecture/SIMT-ARCHITECTURE-V2.md](./docs/architecture/SIMT-ARCHITECTURE-V2.md) |
 | 开发指南 | [docs/developer-guide/](./docs/developer-guide/) |
 | ADR 索引 | [docs/adr/README.md](./docs/adr/README.md) |
+| Blackwell tcgen05 架构 | [docs/adr/0016-blackwell-only-tcgen05.md](./docs/adr/0016-blackwell-only-tcgen05.md) |
+| tcgen05 实施 roadmap | [docs/dev-process/post-tcgen05-roadmap.md](./docs/dev-process/post-tcgen05-roadmap.md) |
 | 健康审计 | [docs/audits/HEALTH-AUDIT-2026-06-21.md](./docs/audits/HEALTH-AUDIT-2026-06-21.md) |
 | 审计勘误 | [docs/audits/HEALTH-AUDIT-2026-06-21-ERRATA.md](./docs/audits/HEALTH-AUDIT-2026-06-21-ERRATA.md) |
 | Roadmap | [openspec/changes/](./openspec/changes/)（活跃 changes 即未来 roadmap 项）|
