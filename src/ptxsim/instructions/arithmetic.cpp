@@ -45,7 +45,6 @@
 //             break;
 //         }
 //         default:
-//             assert(0 && "Unsupported data size for floating point");
 //         }
 //     } else {
 //         // 整数运算
@@ -127,7 +126,6 @@
 //                 break;
 //             }
 //             default:
-//                 assert(0 && "Unsupported data size for signed integer");
 //             }
 //         } else {
 //             // 无符号整数
@@ -207,7 +205,6 @@
 //                 break;
 //             }
 //             default:
-//                 assert(0 && "Unsupported data size for unsigned integer");
 //             }
 //         }
 //     }
@@ -248,7 +245,6 @@
 //             break;
 //         }
 //         default:
-//             assert(0 && "Unsupported data size for floating point");
 //         }
 //     } else {
 //         // 整数运算
@@ -321,7 +317,6 @@
 //                 break;
 //             }
 //             default:
-//                 assert(0 && "Unsupported data size for signed integer");
 //             }
 //         } else {
 //             // 无符号整数
@@ -391,7 +386,6 @@
 //                 break;
 //             }
 //             default:
-//                 assert(0 && "Unsupported data size for unsigned integer");
 //             }
 //         }
 //     }

@@ -1,4 +1,5 @@
 #include "ptxsim/instruction_handlers.h"
+#include "ptxsim/utils/macros.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/utils/qualifier_utils.h"
 #include "ptxsim/utils/type_utils.h"
@@ -21,7 +22,7 @@ void process_binary_bitwise(void *dst, void *src1, void *src2, int bytes, OpFunc
         *(uint64_t *)dst = op(*(uint64_t *)src1, *(uint64_t *)src2);
         break;
     default:
-        assert(0 && "Unsupported data size for bitwise operation");
+        UNSUPPORTED_TYPESIZE("bitwise operation");
     }
 }
 
@@ -79,7 +80,7 @@ void process_shift_operation(void *dst, void *src1, void *src2, int bytes, OpFun
         break;
     }
     default:
-        assert(0 && "Unsupported data size for shift operation");
+        UNSUPPORTED_TYPESIZE("shift operation");
     }
 }
 
@@ -287,7 +288,7 @@ void process_unary_bitwise(void *dst, void *src, int bytes, OpFunc op) {
         *(uint64_t *)dst = op(*(uint64_t *)src);
         break;
     default:
-        assert(0 && "Unsupported data size for unary bitwise operation");
+        UNSUPPORTED_TYPESIZE("unary bitwise operation");
     }
 }
 

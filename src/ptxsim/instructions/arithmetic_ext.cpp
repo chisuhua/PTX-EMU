@@ -1,4 +1,5 @@
 #include "ptxsim/instruction_handlers.h"
+#include "ptxsim/utils/macros.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/utils/arithmetic_utils.h"
 #include "ptxsim/utils/half_utils.h"
@@ -132,7 +133,7 @@ void AddcHandler::processOperation(ThreadContext *context, void **operands,
             break;
         }
         default:
-            assert(0 && "Unsupported data size for signed integer in ADDC");
+            UNSUPPORTED_TYPESIZE("signed integer in ADDC");
         }
     } else {
         // 无符号整数加法（带进位）
@@ -234,7 +235,7 @@ void AddcHandler::processOperation(ThreadContext *context, void **operands,
             break;
         }
         default:
-            assert(0 && "Unsupported data size for unsigned integer in ADDC");
+            UNSUPPORTED_TYPESIZE("unsigned integer in ADDC");
         }
     }
 }
@@ -355,7 +356,7 @@ void SubcHandler::processOperation(ThreadContext *context, void **operands,
             break;
         }
         default:
-            assert(0 && "Unsupported data size for signed integer in SUBC");
+            UNSUPPORTED_TYPESIZE("signed integer in SUBC");
         }
     } else {
         // 无符号整数减法（带借位）
@@ -456,7 +457,7 @@ void SubcHandler::processOperation(ThreadContext *context, void **operands,
             break;
         }
         default:
-            assert(0 && "Unsupported data size for unsigned integer in SUBC");
+            UNSUPPORTED_TYPESIZE("unsigned integer in SUBC");
         }
     }
 }

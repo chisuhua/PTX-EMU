@@ -1,4 +1,5 @@
 #include "ptxsim/instruction_handlers.h"
+#include "ptxsim/utils/macros.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/utils/qualifier_utils.h"
 #include "ptxsim/utils/type_utils.h"
@@ -41,7 +42,7 @@ void process_unary_math(void *dst, void *src, int bytes, bool is_float, OpFunc o
             *(uint64_t *)dst = static_cast<uint64_t>(op(*(uint64_t *)src));
             break;
         default:
-            assert(0 && "Unsupported data size for math operation");
+            UNSUPPORTED_TYPESIZE("math operation");
         }
     }
 }

@@ -1,4 +1,5 @@
 #include "ptxsim/instruction_handlers.h"
+#include "ptxsim/utils/macros.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/utils/qualifier_utils.h"
 #include "ptxsim/utils/type_utils.h"
@@ -44,7 +45,7 @@ void process_comparison(void *dst, void *src1, void *src2, int bytes,
             break;
         }
         default:
-            assert(0 && "Unsupported data size for floating point comparison");
+            UNSUPPORTED_TYPESIZE("floating point comparison");
         }
     } else {
         // 整数比较
@@ -84,7 +85,7 @@ void process_comparison(void *dst, void *src1, void *src2, int bytes,
                 break;
             }
             default:
-                assert(0 && "Unsupported data size for signed integer comparison");
+                UNSUPPORTED_TYPESIZE("signed integer comparison");
             }
         } else {
             // 无符号整数
@@ -122,7 +123,7 @@ void process_comparison(void *dst, void *src1, void *src2, int bytes,
                 break;
             }
             default:
-                assert(0 && "Unsupported data size for unsigned integer comparison");
+                UNSUPPORTED_TYPESIZE("unsigned integer comparison");
             }
         }
     }
