@@ -658,3 +658,9 @@ add_catch_test(unit_multi_ptx
     parser/test_multi_ptx.cpp
 )
 set_tests_properties(unit_multi_ptx PROPERTIES LABELS "unit;parser;multi_ptx")
+
+# add-extern-function-declaration spec: extern function 双路径 oracle
+add_catch_test(unit_extern_function
+    parser/test_extern_function.cpp
+)
+set_tests_properties(unit_extern_function PROPERTIES LABELS "unit;parser;extern")
