@@ -507,7 +507,7 @@ GPUContext (全局内存, SM 列表)
 | Hopper (sm_90+) cluster | cluster 抽象未实现 — 实施中（[ADR-0016](docs/adr/0016-blackwell-only-tcgen05.md) Phase 0.3） |
 | Event/Stream API | fake 返回（不同步） |
 | 函数调用 | 未完全实现 |
-| Multi-PTX cubins | 提取所有 sections + `PTX_WARN_EMU` 警告 section 数量（c5 Fix #3）。`ptx_parser.cpp:59 FIXME` 仍记录"取首"语义，但 `cubin_utils.cpp` 实际 append 所有 sections |
+| Multi-PTX cubins | 累加所有 sections + `PTX_WARN_EMU` 警告 section 数量（parser-completeness Fix #2 + c5 Fix #3）。潜在风险：不同 section 可能定义同名符号（warning 告知用户检查）。`ptx_parser.cpp:60` 与 `cubin_utils.cpp` 行为对齐 |
 | `assert(false)` | 多处 → 遇未处理代码路径会崩溃 |
 
 ### 安全假设
