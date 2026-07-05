@@ -29,10 +29,10 @@
 #### Scenario: Reader wants overview of Blackwell tcgen05 implementation
 - **WHEN** reader wants to verify all 5 tcgen05 sub-instructions are implemented
 - **THEN** README.md MUST contain "已实现功能" section listing:
-  - `tcgen05.mma` (fragment arithmetic) — commit `35808d6` Fix #12
+  - `tcgen05.mma` (fragment arithmetic) — commit `535dd9d` Fix #10
   - `tcgen05.ld` / `tcgen05.st` (TMA + TMEM integration) — commit `35808d6` Fix #12
   - `tcgen05.commit` / `tcgen05.wait` (async flow) — commit `0213ff1` Fix #13
-  - Plus 4 supporting infrastructure: TMA descriptors, TMEM, cluster arrive/wait, TcQueue
+  - Plus 4 supporting infrastructure: TMA descriptors (Fix #5 `ad527f5`), TMEM (Fix #6 `758edb0`), cluster arrive/wait (Fix #7 `e513235`), TcQueue (Fix #8 `c0fa43f`)
 
 ## ADDED Requirements
 

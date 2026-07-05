@@ -78,7 +78,9 @@ README.md 应反映：
 - (A) 更新到实际测试版本（手动追踪）
 - (B) 描述环境自适应机制
 
-**选择**: (B) — `env.sh` 用 `NVCC_PATH=$(which nvcc)` 自动检测，硬件允许任意版本。README 应说"支持任意 CUDA 版本（环境自适应）"而非硬编码版本号
+**选择**: (B) — `env.sh` 用 `NVCC_PATH=$(which nvcc)` 自动检测（实证 `env.sh:23` `NVCC_PATH=$(which nvcc)`），不限定具体版本号。README 应说明"环境自适应（依赖用户已安装的 CUDA toolkit，env.sh 自动检测 PATH 中的 nvcc）"而非硬编码版本号
+
+> **注意**：原文称"硬件允许任意版本"略夸张——实际只保证检测到 nvcc 后即用，不做 ABI/header 兼容性验证。准确表述强调"检测机制"而非"任意版本兼容"。
 
 ### Decision 4: 添加 tcgen05 文档导航（3 个引用）
 
@@ -91,7 +93,7 @@ README.md 应反映：
 
 ### Decision 5: 不重写 README 整体结构
 
-**原则**: 本 change 是**增量同步**，不是重写。`commit 04a62c4` 已完成 SIMT v2.0 重写，本次仅更新 4 个具体章节。
+**原则**: 本 change 是**增量同步**，不是重写。`commit 04a62c4`（已 `git log` 验证存在，message "docs(readme): rewrite root README for SIMT v2.0 (T1-5)"）已完成 SIMT v2.0 重写，本次仅更新 4 个具体章节。
 
 **反例**: 不要因为 README "陈旧" 就重写整个文件。重写是 review 噩梦，难以 review diff。本次仅修改 line 3 + line 16 + line 49-53，diff < 20 行。
 
@@ -105,7 +107,9 @@ README.md 应反映：
 3. Phase 2: 验证（grep 对比、行数检查、链接验证）
 4. Phase 3: 归档（Checklist G）
 
-**Commit 数量预算**: 4 commits（artifacts + 4 章节各一个 + 归档 commit）
+**Commit 数量预算**: **5 commits**（1 artifacts + 3 README 章节 [Fix #1/#2/#3] + 1 archive）
+
+> **修订说明**：原文 "4 commits（artifacts + 4 章节各一个 + 归档 commit）" 数学错误——按字面 1+4+1=6，按实际章节数 1+3+1=5。tasks.md Phase 1-3 共 3 个 README commit（Fix #1/#2/#3），加上 artifacts (Phase 0) + archive (Phase 4) = **5 commits**。
 
 ## Alternatives Considered
 
@@ -130,3 +134,12 @@ README.md 应反映：
 - **回退风险**: 🟢 极低（`git revert HEAD` 即可）
 
 **估算总工时**: < 1 小时（含 review 与归档）
+
+## Ref (Lessons-Learned 集成)
+
+- `.opencode/skills/ptx-lessons-learned/SKILL.md §6` — OpenSpec artifacts 提交遗漏（强制 artifacts-first，本 change 已遵守）
+- `.opencode/skills/ptx-lessons-learned/SKILL.md §19` — 成功应用 §1 跨模块状态翻译（BarWarpSyncHandler 迁移）；本 change 同为"补丁式"工作模式，借鉴其"行级 diff 完整迁移"思维
+- `.opencode/skills/ptx-lessons-learned/SKILL.md §20` — Pre-implementation Review 强制项（**本 change 已通过实证基线验证**，详见 tasks.md Checklist H）
+- `.opencode/skills/openspec-propose/SKILL.md §Design-Time Checklist` — Checklists A/B/D/E/G 集成
+- `archive/2026-07-05-fix-cvt-strategy-actual-split/` — 同模式应用案例（stale artifact 修复 + Ref 链接）
+- `archive/2026-07-04-implement-wmma-tensor-core-{tcgen05,phase-0-infra}/` — 本 change 同步对象

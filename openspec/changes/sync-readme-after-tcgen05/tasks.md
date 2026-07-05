@@ -28,10 +28,18 @@
   ls openspec/changes/sync-readme-after-tcgen05/
   # 期望: .openspec.yaml, proposal.md, design.md, tasks.md, specs/sync-readme-tcgen05/spec.md
   ```
-- [ ] 0.2 在 main 上创建工作分支
+- [x] 0.2 在 main 上创建工作分支
   ```bash
   git checkout -b docs/sync-readme-after-tcgen05
   ```
+
+  > **分支策略说明**（修订）：本 change 是**纯文档同步**（< 20 行 diff，0 代码改动，0 测试影响）。
+  > 选择**直接在 main 上顺序实施**（不创建独立分支），理由：
+  > 1. 文档同步风险极低（每 Phase 独立 commit + 独立可 revert）
+  > 2. 用户已在消息中确认"在当前 main 上直接实施（documentation-only，< 20 行 diff）"
+  > 3. 与 `archive/2026-07-03-docs-readme-rebuild/` 模式一致（commit `d368a40` "docs(readme): expand index from 7 to 16 subdirs" 也直接在 main 提交）
+  >
+  > 若 Phase 1+ 出现意外冲突/回归，可临时切换到独立分支 `git checkout -b docs/sync-readme-after-tcgen05` 隔离。
 - [ ] 0.3 git-tracked artifacts
   ```bash
   git add openspec/changes/sync-readme-after-tcgen05/
@@ -176,13 +184,14 @@
   ```
 - [ ] 4.4 归档 change（Checklist G）
   ```bash
+  # 修订：使用 shopt -s dotglob + 简单 mv，避免 {.,}* glob 失败
+  # 参考 fix-cvt-strategy-actual-split/ archive 模式
   git checkout main
-  git merge --no-ff docs/sync-readme-after-tcgen05
   mkdir -p openspec/changes/archive/2026-07-05-sync-readme-after-tcgen05/
-  git mv openspec/changes/sync-readme-after-tcgen05/{.,}* openspec/changes/archive/2026-07-05-sync-readme-after-tcgen05/ 2>/dev/null || true
-  # 移动隐藏文件
   shopt -s dotglob
   mv openspec/changes/sync-readme-after-tcgen05/* openspec/changes/archive/2026-07-05-sync-readme-after-tcgen05/
+  rmdir openspec/changes/sync-readme-after-tcgen05
+  shopt -u dotglob
   git add openspec/changes/
   git commit -m "chore(openspec): archive sync-readme-after-tcgen05 (Checklist G)
 
@@ -192,27 +201,75 @@
   Lessons-learned §6: post-archive hygiene — README sync via new change"
   ```
 
+- [ ] 4.5 postmortem + lessons-learned 沉淀（**强制** per openspec-archive-change skill）
+  ```bash
+  # 1. 在 docs/dev-process/lessons-learned.md 追加新章节
+  #    章节号: §21 (继 §20 之后)
+  #    标题: "Root README 同步遗漏 = 重大功能交付 checklist 缺失"
+  #    内容结构（按 lessons-learned.md 现有章节格式）:
+  #      - 现象: 描述 README.md 滞后于代码实现 1 个月
+  #      - 教训: "重大功能交付" 4 项缺一不可（代码 + 单元测试 + e2e + README 同步）
+  #      - 检查工具: 在交付 checklist 添加 "README.md 状态描述是否仍准确" 一项
+  #      - 真实案例: implement-wmma-tensor-core-tcgen05 (2026-07-04) + 本 change sync-readme-after-tcgen05
+
+  # 2. 同步 .opencode/skills/ptx-lessons-learned/SKILL.md
+  #    新增 §21 经验条目（"重大功能交付 = 代码 + 测试 + 文档同步"）
+  #    添加 Checklist I（"重大功能交付 checklist"）
+
+  # 3. 调用 openspec-archive-change skill（用户会被 prompt 询问生成 postmortem）
+  ```
+
 ---
 
-## ✅ Lessons-learned Checklist 集成
+## ✅ Lessons-learned Checklist 集成（增强版 — 包含 §20 Checklist H）
+
+> **修订说明**: 原 §Lessons-learned Checklist 集成 只包含 D/E/F/G，**遗漏 §20 Checklist H（Pre-implementation Review）**。§20 由 commit `a9db428`（2026-07-05）新增，是 `fix-cvt-strategy-actual-split` 的关键教训。本 change 与该案例同构（"archive ✅ + 文件未删除 ≠ 已完整实施"），因此 Checklist H 强制集成。
 
 ### Checklist D (Commit 前)
-- [x] AGENTS.md 不需同步（本 change 不改 sub-AGENTS.md）
-- [x] ADR 不需追加（已存在 ADR-0016，本 change 仅引用）
-- [x] OpenSpec tasks.md 已更新（本文档）
-- [x] commit message 列出 Fix #1-#3
+- [ ] AGENTS.md 不需同步（本 change 不改 sub-AGENTS.md）
+- [ ] ADR 不需追加（已存在 ADR-0016，本 change 仅引用）
+- [ ] OpenSpec tasks.md 已更新（本文档）
+- [ ] commit message 列出 Fix #1-#3
 
 ### Checklist E (OpenSpec 实施后)
-- [x] 所有 artifacts (proposal.md / design.md / tasks.md / spec.md / .openspec.yaml) **git-tracked**
-- [x] Phase 0 强制 — artifacts commit FIRST
-- [x] 每个 commit 独立可 revert（Fix #1-#3 各可单独 revert）
-- [x] 实施 commits 完成后立即 git-tracked（避免 working tree 遗漏）
-- [x] 归档前 grep 验证 artifacts 与代码一致
+- [x] 所有 artifacts (proposal.md / design.md / tasks.md / spec.md / .openspec.yaml) **git-tracked**（Phase 0 commit `8427829` 已完成）
+- [x] Phase 0 强制 — artifacts commit FIRST（已完成）
+- [ ] 每个 commit 独立可 revert（Fix #1-#3 各可单独 revert，Phase 1-3 完成后勾选）
+- [ ] 实施 commits 完成后立即 git-tracked（避免 working tree 遗漏）
+- [ ] 归档前 grep 验证 artifacts 与代码一致（Phase 4 验证后勾选）
 
 ### Checklist G (Lifecycle)
-- [x] 不可 amend 已归档 change（遵守）
-- [x] 新建 sync-readme-after-tcgen05 + Ref: 链接（遵守）
+- [x] 不可 amend 已归档 change（遵守 — 不动 archive/2026-07-04-implement-wmma-tensor-core-tcgen05/）
+- [x] 新建 sync-readme-after-tcgen05 + Ref: 链接（遵守 — design.md/proposal.md/spec.md Ref 段均含 Ref 链接）
 
 ### Checklist F (Debt audit)
-- [x] 引用 commit hash（`4151268`/`ad527f5`/`758edb0`/`e513235`/`c0fa43f`）而非文件路径
-- [x] 标注"基于 HEAD `5321e95`"（明确审计基准）
+- [x] 引用 commit hash（`4151268`/`ad527f5`/`758edb0`/`e513235`/`c0fa43f`/`04a62c4`）而非文件路径
+- [x] 标注"基于 HEAD `5321e95`"（明确审计基准 — tasks.md 头部与 design.md §Context 均标注）
+
+### Checklist H (Pre-implementation Review) — §20 强制项
+
+> **本 change 与 §20 同构**: 两者都是面对"archive 标记完成但 README/代码未同步"场景。§20 的核心教训是"archive ✅ COMPLETED + 文件未删除 ≠ 已完整实施"。本 change 已通过以下**实证基线验证**避免 §20 反模式：
+
+- [x] **实证 1 — Commit hash 验证**: 5 个 commit hash 全部 `git log` 验证存在
+  - `4151268` (Fix #14 e2e GEMM)
+  - `35808d6` (Fix #12 ld/st)
+  - `0213ff1` (Fix #13 commit/wait)
+  - `535dd9d` (Fix #10 mma fragment arithmetic)
+  - `ac1a8d4` (Phase 0 merge)
+- [x] **实证 2 — 文件路径验证**: 6 个关键文件全部 `ls`/`test -f` 验证存在
+  - `src/ptxsim/instructions/wmma.cpp`（handler 实现）
+  - `tests/unit/ptx/test_tcgen05_ld_st.cpp`
+  - `tests/integration/tcgen05/test_tcgen05_ld_st_commit.cpp`
+  - `tests/e2e/kernel/test_blackwell_gemm.cu`
+  - `docs/adr/0016-blackwell-only-tcgen05.md`
+  - `docs/dev-process/post-tcgen05-roadmap.md`
+  - `docs/audits/debt-audit-2026-07-02.md`
+- [x] **实证 3 — env.sh 自动检测验证**: `grep "NVCC_PATH=\$(which nvcc)" env.sh` 返回实际行（Decision 3 措辞依据）
+- [x] **决策**: 本 change 是 §6 "stale README" 第二个真实案例（继 `fix-cvt-strategy-actual-split` 之后），已通过强制实证避免 §20 的 5 项 MUST-RESOLVE（scope 错误 / 接口矛盾 / 测试虚构 / worktree 不存在 / 路径错误）
+
+### Checklist I (重大功能交付 checklist) — §21 待沉淀
+
+> **待办**: Phase 4.5 postmortem 沉淀时新增 Checklist I（"重大功能交付 = 代码 + 单元测试 + e2e + README 同步"）。本 change 作为 §21 案例来源。
+
+- [ ] 任何 `feat-*/implement-*` change 归档前必须验证根 README.md "状态" / "已知限制" 章节是否仍准确
+- [ ] 任何 archive commit 必须包含 README 同步（如适用）
