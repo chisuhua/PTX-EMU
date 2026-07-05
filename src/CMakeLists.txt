@@ -74,7 +74,6 @@ add_library(ptxsim SHARED
     ptxsim/core/warp_scheduler.cpp
     ptxsim/core/sm_context.cpp
     ptxsim/core/gpu_context.cpp
-    ptxsim/core/active_warp_manager.cpp
     register/condition_code_register.cpp
     register/register_bank_manager.cpp
     memory/hardware_memory_manager.cpp  # 添加新的硬件内存管理器
@@ -132,14 +131,6 @@ add_library(ptxsim SHARED
     ptxsim/barrier/warp_barrier.cpp
     ptxsim/barrier/cta_barrier.cpp
     ptxsim/barrier/barrier_module.cpp
-    # T2-3: POD placeholder sources for contexts/ (data-only structs)
-    ptxsim/contexts/exec_state.cpp
-    ptxsim/contexts/register_predicate.cpp
-    ptxsim/contexts/memory_ref.cpp
-    ptxsim/contexts/program_ref.cpp
-    ptxsim/contexts/lane_mask.cpp
-    ptxsim/contexts/warp_identity.cpp
-    ptxsim/contexts/backend_links.cpp
 )
 target_link_libraries(ptxsim ptx_ir)
 
