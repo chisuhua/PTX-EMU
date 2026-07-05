@@ -742,3 +742,76 @@ test -f <path> && echo exists || echo missing
 - [ ] **归档时**：调用 openspec-archive-change skill（含 postmortem 选项）
 
 ---
+
+## 21. 重大功能交付必须包含根 README 同步（root README sync after major feature delivery）
+
+### 现象（README 滞后于实现 1 个月）
+
+`implement-wmma-tensor-core-tcgen05` change（2026-07-04 archived，含 26 commits + ADR-0016 Blackwell-only + 5 个 tcgen05 指令完整实施 + e2e GEMM kernel）完整交付后，**根 `README.md` 未同步更新**：
+
+- `README.md:48` 仍声称 "**WMMA / Tensor Core**：是 stub"
+- `README.md:47` 仍硬编码 "核心 ISA ~67%"
+- `README.md:50` 仍硬编码 "CUDA Toolkit：11.4.4 测试通过"
+- `README.md:3` 仍声称 "SIMT v2.0 (Phase 10 进行中)"
+
+**根因**：archive commit `79fc236` 仅标记 tcgen05 实施完成（per Checklist G），但未检查根 README.md 是否仍准确描述实现状态。这是 lessons-learned §6 "stale artifact" 案例的 README 子集 — 实施 + archive 完美，但描述文档滞后 30 天。
+
+### 教训
+
+**1. "重大功能交付" = 代码 + 单元测试 + e2e + README 同步（4 项缺一不可）**：
+
+| 项 | 责任方 | 验证 |
+|---|--------|------|
+| 代码 | 实施者 | `git log` 验证 |
+| 单元测试 | 实施者 | `ctest -L unit` |
+| e2e | 实施者 | `ctest -L e2e` |
+| **README 同步** | **实施者 / archive reviewer** | **`grep` 关键术语（如 "WMMA / stub"）应在根 README 找不到** |
+
+**2. Archive commit 必须包含"README 状态同步"检查**（per Checklist G lifecycle 约束）。本 case 的 fix 是新建 `sync-readme-after-tcgen05` change（不 amend 已归档 change）+ `Ref:` 链接，符合 OpenSpec Checklist G。
+
+**3. 根 README 是"对外第一印象"**：新开发者读 README.md 找方向，错误描述会立即误导（"WMMA 是 stub" → "项目还在非常早期" → 不会查 docs/adr/）。修复越晚，误导人数越多。
+
+### 检查工具
+
+```bash
+# 任何 archive commit 前必跑：根 README "已知限制" / "状态" 章节 grep
+grep -n "stub\|TODO\|FIXME\|不实现\|未完成" README.md
+# 应: 0 matches (除非有明确 TODO 标注 + 修复计划)
+
+# 验证状态描述对齐实际
+grep -n "进行中\|完成\|TODO" README.md
+# 与 docs/README.md Phase 表格 + AGENTS.md 状态对比应一致
+
+# 验证 PTX 指令覆盖数字（如有）
+grep -nE "[0-9]+%|第[一二三]" README.md
+# 硬编码数字应替换为自动统计链接（参考 docs/audits/）
+```
+
+### 真实案例
+
+- **触发 change**: `sync-readme-after-tcgen05`（commits `8427829` + `80271cd` + `91aeef2` + `4b8cb6b` + `746d083` + `cee527f`，2026-07-05）
+- **延迟**: implement-wmma-tensor-core-tcgen05 (2026-07-04) → sync-readme (2026-07-05) = **1 天延迟**（本应在 archive 时同步）
+- **修复量**: README.md +15/-5 行（5 个 commits：1 artifacts + 1 revision + 3 README Fix #1-#3 + 1 archive）
+- **提交顺序**: Phase 0 artifacts FIRST（artifacts tracked → 修订 → 实施 → 验证 → 归档）
+- **Lessons-learned 集成**: 严格遵守 §6 (artifacts-first) + §19 (跨模块状态翻译) + §20 (Pre-implementation Review) 三个 lessons
+- **关联 postmortem**: tasks.md Phase 4.5 沉淀（per openspec-archive-change skill 强制 postmortem prompt）
+
+### 与 §6 / §18 / §20 的对比
+
+| 维度 | §6 案例（cleanup-deprecated-barrier-apis） | §18 案例（barrier-migration-amendment） | §20 案例（fix-cvt-strategy-actual-split） | **§21 案例（sync-readme-after-tcgen05）** |
+|------|---|---|---|---|
+| 失败模式 | artifacts 提交遗漏 | debt audit 误判已解决 debt | proposal scope 错误 | **根 README 同步遗漏** |
+| 检测时机 | archive 后 12 天 | debt audit 时 | apply Phase 0 后 | **archive 后 1 天** |
+| 修复方式 | 重建 artifacts | debt audit RESOLVED | 重写 proposal/design/tasks | **新建 sync-* change + Ref 链接** |
+| 工作量 | 重建 ~50 行 | audit 修正 + lesson #18 | 6 Phase → 3 Phase 修订 | **15 行 README 同步** |
+| Lessons | #18 stale artifact | #18 同上 | #20 pre-impl review | **#21 README 同步清单** |
+
+### 实战 checklist（apply 到任何"重大功能交付"的工作）
+
+- [ ] **实施阶段**：根 README.md "状态" / "已知限制" 章节随代码同步更新（不延后到 archive）
+- [ ] **Archive commit 前**：grep 检查 "stub / TODO / FIXME / 未实现 / 硬编码百分比" 在 README.md 中应为空（或有明确 TODO 标注 + 修复 plan）
+- [ ] **任何 `feat-*/implement-*` change 归档前**：必跑本 checklist
+- [ ] **新 `fix-*/sync-*` change 处理已归档案例**：通过 Ref 链接 + 不 amend（per Checklist G）
+- [ ] **postmortem 沉淀**：在 lessons-learned.md 追加 §N（本节作为 §21 模板），同步 .opencode/skills/ptx-lessons-learned/SKILL.md Checklist I
+
+---

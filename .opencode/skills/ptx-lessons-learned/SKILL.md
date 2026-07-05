@@ -245,8 +245,6 @@ rm -rf openspec/changes/<obsolete-amendment>/ openspec/changes/<already-archived
 
 ### 7. Pre-implementation Review：实施 OpenSpec change 前必须跑 Metis 审计（2026-07 新增）
 
-**问题模式**: 实施 OpenSpec change 时，proposal 基于"目录/文件存在性推断"而非实证撰写。archive README 的"✅ COMPLETED" + 文件未删除 ≠ "已完整实施"。
-
 **真实案例**: `fix-cvt-strategy-actual-split`（commits `e8db807`/`f3ef891`/`43edf55`，2026-07-05）原 6-Phase 计划基于错误前提：
 - ❌ 假设 919 行 switch 块未拆分 → 实证：4 个 Strategy 类已部署（`fc3c352`/`9837d44`/`d6123e0`）
 - ❌ 假设 `.worktrees/fix-pre-p0-baseline` 可复用 → 实证：worktree 目录为空
@@ -283,6 +281,37 @@ git log --all --oneline -- "<change-dir>"
 3. 重写 proposal/design/tasks.md 反映真实 scope（示例：6 Phase 拆分 → 3 Phase 死代码清理）
 4. 在每个 artifact §Ref 段加 "Metis pre-implementation review" 链接
 5. 沉淀到 lessons-learned.md §20 + ADR-0015 §2026-07 Fix 段
+
+### 8. 重大功能交付必须同步根 README（2026-07 新增）
+
+**问题模式**: 实施 `feat-*/implement-*` change 并归档后，根 `README.md` 仍描述 stale 状态（如 "WMMA 是 stub"）。新开发者读根 README 找方向，错误描述会立即误导。
+
+**关键经验**：
+- "重大功能交付" = 代码 + 单元测试 + e2e + **README 同步**（4 项缺一不可）
+- 根 README 是"对外第一印象" — 修复越晚，误导人数越多
+- 任何 archive commit 前必跑 grep 验证（`stub / TODO / FIXME / 硬编码百分比` 应为空）
+
+**诊断命令**：
+```bash
+# Archive commit 前必跑
+grep -n "stub\|TODO\|FIXME\|不实现\|未完成" README.md
+grep -nE "[0-9]+%|第[一二三]" README.md  # 硬编码数字
+grep -n "进行中\|完成" README.md  # 状态描述
+```
+
+**修复模板**：
+```bash
+# 新建 sync-* change（不 amend 已归档 change）
+git checkout -b docs/sync-readme-after-<feature>
+# 4 Phase: artifacts → 修订 → 3 README Fix #1-#3 → 归档
+# 详见 docs/dev-process/lessons-learned.md §21 完整案例
+```
+
+**真实案例**:
+- `sync-readme-after-tcgen05`（commits `8427829`/`80271cd`/`91aeef2`/`4b8cb6b`/`746d083`/`cee527f`，2026-07-05）
+- 延迟: implement-wmma-tensor-core-tcgen05 (2026-07-04) → sync-readme (2026-07-05) = **1 天延迟**
+- 修复量: README.md +15/-5 行（5 components, 3 commits, 5-step Phase 0-4 流程）
+- Lessons-learned 集成: §6 (artifacts-first) + §19 (跨模块) + §20 (pre-impl review) 三者协同
 
 ---
 
@@ -378,6 +407,20 @@ git log --all --oneline -- "<change-dir>"
   - ctest -N 验证 oracle 数量（如 94 → 14 是常见偏差）
   - ls 验证 worktree/路径真存在（空目录 ≠ "可复用现有"）
 □ 区分"已实施但未清理" vs "未实施"（4 类表象对照 §20）
+```
+
+### Checklist I: 重大功能交付清单（2026-07 新增）
+
+```
+□ "重大功能交付" = 代码 + 单元测试 + e2e + 根 README 同步（4 项缺一不可）
+□ 实施阶段：根 README.md "状态" / "已知限制" 章节随代码同步更新（不延后到 archive）
+□ Archive commit 前 grep 验证：
+  - grep -n "stub\|TODO\|FIXME" README.md 应为空（或有明确 TODO + 修复 plan）
+  - grep -n "进行中\|完成" README.md 应与 docs/README.md Phase 表格一致
+  - grep -nE "[0-9]+%|硬编码" README.md 应替换为自动统计链接
+□ 任何 feat-*/implement-* change 归档前必跑本 checklist
+□ 新 sync-* / fix-* change 处理已归档案例：通过 Ref 链接 + 不 amend（per Checklist G）
+□ postmortem 沉淀：追加 lessons-learned.md §N（本 checklist 是 §21 模板）
 ```
 
 ---
