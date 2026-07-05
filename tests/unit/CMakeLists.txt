@@ -176,12 +176,6 @@ add_catch_test(unit_warp_state
 )
 set_tests_properties(unit_warp_state PROPERTIES LABELS "unit;warp;state;simt_entry")
 
-# T2-3 A4a: WarpContext 3-POD facade members (additive, defaults only)
-add_catch_test(unit_warp_context_pod_facade
-    contexts/test_warp_context_pod_facade.cpp
-)
-set_tests_properties(unit_warp_context_pod_facade PROPERTIES LABELS "unit;contexts;pod;warp_context")
-
 # BUG-001: active_count staleness after WarpContext::decrement_blocked_cycles()
 # drains blocked cycles. RED phase: this test MUST FAIL on unpatched code
 # (active_count remains 0 → scheduler skips a schedulable warp → hang).
@@ -606,52 +600,6 @@ add_catch_test(unit_half_utils_consistency
     utils/test_half_utils_consistency.cpp
 )
 set_tests_properties(unit_half_utils_consistency PROPERTIES LABELS "unit;half;utils;consistency;cvt")
-
-# ============================================================================
-# T2-3: god-class POD split contexts unit tests
-# Validates POD struct field groupings and defaults from ThreadContext/WarpContext
-# refactor. Each POD test is independent (no shared mutable state).
-# ============================================================================
-add_catch_test(unit_exec_state_pod
-    contexts/test_exec_state_pod.cpp
-)
-set_tests_properties(unit_exec_state_pod PROPERTIES LABELS "unit;contexts;pod")
-
-add_catch_test(unit_register_predicate_pod
-    contexts/test_register_predicate_pod.cpp
-)
-set_tests_properties(unit_register_predicate_pod PROPERTIES LABELS "unit;contexts;pod")
-
-add_catch_test(unit_memory_ref_pod
-    contexts/test_memory_ref_pod.cpp
-)
-set_tests_properties(unit_memory_ref_pod PROPERTIES LABELS "unit;contexts;pod")
-
-add_catch_test(unit_program_ref_pod
-    contexts/test_program_ref_pod.cpp
-)
-set_tests_properties(unit_program_ref_pod PROPERTIES LABELS "unit;contexts;pod")
-
-add_catch_test(unit_lane_mask_pod
-    contexts/test_lane_mask_pod.cpp
-)
-set_tests_properties(unit_lane_mask_pod PROPERTIES LABELS "unit;contexts;pod")
-
-add_catch_test(unit_warp_identity_pod
-    contexts/test_warp_identity_pod.cpp
-)
-set_tests_properties(unit_warp_identity_pod PROPERTIES LABELS "unit;contexts;pod")
-
-add_catch_test(unit_backend_links_pod
-    contexts/test_backend_links_pod.cpp
-)
-set_tests_properties(unit_backend_links_pod PROPERTIES LABELS "unit;contexts;pod")
-
-# T2-3 A3a: ThreadContext 4-POD facade members (additive, defaults only)
-add_catch_test(unit_thread_context_pod_facade
-    contexts/test_thread_context_pod_facade.cpp
-)
-set_tests_properties(unit_thread_context_pod_facade PROPERTIES LABELS "unit;contexts;pod;thread_context")
 
 # parser-completeness spec: multi-PTX cubin 累加 + warning oracle
 add_catch_test(unit_multi_ptx

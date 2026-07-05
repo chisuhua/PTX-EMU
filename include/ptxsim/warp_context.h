@@ -276,8 +276,6 @@ public:
     // destroys first, then legacy fields. Legacy fields above remain
     // canonical source until A4c removes them.
     ptxsim::contexts::LaneMaskPod lane_mask_;
-    ptxsim::contexts::WarpIdentityPod warp_identity_;
-    ptxsim::contexts::BackendLinksPod backend_links_;
 };
 
 #endif // WARP_CONTEXT_H
