@@ -74,8 +74,10 @@ CvtContext build_context(const std::vector<Qualifier> &qualifiers);
 // ---------------------------------------------------------------------------
 // ConversionStrategy: 抽象策略基类 (运行时多态)
 //
-// Sub-task 3 仅一个实现 (GeneralCvtStrategy 在 .cpp 中)，保留 Sub-task 4
-// 拆分的扩展点。
+// 4 个具体实现 (FloatToFloatStrategy / FloatToIntStrategy /
+// IntToFloatStrategy / IntToIntStrategy) 位于 cvt/*.cpp，由
+// select_strategy() 在运行时按 CvtContext.dst_is_float / src_is_float
+// dispatch。详见 ADR-0015 与变更历史 (fix-cvt-strategy-actual-split)。
 // ---------------------------------------------------------------------------
 class ConversionStrategy {
 public:
@@ -92,8 +94,9 @@ public:
 };
 
 // select_strategy(): 根据 CvtContext 选择具体策略。
-// 返回的指针生命周期由调用者管理 (Sub-task 3 中是静态单例，Sub-task 4
-// 会保持同样约定以避免分配开销)。
+// 返回引用指向 4 个 static const 单例 (FloatToFloat / FloatToInt /
+// IntToFloat / IntToInt，进程生命周期)，无堆分配。signature 固定为
+// const ref 以避免不必要的运行时分配 — 详见 ADR-0015。
 const ConversionStrategy &select_strategy(const CvtContext &ctx);
 
 } // namespace cvt_strategy

@@ -719,7 +719,7 @@ test -f <path> && echo exists || echo missing
   - 实施 commits 全部 0 回归（14 CVT + 33 PTX + e2e GEMM + 全套 178 ctest PASS）
 - **沉淀位置**:
   - `openspec/changes/fix-cvt-strategy-actual-split/{proposal,design,tasks}.md` §Scope 修订说明
-  - `docs/adr/0015-cvt-strategy-pattern.md` §2026-07 Fix 段（含 lessons-learned §18 案例沉淀）
+  - `docs/adr/0015-cvt-strategy-pattern.md` §2026-07 Fix 段（含 lessons-learned §20 案例沉淀）
   - `.opencode/skills/ptx-lessons-learned/SKILL.md`（新增 §20 + Checklist H）
   - 本 lessons-learned.md §20（本节）
 

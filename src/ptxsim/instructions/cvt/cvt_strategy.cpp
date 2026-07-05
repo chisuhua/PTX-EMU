@@ -28,10 +28,6 @@
 #include "ptxsim/utils/qualifier_utils.h"
 #include "ptxsim/utils/type_utils.h"
 
-#include <algorithm>
-#include <cmath>
-#include <limits>
-
 namespace ptxsim {
 namespace cvt_strategy {
 
