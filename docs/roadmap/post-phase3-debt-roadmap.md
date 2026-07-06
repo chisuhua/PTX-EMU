@@ -76,7 +76,7 @@
 | D-2 | `docs/README.md` 统计数据过时（已修复） | ✅ RESOLVED | — | — |
 | D-3 | `docs/skills/README.md` 列 9 vs 实际 18 技能（需 re-verify） | 🟢 P3 | (合并到 D-1) | 0.5h |
 | D-4 | 5 个 OpenSpec 孤儿 change 缺 design.md（原审计列 6 个含 `integrate-barrier-module-cta-warp`，但该 change 已有 design.md，实测 5 个需补） | ✅ RESOLVED by `docs-cuda-docs-and-openspec-orphan-sync` (2026-07-06) — retroactive design.md 路径：`openspec/changes/archive/2026-06-24-phase3-{cvt-precision-bugfix,half-precision-bugfix,t2-1-active-mask-unify,t2-3-god-class-split,t2-6-cvt-strategy-pattern}.design.md` | — | — |
-| D-5 | `docs/skills/` vs `.opencode/skills/` 内容分叉 | 🟢 P3 | (合并到 D-1) | 1h |
+| D-5 | `docs/skills/` vs `.opencode/skills/` 内容分叉 | ✅ RESOLVED by `docs-cuda-docs-and-openspec-orphan-sync` (2026-07-06) — 删除 4 个过期/已禁用副本（`ptx-debug/`、`ptxir-serialization/`、`ptx-grammar-modification.md`、`three-mode-testing/`），仅保留 README.md + 2 个非技能技术参考 | — | — |
 | D-6 | `HEALTH-AUDIT-2026-06-21.md` 8 个事实错误未合并 | 🟡 P2 | `merge-health-audit-errata` | 1h |
 
 ### 1.4 优先级排序总结与 Tier 映射规则
