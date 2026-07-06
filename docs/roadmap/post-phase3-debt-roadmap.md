@@ -20,7 +20,7 @@
 | **OpenSpec 已 Archived changes** | 18 个（最近：`2026-07-05-add-extern-function-declaration`, `2026-07-05-parser-completeness`, `2026-07-05-fix-cvt-strategy-actual-split`） |
 | **Active changes** | 0 |
 | **已 RESOLVED 债务**（本次会话） | A-5, A-7, A-8, C-11, C-12 |
-| **剩余 A 系列债务** | 1（A-10 嵌套分歧测试 — A-9 ✅ 已 archive） |
+| **剩余 A 系列债务** | 0（A-10 ✅ **ARCHIVED 2026-07-06** — A-9 同日 archived） |
 | **剩余 C 系列债务** | 18（god class + tests + includes；C-19 已移除：测试已存在） |
 | **剩余 D 系列债务** | 6（docs README + OpenSpec 孤儿） |
 | **Oracle tests 新增** | `unit_multi_ptx` + `unit_extern_function`（parser series） |
@@ -43,7 +43,7 @@
 | # | 债务 | 风险 | 优先级 | 推荐 change 名 | 工时 |
 |---|------|------|--------|---------------|------|
 | A-9 | ~~`atomic.cpp` 80% 完整但 CAS 未实现，无真正原子性~~ ✅ **ARCHIVED 2026-07-06** | ~~🟡 中~~ | ~~**🟡 P1**~~ | `implement-atomic-cas-and-true-atomicity` ✅ | 8h |
-| A-10 | 嵌套分歧测试缺失（`test_nested_divergence.cpp:106`） | 🟡 中 | **🟢 P2** | `add-nested-divergence-tests` | 5h |
+| A-10 | ~~嵌套分歧测试缺失（`test_nested_divergence.cpp:106`）~~ ✅ **ARCHIVED 2026-07-06** | ~~🟢 P2~~ | ~~`add-nested-divergence-tests`~~ | 5h |
 
 ### 1.2 剩余 C 系列（代码）
 
@@ -495,6 +495,7 @@ grep -rn "<deleted_symbol>" src/ include/ tests/
 | 1.1 | 2026-07-05 | MR-1~MR-5 修复：移除 C-19 虚假债务，澄清 C-4 函数/文件行数，恢复 C-1 至 §3 Tier 3，添加 Tier↔Priority 映射规则，更新 §1.2 + 附录过期行数（C-1, C-17, C-18, C-4） |
 | 1.2 | 2026-07-05 | MR-N1~N3 (Oracle review) |
 | 1.3 | 2026-07-06 | A-9 `implement-atomic-cas-and-true-atomicity` archive（commits `3a38ca0` + `5a328ac` + `6cb5baa` + archive commit）。3 Phase 全部完成（CAS handler + cross-warp mutex + multi-warp oracle test）。§0 更新 A-9 RESOLVED、§1.1 A-9 ✅、§1.2 C-16 ✅ RESOLVED（合并到 A-9）、附录 A.1 atomic.cpp RESOLVED |
+| 1.4 | 2026-07-06 | A-10 `add-nested-divergence-tests` archive（commit `ef425d2` + archive commit）。32-lane 两级嵌套 setp+selp 覆盖率 added；TODO 2026-05-08 at line 106 removed。注：direct @%p bra 变体发现预存在的 SIMT stack 32-lane 跟踪 bug（lanes 16..31 inherit taken-branch state 无论 predicate）— 已 documented in file header, follow-up change required。§0 更新 A-10 RESOLVED、§1.1 A-10 ✅ |
 
 ---
 
