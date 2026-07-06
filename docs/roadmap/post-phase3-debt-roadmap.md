@@ -20,7 +20,7 @@
 | **OpenSpec 已 Archived changes** | 18 个（最近：`2026-07-05-add-extern-function-declaration`, `2026-07-05-parser-completeness`, `2026-07-05-fix-cvt-strategy-actual-split`） |
 | **Active changes** | 0 |
 | **已 RESOLVED 债务**（本次会话） | A-5, A-7, A-8, C-11, C-12 |
-| **剩余 A 系列债务** | 0（A-10 ✅ **ARCHIVED 2026-07-06** — A-9 同日 archived） |
+| **剩余 A 系列债务** | 0（A-5 ✅ **RESOLVED 2026-07-06**, A-9 ✅ ARCHIVED, A-10 ✅ ARCHIVED） |
 | **剩余 C 系列债务** | 18（god class + tests + includes；C-19 已移除：测试已存在） |
 | **剩余 D 系列债务** | 6（docs README + OpenSpec 孤儿） |
 | **Oracle tests 新增** | `unit_multi_ptx` + `unit_extern_function`（parser series） |

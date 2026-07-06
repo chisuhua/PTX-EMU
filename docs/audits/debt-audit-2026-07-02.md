@@ -34,7 +34,7 @@ PTX-EMU 在 Phase 3 结构债务修复中（commit `c9b1785~07dfd48` 期间）�
 | **P0-A2** | `cleanup-deprecated-barrier-apis/tasks.md` Task 2.1 **已过时**：`bsync_state.{h,cpp}` 已删除，Task 仍说"rm" | 误导实施者 | — | ✅ **RESOLVED** (2026-06-20) — `bsync_state.{h,cpp}` 已通过 commit `8a5573d` 删除，archived tasks.md Task 2.1 标记 `[x]` |
 | **P0-A3** | `warp_context.cpp:283-296` BAR_SYNC fallback 调用 `synchronize_barrier` 在 spec 中**未提及**，按 spec 执行会编译失败 | 编译失败 | cleanup-deprecated-barrier-apis | ✅ **RESOLVED** (2026-06-20) — 由 commit `7914764` 替换为 `cta_context_->get_barrier_module()->arrive_at_cta_barrier(thread->bar_id, thread)` |
 | **P0-A4** | cleanup-deprecated-barrier-apis 缺 lessons-learned **6 项 checklist**（基线 worktree、AGENTS.md 同步、ADR 追加、独立 fix 编号 commit message 等） | 重蹈 Phase 5 失败 | — | ✅ **RESOLVED** (2026-06-20) — 6 项 checklist 在实施 commits 中实际应用：基线 worktree 复用 `fix-pre-p0-baseline`、独立 fix 编号（每个 commit 列出 6-7 个 Fix）、ADR-0008 §2026-06-20 追加 |
-| **P0-A5** | `migrate-bar-warp-sync-to-barrier-module` tasks.md **未显式删除** `Wbar` 和 `warp_state.wbars[]` 字段 | 不会真正清理 deprecated | — | 🟡 **PENDING** (Phase 5 未启动) |
+| **P0-A5** | `migrate-bar-warp-sync-to-barrier-module` tasks.md **未显式删除** `Wbar` 和 `warp_state.wbars[]` 字段 | 不会真正清理 deprecated | — | ✅ **RESOLVED (2026-07-06)** — `include/ptxsim/wbar.h` 已删除,`warp_state.wbars[]` 字段已删除,`get_wbar()` API 已删除,生产代码零 `Wbar` 引用。`migrate-bar-warp-sync-to-barrier-module` change 已归档 (`archive/2026-07-03-migrate-bar-warp-sync-to-barrier-module/`)。唯一残留物 (barrier.cpp 49-50 行过时注释) 已于 2026-07-06 commit `<<TBD>>` 修复。P0 阻塞全部清除 |
 | **P0-A6** | `cleanup → migrate` 严格顺序依赖，但未文档化 | 协调失序 | — | ✅ **RESOLVED** (2026-06-20) — cleanup 已完成且 archive，`migrate` 可独立启动 |
 
 ### 1.2 自相矛盾/虚假信息（4 条）

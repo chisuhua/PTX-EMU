@@ -46,13 +46,10 @@ using ptxsim::CTABarrier;
 // Operation:
 // 1. Extract participation mask from operand[0]
 // 2. Get reconvergence PC from operand[1] (label)
-// 3. Mark current thread as arrived using Wbar::arrive()
-// 4. Check if all participants have arrived using Wbar::is_complete()
-// 5. If complete:
-//    - Update all participating threads' PC to reconvergence_pc
-//    - Clear barrier for next use
-// 6. If not complete:
-//    - Mark thread as blocked (waiting at barrier)
+// 3. Route through BarrierModule::arrive_at_warp_barrier() to register
+//    the participating lane and check completeness
+// 4. If complete: update participating threads' PC to reconvergence_pc
+// 5. If not complete: mark thread as blocked (waiting at barrier)
 // =============================================================================
 
 // Override prepareOperands to use BarWarpSyncInstr instead of GenericInstr
