@@ -17,10 +17,11 @@ GPUContext
 ## WHERE TO LOOK
 | Task | Location | Notes |
 |------|----------|-------|
-| Per-thread PC management | `thread_context.cpp` | `get_pc()`, `commit_pc()`, `set_pc()` |
+| Per-thread PC management | `simt_pc_manager.cpp` | `get_pc()`, `commit_pc()`, `set_pc()` — Phase 1 extraction |
+| Register access & lookup | `register_access_layer.cpp` | `acquire_register()`, `register_bank_manager_` — Phase 2 extraction |
 | Warp scheduling | `warp_scheduler.cpp` | `is_warp_ready_to_fetch()` |
 | Barrier sync | `cta_context.cpp` | `cta_context->get_barrier_module()` |
-| Thread execution | `thread_context.cpp` | `execute_thread_instruction()` |
+| Thread execution | `thread_context.cpp` | `execute_thread_instruction()` — delegates to sub-classes |
 
 ## KEY FILES
 | File | Purpose |
@@ -28,7 +29,9 @@ GPUContext
 | `gpu_context.cpp` | Top-level: creates SMs, manages memory |
 | `sm_context.cpp` | Warp scheduler, barrier management |
 | `warp_context.cpp` | 32-thread warp, SIMT stack, divergence |
-| `thread_context.cpp` | Per-thread registers, PC, condition codes |
+| `thread_context.cpp` | **Per-thread orchestrator (delegation hub)** |
+| `simt_pc_manager.cpp` | **PC + execution state (Phase 1 extract)** |
+| `register_access_layer.cpp` | **Register lookup + bank manager (Phase 2 extract)** |
 | `cta_context.cpp` | CTA-level shared memory |
 | `warp_scheduler.cpp` | RoundRobin/Greedy warp selection |
 
