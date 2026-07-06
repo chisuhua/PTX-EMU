@@ -442,6 +442,19 @@ git checkout -b docs/sync-readme-after-<feature>
 □ 沉淀到 lessons-learned.md §23（§23 是本 checklist 的真实案例模板）
 ```
 
+### Checklist K: docs-* change 实施侧 3 陷阱（2026-07 新增）
+
+```
+□ Retroactive artifact 合成：≥3 共享模板 → 1 个 subagent（共享上下文 + 模板一致性）
+  - 反例：N 个并行 subagent 各自维护模板 + commit hash 验证重复 N 次
+□ Inline edit 策略：每个 ERRATA 项 1 个 edit，保留原文不变 + inline 注释
+  - 每个 edit 前 Read 验证精确字符串 → Edit 仅追加 `[勘误 ...]` → 不修改原文
+  - 验证：diff <(git show HEAD~1:file | grep -v '勘误') <(git show HEAD:file | grep -v '勘误')
+□ git rm + .gitignore 盲区：tracked 删除后 untracked 子目录残留
+  - 流程：git rm -r <dir>/（删 tracked）→ find <dir> -type d 检查残留 → rm -rf <untracked-subdir>
+  - 替代：git clean -fdn <dir>/（dry-run）→ git clean -fd <dir>/（不可逆，慎用）
+```
+
 ---
 
 ## 🔍 失败模式速查表
@@ -458,6 +471,9 @@ git checkout -b docs/sync-readme-after-<feature>
 | `ctest -L <label>` 整体超时 | 某个测试死锁 | 切到 single-test + per-test timeout |
 | **E2E 测试输出非确定性（每次不同值），但 handler 单元测试通过** | **`is_float_type()` 只看 `qualifiers.back()`，Q_F32 不在末尾时被误判为整数** | **handler 入口加 printf: `is_float` 标志；`grep "is_float_type" src/ptxsim/` 列出受影响 handler** |
 | **OpenSpec 4 个 artifacts 单独看 OK 但 apply 后行为不一致** | **proposal/design/spec/tasks 间存在内部冲突（范围数字 / 路径策略 / 操作语义）** | **运行 Checklist J：4 个 artifacts 同债务项范围对齐 + design Decision 路径 vs spec Scenario 路径一致 + tasks 验证命令 = design 路径示例** |
+| **Retroactive artifact 模板不一致 / commit hash 漏掉** | **5 个并行 subagent 各自维护模板 + commit 验证重复** | **N≥3 共享模板 → 1 个 writing subagent 一次性合成（共享上下文 + 模板一致性自然保证）** |
+| **Inline 标记后原文被意外修改 / ERRATA 合并破坏快照** | **Edit 操作未用 Read 验证精确字符串** | **每个 Edit 前 Read 验证目标段落精确内容 → Edit 仅追加 inline → diff `grep -v '勘误'` 验证原文未变** |
+| **`git rm -r` 后 untracked 子目录残留文件系统上** | **`.gitignore` 规则使子目录 untracked，git rm 不处理** | **`git rm -r <dir>/` 后 `find <dir> -type d` 检查残留 → `rm -rf <untracked-subdir>`；或 dry-run `git clean -fdn` 后 `git clean -fd`** |
 
 ---
 

@@ -941,3 +941,80 @@ ls .opencode/notes/<name>-review-report.md 2>/dev/null
 ```
 
 ---
+
+## 24. docs-* change 实施经验：retroactive subagent、inline edit、__pycache__ 陷阱（2026-07 新增）
+
+### 触发 change
+
+`docs-cuda-docs-and-openspec-orphan-sync`（commits `c913bf3`/`d80088e`/`9c553bc`/`5ffc72f`/`6205a1d`，2026-07-06）— 5-Phase 实施闭环 6 条 D-系列债务（D-1~D-6）。
+
+### 现象
+
+实施纯文档 OpenSpec change 时，3 个非显而易见的陷阱：
+
+1. **Retroactive artifact 合成的 subagent 数量决策**：5 个孤儿 change 缺 design.md，需要合成 5 个 retroactive design.md。决策"5 个并行 subagent 各写一个" vs "1 个 subagent 写全部"。
+2. **12 个 inline 勘误标记的 edit 精度**：ERRATA 8 项（E1-E8）需要合并到主审计，但 ERRATA.md "官方说明"明确"主审计原文保持不变"。需要在 12 个位置精确添加 inline `**[勘误: ...]**` 标记而不修改原文。
+3. **`git rm -r` 不会清理 .gitignored 的子目录**：`docs/skills/three-mode-testing/__pycache__/` 被 `.gitignore` 排除（`__pycache__/` 规则），`git rm -r three-mode-testing/` 仅删除 tracked 文件（SKILL.md + generate_tests.py），空 `__pycache__/` 子目录残留文件系统上。
+
+### 教训
+
+1. **Retroactive artifact 合成：1 个 subagent > N 个并行**：
+   - 5 个 design.md 共享模板（"Retroactive synthesis from git log" 标注 + 7 段结构）+ 共享 ADR 引用规则 + 共享 commit hash 验证协议
+   - 1 个 subagent：1 套上下文、5 次 Write 调用、模板一致性自然保证、commit hash 验证只跑 1 次
+   - 5 个并行：5 套上下文、5 份模板各自维护、commit hash 验证重复 5 次、风险是某个 subagent 漏掉 synthesis 标注
+   - **判定标准**：N 个相关任务的合成（共享模板/上下文/验证协议）→ 1 个 subagent；N 个独立任务的合成（不同模板/不同上下文）→ N 个并行
+
+2. **Inline edit 策略 = 9 个 edit 操作，分批执行**：
+   - 12 个 inline 标记分 9 个 edit：E1 在 §0.2 + §1.2 = 2 edits，E2 在 §0.2 + §2.2.1 = 2 edits，E3-E8 各 1 edit
+   - 每个 edit 用 Read 验证目标段落的精确字符串 → Edit 添加 `[勘误 ...]` 标记 → 不修改原文
+   - **关键约束**：ERRATA.md 顶部"官方说明"写"原审计作为 commit `baa8c4e` 的历史快照保持不变"——这是 ERRATA 文件本身的契约，违反会导致审计作为"历史快照"的可信度受损
+
+3. **`git rm -r` + `.gitignore` 的盲区**：
+   - `.gitignore` 中 `__pycache__/` 规则使目录内文件 untracked
+   - `git rm -r three-mode-testing/` 仅删除 tracked 文件（SKILL.md + generate_tests.py），不动 untracked 文件
+   - 但 `git rm -r` 会**报错**（"pathspec did not match any files"）如果目录已完全 untracked
+   - **正确流程**：`git rm -r <dir>/`（删除 tracked 部分）→ 检查残留 → `rm -rf <dir>/<untracked-subdir>`（清理 untracked）
+   - **替代方案**：`git clean -fd <dir>/`（删除所有 untracked，但**不可逆**——需先 dry-run `git clean -fdn`）
+
+### 真实案例
+
+- **OpenSpec change**: `openspec/changes/docs-cuda-docs-and-openspec-orphan-sync/`
+- **实施 commits**:
+  - `c913bf3` docs(openspec): fix 3 internal inconsistencies（审查修复）
+  - `d80088e` docs(openspec): synthesize 5 retroactive design.md（Phase 2 + 1 个 writing subagent）
+  - `9c553bc` docs(skills): remove 4 expired/disabled skill copies（Phase 3 + __pycache__ 清理）
+  - `5ffc72f` docs(audits): inline 12 ERRATA markers E1-E8（Phase 4 + 9 edits）
+  - `6205a1d` docs(roadmap): mark D-1 + D-3 RESOLVED（Phase 5.6 + 实证对齐）
+- **subagent session**: `ses_0c9a60fecffeZQ7lEYex0Du0pz`（Phase 2，6m22s 完成，1 个 writing subagent）
+- **关联 lessons**: §6（artifacts git-tracked）+ §20（Pre-impl review）+ §23（artifacts 内部一致性）三者的实施侧补充
+
+### 检查工具
+
+```bash
+# 1. Retroactive subagent 决策辅助（共享模板检测）
+n=$(ls openspec/changes/<name>/specs/*/spec.md 2>/dev/null | wc -l)
+test "$n" -ge 3 && echo "CONSIDER_1_AGENT" || echo "PARALLEL_OK"
+# 期望：>=3 共享模板 → 1 个 subagent
+
+# 2. Inline edit 后原文未变检查（diff-based）
+diff <(git show HEAD~1:docs/audits/main.md | grep -v '勘误') \
+     <(git show HEAD:docs/audits/main.md | grep -v '勘误')
+# 期望：无输出（仅有 inline 追加）
+
+# 3. __pycache__ + .gitignore 残留检查
+for d in $(find docs/skills -type d -name "__pycache__"); do
+    echo "RESIDUAL: $d"
+done
+# 期望：无输出（Phase 3 后）
+
+# 4. archive 后 git status 验证（Checklist G）
+git status openspec/changes/archive/<change-name>/
+# 期望：nothing to commit（archive/ 目录内容全部 unchanged）
+
+# 5. delta spec 同步状态（archive 前必跑）
+for spec in openspec/changes/<name>/specs/*/; do
+    cap=$(basename "$spec")
+    test -f "openspec/specs/$cap/spec.md" && echo "SYNCED: $cap" || echo "MISSING: $cap"
+done
+# 期望：全 SYNCED
+```
