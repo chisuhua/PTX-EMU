@@ -256,6 +256,12 @@ add_catch_test(integration_ptx_atom_global_cas
 )
 set_tests_properties(integration_ptx_atom_global_cas PROPERTIES LABELS "integration;ptx;atom;cas")
 
+# Phase 2/3 multi-warp CAS verification
+add_catch_test(integration_ptx_atom_global_cas_multiwarp
+    ptx/test_atom_global_cas_multiwarp.cpp
+)
+set_tests_properties(integration_ptx_atom_global_cas_multiwarp PROPERTIES LABELS "integration;ptx;atom;cas;multiwarp")
+
 add_catch_test(integration_ptx_cvt
     ptx/test_cvt.cpp
 )
