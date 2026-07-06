@@ -44,10 +44,10 @@ void ThreadContext::init(
     this->BlockDim = BlockDim;
     this->statements = &statements;
     this->name2Sym = name2Sym;
-    this->name2Share = name2Share; // 设置共享内存符号表引用
+    this->name2Share = name2Share;
     this->label2pc = label2pc;
-    this->bar_id = 0; // Initialize barrier ID to default
-    this->state = RUN;
+    this->bar_id = 0;
+
     operand_collected.resize(ThreadContext::MAX_OPERANDS_PER_INSTR);
     operand_is_immediate_.resize(ThreadContext::MAX_OPERANDS_PER_INSTR);
 
@@ -60,25 +60,30 @@ void ThreadContext::init(
     // 设置CTAContext指针，用于访问本地内存符号表
     this->cta_context_ = cta_ctx;
 
+    // MR-5: SimtPcManager construction MUST be AFTER warp_id_/lane_id_ compute.
+    // The SimtPcManager uses lane_id_ to index into warp_state.threads[].
+    // Creating it with uninitialized lane_id_ would access wrong thread state.
+    this->simt_pc_mgr_ = std::make_unique<SimtPcManager>(
+        nullptr /* warp_context set by set_warp_context */, this->lane_id_,
+        &statements);
+
+    // Initial state set through SimtPcManager (Phase 1)
+    this->simt_pc_mgr_->set_state(RUN);
+
     // T2-3 A3b: Mirror legacy field writes into the 4 POD members.
-    // PODs become a secondary view (still write-validated against legacy
-    // fields). Legacy fields remain canonical until A3c removal.
     exec_state_.BlockIdx = blockIdx;
     exec_state_.ThreadIdx = threadIdx;
     exec_state_.GridDim = GridDim;
     exec_state_.BlockDim = BlockDim;
     exec_state_.warp_id_ = this->warp_id_;
     exec_state_.lane_id_ = this->lane_id_;
-    exec_state_.state = RUN;
+    exec_state_.state = simt_pc_mgr_->get_state();  // MR-2: backfill from SimtPcManager
     exec_state_.bar_id = 0;
     memory_.cta_context_ = cta_ctx;
     program_ref_.statements = &statements;
     program_ref_.name2Sym = name2Sym;
     program_ref_.name2Share = name2Share;
     program_ref_.label2pc = label2pc;
-
-    // 注意：寄存器管理现在完全由RegisterBankManager负责
-    // 寄存器预分配现在由CTAContext统一处理
 }
 
 // 设置本地内存空间的方法实现
@@ -132,7 +137,7 @@ void ThreadContext::_execute_once() {
     } else {
         std::cerr << "No handler found for statement type: "
                   << static_cast<int>(statement.type) << std::endl;
-        state = EXIT;
+        set_state(EXIT);  // Phase 1: through SimtPcManager
     }
 
     // 提交 PC 变更（正常执行的唯一入口点）
@@ -183,8 +188,8 @@ void ThreadContext::dump_state(std::ostream &os) const {
     os << "  ThreadIdx: [" << ThreadIdx.x << ", " << ThreadIdx.y << ", "
        << ThreadIdx.z << "]" << std::endl;
     os << "  PC: " << get_pc() << std::endl;
-    os << "  State: ";
-    switch (state) {
+os << "  State: ";
+switch (get_state()) {
     case RUN:
         os << "RUN";
         break;
@@ -210,8 +215,10 @@ void ThreadContext::dump_state(std::ostream &os) const {
 void ThreadContext::reset() {
     set_pc(0);
     set_next_pc(0);
-    bar_id = 0; // Reset barrier ID
-    state = RUN;
+    bar_id = 0;
+    simt_pc_mgr_->set_state(RUN);            // G-1: through SimtPcManager
+    exec_state_.state = simt_pc_mgr_->get_state();  // MR-2: backfill POD
+    exec_state_.bar_id = 0;
     cc_reg = ConditionCodeRegister{}; // 重置条件码寄存器
 
     // 清空临时数据（寄存器管理由RegisterBankManager负责，无需本地重置）
@@ -225,7 +232,7 @@ void ThreadContext::reset() {
 // 添加新的执行方法
 EXE_STATE ThreadContext::execute_thread_instruction() {
     this->_execute_once();
-    return this->state; // 返回线程的实际状态
+    return get_state(); // 返回线程的实际的状态
 }
 
 // acquire_operand() return the operand_phy_addr, which later use store in
@@ -754,131 +761,7 @@ void ThreadContext::print_instruction_status(StatementContext &stmt) {
                  opcode_str.c_str(), operands_str.c_str());
 }
 
-// 【Stage 4】从 warp_state 同步状态到 ThreadContext
-void ThreadContext::sync_from_warp_state() {
-    if (!warp_context_)
-        return;
-
-    int lane_id = lane_id_;
-    if (lane_id < 0 || lane_id >= WarpContext::WARP_SIZE)
-        return;
-
-    ptxsim::ThreadState &thread_state =
-        warp_context_->get_warp_state().threads[lane_id];
-
-    // PC 通过 get_pc()/get_next_pc() 直接从 warp_state 读取，无需同步
-    // sync_to_warp_state() 的 next_pc 同步保持一致性
-
-    // 同步状态
-    switch (thread_state.status) {
-    case ptxsim::ThreadStatus::Active:
-        state = RUN;
-        break;
-    case ptxsim::ThreadStatus::Blocked:
-        state = BAR_SYNC;
-        break;
-    case ptxsim::ThreadStatus::Exited:
-        state = EXIT;
-        break;
-    case ptxsim::ThreadStatus::Yielded:
-        // Yielded 状态暂时映射到 RUN
-        state = RUN;
-        break;
-    }
-}
-
-// 【Stage 4】将 ThreadContext 的状态同步到 warp_state
-void ThreadContext::sync_to_warp_state() {
-    if (!warp_context_)
-        return;
-
-    int lane_id = lane_id_;
-    if (lane_id < 0 || lane_id >= WarpContext::WARP_SIZE)
-        return;
-
-    ptxsim::ThreadState &thread_state =
-        warp_context_->get_warp_state().threads[lane_id];
-
-    // 如果线程已经在 barrier 等待（is_blocked=true 或 status=Blocked），
-    // 则只同步 next_pc，不覆盖 blocked 状态。
-    // 注意：如果 barrier 主动通过 set_state(RUN) + 清除 is_blocked 来释放线程，
-    // 则应该在调用本函数之前清除 is_blocked（参见
-    // BarrierModule::arrive_at_cta_barrier）。
-    bool already_blocked =
-        (thread_state.is_blocked ||
-         thread_state.status == ptxsim::ThreadStatus::Blocked);
-
-    // 屏障完成处理会通过 warp_ctx->advance_thread_pc()
-    // 直接更新 warp_state 此处只同步 ThreadContext 自己维护的 next_pc 状态
-    thread_state.next_pc = get_next_pc();
-
-    // 如果已经 blocked，只同步 next_pc，不修改状态
-    if (already_blocked) {
-        return;
-    }
-
-    // 同步状态
-    switch (state) {
-    case RUN:
-        thread_state.status = ptxsim::ThreadStatus::Active;
-        thread_state.is_blocked = false;
-        thread_state.is_active = true;
-        break;
-    case BAR_SYNC:
-        thread_state.status = ptxsim::ThreadStatus::Blocked;
-        thread_state.is_blocked = true;
-        break;
-    case EXIT:
-        thread_state.status = ptxsim::ThreadStatus::Exited;
-        thread_state.is_exited = true;
-        thread_state.is_active = false;
-        thread_state.is_blocked = false;
-        break;
-    default:
-        break;
-    }
-}
-
-// PC accessors - delegate to WarpState via WarpContext
-int ThreadContext::get_pc() const {
-    if (!warp_context_)
-        return 0;
-    int lane = lane_id_;
-    if (lane < 0 || lane >= 32)
-        return 0;
-    return warp_context_->get_warp_state().threads[lane].pc;
-}
-
-void ThreadContext::set_pc(int new_pc) {
-    if (!warp_context_)
-        return;
-    int lane = lane_id_;
-    if (lane < 0 || lane >= 32)
-        return;
-    warp_context_->get_warp_state().threads[lane].pc = new_pc;
-    warp_context_->get_warp_state().threads[lane].next_pc = new_pc;
-}
-
-int ThreadContext::get_next_pc() const {
-    if (!warp_context_)
-        return 0;
-    int lane = lane_id_;
-    if (lane < 0 || lane >= 32)
-        return 0;
-    return warp_context_->get_warp_state().threads[lane].next_pc;
-}
-
-void ThreadContext::set_next_pc(int new_next_pc) {
-    if (!warp_context_)
-        return;
-    int lane = lane_id_;
-    if (lane < 0 || lane >= 32)
-        return;
-    warp_context_->get_warp_state().threads[lane].next_pc = new_next_pc;
-}
-
-void ThreadContext::commit_pc() { set_pc(get_next_pc()); }
-
-// Removed 2026-07-XX — dead-code-cleanup (Fix #2)
-// ThreadContext::force_set_pc() implementation removed — zero production refs.
-// Replaced by: set_pc() which writes both pc and next_pc
+// Phase 1: All PC/state methods are now inline in thread_context.h,
+// delegating to SimtPcManager. Removed implementations:
+//   sync_from_warp_state, sync_to_warp_state, get_pc, set_pc,
+//   get_next_pc, set_next_pc, commit_pc

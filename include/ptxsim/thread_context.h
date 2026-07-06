@@ -11,6 +11,7 @@
 #include "ptxsim/contexts/register_predicate.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/ptx_config.h"
+#include "ptxsim/simt_pc_manager.h"
 #include "ptxsim/warp_state.h"
 
 class PtxInterpreter;
@@ -43,10 +44,12 @@ public:
     std::shared_ptr<RegisterBankManager> register_bank_manager_;
     std::map<std::string, int> label2pc;
 
-    // 线程状态
-    Dim3 BlockIdx, ThreadIdx, GridDim, BlockDim;
-    int bar_id;
-    EXE_STATE state;
+// 线程状态
+Dim3 BlockIdx, ThreadIdx, GridDim, BlockDim;
+int bar_id;
+
+// Phase 1: PC + execution state delegated to SimtPcManager
+std::unique_ptr<SimtPcManager> simt_pc_mgr_;
 
     // 条件码寄存器
     ConditionCodeRegister cc_reg;
@@ -179,37 +182,35 @@ public:
                                         full_msg.c_str());
     }
 
-    // 新增接口：获取线程状态
-    EXE_STATE get_state() const { return state; }
+// 新增接口：获取线程状态
+EXE_STATE get_state() const { return simt_pc_mgr_->get_state(); }
 
-    // 检查是否活跃
-    bool is_active() const { return state != EXIT; }
+// 检查是否活跃
+bool is_active() const { return simt_pc_mgr_->is_active(); }
 
-    // 检查是否在屏障等待
-    bool is_at_barrier() const { return state == BAR_SYNC; }
+// 检查是否在屏障等待
+bool is_at_barrier() const { return simt_pc_mgr_->is_at_barrier(); }
 
-    // 检查是否退出
-    bool is_exited() const { return state == EXIT; }
+// 检查是否退出
+bool is_exited() const { return simt_pc_mgr_->is_exited(); }
 
-    // 设置线程状态
-    void set_state(EXE_STATE new_state) { state = new_state; }
+// 设置线程状态
+void set_state(EXE_STATE new_state) { simt_pc_mgr_->set_state(new_state); }
 
-    // 获取PC值（通过WarpState）
-    int get_pc() const;
+// 获取PC值（通过 SimtPcManager → WarpState）
+int get_pc() const { return simt_pc_mgr_->get_pc(); }
 
-    // 设置PC值（通过WarpState）
-    void set_pc(int new_pc);
+// 设置PC值（通过 SimtPcManager → WarpState）
+void set_pc(int new_pc) { simt_pc_mgr_->set_pc(new_pc); }
 
-    // 获取下一个PC值（通过WarpState）
-    int get_next_pc() const;
+// 获取下一个PC值
+int get_next_pc() const { return simt_pc_mgr_->get_next_pc(); }
 
-    // 设置下一个PC值（通过WarpState）
-    void set_next_pc(int new_next_pc);
+// 设置下一个PC值
+void set_next_pc(int new_next_pc) { simt_pc_mgr_->set_next_pc(new_next_pc); }
 
-    // 【单一入口】提交 PC 变更：pc ← next_pc
-    // 这是正常执行期间 PC 推进的唯一方法。
-    // 原始 set_pc() 仅用于初始化、同步和重置。
-    void commit_pc();
+// 【单一入口】提交 PC 变更：pc ← next_pc
+void commit_pc() { simt_pc_mgr_->commit_pc(); }
 
     // Removed 2026-07-XX — dead-code-cleanup (Fix #2)
     // ThreadContext::force_set_pc() removed — zero production refs.
@@ -229,39 +230,21 @@ public:
         cc_reg = new_cc;
     }
 
-    // 检查PC是否有效
-    bool is_valid_pc() const {
-        int current_pc = get_pc();
-        return statements != nullptr && current_pc >= 0 &&
-               current_pc < static_cast<int>(statements->size());
-    }
+// 检查PC是否有效
+bool is_valid_pc() const { return simt_pc_mgr_->is_valid_pc(); }
 
-    bool is_valid_pc(int p) const {
-        return statements != nullptr && p >= 0 &&
-               p < static_cast<int>(statements->size());
-    }
+bool is_valid_pc(int p) const { return simt_pc_mgr_->is_valid_pc(p); }
 
-    int statements_size() const {
-        return statements ? static_cast<int>(statements->size()) : 0;
-    }
+int statements_size() const { return simt_pc_mgr_->statements_size(); }
 
-    StatementContext *get_statement_at(int p) {
-        if (statements != nullptr && p >= 0 &&
-            p < static_cast<int>(statements->size())) {
-            return &(*statements)[p];
-        }
-        return nullptr;
-    }
+StatementContext *get_statement_at(int p) {
+    return simt_pc_mgr_->get_statement_at(p);
+}
 
-    // 获取当前指令
-    StatementContext *get_current_statement() {
-        int current_pc = get_pc();
-        if (statements != nullptr && current_pc >= 0 &&
-            current_pc < static_cast<int>(statements->size())) {
-            return &(*statements)[current_pc];
-        }
-        return nullptr;
-    }
+// 获取当前指令
+StatementContext *get_current_statement() {
+    return simt_pc_mgr_->get_current_statement();
+}
 
     // 执行单条指令（由WarpContext调用）
     EXE_STATE execute_thread_instruction();
@@ -282,17 +265,20 @@ public:
         return dst_operand_reg_name_;
     }
 
-    // 设置warp上下文
-    void set_warp_context(WarpContext *warp_ctx) { warp_context_ = warp_ctx; }
+// 设置warp上下文
+void set_warp_context(WarpContext *warp_ctx) {
+    warp_context_ = warp_ctx;
+    if (simt_pc_mgr_) simt_pc_mgr_->set_warp_context(warp_ctx);  // MR-4 fanout
+}
 
     // 获取warp上下文
     WarpContext *get_warp_context() const { return warp_context_; }
 
-    // 【Stage 4】从 warp_state 同步 PC 和状态到 ThreadContext
-    void sync_from_warp_state();
+// 【Stage 4】从 warp_state 同步 PC 和状态到 ThreadContext
+void sync_from_warp_state() { simt_pc_mgr_->sync_from_warp_state(); }
 
-    // 【Stage 4】将 ThreadContext 的 PC 和状态同步到 warp_state
-    void sync_to_warp_state();
+// 【Stage 4】将 ThreadContext 的 PC 和状态同步到 warp_state
+void sync_to_warp_state() { simt_pc_mgr_->sync_to_warp_state(); }
 
 private:
     void _execute_once();
