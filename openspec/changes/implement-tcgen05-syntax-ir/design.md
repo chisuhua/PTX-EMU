@@ -359,3 +359,77 @@ git commit -m "chore(openspec): archive implement-tcgen05-syntax-ir (ADR-0016)"
 | 根 `AGENTS.md` | 修改 | 已知限制表 |
 | `src/grammar/AGENTS.md` | 修改 | lexer/parser 规则说明 |
 | `src/ptxsim/instructions/AGENTS.md` | 修改 | 目录说明 |
+
+## 实际实施偏差(Actual Implementation Deviations)
+
+> **来源**: Metis pre-implementation review(per `ptx-lessons-learned` §7 + Checklist H)
+> **添加时机**: archive 前,记录实施过程中与 design.md 决策的偏离
+
+### Deviation 1: S_TCGEN05_* 移出 ptx_op.def X-Macro 循环
+
+- **设计**(Decision 2):11 个 `S_TCGEN05_*` 在 `ptx_op.def` 中,`struct_kind=TCGEN_INSTR`,由 X-Macro 自动生成 `VISITOR_`/`IMPLEMENT_` 展开
+- **实际**(commit `c8c3f13`):S_TCGEN05_* 从 `ptx_op.def` 移出,直接添加到 `ptx_types.h` 的 `StatementType` 枚举末尾(在 S_UNKNOWN 前)
+- **根因**:grammar 只有单一 `tcgen05Inst` rule,但 X-Macro 展开生成 11 个 per-instruction visitor 方法(如 `visitTcgen05MmaInst`),期望 11 个对应 grammar rule。ANTLR 生成的 Context 类型名不匹配(`Tcgen05MmaInstContext` 不存在)
+- **影响**:
+  - S2s() 必须手写覆盖 11 个 case(已在 `statement_context.cpp` 修复 — Metis MR-1)
+  - `IMPLEMENT_TCGEN_INSTR_HANDLER` macro 不再被自动展开(留作 change-3 handler 实施时手写)
+  - 失去 X-Macro 维护优势,change-3 的 handler 分发需手写
+- **后续**:change-3 实施 handler 时,需直接手写 11 个 `processTcgen05Xxx` 方法,不再依赖 X-Macro
+
+### Deviation 2: ptx_visitor_tcgen05.cpp 创建后删除
+
+- **设计**(tasks.md §4.1):新建 `ptx_visitor_tcgen05.cpp`,X-Macro 展开 11 个 visitor 方法
+- **实际**:文件创建后因 LSP 错误删除,改用现有 `ptx_visitor_wmma.cpp` 末尾添加手写 `visitTcgen05Inst` 方法
+- **根因**:同上(ANTLR Context 类型名不匹配)
+- **影响**:
+  - visitor 集成分散在 `ptx_visitor_wmma.cpp`(临时,change-3 建议拆分)
+  - `visitTcgen05Inst` 是单一方法处理 11 个 sub-op(而非 11 个独立方法)
+  - 完整 operand 提取推迟到 change-3(MR-2 修复仅防 silent drop,operands 仍为空)
+- **后续**:change-3 实施 handler 时,完善 `visitTcgen05Inst` 的 operand 提取逻辑,或拆分为独立 `ptx_visitor_tcgen05.cpp`
+
+### Deviation 3: 4 个 Q_TCGEN05_* stub 保留
+
+- **设计**(Decision 5):删除 `Q_TCGEN05_LD/ST/COMMIT/WAIT` 4 个 stub,改用独立 IR 枚举
+- **实际**:`ptx_qualifier.def:193-199` 保留 4 个 stub,注释 "DEPRECATED in change-3"
+- **根因**:`S_WMMA` 未删除(因 `wmma.cpp` 仍依赖),`wmma.cpp` 中 `is_tcgen05_ld/st/commit/wait()` helper 仍用这 4 个 stub 区分 sub-op
+- **影响**:
+  - qualifier 命名空间有 2 套:`Q_TCGEN_*`(新)和 `Q_TCGEN05_*`(旧 stub)
+  - 命名不一致会持续到 change-4(wmma 路径完全删除)
+- **后续**:change-3 重写 `wmma.cpp` 为 `tcgen05.cpp` 后,删除 4 个 stub;change-4 完全删除 wmma 路径
+
+### Deviation 4: tasks.md 计划的 12 个 .ptx fixtures 仅完成 2 个
+
+- **设计**(tasks.md §5.1):12 个 `tests/ptx/tcgen05_*.ptx` 端到端 fixtures
+- **实际**:仅 `tcgen05_alloc.ptx` 和 `tcgen05_mma.ptx` 2 个
+- **根因**:
+  - MR-3 grammar LL(*) 冲突未修复(复杂 ANTLR grammar 优化,需 ANTLR 专家)
+  - 2 个 fixture 均测试失败:`mismatched input '.all' expecting ':'`
+  - 增加更多 fixture 在当前 grammar 下会同样失败,无增量价值
+- **影响**:`test_all_ptx.sh` 33/36 通过(2 个新 fixture 失败 + 1 个 pre-existing `atom_cas_basic.ptx`)
+- **后续**:change-3 第一步先修 grammar 冲突,再补全剩余 10 个 fixture + 5 单元 + 5 集成测试
+
+### Deviation 5: 旧集成测试未迁移
+
+- **设计**(tasks.md §4.5):`tests/integration/tcgen05/test_tcgen05_*.cpp` 迁移 `S_WMMA` → `S_TCGEN05_*`
+- **实际**:未迁移(仍用 `S_WMMA`/`makeWmmaInstr`/`WmmaType`)
+- **根因**:S_WMMA 未删除,wmma.cpp handler 仍依赖旧路径,迁移会与现有 handler 行为冲突
+- **影响**:旧测试通过(因 wmma.cpp 仍工作),但与新 IR 命名空间不一致
+- **后续**:change-3 实施新 handler 时同步迁移;change-4 删除 wmma 后彻底清理
+
+### Deviation 6: tasks.md §3 IR 删除 S_WMMA 推迟
+
+- **设计**(tasks.md §3.1.1):删除 `S_WMMA` 整行(因独立 IR 命名空间)
+- **实际**:S_WMMA 保留
+- **根因**:见 Deviation 3(S_WMMA 与 wmma.cpp 仍依赖)
+- **影响**:X-Macro 仍生成 `S_WMMA` handler(由 `wmma.cpp` 实现)
+- **后续**:change-4 删除 wmma 路径时同步删除
+
+## Metis MUST-RESOLVE 项处理状态
+
+| ID | 描述 | 状态 | 修复方式 |
+|----|------|------|---------|
+| MR-1 | S2s() 不识别 S_TCGEN05_* → assert(false) crash | ✅ Fixed | commit `182385c`:`statement_context.cpp` 手动覆盖 11 个 case |
+| MR-2 | PtxListener/PtxVisitor 零修改 → tcgen05 PTX silent drop | ✅ Fixed | commit `182385c`:`ptx_visitor_wmma.cpp` 新增 `visitTcgen05Inst` |
+| MR-3 | Grammar LL(*) 冲突 → 2 fixture fail | ⏸ Deferred | change-3 第一步修复 grammar,再补全 fixtures |
+| MR-4 | 旧测试未迁移 + CMakeLists 零修改 | ⏸ Deferred | change-3 实施新 handler 时同步迁移 |
+| MR-5 | design.md 缺实施偏差记录 | ✅ Fixed | 本段落(追加在 design.md 末尾) |
