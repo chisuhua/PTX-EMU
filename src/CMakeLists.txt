@@ -44,6 +44,7 @@ set(SOURCES
     cudart/simple_memory_allocator.cpp
     cudart/cudart_sim.cpp
     utils/cubin_utils.cpp
+    ptxsim/atomic/atomic_mutex.cpp  # Phase 2 of implement-atomic-cas-and-true-atomicity
     ${ANTLR4_GENERATED_SOURCES}
 )
 

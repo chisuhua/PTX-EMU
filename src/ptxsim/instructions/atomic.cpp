@@ -1,4 +1,5 @@
 #include "memory/hardware_memory_manager.h"
+#include "ptxsim/atomic/atomic_mutex.h"
 #include "ptxsim/instruction_handlers.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/utils/qualifier_utils.h"
@@ -58,11 +59,22 @@ void AtomHandler::processAtomicOperation(ThreadContext *context, void **operands
         return;
     }
 
+    // Cross-warp atomicity (Phase 2 of implement-atomic-cas-and-true-atomicity):
+    // acquire the global atomic mutex around the read-modify-write sequence.
+    // Lock-order proof vs other ptxsim mutexes (audit §MR-5):
+    //   - HardwareMemoryManager::mutex_ is acquired INSIDE .access() which is
+    //     called from this scope; this mutex is the OUTER lock for that call.
+    //   - CTABarrier::mutex_ is acquired only by barrier handlers, which do
+    //     not invoke atomic handlers under that lock; the two mutexes are
+    //     therefore never held simultaneously.
+    //   - No public method on AtomicLockGuard re-locks the same mutex
+    //     (std::mutex is non-recursive), matching the cta_barrier.cpp:47
+    //     pattern documented in ptx-lessons-learned §2.
+    ptxsim::AtomicLockGuard atomic_guard(ptxsim::global_atomic_mutex());
+
     // CAS path: read-modify-compare-write. PTX-EMU's warp-level scheduler
-    // (sm_context.cpp:225-260) serializes dispatch, so load → compare →
-    // conditional store produces correct results without a hardware-style
-    // CAS retry loop. Real atomicity (relaxed ordering only) is not modeled;
-    // a follow-up change introduces per-warp serialize + cross-warp mutex.
+    // (sm_context.cpp:225-260) serializes per-warp dispatch; the cross-warp
+    // mutex above bridges concurrent warps.
     if (atom_op == Qualifier::Q_CAS_ATOM) {
         void *cmp_buf = operands[2];
         void *val_buf = operands[3];
