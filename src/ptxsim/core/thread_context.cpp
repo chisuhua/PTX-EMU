@@ -68,9 +68,14 @@ void ThreadContext::init(
         &statements);
 
     // Initial state set through SimtPcManager (Phase 1)
-    this->simt_pc_mgr_->set_state(RUN);
+this->simt_pc_mgr_->set_state(RUN);
 
-    // T2-3 A3b: Mirror legacy field writes into the 4 POD members.
+// Phase 2: register access delegated to RegisterAccessLayer
+this->reg_access_ = std::make_unique<RegisterAccessLayer>(
+    nullptr /* bank_mgr set later */, this->warp_id_, this->lane_id_,
+    this->ThreadIdx, this->BlockIdx, this->GridDim, this->BlockDim);
+
+// T2-3 A3b: Mirror legacy field writes into the 4 POD members.
     exec_state_.BlockIdx = blockIdx;
     exec_state_.ThreadIdx = threadIdx;
     exec_state_.GridDim = GridDim;
@@ -162,8 +167,8 @@ void ThreadContext::clear_temporaries() {}
 
 void ThreadContext::prepare_breakpoint_context(
     std::unordered_map<std::string, std::any> &context) {
-    // 使用RegisterBankManager获取寄存器值
-    if (register_bank_manager_) {
+// Use RegisterBankManager (Phase 2: through RegisterAccessLayer)
+if (reg_access_->get_register_bank_manager()) {
         // 计算warp_id和lane_id
         // int warp_id = (ThreadIdx.x + ThreadIdx.y * BlockDim.x +
         //                ThreadIdx.z * BlockDim.x * BlockDim.y) /
@@ -411,53 +416,8 @@ void ThreadContext::commit_operand(StatementContext &stmt,
                  operand.toString(bytes).c_str());
 };
 
-void *ThreadContext::acquire_register(const RegOperand &reg,
-                                      std::vector<Qualifier> qualifier) {
-    // 检查是否是特殊寄存器
-    if (reg.name.find('.') != std::string::npos) {
-        if (reg.name == "tid.x")
-            return &ThreadIdx.x;
-        if (reg.name == "tid.y")
-            return &ThreadIdx.y;
-        if (reg.name == "tid.z")
-            return &ThreadIdx.z;
-        if (reg.name == "ctaid.x")
-            return &BlockIdx.x;
-        if (reg.name == "ctaid.y")
-            return &BlockIdx.y;
-        if (reg.name == "ctaid.z")
-            return &BlockIdx.z;
-        if (reg.name == "nctaid.x")
-            return &GridDim.x;
-        if (reg.name == "nctaid.y")
-            return &GridDim.y;
-        if (reg.name == "nctaid.z")
-            return &GridDim.z;
-        if (reg.name == "ntid.x")
-            return &BlockDim.x;
-        if (reg.name == "ntid.y")
-            return &BlockDim.y;
-        if (reg.name == "ntid.z")
-            return &BlockDim.z;
-    }
-
-    // 确保register_bank_manager_存在
-    if (!register_bank_manager_) {
-        throw std::runtime_error("RegisterBankManager is required but not set");
-    }
-
-    std::string combinedName = reg.fullName();
-    void *reg_data =
-        register_bank_manager_->get_register(combinedName, warp_id_, lane_id_);
-
-    if (reg_data == nullptr) {
-        throw InvalidMemoryAccessException(
-            0, 0, "null register data",
-            "Register not found in bank manager: " + combinedName);
-    }
-
-    return reg_data;
-}
+// Phase 2: register lookup delegated to RegisterAccessLayer.
+// acquire_register() is now inline in thread_context.h.
 
 void *ThreadContext::get_memory_addr(const AddrOperand &fa,
                                      const std::vector<Qualifier> &qualifiers) {

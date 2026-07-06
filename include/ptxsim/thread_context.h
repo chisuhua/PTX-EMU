@@ -11,6 +11,7 @@
 #include "ptxsim/contexts/register_predicate.h"
 #include "ptxsim/execution_types.h"
 #include "ptxsim/ptx_config.h"
+#include "ptxsim/register_access_layer.h"
 #include "ptxsim/simt_pc_manager.h"
 #include "ptxsim/warp_state.h"
 
@@ -40,8 +41,8 @@ public:
     std::map<std::string, std::unique_ptr<Symtable>>
         *name2Share; // 添加共享内存符号表引用
 
-    // 使用寄存器银行管理器或独立寄存器管理器
-    std::shared_ptr<RegisterBankManager> register_bank_manager_;
+// 使用寄存器访问层管理寄存器查找与分配
+std::unique_ptr<RegisterAccessLayer> reg_access_;
     std::map<std::string, int> label2pc;
 
 // 线程状态
@@ -108,9 +109,11 @@ std::unique_ptr<SimtPcManager> simt_pc_mgr_;
 
     void *get_memory_addr(const AddrOperand &op,
                           const std::vector<Qualifier> &qualifiers);
-    // 寄存器访问接口
-    void *acquire_register(const RegOperand &op,
-                           std::vector<Qualifier> qualifier);
+// 寄存器访问接口（Phase 2: delegate to RegisterAccessLayer）
+void *acquire_register(const RegOperand &op,
+                       std::vector<Qualifier> qualifier) {
+    return reg_access_->acquire_register(op, qualifier);
+}
 
     // Shared memory初始化
     void initialize_shared_memory(const std::string &name, uint64_t address);
@@ -251,13 +254,13 @@ StatementContext *get_current_statement() {
 
     // 重置线程状态
     void reset();
-    void
-    set_register_bank_manager(std::shared_ptr<RegisterBankManager> manager) {
-        register_bank_manager_ = manager;
-    }
-    std::shared_ptr<RegisterBankManager> get_register_bank_manager() const {
-        return register_bank_manager_;
-    }
+void
+set_register_bank_manager(std::shared_ptr<RegisterBankManager> manager) {
+    reg_access_->set_register_bank_manager(manager);
+}
+std::shared_ptr<RegisterBankManager> get_register_bank_manager() const {
+    return reg_access_->get_register_bank_manager();
+}
     int get_warp_id() const { return warp_id_; }
 
     // Set during collect_operands, read by SetpHandler for predicate writes
