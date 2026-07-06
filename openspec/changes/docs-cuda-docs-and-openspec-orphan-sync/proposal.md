@@ -6,7 +6,11 @@
 
 - **D-1**: Re-verify `docs/README.md` 索引覆盖全部 16 个子目录（当前声称 16，实证 `ls -d docs/*/` = 16，无遗漏 — 若实证一致则仅添加验证注释）
 - **D-4**: 为 5 个缺失 `design.md` 的已归档 OpenSpec change **新建** retroactive `design.md`（`Ref: archive/<date>-<name>/` — 不 amend 已归档 change，符合 Checklist G 约束）。第 6 个（`integrate-barrier-module-cta-warp`）已有 `design.md`。
-- **D-5**: 从 `docs/skills/` 删除 3 个过期技能副本（`ptx-debug/`、`ptxir-serialization/`、`ptx-grammar-modification.md`）— 这些技能已在 `.opencode/skills/` 中维护
+- **D-5**: 从 `docs/skills/` 删除 4 个过期/已禁用副本：
+  - 3 个活跃技能副本（权威版本在 `.opencode/skills/`）：`ptx-debug/`、`ptxir-serialization/`、`ptx-grammar-modification.md`
+  - 1 个已禁用技能副本（权威版本在 `.opencode/skills.disable/three-mode-testing/`）：`three-mode-testing/`
+  
+  > 注：与 debt-audit-2026-07-02.md §3.3 D-5 描述一致（"3 个技能差异 + three-mode-testing 全部内容已分叉"）
 - **D-6**: 将 `HEALTH-AUDIT-2026-06-21-ERRATA.md` 的 8 项事实修正内联到主审计 `HEALTH-AUDIT-2026-06-21.md`，保留 ERRATA 为历史参考
 
 ## Capabilities
@@ -29,5 +33,6 @@
 | `docs/skills/ptx-debug/` | 删除过期副本（D-5） |
 | `docs/skills/ptxir-serialization/` | 删除过期副本（D-5） |
 | `docs/skills/ptx-grammar-modification.md` | 删除过期副本（D-5） |
+| `docs/skills/three-mode-testing/` | 删除已禁用副本（D-5） |
 | `docs/audits/HEALTH-AUDIT-2026-06-21.md` | 内联 8 项 ERRATA 修正（D-6） |
 | `docs/audits/HEALTH-AUDIT-2026-06-21-ERRATA.md` | 添加"已合并"标记（D-6） |

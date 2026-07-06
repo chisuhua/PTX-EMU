@@ -9,13 +9,17 @@
 
 ## 2. Phase 2: Fix D-4 — Retroactive design.md（~0.5h）
 
-- [ ] 2.1 为 `2026-06-24-phase3-cvt-precision-bugfix` 合成 `design.md`（`git log --all --oneline -- openspec/changes/archive/2026-06-24-phase3-cvt-precision-bugfix/`）
-- [ ] 2.2 为 `2026-06-24-phase3-half-precision-bugfix` 合成 `design.md`
-- [ ] 2.3 为 `2026-06-24-phase3-t2-1-active-mask-unify` 合成 `design.md`
-- [ ] 2.4 为 `2026-06-24-phase3-t2-3-god-class-split` 合成 `design.md`
-- [ ] 2.5 为 `2026-06-24-phase3-t2-6-cvt-strategy-pattern` 合成 `design.md`
-- [ ] 2.6 验证：运行 `for d in openspec/changes/archive/2026-06-24-*/; do echo "$d: $(test -f $d/design.md && echo HAS design.md || echo MISSING)"; done`
-- [ ] 2.7 更新 `docs/roadmap/post-phase3-debt-roadmap.md` §1.3 D-4 状态标记为 RESOLVED
+> **路径策略**（per design.md §Decision 1）：所有 retroactive `design.md` 放在 `openspec/changes/archive/` 目录下与原 change 子目录并列的位置（如 `openspec/changes/archive/2026-06-24-phase3-cvt-precision-bugfix.design.md`）。**禁止修改归档子目录内任何文件**（含 README.md），所有归档原始文件 git hash 保持不变。
+> **文件头标注**（per spec.md Scenario 3）：每个 retroactive `design.md` 顶部 SHALL 包含 `**Retroactive synthesis from git log — not an original design document**` + 创建日期。
+
+- [ ] 2.1 创建 `openspec/changes/archive/2026-06-24-phase3-cvt-precision-bugfix.design.md`（材料：`git log --all --oneline -- openspec/changes/archive/2026-06-24-phase3-cvt-precision-bugfix/`，文件头含 synthesis 标注）
+- [ ] 2.2 创建 `openspec/changes/archive/2026-06-24-phase3-half-precision-bugfix.design.md`
+- [ ] 2.3 创建 `openspec/changes/archive/2026-06-24-phase3-t2-1-active-mask-unify.design.md`
+- [ ] 2.4 创建 `openspec/changes/archive/2026-06-24-phase3-t2-3-god-class-split.design.md`
+- [ ] 2.5 创建 `openspec/changes/archive/2026-06-24-phase3-t2-6-cvt-strategy-pattern.design.md`
+- [ ] 2.6 验证：运行 `for d in openspec/changes/archive/2026-06-24-phase3-*/; do base=$(basename "$d"); test -f "openspec/changes/archive/${base}.design.md" && echo "HAS retroactive design.md: ${base}" || echo "MISSING: ${base}"; done`（预期 5 行 `HAS`）
+- [ ] 2.7 验证归档未变：运行 `git status openspec/changes/archive/2026-06-24-phase3-*`（预期 `nothing to commit` 或仅新增 `.design.md` 文件，原有 README.md/proposal.md/tasks.md 未变）
+- [ ] 2.8 更新 `docs/roadmap/post-phase3-debt-roadmap.md` §1.3 D-4 状态标记为 RESOLVED + 列出 5 个 retroactive design.md 路径
 
 ## 3. Phase 3: Fix D-5 — 清理 docs/skills/ 过期副本（~1h）
 

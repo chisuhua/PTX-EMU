@@ -13,7 +13,7 @@
 **Goals:**
 - **D-1**: 实证验证 `docs/README.md` 索引覆盖全部 `docs/` 子目录（`ls -d docs/*/ | wc -l` vs 标题声称）
 - **D-4**: 为 5 个缺 `design.md` 的已归档 change 合成 retroactive design.md，从 `git log` commit body 重建
-- **D-5**: 删除 `docs/skills/` 下 3 个过期技能副本（ptx-debug/, ptxir-serialization/, ptx-grammar-modification.md）+ `three-mode-testing/`
+- **D-5**: 删除 `docs/skills/` 下 4 个过期/已禁用副本（3 个活跃技能副本 `ptx-debug/, ptxir-serialization/, ptx-grammar-modification.md` + 1 个已禁用技能副本 `three-mode-testing/`）
 - **D-6**: 将 ERRATA 8 项修正内联到主审计，ERRATA 文件标记"已合并"
 
 **Non-Goals:**
@@ -34,7 +34,7 @@
 - **B**: 在归档目录外新建 `design.md` + `README.md` 中加 `Ref:` 链接 → ✅ 不触及归档内容
 - **C**: 忽略不管 → ❌ 债务不消，新开发者无法理解设计决策
 
-**选择**: **方案 B**。在 `openspec/changes/archive/<name>/` 同级创建 `design.md`，归档目录内添加 `README.md` 段落引用 retroactive design.md 的存在。这样归档内容完全未修改，历史完整。
+**选择**: **方案 B**。在 `openspec/changes/archive/` 目录下、与原 change 目录并列的位置创建 retroactive `design.md`（路径如 `openspec/changes/archive/2026-06-24-phase3-cvt-precision-bugfix.design.md`）。**严格遵循 Checklist G**：禁止修改归档目录内任何文件（包括 README.md），所有归档原始文件的 git hash SHALL 保持不变。引用通过外部索引（`docs/roadmap/post-phase3-debt-roadmap.md` §1.3 D-4 状态 + retroactive design.md 路径列表）实现。
 
 **证据来源**: `git log --all --oneline -- <change-dir>/` 的 commit body 提供原始设计意图。
 
@@ -51,19 +51,18 @@
 
 ### Decision 3: D-5 删除策略
 
-**问题**: `docs/skills/` 中 3 个过期技能副本应直接删除还是添加 deprecation 标记？
+**问题**: `docs/skills/` 中 4 个过期/已禁用技能副本（3 个活跃技能副本 + 1 个已禁用技能副本）应直接删除还是添加 deprecation 标记？
 
 **方案分析**:
 - **A**: 直接 `git rm -r` → 简单，但丢失迁移历史
 - **B**: 添加 `DEPRECATED.md` stub → 保留迁移线索
 - **C**: 移至 `docs/archive/` → 重量级，这些是副本非原创
 
-**选择**: **方案 A**（直接删除）。理由：
+**选择**: **方案 A**（直接删除 4 个副本）。理由：
 1. `docs/skills/README.md` 已声明"可加载技能已迁移至 `.opencode/skills/`"
-2. 这些是 `2026-05-26` 时间戳的旧 SKILL.md 副本，权威版本在 `.opencode/skills/`
+2. 3 个活跃技能副本是 `2026-05-26` 时间戳的旧 SKILL.md 副本，权威版本在 `.opencode/skills/`
 3. 迁移已在 commit `14c8eeb` 中完成，删除是清理遗留
-
-同时检查 `docs/skills/three-mode-testing/` 目录（已 disabled，含 `__pycache__/` 垃圾）— 该目录在 `docs/skills/README.md` 中标记为 `[disabled]`，但实际文件仍存在；因 `.opencode/skills.disable/three-mode-testing/` 已有完整副本，`docs/skills/three-mode-testing/` 一并删除。
+4. `docs/skills/three-mode-testing/`（已禁用技能副本）在 `docs/skills/README.md` 中标记为 `[disabled]`，但实际文件仍存在；因 `.opencode/skills.disable/three-mode-testing/` 已有完整副本（spec.md Requirement 2 明确要求），`docs/skills/three-mode-testing/` 一并删除
 
 ## Risks / Trade-offs
 
@@ -73,6 +72,7 @@
 | 5 个 design.md 合成可能遗漏关键决策 | 每个 design.md 包含 `git log --oneline` 引用的 commit 列表，供读者自行追溯 |
 | 误删 docs/skills/ 中的非技能技术文档 | D-5 删除范围严格限定为 3 个已知过期技能目录 + 1 个已禁用目录；`docs/skills/post-dominator-algorithm.md` 和 `simt-reconvergence.md` 保留（它们是 docs/skills/README.md 明确列出的技术参考） |
 | ERRATA 合并可能破坏审计的 git 历史可读性 | 采用 inline 标记而非全文替换；审计原貌完全保留，ERRATA 标记仅补充正确信息 |
+| 误改归档目录导致 git history 污染（per lessons-learned §6 + §7） | 严格遵循 Checklist G：retroactive `design.md` 仅在 `openspec/changes/archive/` 目录下与原 change 目录**并列**创建（如 `<date>-<name>.design.md`），禁止修改 `openspec/changes/archive/<date>-<name>/` 内任何文件（含 README.md）；spec.md Scenario 1 强制 `archive/` 目录内原始文件 git hash SHALL 保持不变 |
 | D-1 若已验证 16=16，实际无变更 → Phase 1 工作量为 0 | Phase 1 明确标注"实证优先 — 若一致则仅记录结论"，不预设必须修改 |
 
 ## Design-Time Checklist (per ptx-lessons-learned & openspec-propose)
