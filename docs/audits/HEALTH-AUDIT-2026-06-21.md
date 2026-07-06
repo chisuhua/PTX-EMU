@@ -38,8 +38,8 @@
 
 1. **PTX 同步指令集体缺失**（membar / fence / shfl.sync / vote.sync / red / cp.async）：当前是空 `SimpleHandler` 占位，掩盖内存序问题；CUDA kernel 一旦用 fence/membar 就静默失败
 2. **CI 几乎不存在**：唯一的 `.github/workflows/generate-ptxir.yml` 核心步骤是空循环 `TODO` —— 项目实际无 CI 保障，债务没人拦截
-3. **5 类裸 `new` 无对应 `delete`**（Symtable 5 处、KernelContext 2 处、cudaStream/cudaEvent 句柄、OperandContext 8+ 处）：每次 kernel launch 泄漏，ASan 一跑就抓
-4. **god class 三巨头**：ThreadContext 108 public 字段 / WarpContext 78 public + 三重 active_mask 状态 / SMContext 27+ 方法 + friend class 破封装 —— 是后续大量 bug 的隐性根源
+3. **5 类裸 `new` 无对应 `delete`**（Symtable 5 处 **[勘误 E2: 实际 7 处 — 5 in ptx_interpreter.cpp + 2 in cta_context.cpp 漏报]**、KernelContext 2 处、cudaStream/cudaEvent 句柄、OperandContext 8+ 处）：每次 kernel launch 泄漏，ASan 一跑就抓
+4. **god class 三巨头**：ThreadContext 108 public 字段 **[勘误 E1: 实际 81 public 字段]** / WarpContext 78 public + 三重 active_mask 状态 / SMContext 27+ 方法 + friend class 破封装 —— 是后续大量 bug 的隐性根源
    - **2026-06-24 更新 (T2-3)**: ThreadContext + WarpContext 已拆为 7 个 POD（commit `7054593` + `5617665` + `7952120` + `67ad828` + `8b9b025` + `2a3b48a`）。**SMContext 仍待 T2-4**（deferred to Phase 4）。Active_mask 三重状态已通过 T2-1 (commit `8b1d23b`) 收敛为 warp_state 单一源。
 5. **Doxygen 覆盖率仅 16%**（12/77 头文件含 `@brief`）+ **根 README 严重过时**（2026-05-26 仍描述光线追踪 demo，与 SIMT v2.0 脱节）—— 新人 onboarding 风险
 
@@ -62,7 +62,7 @@
 
 | 优先级 | 项 | 影响范围 | 工作量 |
 |:---:|---|---|---|
-| **P0-1** | 实现 `membar`/`fence`/`cp.async` handler（当前空 SimpleHandler 掩盖竞态） | PTX 同步正确性 | 2 天 |
+| **P0-1** | 实现 `membar`/`fence`/`cp.async` handler（当前空 SimpleHandler 掩盖竞态） | PTX 同步正确性 | 2 天 **[勘误 E5: 实际 2-3 天 — 未计入 DUAL STATE MECHANISM 修复时间 + "已知答案测试"编写时间]** |
 | **P0-2** | 替换 7 处 `Symtable *s = new` / `cudaStream_t new` 为 `unique_ptr` 或栈对象 | 内存安全 | 1 天 |
 | **P0-3** | 创建主 CI workflow `.github/workflows/build-test.yml` | 整体质量门禁 | 0.5 天 |
 | **P1-1** | `ptx_ir → ptxsim/execution_types.h` 反向依赖解除（H2 架构债） | 模块边界 | 1 天 |
@@ -103,15 +103,15 @@
 | # | 位置 | 问题 | 严重度 | 修复建议 | 工作量 |
 |:---:|---|---|:---:|---|:---:|
 | **H1** | `src/cudart/cudart_sim.cpp:6-9,240-243` | 双角色模块（runtime shim + parser driver）：单 TU 同时含 ANTLR + visitor + GPUContext | 🔴 H | 抽出 `PtxDriver` 单一职责类；cudart_sim.cpp 仅做 symbol interception | 中 |
-| **H2** | `include/ptx_ir/statement_context.h:7` | ptx_ir 反向依赖 ptxsim（`EXE_STATE` 应为叶子类型） | 🔴 H | 把 execution_types.h 移到中立位置（include/utils/） | 小 |
+| **H2** | `include/ptx_ir/statement_context.h:7` | ptx_ir 反向依赖 ptxsim（`EXE_STATE` 应为叶子类型） | 🔴 H **[勘误 E4: 应为 🟡 M — 4 值枚举是合法叶子类型，非真正违规]** | 把 execution_types.h 移到中立位置（include/utils/） | 小 |
 | **H3** | `src/cudart/` + `src/grammar/` CMake 边界 | cudart → ptx_parser → cudart 链路过深 + ANTLR 生成代码混入 cudart 库 | 🔴 H | 拆分库边界（ptx_parser / ptxsim / cudart 三个静态库） | 中-大 |
 
 #### M 级（结构性债务，影响可维护性）
 
 | # | 位置 | 问题 | 严重度 | 工作量 |
 |:---:|---|:---:|:---:|:---:|
-| **M1** | `include/ptx_parser/ptx_visiter.h` | **拼写错误** "visiter"，14 个 .cpp 引用 | 🟡 M | 小（git mv + 全项目 include 替换） |
-| **M2** | `include/ptxsim/thread_context.h`（108 个 public 成员）/ `src/ptxsim/core/thread_context.cpp`（848 行） | god class，违反 SRP | ✅ FIXED 2026-06-24 (T2-3 A1+A3) | 拆 4 个 POD：ExecState/RegisterPredicate/Memory/ProgramRef。A5 物理删除 `EXE_STATE state` 字段待 `integrate-barrier-module-cta-warp` 合并后执行 |
+| **M1** | `include/ptx_parser/ptx_visiter.h` | **拼写错误** "visiter"，14 个 .cpp 引用 **[勘误 E3: 实际 18 个文件引用]** | 🟡 M | 小（git mv + 全项目 include 替换） |
+| **M2** | `include/ptxsim/thread_context.h`（108 个 public 成员 **[勘误 E1: 实际 81 public 字段]**）/ `src/ptxsim/core/thread_context.cpp`（848 行） | god class，违反 SRP | ✅ FIXED 2026-06-24 (T2-3 A1+A3) | 拆 4 个 POD：ExecState/RegisterPredicate/Memory/ProgramRef。A5 物理删除 `EXE_STATE state` 字段待 `integrate-barrier-module-cta-warp` 合并后执行 |
 | **M3** | `include/ptxsim/warp_context.h`（78 public）/ `src/ptxsim/core/warp_context.cpp`（466 行） | god class + **三重 active_mask 状态**（`active_mask[]` / `warp_state.threads[i].is_active` / `warp_state.exec_mask`）—— AGENTS.md 已自承"DUAL STATE MECHANISM" | ✅ FIXED 2026-06-24 (T2-3 A1+A4) | 拆 3 个 POD：LaneMask/Identity/BackendLinks。三重 active_mask 已通过 T2-1 (commit `8b1d23b`) + T2-3 A1+A4 收敛为 warp_state 单一源。`exec_mask` 保留独立（PTX `activemask` 指令语义需要）。A5 物理删除 `wbars[]` 字段待 `integrate-barrier-module-cta-warp` 合并后执行 |
 | **M4** | `include/ptxsim/sm_context.h` | 27+ 方法 + `friend class BarWarpSyncHandler;` 破封装 | 🟡 M | 中（拆 debug 接口 + 删除 friend） |
 | **M5** | `src/ptxsim/instructions/arithmetic_conversion.cpp` | 1288 行单文件，1063 行巨型 `switch (dst_bytes)` | 🟡 M | 中（按指令族拆 5+ 文件） |
@@ -164,10 +164,10 @@
 
 | 模式 | 数量 | 风险 | 位置 |
 |---|---|---|---|
-| `Symtable *s = new Symtable()` | **5 处** | 🔴 每次 kernel launch 泄漏 | `src/cudart/ptx_interpreter.cpp:213,302,443,459,550` |
+| `Symtable *s = new Symtable()` | **5 处** **[勘误 E2: 实际 7 处 — 上述 5 处 + `src/ptxsim/core/cta_context.cpp:74,104` 漏报]** | 🔴 每次 kernel launch 泄漏 | `src/cudart/ptx_interpreter.cpp:213,302,443,459,550` |
 | `KernelContext *kernelContext = new` | 2 处 | 🔴 泄漏 | `src/cudart/ptx_interpreter.cpp` |
 | `OperandContext *o = new` | 8+ 处 | 🔴 泄漏 | `src/ptx_parser/ptx_parser.cpp` |
-| `cudaStream_t new int(0)` / `cudaEvent_t` | 6 处 | 🔴 句柄泄漏，多 stream 语义被破坏 | `src/cudart/cudart_sim.cpp:684` 等 |
+| `cudaStream_t new int(0)` / `cudaEvent_t` | 6 处 | 🔴 句柄泄漏 **[勘误 E7: destroy 实现存在但 type-unsafe (reinterpret_cast<int*>)；multi-stream 语义破坏是 fake sync（cudaStreamSynchronize 是 no-op），非句柄泄漏]** | `src/cudart/cudart_sim.cpp:684` 等 |
 | `delete[]` | 0 | ✓ 一致性 | — |
 | `unique_ptr`/`make_unique` | 101 处 | ✓ 主流良好 | — |
 
@@ -282,7 +282,7 @@
 
 | 优先级 | 项 | 理由 |
 |:---:|---|---|
-| **P0** | `membar` / `fence` 实现 | 同步正确性；当前空 SimpleHandler 隐藏竞态 |
+| **P0** | `membar` / `fence` 实现 **[勘误 E5: 实际工作量 2-3 天 — 含 DUAL STATE 修复 + "已知答案测试"]** | 同步正确性；当前空 SimpleHandler 隐藏竞态 |
 | **P0** | `exit` / `trap` / `brk` 显式实现 | 调试与 kernel 终止语义 |
 | **P0** | `cp.async` 真异步引擎 | Hopper+ 必须；当前只是打印日志 |
 | **P1** | `shfl.sync` / `vote.sync` | Warp-level 通信核心（reduce/broadcast） |
@@ -291,7 +291,7 @@
 | **P2** | `wmma` 真实现 | Tensor Core 算力 |
 | **P2** | `mbarrier.*` / `tcgen05.*` | Hopper TMA 加速 |
 | **P3** | TCGEN/Texture/Surface | 项目目标外，可保持 stub |
-| **P3** | ptx_op.def 占位清理 | 删除 PTX 8.7+ 暂不实现的占位条目以避免误导 |
+| **P3** | ptx_op.def 占位清理 **[勘误 E8: 推荐 A + PTX_WARN 组合 — 选项 C（维持现状）是静默失败最危险形态；17 条占位全部 IMPLEMENT_SIMPLE_HANDLER，用户 PTX 含 cp.async/tcgen05.* 时编译通过但运行结果错误]** | 删除 PTX 8.7+ 暂不实现的占位条目以避免误导 |
 
 ---
 
@@ -561,10 +561,12 @@ ANTLR 4.11.1 完全 vendored + 升级路径断裂 + H1（cudart 双角色）→ 
 
 ```yaml
 # 立即修复（48 小时内）
-- [ ] P0-1 实现 membar/fence/cp.async handler（同步正确性）
-- [ ] P0-2 替换 7 处裸 new Symtable/KernelContext/cudaStream_t 为 unique_ptr
-- [ ] P0-3 创建 .github/workflows/build-test.yml（PR/Push 触发 ctest）
+# [勘误 E6: Phase 1 顺序调整 — 无 CI = 无回归门禁，CI 必须先于所有正确性修复]
+# [新顺序: P0-4 → P0-3 → P0-2 → P0-1]
 - [ ] P0-4 删除根目录 compile_commands.json 符号链（让 build 自然生成）
+- [ ] P0-3 创建 .github/workflows/build-test.yml（PR/Push 触发 ctest）
+- [ ] P0-2 替换 7 处裸 new Symtable/KernelContext/cudaStream_t 为 unique_ptr
+- [ ] P0-1 实现 membar/fence/cp.async handler（同步正确性）
 
 # 1 周内
 - [ ] P1-1 ptx_ir 反向依赖解除（H2 架构债）
@@ -632,7 +634,7 @@ ANTLR 4.11.1 完全 vendored + 升级路径断裂 + H1（cudart 双角色）→ 
 - **选项 B**：规划 3-6 月路线图，激活 TCGEN 系列 + mbarrier.* + Tensor Map
 - **选项 C**：维持现状（占位 + SimpleHandler no-op），风险是掩盖未来 PTX 编译错误
 
-**推荐**：A（短期清晰）或 B（长期投资）
+**推荐**：A（短期清晰）或 B（长期投资） **[勘误 E8: 推荐 A + PTX_WARN 组合 — 选项 C（维持现状）是最危险的静默失败形态；17 条占位全部 IMPLEMENT_SIMPLE_HANDLER，用户 PTX 含 cp.async/tcgen05.* 时编译通过但运行结果错误]**
 
 #### D-B：god class 拆分粒度
 

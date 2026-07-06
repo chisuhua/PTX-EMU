@@ -1,5 +1,7 @@
 # HEALTH-AUDIT-2026-06-21.md 勘误表 (Errata)
 
+> **[2026-07-06 已合并到主审计 by change `docs-cuda-docs-and-openspec-orphan-sync`]** — 本 ERRATA 中 8 项事实修正（E1-E8）已以 inline `**[勘误: ...]**` 标记形式合并至 `HEALTH-AUDIT-2026-06-21.md` 对应段落（§0.2 / §0.4 / §1.2 / §2.2.1 / §3.5 / §8 / §9.1）。本 ERRATA 文件保留作为历史参考，**主审计原文未修改**。
+
 > **官方说明**: 本 Errata 列出 `docs/audits/HEALTH-AUDIT-2026-06-21.md` 中的事实错误与遗漏。原审计作为 commit `baa8c4e` 的历史快照保持不变;本 Errata 是官方补充,供未来复审对比使用。
 > **发布日期**: 2026-06-22
 > **审查来源**: Oracle 子代理审查记录 `ses_1155c96adffeBJ5SwSGBXUpgYK` (2m 36s, 7 Q&A) + `ses_112932fcdffeSeDXitHeVPQIBG` (15m 58s, 实施计划审查)
