@@ -1,0 +1,15 @@
+.version 7.0
+.target sm_70
+.address_size 64
+
+.global .b32 mem;
+
+.entry atom_cas_basic() {
+    .reg .b32 %r<3>;
+    .reg .b64 %rd<1>;
+    mov.u32 %r0, 5;
+    mov.u32 %r1, 7;
+    cvta.to.global.u64 %rd0, mem;
+    atom.global.cas.b32 %r0, [%rd0], %r0, %r1;
+    ret;
+}

@@ -64,11 +64,34 @@ cmake --build build --target ptxsim     # Build instruction handlers
 ```
 
 ## KNOWN STUBS
-- `atomic.cpp` — Atomic operations are stubs (no real atomicity)
+- `atomic.cpp` — `atomic.cas` (Compare-And-Swap) handler implemented as of
+  `implement-atomic-cas-and-true-atomicity` Phase 1 (`Fix #1` commit).
+  Single-warp semantics (read-compare-write); cross-warp race not yet
+  serialized — see OpenSpec change for Phase 2 mutex plan.
 - `wmma.cpp` (WmmaHandler) — Blackwell `tcgen05.*` real fragment arithmetic
   implemented (Phase 1-3 of `implement-wmma-tensor-core-tcgen05`).
   pre-Blackwell `wmma.*` / `mma.*` permanently throws
   `UnsupportedInstructionException` per ADR-0016.
+
+## ATOMIC CAS HANDLER (Phase 1, 2026-07)
+
+Implements `atomic.compare_and_swap` (a.k.a. `atomic.cas`) semantics:
+
+```cpp
+atom.global.cas.u32 dst, [addr], cmp, val;
+```
+
+- Reads `*addr` into a local variable
+- If loaded value equals `cmp`, writes `val` to `*addr`
+- Always writes the originally-loaded value to `dst`
+
+Operands are packed as `[dst, addr, cmp, val]` by `ptx_visitor_atom.cpp`
+(opcount=3 + visitor loop pushes the optional 4th operand). The handler
+differs from other atom ops only in the conditional-store branch and the
+4-operand read; no other dispatch path is touched.
+
+Tests: `integration_ptx_atom_global_cas` (3 cases — match / mismatch /
+mixed). Real atomicity under multi-warp contention is a follow-up change.
 
 ## KNOWN ISSUES
 

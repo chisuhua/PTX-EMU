@@ -250,6 +250,12 @@ add_catch_test(integration_ptx_atom_global_exch
 )
 set_tests_properties(integration_ptx_atom_global_exch PROPERTIES LABELS "integration;ptx;atom;exch")
 
+# Phase 1 of implement-atomic-cas-and-true-atomicity change
+add_catch_test(integration_ptx_atom_global_cas
+    ptx/test_atom_global_cas.cpp
+)
+set_tests_properties(integration_ptx_atom_global_cas PROPERTIES LABELS "integration;ptx;atom;cas")
+
 add_catch_test(integration_ptx_cvt
     ptx/test_cvt.cpp
 )
