@@ -70,6 +70,7 @@ add_library(ptxsim SHARED
     utils/ptx_lane_verification.cpp
     ptxsim/core/cta_context.cpp
     ptxsim/core/thread_context.cpp
+    ptxsim/core/simt_pc_manager.cpp
     ptxsim/core/warp_context.cpp
     ptxsim/core/execution_tracer.cpp
     ptxsim/core/warp_scheduler.cpp
