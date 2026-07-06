@@ -42,6 +42,8 @@ Change-1 (archived) 建立了独立 tcgen05 命名空间,handler 实施(Change-3
 
 **L2 → L3 升级规则**:若 L2 子系统超过 2 个 Phase 未推进 `fix-*` change,自动升级 L3(per lessons-learned §3 跨 Phase invariant 冲突)。
 
+> **Phase 定义**(per NI-6 澄清):**Phase = OpenSpec change 生命周期**(从 propose → accepted → active → archived 视为一个 Phase)。当前 Phase = Change-2 (extend-blackwell-tcgen05-infra);Change-3 archive 之后 L2 仍未推进 → 自动升级 L3。
+
 **aggregate readiness** = 取 4+1 子系统中最低等级(min-rule)。Change-3 可开始 = aggregate ≥ L2。
 
 ### D5: P0 / P1 / P2 UNVERIFIED 判定准则(per Metis MR-4,2026-07)
@@ -56,9 +58,13 @@ Change-1 (archived) 建立了独立 tcgen05 命名空间,handler 实施(Change-3
 
 **排除规则**:以下情形**不计入** P0/P1/P2 等级(自动归 "Reference / Verified-Ref"):
 
-- 自动生成的参考数据表(e.g. `wmma.cpp:62-317` 的 256-entry `fragment element lane X C[Y][Z]` table — 这是 PTX ISA §9.7.13 fragment 布局的静态参考,非实现 UNVERIFIED)
-- 注释直接引用 PTX ISA section 而无具体 invariant 缺失
-- 测试 fixture / golden values
+- **(a)** 自动生成的参考数据表(e.g. `wmma.cpp:62-317` 的 256-entry `fragment element lane X C[Y][Z]` table — 这是 PTX ISA §9.7.13 fragment 布局的静态参考,非实现 UNVERIFIED)
+- **(b)** 注释直接引用 PTX ISA section 而无具体 invariant 缺失**且位于 reference/table 上下文(非 handler 实现代码体内)**(per NI-5 fix:`wmma.cpp:427, 467, 506, 538` 四处 bare ISA-reference UNVERIFIED 位于 handler 函数体内,**仍计入**实现级分级;只有位于 reference data 表(如 L62-317)的 bare ISA-reference 才排除)
+- **(c)** 测试 fixture / golden values
+
+**实现级 vs Reference 区分规则**:UNVERIFIED 注释所在的代码上下文是关键——
+- 注释紧邻 `void execute_*` 函数体开头之后(handler 实现代码)→ 实现级(无论注释描述详略)
+- 注释位于数组初始化、struct member 列表、或独立 reference 段 → Reference(自动归 Verified-Ref,不计入分级)
 
 **L2/L3 判定中的 P0 阈值**:L2 = ≤2 P0,L3 = ≥3 P0(per D4)。
 

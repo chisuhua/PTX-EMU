@@ -108,7 +108,7 @@ handler 实施(Change-3)前必须先**审计**基础设施可工作,否则 handl
 
 ### New Capabilities
 
-- `tcgen05-infra-audit`: 4 个 Blackwell 子系统的审计报告 + readiness 等级 + UNVERIFIED 分级
+- `tcgen05-infra-audit`: 5 个 Blackwell 子系统的审计报告(per MR-5 扩 scope:4 子系统 + wmma.cpp handlers L320-565)+ readiness 等级(L1/L2/L3 per Decision 4)+ UNVERIFIED 分级(P0/P1/P2 per Decision 5)
 
 ### Modified Capabilities
 

@@ -7,12 +7,15 @@
 ## 0. Pre-Implementation Review
 
 - [ ] 0.1 跑 Metis 验证:
-  - [ ] 0.1.1 `wc -l src/ptxsim/memory/tma_descriptor.{h,cpp}`(约 168+204)
-  - [ ] 0.1.2 `wc -l src/ptxsim/memory/tmem.{h,cpp}`(约 50+61)
-  - [ ] 0.1.3 `wc -l src/ptxsim/cluster/cluster_context.{h,cpp}`(读后填)
-  - [ ] 0.1.4 `wc -l src/ptxsim/async/tc_queue.{h,cpp}`(读后填)
-  - [ ] 0.1.5 `grep -c "UNVERIFIED-AGAINST-HARDWARE" src/ptxsim/memory/tma_descriptor.{h,cpp}`(期望 29)
-  - [ ] 0.1.6 `grep -c "TEST_CASE" tests/unit/memory/test_tma_descriptor.cpp tests/unit/memory/test_tmem.cpp tests/unit/cluster/test_cluster_mode.cpp tests/unit/async/test_tc_queue.cpp`(分别 36/19/16/15)
+  - [ ] 0.1.1 `wc -l src/ptxsim/memory/tma_descriptor.{h,cpp}`(期望 168+206 per NI-1 fix)
+  - [ ] 0.1.2 `wc -l src/ptxsim/memory/tmem.{h,cpp}`(期望 49+61 per NI-2 fix)
+  - [ ] 0.1.3 `wc -l src/ptxsim/cluster/cluster_context.{h,cpp}`(期望 54+82)
+  - [ ] 0.1.4 `wc -l src/ptxsim/async/tc_queue.{h,cpp}`(期望 74+108)
+  - [ ] 0.1.5 `wc -l src/ptxsim/instructions/wmma.cpp`(期望 564)
+  - [ ] 0.1.6 `grep -c "UNVERIFIED-AGAINST-HARDWARE" src/ptxsim/memory/tma_descriptor.{h,cpp}`(期望 29)
+  - [ ] 0.1.7 `awk 'NR>=320 && NR<=565 && /UNVERIFIED-AGAINST-HARDWARE/' src/ptxsim/instructions/wmma.cpp | wc -l`(期望 9,handler-level per NI-1/5 fix)
+  - [ ] 0.1.8 `awk 'NR>=62 && NR<=317 && /UNVERIFIED-AGAINST-HARDWARE/' src/ptxsim/instructions/wmma.cpp | wc -l`(期望 256,reference table 排除范围 per D5)
+  - [ ] 0.1.9 `grep -c "TEST_CASE" tests/unit/memory/test_tma_descriptor.cpp tests/unit/memory/test_tmem.cpp tests/unit/cluster/test_cluster_mode.cpp tests/unit/async/test_tc_queue.cpp tests/unit/cluster/test_cluster_tcgen05_integration.cpp`(分别 36/19/16/15/2)
 
 - [ ] 0.2 基线 worktree:`git worktree add .worktrees/baseline-tcgen05-audit -b feat/extend-blackwell-tcgen05-infra main`
 
@@ -47,8 +50,8 @@
 ### 2.3 `state-modification-audit` skill
 
 - [ ] 2.3.1 跑 `state-modification-audit` skill 验证 **`NO set_state(BAR_SYNC)` 不变量**(per `tc_queue.h:16-17` / `tc_queue.cpp:13-14` + per **Change-2 MR-1 修正:不是 ADR-0016 Decision 7,而是 tc_queue 模块内部 Decision 7**)
-  - [ ] 验证:`grep -rn "BAR_SYNC" src/ptxsim/async/tc_queue.{h,cpp}` 应返回 0 行(只有注释说明"不使用")
-  - [ ] 验证:`grep -rn "set_state" src/ptxsim/async/tc_queue.{h,cpp}` 应返回 0 行
+  - [ ] 验证:**`grep -rn "BAR_SYNC" src/ptxsim/async/tc_queue.{h,cpp}` 应返回 5 行,全部为 `//` 注释行**(per NI-3 fix:grep 默认包含注释,预期 5 行 = L16-17, L27, L13-14;实际 `set_state(BAR_SYNC)` 函数调用 = 0)
+  - [ ] 验证(过滤注释):**`grep -rn "set_state(BAR_SYNC)" src/ptxsim/async/tc_queue.{h,cpp} | grep -v '//'` 应返回 0 行**(精确验证无非注释 set_state 调用 per NI-3 fix)
   - [ ] 验证:`grep "tc_queue().wait" src/ptxsim/instructions/wmma.cpp` 应展示 `wmma.cpp:556` 调用,TcQueue wait 实现**直接**设 `is_blocked=true` + `status=Blocked` 而非通过 `set_state(BAR_SYNC)`
 
 ### 2.4 写审计报告
