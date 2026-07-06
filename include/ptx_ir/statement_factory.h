@@ -274,6 +274,20 @@ inline StatementContext makeWmmaInstr(
     return makeStatementContext(S_WMMA, std::move(instr), text);
 }
 
+// --- 2.17.1 Blackwell tcgen05 指令 (Tcgen05Instr) ---
+inline StatementContext makeTcgen05Instr(
+    Tcgen05OpKind op_kind,
+    const std::vector<Qualifier> &qualifiers,
+    const std::vector<OperandContext> &operands,
+    const std::string &text = "") {
+    Tcgen05Instr instr;
+    instr.op_kind = op_kind;
+    instr.qualifiers = qualifiers;
+    instr.operands = operands;
+    instr.instructionText = text;
+    return makeStatementContext(static_cast<StatementType>(S_TCGEN05_MMA), std::move(instr), text);
+}
+
 // --- 2.18 原子指令 (AtomInstr) ---
 inline StatementContext makeAtomInstr(
     const std::vector<Qualifier> &qualifiers,

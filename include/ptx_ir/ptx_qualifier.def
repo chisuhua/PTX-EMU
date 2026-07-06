@@ -191,10 +191,72 @@ X(Q_SCALE_VEC_SIZE, SCALE_VEC_SIZE, ".scale_vec_size")
 X(Q_BLOCK_SCALE, BLOCK_SCALE, ".block_scale")
 
 // tcgen05 sub-operation markers (distinguish mma/ld/st/commit/wait in WmmaHandler dispatch)
+// DEPRECATED in change-3: replaced by independent S_TCGEN05_* StatementType enums.
+// Kept temporarily for wmma.cpp backward compat; removed in change-4.
 X(Q_TCGEN05_LD, TCGEN05_LD, ".tcgen05_ld")
 X(Q_TCGEN05_ST, TCGEN05_ST, ".tcgen05_st")
 X(Q_TCGEN05_COMMIT, TCGEN05_COMMIT, ".tcgen05_commit")
 X(Q_TCGEN05_WAIT, TCGEN05_WAIT, ".tcgen05_wait")
+
+// -----------------------------------------------------------------------------
+// 13.5 Blackwell tcgen05 Qualifiers (PTX ISA §9.7.16, sm_100+)
+// Added by implement-tcgen05-syntax-ir (ADR-0016). Independent namespace,
+// not reusing wmma.* / pre-Blackwell qualifiers.
+// -----------------------------------------------------------------------------
+
+// --- Qualifier markers (with leading dot, like existing KIND) ---
+X(Q_TCGEN_CTA_GROUP,  TCGEN_CTA_GROUP,  ".cta_group")
+X(Q_TCGEN_SEM,        TCGEN_SEM,        ".sem")
+X(Q_TCGEN_MULTICAST,  TCGEN_MULTICAST,  ".multicast")
+X(Q_TCGEN_PACK,       TCGEN_PACK,       ".pack")
+
+// --- Bare qualifier values (for .shared::cta, .multicast::cluster, etc.) ---
+X(Q_TCGEN_CLUSTER,    TCGEN_CLUSTER,    "cluster")
+X(Q_TCGEN_CTA,        TCGEN_CTA,        "cta")
+X(Q_TCGEN_ONE,        TCGEN_ONE,        "one")
+X(Q_TCGEN_B16,        TCGEN_B16,        "b16")
+
+// --- mma variant tokens (.sp, .ws) ---
+X(Q_TCGEN_SP,         TCGEN_SP,         "sp")
+X(Q_TCGEN_WS,         TCGEN_WS,         "ws")
+
+// --- mbarrier bare token (for .mbarrier::arrive::one) ---
+X(Q_TCGEN_MBARRIER,   TCGEN_MBARRIER,   "mbarrier")
+
+// --- Fence time tokens ---
+X(Q_BEFORE_THREAD_SYNC, BEFORE_THREAD_SYNC, "before_thread_sync")
+X(Q_AFTER_THREAD_SYNC,  AFTER_THREAD_SYNC,  "after_thread_sync")
+
+// --- mma shape tokens (bare, for .m64nNk pattern) ---
+X(Q_M64N8K16,    M64N8K16,    "m64n8k16")
+X(Q_M64N16K16,   M64N16K16,   "m64n16k16")
+X(Q_M64N32K16,   M64N32K16,   "m64n32k16")
+X(Q_M64N64K16,   M64N64K16,   "m64n64k16")
+X(Q_M64N128K16,  M64N128K16,  "m64n128k16")
+X(Q_M64N256K16,  M64N256K16,  "m64n256k16")
+
+// --- scale_vec_size values (for .scale_vec_size::2X / ::4X) ---
+X(Q_SCALE_VEC_2X, SCALE_VEC_2X, "2X")
+X(Q_SCALE_VEC_4X, SCALE_VEC_4X, "4X")
+
+// --- ld/st shape and multiplier ---
+X(Q_SHAPE_32X32B, SHAPE_32X32B, "32x32b")
+X(Q_TCGEN05_X1,   TCGEN05_X1,   ".x1")
+X(Q_TCGEN05_X2,   TCGEN05_X2,   ".x2")
+X(Q_TCGEN05_X4,   TCGEN05_X4,   ".x4")
+
+// --- cp shape tokens ---
+X(Q_SHAPE_128X256B, SHAPE_128X256B, "128x256b")
+X(Q_SHAPE_64X128B,  SHAPE_64X128B,  "64x128b")
+X(Q_SHAPE_64X256B,  SHAPE_64X256B,  "64x256b")
+X(Q_SHAPE_128X128B, SHAPE_128X128B, "128x128b")
+
+// --- mma kind values (bare) ---
+X(Q_TCGEN_F8F6F4, TCGEN_F8F6F4, "f8f6f4")
+X(Q_TCGEN_MXF4,   TCGEN_MXF4,   "mxf4")
+X(Q_TCGEN_MXF8,   TCGEN_MXF8,   "mxf8")
+X(Q_TCGEN_I8,     TCGEN_I8,     "i8")
+X(Q_TCGEN_TF32,   TCGEN_TF32,   "tf32")
 
 // -----------------------------------------------------------------------------
 // 14. New Shapes

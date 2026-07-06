@@ -124,7 +124,25 @@ X(S_SQRT,    sqrt,    Sqrt,    2, GENERIC_INSTR, arithmetic)      // sqrt: dst, 
 // 8. 原子操作与特殊指令（Atomic & Special Operations）
 // -----------------------------------------------------------------------------
 X(S_ATOM,    atom,    Atom,    3, ATOM_INSTR, atomic)      // atom: dst_addr, src, [optional op] → simplified as 3
-X(S_WMMA,    wmma,    Wmma,    4, WMMA_INSTR, matrix)      // wmma: dst, src_a, src_b, src_c (or more, simplified)
+X(S_WMMA,    wmma,    Wmma,    4, WMMA_INSTR, matrix)      // wmma: dst, src_a, src_b, src_c (or more, simplified) — DEPRECATED, removed in change-4
+
+// -----------------------------------------------------------------------------
+// 8.5 Blackwell Tensor Core Generator (sm_100+, PTX ISA §9.7.16)
+// Added by implement-tcgen05-syntax-ir (ADR-0016). Replaces wmma.* for Blackwell.
+// 11 independent StatementType enums (one per tcgen05.* sub-op family).
+// struct_kind = TCGEN_INSTR maps to IMPLEMENT_SIMPLE_HANDLER (change-3) → change-3 replaces with TCGEN05_INSTR.
+// -----------------------------------------------------------------------------
+X(S_TCGEN05_ALLOC,      tcgen05Alloc,      Tcgen05Alloc,      1, TCGEN_INSTR,    tcgen05)      // tcgen05.alloc
+X(S_TCGEN05_DEALLOC,    tcgen05Dealloc,    Tcgen05Dealloc,    1, TCGEN_INSTR,    tcgen05)      // tcgen05.dealloc
+X(S_TCGEN05_RELINQUISH, tcgen05Relinquish, Tcgen05Relinquish, 0, TCGEN_INSTR,    tcgen05)      // tcgen05.relinquish_alloc_permit
+X(S_TCGEN05_LD,         tcgen05Ld,         Tcgen05Ld,         1, TCGEN_INSTR,    tcgen05)      // tcgen05.ld
+X(S_TCGEN05_ST,         tcgen05St,         Tcgen05St,         1, TCGEN_INSTR,    tcgen05)      // tcgen05.st
+X(S_TCGEN05_CP,         tcgen05Cp,         Tcgen05Cp,         1, TCGEN_INSTR,    tcgen05)      // tcgen05.cp
+X(S_TCGEN05_MMA,        tcgen05Mma,        Tcgen05Mma,        4, TCGEN_INSTR,    tcgen05)      // tcgen05.mma (incl. .sp / .block_scale)
+X(S_TCGEN05_MMA_WS,     tcgen05MmaWs,      Tcgen05MmaWs,      4, TCGEN_INSTR,    tcgen05)      // tcgen05.mma.ws
+X(S_TCGEN05_COMMIT,     tcgen05Commit,     Tcgen05Commit,     0, TCGEN_INSTR,    tcgen05)      // tcgen05.commit
+X(S_TCGEN05_WAIT,       tcgen05Wait,       Tcgen05Wait,       0, TCGEN_INSTR,    tcgen05)      // tcgen05.wait
+X(S_TCGEN05_FENCE,      tcgen05Fence,      Tcgen05Fence,      0, TCGEN_INSTR,    tcgen05)      // tcgen05.fence
 
 // -----------------------------------------------------------------------------
 // 9. 位计数与前导零（Bit Manipulation Utilities）

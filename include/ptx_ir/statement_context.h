@@ -152,6 +152,53 @@ struct WmmaInstr {
 };
 
 // -----------------------------------------------------------------------------
+// Blackwell Tensor Core Generator (S_TCGEN05_* → TCGEN_INSTR)
+// Independent struct replacing the WmmaInstr + Q_TCGEN05_* qualifier path
+// per ADR-0016 (Blackwell-only tcgen05).
+// -----------------------------------------------------------------------------
+
+// OpKind: 11 tcgen05 sub-op families (PTX ISA §9.7.16).
+enum class Tcgen05OpKind {
+    ALLOC,       // tcgen05.alloc
+    DEALLOC,     // tcgen05.dealloc
+    RELINQUISH,  // tcgen05.relinquish_alloc_permit
+    LD,          // tcgen05.ld
+    ST,          // tcgen05.st
+    CP,          // tcgen05.cp
+    MMA,         // tcgen05.mma (incl. .sp / .block_scale)
+    MMA_WS,      // tcgen05.mma.ws
+    COMMIT,      // tcgen05.commit
+    WAIT,        // tcgen05.wait
+    FENCE        // tcgen05.fence
+};
+
+// Dtype: 10 Blackwell mma data types (PTX ISA §9.7.16.6–9.7.16.9).
+enum class Tcgen05Dtype {
+    F16,
+    BF16,
+    TF32,
+    F8,
+    F4,
+    MXF4,
+    MXF8,
+    I8,
+    MXF4NVF4,
+    INVALID
+};
+
+struct Tcgen05Instr {
+    Tcgen05OpKind op_kind = Tcgen05OpKind::MMA;
+    std::vector<Qualifier> qualifiers;
+    std::vector<OperandContext> operands;
+    std::string instructionText;
+    // Convenience fields pre-extracted from qualifiers by the visitor:
+    uint32_t cta_group = 1;        // .cta_group::1 / ::2
+    Tcgen05Dtype dtype = Tcgen05Dtype::F16;
+    uint32_t num_regs = 0;         // .x1 / .x2 / .x4 (ld/st)
+    bool has_block_scale = false;  // .block_scale flag (mma)
+};
+
+// -----------------------------------------------------------------------------
 // Atomic instruction (S_ATOM → ATOM_INSTR)
 // -----------------------------------------------------------------------------
 struct AtomInstr {
@@ -252,7 +299,8 @@ using InstrVariant =
                  PredicatePrefix,      // PREDICATE_PREFIX
                  GenericInstr,         // GENERIC_INSTR - includes S_ACTIVEMASK
                  BarWarpSyncInstr,     // WARP_BARRIER - S_BAR_WARP_SYNC
-                 WmmaInstr,            // WMMA_INSTR
+                 WmmaInstr,            // WMMA_INSTR — DEPRECATED, removed in change-4
+                 Tcgen05Instr,         // TCGEN_INSTR — Blackwell sm_100+ (ADR-0016)
                  AtomInstr,            // ATOM_INSTR
                  VoteInstr,            // VOTE_INSTR
                  ShflInstr,            // SHFL_INSTR
