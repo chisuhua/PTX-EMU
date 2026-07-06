@@ -10,9 +10,10 @@
 Change-1 建立了独立 tcgen05 命名空间(grammar + IR),但**未触及底层基础设施**。`src/ptxsim/memory/tma_descriptor.{h,cpp}`、`src/ptxsim/memory/tmem.{h,cpp}`、`src/ptxsim/cluster/cluster_context.{h,cpp}`、`src/ptxsim/async/tc_queue.{h,cpp}` 4 个子系统虽然在 `archive/2026-07-04-implement-wmma-tensor-core-phase-0-infra/` 中已 archive,但:
 
 1. **TmaDescriptor 128 字节布局**有 29 处 `// UNVERIFIED-AGAINST-HARDWARE — PTX ISA §9.7.13` 注释(17 在 .h,12 在 .cpp)
-2. **TcQueue 集成**在 commit `c0fa43f` archive,但 `tcgen05.wait` handler 仍复用 BAR_SYNC path
-3. **Cluster context** 集成在 commit `eb52af4`,但仅 `tcgen05.commit/wait` 涉及(其他指令未测试)
+2. **TcQueue 集成**在 commit `c0fa43f` archive,**明确不调用 `set_state(BAR_SYNC)`**(`tc_queue.h:16-17` / `tc_queue.cpp:13-14` 注释:`NO set_state(BAR_SYNC) — TcQueue is not a CTA-level barrier`);`tcgen05.wait` handler 通过 `cta->tc_queue().wait(warp, 0, 1)`(`wmma.cpp:556`)使用独立 `is_blocked` + `status=Blocked` 路径,**不涉及** BAR_SYNC(per Change-2 Metis MR-1 修正)
+3. **Cluster context 集成**在 commit `eb52af4 feat(cluster): wire ClusterContext into tcgen05 commit/wait (Fix #2)`(基础原语在更早的 `e513235 feat(sim): cluster arrive/wait primitives (Fix #7, simplified—no distributed smem)`);`tcgen05.commit/wait` 通过 `wmma.cpp:526-528` opt-in 调用 `cta_cluster_arrive`(其他指令未测试)
 4. **跨子系统 pipeline 端到端 PTX 验证** = 0(每个子系统孤立测试)
+5. **wmma.cpp handler-level UNVERIFIED** 9 处(`wmma.cpp:427, 449, 455, 467, 489, 506, 522, 538, 554`)直接关联 `tcgen05.ld/st/commit/wait` 正确性,Change-3 前置 blocker — per Change-2 Metis MR-5 扩 scope 包含
 
 handler 实施(Change-3)前必须先**审计**基础设施可工作,否则 handler 调试会与基础设施 bug 混淆(per `ptx-lessons-learned` §3 "每个 Phase 独立可 revert")。
 
@@ -22,13 +23,16 @@ handler 实施(Change-3)前必须先**审计**基础设施可工作,否则 handl
 
 ### 审计 4 个子系统(无代码改动,纯验证)
 
-| 子系统 | 源文件 | 行数 | 现有测试 | UNVERIFIED 注释数 |
-|--------|--------|------|---------|------------------|
-| TmaDescriptor | `src/ptxsim/memory/tma_descriptor.{h,cpp}` | 168+204 | 36 TEST_CASE(`tests/unit/memory/test_tma_descriptor.cpp`)| 29 |
-| Tmem | `src/ptxsim/memory/tmem.{h,cpp}` | 50+61 | 19 TEST_CASE(`tests/unit/memory/test_tmem.cpp`)| 0 |
-| ClusterContext | `src/ptxsim/cluster/cluster_context.{h,cpp}` | (读后填) | 16 TEST_CASE(`tests/unit/cluster/test_cluster_mode.cpp`)| 0 |
-| TcQueue | `src/ptxsim/async/tc_queue.{h,cpp}` | (读后填) | 15 TEST_CASE(`tests/unit/async/test_tc_queue.cpp`)| 0 |
-| 跨子系统集成 | (无独立文件) | — | **2 TEST_CASE**(`tests/integration/cluster_tcgen05/test_cluster_tcgen05_integration.cpp`)| — |
+| 子系统 | 源文件 | 行数 | 现有测试 | UNVERIFIED 注释数(实现级) |
+|--------|--------|------|---------|--------------------------|
+| TmaDescriptor | `src/ptxsim/memory/tma_descriptor.{h,cpp}` | 168+206 | 36 TEST_CASE(`tests/unit/memory/test_tma_descriptor.cpp`)| **29** (17 .h + 12 .cpp) |
+| Tmem | `src/ptxsim/memory/tmem.{h,cpp}` | 49+61 | 19 TEST_CASE(`tests/unit/memory/test_tmem.cpp`)| 0 |
+| ClusterContext | `src/ptxsim/cluster/cluster_context.{h,cpp}` | 54+82 | 16 TEST_CASE(`tests/unit/cluster/test_cluster_mode.cpp`)| 0 |
+| TcQueue | `src/ptxsim/async/tc_queue.{h,cpp}` | 74+108 | 15 TEST_CASE(`tests/unit/async/test_tc_queue.cpp`)| 0 |
+| wmma.cpp handlers | `src/ptxsim/instructions/wmma.cpp` (L320-565,handler 段) | 246 | 0 独立 TEST_CASE(handler 通过 Change-1 grammar/integration 覆盖)| **9**(`wmma.cpp:427, 449, 455, 467, 489, 506, 522, 538, 554`;排除 L62-317 的 256-entry reference table per D5 排除规则) |
+| 跨子系统集成 | (无独立文件) | — | **2 TEST_CASE**(`tests/unit/cluster/test_cluster_tcgen05_integration.cpp`,**不是** `tests/integration/` per Metis MR-3 fix)| — |
+
+> **MR-5 改动**:原列 4 子系统 → 现列 5 子系统 + 跨集成。wmma.cpp handlers 段是 Change-3 的直接前置依赖(`tcgen05.ld/st/commit/wait` 实现),必须纳入 readiness 评估。L62-317 的 256 fragment element reference entries 按 D5 排除规则归类为 Verified-Ref,不计入 UNVERIFIED 等级。
 
 ### 审计项
 
@@ -37,8 +41,9 @@ handler 实施(Change-3)前必须先**审计**基础设施可工作,否则 handl
 | TmaDescriptor | 128 字节布局与 PTX ISA §9.7.13 对齐、29 处 UNVERIFIED 分级(P0/P1/P2)、descriptor store 隔离性、≥10 swizzle/stride 组合覆盖 | 报告 §2.1 |
 | Tmem | 256 slot × 128 byte 布局、CTA 隔离性、partial write no-clobber、越界检查 | 报告 §2.2 |
 | ClusterContext | arrive/wait 同步语义、CTA 隔离、与 BarrierModule 集成 | 报告 §2.3 |
-| TcQueue | commit-group counter 原子性、wait-aware 调度、与 `WarpState::set_warp_state(BAR_SYNC)` 的 invariant(per ADR-0016 Decision 7) | 报告 §2.4 |
-| 跨子系统 pipeline | TmaDescriptor → Tmem → TcQueue 完整 pipeline 路径 | 报告 §2.5 |
+| TcQueue | commit-group counter 原子性、wait-aware 调度、**`NO set_state(BAR_SYNC)` 设计契约**(`tc_queue.h:16-17` / `tc_queue.cpp:13-14`) | 报告 §2.4 |
+| wmma.cpp handlers | 9 处 handler-level UNVERIFIED 分级(`wmma.cpp:427, 449, 455, 467, 489, 506, 522, 538, 554`)、`tcgen05.ld/st/commit/wait` × 4 子系统的集成路径 | 报告 §2.5 |
+| 跨子系统 pipeline | TmaDescriptor → Tmem → TcQueue 完整 pipeline 路径(含 wmma.cpp handler 调用链) | 报告 §2.6 |
 
 ### 跨 Change 协调
 
@@ -55,7 +60,7 @@ handler 实施(Change-3)前必须先**审计**基础设施可工作,否则 handl
 - ❌ 不实现 `cuTensorMapEncodeTiled` host-side 拦截
 - ❌ 不实现 sm_120 sparse / FP4 / mxfp8
 - ❌ 不修改 `tcgen05.*` grammar/IR(handler 在 Change-3)
-- ❌ 不修改 `wmma.cpp`(留待 Change-4 删除)
+- ❌ 不修改 `wmma.cpp`(留待 Change-4 删除) — **审计性只读**:`wmma.cpp` L320-565 handler 段纳入本 change 审计(per MR-5),但**不修改任何 handler 代码**;审计发现的 handler-level UNVERIFIED 不确定项通过独立 `fix-*` change 修复
 
 ### 范围限制
 
@@ -71,6 +76,7 @@ handler 实施(Change-3)前必须先**审计**基础设施可工作,否则 handl
 - `src/ptxsim/cluster/cluster_context.{h,cpp}`(只读)
 - `src/ptxsim/async/tc_queue.{h,cpp}`(只读)
 - `src/ptxsim/core/cta_context.{h,cpp}`(只读)
+- `src/ptxsim/instructions/wmma.cpp`(只读 — 审计 L320-565 handler 段 UNVERIFIED,但不修改)
 - 任何 `tests/` 文件(只读 + 运行)
 - 任何 `include/` 头文件(只读)
 
@@ -79,16 +85,16 @@ handler 实施(Change-3)前必须先**审计**基础设施可工作,否则 handl
 ### Phase A: 审计(无代码改动,1 个 commit)
 
 1. 跑 `cmake --build build` 确保 baseline 编译通过
-2. 跑 `ctest -L "unit;memory|unit;barrier|unit;cluster|unit;async" --output-on-failure` 记录 baseline
-3. 阅读 4 个子系统的 `.h` 头文件,统计 UNVERIFIED 注释位置和数量
-4. 跑 `state-modification-audit` skill 验证 TcQueue 与 WarpState 的 invariant(per ADR-0016 Decision 7)
-5. 阅读 4 个子系统的测试,识别覆盖空白
+2. 跑 `ctest -R "unit_tma_descriptor|unit_tmem|unit_cluster_mode|unit_cluster_tcgen05_integration|unit_tc_queue" --output-on-failure` 记录 baseline(per Metis MR-2 修正:`ctest -L` 用 AND 语义,`-L "unit;memory"` 实际返回 0 tests;改用 `-R` 正则 OR 一次性枚举 5 个 ctest targets)
+3. 阅读 **5 个子系统**(per MR-5 扩 scope:4 + wmma.cpp handlers L320-565)的 `.h`/`.cpp`,统计 UNVERIFIED 注释位置和数量(L62-317 fragment reference table 按 Decision 5 排除规则**不计入**)
+4. 跑 `state-modification-audit` skill 验证 **`NO set_state(BAR_SYNC)` 设计契约**(`tc_queue.h:16-17` / `tc_queue.cpp:13-14` — **不是** ADR-0016 Decision 7,而是 tc_queue 模块内部 Decision 7,per MR-1 修正);验证 `wmma.cpp:556` 的 `tc_queue.wait` 调用不通过 `set_state(BAR_SYNC)`
+5. 阅读 5 个子系统的测试,识别覆盖空白
 6. 输出 `docs/audits/2026-07-XX-tcgen05-infra-audit.md` 报告
 
 ### Phase A Acceptance Criteria
 
-- 报告包含 4 个子系统的 **readiness 等级**(L1=可工作/L2=需关注/L3=阻塞 Change-3)
-- 报告列出 29 个 UNVERIFIED 注释的 **分级**(P0=影响 handler 正确性/P1=影响精度/P2=边缘 case)
+- 报告包含 5 个子系统的 **readiness 等级**(L1=可工作/L2=需关注/L3=阻塞 Change-3,per Decision 4)
+- 报告列出 38 个 UNVERIFIED 注释的 **分级**(29 TmaDescriptor + 9 wmma.cpp handlers,P0=影响 handler 正确性/P1=影响精度/P2=边缘 case,per Decision 5)
 - 报告明确 "哪些 UNVERIFIED 必须 Change-3 实施 handler 前先修"(P0 列表)
 - 报告明确 "哪些可推迟到 Change-3 handler 实施时一并验证"(P1 列表)
 - 报告列出 "跨子系统 pipeline 覆盖空白"(TmaDescriptor → Tmem → TcQueue 端到端测试缺口)
@@ -167,7 +173,8 @@ handler 实施(Change-3)前必须先**审计**基础设施可工作,否则 handl
 
 ### 实施前必跑(per `ptx-lessons-learned` §7)
 
-- [ ] **Metis pre-implementation review**:验证审计范围、文件路径、测试数字
-- [ ] 跑 `wc -l src/ptxsim/memory/tma_descriptor.cpp src/ptxsim/memory/tmem.cpp src/ptxsim/cluster/cluster_context.cpp src/ptxsim/async/tc_queue.cpp` 确认行数
-- [ ] 跑 `grep -c "UNVERIFIED-AGAINST-HARDWARE" src/ptxsim/memory/tma_descriptor.{h,cpp}` 确认 29
-- [ ] 跑 `ctest -L "unit;memory" --output-on-failure` 记录 baseline 通过数
+- [ ] **Metis pre-implementation review**:验证审计范围、文件路径、测试数字(MR-1~5 全部解决后再 apply)
+- [ ] 跑 `wc -l src/ptxsim/memory/tma_descriptor.cpp src/ptxsim/memory/tmem.cpp src/ptxsim/cluster/cluster_context.cpp src/ptxsim/async/tc_queue.cpp src/ptxsim/instructions/wmma.cpp` 确认行数
+- [ ] 跑 `grep -c "UNVERIFIED-AGAINST-HARDWARE" src/ptxsim/memory/tma_descriptor.{h,cpp}` 确认 **29**
+- [ ] 跑 `awk 'NR>=320 && NR<=565 && /UNVERIFIED-AGAINST-HARDWARE/' src/ptxsim/instructions/wmma.cpp | wc -l` 确认 **9**(handler-level,排除 L62-317 reference)
+- [ ] 跑 `ctest -R "unit_tma_descriptor|unit_tmem|unit_cluster_mode|unit_cluster_tcgen05_integration|unit_tc_queue" --output-on-failure` 记录 baseline 通过数(per MR-2 修正:用 `-R` 而非 `-L`)
