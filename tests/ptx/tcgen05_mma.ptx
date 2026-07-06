@@ -1,0 +1,23 @@
+// tests/ptx/tcgen05_mma.ptx
+// PTX ISA §9.7.16 — tcgen05.mma syntax test (Blackwell sm_100+)
+// Added by implement-tcgen05-syntax-ir (ADR-0016).
+.version 8.6
+.target sm_100
+.address_size 64
+
+.visible .entry tcgen05_mma_test(
+    .param .u64 a_desc,
+    .param .u64 b_desc,
+    .param .u32 idesc
+) {
+    .reg .b64   %rd<4>;
+    .reg .u32  %r<2>;
+
+    ld.param.u64    %rd0, [a_desc];
+    ld.param.u64    %rd1, [b_desc];
+    ld.param.u32    %r0, [idesc];
+
+    tcgen05.mma.cta_group::1.kind::f16 [%rd0], %rd1, %rd2, %r0;
+
+    ret;
+}

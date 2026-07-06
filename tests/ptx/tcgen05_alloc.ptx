@@ -1,0 +1,19 @@
+// tests/ptx/tcgen05_alloc.ptx
+// PTX ISA §9.7.16 — tcgen05.alloc syntax test (Blackwell sm_100+)
+// Added by implement-tcgen05-syntax-ir (ADR-0016).
+.version 8.6
+.target sm_100
+.address_size 64
+
+.visible .entry tcgen05_alloc_test(
+    .param .u64 param
+) {
+    .reg .u32       %r<2>;
+    .reg .b64       %rd<1>;
+    .shared .b32    smem_alloc[1];
+
+    ld.param.u64    %rd0, [param];
+    tcgen05.alloc.cta_group::1.sync.aligned.shared::cta.b32 [smem_alloc], 32;
+
+    ret;
+}

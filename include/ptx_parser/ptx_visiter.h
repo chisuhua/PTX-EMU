@@ -103,6 +103,11 @@ public:
 
     // Operand visitors
     std::any visitOperand(ptxparser::ptxParser::OperandContext *ctx) override;
+
+    // tcgen05 instruction visitor (Blackwell sm_100+, ADR-0016). Hand-maintained:
+    // the grammar has a single tcgen05Inst rule, so the per-instruction X-Macro
+    // expansion in ptx_visitor.cpp is bypassed. S_TCGEN05_* in ptx_types.h.
+    std::any visitTcgen05Inst(ptxparser::ptxParser::Tcgen05InstContext *ctx) override;
     std::any visitSpecialRegister(ptxparser::ptxParser::SpecialRegisterContext *ctx) override;
     std::any visitRegister(ptxparser::ptxParser::RegisterContext *ctx) override;
     std::any visitImmediate(ptxparser::ptxParser::ImmediateContext *ctx) override;
