@@ -1,168 +1,173 @@
-# Extend Blackwell tcgen05 Infrastructure (TMA + TMEM + Cluster + TcQueue Audit)
+# Audit Blackwell tcgen05 Infrastructure (TMA + TMEM + Cluster + TcQueue)
 
 > **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) Accepted
 > **前置 change**: `archive/2026-07-06-implement-tcgen05-syntax-ir` (Change-1, archived)
-> **4-Change 拆分**: 本 change 是第 2 步(共 4 步),审计并补全 Blackwell tensor core 所需的 4 个底层子系统
-> **设计时教训**: `ptx-lessons-learned` §3(分 Phase commit)+ §6(artifacts-first)+ §7(Pre-impl review)
+> **4-Change 拆分**: 本 change 是第 2 步(共 4 步),**仅审计 4 个 Blackwell 底层子系统**(无源码修改)
+> **设计时教训**: `ptx-lessons-learned` §3(分 Phase commit)+ §6(artifacts-first)+ §7(Pre-impl review)+ Metis MR-3(Phase B 反应式设计已移除)
 
 ## Why
 
 Change-1 建立了独立 tcgen05 命名空间(grammar + IR),但**未触及底层基础设施**。`src/ptxsim/memory/tma_descriptor.{h,cpp}`、`src/ptxsim/memory/tmem.{h,cpp}`、`src/ptxsim/cluster/cluster_context.{h,cpp}`、`src/ptxsim/async/tc_queue.{h,cpp}` 4 个子系统虽然在 `archive/2026-07-04-implement-wmma-tensor-core-phase-0-infra/` 中已 archive,但:
 
-1. **TmaDescriptor 128 字节布局**(`tma_descriptor.h:1-29`)有 32+ 处 `// UNVERIFIED-AGAINST-HARDWARE — PTX ISA §9.7.13` 注释
-2. **TcQueue 集成**在 commit `c0fa43f` archive,但 `tcgen05.wait` handler 仍复用 BAR_SYNC path(per archive `archive/2026-07-04-implement-wmma-tensor-core-tcgen05/tasks.md`)
+1. **TmaDescriptor 128 字节布局**有 29 处 `// UNVERIFIED-AGAINST-HARDWARE — PTX ISA §9.7.13` 注释(17 在 .h,12 在 .cpp)
+2. **TcQueue 集成**在 commit `c0fa43f` archive,但 `tcgen05.wait` handler 仍复用 BAR_SYNC path
 3. **Cluster context** 集成在 commit `eb52af4`,但仅 `tcgen05.commit/wait` 涉及(其他指令未测试)
-4. **0 个基础设施子系统的端到端 PTX 验证**
+4. **跨子系统 pipeline 端到端 PTX 验证** = 0(每个子系统孤立测试)
 
-handler 实施(Change-3)前必须先验证基础设施可工作,否则 handler 调试会与基础设施 bug 混淆(per `ptx-lessons-learned` §3 "每个 Phase 独立可 revert")。
+handler 实施(Change-3)前必须先**审计**基础设施可工作,否则 handler 调试会与基础设施 bug 混淆(per `ptx-lessons-learned` §3 "每个 Phase 独立可 revert")。
+
+**本 change 只审计不修复**(Metis MR-3 修复):任何审计发现的问题通过**独立 follow-up change** 修复(如 `fix-tcgen05-tma-descriptor-offsets`),不在本 change 内修改源码 — 这样 Change-2 始终是 pure read-only 审计,diff 归零,易 revert。
 
 ## What Changes
 
 ### 审计 4 个子系统(无代码改动,纯验证)
 
-| 子系统 | 文件 | 审计项 |
-|--------|------|--------|
-| TmaDescriptor | `src/ptxsim/memory/tma_descriptor.{h,cpp}` | 128 字节布局验证(对 cuobjdump -xptx 输出)、descriptor store 隔离性、≥10 swizzle/stride 组合覆盖 |
-| Tmem | `src/ptxsim/memory/tmem.{h,cpp}` | 256 slot × 128 byte 布局、CTA 隔离、partial write no-clobber |
-| ClusterContext | `src/ptxsim/cluster/cluster_context.{h,cpp}` | arrive/wait 同步、distributed_smem(若 cta_group::2) |
-| TcQueue | `src/ptxsim/async/tc_queue.{h,cpp}` | commit-group counter、wait-aware 调度、BAR_SYNC 集成 |
+| 子系统 | 源文件 | 行数 | 现有测试 | UNVERIFIED 注释数 |
+|--------|--------|------|---------|------------------|
+| TmaDescriptor | `src/ptxsim/memory/tma_descriptor.{h,cpp}` | 168+204 | 36 TEST_CASE(`tests/unit/memory/test_tma_descriptor.cpp`)| 29 |
+| Tmem | `src/ptxsim/memory/tmem.{h,cpp}` | 50+61 | 19 TEST_CASE(`tests/unit/memory/test_tmem.cpp`)| 0 |
+| ClusterContext | `src/ptxsim/cluster/cluster_context.{h,cpp}` | (读后填) | 16 TEST_CASE(`tests/unit/cluster/test_cluster_mode.cpp`)| 0 |
+| TcQueue | `src/ptxsim/async/tc_queue.{h,cpp}` | (读后填) | 15 TEST_CASE(`tests/unit/async/test_tc_queue.cpp`)| 0 |
+| 跨子系统集成 | (无独立文件) | — | **2 TEST_CASE**(`tests/integration/cluster_tcgen05/test_cluster_tcgen05_integration.cpp`)| — |
 
-### 补全缺口(per 审计发现)
+### 审计项
 
-预计可能的缺口:
-- TmaDescriptor 偏移需硬件 dump 验证(从 NVIDIA docs 推断)
-- TcQueue 与现有 `WarpState::set_warp_state(BAR_SYNC)` 路径的 invariant 需 `state-modification-audit` skill 验证
-- Cluster context 缺 `cta_group::2` distributed_smem 场景(per ADR-0016 Open Question #2)
-- TMEM 与 SMEM 边界检查(防止越界)
+| 子系统 | 审计内容 | 输出 |
+|--------|---------|------|
+| TmaDescriptor | 128 字节布局与 PTX ISA §9.7.13 对齐、29 处 UNVERIFIED 分级(P0/P1/P2)、descriptor store 隔离性、≥10 swizzle/stride 组合覆盖 | 报告 §2.1 |
+| Tmem | 256 slot × 128 byte 布局、CTA 隔离性、partial write no-clobber、越界检查 | 报告 §2.2 |
+| ClusterContext | arrive/wait 同步语义、CTA 隔离、与 BarrierModule 集成 | 报告 §2.3 |
+| TcQueue | commit-group counter 原子性、wait-aware 调度、与 `WarpState::set_warp_state(BAR_SYNC)` 的 invariant(per ADR-0016 Decision 7) | 报告 §2.4 |
+| 跨子系统 pipeline | TmaDescriptor → Tmem → TcQueue 完整 pipeline 路径 | 报告 §2.5 |
 
-### 三套测试覆盖
+### 跨 Change 协调
 
-| 类型 | 文件 | 范围 |
-|---|---|---|
-| 单元 | `tests/unit/memory/test_tma_descriptor.cpp`(已有,18 TEST_CASE)+ `test_tmem.cpp`(已有,18 TEST_CASE)+ 新增 `test_cluster_context.cpp` + `test_tc_queue.cpp` |
-| 集成 | `tests/integration/memory/test_tma_descriptor_*.cpp` + `test_tmem_*.cpp` + `test_cluster_*.cpp` + `test_tc_queue_*.cpp` |
-| E2E | `tests/e2e/kernel/test_tma_descriptor_e2e.cu` + `test_tmem_e2e.cu`(用真实 cuobjdump 提取的 PTX) |
+- **与 Change-3 (handlers)** 的契约:本 change 输出 "基础设施 readiness report"(L1/L2/L3 等级),Change-3 handler 实施前需先满足 ≥L2
+- **与 Change-4 (cleanup)** 的契约:本 change 不修改源码,与 Change-4 互不干扰
 
 ## Non-Goals
 
 ### 显式拒绝(per ADR-0016 锁定)
 
-- ❌ 不实现 `cp.async.bulk.tensor.*`(TMA 加载指令,留待 change-3 实施 handler)
+- ❌ **不修改任何源码文件**(Metis MR-3 修复)— 若审计发现 bug,通过独立 `fix-*` change 修复
+- ❌ 不实现 `cp.async.bulk.tensor.*`(TMA 加载指令)— 这与 `tcgen05.ld` 是不同指令,留待**独立 follow-up change**(`implement-cp-async-bulk-tensor`),非本 change 或 Change-3 范围
 - ❌ 不实现 `tensormap.create/replace` host API 拦截(候选 ADR-0017)
 - ❌ 不实现 `cuTensorMapEncodeTiled` host-side 拦截
 - ❌ 不实现 sm_120 sparse / FP4 / mxfp8
-- ❌ 不修改 `tcgen05.*` grammar/IR(handler 在 change-3)
-- ❌ 不修改 `wmma.cpp`(留待 change-4 删除)
+- ❌ 不修改 `tcgen05.*` grammar/IR(handler 在 Change-3)
+- ❌ 不修改 `wmma.cpp`(留待 Change-4 删除)
 
 ### 范围限制
 
-- 仅在已有 `tests/unit/memory/test_*.cpp` 基础上**扩展**测试,不动现有实现
-- 若发现基础设施 bug,只修测试或文档,**不修实现**(避免与 change-3 冲突)
+- **纯 read-only 审计**(无 commit 触达 `src/`)
+- 仅在 `docs/audits/2026-07-XX-tcgen05-infra-audit.md` 输出报告
+- 不修复 bug、不添加测试、不重构代码
 - 性能对标不要求(仅 functional correctness)
 
-### 不修改
+### 不修改(明确列出)
 
-- `src/ptxsim/memory/tma_descriptor.{h,cpp}`(已有,18 个 TEST_CASE 已 PASS)
-- `src/ptxsim/memory/tmem.{h,cpp}`(已有,18 个 TEST_CASE 已 PASS)
-- `src/ptxsim/cluster/cluster_context.{h,cpp}`(已有,arrive/wait 已实现)
-- `src/ptxsim/async/tc_queue.{h,cpp}`(已有,commit/wait 已实现)
-- `src/ptxsim/core/cta_context.{h,cpp}`(已有 TmaDescriptorStore + Tmem 集成)
+- `src/ptxsim/memory/tma_descriptor.{h,cpp}`(只读)
+- `src/ptxsim/memory/tmem.{h,cpp}`(只读)
+- `src/ptxsim/cluster/cluster_context.{h,cpp}`(只读)
+- `src/ptxsim/async/tc_queue.{h,cpp}`(只读)
+- `src/ptxsim/core/cta_context.{h,cpp}`(只读)
+- 任何 `tests/` 文件(只读 + 运行)
+- 任何 `include/` 头文件(只读)
 
 ## Goals
 
-### Phase A: 审计(无代码改动)
+### Phase A: 审计(无代码改动,1 个 commit)
 
-1. 跑 `ctest -L "unit;memory|unit;barrier"` 全量通过
-2. 阅读 4 个子系统的 `.h` 头文件,记录 `// UNVERIFIED-AGAINST-HARDWARE` 注释位置
-3. 跑 `state-modification-audit` skill 验证 TcQueue 与 WarpState 的 invariant
-4. 输出 `docs/audits/2026-07-XX-tcgen05-infra-audit.md` 报告
+1. 跑 `cmake --build build` 确保 baseline 编译通过
+2. 跑 `ctest -L "unit;memory|unit;barrier|unit;cluster|unit;async" --output-on-failure` 记录 baseline
+3. 阅读 4 个子系统的 `.h` 头文件,统计 UNVERIFIED 注释位置和数量
+4. 跑 `state-modification-audit` skill 验证 TcQueue 与 WarpState 的 invariant(per ADR-0016 Decision 7)
+5. 阅读 4 个子系统的测试,识别覆盖空白
+6. 输出 `docs/audits/2026-07-XX-tcgen05-infra-audit.md` 报告
 
-### Phase B: 补全(per 审计发现)
+### Phase A Acceptance Criteria
 
-1. 若 TmaDescriptor 偏移需修正:`docs/dev-process/lessons-learned.md` 追加 §23
-2. 若 TcQueue 与 BAR_SYNC 冲突:refactor(独立 commit,per `ptx-lessons-learned` §3)
-3. 若 ClusterContext 缺 `cta_group::2`:补全
-4. 若 TMEM 边界检查缺失:补全
+- 报告包含 4 个子系统的 **readiness 等级**(L1=可工作/L2=需关注/L3=阻塞 Change-3)
+- 报告列出 29 个 UNVERIFIED 注释的 **分级**(P0=影响 handler 正确性/P1=影响精度/P2=边缘 case)
+- 报告明确 "哪些 UNVERIFIED 必须 Change-3 实施 handler 前先修"(P0 列表)
+- 报告明确 "哪些可推迟到 Change-3 handler 实施时一并验证"(P1 列表)
+- 报告列出 "跨子系统 pipeline 覆盖空白"(TmaDescriptor → Tmem → TcQueue 端到端测试缺口)
 
-### Phase C: 测试覆盖
+### 不实施任何 Phase B / Phase C
 
-1. 单元测试:每个子系统 ≥20 TEST_CASE
-2. 集成测试:跨子系统协作(如 `TmaDescriptor → Tmem → TcQueue` 完整 pipeline)
-3. E2E 测试:用真实 cuobjdump 提取的 PTX(per `ptx-grammar-modification` skill)
+- ❌ 不实施 "Phase B: 补全缺口"(已移除,任何修改通过独立 change)
+- ❌ 不实施 "Phase C: 测试覆盖"(已移除,新增测试属于 `fix-*` 或 follow-up change)
 
 ## Capabilities
 
 ### New Capabilities
 
-- `tcgen05-infra-audit`: 4 个 Blackwell 子系统的审计报告 + 验证
-- `tcgen05-infra-tests`: 单元/集成/E2E 三套测试覆盖 4 个子系统
-- `tcgen05-infra-pipeline`: 跨子系统 pipeline 集成测试(若审计发现需要)
+- `tcgen05-infra-audit`: 4 个 Blackwell 子系统的审计报告 + readiness 等级 + UNVERIFIED 分级
 
 ### Modified Capabilities
 
-- `wmma-tensor-core`: 审计后,可能需要更新 spec(若发现子系统功能 gap)
+- 无
 
 ## Impact
 
-### 影响的代码(预计)
+### 影响的文件(预计,纯新增文档)
 
 | 文件 | 变更类型 | LoC 估计 |
 |---|---|---|
-| `docs/audits/2026-07-XX-tcgen05-infra-audit.md` | 新增 | +200 |
-| `docs/dev-process/lessons-learned.md` | 追加 §23 | +50 |
-| `tests/unit/memory/test_tma_descriptor.cpp` | 扩展(若发现 bug) | +50 |
-| `tests/unit/memory/test_tmem.cpp` | 扩展(若发现 bug) | +30 |
-| `tests/unit/cluster/test_cluster_context.cpp` | 新增(若缺) | +100 |
-| `tests/unit/async/test_tc_queue.cpp` | 新增(若缺) | +150 |
-| `tests/integration/memory/test_tma_pipeline.cpp` | 新增 | +200 |
-| `tests/e2e/kernel/test_tma_descriptor_e2e.cu` | 新增 | +100 |
-| `src/ptxsim/cluster/cluster_context.{h,cpp}` | 修改(若 cta_group::2 缺) | +200 |
-| `src/ptxsim/async/tc_queue.{h,cpp}` | 修改(若 BAR_SYNC 冲突) | +100 |
-| **总计** | | **+1180** |
+| `docs/audits/2026-07-XX-tcgen05-infra-audit.md` | 新增 | +400 |
+| `openspec/changes/extend-blackwell-tcgen05-infra/` | 新增(proposal + design + tasks + spec) | +600 |
+| **总计** | | **+1000** |
 
 ### 影响的依赖
 
-- `state-modification-audit` skill(per ptx-lessons-learned §1,跨模块状态翻译)
-- `ptx-grammar-modification` skill(若 E2E 需 cuobjdump 提取)
-- `oracle-prompting` skill(若 TmaDescriptor 偏移需硬件验证)
+- `state-modification-audit` skill(per ptx-lessons-learned §1,跨模块状态翻译)— 纯 read-only 分析
+- `ptx-grammar-modification` skill(若 E2E 需 cuobjdump 提取)— 审计报告可选引用
 
 ### 不影响的依赖(本 change 范围外)
 
 - `src/ptxsim/instructions/wmma.cpp`(change-3 scope)
 - grammar/IR 命名空间(Change-1 已完成,不动)
 - `src/ptxsim/core/cta_context.{h,cpp}`(已有集成,不动)
+- 任何 `tests/` 文件(本 change 不新增/修改测试)
 
 ### 影响的文档
 
-- `docs/audits/2026-07-XX-tcgen05-infra-audit.md`(新增)
-- `docs/dev-process/lessons-learned.md`(追加 §23)
-- 根 `AGENTS.md` 已知限制表(更新 cluster 状态)
-- `src/ptxsim/cluster/AGENTS.md`(若补全 cta_group::2)
+- `docs/audits/2026-07-XX-tcgen05-infra-audit.md`(主要交付物)
+- 根 `AGENTS.md` 已知限制表(更新 cluster 状态,若 readiness = L3)
+- `docs/adr/0016-blackwell-only-tcgen05.md`(追加审计 commit 引用)
 
 ## Design-Time Checklist (Lessons-Learned)
 
-### 函数审计完整性(类比 Checklist A)
+### 审计完整性
 
-- [x] Baseline 函数清单:`tma_descriptor.cpp` 8 个 public function + `tmem.cpp` 4 个 + `cluster_context.cpp` 6 个 + `tc_queue.cpp` 8 个
-- [x] 锁点审计:`grep -n "lock_guard\|unique_lock" src/ptxsim/memory/ src/ptxsim/cluster/ src/ptxsim/async/`(已确认 4 个子系统都遵循 lessons-learned §2 无递归锁)
-- [x] 跨模块状态翻译:`TcQueue::wait` → `WarpState::set_warp_state(BAR_SYNC)`(per ADR-0016 Decision 7)需 audit
-- [x] invariant 清单:per-warp ordering、CTA 隔离、commit-group counter 原子性
+- [x] 4 个子系统源文件路径已列出
+- [x] 现有测试数量已修正(TMA 36,Tmem 19,cluster 16,tc_queue 15,**不是**原 proposal 声称的 18)
+- [x] 跨子系统集成测试仅 2 TEST_CASE(覆盖率不足,审计报告需明确)
+- [x] UNVERIFIED 注释总数 29(17 in .h + 12 in .cpp)
+- [x] 不修改源码(纯 read-only 审计)— 违反则立即 abort
+
+### 跨 Change 协调
+
+- [x] 与 Change-3 的契约:本 change 输出 readiness report,Change-3 实施前需 ≥L2
+- [x] `cp.async.bulk.tensor` 归 `implement-cp-async-bulk-tensor` 独立 follow-up(非 Change-3)
+- [x] 任何审计发现的问题通过独立 `fix-*` change 修复,不在本 change 内
 
 ### 多 Phase 推进
 
-- [x] Phase 拆分:A 审计 → B 补全 → C 测试,每 Phase 独立 commit
-- [x] 基线 worktree 计划:`.worktrees/baseline-tcgen05-infra`(per `ptx-lessons-learned` §4)
-- [x] 失败处理策略:已有测试回归 → 立即 revert 该 Phase
+- [x] 仅 1 个 Phase(Phase A 审计)— 简化 commit 粒度
+- [x] 不需要多 Phase 拆分(本 change 是 pure read-only)
+- [x] 基线 worktree 计划:`.worktrees/baseline-tcgen05-audit`(per `ptx-lessons-learned` §4)
+- [x] 失败处理策略:若有 1 个子系统 readiness = L3(阻塞),在报告中明确并建议新建 `fix-*` change
 
 ### 文档同步
 
 - [x] 审计报告路径已列出
-- [x] lessons-learned §23 预留
-- [x] AGENTS.md 同步项已列出
+- [x] AGENTS.md 同步项已规划
+- [x] ADR 追加段落已规划
 
-### 实施前必跑
+### 实施前必跑(per `ptx-lessons-learned` §7)
 
-- [ ] **Metis pre-implementation review**:验证审计范围、LoC 估算、test gap 数字
-- [ ] 验证 `wc -l tests/unit/memory/test_tma_descriptor.cpp tests/unit/memory/test_tmem.cpp` 数字
-- [ ] 验证 4 个子系统的 baseline 测试通过(per change-1 baseline)
-- [ ] 验证 `ctest -L "unit;memory" --output-on-failure` 全绿
+- [ ] **Metis pre-implementation review**:验证审计范围、文件路径、测试数字
+- [ ] 跑 `wc -l src/ptxsim/memory/tma_descriptor.cpp src/ptxsim/memory/tmem.cpp src/ptxsim/cluster/cluster_context.cpp src/ptxsim/async/tc_queue.cpp` 确认行数
+- [ ] 跑 `grep -c "UNVERIFIED-AGAINST-HARDWARE" src/ptxsim/memory/tma_descriptor.{h,cpp}` 确认 29
+- [ ] 跑 `ctest -L "unit;memory" --output-on-failure` 记录 baseline 通过数
