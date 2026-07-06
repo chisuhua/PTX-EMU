@@ -40,6 +40,8 @@
 
 **理由**：PC（`get_pc()`/`set_pc()`/`commit_pc()`）和执行状态（`is_active()`/`is_exited()`/`is_at_barrier()`/`set_state()`/`get_state()`）在同一 `sync_to_warp_state()`/`sync_from_warp_state()` 中耦合。分开会导致两个类间循环依赖。
 
+**构造顺序约束（MR-5）**：`SimtPcManager` 必须在 `warp_id_` / `lane_id_` 计算之后（`init()` line 55-58）构造。如果构造提前到这些计算之前，`SimtPcManager::lane_id_` 将未初始化，导致 `sync_to_warp_state()` 访问错误的 thread state。
+
 **替代方案**：
 - `SimtStackView` + `ThreadStateMachine`：会导致 `sync_to_warp_state()` 需要同时修改两个对象
 - 仅提取 PC 不提取状态：`is_blocked`→`BAR_SYNC` 翻译仍留在 ThreadContext，不解决核心耦合
@@ -60,11 +62,11 @@
 
 **理由**：`call_stack` 是控制流功能（Phase 3），`bar_id` 是屏障/同步功能。过早迁移引入不必要的跨模块耦合。
 
-### Decision 4: 基线 worktree 使用 `HEAD~1` 作为基线 commit
+### Decision 4: 基线 worktree 使用 `HEAD~1` 作为基线 commit（Phase 0 commit 之后）
 
-**选择**：`git worktree add .worktrees/baseline-pre-c1-phase1 HEAD~1`
+**选择**：Phase 0（artifacts commit）之后执行 `git worktree add .worktrees/baseline-pre-c1-phase1 HEAD~1`。
 
-**理由**：当前 HEAD 即 Phase 1 开始前的状态。`HEAD~1` 是最接近本 change 的 baseline。符合 lessons-learned §4 的要求。
+**理由**：Phase 0 commit 之后，`HEAD` = artifacts commit，`HEAD~1` = pre-change baseline。如果在 Phase 0 之前建立 worktree，应使用 `HEAD` 而非 `HEAD~1`（MR-3）。
 
 **注意事项**：
 - 如果 main 在此 change 期间有其他 merge，需更新 baseline commit
@@ -74,11 +76,14 @@
 
 | Risk | 概率 | 缓解措施 |
 |------|------|---------|
-| `sync_to_warp_state()` 中 `already_blocked` 检查被遗漏 | 中 | lessons-learned §1 跨模块状态翻译：行级 diff `sync_to_warp_state` 的 `is_blocked`/`status==Blocked` 逻辑 |
+| `sync_to_warp_state()` 中 `already_blocked` 检查被遗漏 | 中 | lessons-learned §1 跨模块状态翻译：行级 diff `sync_to_warp_state` 的 `is_blocked`/`status==Blocked` 逻辑（line 807-817）。tasks.md 1.4.1 显式列出完整行级清单。 |
 | 新类通过 `warp_context_` 裸指针访问 WarpState → use-after-free | 低 | `SimtPcManager` 生命周期在 `ThreadContext` 内；`ThreadContext` 生命周期在 `WarpContext` 内，由 `WarpContext` 保证 |
 | 委托转发引入额外函数调用开销 | 低（inlineable） | 所有 PC getter/setter 是简单转发，编译器会 inline（`-O2`）。如果性能回归，使用 `__attribute__((always_inline))` |
 | Phase 1 commit 后测试回归，revert 后混入 Phase 2 改动 | 中 | lessons-learned §3：每个 Phase = 独立 commit，revert 该 commit 即可回退 Phase 1 |
-| `exec_state_` POD 与新提取类不一致 | 低 | Phase 1 提取到 `SimtPcManager` 后，`exec_state_` POD 写入路径应改为从 `SimtPcManager` 回填（或待 Phase 3 移除） |
+| `exec_state_` POD 与新提取类不一致（MR-2） | **高** | Phase 1 `init()` 中 `exec_state_.state` 从 `simt_pc_mgr_->get_state()` 回填。Phase 3 移除 `exec_state_.state` 字段。tasks.md 1.3.2 显式任务。 |
+| `set_warp_context()` 不会扇出到 `SimtPcManager`（MR-4） | **中**（`warp_context.cpp:236` 在生产代码中调用 `threads[lane_id]->set_warp_context(this)`） | 在 `ThreadContext::set_warp_context()` 中添加 `simt_pc_mgr_->set_warp_context(warp_ctx)` 扇出。tasks.md 1.3.1 显式任务。 |
+| `init()` 中 `SimtPcManager` 构造早于 `lane_id_` 计算（MR-5） | 低（但后果严重） | design.md Decision 1 已文档化构造顺序约束。tasks.md 1.3.2 添加行号注释标记正确构造位置。 |
+| `call.cpp:15` 裸字段 `context->state = EXIT` 编译失败（MR-1） | **确定** | tasks.md 1.2.4 在迁移前修复此 handler：`context->state = EXIT` → `context->set_state(EXIT)`。其余 handler 仅通过方法访问，零改动。 |
 
 ## Migration Plan
 
@@ -124,3 +129,10 @@ git revert <phase-commit>
 - Q1: `SimtPcManager` 的 `sync_to_warp_state()` 是否需要调用 `notify_pc_changed()` 回调？当前 `ThreadContext` 无此回调，但未来 `WarpScheduler` 可能需感知 PC 变更。
 - Q2: Phase 3 是否应引入 `InstructionPipeline` 类替换 `_execute_once()` 的直接 `handler->ExecPipe(this, statement)` 调用？或保持简单委托？
 - Q3: 是否需要 ADR-0017 来记录 "why extract PC management into `SimtPcManager`"? 建议：Phase 1 交付后追加。
+- Q4: Phase 1 `exec_state_` POD 中 `state` 字段应回填（同步读取 `SimtPcManager::get_state()`）还是直接移除？**已决议**: 回填（`exec_state_.state = simt_pc_mgr_->get_state()`），Phase 3 移除（MR-2）。
+
+## Metis Pre-Implementation Review
+
+**Session**: `ses_0ca442a15ffeTGnLE1vdxlOw45`（2026-07-06）
+**Decision**: ⚠️ CONDITIONAL — 5 MUST-RESOLVE 已全部解决
+**Resolved**: MR-1 (call.cpp:15 裸字段访问), MR-2 (exec_state_ POD 同步), MR-3 (baseline worktree 引用), MR-4 (set_warp_context 扇出), MR-5 (init 构造顺序)

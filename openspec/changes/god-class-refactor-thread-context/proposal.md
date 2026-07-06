@@ -8,7 +8,8 @@
 - **Phase 2（~4h）**: 提取寄存器访问层为 `RegisterAccessLayer`，封装 `acquire_register()`/`register_bank_manager_`/条件码寄存器管理
 - **Phase 3（~3h, 跨季度）**: 提取内存访问 + 控制流为独立模块，完成 `ThreadContext` 瘦身
 - 每个 Phase 独立 commit、独立 revert、独立验证
-- **BREAKING**: 无（所有外部 API 通过保留的 `ThreadContext` 委托方法保持兼容）
+- **BREAKING**: 无（所有外部 API 通过保留的 `ThreadContext` 委托方法保持兼容）。**注意**: 1 个 handler (`call.cpp:15`) 需将 `context->state = EXIT`（裸字段访问）改为 `context->set_state(EXIT)`（方法调用）— 仅此一处，其余 handler 零改动。
+- **Metis pre-implementation review**: 已应用（`ses_0ca442a15ffeTGnLE1vdxlOw45`），5 项 MUST-RESOLVE 已解决。Ref: lessons-learned §7 + §20。
 
 ## Capabilities
 

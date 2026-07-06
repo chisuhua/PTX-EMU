@@ -84,3 +84,33 @@ No instruction handler or caller outside `ThreadContext` SHALL require modificat
 #### Scenario: sync_from_warp_state called from WarpContext dispatch unchanged
 - **WHEN** `WarpContext::execute_warp_instruction()` calls `thread->sync_from_warp_state()` before each instruction
 - **THEN** `ThreadContext::sync_from_warp_state()` SHALL forward to `simt_pc_mgr_->sync_from_warp_state()`, preserving the exact same warp_state → EXE_STATE translation
+
+### Requirement: SimtPcManager does NOT manage call_stack or bar_id
+
+The `SimtPcManager` class SHALL NOT own, read, or modify `call_stack` or `bar_id`. Both remain on `ThreadContext` until Phase 3.
+
+`SimtPcManager` has no dependency on `call_stack` or `bar_id` — the `sync_to_warp_state()` / `sync_from_warp_state()` methods operate solely on `warp_state.threads[lane_id]` via the injected `WarpContext*`.
+
+#### Scenario: SimtPcManager ignores call_stack during PC management
+- **WHEN** `SimtPcManager::commit_pc()` advances PC
+- **THEN** `call_stack` on `ThreadContext` remains unchanged and independent
+
+### Requirement: exec_state_ POD state field stays consistent with SimtPcManager
+
+After Phase 1, `exec_state_.state` SHALL be set by reading back from `simt_pc_mgr_->get_state()` during `init()`. The `exec_state_.state` field SHALL NOT be independently mutated — it is a read-back cache of the authoritative `SimtPcManager::state_`.
+
+Phase 3 SHALL remove `exec_state_.state` entirely once ThreadContext's remaining subsystems migrate to independent classes.
+
+#### Scenario: exec_state_.state reflects SimtPcManager state after init
+- **WHEN** `ThreadContext::init()` finishes
+- **THEN** `exec_state_.state` SHALL equal `simt_pc_mgr_->get_state()`, both `RUN`
+
+### Requirement: set_warp_context fans out to SimtPcManager
+
+`ThreadContext::set_warp_context()` SHALL call `simt_pc_mgr_->set_warp_context(warp_ctx)` before updating its own `warp_context_` field.
+
+`SimtPcManager::set_warp_context()` SHALL update its internal `warp_context_` pointer to the provided value.
+
+#### Scenario: set_warp_context keeps SimtPcManager synchronized
+- **WHEN** `ThreadContext::set_warp_context(new_ctx)` is called
+- **THEN** both `ThreadContext::warp_context_` and `simt_pc_mgr_->get_warp_context()` SHALL point to `new_ctx`

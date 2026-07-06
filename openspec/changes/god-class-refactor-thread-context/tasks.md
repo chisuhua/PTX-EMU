@@ -2,7 +2,8 @@
 
 > **Ref**: `docs/audits/debt-audit-2026-07-02.md` §2.2 C-1 (P1)
 > **Ref**: `docs/roadmap/post-phase3-debt-roadmap.md` §1.2 + §3.3
-> **Lessons-Learned**: Checklists A+B+D + §1 (cross-module state translation) + §3 (multi-Phase commit) + §4 (baseline worktree) + §6 (artifacts-first)
+> **Metis Review**: `ses_0ca442a15ffeTGnLE1vdxlOw45`（2026-07-06）— ⚠️ CONDITIONAL → 5 MUST-RESOLVE 已解决
+> **Lessons-Learned**: Checklists A+B+D + §1 (cross-module state translation) + §3 (multi-Phase commit) + §4 (baseline worktree) + §6 (artifacts-first) + §7 (pre-impl review) + §20 (verify assumptions)
 
 ---
 
@@ -25,7 +26,12 @@ Refs: debt-audit-2026-07-02.md §2.2 C-1
 
 ### 1.1 建立 baseline
 
-- [ ] 1.1.1 建立基线 worktree：`git worktree add .worktrees/baseline-pre-c1-phase1 HEAD~1`
+- [ ] 1.1.1 建立基线 worktree（**必须在 Phase 0 commit 之后**）：
+  ```bash
+  # Phase 0 commit 后，HEAD = artifacts commit，HEAD~1 = pre-change baseline
+  # 如果 Phase 0 未提交，用 git worktree add ... HEAD 代替
+  git worktree add .worktrees/baseline-pre-c1-phase1 HEAD~1
+  ```
 - [ ] 1.1.2 baseline 全量编译：`cd .worktrees/baseline-pre-c1-phase1 && cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j$(nproc)`
 - [ ] 1.1.3 基线测试通过：`cd .worktrees/baseline-pre-c1-phase1/build && ctest --output-on-failure` — 记录通过/失败数量
 - [ ] 1.1.4 记录 baseline ctest 结果到 `tasks.md` 本小节下方
@@ -37,6 +43,10 @@ Refs: debt-audit-2026-07-02.md §2.2 C-1
   - 公开方法：`get_pc()`, `set_pc(int)`, `get_next_pc()`, `set_next_pc(int)`, `commit_pc()`, `get_state()`, `set_state(EXE_STATE)`, `is_active()`, `is_exited()`, `is_at_barrier()`, `sync_from_warp_state()`, `sync_to_warp_state()`, `is_valid_pc()`, `is_valid_pc(int)`, `statements_size()`, `get_statement_at(int)`, `get_current_statement()`
 - [ ] 1.2.2 新建 `src/ptxsim/core/simt_pc_manager.cpp`：实现上述方法，从 `thread_context.cpp` 逐行迁移（保持逻辑不变）
 - [ ] 1.2.3 更新 `src/ptxsim/core/CMakeLists.txt`：添加 `simt_pc_manager.cpp` 到 `SOURCES`
+- [ ] 1.2.4 **（MR-1）修复 handler 裸字段访问**：`src/ptxsim/instructions/call.cpp:15`
+  - 当前代码：`context->state = EXIT;` → 修复为：`context->set_state(EXIT);`
+  - 注：同一 handler line 26 已正确使用 `t->set_state(EXIT)`，仅 line 15 需要修复
+  - 审计命令：`grep -rn "context->state\b\|thread->state\b" src/ptxsim/instructions/ src/ptxsim/barrier/ src/ptxsim/core/` — 结果应仅此 1 处
 
 ### 1.3 迁移 ThreadContext 方法为委托
 
@@ -44,19 +54,34 @@ Refs: debt-audit-2026-07-02.md §2.2 C-1
   - 删除 `state` 成员变量，改为持有 `std::unique_ptr<SimtPcManager> simt_pc_mgr_`
   - 所有 PC/state 相关方法改为内联委托：`int get_pc() const { return simt_pc_mgr_->get_pc(); }`
   - 保留所有其他成员和方法不变
+  - **（MR-4）`set_warp_context()` 扇出**：添加 `simt_pc_mgr_->set_warp_context(warp_ctx)` 到 `set_warp_context()` 方法体中，确保 `SimtPcManager` 的 `warp_context_` 副本保持同步
 - [ ] 1.3.2 修改 `src/ptxsim/core/thread_context.cpp`：
   - 删除 17 个已迁移到 `SimtPcManager` 的方法实现
-  - 修改 `init()`：创建 `SimtPcManager` 实例并传递依赖
-  - 修改 `reset()`：委托到 `simt_pc_mgr_->set_pc(0)` 等
+  - 修改 `init()`：
+    - **（MR-5）`SimtPcManager` 构造必须在 `warp_id_`/`lane_id_` 计算之后**（现 line 55-58）— 在 line 58 之后、line 46 (`state = RUN`) 之前创建实例
+    - 创建 `simt_pc_mgr_` 实例并传递 `warp_context_`, `lane_id_`, `statements` 依赖
+    - `this->state = RUN` → `simt_pc_mgr_->set_state(RUN)`（line 50）
+    - **（MR-2）`exec_state_.state = RUN` → `exec_state_.state = simt_pc_mgr_->get_state()`**（line 72，回填；Phase 3 移除）
+  - 修改 `reset()`：
+    - `state = RUN` → `simt_pc_mgr_->set_state(RUN)`（line 214）
+    - `exec_state_.state = RUN` → `exec_state_.state = simt_pc_mgr_->get_state()`（回填，保持 MR-2 一致性）
+    - `set_pc(0)` / `set_next_pc(0)` 自动通过委托生效
   - 修改 `_execute_once()`：`get_pc()` / `set_next_pc()` / `commit_pc()` 自动通过委托生效
 - [ ] 1.3.3 `#include "ptxsim/simt_pc_manager.h"` 添加到 `thread_context.h`
 
 ### 1.4 验证（Checklist A: 函数迁移完整性）
 
-- [ ] 1.4.1 行级 diff `sync_to_warp_state` 原实现 vs 新实现 — 验证 `already_blocked` guard 保留
+- [ ] 1.4.1 行级 diff `sync_to_warp_state` 原实现 vs 新实现 — 验证以下关键行逐行不变：
+  - `already_blocked` guard（原 line 807-817）：
+    - `bool already_blocked = (thread_state.is_blocked || thread_state.status == Blocked);`
+    - `thread_state.next_pc = get_next_pc();`
+    - `if (already_blocked) { return; }` — 必须保留，防止覆盖已阻塞状态
+  - switch-case 映射：`RUN → Active`, `BAR_SYNC → Blocked`, `EXIT → Exited`
+  - 访问 `warp_state.threads[lane_id_]` 的方式必须一致（SimtPcManager 使用自己的 `lane_id_` 和 `warp_context_`）
 - [ ] 1.4.2 行级 diff `sync_from_warp_state` 原实现 vs 新实现 — 验证 `ThreadStatus → EXE_STATE` 翻译不变
 - [ ] 1.4.3 验证 `set_pc()` 同时写入 `pc` 和 `next_pc` 的行为保留
-- [ ] 1.4.4 编译验证：`cmake --build build -j$(nproc)` 无错误
+- [ ] 1.4.4 审计 `exec_state_.state` 读者（G-3）：`grep -rn "exec_state_" src/ include/ tests/` — 结果仅 `thread_context.cpp:72` 一处写入，零读者。MR-2 回填为 future-proof，当前无发散风险。
+- [ ] 1.4.5 编译验证：`cmake --build build -j$(nproc)` 无错误
 
 ### 1.5 测试覆盖（必跑）
 
