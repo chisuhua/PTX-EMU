@@ -64,11 +64,44 @@ cmake --build build --target ptxsim     # Build instruction handlers
 ```
 
 ## KNOWN STUBS
-- `atomic.cpp` — Atomic operations are stubs (no real atomicity)
+- `atomic.cpp` — Cross-warp atomicity (Phase 2 of
+  `implement-atomic-cas-and-true-atomicity`) is now backed by a global
+  atomic mutex (`include/ptxsim/atomic/atomic_mutex.h`). All atomic
+  operations (CAS plus the existing add/and/or/xor/exch/min/max/inc/dec)
+  serialize through this mutex, satisfying the "no real atomicity"
+  debt-audit A-9 issue at the cross-warp level. Per-warp scheduling
+  (sm_context.cpp:225-260) continues to provide intra-warp ordering.
 - `wmma.cpp` (WmmaHandler) — Blackwell `tcgen05.*` real fragment arithmetic
   implemented (Phase 1-3 of `implement-wmma-tensor-core-tcgen05`).
   pre-Blackwell `wmma.*` / `mma.*` permanently throws
   `UnsupportedInstructionException` per ADR-0016.
+
+## ATOMIC HANDLER (Phase 1+2, 2026-07)
+
+Implements `atomic.compare_and_swap` (a.k.a. `atomic.cas`) plus the
+9 existing atom ops, with cross-warp atomicity guarantee via the
+global `ptxsim::AtomicMutex`:
+
+```cpp
+atom.global.cas.u32 dst, [addr], cmp, val;
+```
+
+- Reads `*addr` into a local variable
+- If loaded value equals `cmp`, writes `val` to `*addr`
+- Always writes the originally-loaded value to `dst`
+
+Operands are packed as `[dst, addr, cmp, val]` by `ptx_visitor_atom.cpp`
+(opcount=3 + visitor loop pushes the optional 4th operand). The
+handler holds `global_atomic_mutex()` for the duration of every
+atomic read-modify-write sequence, satisfying concurrent multi-warp
+contention. The mutex is non-recursive (`std::mutex`); no public
+method on the handler re-enters atomic work under the same lock,
+matching the cta_barrier.cpp:47 pattern (lessons-learned §2).
+
+Tests: `integration_ptx_atom_global_cas` (3 cases — match / mismatch /
+mixed) and `integration_ptx_atom_global_cas_multiwarp` (2 cases — match
+contention, all-mismatch no-op). Concurrent-warp correctness is
+verified end-to-end via the multi-warp case.
 
 ## KNOWN ISSUES
 

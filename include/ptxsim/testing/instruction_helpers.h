@@ -267,6 +267,37 @@ inline StatementContext make_atom_global_exch_u32(const std::string &dst,
     return ctx;
 }
 
+// Atomic compare-and-swap on global memory:
+// atom.global.cas.u32 dst, [addr], cmp, val
+// If *addr == cmp, writes val to addr; otherwise addr unchanged.
+// Always writes the original loaded value to dst (PTX ISA semantics).
+inline StatementContext make_atom_global_cas_u32(const std::string &dst,
+                                                 const std::string &addr_reg,
+                                                 const std::string &cmp_reg,
+                                                 const std::string &val_reg) {
+    StatementContext ctx;
+    ctx.type = S_ATOM;
+    AtomInstr instr;
+    instr.qualifiers = {Qualifier::Q_U32, Qualifier::Q_GLOBAL,
+                        Qualifier::Q_CAS_ATOM};
+    instr.operands.push_back(OperandContext{RegOperand{dst, -1}});
+    AddrOperand addr;
+    addr.space = AddrOperand::Space::GLOBAL;
+    addr.baseSymbol = "";
+    addr.offsetType = AddrOperand::OffsetType::REGISTER;
+    addr.registerOffset =
+        std::make_shared<OperandContext>(RegOperand{addr_reg, -1});
+    // Operands packed as [dst, addr, cmp, val]; the visitor
+    // (ptx_visitor_atom.cpp) places cmp and val at indices [2] and [3].
+    instr.operands.push_back(OperandContext{addr});
+    instr.operands.push_back(OperandContext{RegOperand{cmp_reg, -1}});
+    instr.operands.push_back(OperandContext{RegOperand{val_reg, -1}});
+    ctx.data = instr;
+    ctx.instructionText = "atom.global.cas.u32 " + dst + ", [" + addr_reg +
+                          "], " + cmp_reg + ", " + val_reg + ";";
+    return ctx;
+}
+
 inline StatementContext
 make_cvt(const std::string &dst, const std::string &src, Qualifier dst_dtype,
          Qualifier src_dtype, const std::vector<Qualifier> &extra_quals = {}) {

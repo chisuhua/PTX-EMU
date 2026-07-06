@@ -20,7 +20,7 @@
 | **OpenSpec 已 Archived changes** | 18 个（最近：`2026-07-05-add-extern-function-declaration`, `2026-07-05-parser-completeness`, `2026-07-05-fix-cvt-strategy-actual-split`） |
 | **Active changes** | 0 |
 | **已 RESOLVED 债务**（本次会话） | A-5, A-7, A-8, C-11, C-12 |
-| **剩余 A 系列债务** | 2（A-9 atomic CAS, A-10 嵌套分歧测试） |
+| **剩余 A 系列债务** | 1（A-10 嵌套分歧测试 — A-9 ✅ 已 archive） |
 | **剩余 C 系列债务** | 18（god class + tests + includes；C-19 已移除：测试已存在） |
 | **剩余 D 系列债务** | 6（docs README + OpenSpec 孤儿） |
 | **Oracle tests 新增** | `unit_multi_ptx` + `unit_extern_function`（parser series） |
@@ -42,7 +42,7 @@
 
 | # | 债务 | 风险 | 优先级 | 推荐 change 名 | 工时 |
 |---|------|------|--------|---------------|------|
-| A-9 | `atomic.cpp` 80% 完整但 CAS 未实现，无真正原子性 | 🟡 中 | **🟡 P1** | `implement-atomic-cas-and-true-atomicity` | 8h |
+| A-9 | ~~`atomic.cpp` 80% 完整但 CAS 未实现，无真正原子性~~ ✅ **ARCHIVED 2026-07-06** | ~~🟡 中~~ | ~~**🟡 P1**~~ | `implement-atomic-cas-and-true-atomicity` ✅ | 8h |
 | A-10 | 嵌套分歧测试缺失（`test_nested_divergence.cpp:106`） | 🟡 中 | **🟢 P2** | `add-nested-divergence-tests` | 5h |
 
 ### 1.2 剩余 C 系列（代码）
@@ -60,7 +60,7 @@
 | C-9 | `src/CMakeLists.txt` 手动 `set(SOURCES)` 非 GLOB | 🟢 P3 | `cmake-use-glob-for-sources` | 1h + CI 检查 |
 | C-10 | 仅 1 个 cmake option（无 ASAN/UBSAN） | 🟢 P3 | `add-cmake-options` | 1h |
 | C-15 | `instruction_handlers.cpp` X-Macro 仅调用 1 次 | 🟢 P3 | `complete-x-macro-dispatch` | 3h |
-| C-16 | `atomic.cpp` 115 行 stub（CAS 缺失） | 🟢 P3 | (合并到 A-9) | 8h |
+| C-16 | ~~`atomic.cpp` 115 行 stub（CAS 缺失）~~ ✅ **合并到 A-9 已 archive** | ~~🟢 P3~~ | ~~(合并到 A-9)~~ | 8h |
 | C-17 | `ptx_visitor.cpp` **998 行**（parser-completeness 后 -16）+ 12 TODO | 🟡 P2 | `split-ptx-visitor-god-class` | 5h |
 | C-18 | `warp_context.cpp` **537 行**（清理后 -19）+ 6 次/30 commits | 🟡 P2 | `refactor-warp-context` | 4h |
 | C-20 | `ptx_visitor_atom.cpp:28` 硬编码 ptx_op.def 格式（DRY） | 🟢 P3 | `dedupe-ptx-op-def-format` | 0.5h |
@@ -106,8 +106,8 @@
 **关键原则**：
 - P 是**风险等级**（high/medium/low），Tier 是**时间窗口**（week/month/quarter），二者正交
 - P1 项如工时超 Tier 1 预算 → 拆 Phase 进 Tier 2/3（保留 P1 风险标签）
-- P3 项如工时 ≤ 4h → 可前移至 Tier 1（quick win）
-- 当前（2026-07-05）：MR-1 修复后**Tier 1 无候选**，等 quick win 出现或 P1 拆 Phase
+-     P3 项如工时 ≤ 4h → 可前移至 Tier 1（quick win）
+- 当前（2026-07-06）：A-9 已 archive 后 **Tier 1 仍空**（剩余 P1 项 C-1 = 10h too large for Tier 1; A-10 = 5h 接近上限）。Tier 2 月度预算 15h 重置，C-1 Phase 1（SIMT stack extraction ~3h）现在是 Tier 2 候选
 
 ---
 
@@ -493,7 +493,8 @@ grep -rn "<deleted_symbol>" src/ include/ tests/
 |---------|------|---------|
 | 1.0 | 2026-07-05 | 初版：parser-completeness + add-extern-function-declaration + Quick Wins 后状态 |
 | 1.1 | 2026-07-05 | MR-1~MR-5 修复：移除 C-19 虚假债务，澄清 C-4 函数/文件行数，恢复 C-1 至 §3 Tier 3，添加 Tier↔Priority 映射规则，更新 §1.2 + 附录过期行数（C-1, C-17, C-18, C-4） |
-| 1.2 | 2026-07-05 | MR-N1~N3 (Oracle review)：MR-N1 修正 §3.3 C-1 rationale（澄清 Tier 3 的真实理由：A-9 (8h) 已占月度 15h 预算 + Phase 3 跨季度），MR-N2 修正 §1.4 P2/P3 计数（`~10` → 8, `~12` → 13），MR-N3 消除 §1.4 line 103 "≤ 15h 的子 Phase" 歧义（明确"月度预算累计" vs "per-Phase 上限"），§3.2 title 改为"15h 月度预算 硬上限" |
+| 1.2 | 2026-07-05 | MR-N1~N3 (Oracle review) |
+| 1.3 | 2026-07-06 | A-9 `implement-atomic-cas-and-true-atomicity` archive（commits `3a38ca0` + `5a328ac` + `6cb5baa` + archive commit）。3 Phase 全部完成（CAS handler + cross-warp mutex + multi-warp oracle test）。§0 更新 A-9 RESOLVED、§1.1 A-9 ✅、§1.2 C-16 ✅ RESOLVED（合并到 A-9）、附录 A.1 atomic.cpp RESOLVED |
 
 ---
 
@@ -523,7 +524,7 @@ grep -rn "<deleted_symbol>" src/ include/ tests/
 | `src/CMakeLists.txt` | 手动 `set(SOURCES)` 68 个 .cpp | line 41-48 | 🟢 P3 |
 | `CMakeLists.txt` | 仅 1 个 cmake option | line 34 | 🟢 P3 |
 | `src/ptxsim/instructions/instruction_handlers.cpp` | X-Macro 仅 1 次 | line 190 | 🟢 P3 |
-| `src/ptxsim/instructions/atomic.cpp` | stub（C-16 = A-9 合并） | 全文 | 🟡 P1 |
+| `src/ptxsim/instructions/atomic.cpp` | ~~stub（C-16 = A-9 合并）~~ ✅ **A-9 archive 2026-07-06** | 全文 | 🟢 |
 | `src/ptx_parser/ptx_visitor_atom.cpp` | 硬编码 ptx_op.def 格式（DRY） | line 28 | 🟢 P3 |
 | `ptx_types.cpp` + `statement_context.cpp` | 3 处 `assert(false && "...")` | — | 🟢 P3 |
 | `tests/e2e/divergence/test_divergence.cu` | 仅 1 个非 barrier E2E | 全文 | 🟢 P3 |

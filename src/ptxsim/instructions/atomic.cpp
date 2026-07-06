@@ -1,4 +1,5 @@
 #include "memory/hardware_memory_manager.h"
+#include "ptxsim/atomic/atomic_mutex.h"
 #include "ptxsim/instruction_handlers.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/utils/qualifier_utils.h"
@@ -10,15 +11,16 @@
 void AtomHandler::processAtomicOperation(ThreadContext *context, void **operands,
                                  const std::vector<Qualifier> &qualifiers,
                                  const std::vector<char> *operand_is_immediate) {
-    // Operands (collected in ptx_visitor_atom.cpp after Task 8 fix):
+    // Operands (collected in ptx_visitor_atom.cpp):
     //   operands[0] = dst register address (write old value here)
     //   operands[1] = memory address (host pointer to atomic location)
     //   operands[2] = src value address (register or immediate buffer)
+    //                 OR for CAS: compare value (first non-dst RuleContext operand)
+    //   operands[3] = for CAS only: val (second non-dst RuleContext operand)
     void *dst = operands[0];
     void *addr = operands[1];
-    void *src = operands[2];
 
-    if (!dst || !addr || !src) {
+    if (!dst || !addr) {
         // Silent no-op matches StHandler::processOperation contract.
         return;
     }
@@ -44,6 +46,7 @@ void AtomHandler::processAtomicOperation(ThreadContext *context, void **operands
         case Qualifier::Q_EXCH_ATOM:
         case Qualifier::Q_MIN_ATOM:
         case Qualifier::Q_MAX_ATOM:
+        case Qualifier::Q_CAS_ATOM:
             atom_op = q;
             break;
         default:
@@ -52,16 +55,59 @@ void AtomHandler::processAtomicOperation(ThreadContext *context, void **operands
         if (atom_op != Qualifier::Q_UNKNOWN) break;
     }
 
-    // CAS is out-of-scope (per Must NOT list).
     if (atom_op == Qualifier::Q_UNKNOWN) {
         return;
     }
 
-    // Read-modify-write. The PTX-EMU execution model serializes warp-level
-    // dispatch (see src/ptxsim/core/sm_context.cpp:225-260), so a plain
-    // load → compute → store sequence produces correct results without a
-    // hardware-style CAS loop. Real atomicity (relaxed ordering only, per
-    // Must NOT list) is not modeled.
+    // Cross-warp atomicity (Phase 2 of implement-atomic-cas-and-true-atomicity):
+    // acquire the global atomic mutex around the read-modify-write sequence.
+    // Lock-order proof vs other ptxsim mutexes (audit §MR-5):
+    //   - HardwareMemoryManager::mutex_ is acquired INSIDE .access() which is
+    //     called from this scope; this mutex is the OUTER lock for that call.
+    //   - CTABarrier::mutex_ is acquired only by barrier handlers, which do
+    //     not invoke atomic handlers under that lock; the two mutexes are
+    //     therefore never held simultaneously.
+    //   - No public method on AtomicLockGuard re-locks the same mutex
+    //     (std::mutex is non-recursive), matching the cta_barrier.cpp:47
+    //     pattern documented in ptx-lessons-learned §2.
+    ptxsim::AtomicLockGuard atomic_guard(ptxsim::global_atomic_mutex());
+
+    // CAS path: read-modify-compare-write. PTX-EMU's warp-level scheduler
+    // (sm_context.cpp:225-260) serializes per-warp dispatch; the cross-warp
+    // mutex above bridges concurrent warps.
+    if (atom_op == Qualifier::Q_CAS_ATOM) {
+        void *cmp_buf = operands[2];
+        void *val_buf = operands[3];
+        if (!cmp_buf || !val_buf) {
+            return;
+        }
+
+        uint64_t old_val = 0;
+        HardwareMemoryManager::instance().access(addr, &old_val, data_size,
+                                                 /*is_write=*/false, space);
+
+        uint64_t cmp_val = 0;
+        uint64_t new_val = 0;
+        std::memcpy(&cmp_val, cmp_buf, data_size);
+        std::memcpy(&new_val, val_buf, data_size);
+
+        // Compare-and-swap: write new_val only when loaded value equals cmp_val.
+        if (old_val == cmp_val) {
+            HardwareMemoryManager::instance().access(addr, &new_val, data_size,
+                                                     /*is_write=*/true, space);
+        }
+
+        // PTX ISA semantics: dst always receives the originally loaded value.
+        std::memcpy(dst, &old_val, data_size);
+        return;
+    }
+
+    // Non-CAS read-modify-write path (add, and, or, xor, exch, min, max, inc, dec).
+    void *src = operands[2];
+    if (!src) {
+        return;
+    }
+
     uint64_t old_val = 0;
     HardwareMemoryManager::instance().access(addr, &old_val, data_size,
                                              /*is_write=*/false, space);

@@ -250,6 +250,18 @@ add_catch_test(integration_ptx_atom_global_exch
 )
 set_tests_properties(integration_ptx_atom_global_exch PROPERTIES LABELS "integration;ptx;atom;exch")
 
+# Phase 1 of implement-atomic-cas-and-true-atomicity change
+add_catch_test(integration_ptx_atom_global_cas
+    ptx/test_atom_global_cas.cpp
+)
+set_tests_properties(integration_ptx_atom_global_cas PROPERTIES LABELS "integration;ptx;atom;cas")
+
+# Phase 2/3 multi-warp CAS verification
+add_catch_test(integration_ptx_atom_global_cas_multiwarp
+    ptx/test_atom_global_cas_multiwarp.cpp
+)
+set_tests_properties(integration_ptx_atom_global_cas_multiwarp PROPERTIES LABELS "integration;ptx;atom;cas;multiwarp")
+
 add_catch_test(integration_ptx_cvt
     ptx/test_cvt.cpp
 )
