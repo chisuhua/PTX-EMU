@@ -369,7 +369,7 @@ RED         : 'red';
 PREFETCH    : 'prefetch';
 PREFETCHU   : 'prefetchu';
 
-// Matrix (WMMA)
+// Matrix (WMMA) - DEPRECATED: kept for backward compat, will be removed in change-4
 WMMA        : 'wmma';
 
 // Video / SIMD
@@ -385,6 +385,83 @@ DP2A        : 'dp2a';
 
 // NEW INSTRUCTIONS (PTX 8.7–9.1)
 ST_BULK            : 'st.bulk';
+
+// =================================================================
+// Blackwell Tensor Core Generator (PTX ISA §9.7.16, sm_100+)
+// tcgen05.* instruction family - added by implement-tcgen05-syntax-ir
+// (ADR-0016). Replaces wmma.* path for Blackwell-only support.
+// =================================================================
+
+// Main prefix
+TCGEN05             : 'tcgen05';
+
+// tcgen05 sub-ops (bare tokens, reuse existing MMA/LD/ST/FENCE/ARRIVE/LOAD/STORE)
+// New bare sub-op tokens (no existing equivalent):
+TCGEN05_ALLOC       : 'alloc';
+TCGEN05_DEALLOC     : 'dealloc';
+TCGEN05_RELINQUISH  : 'relinquish_alloc_permit';
+TCGEN05_CP          : 'cp';
+TCGEN05_COMMIT      : 'commit';
+TCGEN05_WAIT        : 'wait';
+
+// Sync/aligned (bare, used after .ld/.st/.alloc/.dealloc)
+TCGEN05_SYNC        : 'sync';
+// ALIGNED already defined at line 226
+
+// tcgen05 qualifier tokens (with leading dot, like existing KIND)
+TCGEN_CTA_GROUP     : '.cta_group';
+TCGEN_SEM           : '.sem';
+TCGEN_MULTICAST     : '.multicast';
+TCGEN_PACK          : '.pack';
+
+// Bare qualifier values (for .shared::cta, .multicast::cluster, etc.)
+TCGEN_CLUSTER       : 'cluster';
+TCGEN_CTA           : 'cta';
+TCGEN_ONE           : 'one';
+TCGEN_B16           : 'b16';  // For .pack::b16
+
+// mma variant tokens (.sp, .ws) - SP/WS distinct from %sp special register
+TCGEN_SP            : 'sp';
+TCGEN_WS            : 'ws';
+
+// mbarrier bare token (for .mbarrier::arrive::one)
+TCGEN_MBARRIER      : 'mbarrier';
+
+// Fence time tokens (for tcgen05.fence::before_thread_sync / ::after_thread_sync)
+BEFORE_THREAD_SYNC  : 'before_thread_sync';
+AFTER_THREAD_SYNC   : 'after_thread_sync';
+
+// mma shape tokens (combined, like existing M8N8K4)
+M64N8K16            : 'm64n8k16';
+M64N16K16           : 'm64n16k16';
+M64N32K16           : 'm64n32k16';
+M64N64K16           : 'm64n64k16';
+M64N128K16          : 'm64n128k16';
+M64N256K16          : 'm64n256k16';
+
+// scale_vec_size values (for .scale_vec_size::2X / ::4X)
+SCALE_VEC_2X        : '2X';
+SCALE_VEC_4X        : '4X';
+
+// ld/st shape and multiplier (for .ld.sync.aligned.32x32b.x4.b32)
+SHAPE_32X32B        : '32x32b';
+TCGEN05_X1          : '.x1';
+TCGEN05_X2          : '.x2';
+TCGEN05_X4          : '.x4';
+
+// cp shape tokens
+SHAPE_128X256B      : '128x256b';
+SHAPE_64X128B       : '64x128b';
+SHAPE_64X256B       : '64x256b';
+SHAPE_128X128B      : '128x128b';
+
+// mma kind values (bare, for .kind::f16 reuse F16, .kind::bf16 reuse BF16, etc.)
+TCGEN_F8F6F4        : 'f8f6f4';
+TCGEN_MXF4          : 'mxf4';
+TCGEN_MXF8          : 'mxf8';
+TCGEN_I8            : 'i8';
+TCGEN_TF32          : 'tf32';
+// MXF4NVF4 already defined at line 236 as bare 'mxf4nvf4'
 
 // ============================================================================
 // ARCHITECTURE TARGETS (combined token)

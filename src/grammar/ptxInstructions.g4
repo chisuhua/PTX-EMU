@@ -425,12 +425,81 @@ wmmaInst: WMMA wmmaOp wmmaLayout? wmmaShape? wmmaKind? typeSpecifier vectorSpec?
 
 matrixInst
     : wmmaInst
+    | tcgen05Inst
     ;
 
 wmmaOp : MMA | LOAD | STORE | FILL ;
 wmmaLayout : ROW | COL ;
 wmmaShape : M8N8K4 | M16N16K16 | M32N8K16 | M16N8K16 ;
 wmmaKind : KIND COLONCOLON MXF4NVF4 ;
+
+// =============================================================================
+// Blackwell Tensor Core Generator (PTX ISA §9.7.16, sm_100+)
+// Added by implement-tcgen05-syntax-ir (ADR-0016).
+// Replaces wmma.* path for Blackwell-only support. pre-Blackwell wmma.* is
+// kept above for backward compat and will be removed in change-4.
+// =============================================================================
+tcgen05Inst
+    : TCGEN05 DOT tcgen05SubOp tcgen05Qual* typeSpecifier? tcgen05Operands? SEMI
+    ;
+
+tcgen05SubOp
+    : MMA
+    | LD
+    | ST
+    | TCGEN05_CP
+    | TCGEN05_ALLOC
+    | TCGEN05_DEALLOC
+    | TCGEN05_RELINQUISH
+    | TCGEN05_COMMIT
+    | TCGEN05_WAIT
+    | FENCE
+    ;
+
+// All possible tcgen05 qualifiers in any order
+tcgen05Qual
+    : TCGEN_CTA_GROUP COLONCOLON IMMEDIATE              // .cta_group::1 / .cta_group::2
+    | KIND COLONCOLON tcgen05Dtype                       // .kind::f16 / .kind::bf16 / etc.
+    | TCGEN_MULTICAST COLONCOLON TCGEN_CLUSTER           // .multicast::cluster
+    | TCGEN_SEM                                          // .sem
+    | TCGEN_PACK COLONCOLON B16                          // .pack::b16
+    | TCGEN_SP                                           // .sp (sparse)
+    | TCGEN_WS                                           // .ws (weight-stationary)
+    | BLOCK_SCALE                                        // .block_scale
+    | SCALE_VEC_SIZE COLONCOLON (SCALE_VEC_2X | SCALE_VEC_4X)  // .scale_vec_size::2X/4X
+    | SHARED COLONCOLON (TCGEN_CTA | TCGEN_CLUSTER)     // .shared::cta / .shared::cluster
+    | TCGEN_MBARRIER COLONCOLON ARRIVE COLONCOLON TCGEN_ONE  // .mbarrier::arrive::one
+    | TCGEN05_SYNC                                       // .sync
+    | ALIGNED                                            // .aligned
+    | COLONCOLON (BEFORE_THREAD_SYNC | AFTER_THREAD_SYNC)    // ::before_thread_sync / ::after_thread_sync
+    | SHAPE_32X32B                                       // .32x32b
+    | SHAPE_128X256B | SHAPE_64X128B | SHAPE_64X256B | SHAPE_128X128B  // cp shapes
+    | TCGEN05_X1 | TCGEN05_X2 | TCGEN05_X4               // .x1 / .x2 / .x4
+    | M64N8K16 | M64N16K16 | M64N32K16 | M64N64K16 | M64N128K16 | M64N256K16  // mma shapes
+    ;
+
+tcgen05Dtype
+    : F16
+    | BF16
+    | TCGEN_TF32
+    | F8
+    | F4
+    | TCGEN_I8
+    | TCGEN_F8F6F4
+    | TCGEN_MXF4
+    | TCGEN_MXF8
+    | MXF4NVF4
+    ;
+
+tcgen05Operands
+    : tcgen05Operand (COMMA tcgen05Operand)*
+    ;
+
+tcgen05Operand
+    : vectorRegister
+    | address
+    | operand
+    ;
 
 // Video SIMD instruction rules
 vadd4Inst: VADD4 satFlag? typeSpecifier vectorSpec? operand COMMA operand COMMA operand COMMA operand SEMI;
