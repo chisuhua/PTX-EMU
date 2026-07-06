@@ -423,6 +423,25 @@ git checkout -b docs/sync-readme-after-<feature>
 □ postmortem 沉淀：追加 lessons-learned.md §N（本 checklist 是 §21 模板）
 ```
 
+### Checklist J: OpenSpec artifacts 内部一致性强制检查（2026-07 新增）
+
+```
+□ 4 个 artifacts 范围数字对齐（proposal/design/tasks/spec 同一债务项的对象列表一致）
+  - 示例：D-5 删除范围 = 3 个活跃 + 1 个已禁用副本（4 个）必须 4 个 artifact 同时出现
+□ design Decision 路径示例与 spec Scenario 路径描述一致
+  - design 写 "archive/<name>.design.md"（与子目录并列）→ spec 写"同级创建" → 一致 ✓
+  - design 写 "archive/<name>/design.md"（在子目录内）→ spec 写"git hash 不变" → 冲突 ❌
+□ design Decision 操作与 spec Scenario 操作描述一致
+  - design 写"添加 README.md 段落" → spec 写"任何文件 git hash 不变" → 冲突 ❌
+  - design 写"禁止修改归档" → spec 写"git hash 不变" → 一致 ✓
+□ tasks 验证命令路径 = design 路径示例
+  - tasks Phase 2.6 写 `test -f $d/design.md` 但 design 写 `$d.design.md` → 不一致 ❌
+□ tasks 中"验证归档未变"任务存在（git status openspec/changes/archive/<name>/）
+□ 范围模糊时优先严格约束（"完全不修改归档" > "修改归档 README"）
+□ 审查产物登记到 `.opencode/notes/<name>-review-report.md`（≥30 commits 影响范围）
+□ 沉淀到 lessons-learned.md §23（§23 是本 checklist 的真实案例模板）
+```
+
 ---
 
 ## 🔍 失败模式速查表
@@ -438,6 +457,7 @@ git checkout -b docs/sync-readme-after-<feature>
 | 注释"看似冗余" | 跨模块间接状态翻译 | 查"经验 1"，看是否需要保留 |
 | `ctest -L <label>` 整体超时 | 某个测试死锁 | 切到 single-test + per-test timeout |
 | **E2E 测试输出非确定性（每次不同值），但 handler 单元测试通过** | **`is_float_type()` 只看 `qualifiers.back()`，Q_F32 不在末尾时被误判为整数** | **handler 入口加 printf: `is_float` 标志；`grep "is_float_type" src/ptxsim/` 列出受影响 handler** |
+| **OpenSpec 4 个 artifacts 单独看 OK 但 apply 后行为不一致** | **proposal/design/spec/tasks 间存在内部冲突（范围数字 / 路径策略 / 操作语义）** | **运行 Checklist J：4 个 artifacts 同债务项范围对齐 + design Decision 路径 vs spec Scenario 路径一致 + tasks 验证命令 = design 路径示例** |
 
 ---
 

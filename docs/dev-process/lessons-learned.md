@@ -871,3 +871,73 @@ grep -A1 "Multi-PTX cubins" AGENTS.md
 ```
 
 ---
+
+## 23. OpenSpec artifacts 内部一致性强制检查（proposal/design/spec/tasks）（2026-07 新增）
+
+### 触发 change
+
+`docs-cuda-docs-and-openspec-orphan-sync`（2026-07-06，审查阶段发现）— 纯文档债务清理 change，但 proposal / design / tasks / specs 间存在 3 处隐性内部不一致，全部需要 MUST-RESOLVE。
+
+### 现象
+
+OpenSpec change 的 4 个 artifacts 单独看都"形式合规"，但**互相之间存在内部冲突**时仍会通过 self-review。具体表现：
+
+1. **范围不一致**：proposal.md §What Changes 声称"D-5 删除 3 个过期副本"，但 design.md §Decision 3 / tasks.md Phase 3 / spec.md Requirement 2 都明确删除 **4 个**（含 `three-mode-testing/` 已禁用副本）。
+2. **设计决策 vs spec Scenario 直接冲突**：design.md §Decision 1 写"归档目录内添加 README.md 段落引用 retroactive design.md"，但 spec.md Scenario "Retroactive design.md 不修改归档内容" 强制 "归档目录内所有文件的 git hash SHALL 保持不变"。两者**字面冲突**（一个允许修改 README.md，一个禁止修改任何文件）。
+3. **任务路径与设计路径不一致**：design.md §Decision 1 路径示例 `openspec/changes/archive/<date>-<name>.design.md`（与归档子目录并列），但 tasks.md Phase 2.6 验证命令检查 `$d/design.md`（在归档子目录内）— **路径策略完全不匹配**。
+
+### 教训
+
+1. **OpenSpec artifacts 的 4 个文件本质是同一份文档的 4 种视图**（per `openspec-propose` skill 设计）。任何 artifact 内部决策必须在另外 3 个 artifact 中**对称出现**，否则视为决策未完成。
+2. **"逐文件审查"无法捕获内部冲突**：审查者逐文件看 proposal ✓ → design ✓ → specs ✓ → tasks ✓，但**缺少"跨文件同一概念"的对齐检查**。这是 single-file review 的天然盲点。
+3. **Checklist G 的字面引用 vs 实质合规**：design.md 表面引用了 Checklist G（"不 amend 已归档 change"），但实质上"添加 README.md 段落引用"违反 Checklist G 的精神。引用不等于遵循 — 必须做**路径 + 操作**级别的合规。
+4. **方案选择模糊时优先严格约束**：当 design.md 在"修改归档 README" 和"完全不修改归档" 之间含糊时，**应直接选严格方案**（完全不修改）。这避免后续争论，也容易 spec.md 验证。
+
+### 真实案例
+
+- **OpenSpec change**: `openspec/changes/docs-cuda-docs-and-openspec-orphan-sync/`
+- **审查发现**: 3 处 MUST-RESOLVE（1. D-5 范围不完整 / 2. design Decision 1 vs spec Scenario 冲突 / 3. tasks Phase 2.6 路径错误）
+- **审查后修复**: 
+  - proposal.md +7/-1 行（补全 `three-mode-testing/`）
+  - design.md +8/-6 行（Decision 1 改为"禁止修改归档"、Risks 表新增"误改归档"项）
+  - tasks.md +10/-7 行（路径策略块、新增 2.7 "验证归档未变"）
+  - 总计 +24/-15 行，仅文档范围（按设计"不修改任何 .cpp/.h"约束）
+- **审查产物**: `docs-cuda-docs-and-openspec-orphan-sync-review-report.md`（完整审查报告 + 3 个 MUST-RESOLVE 修复建议）
+- **关联教训**: 与 §6（OpenSpec artifacts 提交遗漏）+ §20（Pre-impl review）三者协同 — 三者都强调"artifacts 间一致性"，但 §23 专攻"artifacts 内部冲突"维度
+
+### 检查工具
+
+```bash
+# 1. D-系列范围对齐检查（proposal/design/tasks/spec 同一债务项的范围数字一致）
+for term in "D-1\|D-4\|D-5\|D-6"; do
+  echo "=== $term range consistency ==="
+  for f in proposal.md design.md tasks.md specs/*/spec.md; do
+    grep -c "$term" "openspec/changes/<name>/$f" 2>/dev/null
+  done
+done
+# 期望：proposal/design/tasks/spec 中同一债务项的数字/对象列表一致
+
+# 2. design 决策 vs spec Scenario 一致性检查
+echo "=== design Decision 1 路径 vs spec Scenario 1 路径 ==="
+grep -A1 "Decision 1" openspec/changes/<name>/design.md | head -5
+echo "---"
+grep -A3 "Scenario.*不修改\|hash SHALL" openspec/changes/<name>/specs/*/spec.md
+# 期望：design 与 spec 中描述的路径 + 操作语义一致
+
+# 3. tasks 路径策略 vs design 路径示例对齐
+echo "=== tasks path vs design path ==="
+grep -E "\\.design\\.md" openspec/changes/<name>/tasks.md | head -3
+echo "---"
+grep -E "\\.design\\.md" openspec/changes/<name>/design.md | head -3
+# 期望：tasks 中的 `test -f` 命令路径 = design.md 路径示例
+
+# 4. "禁止修改" / "禁止 amend" / "不修改" 关键词全文检索
+grep -rE "禁止|不修改|不可 amend" openspec/changes/<name>/ 2>/dev/null
+# 期望：每个约束都明确写出，且 spec.md Scenario 提供可执行的验证命令
+
+# 5. 审查产物登记（项目级实践）
+ls .opencode/notes/<name>-review-report.md 2>/dev/null
+# 期望：每个 ≥30 commits 影响范围的 change 都有审查报告
+```
+
+---
