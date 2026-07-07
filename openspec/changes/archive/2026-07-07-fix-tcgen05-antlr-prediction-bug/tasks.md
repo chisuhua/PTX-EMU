@@ -1,5 +1,15 @@
 # Tasks: Fix tcgen05 ANTLR LL(*) Prediction Bug
 
+> **⚠️ CANCELLED (2026-07-07)** — 此 change 未实施，因根因诊断错误。
+> **实际根因**：[commit `ad808e3`](../../../) 引入的 bare lexer tokens `TCGEN_F16 : 'f16'` 与 ID 规则冲突。
+> **实际修复**：[commit `55e216a`](../../../)（5 行 lexer/parser diff），同时解决了：
+> - 5 个 ctest 失败（simpleGEMM-float, 2Dentropy, e2e_blackwell_gemm, cute_rmsnorm, cute_rmsnorm_debug）
+> - 7 个 tcgen05 fixture LL(*) 预测失败（test_all_ptx.sh 47/47 PASS）
+> **Pre-impl review (Checklist H) 未跑**：未通过 Metis 子代理验证根因假设，导致定位错误。
+> **教训**：[`docs/dev-process/lessons-learned.md`](../../../docs/dev-process/lessons-learned.md) §25 + [`.opencode/skills/ptx-lessons-learned/SKILL.md`](../../../.opencode/skills/ptx-lessons-learned/SKILL.md) §9 + Checklist L
+>
+> 本 change 仅保留 artifacts 作为历史参考。如需重新激活，请新建 `fix-*` change（per lessons-learned §6）并先跑 Pre-impl review (Checklist H)。
+
 > **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) Accepted
 > **依赖**: [proposal.md](proposal.md) + [design.md](design.md) + 1 spec in [specs/](specs/)
 > **范围**: 3-4 atomic commits,每步独立可 revert(per `ptx-lessons-learned` §3)
