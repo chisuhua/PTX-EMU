@@ -459,7 +459,7 @@ tcgen05SubOp
 // All possible tcgen05 qualifiers in any order
 tcgen05Qual
     : TCGEN_CTA_GROUP COLONCOLON IMMEDIATE              // .cta_group::1 / .cta_group::2
-    | KIND COLONCOLON (TCGEN_F16 | TCGEN_BF16 | TCGEN_TF32 | F8 | F4 | TCGEN_I8)  // .kind::f16 / .kind::bf16
+    | KIND COLONCOLON (F16 | BF16 | TCGEN_TF32 | F8 | F4 | TCGEN_I8 | ID)  // .kind::f16 / .kind::bf16 (ID fallback for single-dot PTX format)
     | TCGEN_MULTICAST COLONCOLON TCGEN_CLUSTER           // .multicast::cluster
     | TCGEN_SEM                                          // .sem
     | TCGEN_PACK COLONCOLON B16                          // .pack::b16
@@ -479,8 +479,8 @@ tcgen05Qual
     ;
 
 tcgen05Dtype
-    : TCGEN_F16
-    | TCGEN_BF16
+    : F16
+    | BF16
     | TCGEN_TF32
     | F4
     | F8

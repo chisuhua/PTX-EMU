@@ -403,8 +403,10 @@ TCGEN05_RELINQUISH  : '.relinquish_alloc_permit';
 TCGEN05_CP          : '.cp';
 TCGEN05_COMMIT      : '.commit';
 TCGEN05_WAIT        : '.wait';
-TCGEN_F16            : 'f16';
-TCGEN_BF16           : 'bf16';
+// Note: TCGEN_F16/TCGEN_BF16 bare tokens removed (commit ad808e3) - they conflict
+// with ID rule, causing %f16/%bf16 register parsing failures.
+// Use F16 (.f16) / BF16 (.bf16) tokens instead. ID fallback in tcgen05Qual
+// handles .kind::f16 (one dot) PTX source format.
 
 // Sync/aligned (bare, used after .ld/.st/.alloc/.dealloc)
 TCGEN05_SYNC        : 'sync';
