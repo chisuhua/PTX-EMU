@@ -8,11 +8,11 @@
 ## 0. Pre-Implementation Review
 
 - [ ] 0.1 跑 Metis 验证:
-  - [ ] 0.1.1 `wc -l src/ptxsim/instructions/wmma.cpp`(约 564)
+  - [ ] 0.1.1 `wc -l src/ptxsim/instructions/wmma.cpp`(约 564,实际含 4 个 `execute_tcgen05_*` + 1 个 inline mma handler)
   - [ ] 0.1.2 验证 fix-tcgen05-grammar-mr3 已 archive
   - [ ] 0.1.3 验证 extend-blackwell-tcgen05-infra 已 archive
   - [ ] 0.1.4 跑 `ctest -L "unit;tcgen05|integration;tcgen05" -V` 确认 baseline
-  - [ ] 0.1.5 验证 Cutlass 3.x SM100_MMA_F16_F16_F32 golden value 来源(若不可用,改用 PTX ISA 规范手算)
+  - [ ] 0.1.5 ✅ **已确认**:Cutlass 3.x 在 /usr/local /opt ~/cutlass 不可用 → **采用 PTX ISA §9.7.16 手算 + 复用 `wmma.cpp:374-420` 现有 inline mma fragment arithmetic**(per design.md D7)
 
 - [ ] 0.2 基线 worktree:`.worktrees/baseline-tcgen05-handlers-core`
 
@@ -57,10 +57,13 @@
 
 ### 3.2 wmma.cpp 清理
 
-- [ ] 3.2.1 读 `src/ptxsim/instructions/wmma.cpp` 当前 5 个 `execute_tcgen05_*`(line 321-565)
-- [ ] 3.2.2 删除 5 个 `execute_tcgen05_*` 函数
-- [ ] 3.2.3 删除 5 个 `is_tcgen05_*()` helper(line 21-60)
-- [ ] 3.2.4 保留 pre-Blackwell `wmma.mma.sync.*` 路径(`UnsupportedInstructionException`)
+> **2026-07-07 修正**:Day 1 验证发现 `wmma.cpp` 实际只有 **4 个 `execute_tcgen05_*`** 函数(`ld/st/commit/wait`)+ **1 个 inline mma handler**(line 352 `if (!is_tcgen05_mma_f16(qualifiers))` 走原路径)。**不是 5 个**。proposal 中"删除 5 个 execute_tcgen05_*"是错误描述。
+
+- [ ] 3.2.1 读 `src/ptxsim/instructions/wmma.cpp` 当前 4 个 `execute_tcgen05_*`(ld:321/423, st:323/463, commit:325/502, wait:327/534) + 1 个 inline mma(line 352)
+- [ ] 3.2.2 删除 4 个 `execute_tcgen05_*` 函数(ld/st/commit/wait)
+- [ ] 3.2.3 删除 5 个 `is_tcgen05_*()` helper(line 29-56,所有 5 个,因为 `mma` helper 不再需要)
+- [ ] 3.2.4 提取 inline mma handler 到 `tcgen05.cpp::processTcgen05Mma`(从 line 352 + line 374-420 提取 fragment arithmetic)
+- [ ] 3.2.5 保留 pre-Blackwell `wmma.mma.sync.*` 路径(`UnsupportedInstructionException`)
 
 ### 3.3 注册新文件
 
@@ -69,16 +72,18 @@
 
 ### 3.4 测试
 
-- [ ] 3.4.1 新建 `tests/unit/ptx_ir/test_tcgen05_qualifier.cpp`(~50 LoC)
-- [ ] 3.4.2 新建 `tests/unit/ptx_ir/test_tcgen05_opkind.cpp`
-- [ ] 3.4.3 新建 `tests/unit/ptx_ir/test_tcgen05_dtype.cpp`
-- [ ] 3.4.4 新建 `tests/unit/ptx_ir/test_tcgen05_statement_factory.cpp`
-- [ ] 3.4.5 新建 `tests/unit/ptx_ir/test_tcgen05_instr_struct.cpp`
-- [ ] 3.4.6 新建 `tests/integration/parser/test_tcgen05_mma_parse.cpp`
-- [ ] 3.4.7 新建 `tests/integration/parser/test_tcgen05_ld_parse.cpp`(验证 num_regs)
-- [ ] 3.4.8 新建 `tests/integration/parser/test_tcgen05_st_parse.cpp`
-- [ ] 3.4.9 新建 `tests/integration/parser/test_tcgen05_commit_parse.cpp`(验证 mbarrier)
-- [ ] 3.4.10 新建 `tests/integration/parser/test_tcgen05_wait_parse.cpp`(验证 .load/.store)
+> **2026-07-07 修正**:Day 1 验证发现 `tests/unit/ptx_ir/` 和 `tests/integration/parser/` 目录不存在,实际目录是 `tests/unit/ptx/` 和 `tests/integration/tcgen05/`。proposal 中路径已修正。
+
+- [ ] 3.4.1 新建 `tests/unit/ptx/test_tcgen05_qualifier.cpp`(~50 LoC)
+- [ ] 3.4.2 新建 `tests/unit/ptx/test_tcgen05_opkind.cpp`
+- [ ] 3.4.3 新建 `tests/unit/ptx/test_tcgen05_dtype.cpp`
+- [ ] 3.4.4 新建 `tests/unit/ptx/test_tcgen05_statement_factory.cpp`
+- [ ] 3.4.5 新建 `tests/unit/ptx/test_tcgen05_instr_struct.cpp`
+- [ ] 3.4.6 新建 `tests/integration/tcgen05/test_tcgen05_mma_parse.cpp`
+- [ ] 3.4.7 新建 `tests/integration/tcgen05/test_tcgen05_ld_parse.cpp`(验证 num_regs)
+- [ ] 3.4.8 新建 `tests/integration/tcgen05/test_tcgen05_st_parse.cpp`
+- [ ] 3.4.9 新建 `tests/integration/tcgen05/test_tcgen05_commit_parse.cpp`(验证 mbarrier)
+- [ ] 3.4.10 新建 `tests/integration/tcgen05/test_tcgen05_wait_parse.cpp`(验证 .load/.store)
 - [ ] 3.4.11 编辑 `tests/unit/CMakeLists.txt` + `tests/integration/CMakeLists.txt` 注册 10 个新测试 + 标签 `unit;tcgen05` / `integration;tcgen05;grammar`
 
 ### 3.5 验证

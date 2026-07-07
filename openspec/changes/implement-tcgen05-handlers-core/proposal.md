@@ -9,7 +9,7 @@
 
 ## Why
 
-Change-1 建立了独立 tcgen05 命名空间(grammar + IR),Change-3a 修复 grammar + 迁移旧测试,Change-2 审计基础设施。**但 `wmma.cpp` 中 5 个 `execute_tcgen05_*` 函数**仍沿用 wmma 命名空间,本 change 将其实施为独立 `tcgen05.cpp` handler。
+Change-1 建立了独立 tcgen05 命名空间(grammar + IR),Change-3a 修复 grammar + 迁移旧测试,Change-2 审计基础设施。**但 `wmma.cpp` 中 4 个 `execute_tcgen05_*` 函数(ld/st/commit/wait)+ 1 个 inline mma handler(line 352)**仍沿用 wmma 命名空间,本 change 将其实施为独立 `tcgen05.cpp` handler(共 5 个 `processTcgen05Xxx` 函数)。
 
 **5 个核心 handler**(per ADR-0016 Phase 1+2):
 1. `tcgen05.mma` — 32 lane × 8x4 f16 fragment arithmetic(per `wmma.cpp:374-420`)
@@ -33,16 +33,18 @@ Change-1 建立了独立 tcgen05 命名空间(grammar + IR),Change-3a 修复 gra
 | 文件 | 范围 |
 |------|------|
 | `src/ptxsim/instructions/tcgen05.cpp` | 5 个 `processTcgen05Xxx` 函数,从 wmma.cpp 提取并适配新 IR |
-| `tests/unit/ptx_ir/test_tcgen05_qualifier.cpp` | Qualifier 枚举单元测试 |
-| `tests/unit/ptx_ir/test_tcgen05_opkind.cpp` | Tcgen05OpKind 枚举单元测试 |
-| `tests/unit/ptx_ir/test_tcgen05_dtype.cpp` | Tcgen05Dtype 枚举单元测试 |
-| `tests/unit/ptx_ir/test_tcgen05_statement_factory.cpp` | makeTcgen05Instr 工厂单元测试 |
-| `tests/unit/ptx_ir/test_tcgen05_instr_struct.cpp` | Tcgen05Instr struct 字段单元测试 |
-| `tests/integration/parser/test_tcgen05_mma_parse.cpp` | mma 端到端 parse → IR 集成测试 |
-| `tests/integration/parser/test_tcgen05_ld_parse.cpp` | ld 集成测试(验证 num_regs 字段) |
-| `tests/integration/parser/test_tcgen05_st_parse.cpp` | st 集成测试 |
-| `tests/integration/parser/test_tcgen05_commit_parse.cpp` | commit 集成测试(验证 mbarrier qualifier) |
-| `tests/integration/parser/test_tcgen05_wait_parse.cpp` | wait 集成测试(验证 .load/.store) |
+| `tests/unit/ptx/test_tcgen05_qualifier.cpp` | Qualifier 枚举单元测试 |
+| `tests/unit/ptx/test_tcgen05_opkind.cpp` | Tcgen05OpKind 枚举单元测试 |
+| `tests/unit/ptx/test_tcgen05_dtype.cpp` | Tcgen05Dtype 枚举单元测试 |
+| `tests/unit/ptx/test_tcgen05_statement_factory.cpp` | makeTcgen05Instr 工厂单元测试 |
+| `tests/unit/ptx/test_tcgen05_instr_struct.cpp` | Tcgen05Instr struct 字段单元测试 |
+| `tests/integration/tcgen05/test_tcgen05_mma_parse.cpp` | mma 端到端 parse → IR 集成测试 |
+| `tests/integration/tcgen05/test_tcgen05_ld_parse.cpp` | ld 集成测试(验证 num_regs 字段) |
+| `tests/integration/tcgen05/test_tcgen05_st_parse.cpp` | st 集成测试 |
+| `tests/integration/tcgen05/test_tcgen05_commit_parse.cpp` | commit 集成测试(验证 mbarrier qualifier) |
+| `tests/integration/tcgen05/test_tcgen05_wait_parse.cpp` | wait 集成测试(验证 .load/.store) |
+
+> **2026-07-07 修正**:Day 1 验证发现 `tests/unit/ptx_ir/` 和 `tests/integration/parser/` 目录不存在,实际目录是 `tests/unit/ptx/` 和 `tests/integration/tcgen05/`。
 | `tests/e2e/kernel/test_tcgen05_mma_gemm.cu` | 1 个真实 CUDA kernel E2E(用 cuobjdump 提取的 tcgen05.mma GEMM) |
 
 ### 修改
@@ -101,7 +103,7 @@ Change-1 建立了独立 tcgen05 命名空间(grammar + IR),Change-3a 修复 gra
 1. `src/ptxsim/instructions/tcgen05.cpp` 5 个 `processTcgen05Xxx` 函数
 2. 每个 handler 有 per-`// UNVERIFIED-AGAINST-HARDWARE — PTX ISA §9.7.16` 注释(per ADR-0016)
 3. **Acceptance Criteria**(本 change 明确,Metis E.1 修复):
-   - **mma**:32 lane × 8x4 fragment,对比 **golden value**(per `tests/ptx/reference/tcgen05_mma_golden.h`,从 Cutlass 3.x `SM100_MMA_F16_F16_F32` 提取)
+   - **mma**:32 lane × 8x4 fragment,对比 **golden value**(per `tests/ptx/reference/tcgen05_mma_golden.h`,**来源:复用 `wmma.cpp:374-420` 现有 inline mma + PTX ISA §9.7.16 手算**——Cutlass 3.x 在 Day 1 验证时确认环境不可用,见 design.md D1 修正)
    - **ld**:已知 128 字节 blob → 验证 TMEM slot 0 内容 byte-by-byte
    - **st**:已知 TMEM slot 0 → 验证 128 字节 dest byte-by-byte
    - **commit**:验证 `tc_queue.commit_count` + cluster `arrive_count` 增加
@@ -151,8 +153,8 @@ Change-1 建立了独立 tcgen05 命名空间(grammar + IR),Change-3a 修复 gra
 | `src/ptxsim/instructions/tcgen05.cpp` | 新增 | +500 |
 | `src/ptxsim/instructions/wmma.cpp` | 修改(移除 tcgen05) | -200 |
 | `src/ptx_parser/ptx_visitor_wmma.cpp` | 修改(operand 提取) | +50 |
-| `tests/unit/ptx_ir/test_tcgen05_*.cpp`(5 个) | 新增 | +200 |
-| `tests/integration/parser/test_tcgen05_*_parse.cpp`(5 个) | 新增 | +250 |
+| `tests/unit/ptx/test_tcgen05_*.cpp`(5 个) | 新增 | +200 |
+| `tests/integration/tcgen05/test_tcgen05_*_parse.cpp`(5 个) | 新增 | +250 |
 | `tests/e2e/kernel/test_tcgen05_mma_gemm.cu`(1 个) | 新增 | +150 |
 | `tests/ptx/reference/tcgen05_mma_golden.h` | 新增(golden values) | +100 |
 | 多个 CMakeLists.txt | 注册 | +30 |
@@ -164,7 +166,8 @@ Change-1 建立了独立 tcgen05 命名空间(grammar + IR),Change-3a 修复 gra
 - `ptx-debug` skill(handler 调试)
 - `three-mode-testing` skill(三套测试)
 - `cuobjdump -xptx` 工具(E2E 真实 PTX)
-- Cutlass 3.x `SM100_MMA_F16_F16_F32`(golden value 来源,可选,commit-time 决定)
+- ~~Cutlass 3.x `SM100_MMA_F16_F16_F32`~~(Day 1 验证不可用,已废弃)
+- `wmma.cpp:374-420` 现有 inline mma + PTX ISA §9.7.16 手算(实际 golden value 来源,per design.md D1 修正)
 
 ### 不影响的依赖
 
@@ -183,7 +186,7 @@ Change-1 建立了独立 tcgen05 命名空间(grammar + IR),Change-3a 修复 gra
 
 ### 函数审计完整性
 
-- [x] Baseline 函数清单:`wmma.cpp` 中 5 个 `execute_tcgen05_*` 函数(行 321-565)
+- [x] Baseline 函数清单:`wmma.cpp` 中 **4 个 `execute_tcgen05_*`** 函数(行 321/323/325/327,定义 + 423/463/502/534 实现)+ **1 个 inline mma handler**(line 352 + line 374-420)——**不是 5 个 execute 函数**,Day 1 验证修正
 - [x] 锁点审计:5 个函数均无锁调用(纯计算)
 - [x] 跨模块状态翻译:handler 调 `cta->tmem()` / `cta->tma_descriptor_store()` / `cta->tc_queue()` / `cta->cluster_context()`
 - [x] invariant 清单:per-warp ordering、CTA 隔离、commit-group counter 原子性
@@ -203,7 +206,7 @@ Change-1 建立了独立 tcgen05 命名空间(grammar + IR),Change-3a 修复 gra
 
 - [x] 根 AGENTS.md 同步项已列出
 - [x] ADR 追加段落已规划
-- [x] Golden value 来源已明确(Cutlass 3.x 或 PTX ISA 规范)
+- [x] Golden value 来源已明确(Day 1 验证:Cutlass 3.x **环境不可用** → 改用 `wmma.cpp:374-420` 现有 inline mma + PTX ISA §9.7.16 手算,见 design.md D1 + D7)
 
 ### 实施前必跑(per `ptx-lessons-learned` §7)
 
@@ -232,7 +235,9 @@ Change-1 建立了独立 tcgen05 命名空间(grammar + IR),Change-3a 修复 gra
 ## 本 change 特有设计决策(per Metis F.2)
 
 **决策 D1:Golden value 来源**
-- 优选:`tests/ptx/reference/tcgen05_mma_golden.h` 从 **Cutlass 3.x** `SM100_MMA_F16_F16_F32` 提取
+- 优选:`tests/ptx/reference/tcgen05_mma_golden.h` 从 **`wmma.cpp:374-420` 现有 inline mma** + **PTX ISA §9.7.16 手算**(2026-07-07 修正:Cutlass 3.x 环境不可用)
+- 备选:从 **PTX ISA §9.7.16 规范** 提取(per IEEE 754 + 8x4 矩阵乘定义)
+- 拒绝:不依赖 `cuobjdump -xptx` 输出(需真实 GPU,当前无访问)
 - 备选:从 **PTX ISA §9.7.16 规范** 提取(per IEEE 754 + 8x4 矩阵乘定义)
 - 拒绝:不依赖 `cuobjdump -xptx` 输出(需真实 GPU,当前无访问)
 
