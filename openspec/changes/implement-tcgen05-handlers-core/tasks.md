@@ -39,7 +39,7 @@
 - [ ] 3.1.2 实施 `processTcgen05Mma(context, op, qualifiers, operands)`:
   - 32 lane × 8x4 fragment 算术(从 `wmma.cpp:374-420` 提取)
   - 读 TMEM slots 0-63(input a + b),写 TMEM slots 64-95(output c)
-  - 验证 golden value(per Cutlass 3.x SM100_MMA_F16_F16_F32)
+  - 验证 golden value(per `wmma.cpp:374-420` inline mma + PTX ISA §9.7.16 手算,见 design.md D1 修正)
   - 每个 fragment element `// UNVERIFIED-AGAINST-HARDWARE — PTX ISA §9.7.16`
 - [ ] 3.1.3 实施 `processTcgen05Ld(context, op, qualifiers, operands)`:
   - 读 `cta->tma_descriptor_store().load(0)->global_address` 128 字节
@@ -53,7 +53,7 @@
 - [ ] 3.1.6 实施 `processTcgen05Wait(context, op, qualifiers, operands)`:
   - `cta->tc_queue().wait(warp, 0, 1)`
   - if cluster: `cta->cluster_context().cta_cluster_wait(cta->blockIdx.x)`
-- [ ] 3.1.7 新建 `tests/ptx/reference/tcgen05_mma_golden.h`(Cutlass 3.x 提取)
+- [ ] 3.1.7 新建 `tests/ptx/reference/tcgen05_mma_golden.h`(来源:`wmma.cpp:374-420` inline mma + PTX ISA §9.7.16 手算,见 design.md D1 修正)
 
 ### 3.2 wmma.cpp 清理
 
