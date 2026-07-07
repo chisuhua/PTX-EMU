@@ -9,7 +9,7 @@ annotation.
 #### Scenario: tcgen05.mma handler executes 32 lane × 8x4 fragment
 - **WHEN** a Tcgen05Instr with `op_kind = MMA`, `cta_group = 1`, `dtype = F16` is dispatched
 - **THEN** the handler reads from TMEM slots 0..63 and writes result to TMEM slots 64..95
-- **AND** the output matches a golden value (per `tests/ptx/reference/tcgen05_mma_golden.h` from Cutlass 3.x `SM100_MMA_F16_F16_F32`)
+- **AND** the output matches a golden value (per `tests/ptx/reference/tcgen05_mma_golden.h` from `wmma.cpp:374-420` inline mma + PTX ISA §9.7.16 manual calculation)
 
 #### Scenario: tcgen05.ld handler copies 128 bytes from TMA desc to TMEM slot 0
 - **WHEN** a Tcgen05Instr with `op_kind = LD`, `num_regs = 4` is dispatched
@@ -31,9 +31,9 @@ annotation.
 - **THEN** the handler calls `cta->tc_queue().wait(warp, 0, 1)`
 - **AND** if `cta->has_cluster_context()`, calls `cta->cluster_context().cta_cluster_wait(cta->blockIdx.x)`
 
-### Requirement: 11 unit + integration + 1 E2E tests SHALL cover core handlers
-The system SHALL provide 5 unit tests (`tests/unit/ptx_ir/`), 5
-integration tests (`tests/integration/parser/`), and 1 E2E kernel
+### Requirement: 5 unit + 5 integration + 1 E2E tests (11 total) SHALL cover core handlers
+The system SHALL provide 5 unit tests (`tests/unit/ptx/`), 5
+integration tests (`tests/integration/tcgen05/`), and 1 E2E kernel
 (`tests/e2e/kernel/test_tcgen05_mma_gemm.cu`) covering the 5 core
 handlers with golden-value verification.
 
