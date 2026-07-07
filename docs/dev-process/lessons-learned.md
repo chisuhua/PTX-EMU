@@ -1018,3 +1018,63 @@ for spec in openspec/changes/<name>/specs/*/; do
 done
 # 期望：全 SYNCED
 ```
+
+---
+
+## 25. ANTLR4 lexer 禁止定义 bare string token 与 ID 规则冲突（2026-07 新增）
+
+### 现象
+
+`commit ad808e3` 在 `src/grammar/ptxLexer.g4` line 406-407 新增了 bare string tokens：
+
+```antlr
+TCGEN_F16  : 'f16';   // ❌ bare，与 ID 规则冲突
+TCGEN_BF16 : 'bf16';  // ❌ bare，与 ID 规则冲突
+```
+
+ANTLR4 lexer 平局规则（first-defined-wins）：`f16` 字符串既匹配 `TCGEN_F16`（line 406）又匹配 `ID`（line 512）→ 长度相同，先定义的 `TCGEN_F16` 胜出。结果：`%f16` 寄存器名被错误识别为 `TCGEN_F16` token，触发解析失败：
+
+- `cute_rmsnorm`: `mismatched input 'f16' expecting ID`
+- `simpleGEMM-float`: `mismatched input '%' expecting {'.v2', '.v4', ID}`
+- 衍生 SEGFAULT: `2Dentropy`, `e2e_blackwell_gemm`, `cute_rmsnorm_debug`
+
+**总影响**：5 个 ctest 失败 + 7 个 tcgen05 fixture LL(*) prediction 失败。
+
+### 教训
+
+- **ANTLR4 lexer 禁止定义 bare string token 与 ID 规则冲突**。任何 `TOKEN : 'bare_string'` 中 `bare_string` 必须**不**匹配 `ID : [a-zA-Z_$][a-zA-Z_0-9$]*`。
+- **修复路径（任选其一）**：
+  1. 带点前缀（`.f16`）— 复用现有 dot-prefixed `F16` / `BF16` token
+  2. 用 lexer mode 隔离上下文 — 进入 `KIND COLONCOLON` 后切换 mode
+  3. 删除冗余 token — 让 `ID` 自动接管，parser 用 semantic predicate 验证
+- **声称 "X/X PASS" 必须用真实 kernel PTX 验证**。`ad808e3` 声称 "36/36 + 123/123 PASS"，但 `cute_rmsnorm` / `simpleGEMM` 不在测试覆盖 → "自证"测试漏掉了真实场景。修复前应将 bench/ 下的真实 kernel PTX 复制到 `tests/ptx/regression_*.ptx`。
+- **一个 lexer 修复可同时解决 Kleene star 预测冲突**：原 `fix-tcgen05-antlr-prediction-bug` WIP change 声称要解决 LL(*) 冲突，但实际根因是 lexer token 抢占 → 5 行 lexer/parser 修复同时恢复 `test_all_ptx.sh` 47/47 PASS（之前 40/47）。
+
+### 检查工具
+
+```bash
+# 1. 列出所有 bare string lexer tokens（不带点前缀的 token）
+grep -nE "^\w+\s*:\s*'[a-zA-Z]" src/grammar/ptxLexer.g4
+
+# 2. 对每个 bare token，验证其字符串模式是否与 ID 规则冲突
+# ID 规则 (line ~512)：[a-zA-Z_$][a-zA-Z_0-9$]*
+# 冲突条件：bare token 字符串只含 [a-zA-Z_0-9$]（无 . 或其他非 ID 字符）
+grep -A1 "^[A-Z_]\+\s*$" src/grammar/ptxLexer.g4 | grep -E ":\s*'[a-zA-Z_][a-zA-Z_0-9_]*'"
+
+# 3. 实施 ANTLR lexer 修改后必须用真实 kernel PTX 验证
+# 复制 bench/cute/*.ptx 到 tests/ptx/regression_*.ptx
+cp bench/cute/cute_rmsnorm.ptx tests/ptx/regression_cute_rmsnorm_f16_register.ptx
+bash ./tests/ptx/test_all_ptx.sh
+
+# 4. 跑全 ctest 套件确认无回归
+cd build && ctest --output-on-failure
+```
+
+### 真实案例
+
+- **bug 表现**: 5 个 ctest 失败（`simpleGEMM-float`, `2Dentropy`, `e2e_blackwell_gemm`, `cute_rmsnorm`, `cute_rmsnorm_debug`）+ 7 个 tcgen05 fixture LL(*) 失败
+- **根因 commit**: `ad808e3 fix(grammar): resolve tcgen05 LL(*) prediction conflict (ADR-0016, Change-1 MR-3)` 引入 bare `TCGEN_F16` / `TCGEN_BF16` tokens
+- **修复**: 5 行 lexer/parser diff（commit `55e216a`）— 删除 bare tokens + parser `tcgen05Qual` 加 `ID` fallback + `tcgen05Dtype` 用 dot-prefixed `F16` / `BF16`
+- **测试**: `tests/ptx/regression_cute_rmsnorm_f16_register.ptx`（commit `e92f1c1`，包含 8 个 `%f1N` 寄存器名）→ `./tests/ptx/test_all_ptx.sh` 47/47 PASS
+- **教训沉淀**: 本节（§25）+ `.opencode/skills/ptx-lessons-learned/SKILL.md` §核心经验 #9 + Checklist J
+- **后续**: `fix-tcgen05-antlr-prediction-bug` WIP change 归档（commit chore(openspec)），因为根因已由更简单的修复解决

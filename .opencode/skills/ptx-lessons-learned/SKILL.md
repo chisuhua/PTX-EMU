@@ -313,6 +313,34 @@ git checkout -b docs/sync-readme-after-<feature>
 - 修复量: README.md +15/-5 行（5 components, 3 commits, 5-step Phase 0-4 流程）
 - Lessons-learned 集成: §6 (artifacts-first) + §19 (跨模块) + §20 (pre-impl review) 三者协同
 
+### 9. ANTLR4 lexer 禁止定义 bare string token 与 ID 规则冲突（2026-07 新增）
+
+**问题模式**: 在 `src/grammar/ptxLexer.g4` 新增 `TOKEN : 'bare_string'` 时，如果 `bare_string` 字符串只含 `[a-zA-Z_0-9$]`（即匹配 `ID : [a-zA-Z_$][a-zA-Z_0-9$]*`），ANTLR4 lexer 平局规则（first-defined-wins）会让 TOKEN 抢占 ID。所有以 `bare_string` 为寄存器名/变量名的 PTX 全部解析失败。
+
+**关键经验**：
+- **bare string token 是反模式**：能用 `.foo`（带点前缀）就用点前缀；能用 lexer mode 隔离就用 lexer mode；能不定义新 token 就不定义
+- **声称 "X/X PASS" 必须用真实 kernel PTX 验证**：lexer 修改后必须 `cp bench/cute/*.ptx tests/ptx/regression_*.ptx` 跑 `./tests/ptx/test_all_ptx.sh`
+- **一个 lexer 修复可同时解决 Kleene star 预测冲突**：root cause 错位会导致多个看似独立的 bug 共存
+
+**诊断命令**：
+```bash
+# 1. 列出所有 bare string lexer tokens
+grep -nE "^\w+\s*:\s*'[a-zA-Z]" src/grammar/ptxLexer.g4
+
+# 2. 对每个 bare token，验证字符串模式与 ID 规则冲突
+grep -A1 "^[A-Z_]\+\s*$" src/grammar/ptxLexer.g4 | grep -E ":\s*'[a-zA-Z_][a-zA-Z_0-9_]*'"
+
+# 3. lexer 修改后用真实 kernel PTX 验证
+cp bench/cute/cute_rmsnorm.ptx tests/ptx/regression_cute_rmsnorm_f16_register.ptx
+bash ./tests/ptx/test_all_ptx.sh
+```
+
+**真实案例**:
+- `commit ad808e3`（fix(grammar): resolve tcgen05 LL(*) prediction conflict）引入 `TCGEN_F16 : 'f16'` + `TCGEN_BF16 : 'bf16'` 抢占 ID → 5 ctest 失败（cute_rmsnorm/simpleGEMM 等）+ 7 tcgen05 fixture LL(*) 失败
+- 修复（commit `55e216a`）：5 行 lexer/parser diff — 删除 bare tokens + parser `tcgen05Qual` 加 `ID` fallback + `tcgen05Dtype` 用 dot-prefixed `F16/BF16`
+- 测试（commit `e92f1c1`）：`tests/ptx/regression_cute_rmsnorm_f16_register.ptx`（含 8 个 `%f1N` 寄存器名）→ 47/47 PASS
+- 沉淀：§25 + Checklist L + 失败模式速查表新行
+
 ---
 
 ## ✅ 可复用 Checklist
@@ -455,6 +483,22 @@ git checkout -b docs/sync-readme-after-<feature>
   - 替代：git clean -fdn <dir>/（dry-run）→ git clean -fd <dir>/（不可逆，慎用）
 ```
 
+### Checklist L: ANTLR grammar modification（2026-07 新增）
+
+```
+□ 修改前：
+  □ 列出 lexer 中所有 bare string tokens：grep -nE "^\w+\s*:\s*'[a-zA-Z]" src/grammar/ptxLexer.g4
+  □ 验证每个 bare token 字符串不与 ID 规则冲突（不能只含 [a-zA-Z_0-9$]）
+  □ 如有冲突，必选其一：点前缀 / lexer mode / 删除冗余 token
+□ 修改后必跑 TDD 流程（per ptx-grammar-modification skill）：
+  □ RED：建立 baseline（git bisect / 5 个 ctest 失败列表）
+  □ 复制 bench/cute/*.ptx → tests/ptx/regression_*.ptx 真实 kernel guard
+  □ GREEN：实施 lexer/parser 修改 + cmake --build build --target GenerateParser
+  □ REFACTOR：./tests/ptx/test_all_ptx.sh 47/47 + ctest 全绿
+□ Commit 顺序：fix(grammar) → test(ptx) regression guard → docs(dev-process) lesson
+□ Commit message 引用 ad808e3（引入回归 commit）+ ADR-0016（架构依据）+ §25（lesson）
+```
+
 ---
 
 ## 🔍 失败模式速查表
@@ -474,6 +518,9 @@ git checkout -b docs/sync-readme-after-<feature>
 | **Retroactive artifact 模板不一致 / commit hash 漏掉** | **5 个并行 subagent 各自维护模板 + commit 验证重复** | **N≥3 共享模板 → 1 个 writing subagent 一次性合成（共享上下文 + 模板一致性自然保证）** |
 | **Inline 标记后原文被意外修改 / ERRATA 合并破坏快照** | **Edit 操作未用 Read 验证精确字符串** | **每个 Edit 前 Read 验证目标段落精确内容 → Edit 仅追加 inline → diff `grep -v '勘误'` 验证原文未变** |
 | **`git rm -r` 后 untracked 子目录残留文件系统上** | **`.gitignore` 规则使子目录 untracked，git rm 不处理** | **`git rm -r <dir>/` 后 `find <dir> -type d` 检查残留 → `rm -rf <untracked-subdir>`；或 dry-run `git clean -fdn` 后 `git clean -fd`** |
+| **ANTLR 解析错误：`mismatched input 'f16' expecting ID`** | **lexer 中 bare string token（如 `TCGEN_F16 : 'f16'`）抢占 ID 规则** | **`grep -nE "^\w+\s*:\s*'[a-zA-Z]" src/grammar/ptxLexer.g4` 列出 bare tokens；用点前缀（`.f16`）或 lexer mode 隔离** |
+| **声称 "X/X PASS" 但 ctest 失败（如 5 个 cute_rmsnorm/simpleGEMM 等）** | **grammar 修改未用真实 kernel PTX 验证**（"自证"测试漏掉真实场景） | **修改后必跑 `./tests/ptx/test_all_ptx.sh` + 复制 `bench/cute/*.ptx` 到 `tests/ptx/regression_*.ptx`** |
+| **Kleene star 预测冲突 + 寄存器解析失败同时发生** | **lexer 错位 — bare token 抢占 ID rule 同时影响 qualifier 与 register 解析** | **优先检查 lexer 是否有 bare string token；删除/加前缀一次性解决多类问题** |
 
 ---
 
