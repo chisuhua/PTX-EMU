@@ -16,10 +16,11 @@ src/ptxsim/instructions/
 ├── memory.cpp        # ld, st, atom, etc.
 ├── mov.cpp           # mov, shf, prmt, etc.
 ├── atomic.cpp        # (stub) atom operations
-├── wmma.cpp          # WmmaHandler::processWmmaOperation dispatches:
-│                      #   Blackwell tcgen05.* → real fragment arithmetic
-│                      #   pre-Blackwell wmma.* → throws UnsupportedInstructionException
-│                      #   (per ADR-0016).
+├── wmma.cpp          # WmmaHandler::processWmmaOperation throws
+│                      #   UnsupportedInstructionException for all wmma.*
+│                      #   (per ADR-0016, tcgen05 handlers migrated to tcgen05.cpp).
+├── tcgen05.cpp        # 5 processTcgen05Xxx handlers (mma/ld/st/commit/wait)
+│                      #   extracted from wmma.cpp (ADR-0016 Phase 1-2).
 └── cvt/              # CVT 策略模式（per ADR-0015）
    ├── cvt_strategy.{h,cpp}            # dispatcher (133 行) + ConversionStrategy 接口
    ├── cvt_float_to_float.{h,cpp}      # FloatToFloatStrategy   (f32↔f64↔f16)

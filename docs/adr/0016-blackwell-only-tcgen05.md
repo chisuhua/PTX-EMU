@@ -212,3 +212,7 @@ scope discipline、基础设施优先）**未变**。
 - 0.5.1–0.5.4 **不可独立 revert**（`TcQueue::enqueue_mma()` 写 TMEM slot，跨子系统引用
   破坏独立性 — 见 `cta_context.h:112` `BarrierModule` 模式但 TcQueue 跨 4 子系统）
 - 整体 Phase 0.5 revert = `git revert <0.5.1-sha>..<0.5.4-sha>`
+
+## Phase 1-2 完成记录
+
+**2026-07-07**: 5 core handler (mma/ld/st/commit/wait) 从 `wmma.cpp` 提取到独立 `src/ptxsim/instructions/tcgen05.cpp`（commit `df6dde7`，OpenSpec `implement-tcgen05-handlers-core`）。Handler 使用 `Tcgen05Instr::op_kind` 分发替代旧 qualifier-based 检测。`wmma.cpp` 简化为 pre-Blackwell `UnsupportedInstructionException`。
