@@ -35,11 +35,6 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
 
 // X-Macro展开
 
-// visitTcgen05Inst: Blackwell sm_100+ tensor core generator (ADR-0016).
-// Hand-maintained (not via VISITOR_TCGEN_INSTR X-Macro) because the grammar
-// defines a single tcgen05Inst rule, not 11 per-sub-op rules. Full qualifier
-// and operand extraction is deferred to change-3 (handler implementation);
-// this minimal version prevents the silent-drop that Metis review flagged.
 std::any PtxVisitor::visitTcgen05Inst(ptxparser::ptxParser::Tcgen05InstContext *ctx) {
     if (!currentKernel) return nullptr;
 
@@ -58,7 +53,28 @@ std::any PtxVisitor::visitTcgen05Inst(ptxparser::ptxParser::Tcgen05InstContext *
     }
 
     std::vector<Qualifier> qualifiers = extractQualifiersFromContext(ctx);
-    std::vector<OperandContext> operands;  // TODO(change-3): full operand extraction
+
+    std::vector<OperandContext> operands;
+    auto opListCtx = ctx->tcgen05Operands();
+    if (opListCtx) {
+        for (auto* opCtx : opListCtx->tcgen05Operand()) {
+            if (!opCtx) continue;
+            if (opCtx->vectorRegister()) {
+                auto* vr = opCtx->vectorRegister();
+                std::string text = vr->getText();
+                if (!text.empty() && text.front() == '{') text.erase(0, 1);
+                if (!text.empty() && text.back() == '}') text.pop_back();
+                operands.push_back(OperandContext(VariableOperand{text}));
+            } else if (opCtx->address()) {
+                operands.push_back(
+                    std::any_cast<OperandContext>(
+                        visitAddress(opCtx->address())));
+            } else if (opCtx->operand()) {
+                operands.push_back(
+                    createOperandFromContext(opCtx->operand()));
+            }
+        }
+    }
 
     currentKernel->kernelStatements.push_back(
         makeTcgen05Instr(op_kind, qualifiers, operands, ctx->getText()));
