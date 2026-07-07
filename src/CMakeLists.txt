@@ -120,6 +120,7 @@ add_library(ptxsim SHARED
     ptxsim/instructions/comparison.cpp
     ptxsim/instructions/atomic.cpp
     ptxsim/instructions/wmma.cpp
+    ptxsim/instructions/tcgen05.cpp
     ptxsim/instructions/arithmetic_ext.cpp
     ptxsim/instructions/cvt/cvt_helpers.cpp
     ptxsim/instructions/cvt/cvt_strategy.cpp

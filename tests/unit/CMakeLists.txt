@@ -512,18 +512,8 @@ set_tests_properties(unit_wmma_not_implemented PROPERTIES LABELS "unit;ptx;wmma;
 # RED phase: this test MUST FAIL until wmma.cpp implements real fragment
 # arithmetic (currently throws UnsupportedInstructionException).
 # ---------------------------------------------------------------------------
-add_catch_test(unit_tcgen05_mma_fragment
-    ptx/test_tcgen05_mma_fragment.cpp
-)
-set_tests_properties(unit_tcgen05_mma_fragment PROPERTIES LABELS "unit;ptx;wmma;tcgen05;fragment")
-
-# ---------------------------------------------------------------------------
-# Phase 2.1 (Fix #12): tcgen05.ld/st unit tests.
-# ---------------------------------------------------------------------------
-add_catch_test(unit_tcgen05_ld_st
-    ptx/test_tcgen05_ld_st.cpp
-)
-set_tests_properties(unit_tcgen05_ld_st PROPERTIES LABELS "unit;ptx;wmma;tcgen05;ld_st")
+# unit_tcgen05_mma_fragment — migrated to tests/unit/ptx/test_tcgen05_qualifier.cpp (ADR-0016 Phase 2)
+# unit_tcgen05_ld_st — migrated to tests/unit/ptx/test_tcgen05_opkind.cpp (ADR-0016 Phase 2)
 
 # ---------------------------------------------------------------------------
 # A2 cleanup (2026-06): the 7 tests below all `<<<1, 1>>>` real GPU kernels

@@ -380,15 +380,6 @@ set_tests_properties(integration_tc_queue_with_cta_context PROPERTIES LABELS "in
 # ============================================================================
 # Phase 1.2 (Fix #11): tcgen05.mma integration test
 # ============================================================================
-add_catch_test(integration_tcgen05_mma_sync
-    tcgen05/test_tcgen05_mma_sync.cpp
-)
-set_tests_properties(integration_tcgen05_mma_sync PROPERTIES LABELS "integration;tcgen05;mma;fragment")
-
+# integration_tcgen05_mma_sync — migrated to tests/integration/tcgen05/test_tcgen05_mma_parse.cpp (ADR-0016 Phase 2)
+# integration_tcgen05_ld_st_commit — migrated to tests/integration/tcgen05/test_tcgen05_ld_parse.cpp (ADR-0016 Phase 2)
 # ============================================================================
-# Phase 2.2 (Fix #13): tcgen05 ld→mma→commit→wait→st integration test
-# ============================================================================
-add_catch_test(integration_tcgen05_ld_st_commit
-    tcgen05/test_tcgen05_ld_st_commit.cpp
-)
-set_tests_properties(integration_tcgen05_ld_st_commit PROPERTIES LABELS "integration;tcgen05;commit;wait;roundtrip;ld_st")
