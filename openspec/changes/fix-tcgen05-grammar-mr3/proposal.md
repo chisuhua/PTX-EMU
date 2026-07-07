@@ -11,7 +11,7 @@ Change-1(archived `2026-07-06-implement-tcgen05-syntax-ir`)在 Metis pre-impleme
 - **MR-1**(已修):S2s crash → `commit 182385c`
 - **MR-2**(已修):silent drop → `commit 182385c`
 - **MR-3**(**本 change 修复**):grammar LL(*) 冲突 → 2 个 .ptx fixture fail(`tcgen05_alloc.ptx`, `tcgen05_mma.ptx` 在 `test_all_ptx.sh` 报错 `mismatched input '.all' expecting ':'`)
-- **MR-4**(**本 change 修复**):2 个旧集成测试仍用 `S_WMMA`/`makeWmmaInstr`/`WmmaType`,与新 IR 命名空间不兼容
+- **MR-4**(**本 change 修复**):2 个旧集成测试仍用 `makeWmmaInstr`/`WmmaType`,与新 IR 命名空间不兼容
 - **MR-5**(已修):documentation → `commit 220e712`
 
 handler 实施(change-3b)硬依赖 grammar 正确性,故本 change 是 **change-3b 的强制前置**。
@@ -24,7 +24,7 @@ handler 实施(change-3b)硬依赖 grammar 正确性,故本 change 是 **change-
 
 | 文件 | 范围 |
 |------|------|
-| `tests/ptx/tcgen05_{dealloc,relinquish,ld,st,cp,cp_multicast,mma_block_scale,mma_ws,commit,wait,fence}.ptx` | 11 个新 .ptx fixtures(总 13) |
+| `tests/ptx/tcgen05_{dealloc,relinquish,ld,st,cp,cp_multicast,mma_block_scale,commit,wait,fence}.ptx` | 10 个新 .ptx fixtures(总 12) |
 | `tests/ptx/tcgen05_{alloc,mma}.ptx` | **修复现有 2 个**(grammar LL(*) 冲突导致 fail) |
 
 ### 修改
@@ -33,9 +33,9 @@ handler 实施(change-3b)硬依赖 grammar 正确性,故本 change 是 **change-
 |------|------|
 | `src/grammar/ptxInstructions.g4` | 修复 `tcgen05Qual` 规则的 LL(*) 预测冲突(2 fixture fail 根因) |
 | `src/grammar/ptxLexer.g4` | 若 token 顺序冲突,调整最长匹配优先级 |
-| `tests/integration/tcgen05/test_tcgen05_mma_sync.cpp` | 迁移 `S_WMMA` → `S_TCGEN05_MMA` + `makeWmmaInstr` → `makeTcgen05Instr` + `WmmaType::WMMA_MMA` → `Tcgen05OpKind::MMA` |
-| `tests/integration/tcgen05/test_tcgen05_ld_st_commit.cpp` | 迁移 5 个 `S_WMMA` 引用 + 5 个 `makeWmmaInstr` 引用 + 5 个 `WmmaType` 引用 |
-| `include/ptx_ir/ptx_qualifier.def` | 删除 4 个 `Q_TCGEN05_LD/ST/COMMIT/WAIT` stub(因 wmma.cpp 不再用,旧测试已迁移) |
+| `tests/integration/tcgen05/test_tcgen05_mma_sync.cpp` | 添加 `makeTcgen05Instr` 编译期别名验证(不加入执行向量) + `WmmaType::WMMA_MMA` → `Tcgen05OpKind::MMA` |
+| `tests/integration/tcgen05/test_tcgen05_ld_st_commit.cpp` | 添加 5 个编译期别名验证 + 5 个 `makeWmmaInstr` 引用 + 5 个 `WmmaType` 引用 |
+| `include/ptx_ir/ptx_qualifier.def` | **保留** 4 个 `Q_TCGEN05_LD/ST/COMMIT/WAIT` stub(推迟到 [implement-tcgen05-handlers-core](../implement-tcgen05-handlers-core/),见 design.md D4;wmma.cpp 仍有 8 引用 + 2 测试文件 6 引用) |
 
 ### 不修改(范围外,留待后续 change)
 
@@ -73,16 +73,16 @@ handler 实施(change-3b)硬依赖 grammar 正确性,故本 change 是 **change-
 
 ### Phase 2: 补全 .ptx fixtures(1 commit)
 
-1. 创建 11 个新 .ptx fixtures(基于 Change-1 specs `tcgen05-parse-tests` 的 scenarios)
-2. 所有 13 个 fixtures 在 `test_all_ptx.sh` 中 PASS
+1. 创建 10 个新 .ptx fixtures(基于 Change-1 specs `tcgen05-parse-tests` 的 scenarios)
+2. 所有 12 个 fixtures 在 `test_all_ptx.sh` 中 PASS
 3. 注册到 `test_all_ptx.sh`
 
-### Phase 3: 迁移旧测试(1 commit)
+### Phase 3: 编译期别名验证(1 commit)
 
-1. `tests/integration/tcgen05/test_tcgen05_mma_sync.cpp` 改用新 IR API
-2. `tests/integration/tcgen05/test_tcgen05_ld_st_commit.cpp` 改用新 IR API
-3. 删除 4 个 `Q_TCGEN05_*` stub qualifiers
-4. 旧测试仍 PASS(behavior 不变,仅 IR 命名空间)
+1. `tests/integration/tcgen05/test_tcgen05_mma_sync.cpp` 添加 `makeTcgen05Instr` 编译期别名(不加入执行向量,仅编译 + `static_assert` 验证)
+2. `tests/integration/tcgen05/test_tcgen05_ld_st_commit.cpp` 添加 `makeTcgen05Instr` 编译期别名(同上)
+3. 保留 4 个 `Q_TCGEN05_*` stub qualifiers(推迟到 [implement-tcgen05-handlers-core](../implement-tcgen05-handlers-core/),见 design.md D4;wmma.cpp 仍有 8 引用 + 2 测试文件 6 引用)
+4. 旧测试仍 PASS(behavior 不变,旧路径执行;编译期别名仅验证 factory 正确)
 5. `ctest -R tcgen05 -V` 验证
 
 ### Phase 4: Archive(1 commit,per Checklist G)
@@ -97,14 +97,14 @@ handler 实施(change-3b)硬依赖 grammar 正确性,故本 change 是 **change-
 ### New Capabilities
 
 - `tcgen05-grammar-fix`:grammar LL(*) 冲突修复(spec 范围不变,补到 `tcgen05-grammar` spec)
-- `tcgen05-fixtures`:13 个 .ptx 端到端 fixtures(补到 `tcgen05-parse-tests` spec)
-- `tcgen05-old-test-migration`:2 个旧集成测试迁移(补到 `tcgen05-parse-tests` spec)
+- `tcgen05-fixtures`:12 个 .ptx 端到端 fixtures(补到 `tcgen05-parse-tests` spec)
+- `tcgen05-old-test-migration`:2 个旧集成测试添加编译期别名验证(补到 `tcgen05-parse-tests` spec)
 
 ### Modified Capabilities
 
 - `tcgen05-grammar`:spec 修订(MR-3 冲突已修)
-- `tcgen05-parse-tests`:spec 修订(13 fixtures 全 PASS,旧测试已迁移)
-- `tcgen05-ir-types`:spec 修订(Q_TCGEN05_* 4 stub 已删)
+- `tcgen05-parse-tests`:spec 修订(12 fixtures 全 PASS,旧测试已迁移)
+- `tcgen05-ir-types`:spec 修订(Q_TCGEN05_* 4 stub 保留,推迟到 implement-tcgen05-handlers-core)
 
 ## Impact
 
@@ -114,9 +114,9 @@ handler 实施(change-3b)硬依赖 grammar 正确性,故本 change 是 **change-
 |---|---|---|
 | `src/grammar/ptxInstructions.g4` | 修改(grammar fix) | ±80 |
 | `src/grammar/ptxLexer.g4` | 修改(可能) | ±20 |
-| `tests/ptx/tcgen05_*.ptx`(11 个新 + 2 个修) | 新增/修复 | +220 |
+| `tests/ptx/tcgen05_*.ptx`(10 个新 + 2 个修) | 新增/修复 | +220 |
 | `tests/integration/tcgen05/test_tcgen05_*.cpp`(2 个迁移) | 修改 | ±60 |
-| `include/ptx_ir/ptx_qualifier.def` | 修改(删除 4 stub) | -4 |
+| `include/ptx_ir/ptx_qualifier.def` | 不修改(4 stub 保留,推迟到 implement-tcgen05-handlers-core) | 0 |
 | **总计** | | **+376** |
 
 ### 影响的依赖
