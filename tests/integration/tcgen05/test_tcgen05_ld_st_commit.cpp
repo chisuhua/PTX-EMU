@@ -64,6 +64,11 @@ StatementContext make_ld_stmt() {
     quals.push_back(Qualifier::Q_CLUSTER);
     quals.push_back(Qualifier::Q_F16);
     quals.push_back(Qualifier::Q_TCGEN05_LD);
+    // B2 factory verification alias. Do not remove until implement-tcgen05-handlers-core.
+    auto tcgen05_alias =
+        makeTcgen05Instr(Tcgen05OpKind::LD, quals, {}, "tcgen05.ld");
+    static_assert(std::is_same_v<decltype(tcgen05_alias), StatementContext>);
+    (void)tcgen05_alias;
     return makeWmmaInstr(WmmaType::WMMA_LOAD, quals, {}, "tcgen05.ld");
 }
 
@@ -72,6 +77,11 @@ StatementContext make_mma_stmt() {
     std::vector<Qualifier> quals;
     quals.push_back(Qualifier::Q_CLUSTER);
     quals.push_back(Qualifier::Q_F16);
+    // B2 factory verification alias. Do not remove until implement-tcgen05-handlers-core.
+    auto tcgen05_alias =
+        makeTcgen05Instr(Tcgen05OpKind::MMA, quals, {}, "tcgen05.mma");
+    static_assert(std::is_same_v<decltype(tcgen05_alias), StatementContext>);
+    (void)tcgen05_alias;
     return makeWmmaInstr(WmmaType::WMMA_MMA, quals, {}, "tcgen05.mma");
 }
 
@@ -81,6 +91,11 @@ StatementContext make_commit_stmt() {
     quals.push_back(Qualifier::Q_CLUSTER);
     quals.push_back(Qualifier::Q_F16);
     quals.push_back(Qualifier::Q_TCGEN05_COMMIT);
+    // B2 factory verification alias. Do not remove until implement-tcgen05-handlers-core.
+    auto tcgen05_alias =
+        makeTcgen05Instr(Tcgen05OpKind::COMMIT, quals, {}, "tcgen05.commit");
+    static_assert(std::is_same_v<decltype(tcgen05_alias), StatementContext>);
+    (void)tcgen05_alias;
     return makeWmmaInstr(WmmaType::WMMA_COMMIT, quals, {}, "tcgen05.commit");
 }
 
@@ -90,6 +105,11 @@ StatementContext make_wait_stmt() {
     quals.push_back(Qualifier::Q_CLUSTER);
     quals.push_back(Qualifier::Q_F16);
     quals.push_back(Qualifier::Q_TCGEN05_WAIT);
+    // B2 factory verification alias. Do not remove until implement-tcgen05-handlers-core.
+    auto tcgen05_alias =
+        makeTcgen05Instr(Tcgen05OpKind::WAIT, quals, {}, "tcgen05.wait");
+    static_assert(std::is_same_v<decltype(tcgen05_alias), StatementContext>);
+    (void)tcgen05_alias;
     return makeWmmaInstr(WmmaType::WMMA_WAIT, quals, {}, "tcgen05.wait");
 }
 
@@ -99,6 +119,11 @@ StatementContext make_st_stmt() {
     quals.push_back(Qualifier::Q_CLUSTER);
     quals.push_back(Qualifier::Q_F16);
     quals.push_back(Qualifier::Q_TCGEN05_ST);
+    // B2 factory verification alias. Do not remove until implement-tcgen05-handlers-core.
+    auto tcgen05_alias =
+        makeTcgen05Instr(Tcgen05OpKind::ST, quals, {}, "tcgen05.st");
+    static_assert(std::is_same_v<decltype(tcgen05_alias), StatementContext>);
+    (void)tcgen05_alias;
     return makeWmmaInstr(WmmaType::WMMA_STORE, quals, {}, "tcgen05.st");
 }
 

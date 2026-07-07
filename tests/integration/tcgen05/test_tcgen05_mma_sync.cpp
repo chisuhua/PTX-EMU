@@ -61,6 +61,11 @@ StatementContext make_mma_stmt() {
     std::vector<Qualifier> quals;
     quals.push_back(Qualifier::Q_CLUSTER);
     quals.push_back(Qualifier::Q_F16);
+    // B2 factory verification alias. Do not remove until implement-tcgen05-handlers-core.
+    auto tcgen05_alias =
+        makeTcgen05Instr(Tcgen05OpKind::MMA, quals, {}, "tcgen05.mma");
+    static_assert(std::is_same_v<decltype(tcgen05_alias), StatementContext>);
+    (void)tcgen05_alias;
     return makeWmmaInstr(WmmaType::WMMA_MMA, quals, {}, "tcgen05.mma");
 }
 
