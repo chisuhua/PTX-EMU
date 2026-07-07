@@ -132,7 +132,7 @@
 
 | Risk | Mitigation |
 |------|------------|
-| R1: fragment arithmetic 与硬件不一致 | Golden value 来自 Cutlass 3.x |
+| R1: fragment arithmetic 与硬件不一致 | Golden value 来自 `wmma.cpp:374-420` inline mma + PTX ISA §9.7.16 手算(per design.md D1 修正) |
 | R2: visitor 提取 qualifier 错误 | ctest -L "integration;tcgen05" 验证 |
 | R3: wmma.cpp 删除后旧测试 fail | Phase 3 前先迁移(change-3a) |
 | R4: E2E 真实 PTX 不可用 | Hand-written 真实风格 |

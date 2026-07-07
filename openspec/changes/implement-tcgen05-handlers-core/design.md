@@ -47,9 +47,9 @@ Change-1 (archive) 建立独立 tcgen05 命名空间 + IR,Change-3a 修复 gramm
 - 提取:inline mma handler(line 352 + line 374-420)→ 新 `tcgen05.cpp::processTcgen05Mma`
 - 保留:pre-Blackwell `wmma.mma.sync.*` 路径(per ADR-0016 锁定,`UnsupportedInstructionException`)
 
-**采纳**: 从 Cutlass 3.x `SM100_MMA_F16_F16_F32` reference 提取 golden values,放在 `tests/ptx/reference/tcgen05_mma_golden.h`。
+**Golden value 来源(2026-07-07 修正)**:复用 `wmma.cpp:374-420` 现有 inline mma fragment arithmetic + PTX ISA §9.7.16 规范手算(见 D1 完整描述)。**Cutlass 3.x 在 Day 1 验证时确认环境不可用**。
 
-**拒绝**: cuobjdump -xptx 真实硬件(无 GPU 访问);PTX ISA §9.7.16 规范手算(易错)。
+**拒绝**: cuobjdump -xptx 真实硬件(无 GPU 访问)。
 
 ### D2: handler 文件拆分 — 单文件 `tcgen05.cpp`
 
