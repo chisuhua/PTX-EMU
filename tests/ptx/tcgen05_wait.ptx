@@ -1,0 +1,17 @@
+// tests/ptx/tcgen05_wait.ptx
+// PTX ISA §9.7.16 — tcgen05.wait syntax test (Blackwell sm_100+)
+// Added by fix-tcgen05-grammar-mr3 (ADR-0016)
+.version 9.0
+.target sm_100
+.address_size 64
+
+.visible .entry test_tcgen05_wait(.param .u64 param)
+{
+    .reg .b64 %rd<4>;
+    .reg .u32 %r<2>;
+    .shared .b32 smem_alloc[1];
+
+    ld.param.u64 %rd0, [param];
+    tcgen05.wait.cta_group::1;
+    ret;
+}

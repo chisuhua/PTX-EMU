@@ -445,17 +445,17 @@ M64N256K16          : 'm64n256k16';
 SCALE_VEC_2X        : '2X';
 SCALE_VEC_4X        : '4X';
 
-// ld/st shape and multiplier (for .ld.sync.aligned.32x32b.x4.b32)
-SHAPE_32X32B        : '32x32b';
+// ld/st shape and multiplier (with leading dot for tcgen05 qualifier context)
+SHAPE_32X32B        : '.32x32b';
 TCGEN05_X1          : '.x1';
 TCGEN05_X2          : '.x2';
 TCGEN05_X4          : '.x4';
 
-// cp shape tokens
-SHAPE_128X256B      : '128x256b';
-SHAPE_64X128B       : '64x128b';
-SHAPE_64X256B       : '64x256b';
-SHAPE_128X128B      : '128x128b';
+// cp shape tokens (with leading dot for tcgen05 qualifier context)
+SHAPE_128X256B      : '.128x256b';
+SHAPE_64X128B       : '.64x128b';
+SHAPE_64X256B       : '.64x256b';
+SHAPE_128X128B      : '.128x128b';
 
 // mma kind values (bare, for .kind::f16 reuse F16, .kind::bf16 reuse BF16, etc.)
 TCGEN_F8F6F4        : 'f8f6f4';
