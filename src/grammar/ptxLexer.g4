@@ -397,12 +397,14 @@ TCGEN05             : 'tcgen05';
 
 // tcgen05 sub-ops (bare tokens, reuse existing MMA/LD/ST/FENCE/ARRIVE/LOAD/STORE)
 // New bare sub-op tokens (no existing equivalent):
-TCGEN05_ALLOC       : 'alloc';
-TCGEN05_DEALLOC     : 'dealloc';
-TCGEN05_RELINQUISH  : 'relinquish_alloc_permit';
-TCGEN05_CP          : 'cp';
-TCGEN05_COMMIT      : 'commit';
-TCGEN05_WAIT        : 'wait';
+TCGEN05_ALLOC       : '.alloc';
+TCGEN05_DEALLOC     : '.dealloc';
+TCGEN05_RELINQUISH  : '.relinquish_alloc_permit';
+TCGEN05_CP          : '.cp';
+TCGEN05_COMMIT      : '.commit';
+TCGEN05_WAIT        : '.wait';
+TCGEN_F16            : 'f16';
+TCGEN_BF16           : 'bf16';
 
 // Sync/aligned (bare, used after .ld/.st/.alloc/.dealloc)
 TCGEN05_SYNC        : 'sync';

@@ -440,7 +440,7 @@ wmmaKind : KIND COLONCOLON MXF4NVF4 ;
 // kept above for backward compat and will be removed in change-4.
 // =============================================================================
 tcgen05Inst
-    : TCGEN05 DOT tcgen05SubOp tcgen05Qual* typeSpecifier? tcgen05Operands? SEMI
+    : TCGEN05 DOT? tcgen05SubOp (DOT? tcgen05Qual)* typeSpecifier? tcgen05Operands? SEMI
     ;
 
 tcgen05SubOp
@@ -459,7 +459,7 @@ tcgen05SubOp
 // All possible tcgen05 qualifiers in any order
 tcgen05Qual
     : TCGEN_CTA_GROUP COLONCOLON IMMEDIATE              // .cta_group::1 / .cta_group::2
-    | KIND COLONCOLON tcgen05Dtype                       // .kind::f16 / .kind::bf16 / etc.
+    | KIND COLONCOLON (TCGEN_F16 | TCGEN_BF16 | TCGEN_TF32 | F8 | F4 | TCGEN_I8)  // .kind::f16 / .kind::bf16
     | TCGEN_MULTICAST COLONCOLON TCGEN_CLUSTER           // .multicast::cluster
     | TCGEN_SEM                                          // .sem
     | TCGEN_PACK COLONCOLON B16                          // .pack::b16
@@ -479,11 +479,11 @@ tcgen05Qual
     ;
 
 tcgen05Dtype
-    : F16
-    | BF16
+    : TCGEN_F16
+    | TCGEN_BF16
     | TCGEN_TF32
-    | F8
     | F4
+    | F8
     | TCGEN_I8
     | TCGEN_F8F6F4
     | TCGEN_MXF4
