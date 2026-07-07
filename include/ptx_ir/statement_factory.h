@@ -285,7 +285,23 @@ inline StatementContext makeTcgen05Instr(
     instr.qualifiers = qualifiers;
     instr.operands = operands;
     instr.instructionText = text;
-    return makeStatementContext(static_cast<StatementType>(S_TCGEN05_MMA), std::move(instr), text);
+    // Map op_kind to correct S_TCGEN05_* StatementType (fix-tcgen05-grammar-mr3 B2)
+    StatementType stmt_type;
+    switch (op_kind) {
+        case Tcgen05OpKind::ALLOC:      stmt_type = static_cast<StatementType>(S_TCGEN05_ALLOC); break;
+        case Tcgen05OpKind::DEALLOC:    stmt_type = static_cast<StatementType>(S_TCGEN05_DEALLOC); break;
+        case Tcgen05OpKind::RELINQUISH: stmt_type = static_cast<StatementType>(S_TCGEN05_RELINQUISH); break;
+        case Tcgen05OpKind::LD:         stmt_type = static_cast<StatementType>(S_TCGEN05_LD); break;
+        case Tcgen05OpKind::ST:         stmt_type = static_cast<StatementType>(S_TCGEN05_ST); break;
+        case Tcgen05OpKind::CP:         stmt_type = static_cast<StatementType>(S_TCGEN05_CP); break;
+        case Tcgen05OpKind::MMA:        stmt_type = static_cast<StatementType>(S_TCGEN05_MMA); break;
+        case Tcgen05OpKind::MMA_WS:     stmt_type = static_cast<StatementType>(S_TCGEN05_MMA_WS); break;
+        case Tcgen05OpKind::COMMIT:     stmt_type = static_cast<StatementType>(S_TCGEN05_COMMIT); break;
+        case Tcgen05OpKind::WAIT:       stmt_type = static_cast<StatementType>(S_TCGEN05_WAIT); break;
+        case Tcgen05OpKind::FENCE:      stmt_type = static_cast<StatementType>(S_TCGEN05_FENCE); break;
+        default:                        stmt_type = static_cast<StatementType>(S_TCGEN05_MMA); break;
+    }
+    return makeStatementContext(stmt_type, std::move(instr), text);
 }
 
 // --- 2.18 原子指令 (AtomInstr) ---
