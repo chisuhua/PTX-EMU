@@ -2,10 +2,10 @@
 
 > **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) Accepted
 > **前置 changes**(全部必须 archive 后才能执行本 change):
->   - `archive/2026-07-06-implement-tcgen05-syntax-ir` (Change-1, archived)
->   - `extend-blackwell-tcgen05-infra` (Change-2, pending)
->   - `fix-tcgen05-grammar-mr3` (Change-3a, pending)
->   - `implement-tcgen05-handlers-core` (Change-3b, pending)
+>   - `archive/2026-07-06-implement-tcgen05-syntax-ir` (Change-1, ✅ archived)
+>   - `archive/2026-07-06-extend-blackwell-tcgen05-infra` (Change-2, ✅ archived)
+>   - `archive/2026-07-07-fix-tcgen05-grammar-mr3` (Change-3a, ✅ archived 2026-07-07)
+>   - `archive/2026-07-07-implement-tcgen05-handlers-core` (Change-3b, ✅ archived 2026-07-07 @ `df6dde7`)
 >   - `implement-tcgen05-handlers-extended` (Change-3d, pending,可选 — 若未实施,本 change 仍可执行)
 > **设计时教训**: `ptx-lessons-learned` §3(分 Phase commit)+ §6(artifacts-first)+ Checklist G(OpenSpec lifecycle)+ Checklist I(重大功能交付清单)
 
