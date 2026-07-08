@@ -216,3 +216,22 @@ scope discipline、基础设施优先）**未变**。
 ## Phase 1-2 完成记录
 
 **2026-07-07**: 5 core handler (mma/ld/st/commit/wait) 从 `wmma.cpp` 提取到独立 `src/ptxsim/instructions/tcgen05.cpp`（commit `df6dde7`，OpenSpec `implement-tcgen05-handlers-core`）。Handler 使用 `Tcgen05Instr::op_kind` 分发替代旧 qualifier-based 检测。`wmma.cpp` 简化为 pre-Blackwell `UnsupportedInstructionException`。
+
+**2026-07-08**: 5 core handler 测试覆盖（commit `fd74261`，OpenSpec `fix-tcgen05-test-coverage-gaps`）。
+- 5 integration parse 测试(`tests/integration/ptx/test_tcgen05_*_parse.cpp`)
+- 1 unit test + 1 dispatch integration test(`tests/integration/tcgen05/test_tcgen05_dispatch.cpp`)
+- 1 unit test `tests/unit/ptx_ir/test_tcgen05_mma_golden.cpp` + 1 `tests/unit/ptx_ir/test_tcgen05_pipeline_handler.cpp`
+- 1 E2E GEMM kernel(`tests/e2e/kernel/test_tcgen05_mma_gemm.cu`,f32 fallback)
+- 1 golden value(`tests/reference/ptx_tcgen05/tcgen05_mma_golden.h`,PTX ISA §9.7.16 手算 f16×f16→f32)
+- 测试结果:11 tcgen05-tagged ctest 全 PASS
+
+**2026-07-08**: tcgen05 handler dispatch 管道接入（commit `cc49ae7`，OpenSpec `fix-tcgen05-handler-dispatch`）。
+- `Tcgen05Handler::processTcgen05Operation` 统一 dispatch 入口(`tcgen05.cpp` 末段)
+- 11 个 `S_TCGEN05_*` X-Macro 注册到 `InstructionFactory`
+- `Tcgen05PipelineHandler` 3-stage pipeline stub(`ptxir+ptxsim` X-Macro wiring @ `3a30da8`)
+- 5 handler 函数保留兼容(`fix-tcgen05-test-coverage-gaps` dead-code coverage test 需 `&ptxsim::processTcgen05Mma` 函数指针)
+- 6 extended op_kind(ALLOC/DEALLOC/RELINQUISH/CP/MMA_WS/FENCE)throw deferred — 待 `implement-tcgen05-handlers-extended`
+
+## Archive 文档一致性声明（2026-07-08）
+
+`openspec/changes/archive/2026-07-07-fix-tcgen05-antlr-prediction-bug/` 的 `proposal.md`/`design.md`/`handoff.md` 声称修复"ANTLR LL(*) 预测冲突",但真正根因是 **lexer bare string token 与 ID 规则冲突**（详见 [`docs/dev-process/lessons-learned.md` §25](../../docs/dev-process/lessons-learned.md#25-antlr4-le)）。按 `ptx-lessons-learned §6 + Checklist G` 铁律"已归档 change 不 amend",**本节为权威 override**: §25 为根因真相,archive 文档保留作为历史。
