@@ -70,3 +70,13 @@ set_tests_properties(e2e_blackwell_gemm PROPERTIES LABELS "e2e;tcgen05;gemm;sm10
 target_include_directories(e2e_blackwell_gemm PRIVATE
     ${PROJECT_SOURCE_DIR}/bench/cute/include
 )
+
+# ============================================================================
+# tcgen05.mma GEMM E2E — explicit 5 tcgen05 instructions + f32 fallback
+# (ADR-0016, fix-tcgen05-test-coverage-gaps, Priority 3 fallback path)
+# ============================================================================
+add_catch_test(e2e_tcgen05_mma_gemm
+    kernel/test_tcgen05_mma_gemm.cu
+)
+set_tests_properties(e2e_tcgen05_mma_gemm PROPERTIES
+    LABELS "e2e;kernel;tcgen05;gemm;mma;sm100")

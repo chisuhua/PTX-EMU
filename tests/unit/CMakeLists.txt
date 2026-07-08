@@ -608,3 +608,16 @@ add_catch_test(unit_extern_function
     parser/test_extern_function.cpp
 )
 set_tests_properties(unit_extern_function PROPERTIES LABELS "unit;parser;extern")
+
+# ============================================================================
+# tcgen05 dead-code coverage unit test (ADR-0016, fix-tcgen05-test-coverage-gaps)
+# Validates golden value file + handler header linkage. Direct handler
+# invocation test deferred to fix-tcgen05-handler-dispatch (when dispatch
+# is wired, real warp execution will exercise processTcgen05Mma and we
+# can compare TMEM output against the same golden values).
+# ============================================================================
+add_catch_test(unit_ptx_ir_tcgen05_mma_golden
+    ptx_ir/test_tcgen05_mma_golden.cpp
+)
+set_tests_properties(unit_ptx_ir_tcgen05_mma_golden PROPERTIES
+    LABELS "unit;ptx_ir;tcgen05;mma;golden")
