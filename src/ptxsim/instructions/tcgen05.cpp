@@ -539,4 +539,49 @@ void processTcgen05Wait(ThreadContext* context, const Tcgen05Instr& instr) {
     PTX_DEBUG_EMU("tcgen05.wait: waiting on group_id=1 for lane 0");
 }
 
+// Tcgen05Handler::processTcgen05Operation — dispatches on instr.op_kind
+// to the 5 per-op free functions (kept for backward compat with
+// fix-tcgen05-test-coverage-gaps dead-code coverage test). Deferred
+// op_kinds (ALLOC/DEALLOC/CP/MMA_WS/FENCE) throw to surface them
+// until implement-tcgen05-handlers-extended lands.
 }  // namespace ptxsim
+
+// Tcgen05Handler is in global namespace (per instruction_handlers.h
+// X-Macro factory registration pattern).
+void Tcgen05Handler::processTcgen05Operation(
+    ThreadContext *context, void **operands,
+    const std::vector<Qualifier> &qualifiers,
+    const Tcgen05Instr &instr) {
+    (void)operands;
+    (void)qualifiers;
+
+    switch (instr.op_kind) {
+    case Tcgen05OpKind::MMA:
+        ptxsim::processTcgen05Mma(context, instr);
+        break;
+    case Tcgen05OpKind::LD:
+        ptxsim::processTcgen05Ld(context, instr);
+        break;
+    case Tcgen05OpKind::ST:
+        ptxsim::processTcgen05St(context, instr);
+        break;
+    case Tcgen05OpKind::COMMIT:
+        ptxsim::processTcgen05Commit(context, instr);
+        break;
+    case Tcgen05OpKind::WAIT:
+        ptxsim::processTcgen05Wait(context, instr);
+        break;
+    case Tcgen05OpKind::ALLOC:
+    case Tcgen05OpKind::DEALLOC:
+    case Tcgen05OpKind::RELINQUISH:
+    case Tcgen05OpKind::CP:
+    case Tcgen05OpKind::MMA_WS:
+    case Tcgen05OpKind::FENCE:
+        throw UnsupportedInstructionException(
+            "tcgen05.*",
+            "op_kind " + std::to_string(static_cast<int>(instr.op_kind)) +
+            " not yet implemented (per ADR-0016, deferred but wired; "
+            "see implement-tcgen05-handlers-extended)");
+        break;
+    }
+}

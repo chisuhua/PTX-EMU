@@ -113,6 +113,12 @@
         void executeAsyncCopy(ThreadContext *context, const CpAsyncInstr &instr) override; \
     };
 
+// Tcgen05: 11 X-Macro entries share a single Tcgen05Handler class
+// (dispatched internally by instr.op_kind). Override the macro to be
+// a no-op for the X-Macro expansion below; the real class is declared
+// manually further down.
+#define DECLARE_TCGEN05_INSTR_HANDLER(Name)  /* no-op: see below */
+
 #define DECLARE_MEMBAR_INSTR_HANDLER(Name)     DECLARE_SIMPLE_HANDLER(Name)
 #define DECLARE_FENCE_INSTR_HANDLER(Name)      DECLARE_SIMPLE_HANDLER(Name)
 #define DECLARE_REDUX_INSTR_HANDLER(Name)      DECLARE_SIMPLE_HANDLER(Name)
@@ -132,9 +138,25 @@
 #define DECLARE_ABI_DIRECTIVE_HANDLER(Name)    DECLARE_SIMPLE_HANDLER(Name)
 
 // Generate all handler declarations
+// Tcgen05 has 11 sub-op X entries that all share the same handler class
+// (Tcgen05Handler dispatches by instr.op_kind internally). To avoid 11
+// redefinition errors, the X-Macro skips TCGEN05_INSTR and we declare
+// the single Tcgen05Handler class manually below.
 #define X(enum_val, op_name, op_str, op_count, struct_kind, instr_kind) \
     DECLARE_##struct_kind##_HANDLER(op_str)
 #include "ptx_ir/ptx_op.def"
 #undef X
+#undef DECLARE_TCGEN05_INSTR_HANDLER  // Clear the 11-times-expanded macro
+
+// Manual single Tcgen05Handler class declaration (replaces the
+// 11-times-expanded DECLARE_TCGEN05_INSTR_HANDLER that conflicted).
+// Class is in GLOBAL namespace to match the X-Macro factory registration
+// pattern (handler_map[S_TCGEN05_*] = new Tcgen05Handler()).
+class Tcgen05Handler : public Tcgen05PipelineHandler {
+public:
+    void processTcgen05Operation(ThreadContext *context, void **operands,
+                                 const std::vector<Qualifier> &qualifiers,
+                                 const Tcgen05Instr &instr) override;
+};
 
 #endif // PTXSIM_INSTRUCTION_HANDLERS_H

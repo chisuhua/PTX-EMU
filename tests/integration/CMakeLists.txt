@@ -356,6 +356,17 @@ set_tests_properties(integration_ptx_tcgen05_wait_parse PROPERTIES
     LABELS "integration;ptx;tcgen05;parse;wait")
 
 # ============================================================================
+# tcgen05 dispatch integration tests (ADR-0016, fix-tcgen05-handler-dispatch)
+# Verifies InstructionFactory::initialize() registers non-null handlers for
+# all 11 S_TCGEN05_* enum values (per X-Macro in instruction_factory.cpp).
+# ============================================================================
+add_catch_test(integration_tcgen05_dispatch
+    tcgen05/test_tcgen05_dispatch.cpp
+)
+set_tests_properties(integration_tcgen05_dispatch PROPERTIES
+    LABELS "integration;tcgen05;dispatch")
+
+# ============================================================================
 # Memory 集成测试 — 驱动模拟器
 # B1 plan: shared memory layout, multi-buffer offsets, zero-init verification
 # ============================================================================

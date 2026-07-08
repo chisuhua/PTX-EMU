@@ -733,7 +733,16 @@ std::any PtxVisitor::visitInstruction(ptxparser::ptxParser::InstructionContext *
 #define  VISITOR_IMPL_ASYNC_STORE(opstr, opname, instr_kind)
 #define  VISITOR_IMPL_ASYNC_REDUCE(opstr, opname, instr_kind)
 #define  VISITOR_IMPL_TCGEN_INSTR(opstr, opname, instr_kind)
+// Tcgen05: 11 S_TCGEN05_* enums share a single visitTcgen05Inst handler
+// (grammar has 1 tcgen05Inst rule). X-Macro expansion is a no-op here;
+// the dispatch from visitTcgen05Inst to instr.op_kind happens inside
+// PtxVisitor::visitTcgen05Inst (ptx_visitor_wmma.cpp:38-).
+#define  VISITOR_TCGEN05_INSTR(openum, opstr, opname, opcount)  /* no-op */
+#define  VISITOR_IMPL_TCGEN05_INSTR(openum, opstr, opname, opcount)  /* no-op */
 #define  VISITOR_IMPL_TENSORMAP_INSTR(opstr, opname, instr_kind)
+// 'tensor' instr_kind is used for tcgen05.* (Blackwell tensor cores).
+// Like 'matrix' (WMMA), it has no per-instruction ANTLR grammar rule.
+#define  VISITOR_IMPL_tensor(opstr, opname, instr_kind)  /* no-op: tcgen05 uses single tcgen05Inst rule */
 
 #define  VISITOR_IMPL_dataMovement(opstr, opname, instr_kind) \
     if (ctx->instr_kind##Inst() && ctx->instr_kind##Inst()->opstr##Inst()) {                                                  \
