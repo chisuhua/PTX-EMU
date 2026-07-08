@@ -1,16 +1,8 @@
-# tcgen05-handler-test-coverage
+# tcgen05-handler-test-coverage Specification
 
-> **架构依据**: ADR-0016 (Blackwell-only tcgen05)
-> **前置 change**: `implement-tcgen05-handlers-core` (archived @ df6dde7)
-> **关键修正(Metis 修订)**:
-> 1. 路径 `tests/integration/parser/` → `tests/integration/ptx/`
-> 2. 路径 `tests/ptx/reference/` → `tests/reference/ptx_tcgen05/`
-> 3. 新增 Requirement: `tcgen05.h` handler 头文件
-> 4. 所有 golden value 场景强化为可执行断言(非 grep-only)
-> 5. 新增 Requirement: dead-code coverage 显式标注
-
-## ADDED Requirements
-
+## Purpose
+TBD - created by archiving change fix-tcgen05-test-coverage-gaps. Update Purpose after archive.
+## Requirements
 ### Requirement: Handler header file SHALL exist with forward declarations
 
 The file `include/ptxsim/instructions/tcgen05.h` SHALL exist and declare
@@ -174,7 +166,7 @@ The test MUST be labeled `e2e;kernel;tcgen05;gemm;sm100` in ctest.
 
 ### Requirement: Existing baseline tests SHALL continue to pass
 
-No regression in existing test suite (170+/170+ at baseline).
+MUST not regress existing 170+ test suite. New tests pass: 5 integration parse + 1 unit golden + 1 E2E = 7 new tests, 177+/177+ total expected.
 
 #### Scenario: full ctest passes with zero regression
 - **WHEN** `cd build && ctest --output-on-failure` is run after all phases
@@ -188,6 +180,3 @@ No regression in existing test suite (170+/170+ at baseline).
 
 ---
 
-## MODIFIED Requirements
-
-(None — this delta does not modify existing capabilities.)

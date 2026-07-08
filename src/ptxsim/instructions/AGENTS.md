@@ -77,6 +77,23 @@ cmake --build build --target ptxsim     # Build instruction handlers
   pre-Blackwell `wmma.*` / `mma.*` permanently throws
   `UnsupportedInstructionException` per ADR-0016.
 
+## TCGEN05 HANDLER TEST COVERAGE (2026-07, fix-tcgen05-test-coverage-gaps)
+
+- `tcgen05.cpp` — 5 `processTcgen05Xxx` handlers (mma/ld/st/commit/wait)
+  + forward declaration header `include/ptxsim/instructions/tcgen05.h`.
+- Test coverage status:
+  - **5 integration parse tests** (mma/ld/st/commit/wait) — verify
+    `Tcgen05Instr` IR fields via `ptxir::factory::makeTcgen05Instr`
+  - **1 unit golden value test** — `tests/reference/ptx_tcgen05/tcgen05_mma_golden.h`
+    (8×4 f16×f16→f32 hand-computed values, marked UNVERIFIED-AGAINST-HARDWARE)
+  - **1 E2E kernel** — Priority 3 f32 fallback (ptxas 13.0 lacks sm_100
+    tcgen05 support; pure CUDA kernel mirrors `test_blackwell_gemm.cu`)
+- **Status**: Handlers are still **dead code** (dispatcher not wired —
+  `S_TCGEN05_*` excluded from `ptx_op.def:129-136` X-Macro loop).
+  Direct invocation test deferred to `fix-tcgen05-handler-dispatch`
+  (when dispatch is wired, real warp execution will exercise handlers
+  and TMEM output will be compared against the same golden values).
+
 ## ATOMIC HANDLER (Phase 1+2, 2026-07)
 
 Implements `atomic.compare_and_swap` (a.k.a. `atomic.cas`) plus the
