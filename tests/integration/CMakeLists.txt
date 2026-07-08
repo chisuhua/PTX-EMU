@@ -321,6 +321,41 @@ add_catch_test(integration_ptx_cvta
 set_tests_properties(integration_ptx_cvta PROPERTIES LABELS "integration;ptx;cvta")
 
 # ============================================================================
+# tcgen05 parse → IR integration tests (ADR-0016, fix-tcgen05-test-coverage-gaps)
+# Verifies makeTcgen05Instr constructs Tcgen05Instr with correct op_kind,
+# qualifiers, and operands count for each of 5 core tcgen05 sub-ops.
+# ============================================================================
+add_catch_test(integration_ptx_tcgen05_mma_parse
+    ptx/test_tcgen05_mma_parse.cpp
+)
+set_tests_properties(integration_ptx_tcgen05_mma_parse PROPERTIES
+    LABELS "integration;ptx;tcgen05;parse;mma")
+
+add_catch_test(integration_ptx_tcgen05_ld_parse
+    ptx/test_tcgen05_ld_parse.cpp
+)
+set_tests_properties(integration_ptx_tcgen05_ld_parse PROPERTIES
+    LABELS "integration;ptx;tcgen05;parse;ld")
+
+add_catch_test(integration_ptx_tcgen05_st_parse
+    ptx/test_tcgen05_st_parse.cpp
+)
+set_tests_properties(integration_ptx_tcgen05_st_parse PROPERTIES
+    LABELS "integration;ptx;tcgen05;parse;st")
+
+add_catch_test(integration_ptx_tcgen05_commit_parse
+    ptx/test_tcgen05_commit_parse.cpp
+)
+set_tests_properties(integration_ptx_tcgen05_commit_parse PROPERTIES
+    LABELS "integration;ptx;tcgen05;parse;commit")
+
+add_catch_test(integration_ptx_tcgen05_wait_parse
+    ptx/test_tcgen05_wait_parse.cpp
+)
+set_tests_properties(integration_ptx_tcgen05_wait_parse PROPERTIES
+    LABELS "integration;ptx;tcgen05;parse;wait")
+
+# ============================================================================
 # Memory 集成测试 — 驱动模拟器
 # B1 plan: shared memory layout, multi-buffer offsets, zero-init verification
 # ============================================================================
