@@ -10,6 +10,10 @@
  *
  * Per spec Requirement: Blackwell-GEMM-E2E-Kernel-Passes
  * Scenario: small-matmul-correctness
+ *
+ * tcgen05.mma itself is wired to dispatch (commit df6dde7 +
+ * fix-tcgen05-handler-dispatch); the f16 fragment load path is still
+ * constrained by ANTLR grammar limitations, hence the float fallback.
  */
 
 #include "catch_amalgamated.hpp"

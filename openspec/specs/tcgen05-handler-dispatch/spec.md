@@ -1,18 +1,8 @@
-# tcgen05-handler-dispatch
-
-> **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) (Blackwell-only tcgen05)
-> **前置 spec**: [tcgen05-ir-types](../tcgen05-ir-types/spec.md)
-> **同步来源**: [openspec/changes/fix-tcgen05-handler-dispatch/specs/tcgen05-handler-dispatch/spec.md](../../changes/fix-tcgen05-handler-dispatch/specs/tcgen05-handler-dispatch/spec.md)
-> **关键变更**: 把已经定义的"shall dispatch"意图变为可观测的真实 wiring
+# tcgen05-handler-dispatch Specification
 
 ## Purpose
-
-The system SHALL wire all 11 `S_TCGEN05_*` StatementType enums (defined in `tcgen05-ir-types/spec.md`) to live dispatch handlers, so that PTX kernels containing `tcgen05.*` instructions actually execute their intended fragment arithmetic instead of silently terminating via the `_execute_once()` `nullptr` handler fallback.
-
-This is the **implementation contract** that fulfills the dispatch-layer requirements originally stated as "shalls" in `tcgen05-ir-types/spec.md` (Requirement: "IR X-Macro Dispatch MUST Generate Tcgen05Handler Symbols" + Requirement: "PipelineHandler MUST Route S_TCGEN05_* to Tcgen05PipelineHandler").
-
+TBD - created by archiving change fix-tcgen05-handler-dispatch. Update Purpose after archive.
 ## Requirements
-
 ### Requirement: 11 S_TCGEN05_* StatementType enums SHALL be registered via X-Macro
 
 The `include/ptx_ir/ptx_op.def` file SHALL contain exactly 11 `X(...)` entries for `S_TCGEN05_*` StatementType enum values, each with `struct_kind = TCGEN05_INSTR` and the same `opstr = "Tcgen05"` literal:
@@ -38,6 +28,8 @@ The `include/ptx_ir/ptx_op.def` file SHALL contain exactly 11 `X(...)` entries f
 - **THEN** output equals `11` (count includes 11 references inside the X-Macro expansion block, NOT 11+11 duplicate definitions)
 - **AND** `ptx_types.h` no longer contains a manual `S_TCGEN05_* = ...,` block outside the X-Macro `#include "ptx_op.def"` region
 
+---
+
 ### Requirement: S_TCGEN05_* handlers SHALL be registered in handler_map
 
 After `InstructionFactory::initialize()` returns, the `handler_map` SHALL contain entries for all 11 `S_TCGEN05_*` enums, each pointing to a non-null `InstructionHandler*`. The entries MUST be installed **via the X-Macro loop** in `instruction_factory.cpp:16-19` (i.e., the existing `handler_map[enum_val] = new opstr##Handler()` X-Macro expansion is sufficient — no additional explicit registration block).
@@ -49,6 +41,8 @@ After `InstructionFactory::initialize()` returns, the `handler_map` SHALL contai
 #### Scenario: get_handler returns same instance for repeat calls
 - **WHEN** `get_handler(S_TCGEN05_MMA)` is called twice in succession
 - **THEN** both calls return the same non-null `InstructionHandler*` (registration is consistent)
+
+---
 
 ### Requirement: Tcgen05Handler class SHALL provide processTcgen05Operation method
 
@@ -73,6 +67,8 @@ The implementation MUST dispatch on `instr.op_kind` and invoke the corresponding
 - **WHEN** the implementation file `src/ptxsim/instructions/tcgen05.cpp` is read
 - **THEN** it contains a `switch (instr.op_kind)` with cases for at least: `MMA`, `LD`, `ST`, `COMMIT`, `WAIT`
 - **AND** other op_kinds (ALLOC / DEALLOC / RELINQUISH / CP / MMA_WS / FENCE) throw `UnsupportedInstructionException` (per ADR-0016 Deferred-but-Wired)
+
+---
 
 ### Requirement: Tcgen05PipelineHandler 3-phase pipeline SHALL route dispatch correctly
 
@@ -103,6 +99,8 @@ The pipeline MUST:
 - **AND** `executeOperation` is still called with an empty `operands` array
 - **AND** `commitResults` skips `commit_operand` (since there is no dst operand)
 
+---
+
 ### Requirement: _execute_once NULL handler fallback SHALL no longer be triggered for S_TCGEN05_*
 
 After this change lands, executing any PTX kernel containing `S_TCGEN05_*` instructions SHALL NOT cause `ThreadContext::state` to be set to `EXIT` as a result of `nullptr` handler fallback.
@@ -122,6 +120,8 @@ The "No handler found for statement type: ..." stderr message SHALL NOT appear i
 - **WHEN** an integration test programatically invokes `step_warp` for each of the 11 `S_TCGEN05_*` statement types
 - **THEN** all 11 complete without `set_state(EXIT)`
 
+---
+
 ### Requirement: Existing baseline tests SHALL continue to pass
 
 The 170+ existing tests MUST continue to pass after all phases land. The change in dispatch behavior MAY cause E2E tests (notably `e2e_blackwell_gemm`) to produce numerically different outputs if they were previously silently exiting on tcgen05 paths. Such differences MUST be documented in the relevant commit message.
@@ -140,6 +140,8 @@ The 170+ existing tests MUST continue to pass after all phases land. The change 
 - **THEN** all 7 tests still pass — they were intentionally written to survive both dead-code and real-path scenarios
 - **AND** the unit golden value test now exercises the real dispatch path (no longer "dead code coverage")
 
+---
+
 ### Requirement: dealloc/cp/mma_ws/fence SHALL throw UnsupportedInstructionException via dispatch
 
 For the 6 op_kinds that are registered in `handler_map` but not yet implemented in fragment arithmetic (ALLOC / DEALLOC / RELINQUISH / CP / MMA_WS / FENCE), executing them MUST throw `UnsupportedInstructionException` (per ADR-0016 §C5 fix #1). This is **intended deferral**, not a bug.
@@ -154,9 +156,5 @@ For the 6 op_kinds that are registered in `handler_map` but not yet implemented 
 - **THEN** the exception is raised via `Tcgen05Handler::processTcgen05Operation`, NOT via the `_execute_once` nullptr fallback
 - **AND** stderr contains a clear "UnsupportedInstructionException" message, NOT a "No handler found" message
 
-## See also
+---
 
-- **Source change**: `openspec/changes/fix-tcgen05-handler-dispatch/`
-- **Frontmatter spec**: `openspec/specs/tcgen05-ir-types/spec.md` (the design intent this implements)
-- **Test coverage change**: `openspec/changes/fix-tcgen05-test-coverage-gaps/` (dead-code coverage tests that automatically become real-path tests when this change ships)
-- **Extended handlers**: `openspec/changes/implement-tcgen05-handlers-extended/` (alloc/dealloc/cp/mma_ws/fence implementation, depends on this change)

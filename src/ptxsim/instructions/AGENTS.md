@@ -77,6 +77,19 @@ cmake --build build --target ptxsim     # Build instruction handlers
   pre-Blackwell `wmma.*` / `mma.*` permanently throws
   `UnsupportedInstructionException` per ADR-0016.
 
+## TCGEN05 HANDLER DISPATCH (2026-07, fix-tcgen05-handler-dispatch)
+
+- `tcgen05.cpp` — `Tcgen05Handler::processTcgen05Operation` dispatches
+  on `instr.op_kind` to the 5 per-op free functions (kept for backward
+  compat with `fix-tcgen05-test-coverage-gaps` dead-code coverage test).
+- 11 `S_TCGEN05_*` X-Macro entries (`ptx_op.def`) all share the single
+  `Tcgen05Handler` class. `Tcgen05PipelineHandler` (3-stage pipeline:
+  prepare/execute/commit, mirrors `WmmaPipelineHandler`) is the
+  InstructionHandler base.
+- 6 deferred op_kinds (ALLOC/DEALLOC/RELINQUISH/CP/MMA_WS/FENCE) throw
+  `UnsupportedInstructionException` (per ADR-0016 §C5 fix #1) — lands
+  in `implement-tcgen05-handlers-extended`.
+
 ## TCGEN05 HANDLER TEST COVERAGE (2026-07, fix-tcgen05-test-coverage-gaps)
 
 - `tcgen05.cpp` — 5 `processTcgen05Xxx` handlers (mma/ld/st/commit/wait)
@@ -88,11 +101,10 @@ cmake --build build --target ptxsim     # Build instruction handlers
     (8×4 f16×f16→f32 hand-computed values, marked UNVERIFIED-AGAINST-HARDWARE)
   - **1 E2E kernel** — Priority 3 f32 fallback (ptxas 13.0 lacks sm_100
     tcgen05 support; pure CUDA kernel mirrors `test_blackwell_gemm.cu`)
-- **Status**: Handlers are still **dead code** (dispatcher not wired —
-  `S_TCGEN05_*` excluded from `ptx_op.def:129-136` X-Macro loop).
-  Direct invocation test deferred to `fix-tcgen05-handler-dispatch`
-  (when dispatch is wired, real warp execution will exercise handlers
-  and TMEM output will be compared against the same golden values).
+- **Status**: Handlers are now **wired to dispatch** (via
+  `fix-tcgen05-handler-dispatch`): 5 core op_kinds route through
+  `Tcgen05Handler::processTcgen05Operation`. Direct invocation test
+  promoted from dead-code coverage to real-path coverage.
 
 ## ATOMIC HANDLER (Phase 1+2, 2026-07)
 

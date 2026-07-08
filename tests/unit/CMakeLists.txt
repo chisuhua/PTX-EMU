@@ -621,3 +621,15 @@ add_catch_test(unit_ptx_ir_tcgen05_mma_golden
 )
 set_tests_properties(unit_ptx_ir_tcgen05_mma_golden PROPERTIES
     LABELS "unit;ptx_ir;tcgen05;mma;golden")
+
+# ============================================================================
+# tcgen05 pipeline handler unit test (ADR-0016, fix-tcgen05-handler-dispatch)
+# Validates Tcgen05PipelineHandler 3-stage structure (zero-operand vs
+# multi-operand op_kinds). Full pipeline execution covered by
+# integration_tcgen05_dispatch + future real-warp tests.
+# ============================================================================
+add_catch_test(unit_ptx_ir_tcgen05_pipeline_handler
+    ptx_ir/test_tcgen05_pipeline_handler.cpp
+)
+set_tests_properties(unit_ptx_ir_tcgen05_pipeline_handler PROPERTIES
+    LABELS "unit;ptx_ir;tcgen05;pipeline")

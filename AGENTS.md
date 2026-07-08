@@ -503,7 +503,7 @@ GPUContext (全局内存, SM 列表)
 | 类别 | 状态 |
 |------|------|
 | WMMA/Tensor Core | Blackwell `tcgen05.*` 5 core handler + test(commit `df6dde7`) — 见 [ADR-0016](docs/adr/0016-blackwell-only-tcgen05.md) + `src/ptxsim/instructions/tcgen05.cpp`。pre-Blackwell 永久抛 `UnsupportedInstructionException`。 |
-| tcgen05 handler test coverage | 5 core handler 单元测试覆盖(dead-code coverage via `include/ptxsim/instructions/tcgen05.h`)+ 5 integration parse + 1 E2E kernel。**dispatch 死代码独立 change (`fix-tcgen05-handler-dispatch`) 处理中** |
+| tcgen05 handler dispatch | 11 S_TCGEN05_* X-Macro + `Tcgen05PipelineHandler` 3-stage pipeline + `Tcgen05Handler::processTcgen05Operation` (commit `fix-tcgen05-handler-dispatch`)。ALLOC/DEALLOC/RELINQUISH/CP/MMA_WS/FENCE 抛 `UnsupportedInstructionException`（deferred but wired,见 `implement-tcgen05-handlers-extended`） |
 | Atomic 操作 | 无真正原子性 (stub) |
 | Hopper (sm_90+) cluster | cluster 抽象未实现 — 实施中（[ADR-0016](docs/adr/0016-blackwell-only-tcgen05.md) Phase 0.3） |
 | Event/Stream API | fake 返回（不同步） |
