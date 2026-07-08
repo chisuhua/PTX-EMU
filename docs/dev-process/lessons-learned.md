@@ -1078,3 +1078,54 @@ cd build && ctest --output-on-failure
 - **测试**: `tests/ptx/regression_cute_rmsnorm_f16_register.ptx`（commit `e92f1c1`，包含 8 个 `%f1N` 寄存器名）→ `./tests/ptx/test_all_ptx.sh` 47/47 PASS
 - **教训沉淀**: 本节（§25）+ `.opencode/skills/ptx-lessons-learned/SKILL.md` §核心经验 #9 + Checklist J
 - **后续**: `fix-tcgen05-antlr-prediction-bug` WIP change 归档（commit chore(openspec)），因为根因已由更简单的修复解决
+
+---
+
+## 26. tcgen05 5-core-handler 交付 + handler dispatch 修复（2026-07-08 新增）
+
+### 现象
+
+`implement-tcgen05-handlers-core`（commit `df6dde7`，2026-07-07）实现了 5 个 `processTcgen05Xxx` 自由函数（MMA/LD/ST/COMMIT/WAIT），位于 `src/ptxsim/instructions/tcgen05.cpp:311-540`，并通过了 `ctest`（170/170）。但**所有含 `tcgen05.*` 指令的 PTX 实际从未执行 tcgen05 路径**——任何 Blackwell kernel 在 PTX-EMU 中立即崩溃（per-lane EXIT）。
+
+**根因（fix-tcgen05-handler-dispatch 揭示）**:
+1. `S_TCGEN05_*` 枚举值定义在 `ptx_types.h:28-38`，**在 X-Macro 循环之后**
+2. `ptx_op.def:129-136` 显式注释排除 `S_TCGEN05_*` 在 X-Macro 之外
+3. `InstructionFactory::initialize()` 仅从 `ptx_op.def` 注册 handler
+4. `grep -rn "processTcgen05" src/ptxsim/ | grep -v tcgen05.cpp` 返回 0 结果
+5. `ThreadContext::_execute_once()` 第 143 行 `get_handler` 返回 `nullptr` → `set_state(EXIT)`
+
+**修复（3 commits, 2026-07-08）**:
+- `3a30da8` — `ptx_op.def` 恢复 11 个 `S_TCGEN05_*` X-Macro + `Tcgen05PipelineHandler` stub
+- `d3afaf5` — `Tcgen05Handler::processTcgen05Operation` 统一 dispatch 入口(`switch` on `instr.op_kind`)
+- `cc49ae7` — wire dispatch 测试 + archive change
+
+### 教训
+
+- **功能实现 ≠ 可执行路径**: 写了 handler 函数 ≠ dispatch 管道接好。OpenSpec change 必须明确验收标准为 "PTX 实际执行 handler"，而非 "handler 编译通过"。
+- **dead-code coverage test 是警示信号**: `fix-tcgen05-test-coverage-gaps`（`fd74261`）中 5 个测试用 `&ptxsim::processTcgen05Mma` 函数指针直接调用——这是因为 handler **不能从生产路径触达**，否则应该走 `step_warp` 间接调用（per `tests/integration/AGENTS.md` 原则 #3）。
+- **跨 change 的 commit 拆分规则**: handler 实施（`df6dde7`）+ dispatch 接入（`cc49ae7`）应该**同一 change**完成。两者拆分为 2 个 change 留下死代码 1 天。
+- **X-Macro 注册完整性**: 任何新 enum + handler 必须经过 `InstructionFactory::initialize()` 验证 `get_handler != nullptr`,而非仅看编译通过。
+- **OpenSpec change "完成" 定义**: proposal 必须包含 "E2E kernel 执行含此指令" 作为 hard gate,而非仅 "单元测试覆盖"。
+
+### 检查工具
+
+```bash
+# 检查 handler 是否真正接入 dispatch
+grep -rn "processTcgen05\|processWmma" src/ptxsim/ | grep -v tcgen05.cpp
+# 期望：包含 dispatch entry 的引用（如 instruction_factory.cpp）
+
+# 检查 X-Macro 注册
+grep "S_TCGEN05_" include/ptx_ir/ptx_op.def
+# 期望：11 个 X 条目 + dispatch entry
+
+# 检查 E2E 是否实际执行新指令
+ctest -L "e2e;tcgen05" -V 2>&1 | grep -E "PASS|FAIL"
+# 期望：PASS（之前为隐式 EXIT,可能假 PASS — 必须看输出 kernel 内容）
+```
+
+### 真实案例
+
+- **bug 表现**: `tests/e2e/kernel/test_blackwell_gemm.cu`（含 `tcgen05.*` 指令）在 `df6dde7` 后仍 PASS,但 host 端 reference 对比显示 GEMM 输出未执行 tcgen05 路径(部分输出为 lane EXIT 后的零值)。原因是 `get_handler` 返回 `nullptr`,lance 直接 `set_state(EXIT)` 而非执行。
+- **修复**: `Tcgen05Handler::processTcgen05Operation` 统一 dispatch,`fix-tcgen05-test-coverage-gaps` 的 dead-code coverage test 在 dispatch 修好后变为生产路径覆盖测试。
+- **教训沉淀**: 本节（§26）+ `.opencode/skills/ptx-lessons-learned/SKILL.md` §核心经验 #10 + Checklist K
+- **后续**: `implement-tcgen05-handlers-extended`（6 extended op_kind 实施）按 "handler + dispatch 同 change" 模式
