@@ -157,18 +157,11 @@ std::string StatementContext::toString() const {
         return oss.str();
     }
 
-    // Generic, WMMA, Atom — all use operand list + qualifiers
+    // Generic, Atom — all use operand list + qualifiers
     if (holds_alternative<GenericInstr>(data)) {
         const auto &g = get<GenericInstr>();
         oss << S2s(type) << qualifiersToString(g.qualifiers) << " "
             << operandsToString(g.operands) << ";";
-        return oss.str();
-    }
-
-    if (type == S_WMMA) {
-        const auto &w = get<WmmaInstr>();
-        oss << "wmma.mma" << qualifiersToString(w.qualifiers) << " "
-            << operandsToString(w.operands) << ";";
         return oss.str();
     }
 

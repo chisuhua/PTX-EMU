@@ -173,9 +173,6 @@ set_tests_properties(test_printf PROPERTIES
 
 # PTX 解析验证（不使用 Catch2）
 add_standalone_test(ptx/parser/test-ptx.cpp)
-# test_wmma.cpp has pre-existing build errors (StatementContext::WMMA not defined)
-# Disabled in main branch as well
-# add_standalone_test(ptx/parser/test_wmma.cpp)
 
 # Warp divergence E2E 测试已迁移到 tests/e2e/divergence/（见 tests/e2e/CMakeLists.txt）
 

@@ -98,14 +98,6 @@
                                    const std::vector<char> *operand_is_immediate = nullptr) override; \
     };
 
-// WMMA instruction handlers — RECOMMENDED
-#define DECLARE_WMMA_INSTR_HANDLER(Name) \
-    class Name##Handler : public WmmaPipelineHandler { \
-    public: \
-        void processWmmaOperation(ThreadContext *context, void **operands, \
-                                 const std::vector<Qualifier> &qualifiers) override; \
-    };
-
 // CP_ASYNC should use AsyncCopyHandler
 #define DECLARE_CP_ASYNC_INSTR_HANDLER(Name) \
     class Name##Handler : public AsyncCopyHandler { \

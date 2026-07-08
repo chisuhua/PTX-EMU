@@ -369,9 +369,6 @@ RED         : 'red';
 PREFETCH    : 'prefetch';
 PREFETCHU   : 'prefetchu';
 
-// Matrix (WMMA) - DEPRECATED: kept for backward compat, will be removed in change-4
-WMMA        : 'wmma';
-
 // Video / SIMD
 VADD4       : 'vadd4';
 VSUB4       : 'vsub4';

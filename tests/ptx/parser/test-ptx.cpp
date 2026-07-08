@@ -149,11 +149,11 @@ int main(int argc, const char *argv[]) {
         const char *ptx_emu_path = std::getenv("PTX_EMU_PATH");
         if (ptx_emu_path == nullptr) {
             std::cerr << "Warning: PTX_EMU_PATH not set; "
-                      << "using default path ./tests/ptx/dummy.1.sm_80.ptx"
+                      << "using default path ./tests/ptx/atom_cas_basic.ptx"
                       << std::endl;
-            filename = "./tests/ptx/dummy.1.sm_80.ptx";
+            filename = "./tests/ptx/atom_cas_basic.ptx";
         } else {
-            filename = std::string(ptx_emu_path) + "/tests/ptx/dummy.1.sm_80.ptx";
+            filename = std::string(ptx_emu_path) + "/tests/ptx/atom_cas_basic.ptx";
         }
     }
 

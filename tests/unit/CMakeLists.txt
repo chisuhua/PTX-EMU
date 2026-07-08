@@ -496,18 +496,6 @@ add_catch_test(unit_memory_global_f32
 set_tests_properties(unit_memory_global_f32 PROPERTIES LABELS "unit;ptx;memory;global")
 
 # ---------------------------------------------------------------------------
-# WMMA / Tensor Core stub (c5 - replace-silent-stub-failures, Fix #1):
-# WmmaHandler::processWmmaOperation now throws UnsupportedInstructionException
-# instead of silently no-op'ing. Locks in the explicit-failure contract so any
-# regression to silent no-op is caught at unit level.
-# Real WMMA / Tensor Core implementation tracked by `implement-wmma-tensor-core`.
-# ---------------------------------------------------------------------------
-add_catch_test(unit_wmma_not_implemented
-    ptx/test_wmma_not_implemented.cpp
-)
-set_tests_properties(unit_wmma_not_implemented PROPERTIES LABELS "unit;ptx;wmma;stub")
-
-# ---------------------------------------------------------------------------
 # Phase 1.1 (Fix #10): tcgen05.mma fragment arithmetic unit test.
 # RED phase: this test MUST FAIL until wmma.cpp implements real fragment
 # arithmetic (currently throws UnsupportedInstructionException).

@@ -261,19 +261,6 @@ inline StatementContext makePredicatePrefix(
     return makeStatementContext(static_cast<StatementType>(0), std::move(instr), text);
 }
 
-// --- 2.17 WMMA 指令 (WmmaInstr) ---
-inline StatementContext makeWmmaInstr(
-    WmmaType wmmaType,
-    const std::vector<Qualifier> &qualifiers,
-    const std::vector<OperandContext> &operands,
-    const std::string &text = "") {
-    WmmaInstr instr;
-    instr.wmmaType = wmmaType;
-    instr.qualifiers = qualifiers;
-    instr.operands = operands;
-    return makeStatementContext(S_WMMA, std::move(instr), text);
-}
-
 // --- 2.17.1 Blackwell tcgen05 指令 (Tcgen05Instr) ---
 inline StatementContext makeTcgen05Instr(
     Tcgen05OpKind op_kind,
