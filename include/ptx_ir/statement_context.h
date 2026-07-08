@@ -143,15 +143,6 @@ struct GenericInstr {
 };
 
 // -----------------------------------------------------------------------------
-// WMMA instruction (S_WMMA → WMMA_INSTR)
-// -----------------------------------------------------------------------------
-struct WmmaInstr {
-    WmmaType wmmaType;
-    std::vector<Qualifier> qualifiers;
-    std::vector<OperandContext> operands;
-};
-
-// -----------------------------------------------------------------------------
 // Blackwell Tensor Core Generator (S_TCGEN05_* → TCGEN_INSTR)
 // Independent struct replacing the WmmaInstr + Q_TCGEN05_* qualifier path
 // per ADR-0016 (Blackwell-only tcgen05).
@@ -299,7 +290,6 @@ using InstrVariant =
                  PredicatePrefix,      // PREDICATE_PREFIX
                  GenericInstr,         // GENERIC_INSTR - includes S_ACTIVEMASK
                  BarWarpSyncInstr,     // WARP_BARRIER - S_BAR_WARP_SYNC
-                 WmmaInstr,            // WMMA_INSTR — DEPRECATED, removed in change-4
                  Tcgen05Instr,         // TCGEN_INSTR — Blackwell sm_100+ (ADR-0016)
                  AtomInstr,            // ATOM_INSTR
                  VoteInstr,            // VOTE_INSTR

@@ -48,8 +48,6 @@ public:
     std::any visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) override;
 #define  VISITOR_DECL_ATOM_INSTR(opstr) \
     std::any visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) override;
-#define  VISITOR_DECL_WMMA_INSTR(opstr) \
-    std::any visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) override;
 #define  VISITOR_DECL_BARRIER(opstr) \
     std::any visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) override;
 #define  VISITOR_DECL_CALL_INSTR(opstr) \

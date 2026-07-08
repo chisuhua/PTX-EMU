@@ -124,17 +124,17 @@ Change-4 是 4-change 拆分的**最终清理**,无新功能。
 
 ## Impact
 
-### 删除的代码(预计)
+### 删除的代码(预计,已扣减 df6dde7 完成项)
 
 | 项 | LoC 估计 |
 |---|---|
-| `src/ptxsim/instructions/wmma.cpp` | -564 |
+| `src/ptxsim/instructions/wmma.cpp` (df6dde7 已缩减 564→30 行) | -30 |
 | `S_WMMA` enum + `WmmaInstr` struct + `WmmaType` enum + `makeWmmaInstr` | -30 |
-| 5 个 wmma grammar rules | -10 |
-| 4 个 Q_TCGEN05_* stub | -4 |
-| WMMA_INSTR struct_kind + macros | -20 |
+| `ptx_visitor_wmma.cpp` 整个文件 | -82 |
+| 5 个 wmma grammar rules + `WMMA` lexer token | -15 |
+| VISITOR_WMMA_INSTR + IMPLEMENT_WMMA_INSTR + VISITOR/STATEMENT_DECL macros + ptxir_writer WmmaInstr 序列化 | -15 |
 | 文档更新 | +20 |
-| **总计** | **-608** (净删除) |
+| **总计** | **-152** (净删除) |
 
 ### 验证
 

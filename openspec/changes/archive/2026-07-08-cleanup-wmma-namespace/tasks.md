@@ -3,6 +3,15 @@
 > **依赖**: [proposal.md](proposal.md) + [design.md](design.md) + 1 spec
 > **前置 changes**(必须 archive): Change-1, 2, 3a, 3b(3d 可选)
 > **范围**: 3 atomic commits
+>
+> ## Pre-Existing State (2026-07-07)
+>
+> `implement-tcgen05-handlers-core` (commit `df6dde7`) 已提前完成部分工作:
+> - ✅ `src/ptxsim/instructions/wmma.cpp`: 564→30 行(5 个 `execute_tcgen05_*` 已移除,仅剩 `WmmaHandler::processWmmaOperation` throw stub)
+> - ✅ 4 个旧 WmmaHandler API 测试已删除
+> - ✅ `tcgen05.cpp` 已创建(5 `processTcgen05Xxx` handler)
+>
+> **本 change 剩余工作**: 删除 IR 层 dead code(S_WMMA/WmmaInstr/WmmaType) + grammar wmma rules + visitor/parser macros + 最终删除 30 行 wmma.cpp stub
 
 ## 0. Pre-Implementation Review
 
@@ -39,8 +48,8 @@
 - [ ] 2.3.2 编辑 `include/ptx_parser/ptx_visiter.h`:删除 `#define VISITOR_DECL_WMMA_INSTR ...`(line 51-52)
 - [ ] 2.3.3 编辑 `include/ptx_parser/ptx_parser.h`:删除 `STATEMENT_DECL_WMMA_INSTR`(line 153)
 - [ ] 2.3.4 编辑 `src/ptxsim/instruction_handlers.cpp`:删除 `IMPLEMENT_WMMA_INSTR_HANDLER`(line 110-120)
-- [ ] 2.3.5 删除 `src/ptxsim/instructions/wmma.cpp` 整个文件
-- [ ] 2.3.6 编辑 `src/CMakeLists.txt`:删除 wmma.cpp 引用
+- [ ] 2.3.5 删除 `src/ptxsim/instructions/wmma.cpp` 剩余 30 行 stub 文件(df6dde7 已缩减 564→30 行)
+- [ ] 2.3.6 编辑 `src/CMakeLists.txt`:删除 wmma.cpp 引用(同步移除 `src/ptxsim/instructions/wmma.cpp` 行)
 - [ ] 2.3.7 编辑 `src/ptxsim/instructions/AGENTS.md`:删除 wmma.cpp 描述
 
 ### 2.4 pre-Blackwell 测试删除

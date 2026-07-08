@@ -421,23 +421,13 @@ prefetchSpace : GLOBAL | TEX_SPACE ;
 redOp : ADD_ATOM | MIN_ATOM | MAX_ATOM ;
 
 // Matrix instruction rules
-wmmaInst: WMMA wmmaOp wmmaLayout? wmmaShape? wmmaKind? typeSpecifier vectorSpec? operand (COMMA operand)* SEMI;
-
 matrixInst
-    : wmmaInst
-    | tcgen05Inst
+    : tcgen05Inst
     ;
-
-wmmaOp : MMA | LOAD | STORE | FILL ;
-wmmaLayout : ROW | COL ;
-wmmaShape : M8N8K4 | M16N16K16 | M32N8K16 | M16N8K16 ;
-wmmaKind : KIND COLONCOLON MXF4NVF4 ;
 
 // =============================================================================
 // Blackwell Tensor Core Generator (PTX ISA §9.7.16, sm_100+)
-// Added by implement-tcgen05-syntax-ir (ADR-0016).
-// Replaces wmma.* path for Blackwell-only support. pre-Blackwell wmma.* is
-// kept above for backward compat and will be removed in change-4.
+// Added by implement-tcgen05-syntax-ir (ADR-0016). pre-Blackwell wmma removed in cleanup-wmma-namespace (change-4).
 // =============================================================================
 tcgen05Inst
     : TCGEN05 DOT? tcgen05SubOp (DOT? tcgen05Qual)* typeSpecifier? tcgen05Operands? SEMI

@@ -108,17 +108,6 @@
         return; \
     };
 
-// WMMA instruction handlers
-// These are implemented in separate .cpp files
-#define IMPLEMENT_WMMA_INSTR_HANDLER(Name) \
-    __attribute__((weak)) void Name##Handler::processWmmaOperation(ThreadContext *context, void **operands, \
-                                            const std::vector<Qualifier> &qualifiers) { \
-        /* Implementation is in separate .cpp file */ \
-        (void)context; \
-        (void)operands; \
-        (void)qualifiers; \
-        return; \
-    };
 
 // CP_ASYNC handler (currently treated as simple, but can be extended)
 #define IMPLEMENT_CP_ASYNC_INSTR_HANDLER(Name) \

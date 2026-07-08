@@ -210,32 +210,6 @@ bool AtomicPipelineHandler::commitResults(ThreadContext *context, StatementConte
     return true;
 }
 
-// WMMA Pipeline Handler
-bool WmmaPipelineHandler::prepareOperands(ThreadContext *context, StatementContext &stmt) {
-    WmmaInstr &instr = std::get<WmmaInstr>(stmt.data);
-    if (!acquireAllOperands(context, instr.operands, instr.qualifiers, 
-                           static_cast<int>(instr.operands.size()))) {
-        return false;
-    }
-    context->collect_operands(stmt, instr.operands, &(instr.qualifiers));
-    return true;
-}
-
-bool WmmaPipelineHandler::executeOperation(ThreadContext *context, StatementContext &stmt) {
-    const WmmaInstr &instr = std::get<WmmaInstr>(stmt.data);
-    processWmmaOperation(context, &(context->operand_collected[0]), instr.qualifiers);
-    return true;
-}
-
-bool WmmaPipelineHandler::commitResults(ThreadContext *context, StatementContext &stmt) {
-    WmmaInstr &instr = std::get<WmmaInstr>(stmt.data);
-    if (!instr.operands.empty()) {
-        context->commit_operand(stmt, instr.operands[0], instr.qualifiers);
-    }
-    releaseAllOperands(instr.operands, static_cast<int>(instr.operands.size()));
-    return true;
-}
-
 // Tcgen05 Pipeline Handler (Blackwell sm_100+, ADR-0016)
 bool Tcgen05PipelineHandler::prepareOperands(ThreadContext *context, StatementContext &stmt) {
     Tcgen05Instr &instr = std::get<Tcgen05Instr>(stmt.data);

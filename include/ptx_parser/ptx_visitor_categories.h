@@ -11,9 +11,6 @@ std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx);
 #define VISITOR_CALL_INSTR(opstr, opname, opcount)                             \
 std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx);
 
-#define VISITOR_WMMA_INSTR(opstr, opname, opcount)                             \
-std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx);
-
 #define VISITOR_BRANCH(opstr, opname, opcount)                                 \
 std::any PtxVisitor::visit##opstr##Inst(ptxParser::opstr##InstContext *ctx);
 

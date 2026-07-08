@@ -124,7 +124,6 @@ X(S_SQRT,    sqrt,    Sqrt,    2, GENERIC_INSTR, arithmetic)      // sqrt: dst, 
 // 8. 原子操作与特殊指令（Atomic & Special Operations）
 // -----------------------------------------------------------------------------
 X(S_ATOM,    atom,    Atom,    3, ATOM_INSTR, atomic)      // atom: dst_addr, src, [optional op] → simplified as 3
-X(S_WMMA,    wmma,    Wmma,    4, WMMA_INSTR, matrix)      // wmma: dst, src_a, src_b, src_c (or more, simplified)
 X(S_TCGEN05_ALLOC,      tcgen05.alloc,      Tcgen05,    1, TCGEN05_INSTR, tensor)   // tcgen05.alloc
 X(S_TCGEN05_DEALLOC,    tcgen05.dealloc,    Tcgen05,    1, TCGEN05_INSTR, tensor)   // tcgen05.dealloc
 X(S_TCGEN05_RELINQUISH, tcgen05.relinquish, Tcgen05,    1, TCGEN05_INSTR, tensor)   // tcgen05.relinquish_alloc_permit

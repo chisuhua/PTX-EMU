@@ -747,46 +747,6 @@ void PtxListener::exitBraStatement(ptxParser::BraStatementContext *ctx) {
 #endif
 }
 
-void PtxListener::enterWmmaStatement(ptxParser::WmmaStatementContext *ctx) {
-    statement = new StatementContext::WMMA();
-#ifdef LOG
-    std::cout << __func__ << std::endl;
-#endif
-}
-void PtxListener::exitWmmaStatement(ptxParser::WmmaStatementContext *ctx) {
-    auto st = (StatementContext::WMMA *)statement;
-
-    /* wmmatype & op */
-    if (ctx->LOAD()) {
-        st->wmmaType = WMMA_LOAD;
-        for (int i = 0; i < 3; i++) {
-            fetchOperand(st->operands);
-        }
-    } else if (ctx->STORE()) {
-        st->wmmaType = WMMA_STORE;
-        for (int i = 0; i < 3; i++) {
-            fetchOperand(st->operands);
-        }
-    } else if (ctx->WMMA()) {
-        st->wmmaType = WMMA_MMA;
-        for (int i = 0; i < 4; i++) {
-            fetchOperand(st->operands);
-        }
-    }
-
-    /* qualifier */
-    while (qualifier.size()) {
-        st->qualifier.push_back(qualifier.front());
-        qualifier.pop();
-    }
-
-    /* end */
-    statementType = S_WMMA;
-#ifdef LOG
-    std::cout << __func__ << std::endl;
-#endif
-}
-
 void PtxListener::enterAtomStatement(ptxParser::AtomStatementContext *ctx) {
     statement = new StatementContext::ATOM();
 #ifdef LOG
@@ -1052,8 +1012,6 @@ void PtxListener::exitExternFuncStatement(
     }
 
 #define STATEMENT_ATOM_INSTR(op_str, op_name, opcount)
-
-#define STATEMENT_WMMA_INSTR(op_str, op_name, opcount)
 
 #define STATEMENT_BARRIER(op_str, op_name, opcount)
 

@@ -150,7 +150,6 @@ public:
         ptxParser::opstr##StatementContext *ctx) override;
 
 #define STATEMENT_DECL_PREDICATE_PREFIX(opstr, opname, opcount)
-#define STATEMENT_DECL_WMMA_INSTR(opstr, op_name, opcount)
 #define STATEMENT_DECL_BARRIER(opstr, op_name, opcount)
 #define STATEMENT_DECL_CALL_INSTR(opstr, opname, opcount)                      \
     virtual void enter##opstr##Statement(                                      \
