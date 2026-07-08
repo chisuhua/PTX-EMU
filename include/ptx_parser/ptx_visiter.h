@@ -83,6 +83,11 @@ public:
     std::any visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) override;
 #define  VISITOR_DECL_TCGEN_INSTR(opstr) \
     std::any visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) override;
+// Tcgen05: 11 S_TCGEN05_* X-Macro entries all dispatch through a single
+// visitTcgen05Inst (grammar has 1 tcgen05Inst rule). Make this a no-op
+// for the X-Macro expansion; the real visitTcgen05Inst is declared below.
+#define  VISITOR_TCGEN05_INSTR(opstr)  /* no-op: see visitTcgen05Inst below */
+#define  VISITOR_DECL_TCGEN05_INSTR(opstr)  /* no-op: see visitTcgen05Inst below */
 #define  VISITOR_DECL_TENSORMAP_INSTR(opstr) \
     std::any visit##opstr##Inst(ptxparser::ptxParser::opstr##InstContext *pCtx) override;
 

@@ -236,6 +236,39 @@ bool WmmaPipelineHandler::commitResults(ThreadContext *context, StatementContext
     return true;
 }
 
+// Tcgen05 Pipeline Handler (Blackwell sm_100+, ADR-0016)
+bool Tcgen05PipelineHandler::prepareOperands(ThreadContext *context, StatementContext &stmt) {
+    Tcgen05Instr &instr = std::get<Tcgen05Instr>(stmt.data);
+    // Zero-operand op_kinds (COMMIT/WAIT/FENCE) need no acquire; skip pipeline.
+    if (instr.operands.empty()) {
+        return true;
+    }
+    if (!acquireAllOperands(context, instr.operands, instr.qualifiers,
+                           static_cast<int>(instr.operands.size()))) {
+        return false;
+    }
+    context->collect_operands(stmt, instr.operands, &(instr.qualifiers));
+    return true;
+}
+
+bool Tcgen05PipelineHandler::executeOperation(ThreadContext *context, StatementContext &stmt) {
+    const Tcgen05Instr &instr = std::get<Tcgen05Instr>(stmt.data);
+    // Defers to subclass Tcgen05Handler::processTcgen05Operation (virtual dispatch).
+    processTcgen05Operation(context, &(context->operand_collected[0]),
+                            instr.qualifiers, instr);
+    return true;
+}
+
+bool Tcgen05PipelineHandler::commitResults(ThreadContext *context, StatementContext &stmt) {
+    Tcgen05Instr &instr = std::get<Tcgen05Instr>(stmt.data);
+    // COMMIT/WAIT/FENCE have empty operands; no commit_operand call.
+    if (!instr.operands.empty()) {
+        context->commit_operand(stmt, instr.operands[0], instr.qualifiers);
+    }
+    releaseAllOperands(instr.operands, static_cast<int>(instr.operands.size()));
+    return true;
+}
+
 void AsyncCopyHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
     context->trace_status(ptxsim::log_level::debug, "thread",
                           "PC=%x CP_ASYNC: %s", context->get_pc(),

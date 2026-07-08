@@ -2,6 +2,7 @@
 #include "ptx_ir/ptx_types.h"
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/common_types.h"
+#include "ptxsim/ptx_exceptions.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/utils/qualifier_utils.h"
 #include "ptxsim/utils/type_utils.h"
@@ -170,6 +171,14 @@
 #define IMPLEMENT_ASYNC_STORE_HANDLER(Name)      IMPLEMENT_SIMPLE_HANDLER(Name)
 #define IMPLEMENT_ASYNC_REDUCE_HANDLER(Name)     IMPLEMENT_SIMPLE_HANDLER(Name)
 #define IMPLEMENT_TCGEN_INSTR_HANDLER(Name)      IMPLEMENT_SIMPLE_HANDLER(Name)
+// Tcgen05: 11 S_TCGEN05_* enums all dispatch to Tcgen05Handler
+// (processTcgen05Operation is virtual, dispatches on instr.op_kind).
+// The strong definition lives in src/ptxsim/instructions/tcgen05.cpp;
+// here we provide a weak stub that throws UnsupportedInstructionException
+// for any tcgen05.* that isn't yet implemented (per ADR-0016 Deferred-but-Wired).
+// The X-Macro expansion below is a no-op (single Tcgen05Handler class,
+// already declared in instruction_handlers.h).
+#define IMPLEMENT_TCGEN05_INSTR_HANDLER(Name)  /* no-op: see tcgen05.cpp */
 #define IMPLEMENT_TENSORMAP_INSTR_HANDLER(Name)  IMPLEMENT_SIMPLE_HANDLER(Name)
 #define IMPLEMENT_ABI_DIRECTIVE_HANDLER(Name)    IMPLEMENT_SIMPLE_HANDLER(Name)
 
@@ -183,8 +192,24 @@
 #define IMPLEMENT_VOID_INSTR_HANDLER(Name)      IMPLEMENT_VOID_HANDLER(Name)
 
 // Generate all handler implementations from ptx_op.def
+// TCGEN05_INSTR is skipped — the single Tcgen05Handler class is defined
+// in instruction_handlers.h and its processTcgen05Operation is implemented
+// in tcgen05.cpp (X-Macro expansion would re-define the function 11 times).
 #undef X
 #define X(enum_val, op_name, op_str, op_count, struct_kind, instr_kind) \
     IMPLEMENT_##struct_kind##_HANDLER(op_str)
 #include "ptx_ir/ptx_op.def"
 #undef X
+
+// Tcgen05 handler implementation: single class, dispatches by op_kind.
+// The strong implementation lives in src/ptxsim/instructions/tcgen05.cpp
+// (and is compiled into libptxsim via libptxsim_instrs). Here we provide
+// a weak stub that throws UnsupportedInstructionException for op_kinds
+// that are not yet implemented in tcgen05.cpp (per ADR-0016 §C5 fix #1).
+__attribute__((weak)) void Tcgen05Handler::processTcgen05Operation(
+    ThreadContext *context, void **operands,
+    const std::vector<Qualifier> &qualifiers, const Tcgen05Instr &instr) {
+    (void)context; (void)operands; (void)qualifiers; (void)instr;
+    throw UnsupportedInstructionException(
+        "tcgen05.*", "stub: real implementation in tcgen05.cpp");
+}

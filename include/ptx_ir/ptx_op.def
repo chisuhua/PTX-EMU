@@ -125,15 +125,17 @@ X(S_SQRT,    sqrt,    Sqrt,    2, GENERIC_INSTR, arithmetic)      // sqrt: dst, 
 // -----------------------------------------------------------------------------
 X(S_ATOM,    atom,    Atom,    3, ATOM_INSTR, atomic)      // atom: dst_addr, src, [optional op] → simplified as 3
 X(S_WMMA,    wmma,    Wmma,    4, WMMA_INSTR, matrix)      // wmma: dst, src_a, src_b, src_c (or more, simplified)
-
-// Note: S_TCGEN05_* StatementType enums are added directly in ptx_types.h
-// (after the X-Macro expansion) to avoid triggering the VISITOR_/IMPLEMENT_
-// X-Macro expansion in ptx_visitor.cpp / instruction_handlers.cpp. The
-// tcgen05.* grammar has a single tcgen05Inst rule (not 11 per-sub-op rules),
-// so the per-instruction X-Macro expansion would fail to find the matching
-// ANTLR-generated Context classes. The actual visitor/handler implementation
-// is done in change-3 (handlers) and deferred for visitor (single dispatch
-// point through tcgen05Inst). See design.md Decision 1–5.
+X(S_TCGEN05_ALLOC,      tcgen05.alloc,      Tcgen05,    1, TCGEN05_INSTR, tensor)   // tcgen05.alloc
+X(S_TCGEN05_DEALLOC,    tcgen05.dealloc,    Tcgen05,    1, TCGEN05_INSTR, tensor)   // tcgen05.dealloc
+X(S_TCGEN05_RELINQUISH, tcgen05.relinquish, Tcgen05,    1, TCGEN05_INSTR, tensor)   // tcgen05.relinquish_alloc_permit
+X(S_TCGEN05_LD,         tcgen05.ld,         Tcgen05,    2, TCGEN05_INSTR, tensor)   // tcgen05.ld
+X(S_TCGEN05_ST,         tcgen05.st,         Tcgen05,    2, TCGEN05_INSTR, tensor)   // tcgen05.st
+X(S_TCGEN05_CP,         tcgen05.cp,         Tcgen05,    3, TCGEN05_INSTR, tensor)   // tcgen05.cp
+X(S_TCGEN05_MMA,        tcgen05.mma,        Tcgen05,    4, TCGEN05_INSTR, tensor)   // tcgen05.mma
+X(S_TCGEN05_MMA_WS,     tcgen05.mma.ws,     Tcgen05,    4, TCGEN05_INSTR, tensor)   // tcgen05.mma.ws
+X(S_TCGEN05_COMMIT,     tcgen05.commit,     Tcgen05,    0, TCGEN05_INSTR, tensor)   // tcgen05.commit
+X(S_TCGEN05_WAIT,       tcgen05.wait,       Tcgen05,    0, TCGEN05_INSTR, tensor)   // tcgen05.wait
+X(S_TCGEN05_FENCE,      tcgen05.fence,      Tcgen05,    0, TCGEN05_INSTR, tensor)   // tcgen05.fence
 
 // -----------------------------------------------------------------------------
 // 9. 位计数与前导零（Bit Manipulation Utilities）

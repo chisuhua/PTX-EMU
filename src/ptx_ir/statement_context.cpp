@@ -13,22 +13,6 @@ std::string S2s(StatementType s) {
         return #opname;
 #include "ptx_ir/ptx_op.def"
 #undef X
-    // S_TCGEN05_* are added outside the X-Macro loop (see ptx_types.h).
-    // Hand-maintained to keep S2s in sync with the StatementType enum.
-    // S_TCGEN05_* are kept out of the ptx_op.def X-Macro (see ptx_types.h) because
-    // the per-instruction VISITOR_/IMPLEMENT_ X-Macro expansion expects 11 grammar
-    // rules but the grammar defines a single tcgen05Inst rule.
-    case S_TCGEN05_ALLOC:       return "tcgen05.alloc";
-    case S_TCGEN05_DEALLOC:     return "tcgen05.dealloc";
-    case S_TCGEN05_RELINQUISH:  return "tcgen05.relinquish_alloc_permit";
-    case S_TCGEN05_LD:          return "tcgen05.ld";
-    case S_TCGEN05_ST:          return "tcgen05.st";
-    case S_TCGEN05_CP:          return "tcgen05.cp";
-    case S_TCGEN05_MMA:         return "tcgen05.mma";
-    case S_TCGEN05_MMA_WS:      return "tcgen05.mma.ws";
-    case S_TCGEN05_COMMIT:      return "tcgen05.commit";
-    case S_TCGEN05_WAIT:        return "tcgen05.wait";
-    case S_TCGEN05_FENCE:       return "tcgen05.fence";
     case S_UNKNOWN:
         return "unknown";
     default:

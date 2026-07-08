@@ -132,13 +132,35 @@ protected:
     bool prepareOperands(ThreadContext *context, StatementContext &stmt) override;
     bool executeOperation(ThreadContext *context, StatementContext &stmt) override;
     bool commitResults(ThreadContext *context, StatementContext &stmt) override;
-    
-    virtual void processWmmaOperation(ThreadContext *context, void **operands, 
+
+    virtual void processWmmaOperation(ThreadContext *context, void **operands,
                                     const std::vector<Qualifier> &qualifiers) {
         // Default implementation does nothing
         (void)context;
         (void)operands;
         (void)qualifiers;
+    }
+};
+
+// Tcgen05 pipeline handler (Blackwell sm_100+, ADR-0016)
+// Phase 1 (fix-tcgen05-handler-dispatch): 3-stage stub that defers to
+// processTcgen05Operation virtual method (overridden in tcgen05.cpp).
+class Tcgen05PipelineHandler : public PipelineHandler {
+protected:
+    bool prepareOperands(ThreadContext *context, StatementContext &stmt) override;
+    bool executeOperation(ThreadContext *context, StatementContext &stmt) override;
+    bool commitResults(ThreadContext *context, StatementContext &stmt) override;
+
+    // Virtual dispatch: subclass Tcgen05Handler in tcgen05.cpp overrides this
+    // to provide actual fragment arithmetic. The X-Macro-generated stub in
+    // instruction_handlers.cpp throws UnsupportedInstructionException.
+    virtual void processTcgen05Operation(ThreadContext *context, void **operands,
+                                        const std::vector<Qualifier> &qualifiers,
+                                        const struct Tcgen05Instr &instr) {
+        (void)context;
+        (void)operands;
+        (void)qualifiers;
+        (void)instr;
     }
 };
 
