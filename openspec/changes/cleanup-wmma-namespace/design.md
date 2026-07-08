@@ -1,6 +1,6 @@
 ## Context
 
-Change-1/2/3a/3b(3d) archive 后,pre-Blackwell WMMA 路径已完全 dead code。本 change 彻底清理 wmma 命名空间,符合 `ptx-lessons-learned` §20 "已实施但未清理模式" 的修正。
+Change-1/2/3a/3b(3d) archive 后,pre-Blackwell WMMA 路径已完全 dead code。`df6dde7` (implement-tcgen05-handlers-core) 已将 `wmma.cpp` 从 564 行缩减至 30 行(仅剩 `WmmaHandler::processWmmaOperation` throw stub)。本 change 彻底清理剩余的 IR/grammar/visitor wmma dead code,符合 `ptx-lessons-learned` §20 "已实施但未清理模式" 的修正。
 
 ## Goals / Non-Goals
 
