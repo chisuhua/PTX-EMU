@@ -97,17 +97,42 @@ TEST_CASE("processTcgen05Mma with Q_TCGEN_WS + Q_F16 executes ws path",
     REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
 }
 
-TEST_CASE("processTcgen05Mma with op_kind=MMA_WS + Q_F16 executes ws path",
+TEST_CASE("processTcgen05Mma with op_kind=MMA_WS w/o Q_TCGEN_WS falls through to regular mma path",
           "[unit][tcgen05][mma_ws][scope][op_kind_mma_ws]") {
-    // Tests the dispatch table path: Tcgen05OpKind::MMA_WS also routes
-    // to processTcgen05Mma (per Phase 3 dispatch update).
+    // Tcgen05OpKind::MMA_WS op_kind alone (no Q_TCGEN_WS qualifier)
+    // routes to processTcgen05Mma which scans qualifiers; without
+    // Q_TCGEN_WS the regular path executes (helper called).
     TestRig rig;
     Tcgen05Instr instr = make_instr(
         Tcgen05OpKind::MMA_WS,
         {Qualifier::Q_F16});
 
-    // No Q_TCGEN_WS qualifier → not on ws path. helper executes regular.
     REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
+}
+
+TEST_CASE("processTcgen05Mma with op_kind=MMA_WS + Q_TCGEN_WS + Q_F16 executes ws path via dispatch",
+          "[unit][tcgen05][mma_ws][scope][op_kind_mma_ws][dispatch]") {
+    // Stresses the dispatch path: op_kind=MMA_WS + Q_TCGEN_WS + Q_F16
+    // should execute the ws path (Q3-A scope satisfied).
+    TestRig rig;
+    Tcgen05Instr instr = make_instr(
+        Tcgen05OpKind::MMA_WS,
+        {Qualifier::Q_TCGEN_WS, Qualifier::Q_F16});
+
+    REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
+}
+
+TEST_CASE("processTcgen05Mma with op_kind=MMA_WS + Q_TCGEN_WS but no Q_F16 throws Q3-A scope",
+          "[unit][tcgen05][mma_ws][scope][op_kind_mma_ws][scope_violation]") {
+    // Verifies dispatch path also enforces Q3-A scope check.
+    TestRig rig;
+    Tcgen05Instr instr = make_instr(
+        Tcgen05OpKind::MMA_WS,
+        {Qualifier::Q_TCGEN_WS});  // no Q_F16
+
+    REQUIRE_THROWS_AS(
+        ptxsim::processTcgen05Mma(&rig.thread(), instr),
+        UnsupportedInstructionException);
 }
 
 // =============================================================================

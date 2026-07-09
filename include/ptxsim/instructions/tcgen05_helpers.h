@@ -37,11 +37,17 @@ namespace ptxsim {
 // Caller must ensure:
 //   - TMEM is allocated (via TmemAllocator or direct write)
 //   - Caller has validated scope (Q3-A: Q_F16 + Q_TCGEN_CTA_GROUP for ws path)
+//   - Exclusive access to Tmem slots [0..95] for the duration of this call.
+//     Each Tmem::read / Tmem::write call holds Tmem::mu_ independently,
+//     but the read-compute-write sequence here is NOT atomic. Concurrent
+//     modification between read and write would cause TOCTOU corruption.
+//     Currently safe because the SM scheduler runs one warp at a time
+//     (sequential execution); if the simulator ever evolves to multi-warp
+//     concurrency, callers must add a higher-level lock.
 //
 // UNVERIFIED-AGAINST-HARDWARE: ws-specific weight-stationary layout transform
-// is NOT applied here — single-warp simplification (both regular mma and mma.ws
-// use identical fragment arithmetic in this simulator). See
-// implement-tcgen05-handlers-extended/tasks.md §4 for future work.
+// is NOT applied — the simulator uses identical fragment arithmetic for both
+// regular mma and mma.ws (deferred per tasks.md §4).
 void tcgen05_fragment_mma_f16(Tmem& tmem);
 
 } // namespace ptxsim
