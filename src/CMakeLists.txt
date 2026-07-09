@@ -127,6 +127,8 @@ add_library(ptxsim SHARED
     # Phase 1 of implement-tcgen05-handlers-extended (Oracle Q1-A/Q2-A):
     # 3 alloc-family handlers (alloc/dealloc/relinquish_alloc_permit).
     ptxsim/instructions/tcgen05_alloc.cpp
+    # Phase 2 (Oracle Q4-B/Q2-A): tcgen05.cp (smem → tmem copy).
+    ptxsim/instructions/tcgen05_cp.cpp
     ptxsim/instructions/arithmetic_ext.cpp
     ptxsim/instructions/cvt/cvt_helpers.cpp
     ptxsim/instructions/cvt/cvt_strategy.cpp

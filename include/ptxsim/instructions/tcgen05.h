@@ -43,4 +43,8 @@ void processTcgen05Alloc(ThreadContext* context, const Tcgen05Instr& instr);
 void processTcgen05Dealloc(ThreadContext* context, const Tcgen05Instr& instr);
 void processTcgen05Relinquish(ThreadContext* context, const Tcgen05Instr& instr);
 
+// Phase 2 (Oracle Q4-B/Q2-A): tcgen05.cp — shared memory → TMEM copy.
+// Definition lives in src/ptxsim/instructions/tcgen05_cp.cpp.
+void processTcgen05Cp(ThreadContext* context, const Tcgen05Instr& instr);
+
 }  // namespace ptxsim

@@ -582,6 +582,8 @@ void Tcgen05Handler::processTcgen05Operation(
         ptxsim::processTcgen05Relinquish(context, instr);
         break;
     case Tcgen05OpKind::CP:
+        ptxsim::processTcgen05Cp(context, instr);
+        break;
     case Tcgen05OpKind::MMA_WS:
     case Tcgen05OpKind::FENCE:
         throw UnsupportedInstructionException(
