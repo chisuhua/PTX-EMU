@@ -78,7 +78,8 @@ public:
     void deallocate(size_t slot_id);
 
     // -----------------------------------------------------------------------
-    // Public read-only API (does NOT hold `mu_`; safe from any context).
+    // Public read-only API. Holds `mu_` to prevent data races with
+    // concurrent `allocate`/`deallocate` (per Oracle review 2026-07-09).
     // -----------------------------------------------------------------------
 
     // True if `slot_id` is the start of an active allocation. Pure

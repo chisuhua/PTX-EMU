@@ -139,25 +139,16 @@ void processTcgen05Dealloc(ThreadContext* context, const Tcgen05Instr& instr) {
         throw_cta_group_2("tcgen05.dealloc");
     }
 
-    // Phase 1 simplification: dealloc without an explicit slot_id
-    // operand releases the most-recent allocation by this warp. The
-    // PTX ISA requires the slot_id to be explicit; until the visitor
-    // extracts it into a dedicated field, this default behavior
-    // provides a working round-trip (alloc → dealloc) for testing.
+    // Phase 1 simplification: releases lowest active slot_id (first-fit).
+    // Per-warp ownership tracking deferred to Phase 2.
     TmemAllocator& alloc = cta->tmem_allocator();
 
-    // Find an allocation belonging to this warp. Phase 1 has no
-    // per-warp ownership tracking, so we fall back to "any
-    // allocation". A more correct Phase 2 would track ownership
-    // via a `std::map<warp_id_t, slot_id_t>` in TmemAllocator.
     if (alloc.active_allocation_count() == 0) {
         PTX_ERROR_EMU("tcgen05.dealloc: no active allocations to release");
         throw std::runtime_error(
             "tcgen05.dealloc: no active allocations");
     }
 
-    // Find the lowest active allocation slot (first-fit, matches
-    // the allocate() policy).
     size_t slot_to_free = TmemAllocator::kInvalidSlotId;
     for (size_t s = 0; s < TmemAllocator::kSlotCount; ++s) {
         if (alloc.is_allocated_start(s)) {

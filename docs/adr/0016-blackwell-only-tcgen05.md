@@ -232,6 +232,25 @@ scope discipline、基础设施优先）**未变**。
 - 5 handler 函数保留兼容(`fix-tcgen05-test-coverage-gaps` dead-code coverage test 需 `&ptxsim::processTcgen05Mma` 函数指针)
 - 6 extended op_kind(ALLOC/DEALLOC/RELINQUISH/CP/MMA_WS/FENCE)throw deferred — 待 `implement-tcgen05-handlers-extended`
 
+**2026-07-09**: Phase 1 of `implement-tcgen05-handlers-extended` (commit `486246a`)。
+- 新增 `TmemAllocator`(`src/ptxsim/memory/tmem_allocator.{h,cpp}`):per-CTA 256-slot first-fit 分配器,`std::bitset` 跟踪分配状态,严格遵循 ptx-lessons-learned §2 递归锁模式
+- 新增 3 个 alloc-family handler(`src/ptxsim/instructions/tcgen05_alloc.cpp`):`processTcgen05Alloc`/`Dealloc`/`Relinquish`
+- 接入 dispatch table(`tcgen05.cpp:574-583`):8/11 handler 已实现,3 deferred (CP/MMA_WS/FENCE)
+- `cta_group::2` 全部抛 `UnsupportedInstructionException` 含 ADR-0018 引用
+- 新增 per-warp `allocate_permit` 字段(`warp_state.h:18`)+ `set/get_allocate_permit` 访问器(`warp_context.h`)
+- 12 TmemAllocator 单元测试(`tests/unit/memory/test_tmem_allocator.cpp`)
+- AGENTS.md "已知限制" 表同步:8/11 handler 已实现,3 deferred (CP/MMA_WS/FENCE)
+- 测试结果:73/73 unit tests PASS,45/45 PTX syntax tests PASS
+
+**2026-07-09**: Phase 1.x critical-issues 修订 (Oracle 2026-07-09 review, OpenSpec `fix-tmem-allocator-phase1x-critical`)。
+- 修复 `TmemAllocator` read-only methods 数据竞争 (UB) — `is_allocated_start`/`is_allocated`/`active_allocation_count`/`total_allocated_slots` 加 `lock_guard(mu_)`
+- `static_assert(TmemAllocator::kSlotCount == Tmem::kSlotCount)` 强制 256 一致性
+- 修复多线程死锁检测(`test_tmem_allocator.cpp`):用 `std::async` + `wait_for(30s)` 替代 `th.join()`
+- 修正 `processTcgen05Dealloc` 注释矛盾(原 "most-recent" 实为 "lowest active slot_id")
+- 新增 3 个 handler 集成测试(`tests/integration/tcgen05/test_alloc_dealloc_relinquish.cpp`):12 TEST_CASEs / 28 assertions
+- AGENTS.md / `src/ptxsim/instructions/AGENTS.md` 同步
+- 沉淀:新教训 "read-only methods don't hold mu_" 模式
+
 ## Archive 文档一致性声明（2026-07-08）
 
 `openspec/changes/archive/2026-07-07-fix-tcgen05-antlr-prediction-bug/` 的 `proposal.md`/`design.md`/`handoff.md` 声称修复"ANTLR LL(*) 预测冲突",但真正根因是 **lexer bare string token 与 ID 规则冲突**（详见 [`docs/dev-process/lessons-learned.md` §25](../../docs/dev-process/lessons-learned.md#25-antlr4-le)）。按 `ptx-lessons-learned §6 + Checklist G` 铁律"已归档 change 不 amend",**本节为权威 override**: §25 为根因真相,archive 文档保留作为历史。

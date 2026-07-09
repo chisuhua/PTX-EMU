@@ -367,6 +367,19 @@ set_tests_properties(integration_tcgen05_dispatch PROPERTIES
     LABELS "integration;tcgen05;dispatch")
 
 # ============================================================================
+# Phase 1 of implement-tcgen05-handlers-extended (ADR-0016, Oracle 2026-07-09):
+# integration tests for the 3 alloc-family handlers (alloc/dealloc/relinquish).
+# 11 TEST_CASEs exercise handler-level state transitions, cta_group::2
+# exception path, permit semantics, and a full alloc→dealloc→relinquish
+# workflow.
+# ============================================================================
+add_catch_test(integration_tcgen05_alloc_dealloc_relinquish
+    tcgen05/test_alloc_dealloc_relinquish.cpp
+)
+set_tests_properties(integration_tcgen05_alloc_dealloc_relinquish PROPERTIES
+    LABELS "integration;tcgen05;alloc;dealloc;relinquish;handler")
+
+# ============================================================================
 # Memory 集成测试 — 驱动模拟器
 # B1 plan: shared memory layout, multi-buffer offsets, zero-init verification
 # ============================================================================

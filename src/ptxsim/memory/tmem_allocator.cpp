@@ -7,9 +7,14 @@
 // input check and is safe to call from any context (no lock).
 
 #include "ptxsim/memory/tmem_allocator.h"
+#include "ptxsim/memory/tmem.h"
 
 #include <stdexcept>
 #include <string>
+
+static_assert(TmemAllocator::kSlotCount == Tmem::kSlotCount,
+              "TmemAllocator must mirror Tmem slot count "
+              "(per PTX ISA §9.7.13 = 256)");
 
 namespace {
 inline void throw_error(const std::string& msg) {
@@ -118,20 +123,11 @@ void TmemAllocator::deallocate(size_t slot_id) {
     mark_free_locked_(slot_id, num_cols);
 }
 
-// ---------------------------------------------------------------------------
-// Public read-only API — does NOT hold `mu_`. Safe to call from any
-// context. Returns a snapshot; concurrent mutations may race but the
-// result is well-defined for each individual bit/key.
-// ---------------------------------------------------------------------------
-
 bool TmemAllocator::is_allocated_start(size_t slot_id) const {
     if (!validate_slot_id_(slot_id)) {
         return false;
     }
-    // std::map::find is safe under concurrent insertion/erasure of
-    // *other* keys (node-based container). Reading `count(key)` for
-    // a specific key while a different key is being inserted/erased
-    // is well-defined per the C++17 standard.
+    std::lock_guard<std::mutex> lock(mu_);
     return allocations_.find(slot_id) != allocations_.end();
 }
 
@@ -139,14 +135,17 @@ bool TmemAllocator::is_allocated(size_t slot_id) const {
     if (!validate_slot_id_(slot_id)) {
         return false;
     }
+    std::lock_guard<std::mutex> lock(mu_);
     return allocation_map_.test(slot_id);
 }
 
 size_t TmemAllocator::active_allocation_count() const {
+    std::lock_guard<std::mutex> lock(mu_);
     return allocations_.size();
 }
 
 size_t TmemAllocator::total_allocated_slots() const {
+    std::lock_guard<std::mutex> lock(mu_);
     size_t total = 0;
     for (const auto& [start, num_cols] : allocations_) {
         total += num_cols;

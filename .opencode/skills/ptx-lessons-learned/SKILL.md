@@ -521,6 +521,8 @@ bash ./tests/ptx/test_all_ptx.sh
 | **ANTLR 解析错误：`mismatched input 'f16' expecting ID`** | **lexer 中 bare string token（如 `TCGEN_F16 : 'f16'`）抢占 ID 规则** | **`grep -nE "^\w+\s*:\s*'[a-zA-Z]" src/grammar/ptxLexer.g4` 列出 bare tokens；用点前缀（`.f16`）或 lexer mode 隔离** |
 | **声称 "X/X PASS" 但 ctest 失败（如 5 个 cute_rmsnorm/simpleGEMM 等）** | **grammar 修改未用真实 kernel PTX 验证**（"自证"测试漏掉真实场景） | **修改后必跑 `./tests/ptx/test_all_ptx.sh` + 复制 `bench/cute/*.ptx` 到 `tests/ptx/regression_*.ptx`** |
 | **Kleene star 预测冲突 + 寄存器解析失败同时发生** | **lexer 错位 — bare token 抢占 ID rule 同时影响 qualifier 与 register 解析** | **优先检查 lexer 是否有 bare string token；删除/加前缀一次性解决多类问题** |
+| **多线程单元测试 `th.join()` 后 REQUIRE 未触发** | **deadlock 时 `join()` 永久阻塞；`elapsed` 测量 post-join，bug 实际是 60s 软超时而非 30s 检测** | **`std::async(std::launch::async, ...)` + `future.wait_for(30s)` 返回 `future_status::timeout` 时主动 `REQUIRE(false, "deadlock")`** |
+| **`TmemAllocator` read-only methods (`is_allocated_start`/`is_allocated`/`active_allocation_count`/`total_allocated_slots`) 声称 "safe under concurrent erase" 但实际是 UB** | **`std::map::find` 与 `std::bitset::test` 在并发 `erase`/`set` 下 UB（C++17 只保证迭代器不失效，不保证并发安全）** | **所有 public methods 一致加 `lock_guard(mu_)`；或用 `static_assert` 强制设计时一致性** |
 
 ---
 

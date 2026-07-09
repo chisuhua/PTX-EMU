@@ -503,8 +503,8 @@ GPUContext (全局内存, SM 列表)
 | 类别 | 状态 |
 |------|------|
 | WMMA/Tensor Core | Blackwell `tcgen05.*` 5 core handler + test(commit `df6dde7`) + dispatch(commit `fix-tcgen05-handler-dispatch` cc49ae7) + 测试覆盖(commit `fix-tcgen05-test-coverage-gaps` fd74261) — 见 [ADR-0016](docs/adr/0016-blackwell-only-tcgen05.md) + `src/ptxsim/instructions/tcgen05.cpp`。pre-Blackwell 永久抛 `UnsupportedInstructionException`。 |
-| tcgen05 handler dispatch | 11 S_TCGEN05_* X-Macro + `Tcgen05PipelineHandler` 3-stage pipeline + `Tcgen05Handler::processTcgen05Operation` (commit `fix-tcgen05-handler-dispatch`)。ALLOC/DEALLOC/RELINQUISH/CP/MMA_WS/FENCE 抛 `UnsupportedInstructionException`（deferred but wired,见 `implement-tcgen05-handlers-extended`） |
-| tcgen05 测试覆盖 | 5 integration parse 测试 + 1 E2E GEMM kernel + f16×f16→f32 golden value (commit `fix-tcgen05-test-coverage-gaps` fd74261)。11 tcgen05-tagged ctest 全 PASS,`tests/ptx/test_all_ptx.sh` 47/47。 |
+| tcgen05 handler dispatch | 11 S_TCGEN05_* X-Macro + `Tcgen05PipelineHandler` 3-stage pipeline + `Tcgen05Handler::processTcgen05Operation` (commit `fix-tcgen05-handler-dispatch`)。**8/11 handler 已实现** (commits `486246a` Phase 1 + Phase 1.x)：5 core (mma/ld/st/commit/wait) + 3 alloc-family (alloc/dealloc/relinquish_alloc_permit)。CP/MMA_WS/FENCE 仍抛 `UnsupportedInstructionException`（Phase 2/3/4 in `implement-tcgen05-handlers-extended`）。cta_group::2 抛清晰异常（ADR-0018）。 |
+| tcgen05 测试覆盖 | 5 integration parse 测试 + 1 E2E GEMM kernel + f16×f16→f32 golden value (commit `fix-tcgen05-test-coverage-gaps` fd74261) + 12 TmemAllocator 单元测试 + 12 alloc/dealloc/relinquish handler 集成测试 (commits `486246a` + Phase 1.x)。tcgen05-tagged ctest 全 PASS,`tests/ptx/test_all_ptx.sh` 45/45 (per Phase 1)。 |
 | Atomic 操作 | 无真正原子性 (stub) |
 | Hopper (sm_90+) cluster | cluster 抽象未实现 — 实施中（[ADR-0016](docs/adr/0016-blackwell-only-tcgen05.md) Phase 0.3） |
 | Event/Stream API | fake 返回（不同步） |

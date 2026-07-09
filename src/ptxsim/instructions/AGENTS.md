@@ -106,6 +106,29 @@ cmake --build build --target ptxsim     # Build instruction handlers
   `Tcgen05Handler::processTcgen05Operation`. Direct invocation test
   promoted from dead-code coverage to real-path coverage.
 
+## TCGEN05 ALLOC-FAMILY HANDLERS (2026-07, implement-tcgen05-handlers-extended Phase 1)
+
+- `tcgen05_alloc.cpp` — 3 alloc-family handlers (alloc/dealloc/relinquish_alloc_permit)
+  added to dispatch table in `tcgen05.cpp:574-583`. Implements per-CTA TMEM
+  slot allocation via `TmemAllocator` (256-slot first-fit, `std::bitset` tracking).
+- **cta_group::2** throws `UnsupportedInstructionException` referencing
+  ADR-0018 (cluster abstraction deferred).
+- Per-warp allocate_permit checked in `alloc`; relinquished by
+  `tcgen05.relinquish_alloc_permit`; restored on `WarpState::reset()`
+  (CTA teardown per PTX ISA §9.7.16).
+- **Status (Phase 1.x)**: TmemAllocator read-only methods now hold
+  `mu_` to prevent data races (per Oracle review 2026-07-09).
+  `kSlotCount` consistency enforced via `static_assert` against `Tmem`.
+  3 handler-level integration tests added
+  (`tests/integration/tcgen05/test_alloc_dealloc_relinquish.cpp`,
+  12 TEST_CASEs / 28 assertions).
+
+## TCGEN05 REMAINING DEFERRED (CP/MMA_WS/FENCE)
+
+- **3 deferred op_kinds** (CP/MMA_WS/FENCE) still throw
+  `UnsupportedInstructionException` (per ADR-0016 §C5 fix #1) —
+  Phase 2/3/4 in `implement-tcgen05-handlers-extended`.
+
 ## ATOMIC HANDLER (Phase 1+2, 2026-07)
 
 Implements `atomic.compare_and_swap` (a.k.a. `atomic.cas`) plus the

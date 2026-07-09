@@ -27,6 +27,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstddef>
+#include <future>
 #include <random>
 #include <stdexcept>
 #include <thread>
@@ -202,63 +203,61 @@ TEST_CASE("multi_threaded_concurrent_alloc_dealloc_no_deadlock",
 
     std::atomic<size_t> total_allocated{0};
     std::atomic<int> exception_count{0};
-    std::vector<std::thread> threads;
-    threads.reserve(kThreads);
 
-    auto start = std::chrono::steady_clock::now();
-    auto deadline = start + std::chrono::seconds(30);
+    auto worker = [&a, &total_allocated, &exception_count](int t) {
+        std::mt19937 rng(static_cast<unsigned>(t) * 9973u + 1);
+        std::uniform_int_distribution<int> op(0, 2);
+        std::uniform_int_distribution<int> size(1, 8);
 
-    for (int t = 0; t < kThreads; ++t) {
-        threads.emplace_back([&a, &total_allocated, &exception_count, t]() {
-            std::mt19937 rng(static_cast<unsigned>(t) * 9973u + 1);
-            std::uniform_int_distribution<int> op(0, 2);  // 0=alloc, 1=alloc, 2=dealloc
-            std::uniform_int_distribution<int> size(1, 8);
+        std::vector<size_t> live;
+        live.reserve(64);
 
-            std::vector<size_t> live;
-            live.reserve(64);
-
-            for (int i = 0; i < kIterationsPerThread; ++i) {
-                try {
-                    if (op(rng) < 2) {
-                        size_t s = a.allocate(static_cast<size_t>(size(rng)));
-                        if (s != TmemAllocator::kInvalidSlotId) {
-                            live.push_back(s);
-                            total_allocated.fetch_add(1, std::memory_order_relaxed);
-                        }
-                    } else if (!live.empty()) {
-                        size_t idx = rng() % live.size();
-                        size_t s = live[idx];
-                        a.deallocate(s);
-                        live[idx] = live.back();
-                        live.pop_back();
-                        total_allocated.fetch_sub(1, std::memory_order_relaxed);
+        for (int i = 0; i < kIterationsPerThread; ++i) {
+            try {
+                if (op(rng) < 2) {
+                    size_t s = a.allocate(static_cast<size_t>(size(rng)));
+                    if (s != TmemAllocator::kInvalidSlotId) {
+                        live.push_back(s);
+                        total_allocated.fetch_add(1, std::memory_order_relaxed);
                     }
-                } catch (...) {
-                    exception_count.fetch_add(1, std::memory_order_relaxed);
-                }
-            }
-            for (size_t s : live) {
-                try {
+                } else if (!live.empty()) {
+                    size_t idx = rng() % live.size();
+                    size_t s = live[idx];
                     a.deallocate(s);
+                    live[idx] = live.back();
+                    live.pop_back();
                     total_allocated.fetch_sub(1, std::memory_order_relaxed);
-                } catch (...) {
                 }
+            } catch (...) {
+                exception_count.fetch_add(1, std::memory_order_relaxed);
             }
-        });
+        }
+        for (size_t s : live) {
+            try {
+                a.deallocate(s);
+                total_allocated.fetch_sub(1, std::memory_order_relaxed);
+            } catch (...) {
+            }
+        }
+    };
+
+    std::vector<std::future<void>> futures;
+    futures.reserve(kThreads);
+    for (int t = 0; t < kThreads; ++t) {
+        futures.emplace_back(std::async(std::launch::async, worker, t));
     }
 
-    for (auto& th : threads) {
-        // join() with deadline check is tricky in std::thread; we
-        // rely on the test framework's overall timeout (Catch2 default
-        // is generous). For added safety, we measure post-join time.
-        th.join();
+    constexpr auto kDeadline = std::chrono::seconds(30);
+    bool all_completed = true;
+    for (auto& f : futures) {
+        if (f.wait_for(kDeadline) != std::future_status::ready) {
+            all_completed = false;
+            break;
+        }
     }
-    auto end = std::chrono::steady_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - deadline).count();
 
-    REQUIRE(elapsed < 30);  // did not exceed deadline by 30s (deadlock detection)
+    REQUIRE(all_completed);  // deadlock suspected if any future did not complete
     REQUIRE(exception_count.load() == 0);
-    // All threads' live allocations have been cleaned up.
     REQUIRE(a.active_allocation_count() == 0);
     REQUIRE(total_allocated.load() == 0);
 }
