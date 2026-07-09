@@ -8,24 +8,75 @@ RELINQUISH_ALLOC_PERMIT, CP, FENCE, MMA_WS.
 
 #### Scenario: 6 handlers process correctly
 - **WHEN** each handler is invoked with a Tcgen05Instr
-- **THEN** the appropriate subsystem (Tmem/CTAContext/WarpScheduler) is updated per PTX ISA §9.7.16
+- **THEN** the appropriate subsystem (TmemAllocator/CTAContext/Warp) is updated per PTX ISA §9.7.16
 - **AND** no regression in the 5 core handlers (mma/ld/st/commit/wait)
 
 #### Scenario: per-CTA resource isolation for alloc/dealloc
 - **WHEN** `tcgen05.alloc.cta_group::1.shared::cta.b32 [smem_addr], num_cols` is dispatched
-- **THEN** the handler allocates `num_cols` TMEM slots in `cta->tmem()`
+- **THEN** the handler allocates `num_cols` TMEM slots via `TmemAllocator` (new abstraction layer, per Oracle Q1-A)
 - **AND** other CTAs in same kernel are not affected
 
-#### Scenario: weight-stationary mma.ws handler
-- **WHEN** `tcgen05.mma.ws.cta_group::1.kind::f16 [d_tmem], a_desc, b_desc, idesc` is dispatched
-- **THEN** the handler executes weight-stationary variant (vs standard mma)
-- **AND** the result matches a golden value (PTX ISA §9.7.16)
+#### Scenario: cta_group::2 throws clear exception (per Oracle Q2-A)
+- **WHEN** `tcgen05.*.cta_group::2.*` is dispatched
+- **THEN** the handler throws `UnsupportedInstructionException` with message containing "cluster abstraction not yet implemented (ADR-0018)"
+- **AND** no silent fallback to cta_group::1 behavior
 
-### Requirement: Tests cover 6 extended handlers
+#### Scenario: weight-stationary mma.ws handler (per Oracle Q3-A scope)
+- **WHEN** `tcgen05.mma.ws.cta_group::1.kind::f16 [d_tmem], a_desc, b_desc, idesc` with `.warpspecialized::1` is dispatched
+- **THEN** the handler executes weight-stationary variant (vs standard mma)
+- **AND** the result matches a golden value (PTX ISA §9.7.16, marked `UNVERIFIED-AGAINST-HARDWARE`)
+- **AND** other collector modes (non `.warpspecialized::1`) or non-f16 kind types throw clear exception
+
+#### Scenario: cp handler reuses smem address resolution (per Oracle Q4-B)
+- **WHEN** `tcgen05.cp.cta_group::1.shared::cta [tmem_dst], [smem_src], shape` is dispatched
+- **THEN** the handler reads from shared memory via `SharedMemoryManager` (existing path, no new `SmemDescriptor` abstraction)
+- **AND** writes to TMEM via `TmemAllocator`
+- **AND** 128 bytes transferred byte-by-byte correctly
+
+#### Scenario: fence handler is no-op marker (per Oracle Q6-B)
+- **WHEN** `tcgen05.fence.before_thread_sync` or `::after_thread_sync` is dispatched
+- **THEN** the handler calls `warp->record_fence_position(before/after)` (extension point)
+- **AND** does NOT trigger membar / memory barrier
+- **AND** does NOT block on warp arrival
+
+### Requirement: TmemAllocator abstraction layer SHALL be added (per Oracle Q1-A)
+The system SHALL provide a new `TmemAllocator` class
+(`include/ptxsim/memory/tmem_allocator.h`) as an abstraction layer
+over the existing fixed `Tmem` (256 slots × 128 bytes).
+
+#### Scenario: TmemAllocator API
+- **WHEN** the system is initialized
+- **THEN** `CTAContext::tmem_allocator()` returns a `TmemAllocator&`
+- **AND** public methods include: `allocate(num_cols) -> slot_id`, `deallocate(slot_id)`, `query(slot_id) -> bytes`
+- **AND** internal state uses `std::bitset<256>` to track allocation
+
+#### Scenario: Recursive lock audit (per ptx-lessons-learned §2, Oracle high-risk)
+- **WHEN** `TmemAllocator` is implemented
+- **THEN** all public methods are audited: no public method that holds `mu_` calls another public method that also holds `mu_`
+- **AND** a multi-threaded concurrent `alloc`/`dealloc` unit test passes (falsification: deadlock detection)
+
+### Requirement: Tests cover 6 extended handlers (per Oracle Q5-C mixed strategy)
 The system SHALL provide 1 unit test + 1 integration test + 2 E2E kernels
-covering the 6 extended handlers with golden-value verification.
+covering the 6 extended handlers with **mixed oracle strategy**:
+- **Unit**: hand-computed golden values, marked `UNVERIFIED-AGAINST-HARDWARE`
+- **Integration**: `step_warp` + `execute_warp_instruction` driven
+- **E2E**: real nvcc-generated PTX when available, fixtures otherwise
 
 #### Scenario: tests PASS
 - **WHEN** `cd build && ctest -L "unit;tcgen05|integration;tcgen05|e2e;tcgen05" -V` is run
-- **THEN** 2 new unit tests + 1 integration test + 2 E2E kernels PASS
+- **THEN** 1 unit test + 1 integration test + 2 E2E kernels PASS
 - **AND** no regression in core handler tests
+- **AND** all new golden values include `// UNVERIFIED-AGAINST-HARDWARE` comment
+
+### Requirement: Documentation SHALL be updated (per Oracle Q7-A)
+The system SHALL update documentation in the same change (each Phase end):
+- Root `AGENTS.md` known limitations table: tcgen05 → 11/11 handler implemented
+- `src/ptxsim/instructions/AGENTS.md`: `tcgen05.cpp` includes 11 handler
+- `docs/ptx/README.md` status table updated
+- `docs/adr/0016-blackwell-only-tcgen05.md` appends update record
+
+#### Scenario: documentation reflects 11/11 tcgen05 handlers
+- **WHEN** the change is complete (all 6 Phases done)
+- **THEN** `git grep "11/11"` on `AGENTS.md` and `docs/ptx/README.md` returns the updated status
+- **AND** `docs/adr/0016-blackwell-only-tcgen05.md` includes a section noting the change archive commit
+- **AND** no remaining references to "deferred" or "UnsupportedInstructionException" for these 6 handlers

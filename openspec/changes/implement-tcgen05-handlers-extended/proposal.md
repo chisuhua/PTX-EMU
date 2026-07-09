@@ -6,7 +6,8 @@
 >   - `fix-tcgen05-grammar-mr3` (Change-3a, pending) — **硬前置**(grammar 必须 100% 正确)
 >   - `extend-blackwell-tcgen05-infra` (Change-2, pending) — **软前置**(审计 ≥L2)
 >   - `implement-tcgen05-handlers-core` (Change-3b, pending) — **强前置**(5 core handler 已实施)
-> **设计时教训**: `ptx-lessons-learned` §3(分 Phase commit)+ Metis A.4(6 handler 不能继续"留待 follow-up" — 必须 propose)
+> **设计时教训**: `ptx-lessons-learned` §3(分 Phase commit)+ §2(递归锁审计)+ Metis A.4(6 handler 不能继续"留待 follow-up" — 必须 propose)
+> **Oracle 决策建议** (2026-07-08): 7 关键问题已采纳 — Q1-A / Q2-A / Q3-A / Q4-B / Q5-C / Q6-B / Q7-A
 
 ## Why
 
@@ -85,43 +86,60 @@ Change-3b 实施 5 个 **core handler**(MMA/LD/ST/COMMIT/WAIT),但 Blackwell `tc
 
 ## Goals
 
-### Phase 1: 实施 alloc/dealloc/relinquish(1 commit,简单)
+### Phase 1: TmemAllocator 抽象 + alloc/dealloc/relinquish (1 commit,简单优先)
 
-1. `src/ptxsim/instructions/tcgen05_alloc.cpp` 3 个 handler
-2. **Acceptance**:
-   - **alloc**:指定 `num_cols` 槽位 → CTAContext.tmem 分配成功
-   - **dealloc**:释放 CTAContext.tmem 槽位
+1. 新增 `include/ptxsim/memory/tmem_allocator.h` (Q1-A, Oracle 推荐)
+2. **递归锁审计(必做,per ptx-lessons-learned §2)**:
+   - 检查 TmemAllocator 所有 public 方法是否互调
+   - 检查 `cta->tmem()` 调用链是否经过 `mutex` 持锁方法
+   - Falsification: 编写并发 alloc/dealloc 单元测试,验证不死锁
+3. `src/ptxsim/instructions/tcgen05_alloc.cpp` 3 个 handler
+4. **Acceptance**:
+   - **alloc**:指定 `num_cols` 槽位 → TmemAllocator 分配成功
+   - **dealloc**:释放 TmemAllocator 槽位
    - **relinquish**:WarpState 的 allocate_permit 释放(per CTA-specialized warp)
-3. 跑 `ctest -R tcgen05_alloc -V` 验证
-4. 跑 `./tests/ptx/test_all_ptx.sh` 仍 PASS(13 fixtures)
+5. 跑 `ctest -R tcgen05_alloc -V` 验证
+6. 跑 `./tests/ptx/test_all_ptx.sh` 仍 PASS(13 fixtures)
+7. **commit**: `feat(handlers): TmemAllocator + tcgen05.alloc/dealloc/relinquish (ADR-0016)`
 
-### Phase 2: 实施 cp(1 commit,中等)
+### Phase 2: cp handler(1 commit,中等)
 
 1. `src/ptxsim/instructions/tcgen05_cp.cpp` 1 个 handler
-2. **Acceptance**:128 字节从 SMEM → TMEM 拷贝(byte-by-byte 验证)
-3. 跑 `ctest -R tcgen05_cp -V` 验证
-4. E2E `test_tcgen05_cp.cu` 验证
+2. **Q4-B 实现**: 复用现有 smem 地址解析路径(per `SharedMemoryManager`)
+3. **Q2-A 处理**: `.cta_group::2` 变体抛清晰异常(含 cluster 缺失说明)
+4. **Acceptance**:128 字节从 SMEM → TMEM 拷贝(byte-by-byte 验证)
+5. 跑 `ctest -R tcgen05_cp -V` 验证
+6. E2E `test_tcgen05_cp.cu` 验证
+7. **commit**: `feat(handlers): implement tcgen05.cp smem→tmem (ADR-0016)`
 
-### Phase 3: 实施 fence(1 commit,简单)
-
-1. `src/ptxsim/instructions/tcgen05_fence.cpp` 1 个 handler
-2. **Acceptance**:
-   - `::before_thread_sync` → 等待所有 warp 到达 fence
-   - `::after_thread_sync` → 等待 fence 前的指令完成
-3. 跑 `ctest -R tcgen05_fence -V` 验证
-
-### Phase 4: 实施 mma.ws(1 commit,复杂)
+### Phase 3: mma.ws handler(1 commit,复杂)
 
 1. `src/ptxsim/instructions/tcgen05_mma_ws.cpp` 1 个 handler
-2. **Acceptance**:与 mma 共享 fragment 算术 + weight-stationary 布局差异
-3. **Golden value**:从 PTX ISA §9.7.16 规范提取(weight-stationary 数据流)
-4. 跑 `ctest -R tcgen05_mma_ws -V` 验证
+2. **Q3-A 实现范围**: `.kind::f16` + 单一 collector 模式 (`.warpspecialized::1`)
+3. **其他变体** (其他 kind 类型 / 其他 collector 模式) 抛清晰异常
+4. 复用 Change-3b 的 mma fragment 算术(决策 D3),仅在 layout 上做 weight-stationary 转换
+5. **Golden value**: 从 PTX ISA §9.7.16 规范提取,**必须标记 `UNVERIFIED-AGAINST-HARDWARE`** (per Q5-C 经验)
+6. 跑 `ctest -R tcgen05_mma_ws -V` 验证
+7. **commit**: `feat(handlers): implement tcgen05.mma.ws weight-stationary f16 variant (ADR-0016)`
+
+### Phase 4: fence + 混合测试(1 commit)
+
+1. `src/ptxsim/instructions/tcgen05_fence.cpp` 1 个 handler
+2. **Q6-B 实现**: no-op marker — 仅记录 fence 位置,不触发实际内存屏障
+3. 调 `warp->record_fence_position(before/after)` 作为扩展点
+4. **混合测试策略(Q5-C)**:
+   - **Unit**: 手算 golden (per `tcgen05_mma_golden.h` 模式),全部 6 handler
+   - **Integration**: `step_warp` + `execute_warp_instruction` 驱动
+   - **E2E**: 尝试 `nvcc -ptx` 生成真实 PTX,无硬件时用 fixture
+5. **commit**: `test(handlers): mixed oracle strategy for 6 extended tcgen05 (ADR-0016)`
 
 ### Phase 5: 文档同步(1 commit)
 
 1. 根 `AGENTS.md` 已知限制表:tcgen05 → 11/11 handler 已实现
 2. `src/ptxsim/instructions/AGENTS.md`:`tcgen05.cpp` 包含 11 handler
 3. ADR-0016 更新记录:追加本 change archive commit 引用
+4. `docs/ptx/README.md` 状态表更新
+5. **commit**: `docs: update AGENTS + ADR for tcgen05 11/11 handler (ADR-0016)`
 
 ### Phase 6: Archive(1 commit,per Checklist G)
 
@@ -185,34 +203,46 @@ Change-3b 实施 5 个 **core handler**(MMA/LD/ST/COMMIT/WAIT),但 Blackwell `tc
 ### 函数审计完整性
 
 - [x] Baseline 函数清单:6 个 extended handler(spec 已明确)
-- [x] 锁点审计:6 个 handler 均无锁调用(纯计算 + 资源管理)
+- [x] **递归锁审计(必做,per ptx-lessons-learned §2 + Oracle 高风险发现)**:
+  - Tmem.h:47 已有 `mutable std::mutex mu_`
+  - cluster_context.h:50 已有 `mutable std::mutex mu_`
+  - tmem.h:46 注释明确引用 ptx-lessons-learned §2
+  - **Phase 1 实施前命令**: `grep -n "lock_guard\|unique_lock" src/ptxsim/memory/tmem_allocator.cpp`
+  - **验证方法**: 编写多线程并发 alloc/dealloc 单元测试
+  - **Falsification**: 若 public 方法 A 持锁调用 public 方法 B,B 也持锁 → 死锁
 - [x] 跨模块状态翻译:
-  - alloc/dealloc: `cta->tmem()` 分配/释放
-  - cp: `cta->smem()` + `cta->tmem()`(per CTA)
-  - fence: `warp->barrier_module()` 同步
-  - mma.ws: 与 mma 共享 fragment 算术 + 不同 layout
+  - alloc/dealloc: `cta->tmem_allocator()` 分配/释放(新抽象层)
+  - cp: `cta->smem()` + `cta->tmem_allocator()`(per CTA, Q4-B 复用 smem 解析)
+  - fence: `warp->record_fence_position()` (Q6-B no-op marker)
+  - mma.ws: 与 mma 共享 fragment 算术 + collector 模式差异
   - relinquish: `warp->set_allocate_permit(false)`(per CTA-specialized)
-- [x] invariant 清单:per-CTA 资源隔离、weight-stationary layout 正确性
+- [x] invariant 清单:per-CTA 资源隔离、weight-stationary layout 正确性、Q2-A cta_group::2 清晰异常
 
-### 多 Phase 推进(6 个 atomic commits,per handler 独立)
+### 多 Phase 推进(6 个 atomic commits,per Phase 独立)
 
-- [x] Phase 1: alloc/dealloc/relinquish(独立 commit,简单优先)
-- [x] Phase 2: cp(独立 commit,中等)
-- [x] Phase 3: fence(独立 commit,简单)
-- [x] Phase 4: mma.ws(独立 commit,复杂最后)
-- [x] Phase 5: 文档(独立 commit)
+- [x] Phase 1: TmemAllocator + alloc/dealloc/relinquish(独立 commit,简单优先,Q1-A)
+- [x] Phase 2: cp(独立 commit,中等,Q4-B + Q2-A)
+- [x] Phase 3: mma.ws(独立 commit,复杂,Q3-A 范围限定)
+- [x] Phase 4: fence + 混合测试(独立 commit,Q6-B no-op + Q5-C 混合 oracle)
+- [x] Phase 5: 文档(独立 commit,Q7-A 每 Phase 末尾同步)
 - [x] Phase 6: archive(独立 commit,per Checklist G)
-- [x] 基线 worktree 计划:`.worktrees/baseline-tcgen05-handlers-extended`
-- [x] 失败处理策略:已有测试回归 → 立即 revert 该 Phase
+- [x] 基线 worktree 计划 (per ptx-lessons-learned §4):
+  ```bash
+  git worktree add .worktrees/baseline-tcgen05-extended <baseline-commit>
+  # 每个 Phase 结束前对比:
+  cd build && ctest -L tcgen05 --output-on-failure
+  ```
+- [x] 失败处理策略:已有测试回归 → 立即 revert 该 Phase,不混入后续 commit
 
 ### 文档同步
 
-- [x] AGENTS.md 同步项已列出
-- [x] ADR 追加段落已规划
+- [x] AGENTS.md 同步项已列出(根 + src/ptxsim/instructions/ + docs/ptx/README.md)
+- [x] ADR 追加段落已规划(ADR-0016)
 
 ### 实施前必跑(per `ptx-lessons-learned` §7)
 
-- [ ] **Metis pre-implementation review**:验证 6 handler 实现范围、优先级排序
+- [ ] **Metis pre-implementation review**:验证 6 handler 实现范围、优先级排序 ✅ (2026-07-08)
+- [ ] **Oracle 决策建议**:7 关键问题已采纳 ✅ (2026-07-08)
 - [ ] 验证 Change-3b 已 archive(5 core handler 已实施)
 - [ ] 验证 Change-3a 已 archive(grammar 100%)
 - [ ] 验证 Change-2 已 archive(infra ≥L2)
@@ -234,34 +264,59 @@ Change-3b 实施 5 个 **core handler**(MMA/LD/ST/COMMIT/WAIT),但 Blackwell `tc
 - **Change-2 → 本 change**:软前置(infra ≥L2)
 - **本 change 是可选的** — 4-change 路线图核心不依赖此,5 core handler 即可交付
 
-## 本 change 特有设计决策(per Metis F.2)
+## 本 change 特有设计决策(per Metis F.2 + Oracle 2026-07-08)
 
 **决策 D1:handler 文件拆分粒度**
 - **拆分**:4 个独立文件(alloc.cpp/cp.cpp/fence.cpp/mma_ws.cpp)— 每个文件单一职责
 - 备选:单文件 `tcgen05.cpp` 包含所有 11 handler — 拒绝,与 Change-3b 的 `tcgen05.cpp`(5 core)合并
 - 理由:5 core 在 Change-3b 已合并,extended 6 个单独文件避免单文件过大
 
-**决策 D2:handler 实施优先级**
-- **简单优先**:alloc/dealloc/relinquish(无 fragment 算术)→ fence(同步原语)→ cp(SMEM-TMEM 拷贝)→ mma.ws(fragment 算术)
-- 理由:先建立 confidence,再处理复杂 case
-- 拒绝:按 PTX ISA §9.7.16 顺序实施(无 learning curve 价值)
+**决策 D2:handler 实施优先级(Oracle 修订)**
+- **Phase 顺序**: TmemAllocator + alloc/dealloc/relinquish → cp → mma.ws → fence + 混合测试
+- **理由**: 先建立 TMEM 生命周期管理(Phase 1),cp 依赖(Phase 2),mma.ws 复杂(Phase 3),fence 最简单放到最后
+- **Oracle 调整理由**: fence 是 no-op marker(Q6-B),无需复杂同步,放在所有 handler 完成后作为"压测"测试集
 
-**决策 D3:mma.ws vs mma 共享**
-- **共享 fragment 算术**:mma.ws 复用 Change-3b 的 mma handler,只在 layout 上差异
-- 备选:完全独立实现 — 拒绝,代码重复
-- 理由:`// UNVERIFIED-AGAINST-HARDWARE` 注释需在共享部分标注一次
+**决策 D3:mma.ws vs mma 共享(Oracle Q3-A 范围限定)**
+- **共享 fragment 算术**: mma.ws 复用 Change-3b 的 mma handler
+- **范围限定**: 仅实现 `.kind::f16` + 单一 collector 模式 (`.warpspecialized::1`)
+- **其他变体**: 其他 kind 类型 / 其他 collector 模式抛清晰异常
+- **备选**: 完全独立实现 — 拒绝,代码重复
+- **理由**: `// UNVERIFIED-AGAINST-HARDWARE` 注释需在共享部分标注一次;Oracle 警示全实现会 scope 膨胀
 
-**决策 D4:alloc/dealloc 资源管理**
-- **per-CTA**:TMEM 槽位由 CTAContext 拥有,warp/thread 只读
-- 备选:per-warp — 拒绝,违反 NVIDIA 硬件架构(per-CTA shared resource)
-- 理由:与 `tmem.h` 现有 256 slot 槽位管理一致
+**决策 D4:alloc/dealloc 资源管理(Oracle Q1-A 新增 TmemAllocator)**
+- **新增 TmemAllocator 抽象层**: 在 `cta->tmem()` 之上,提供分配/释放/地址查询
+- **per-CTA**: TMEM 槽位由 CTAContext 拥有,warp/thread 只读
+- **备选**: 直接 `cta->tmem()` 操作 — 拒绝,缺乏分配语义
+- **理由**: 与 `tmem.h` 现有 256 slot 槽位管理一致;Oracle 强调"最小改动"原则
 
 **决策 D5:relinquish 语义**
-- **per-warp permit**:每个 warp 有自己的 allocate permit,relinquish 后其他 warp 可 alloc
+- **per-warp permit**: 每个 warp 有自己的 allocate permit,relinquish 后其他 warp 可 alloc
 - 备选:per-CTA 单一 permit — 拒绝,违反 NVIDIA 硬件(CTA-specialized 场景)
 - 理由:per `docs/adr/0016-*.md` 描述的 CTA-specialized warp 场景
 
-**决策 D6:cp SMEM 源**
-- **`.shared::cta` 源**:cp 只支持 per-CTA shared memory(per PTX ISA)
-- 备选:`.shared::cluster` — 拒绝,cluster cp 需要 distributed_smem(本 change scope 外)
-- 理由:cluster cp 需 Change `implement-cta-group-2-dist-smem`(独立 follow-up)
+**决策 D6:cp SMEM 源(Oracle Q4-B 简化)**
+- **`.shared::cta` 源**: cp 只支持 per-CTA shared memory(per PTX ISA)
+- **复用 smem 解析**: 直接调 `SharedMemoryManager` 已有的地址解析路径
+- **备选**: 新增 `SmemDescriptor` 抽象 — 拒绝,引入冗余抽象(per `ptx_op.def:132` operand count=3,无 descriptor 字段)
+- **理由**: cluster cp 需 Change `implement-cta-group-2-dist-smem`(独立 follow-up)
+
+**决策 D7:cta_group::2 处理(Oracle Q2-A)**
+- **cta_group::1**: 完整实现
+- **cta_group::2**: 抛清晰异常 `UnsupportedInstructionException`,message 包含 "cluster abstraction not yet implemented (ADR-0018)"
+- **理由**: ClusterContext 只有 arrive/wait,无 distributed smem;越界违反 ADR-0016 边界
+
+**决策 D8:fence 语义(Oracle Q6-B)**
+- **no-op marker**: 仅记录 fence 位置,不触发实际内存屏障
+- **扩展点**: 调 `warp->record_fence_position(before/after)`
+- **理由**: 模拟器无真实内存序约束;`atomic.cpp` 用全局 mutex 模拟"原子性"
+- **未来**: 真实硬件内存模型实施时,本接口可扩展
+
+**决策 D9:测试 oracle 策略(Oracle Q5-C)**
+- **Unit**: 手算 golden (per `tcgen05_mma_golden.h` 模式),标记 `UNVERIFIED-AGAINST-HARDWARE`
+- **Integration**: `step_warp` + `execute_warp_instruction` 驱动
+- **E2E**: 尝试 `nvcc -ptx` 生成真实 PTX,无 Blackwell 硬件时用 fixture
+- **理由**: 现有 golden 标记 `UNVERIFIED` 是警告信号;纯手工不可靠,纯硬件不可得
+
+**决策 D10:文档同步(Oracle Q7-A)**
+- **同 change 每 Phase 末尾**: 不等待 archive
+- **理由**: ptx-lessons-learned §8 "代码+测试+README 4 项缺一不可"
