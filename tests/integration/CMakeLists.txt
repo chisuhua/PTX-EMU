@@ -380,6 +380,19 @@ set_tests_properties(integration_tcgen05_alloc_dealloc_relinquish PROPERTIES
     LABELS "integration;tcgen05;alloc;dealloc;relinquish;handler")
 
 # ============================================================================
+# Phase 2 of tcgen05-cp-test-coverage-and-exception-cleanup:
+# integration tests for tcgen05.cp SMEM → TMEM copy.
+# 3 TEST_CASEs exercise the 128-byte copy happy path (offset 0 + non-zero
+# offset) and the out-of-bounds exception path. Helper-level coverage
+# lives in tests/unit/tcgen05/test_tcgen05_cp.cpp.
+# ============================================================================
+add_catch_test(integration_tcgen05_cp
+    tcgen05/test_tcgen05_cp.cpp
+)
+set_tests_properties(integration_tcgen05_cp PROPERTIES
+    LABELS "integration;tcgen05;cp;handler")
+
+# ============================================================================
 # Memory 集成测试 — 驱动模拟器
 # B1 plan: shared memory layout, multi-buffer offsets, zero-init verification
 # ============================================================================
