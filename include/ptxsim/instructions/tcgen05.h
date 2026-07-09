@@ -24,27 +24,34 @@
 //
 // =============================================================================
 
+#include "ptx_ir/statement_context.h" // Tcgen05Instr + Tcgen05OpKind
 #include "ptxsim/thread_context.h"
-#include "ptx_ir/statement_context.h"  // Tcgen05Instr + Tcgen05OpKind
 
 namespace ptxsim {
 
-// Forward declarations only — definitions live in src/ptxsim/instructions/tcgen05.cpp
-void processTcgen05Mma(ThreadContext* context, const Tcgen05Instr& instr);
-void processTcgen05Ld(ThreadContext* context, const Tcgen05Instr& instr);
-void processTcgen05St(ThreadContext* context, const Tcgen05Instr& instr);
-void processTcgen05Commit(ThreadContext* context, const Tcgen05Instr& instr);
-void processTcgen05Wait(ThreadContext* context, const Tcgen05Instr& instr);
+// Forward declarations only — definitions live in
+// src/ptxsim/instructions/tcgen05.cpp
+void processTcgen05Mma(ThreadContext *context, const Tcgen05Instr &instr);
+void processTcgen05Ld(ThreadContext *context, const Tcgen05Instr &instr);
+void processTcgen05St(ThreadContext *context, const Tcgen05Instr &instr);
+void processTcgen05Commit(ThreadContext *context, const Tcgen05Instr &instr);
+void processTcgen05Wait(ThreadContext *context, const Tcgen05Instr &instr);
 
 // Phase 1 of implement-tcgen05-handlers-extended (ADR-0016, Oracle Q1-A/Q2-A):
 // 3 alloc-family handlers (alloc/dealloc/relinquish_alloc_permit).
 // Definitions live in src/ptxsim/instructions/tcgen05_alloc.cpp.
-void processTcgen05Alloc(ThreadContext* context, const Tcgen05Instr& instr);
-void processTcgen05Dealloc(ThreadContext* context, const Tcgen05Instr& instr);
-void processTcgen05Relinquish(ThreadContext* context, const Tcgen05Instr& instr);
+void processTcgen05Alloc(ThreadContext *context, const Tcgen05Instr &instr);
+void processTcgen05Dealloc(ThreadContext *context, const Tcgen05Instr &instr);
+void processTcgen05Relinquish(ThreadContext *context,
+                              const Tcgen05Instr &instr);
 
 // Phase 2 (Oracle Q4-B/Q2-A): tcgen05.cp — shared memory → TMEM copy.
 // Definition lives in src/ptxsim/instructions/tcgen05_cp.cpp.
-void processTcgen05Cp(ThreadContext* context, const Tcgen05Instr& instr);
+void processTcgen05Cp(ThreadContext *context, const Tcgen05Instr &instr);
 
-}  // namespace ptxsim
+// Phase 2 helpers for tcgen05.cp. Exposed for unit tests; the public
+// entry point remains `processTcgen05Cp`.
+[[noreturn]] void throw_cta_group_2(const char *instr_name);
+uint32_t extract_smem_offset_placeholder(const Tcgen05Instr &instr);
+
+} // namespace ptxsim

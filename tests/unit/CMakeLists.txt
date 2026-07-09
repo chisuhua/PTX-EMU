@@ -633,3 +633,14 @@ add_catch_test(unit_ptx_ir_tcgen05_pipeline_handler
 )
 set_tests_properties(unit_ptx_ir_tcgen05_pipeline_handler PROPERTIES
     LABELS "unit;ptx_ir;tcgen05;pipeline")
+
+# ============================================================================
+# tcgen05.cp unit tests (ADR-0016, tcgen05-cp-test-coverage-and-exception-cleanup)
+# Helper function + exception path coverage for processTcgen05Cp.
+# Happy-path 128-byte copy is covered by tests/integration/tcgen05/.
+# ============================================================================
+add_catch_test(unit_tcgen05_cp
+    tcgen05/test_tcgen05_cp.cpp
+)
+set_tests_properties(unit_tcgen05_cp PROPERTIES
+    LABELS "unit;tcgen05;cp;handler")

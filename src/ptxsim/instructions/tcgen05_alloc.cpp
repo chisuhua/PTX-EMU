@@ -19,32 +19,15 @@
 #include "ptxsim/instructions/tcgen05.h"
 
 #include "ptxsim/cta_context.h"
+#include "ptxsim/memory/tmem_allocator.h"
 #include "ptxsim/ptx_exceptions.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/warp_context.h"
-#include "ptxsim/memory/tmem_allocator.h"
 #include "utils/logger.h"
 
 #include <stdexcept>
 
 namespace ptxsim {
-
-namespace {
-
-// Throw a clear cta_group::2 exception naming the missing cluster
-// abstraction. Called from all 3 handlers before doing any work.
-[[noreturn]] void throw_cta_group_2(const char* instr_name) {
-    PTX_ERROR_EMU("%s: .cta_group::2 is not supported "
-                  "(cluster abstraction deferred to ADR-0018)",
-                  instr_name);
-    throw UnsupportedInstructionException(
-        instr_name,
-        std::string(instr_name) +
-        ": .cta_group::2 is not yet supported (cluster abstraction "
-        "deferred to ADR-0018, implement-cta-group-2-dist-smem)");
-}
-
-}  // namespace
 
 // ---------------------------------------------------------------------------
 // processTcgen05Alloc — allocate `num_cols` consecutive TMEM slots.
@@ -58,20 +41,18 @@ namespace {
 // any post-allocation barrier semantics are not verified against
 // real Blackwell hardware.
 // ---------------------------------------------------------------------------
-void processTcgen05Alloc(ThreadContext* context, const Tcgen05Instr& instr) {
-    WarpContext* warp = context->get_warp_context();
+void processTcgen05Alloc(ThreadContext *context, const Tcgen05Instr &instr) {
+    WarpContext *warp = context->get_warp_context();
     if (!warp) {
         PTX_ERROR_EMU("tcgen05.alloc: no WarpContext attached to thread");
         throw UnsupportedInstructionException(
-            "tcgen05.alloc",
-            "tcgen05.alloc requires an active WarpContext");
+            "tcgen05.alloc", "tcgen05.alloc requires an active WarpContext");
     }
-    CTAContext* cta = warp->get_cta_context();
+    CTAContext *cta = warp->get_cta_context();
     if (!cta) {
         PTX_ERROR_EMU("tcgen05.alloc: no CTAContext attached to warp");
         throw UnsupportedInstructionException(
-            "tcgen05.alloc",
-            "tcgen05.alloc requires an active CTAContext");
+            "tcgen05.alloc", "tcgen05.alloc requires an active CTAContext");
     }
 
     // Oracle Q2-A: cta_group::2 not supported.
@@ -83,7 +64,8 @@ void processTcgen05Alloc(ThreadContext* context, const Tcgen05Instr& instr) {
     // the alloc permit to issue tcgen05.alloc).
     if (!warp->get_allocate_permit()) {
         PTX_ERROR_EMU("tcgen05.alloc: warp %d has relinquished its "
-                      "allocate permit", warp->get_warp_id());
+                      "allocate permit",
+                      warp->get_warp_id());
         throw std::runtime_error(
             "tcgen05.alloc: warp has relinquished its allocate permit");
     }
@@ -96,7 +78,7 @@ void processTcgen05Alloc(ThreadContext* context, const Tcgen05Instr& instr) {
     // extract it in the visitor.
     constexpr size_t kDefaultNumCols = 1;
 
-    TmemAllocator& alloc = cta->tmem_allocator();
+    TmemAllocator &alloc = cta->tmem_allocator();
     size_t slot_id = alloc.allocate(kDefaultNumCols);
     if (slot_id == TmemAllocator::kInvalidSlotId) {
         PTX_ERROR_EMU("tcgen05.alloc: TMEM OOM (num_cols=%zu)",
@@ -106,8 +88,8 @@ void processTcgen05Alloc(ThreadContext* context, const Tcgen05Instr& instr) {
     }
 
     PTX_DEBUG_EMU("tcgen05.alloc: warp %d allocated slot_id=%zu "
-                  "(num_cols=%zu)", warp->get_warp_id(), slot_id,
-                  kDefaultNumCols);
+                  "(num_cols=%zu)",
+                  warp->get_warp_id(), slot_id, kDefaultNumCols);
 }
 
 // ---------------------------------------------------------------------------
@@ -118,20 +100,19 @@ void processTcgen05Alloc(ThreadContext* context, const Tcgen05Instr& instr) {
 // UNVERIFIED-AGAINST-HARDWARE — dealloc ordering with concurrent
 // mma/cp is not verified.
 // ---------------------------------------------------------------------------
-void processTcgen05Dealloc(ThreadContext* context, const Tcgen05Instr& instr) {
-    WarpContext* warp = context->get_warp_context();
+void processTcgen05Dealloc(ThreadContext *context, const Tcgen05Instr &instr) {
+    WarpContext *warp = context->get_warp_context();
     if (!warp) {
         PTX_ERROR_EMU("tcgen05.dealloc: no WarpContext attached to thread");
         throw UnsupportedInstructionException(
             "tcgen05.dealloc",
             "tcgen05.dealloc requires an active WarpContext");
     }
-    CTAContext* cta = warp->get_cta_context();
+    CTAContext *cta = warp->get_cta_context();
     if (!cta) {
         PTX_ERROR_EMU("tcgen05.dealloc: no CTAContext attached to warp");
         throw UnsupportedInstructionException(
-            "tcgen05.dealloc",
-            "tcgen05.dealloc requires an active CTAContext");
+            "tcgen05.dealloc", "tcgen05.dealloc requires an active CTAContext");
     }
 
     // Oracle Q2-A: cta_group::2 not supported.
@@ -141,12 +122,11 @@ void processTcgen05Dealloc(ThreadContext* context, const Tcgen05Instr& instr) {
 
     // Phase 1 simplification: releases lowest active slot_id (first-fit).
     // Per-warp ownership tracking deferred to Phase 2.
-    TmemAllocator& alloc = cta->tmem_allocator();
+    TmemAllocator &alloc = cta->tmem_allocator();
 
     if (alloc.active_allocation_count() == 0) {
         PTX_ERROR_EMU("tcgen05.dealloc: no active allocations to release");
-        throw std::runtime_error(
-            "tcgen05.dealloc: no active allocations");
+        throw std::runtime_error("tcgen05.dealloc: no active allocations");
     }
 
     size_t slot_to_free = TmemAllocator::kInvalidSlotId;
@@ -175,11 +155,11 @@ void processTcgen05Dealloc(ThreadContext* context, const Tcgen05Instr& instr) {
 // UNVERIFIED-AGAINST-HARDWARE — exact permit-lifetime semantics
 // (when the warp may re-acquire, if ever) are not verified.
 // ---------------------------------------------------------------------------
-void processTcgen05Relinquish(ThreadContext* context,
-                              const Tcgen05Instr& instr) {
-    (void)instr;  // op_kind validated by caller dispatch; no operands
+void processTcgen05Relinquish(ThreadContext *context,
+                              const Tcgen05Instr &instr) {
+    (void)instr; // op_kind validated by caller dispatch; no operands
 
-    WarpContext* warp = context->get_warp_context();
+    WarpContext *warp = context->get_warp_context();
     if (!warp) {
         PTX_ERROR_EMU(
             "tcgen05.relinquish_alloc_permit: no WarpContext attached");
@@ -187,7 +167,7 @@ void processTcgen05Relinquish(ThreadContext* context,
             "tcgen05.relinquish_alloc_permit",
             "tcgen05.relinquish_alloc_permit requires an active WarpContext");
     }
-    CTAContext* cta = warp->get_cta_context();
+    CTAContext *cta = warp->get_cta_context();
     if (!cta) {
         PTX_ERROR_EMU(
             "tcgen05.relinquish_alloc_permit: no CTAContext attached");
@@ -207,9 +187,8 @@ void processTcgen05Relinquish(ThreadContext* context,
     bool previous = warp->get_allocate_permit();
     warp->set_allocate_permit(false);
 
-    PTX_DEBUG_EMU(
-        "tcgen05.relinquish_alloc_permit: warp %d permit %s -> false",
-        warp->get_warp_id(), previous ? "true" : "false");
+    PTX_DEBUG_EMU("tcgen05.relinquish_alloc_permit: warp %d permit %s -> false",
+                  warp->get_warp_id(), previous ? "true" : "false");
 }
 
-}  // namespace ptxsim
+} // namespace ptxsim
