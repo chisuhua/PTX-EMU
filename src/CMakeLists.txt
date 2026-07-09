@@ -129,6 +129,9 @@ add_library(ptxsim SHARED
     ptxsim/instructions/tcgen05_alloc.cpp
     # Phase 2 (Oracle Q4-B/Q2-A): tcgen05.cp (smem → tmem copy).
     ptxsim/instructions/tcgen05_cp.cpp
+    # Phase 2.5 (Oracle 2026-07-08 Q4-recommendation, pre-Phase 3 refactor):
+    # extracted fragment_mma_f16 helper shared by regular mma + ws routing.
+    ptxsim/instructions/tcgen05_helpers.cpp
     ptxsim/instructions/arithmetic_ext.cpp
     ptxsim/instructions/cvt/cvt_helpers.cpp
     ptxsim/instructions/cvt/cvt_strategy.cpp
