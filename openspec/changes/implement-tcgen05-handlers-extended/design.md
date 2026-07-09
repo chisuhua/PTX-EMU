@@ -18,7 +18,7 @@ Change-3b 实施 5 core handler(mma/ld/st/commit/wait)。本 change 实施剩余
 - 不实现 cp.async.bulk.tensor(独立 follow-up)
 - 不实现 cta_group::2 distributed_smem(per Q2-A,抛清晰异常)
 - 不实现 sm_120 sparse / FP4 / mxfp8(per ADR-0016 锁定)
-- 不实现 mma.ws 全部 collector 模式(per Q3-A,仅 `.warpspecialized::1`)
+- 不实现 mma.ws 全部 collector 模式(per Q3-A,仅 PTX-spec `.warpspecialized::1`,但 grammar 简化为 `.ws` bare token 存在性 → 见 D3 + §Phase 3 修订)
 
 ## Decisions
 
@@ -41,7 +41,7 @@ Change-3b 实施 5 core handler(mma/ld/st/commit/wait)。本 change 实施剩余
 ### D3: mma.ws 共享 fragment 算术(Oracle Q3-A 范围限定)
 
 **采纳**: mma.ws 复用 Change-3b 的 mma handler
-- **范围**: 仅 `.kind::f16` + 单一 collector 模式 (`.warpspecialized::1`)
+- **范围**: 仅 `.kind::f16` + 单一 collector 模式 (PTX-spec `.warpspecialized::1`,实现按 grammar 简化为 `.ws` 存在性 + `Q_F16` 必备)
 - **其他变体**: 抛清晰异常
 
 **拒绝**: 完全独立实现(代码重复)

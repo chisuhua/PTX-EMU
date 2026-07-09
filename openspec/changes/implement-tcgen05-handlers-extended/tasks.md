@@ -133,7 +133,7 @@
 
 - [x] 4.4.0 Phase 2.5 commit: `refactor(tcgen05): extract fragment_mma_f16 helper` (Oracle Q4-recommendation)
 - [x] 4.4.1 Phase 3 commit: `feat(handlers): tcgen05.mma.ws via qualifier routing` (Oracle A-path, ADR-0016)
-- [x] 4.4.2 spec.md/design.md 更新:删除 `.warpspecialized::1` 词汇,改用 `Q_TCGEN_WS qualifier`
+- [x] 4.4.2 spec.md/design.md 更新:在 spec.md Scenario 中改用 `Q_TCGEN_WS qualifier` + 在 design.md D3 area 加 "Phase 3 实施修订" 注释。注: `proposal.md` 仍保留 Oracle 原话 `.warpspecialized::1`(per lessons-learned §6 + Checklist G "已归档 change 不 amend")
 
 ## 5. Phase 4: fence + 混合测试(commit 5)
 
