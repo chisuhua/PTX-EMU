@@ -520,9 +520,12 @@ bash ./tests/ptx/test_all_ptx.sh
 | **`git rm -r` 后 untracked 子目录残留文件系统上** | **`.gitignore` 规则使子目录 untracked，git rm 不处理** | **`git rm -r <dir>/` 后 `find <dir> -type d` 检查残留 → `rm -rf <untracked-subdir>`；或 dry-run `git clean -fdn` 后 `git clean -fd`** |
 | **ANTLR 解析错误：`mismatched input 'f16' expecting ID`** | **lexer 中 bare string token（如 `TCGEN_F16 : 'f16'`）抢占 ID 规则** | **`grep -nE "^\w+\s*:\s*'[a-zA-Z]" src/grammar/ptxLexer.g4` 列出 bare tokens；用点前缀（`.f16`）或 lexer mode 隔离** |
 | **声称 "X/X PASS" 但 ctest 失败（如 5 个 cute_rmsnorm/simpleGEMM 等）** | **grammar 修改未用真实 kernel PTX 验证**（"自证"测试漏掉真实场景） | **修改后必跑 `./tests/ptx/test_all_ptx.sh` + 复制 `bench/cute/*.ptx` 到 `tests/ptx/regression_*.ptx`** |
-| **Kleene star 预测冲突 + 寄存器解析失败同时发生** | **lexer 错位 — bare token 抢占 ID rule 同时影响 qualifier 与 register 解析** | **优先检查 lexer 是否有 bare string token；删除/加前缀一次性解决多类问题** |
+| **Kleene star 预测冲突 + 寄存器解析失败同时发生** | **lexer 错位 — bare token 抢占 ID rule 同时影响 qualifier 与 register 解析** | **优先检查 lexer 是否有 bare token；删除/加前缀一次性解决多类问题** |
 | **多线程单元测试 `th.join()` 后 REQUIRE 未触发** | **deadlock 时 `join()` 永久阻塞；`elapsed` 测量 post-join，bug 实际是 60s 软超时而非 30s 检测** | **`std::async(std::launch::async, ...)` + `future.wait_for(30s)` 返回 `future_status::timeout` 时主动 `REQUIRE(false, "deadlock")`** |
 | **`TmemAllocator` read-only methods (`is_allocated_start`/`is_allocated`/`active_allocation_count`/`total_allocated_slots`) 声称 "safe under concurrent erase" 但实际是 UB** | **`std::map::find` 与 `std::bitset::test` 在并发 `erase`/`set` 下 UB（C++17 只保证迭代器不失效，不保证并发安全）** | **所有 public methods 一致加 `lock_guard(mu_)`；或用 `static_assert` 强制设计时一致性** |
+| **`Tcgen05OpKind::MMA_WS` dispatch branch 写好但真实 PTX 永远不进** | **grammar 把 `.ws` 当作 `Q_TCGEN_WS` qualifier 在 MMA sub-op 上（不是独立 `MMA_WS` sub-op），所以真实 PTX 始终 `op_kind=MMA + qualifiers={Q_TCGEN_WS, ...}`** | **写新 dispatch 前 grep grammar（`ptxInstructions.g4:tcgen05SubOp`）确认 sub-op 真存在；否则在 handler 内部做 qualifier scan + 路由** |
+| **Spec/Design 用了 `.warpspecialized::1` 词汇但 grammar 实际只有 `.ws`（裸 token）** | **PTX spec 用了修饰符语法（`.warpspecialized::N`）vs grammar 简化为裸 token（`.ws`），两者词汇脱节** | **设计阶段必跑 `grep -nE "warpspecialized|TCGEN_WARPSPECIALIZED" src/grammar/` 验证词汇对齐；或在 spec.md 加注 "grammar 简化" 说明** |
+| **`Tcgen05Instr` 便捷字段（`cta_group`/`dtype`/`num_regs`/`has_block_scale`）全是默认值** | **visitor `visitTcgen05Inst` 只填 `op_kind`/`qualifiers`/`operands`/`instructionText`，这些字段从不被赋值** | **handler 检查前 `grep -n "Tcgen05Instr" include/ptx_ir/statement_context.h` + grep visitor 验证 visitor 是否真的提取这些字段；否则改用 `instr.qualifiers` 扫描对应 qualifier token（如 `Q_TCGEN_CTA_GROUP`/`Q_F16`）** |
 
 ---
 

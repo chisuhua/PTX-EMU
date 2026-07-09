@@ -1129,3 +1129,50 @@ ctest -L "e2e;tcgen05" -V 2>&1 | grep -E "PASS|FAIL"
 - **修复**: `Tcgen05Handler::processTcgen05Operation` 统一 dispatch,`fix-tcgen05-test-coverage-gaps` 的 dead-code coverage test 在 dispatch 修好后变为生产路径覆盖测试。
 - **教训沉淀**: 本节（§26）+ `.opencode/skills/ptx-lessons-learned/SKILL.md` §核心经验 #10 + Checklist K
 - **后续**: `implement-tcgen05-handlers-extended`（6 extended op_kind 实施）按 "handler + dispatch 同 change" 模式
+
+## 27. tcgen05.mma.ws handler via qualifier routing (2026-07-09 新增, Oracle 2026-07-08 review)
+
+### 现象
+
+Phase 3 of `implement-tcgen05-handlers-extended` 计划写 `processTcgen05MmaWs` 独立函数 + 在 `Tcgen05Handler::processTcgen05Operation` dispatch 表加 `case Tcgen05OpKind::MMA_WS`。Oracle review 时发现：
+
+- **grammar 把 `.ws` 当作 `Q_TCGEN_WS` qualifier 在 MMA sub-op 上**（`src/grammar/ptxInstructions.g4:436-447` `tcgen05SubOp` 只有 `MMA`/`LD`/`ST`/.../`FENCE`，**没有 `MMA_WS` sub-op**）
+- 真实 PTX `tcgen05.mma.ws.kind::f16.cta_group::1 ...` 解析为 `op_kind=MMA + qualifiers={Q_TCGEN_WS, Q_F16, Q_TCGEN_CTA_GROUP}`
+- 我原本计划的 `case MMA_WS:` dispatch **永远不会从真实 PTX 进**,只能由测试手动构造 `Tcgen05Instr{op_kind=MMA_WS, ...}` 触达（dead path）
+- spec.md `Scenario: weight-stationary mma.ws handler` 用了 `.warpspecialized::1` 词汇,但 grammar 只有 `.ws` 裸 token,**spec 词汇与 grammar 脱节**
+- `Tcgen05Instr` 便捷字段（`cta_group`/`dtype`/`num_regs`/`has_block_scale`）在 `ptx_visitor.cpp:841-885` `visitTcgen05Inst` 中**根本没被填充**,默认值永远生效
+
+### 教训
+
+- **dispatch case 写之前必 grep grammar 确认 sub-op 真存在**: `grep -nE "tcgen05SubOp|MMA_WS" src/grammar/ptxInstructions.g4`。如果 grammar 只有修饰符语法（如 `.ws` 是 qualifier），dispatch case 就是 dead path — 必须改用 handler 内部 qualifier scan + 路由
+- **Spec/Design 词汇脱节会污染所有下游文档**: spec.md 写了 `.warpspecialized::1`，design.md/tasks.md/AGENTS.md 全部抄过去，但 grammar 永远不会产生这个 token。设计阶段必跑 `grep -nE "warpspecialized|TCGEN_WARPSPECIALIZED" src/grammar/` 验证词汇对齐
+- **IR 便捷字段是承诺 ≠ 实现**: `Tcgen05Instr::cta_group` 等字段在 `ptx_visitor.cpp` 中从未被赋值（visitor 只填 `op_kind/qualifiers/operands/instructionText`），所以 handler 检查 `instr.cta_group == 1` 永远成立。Handler 检查便捷字段前必 grep visitor 验证提取路径，否则改用 `instr.qualifiers` 扫描对应 token
+- **Oracle review 是发现死代码路径的关键**: 自我审查看不到 dispatch case 是否真的可达（看上去语法、编译、ctest 都对），Oracle 的"真 PTX 走哪条路"反向验证才能识破
+
+### 检查工具
+
+```bash
+# 1. 检查 grammar sub-op 是否真存在
+grep -nE "tcgen05SubOp|MMA_WS" src/grammar/ptxInstructions.g4
+# 期望：MMA_WS 列出 OR 显式不在
+
+# 2. 检查 spec 词汇是否在 grammar 中存在
+grep -nE "warpspecialized|TCGEN_WARPSPECIALIZED" src/grammar/
+# 期望：空（如果 spec 用了 .warpspecialized::N 但 grammar 只有 .ws 裸 token,脱节）
+
+# 3. 检查 IR 便捷字段是否真被 visitor 填充
+grep -nE "instr\.cta_group|instr\.dtype|instr\.num_regs|instr\.has_block_scale" src/ptx_parser/
+# 期望：assignments (如果不是,字段就是默认值 — handler 检查无效)
+
+# 4. 验证 handler dispatch 真可达
+ctest -R "<handler_test>" -V 2>&1 | grep -E "case.*MMA_WS|op_kind"
+# 期望：dispatch trace 显示 op_kind=MMA(非 MMA_WS)走 handler
+```
+
+### 真实案例
+
+- **bug 表现**: `processTcgen05Mma` 计划加 `case MMA_WS:` 独立 dispatch 分支,但 grammar `ptxInstructions.g4:436-447` 的 `tcgen05SubOp` 只列出 10 个 sub-op,**没有 `MMA_WS`**。`ptx_visitor.cpp:846` `if (ctx->tcgen05SubOp()->MMA()) op_kind = Tcgen05OpKind::MMA;` — `.ws` 被当作 qualifier 消耗掉,op_kind 永远是 MMA。
+- **修复**: Phase 3 commit `f4b6d58` 删除 `case MMA_WS:` 独立 throw,改为在 `processTcgen05Mma` 内部 scan `instr.qualifiers` for `Q_TCGEN_WS`,Q3-A 范围检查（要求 `Q_F16` 必备），然后调 `tcgen05_fragment_mma_f16` helper（Phase 2.5 抽出,DRY）。
+- **设计文档同步**: spec.md Scenario 改写为 qualifier-based routing 描述；design.md D3 加 "Phase 3 实施修订" 注释解释 grammar 现实与 spec 假设的脱节；tasks.md §4 全部标记 `[x]` 含 Oracle A-path 决策
+- **教训沉淀**: 本节（§27）+ `.opencode/skills/ptx-lessons-learned/SKILL.md` §失败模式速查表 3 行（dispatch dead path / spec vocab desync / IR field unwired）
+- **后续**: Phase 4 fence + Phase 5 doc sync + Phase 6 archive 按 Oracle A-path 模式继续

@@ -254,3 +254,66 @@ scope discipline、基础设施优先）**未变**。
 ## Archive 文档一致性声明（2026-07-08）
 
 `openspec/changes/archive/2026-07-07-fix-tcgen05-antlr-prediction-bug/` 的 `proposal.md`/`design.md`/`handoff.md` 声称修复"ANTLR LL(*) 预测冲突",但真正根因是 **lexer bare string token 与 ID 规则冲突**（详见 [`docs/dev-process/lessons-learned.md` §25](../../docs/dev-process/lessons-learned.md#25-antlr4-le)）。按 `ptx-lessons-learned §6 + Checklist G` 铁律"已归档 change 不 amend",**本节为权威 override**: §25 为根因真相,archive 文档保留作为历史。
+## Phase 3: tcgen05.mma.ws handler via qualifier routing (2026-07-09, Oracle 2026-07-08 A-path)
+
+**2026-07-09**: Phase 3 of `implement-tcgen05-handlers-extended` 落地(commit `f4b6d58`),基于 Oracle 2026-07-08 critical findings 修正原计划:
+
+### 计划 vs 实现的关键差异
+
+- **原计划**: 写独立 `processTcgen05MmaWs` 函数 + dispatch 表加 `case Tcgen05OpKind::MMA_WS`,沿用 spec.md 的 `.warpspecialized::1` 词汇
+- **Oracle review 发现**: grammar `ptxInstructions.g4:436-447` 的 `tcgen05SubOp` 没有 `MMA_WS` sub-op,`.ws` 是 `Q_TCGEN_WS` qualifier 在 MMA sub-op 上。`case MMA_WS:` dispatch 永远从真实 PTX 进不来(dead path)
+- **实施**: 删除独立 handler 函数,在 `processTcgen05Mma` 内部 scan `instr.qualifiers` for `Q_TCGEN_WS`,Q3-A 范围检查(要求 `Q_F16` 必备,缺失抛 `UnsupportedInstructionException`),然后调 `tcgen05_fragment_mma_f16` helper(Phase 2.5 抽出,DRY)
+- **`case MMA_WS:` 保留但路由到 `processTcgen05Mma`**: 用于直接构造 `Tcgen05Instr{op_kind=MMA_WS, ...}` 的测试场景
+
+### Pre-Phase 2.5 refactor (commit `3b6ead4`)
+
+- 新增 `tcgen05_fragment_mma_f16(Tmem&)` helper 到 `include/ptxsim/instructions/tcgen05_helpers.{h,cpp}`
+- 从 `processTcgen05Mma` 抽出 60 LoC 片段算术,行为不变
+- 验证 183/183 ctest + 45/45 PTX 一致(behavior-preserving)
+
+### 范围调整 (Oracle 2026-07-08 Q3-A)
+
+- **接受**: ws path 仅支持 `.kind::f16` + `Q_TCGEN_WS` qualifier 存在;非 f16 kind 抛清晰异常
+- **defer**: ws-specific weight-stationary layout transform(单 warp 简化下与 mma 算术相同);ws 路径标记 `// UNVERIFIED-AGAINST-HARDWARE`
+- **修正**: spec.md `Scenario: weight-stationary mma.ws handler` 改写为 qualifier-based routing 描述;design.md D3 加 "Phase 3 实施修订" 注释解释 grammar 现实
+
+### 测试覆盖
+
+- unit: 7 TEST_CASEs (`tests/unit/tcgen05/test_tcgen05_mma_ws.cpp`)
+  - ws+Q_F16 → ws path 执行(无 throw)
+  - ws+Q_F32 → throw(Q3-A scope violation)
+  - ws+Q_BF16 → throw
+  - ws+no kind → throw
+  - no ws → regular mma path(无 Q3-A 检查)
+  - op_kind=MMA_WS (直接构造) + 空 qualifiers → regular mma path(dispatch trace 验证)
+  - op_kind=MMA + 空 qualifiers → regular mma path(negative control)
+- integration: 3 TEST_CASEs (`tests/integration/tcgen05/test_tcgen05_mma_ws.cpp`)
+  - ws+f16+cta_group qualifier + golden A/B inputs → 32 lanes × golden C 全部命中(`GOLDEN_MMA_F16_F16_F32` from `tests/reference/ptx_tcgen05/tcgen05_mma_golden.h`)
+  - op_kind=MMA_WS (直接构造) → regular mma result(同 golden)
+  - ws+Q_F32 → throw (scope violation 在 helper 调用前)
+- e2e: 1 Priority 3 fallback (`tests/e2e/kernel/test_tcgen05_mma_ws.cu`)
+  - ptxas 13.0 不支持 sm_100 tcgen05.mma.ws,纯 CUDA C++ fragment 模拟 per-lane output;source-grep oracle 验证 `tcgen05.mma.ws` 引用
+
+### 同步
+
+- spec.md: Scenario rewrite + 移除 `.warpspecialized::1` 词汇
+- design.md D3: Phase 3 修订注释 + grammar 现实解释
+- tasks.md §4: 全部 `[x]` 标记完成 + Oracle A-path 决策记录
+- AGENTS.md: 9/11 → 10/11 handler 已实现
+- `src/ptxsim/instructions/AGENTS.md`: FRAGMENT HELPER section + MMA.WS section + FENCE only 仍 deferred
+- `tests/unit/ptx_ir/test_tcgen05_pipeline_handler.cpp`: deferred 列表移除 `MMA_WS`(6 → 1,只留 FENCE)
+
+### 沉淀
+
+- 新教训 "dispatch dead path": `processTcgen05OpKind::MMA_WS` 写好但真 PTX 不可达 → 写 dispatch 前 grep grammar sub-op 真存在
+- 新教训 "Spec/Design 词汇脱节": spec.md `.warpspecialized::1` 在 grammar 中不存在 → 设计阶段必跑 grep 验证词汇对齐
+- 新教训 "IR 便捷字段未连": `Tcgen05Instr::cta_group` 等字段在 visitor 中从未被赋值,handler 检查永远成立 → handler 检查便捷字段前必 grep visitor 验证提取路径
+- `docs/dev-process/lessons-learned.md §27` + `.opencode/skills/ptx-lessons-learned/SKILL.md` 失败模式速查表 3 行
+
+### 验证
+
+- 186/186 ctest PASS(原 183;Phase 3 新增 3)
+- 45/45 PTX syntax tests PASS(无 grammar 改动)
+- baseline worktree(`bb30ea2`)PTX 一致
+- 16/16 tcgen05-tagged ctest PASS
+- 与 Phase 1.x critical fixes (`0a4358d`) + Phase 2 (`178457d`) + Phase 2.5 (`3b6ead4`) 共存
