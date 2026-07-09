@@ -80,3 +80,17 @@ add_catch_test(e2e_tcgen05_mma_gemm
 )
 set_tests_properties(e2e_tcgen05_mma_gemm PROPERTIES
     LABELS "e2e;kernel;tcgen05;gemm;mma;sm100")
+
+# ============================================================================
+# tcgen05.cp SMEM → TMEM E2E — Priority 3 f32 fallback
+# (ADR-0016, tcgen05-cp-test-coverage-and-exception-cleanup, Phase 3)
+# ptxas 13.0 does NOT support `tcgen05.cp` on .target sm_100
+# (same constraint as e2e_tcgen05_mma_gemm). Mirrors the Priority 3
+# fallback: pure CUDA C++ that performs the same logical SMEM → "TMEM"
+# copy via __shared__ memory, source-grep oracle on `tcgen05.cp`.
+# ============================================================================
+add_catch_test(e2e_tcgen05_cp
+    kernel/test_tcgen05_cp.cu
+)
+set_tests_properties(e2e_tcgen05_cp PROPERTIES
+    LABELS "e2e;kernel;tcgen05;cp;sm100")

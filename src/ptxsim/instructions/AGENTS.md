@@ -123,11 +123,27 @@ cmake --build build --target ptxsim     # Build instruction handlers
   (`tests/integration/tcgen05/test_alloc_dealloc_relinquish.cpp`,
   12 TEST_CASEs / 28 assertions).
 
-## TCGEN05 REMAINING DEFERRED (CP/MMA_WS/FENCE)
+## TCGEN05.CP HANDLER (2026-07, implement-tcgen05-handlers-extended Phase 2)
 
-- **3 deferred op_kinds** (CP/MMA_WS/FENCE) still throw
+- `tcgen05_cp.cpp` — `processTcgen05Cp` handler (SMEM → TMEM copy).
+  Implemented in commit `178457d` per ADR-0016 + Oracle Q4-B/Q2-A.
+- **128-byte fixed transfer** (one TMEM slot) — shape qualifier
+  extraction deferred to Phase 3 (TODO tracked in code).
+- **cta_group::2** throws `UnsupportedInstructionException` referencing
+  ADR-0018 (cluster abstraction deferred).
+- **Test coverage**:
+  - `tests/unit/tcgen05/test_tcgen05_cp.cpp` — 7 TEST_CASEs
+    (helper + exception paths; deferred Phase 3 placeholders documented)
+  - `tests/integration/tcgen05/test_tcgen05_cp.cpp` — 3 TEST_CASEs
+    (128-byte SMEM → TMEM round-trip + out-of-bounds exception)
+  - `tests/e2e/kernel/test_tcgen05_cp.cu` — Priority 3 fallback
+    (ptxas 13.0 does not support `tcgen05.cp` on sm_100)
+
+## TCGEN05 REMAINING DEFERRED (MMA_WS/FENCE)
+
+- **2 deferred op_kinds** (MMA_WS/FENCE) still throw
   `UnsupportedInstructionException` (per ADR-0016 §C5 fix #1) —
-  Phase 2/3/4 in `implement-tcgen05-handlers-extended`.
+  Phase 3/4 in `implement-tcgen05-handlers-extended`.
 
 ## ATOMIC HANDLER (Phase 1+2, 2026-07)
 
