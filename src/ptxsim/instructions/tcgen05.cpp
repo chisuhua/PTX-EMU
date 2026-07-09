@@ -314,9 +314,48 @@ namespace ptxsim {
 // fragment arithmetic moved to tcgen05_fragment_mma_f16 helper
 // (src/ptxsim/instructions/tcgen05_helpers.cpp) so the ws routing path
 // (Phase 3) can share the same kernel without code duplication.
+//
+// Phase 3 (Oracle 2026-07-08 A-path, Q3-A scope discipline): the .ws
+// (weight-stationary) variant is routed inside this handler, NOT via
+// Tcgen05OpKind::MMA_WS dispatch — the grammar (ptxInstructions.g4:436-447)
+// has no MMA_WS sub-op, so real PTX always reaches this handler with
+// op_kind == MMA + qualifiers containing Q_TCGEN_WS. Q3-A scope: ws path
+// requires Q_F16 in qualifiers; other kinds throw.
 // ---------------------------------------------------------------------------
+namespace {
+// Q3-A scope check for the .ws path. Throws if Q_TCGEN_WS is present but
+// the qualifier list does not include Q_F16 (per Oracle Q3-A scope
+// discipline: only .kind::f16 supported).
+[[noreturn]] void throw_ws_unsupported_kind() {
+    PTX_ERROR_EMU(
+        "tcgen05.mma.ws: .kind::f16 required (per Oracle Q3-A scope "
+        "discipline; only .kind::f16 supported on the ws path)");
+    throw UnsupportedInstructionException(
+        "tcgen05.mma.ws",
+        "tcgen05.mma.ws requires .kind::f16 (per Oracle Q3-A scope "
+        "discipline). Other kinds (.f32 / .tf32 / .bf16 / etc.) are not "
+        "yet implemented for the ws variant.");
+}
+
+bool is_ws_path(const Tcgen05Instr& instr) {
+    for (auto q : instr.qualifiers) {
+        if (q == Qualifier::Q_TCGEN_WS) return true;
+    }
+    return false;
+}
+
+bool has_f16_qualifier(const Tcgen05Instr& instr) {
+    for (auto q : instr.qualifiers) {
+        if (q == Qualifier::Q_F16) return true;
+    }
+    return false;
+}
+}  // namespace
+
 void processTcgen05Mma(ThreadContext* context, const Tcgen05Instr& instr) {
-    (void)instr;  // op_kind already validated by caller dispatch
+    // op_kind may be MMA or MMA_WS (the latter only reachable via direct
+    // Tcgen05Instr construction in tests; the grammar produces op_kind=MMA
+    // + Q_TCGEN_WS qualifier). Both paths route to the same arithmetic.
 
     WarpContext* warp = context->get_warp_context();
     if (!warp) {
@@ -331,11 +370,26 @@ void processTcgen05Mma(ThreadContext* context, const Tcgen05Instr& instr) {
             "tcgen05.mma", "tcgen05.mma requires an active CTAContext");
     }
 
+    // Q3-A scope: ws path requires Q_F16. Other dtypes on the ws path are
+    // explicitly rejected (regular mma path accepts whatever the helper
+    // supports — currently f16 only too, but enforced by a different
+    // mechanism if the fragment kernel adds dtype dispatch later).
+    const bool ws_path = is_ws_path(instr);
+    if (ws_path && !has_f16_qualifier(instr)) {
+        throw_ws_unsupported_kind();
+    }
+
     Tmem& tmem = cta->tmem();
     tcgen05_fragment_mma_f16(tmem);
 
-    PTX_DEBUG_EMU("tcgen05.mma.cta_group::1.kind::f16 executed "
-                  "(32 lanes x 8x4 fragments)");
+    if (ws_path) {
+        PTX_DEBUG_EMU(
+            "tcgen05.mma.ws.kind::f16 executed (32 lanes x 8x4 fragments)");
+    } else {
+        PTX_DEBUG_EMU(
+            "tcgen05.mma.cta_group::1.kind::f16 executed "
+            "(32 lanes x 8x4 fragments)");
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -505,10 +559,12 @@ void processTcgen05Wait(ThreadContext* context, const Tcgen05Instr& instr) {
 }
 
 // Tcgen05Handler::processTcgen05Operation — dispatches on instr.op_kind
-// to the 5 per-op free functions (kept for backward compat with
-// fix-tcgen05-test-coverage-gaps dead-code coverage test). Deferred
-// op_kinds (ALLOC/DEALLOC/CP/MMA_WS/FENCE) throw to surface them
-// until implement-tcgen05-handlers-extended lands.
+// to the per-op free functions (kept for backward compat with
+// fix-tcgen05-test-coverage-gaps dead-code coverage test).
+//
+// Phase 3 (Oracle 2026-07-08 A-path): MMA_WS is routed to
+// processTcgen05Mma (same as MMA); the ws qualifier scan is inside that
+// handler. FENCE remains throw (lands in Phase 4).
 }  // namespace ptxsim
 
 // Tcgen05Handler is in global namespace (per instruction_handlers.h
@@ -522,6 +578,7 @@ void Tcgen05Handler::processTcgen05Operation(
 
     switch (instr.op_kind) {
     case Tcgen05OpKind::MMA:
+    case Tcgen05OpKind::MMA_WS:
         ptxsim::processTcgen05Mma(context, instr);
         break;
     case Tcgen05OpKind::LD:
@@ -548,13 +605,12 @@ void Tcgen05Handler::processTcgen05Operation(
     case Tcgen05OpKind::CP:
         ptxsim::processTcgen05Cp(context, instr);
         break;
-    case Tcgen05OpKind::MMA_WS:
     case Tcgen05OpKind::FENCE:
         throw UnsupportedInstructionException(
-            "tcgen05.*",
-            "op_kind " + std::to_string(static_cast<int>(instr.op_kind)) +
-            " not yet implemented (per ADR-0016, deferred but wired; "
-            "see implement-tcgen05-handlers-extended)");
+            "tcgen05.fence",
+            "tcgen05.fence not yet implemented (per ADR-0016, "
+            "Phase 4 in implement-tcgen05-handlers-extended; see "
+            "Oracle Q6-B: no-op marker)");
         break;
     }
 }

@@ -99,31 +99,41 @@
 
 - [ ] 3.3.1 `git commit -m "feat(handlers): implement tcgen05.cp smem→tmem (ADR-0016, Oracle Q4-B/Q2-A)"`
 
-## 4. Phase 3: mma.ws handler(commit 4)
+## 4. Phase 3: mma.ws handler(commit 4, Oracle 2026-07-08 A-path)
 
-### 4.1 实现
+### 4.0 Pre-Phase 2.5 refactor(commit 3.5, behavior-preserving)
 
-- [ ] 4.1.1 新建 `src/ptxsim/instructions/tcgen05_mma_ws.cpp`(~250 LoC)
-- [ ] 4.1.2 实施 `processTcgen05MmaWs(context, ...)`:
-  - [ ] **Q3-A 范围检查**: 仅支持 `.kind::f16` + 单一 collector (`.warpspecialized::1`)
-  - [ ] 其他 kind / collector 模式 → 抛清晰异常
-  - [ ] 复用 Change-3b 的 `processTcgen05Mma` fragment 算术(D3)
-  - [ ] 在 layout 上做 weight-stationary 转换
-- [ ] 4.1.3 在 `tcgen05.cpp` 的 `processTcgen05Operation` switch 中添加 `case Tcgen05OpKind::MMA_WS`
+- [x] 4.0.1 抽 `tcgen05_fragment_mma_f16(Tmem&)` 到 `include/ptxsim/instructions/tcgen05_helpers.h`
+- [x] 4.0.2 实现 `src/ptxsim/instructions/tcgen05_helpers.cpp` (60 LoC fragment arithmetic)
+- [x] 4.0.3 重构 `processTcgen05Mma` 为 helper wrapper
+- [x] 4.0.4 注册 `tcgen05_helpers.cpp` 到 `src/CMakeLists.txt`
+- [x] 4.0.5 验证 183/183 ctest + 45/45 PTX 一致(behavior preserved)
+
+### 4.1 Phase 3 实现(Oracle A-path,qualifier routing)
+
+- [x] 4.1.1 `processTcgen05Mma` 内 scan `instr.qualifiers` 找 `Q_TCGEN_WS`(不再新建 tcgen05_mma_ws.cpp)
+- [x] 4.1.2 Q3-A 范围检查: ws path 要求 `Q_F16` 必备,缺失则抛 `UnsupportedInstructionException`
+- [x] 4.1.3 ws path 调 `tcgen05_fragment_mma_f16(cta->tmem())`(与 mma 共用 helper)
+- [x] 4.1.4 dispatch 表:`case MMA_WS:` 与 `case MMA:` 共享 throw → 现在改为 shared call to `processTcgen05Mma`
+- [x] 4.1.5 `case Tcgen05OpKind::FENCE` 仍 throw(Phase 4)
 
 ### 4.2 Golden Value
 
-- [ ] 4.2.1 新建 `tests/ptx/reference/tcgen05_mma_ws_golden.h`(从 PTX ISA §9.7.16 规范)
-- [ ] 4.2.2 **必须标记** `// UNVERIFIED-AGAINST-HARDWARE` (per Q5-C 经验)
+- [x] 4.2.1 复用 `tests/reference/ptx_tcgen05/tcgen05_mma_golden.h` (handler 与 mma 共用算术,golden 数据相同)
+- [x] 4.2.2 集成测试在 `// UNVERIFIED-AGAINST-HARDWARE` 注释下验证
 
 ### 4.3 验证
 
-- [ ] 4.3.1 `cmake --build build && ctest -R tcgen05_mma_ws -V` PASS
-- [ ] 4.3.2 对比 baseline worktree
+- [x] 4.3.1 `cmake --build build && ctest -R tcgen05_mma_ws -V` PASS (unit 7 + integration 3 cases)
+- [x] 4.3.2 对比 baseline worktree: PTX 45/45 一致
+- [x] 4.3.3 完整 ctest 195/195 PASS (含 e2e_tcgen05_mma_ws Priority 3 fallback)
+- [x] 4.3.4 `tests/unit/ptx_ir/test_tcgen05_pipeline_handler.cpp` 移除 `MMA_WS` 出 deferred list (现在 routed)
 
 ### 4.4 Commit
 
-- [ ] 4.4.1 `git commit -m "feat(handlers): implement tcgen05.mma.ws f16 warpspecialized::1 (ADR-0016, Oracle Q3-A)"`
+- [x] 4.4.0 Phase 2.5 commit: `refactor(tcgen05): extract fragment_mma_f16 helper` (Oracle Q4-recommendation)
+- [x] 4.4.1 Phase 3 commit: `feat(handlers): tcgen05.mma.ws via qualifier routing` (Oracle A-path, ADR-0016)
+- [x] 4.4.2 spec.md/design.md 更新:删除 `.warpspecialized::1` 词汇,改用 `Q_TCGEN_WS qualifier`
 
 ## 5. Phase 4: fence + 混合测试(commit 5)
 

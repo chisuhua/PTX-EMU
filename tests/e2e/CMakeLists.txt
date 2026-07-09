@@ -94,3 +94,17 @@ add_catch_test(e2e_tcgen05_cp
 )
 set_tests_properties(e2e_tcgen05_cp PROPERTIES
     LABELS "e2e;kernel;tcgen05;cp;sm100")
+
+# ============================================================================
+# Phase 3 of implement-tcgen05-handlers-extended (Oracle 2026-07-08 A-path):
+# Priority 3 fallback for tcgen05.mma.ws (ptxas 13.0 lacks sm_100 mma.ws
+# support, same constraint as e2e_tcgen05_cp + e2e_tcgen05_mma_gemm).
+# Mirrors the simulator's processTcgen05Mma + tcgen05_fragment_mma_f16
+# 32-lane × 8×4 f16 matmul. Source-grep oracle on `tcgen05.mma.ws`.
+# Full handler execution is verified by integration_tcgen05_mma_ws.
+# ============================================================================
+add_catch_test(e2e_tcgen05_mma_ws
+    kernel/test_tcgen05_mma_ws.cu
+)
+set_tests_properties(e2e_tcgen05_mma_ws PROPERTIES
+    LABELS "e2e;kernel;tcgen05;mma_ws;sm100")

@@ -46,6 +46,17 @@ Change-3b 实施 5 core handler(mma/ld/st/commit/wait)。本 change 实施剩余
 
 **拒绝**: 完全独立实现(代码重复)
 
+> **Phase 3 实施修订 (Oracle 2026-07-08 A-path)**: grammar 把 `.ws`
+> 当作 `Q_TCGEN_WS` qualifier(不是独立的 `MMA_WS` sub-op),所以真实
+> PTX 路径是 `op_kind=MMA + qualifiers={Q_TCGEN_WS, Q_F16, ...}`。
+> ws qualifier 在 `processTcgen05Mma` 内部被识别,Q3-A 范围检查
+> (Q_F16 必备),然后调 `tcgen05_fragment_mma_f16` helper(Phase 2.5
+> 抽出,见 `include/ptxsim/instructions/tcgen05_helpers.h`)。
+> ws-specific weight-stationary layout transform **deferred**
+> (单 warp 简化下与 mma 算术相同)。
+> `case Tcgen05OpKind::MMA_WS` 在 dispatch 表中保留(用于测试直接构造),
+> 但与 `case MMA` 一样 route 到 `processTcgen05Mma`。
+
 ### D4: TmemAllocator 抽象层(Oracle Q1-A 新增)
 
 **采纳**: 新增 `include/ptxsim/memory/tmem_allocator.h`,在 `cta->tmem()` 之上提供分配/释放/地址查询 API

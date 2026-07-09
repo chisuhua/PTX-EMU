@@ -644,3 +644,15 @@ add_catch_test(unit_tcgen05_cp
 )
 set_tests_properties(unit_tcgen05_cp PROPERTIES
     LABELS "unit;tcgen05;cp;handler")
+
+# ============================================================================
+# Phase 3 of implement-tcgen05-handlers-extended (Oracle 2026-07-08 A-path):
+# ws qualifier routing inside processTcgen05Mma. Per Oracle findings,
+# Tcgen05OpKind::MMA_WS dispatch is unreachable from real PTX (grammar maps
+# .ws to Q_TCGEN_WS qualifier on MMA sub-op). Q3-A scope check tests.
+# ============================================================================
+add_catch_test(unit_tcgen05_mma_ws
+    tcgen05/test_tcgen05_mma_ws.cpp
+)
+set_tests_properties(unit_tcgen05_mma_ws PROPERTIES
+    LABELS "unit;tcgen05;mma_ws;scope")

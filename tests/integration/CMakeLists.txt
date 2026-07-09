@@ -393,6 +393,19 @@ set_tests_properties(integration_tcgen05_cp PROPERTIES
     LABELS "integration;tcgen05;cp;handler")
 
 # ============================================================================
+# Phase 3 of implement-tcgen05-handlers-extended (Oracle 2026-07-08 A-path):
+# integration tests for tcgen05.mma.ws qualifier-based routing inside
+# processTcgen05Mma. 3 TEST_CASEs: ws+f16+cta_group golden C verification,
+# dispatch path (op_kind=MMA_WS routes to mma), Q3-A scope violation path.
+# Helper-level coverage lives in tests/unit/tcgen05/test_tcgen05_mma_ws.cpp.
+# ============================================================================
+add_catch_test(integration_tcgen05_mma_ws
+    tcgen05/test_tcgen05_mma_ws.cpp
+)
+set_tests_properties(integration_tcgen05_mma_ws PROPERTIES
+    LABELS "integration;tcgen05;mma_ws;golden")
+
+# ============================================================================
 # Memory 集成测试 — 驱动模拟器
 # B1 plan: shared memory layout, multi-buffer offsets, zero-init verification
 # ============================================================================

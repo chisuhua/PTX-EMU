@@ -22,10 +22,13 @@ RELINQUISH_ALLOC_PERMIT, CP, FENCE, MMA_WS.
 - **AND** no silent fallback to cta_group::1 behavior
 
 #### Scenario: weight-stationary mma.ws handler (per Oracle Q3-A scope)
-- **WHEN** `tcgen05.mma.ws.cta_group::1.kind::f16 [d_tmem], a_desc, b_desc, idesc` with `.warpspecialized::1` is dispatched
-- **THEN** the handler executes weight-stationary variant (vs standard mma)
-- **AND** the result matches a golden value (PTX ISA §9.7.16, marked `UNVERIFIED-AGAINST-HARDWARE`)
-- **AND** other collector modes (non `.warpspecialized::1`) or non-f16 kind types throw clear exception
+- **WHEN** `tcgen05.mma.ws.cta_group::1.kind::f16 [d_tmem], a_desc, b_desc, idesc` is parsed by the grammar
+- **THEN** the parser produces `Tcgen05Instr{op_kind=MMA, qualifiers={Q_TCGEN_WS, Q_F16, Q_TCGEN_CTA_GROUP}}` (grammar treats `.ws` as a qualifier on the MMA sub-op, not as a separate MMA_WS sub-op — see Oracle 2026-07-08 review)
+- **AND** `processTcgen05Mma` scans `instr.qualifiers` for `Q_TCGEN_WS` and routes to the ws path
+- **AND** the ws path calls the shared `tcgen05_fragment_mma_f16` helper (same fragment arithmetic as regular mma; ws-specific weight-stationary layout transform is deferred per Oracle A-path scope discipline)
+- **AND** the result matches the same golden value as regular mma (PTX ISA §9.7.16, marked `UNVERIFIED-AGAINST-HARDWARE`)
+- **AND** non-f16 kind types on the ws path throw `UnsupportedInstructionException` referencing Oracle Q3-A scope discipline
+- **AND** `case Tcgen05OpKind::MMA_WS` in `Tcgen05Handler::processTcgen05Operation` is retained (for direct `Tcgen05Instr` construction in tests) but routes to `processTcgen05Mma` identically to `case MMA`
 
 #### Scenario: cp handler reuses smem address resolution (per Oracle Q4-B)
 - **WHEN** `tcgen05.cp.cta_group::1.shared::cta [tmem_dst], [smem_src], shape` is dispatched

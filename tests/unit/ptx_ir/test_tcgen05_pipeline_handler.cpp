@@ -75,18 +75,15 @@ TEST_CASE("Tcgen05Instr non-zero-operand variants (MMA=4, LD=2, ST=2)",
 
 TEST_CASE("Tcgen05Handler::processTcgen05Operation throws for deferred op_kinds",
           "[unit][ptx_ir][tcgen05][pipeline][deferred]") {
-    // The 6 deferred op_kinds (per ADR-0016) should throw
-    // UnsupportedInstructionException when invoked. We don't have a real
-    // ThreadContext here, so we only verify the op_kind switch structure:
-    // the 6 deferred op_kinds share a single throw branch in
-    // Tcgen05Handler::processTcgen05Operation (tcgen05.cpp).
+    // Only FENCE remains deferred after the alloc-family (Phase 1), cp
+    // (Phase 2), and ws routing (Oracle 2026-07-08 A-path) landed in
+    // implement-tcgen05-handlers-extended. MMA_WS is routed through
+    // processTcgen05Mma (qualifier-based); the rest have real handlers.
     //
     // (Full invocation test requires real TMEM/ClusterContext setup; covered
-    //  by integration tests when implement-tcgen05-handlers-extended lands.)
+    //  by integration tests.)
     const Tcgen05OpKind deferred[] = {
-        Tcgen05OpKind::ALLOC, Tcgen05OpKind::DEALLOC,
-        Tcgen05OpKind::RELINQUISH, Tcgen05OpKind::CP,
-        Tcgen05OpKind::MMA_WS, Tcgen05OpKind::FENCE,
+        Tcgen05OpKind::FENCE,
     };
-    REQUIRE(sizeof(deferred) / sizeof(deferred[0]) == 6);
+    REQUIRE(sizeof(deferred) / sizeof(deferred[0]) == 1);
 }

@@ -139,11 +139,44 @@ cmake --build build --target ptxsim     # Build instruction handlers
   - `tests/e2e/kernel/test_tcgen05_cp.cu` — Priority 3 fallback
     (ptxas 13.0 does not support `tcgen05.cp` on sm_100)
 
-## TCGEN05 REMAINING DEFERRED (MMA_WS/FENCE)
+## TCGEN05 FRAGMENT HELPER (2026-07, implement-tcgen05-handlers-extended Phase 2.5)
 
-- **2 deferred op_kinds** (MMA_WS/FENCE) still throw
+- `tcgen05_helpers.{h,cpp}` — extracted `tcgen05_fragment_mma_f16(Tmem&)`
+  shared by regular mma and mma.ws paths. Oracle 2026-07-08 Q4-recommendation
+  (DRY: avoid duplicate fragment arithmetic).
+- Per ptx-lessons-learned §6: helper declared in `ptxsim` namespace
+  (not anonymous), so unit/integration tests can reach it directly.
+
+## TCGEN05.MMA.WS HANDLER (2026-07, implement-tcgen05-handlers-extended Phase 3, Oracle A-path)
+
+- **NOT a separate `processTcgen05MmaWs` function**. Instead, the ws
+  variant is routed INSIDE `processTcgen05Mma` by scanning `instr.qualifiers`
+  for `Q_TCGEN_WS` (per Oracle 2026-07-08 critical findings: the grammar
+  has no `MMA_WS` sub-op; `.ws` is a `Q_TCGEN_WS` qualifier on the MMA
+  sub-op, so real PTX always reaches this handler with `op_kind=MMA +
+  qualifiers={Q_TCGEN_WS, Q_F16, Q_TCGEN_CTA_GROUP}`).
+- Q3-A scope: ws path requires `Q_F16` in qualifiers; missing → throws
+  `UnsupportedInstructionException` referencing Q3-A scope discipline.
+- The `case Tcgen05OpKind::MMA_WS:` dispatch branch is RETAINED (for
+  direct `Tcgen05Instr` construction in tests) but routes to
+  `processTcgen05Mma` identically to `case MMA:`.
+- ws-specific weight-stationary layout transform is **deferred** (single-warp
+  simplification: same fragment arithmetic as regular mma, no observable
+  difference in this simulator).
+- **Test coverage**:
+  - `tests/unit/tcgen05/test_tcgen05_mma_ws.cpp` — 7 TEST_CASEs
+    (Q3-A scope: ws+f16 OK, ws+f32/bf16/no-kind throw, no-ws regular)
+  - `tests/integration/tcgen05/test_tcgen05_mma_ws.cpp` — 3 TEST_CASEs
+    (golden C fragments from ws-qualified instr, dispatch path,
+    Q3-A scope violation)
+  - `tests/e2e/kernel/test_tcgen05_mma_ws.cu` — Priority 3 fallback
+    (ptxas 13.0 does not support `tcgen05.mma.ws` on sm_100)
+
+## TCGEN05 REMAINING DEFERRED (FENCE only)
+
+- **1 deferred op_kind** (`FENCE`) still throws
   `UnsupportedInstructionException` (per ADR-0016 §C5 fix #1) —
-  Phase 3/4 in `implement-tcgen05-handlers-extended`.
+  Phase 4 in `implement-tcgen05-handlers-extended` (Oracle Q6-B: no-op marker).
 
 ## ATOMIC HANDLER (Phase 1+2, 2026-07)
 
