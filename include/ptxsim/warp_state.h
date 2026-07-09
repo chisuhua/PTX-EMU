@@ -14,11 +14,19 @@ struct WarpState {
     std::array<ThreadState, 32> threads;
     uint32_t exec_mask = 0xFFFFFFFF;
 
+    // Phase 1 of implement-tcgen05-handlers-extended: per-warp
+    // tcgen05.alloc permit. Defaults to true (warp may allocate). Set
+    // to false by `tcgen05.relinquish_alloc_permit`; only set back to
+    // true by CTAContext teardown (per PTX ISA §9.7.16: a warp that
+    // relinquishes its permit must wait for CTA exit to re-acquire).
+    bool allocate_permit = true;
+
     void reset() {
         for (auto &thread : threads) {
             thread.reset();
         }
         exec_mask = 0xFFFFFFFF;
+        allocate_permit = true;
     }
 
     int count_active_lanes() const {

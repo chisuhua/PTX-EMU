@@ -266,6 +266,15 @@ public:
 
     // 物理 ID 管理方法
     void set_physical_warp_id(int id) { physical_warp_id = id; }
+
+    // Phase 1 of implement-tcgen05-handlers-extended: tcgen05.alloc
+    // permit accessors. Backed by `warp_state.allocate_permit`.
+    void set_allocate_permit(bool permit) {
+        warp_state.allocate_permit = permit;
+    }
+    bool get_allocate_permit() const {
+        return warp_state.allocate_permit;
+    }
     int get_physical_warp_id() const { return physical_warp_id; }
 
     void set_physical_block_id(int id) { physical_block_id = id; }

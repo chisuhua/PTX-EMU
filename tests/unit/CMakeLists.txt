@@ -227,6 +227,18 @@ add_catch_test(unit_tmem
 set_tests_properties(unit_tmem PROPERTIES LABELS "unit;memory;tmem")
 
 # ============================================================================
+# Phase 1 of implement-tcgen05-handlers-extended (ADR-0016, Oracle Q1-A):
+# TmemAllocator unit tests (allocation layer on top of Tmem).
+# 12 TEST_CASEs cover basic alloc/dealloc, OOM, cross-CTA isolation,
+# and multi-threaded deadlock detection (recursive-lock audit per
+# ptx-lessons-learned §2).
+# ============================================================================
+add_catch_test(unit_tmem_allocator
+    memory/test_tmem_allocator.cpp
+)
+set_tests_properties(unit_tmem_allocator PROPERTIES LABELS "unit;memory;tmem;tcgen05")
+
+# ============================================================================
 # Phase 0.3 (Fix #7): cluster arrive/wait unit tests.
 # ≥10 TEST_CASEs cover constructor validation, single-CTA arrive/wait,
 # multi-CTA blocking sync, duplicate arrive rejection,

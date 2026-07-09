@@ -91,6 +91,10 @@ add_library(ptxsim SHARED
     # 256 slot × 128 byte = 32 KB per CTA, parallel to shared memory.
     # Consumed by tcgen05.* in Phase 1-3.
     ptxsim/memory/tmem.cpp
+    # Phase 1 of implement-tcgen05-handlers-extended (Oracle Q1-A): TMEM
+    # slot allocator on top of Tmem, providing alloc/dealloc semantics
+    # required by tcgen05.alloc / tcgen05.dealloc.
+    ptxsim/memory/tmem_allocator.cpp
     # Phase 0.3 (Fix #7): cluster mode arrive/wait synchronization.
     # 1-8 CTA cluster identifier + arrive/wait primitives for cta_group::1.
     # NO distributed_smem (DEFERRED to cta_group::2 per Oracle simplification).
@@ -120,6 +124,9 @@ add_library(ptxsim SHARED
     ptxsim/instructions/comparison.cpp
     ptxsim/instructions/atomic.cpp
     ptxsim/instructions/tcgen05.cpp
+    # Phase 1 of implement-tcgen05-handlers-extended (Oracle Q1-A/Q2-A):
+    # 3 alloc-family handlers (alloc/dealloc/relinquish_alloc_permit).
+    ptxsim/instructions/tcgen05_alloc.cpp
     ptxsim/instructions/arithmetic_ext.cpp
     ptxsim/instructions/cvt/cvt_helpers.cpp
     ptxsim/instructions/cvt/cvt_strategy.cpp

@@ -7,6 +7,7 @@
 #include "ptxsim/execution_types.h"
 #include "ptxsim/memory/tma_descriptor.h"
 #include "ptxsim/memory/tmem.h"
+#include "ptxsim/memory/tmem_allocator.h"
 #include "ptxsim/cluster/cluster_context.h"
 #include "ptxsim/async/tc_queue.h"
 #include "ptxsim/thread_context.h"
@@ -106,6 +107,15 @@ public:
     Tmem& tmem() { return tmem_; }
     const Tmem& tmem() const { return tmem_; }
 
+    // Phase 1 of implement-tcgen05-handlers-extended (ADR-0016, Oracle Q1-A):
+    // per-CTA TMEM slot allocator. Wraps `tmem_` with explicit
+    // alloc/dealloc semantics for tcgen05.alloc / tcgen05.dealloc. The
+    // 5 core handlers (mma/ld/st/commit/wait) bypass this layer and
+    // use `tmem_` directly with hardcoded slot_ids in their fragment
+    // layout.
+    TmemAllocator& tmem_allocator() { return tmem_allocator_; }
+    const TmemAllocator& tmem_allocator() const { return tmem_allocator_; }
+
     // Phase 0.5.3 (Fix #9c): per-CTA cluster context (lazy-init via
     // std::optional — ClusterContext has explicit ctor, unlike
     // TmaDescriptorStore/Tmem which have default ctors).
@@ -148,6 +158,10 @@ private:
 
     // Phase 0.5.2 (Fix #9b): per-CTA TMEM
     Tmem tmem_;
+
+    // Phase 1 of implement-tcgen05-handlers-extended: TMEM slot allocator.
+    // Default-constructed; lifetime tied to CTAContext.
+    TmemAllocator tmem_allocator_;
 
     // Phase 0.5.3 (Fix #9c): per-CTA cluster context (lazy-init via
     // std::optional — ClusterContext has explicit ctor unlike default-ctored

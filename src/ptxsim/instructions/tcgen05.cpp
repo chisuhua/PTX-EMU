@@ -14,6 +14,7 @@
 // tcgen05-specific section per ADR-0016).
 
 #include "ptxsim/instruction_handlers.h"
+#include "ptxsim/instructions/tcgen05.h"
 #include "ptxsim/ptx_exceptions.h"
 #include "ptxsim/thread_context.h"
 #include "ptxsim/warp_context.h"
@@ -572,8 +573,14 @@ void Tcgen05Handler::processTcgen05Operation(
         ptxsim::processTcgen05Wait(context, instr);
         break;
     case Tcgen05OpKind::ALLOC:
+        ptxsim::processTcgen05Alloc(context, instr);
+        break;
     case Tcgen05OpKind::DEALLOC:
+        ptxsim::processTcgen05Dealloc(context, instr);
+        break;
     case Tcgen05OpKind::RELINQUISH:
+        ptxsim::processTcgen05Relinquish(context, instr);
+        break;
     case Tcgen05OpKind::CP:
     case Tcgen05OpKind::MMA_WS:
     case Tcgen05OpKind::FENCE:
