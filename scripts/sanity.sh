@@ -225,6 +225,12 @@ if ! skip_tier 2; then
     print_header "Tier 2: Pure Data Structures (memory, register)"
     run_regex_tests "test_memory_manager" "Memory manager"
     run_regex_tests "test_memory_bounds" "Memory bounds"
+    # Blackwell tcgen05 supporting data structures (added 2026-07-10):
+    #   unit_tmem / unit_tmem_allocator  — TMEM abstraction (consumed by tcgen05.*)
+    #   unit_tma_descriptor              — TMA descriptor (consumed by tcgen05.ld)
+    #   unit_tc_queue                    — async TC command queue (consumed by tcgen05.commit/wait)
+    run_regex_tests "unit_tmem|unit_tmem_allocator|unit_tma_descriptor|unit_tc_queue" \
+        "tcgen05 supporting data structures (tmem/tma/tc_queue)"
 fi
 
 # Tier 3: Single Instruction Tests
@@ -286,6 +292,11 @@ fi
 if ! skip_tier 8; then
     print_header "Tier 8: Cross-Component Integration (full warp flows)"
     run_regex_tests "integration_barrier_full_lifecycle" "Barrier full lifecycle (init/arrive/release/reset)"
+    # Blackwell tcgen05 cluster arrive/wait wiring (added 2026-07-10):
+    # Verifies CTA-context cluster operations connect to tcgen05 handlers per
+    # wire-cluster-context-to-tcgen05 change (see openspec/archive/.../).
+    run_regex_tests "unit_cluster_tcgen05_integration" \
+        "tcgen05 + cluster arrive/wait wiring"
 fi
 
 # Tier 9: PTX Syntax Validation
