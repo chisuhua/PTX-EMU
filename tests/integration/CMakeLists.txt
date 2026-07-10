@@ -406,6 +406,18 @@ set_tests_properties(integration_tcgen05_mma_ws PROPERTIES
     LABELS "integration;tcgen05;mma_ws;golden")
 
 # ============================================================================
+# Phase 4 of implement-tcgen05-handlers-extended (ADR-0016, Oracle Q5-C / Q6-B):
+# Integration tests for processTcgen05Fence no-op marker. Forward paths,
+# multi-warp independence, alloc/fence/dealloc interleave, cta_group::2 path.
+# Unit-level coverage lives in tests/unit/ptx_ir/test_tcgen05_extended_opkind.cpp.
+# ============================================================================
+add_catch_test(integration_tcgen05_extended_parse
+    tcgen05/test_tcgen05_extended_parse.cpp
+)
+set_tests_properties(integration_tcgen05_extended_parse PROPERTIES
+    LABELS "integration;tcgen05;fence;handler;audit")
+
+# ============================================================================
 # Memory 集成测试 — 驱动模拟器
 # B1 plan: shared memory layout, multi-buffer offsets, zero-init verification
 # ============================================================================

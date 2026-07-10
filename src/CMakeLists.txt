@@ -132,6 +132,9 @@ add_library(ptxsim SHARED
     # Phase 2.5 (Oracle 2026-07-08 Q4-recommendation, pre-Phase 3 refactor):
     # extracted fragment_mma_f16 helper shared by regular mma + ws routing.
     ptxsim/instructions/tcgen05_helpers.cpp
+    # Phase 4 of implement-tcgen05-handlers-extended (Oracle Q6-B):
+    # tcgen05.fence no-op marker (design D8).
+    ptxsim/instructions/tcgen05_fence.cpp
     ptxsim/instructions/arithmetic_ext.cpp
     ptxsim/instructions/cvt/cvt_helpers.cpp
     ptxsim/instructions/cvt/cvt_strategy.cpp

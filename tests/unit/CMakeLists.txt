@@ -656,3 +656,16 @@ add_catch_test(unit_tcgen05_mma_ws
 )
 set_tests_properties(unit_tcgen05_mma_ws PROPERTIES
     LABELS "unit;tcgen05;mma_ws;scope")
+
+# ============================================================================
+# Phase 4 of implement-tcgen05-handlers-extended (ADR-0016, Oracle Q5-C / Q6-B):
+# Unit tests for processTcgen05Fence no-op marker (recording fence_position
+# without membar / WarpBarrier interaction). Includes forward-path (before /
+# after_thread_sync), error paths (cta_group::2, missing qualifier, both
+# qualifiers), and the Q5-C state-modification audit (no-mutation invariants).
+# ============================================================================
+add_catch_test(unit_ptx_ir_tcgen05_extended_opkind
+    ptx_ir/test_tcgen05_extended_opkind.cpp
+)
+set_tests_properties(unit_ptx_ir_tcgen05_extended_opkind PROPERTIES
+    LABELS "unit;tcgen05;fence;handler;audit")

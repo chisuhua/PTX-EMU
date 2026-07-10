@@ -108,3 +108,16 @@ add_catch_test(e2e_tcgen05_mma_ws
 )
 set_tests_properties(e2e_tcgen05_mma_ws PROPERTIES
     LABELS "e2e;kernel;tcgen05;mma_ws;sm100")
+
+# ============================================================================
+# Phase 4 of implement-tcgen05-handlers-extended (ADR-0016, Oracle Q5-C):
+# Priority 3 fallback for tcgen05.alloc (ptxas 13.0 lacks sm_100 alloc
+# support, same constraint as e2e_tcgen05_cp + e2e_tcgen05_mma_ws).
+# Source-grep oracle on `tcgen05.alloc`. Full handler execution verified
+# by integration_tcgen05_alloc_dealloc_relinquish + unit_tcgen05_extended_opkind.
+# ============================================================================
+add_catch_test(e2e_tcgen05_alloc
+    kernel/test_tcgen05_alloc.cu
+)
+set_tests_properties(e2e_tcgen05_alloc PROPERTIES
+    LABELS "e2e;kernel;tcgen05;alloc;sm100")

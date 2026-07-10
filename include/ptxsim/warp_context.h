@@ -277,6 +277,25 @@ public:
     }
     int get_physical_warp_id() const { return physical_warp_id; }
 
+    // Phase 4 of implement-tcgen05-handlers-extended (ADR-0016, Oracle Q6-B):
+    // tcgen05.fence no-op marker (design D8). Extension point — recorder only,
+    // no membar / WarpBarrier interaction. Forward-compatible: kFenceUnknown
+    // catches future PTX ISA §9.7.16 scope variants without raising exceptions.
+    enum FencePosition : int8_t {
+        kFenceNone = 0,        // No fence recorded (initial state)
+        kFenceBefore = 1,      // tcgen05.fence::before_thread_sync
+        kFenceAfter = 2,       // tcgen05.fence::after_thread_sync
+        kFenceUnknown = 3      // Forward-compat bucket for future PTX ISA variants
+    };
+    // Backed by `warp_state.fence_position`. Single-writer (warp scheduler);
+    // no mutex per ptx-lessons-learned §2 recursive-lock audit.
+    void record_fence_position(FencePosition position) {
+        warp_state.fence_position = static_cast<int8_t>(position);
+    }
+    FencePosition get_last_fence_position() const {
+        return static_cast<FencePosition>(warp_state.fence_position);
+    }
+
     void set_physical_block_id(int id) { physical_block_id = id; }
     int get_physical_block_id() const { return physical_block_id; }
 

@@ -21,12 +21,20 @@ struct WarpState {
     // relinquishes its permit must wait for CTA exit to re-acquire).
     bool allocate_permit = true;
 
+    // Phase 4 of implement-tcgen05-handlers-extended (ADR-0016, Oracle Q6-B):
+    // tcgen05.fence position marker (no-op semantics). Stores the last
+    // fence type encountered by this warp (FencePosition enum at warp_context.h).
+    // Defaults to kFenceNone (0). Reset on WarpState::reset() (CTA teardown).
+    // Per ptx-lessons-learned §2: no mutex — single-writer (scheduler).
+    int8_t fence_position = 0;
+
     void reset() {
         for (auto &thread : threads) {
             thread.reset();
         }
         exec_mask = 0xFFFFFFFF;
         allocate_permit = true;
+        fence_position = 0;
     }
 
     int count_active_lanes() const {

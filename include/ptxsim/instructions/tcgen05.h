@@ -49,6 +49,11 @@ void processTcgen05Relinquish(ThreadContext *context,
 // Definition lives in src/ptxsim/instructions/tcgen05_cp.cpp.
 void processTcgen05Cp(ThreadContext *context, const Tcgen05Instr &instr);
 
+// Phase 4 of implement-tcgen05-handlers-extended (ADR-0016, Oracle Q6-B):
+// tcgen05.fence no-op marker (design D8). Definition lives in
+// src/ptxsim/instructions/tcgen05_fence.cpp.
+void processTcgen05Fence(ThreadContext *context, const Tcgen05Instr &instr);
+
 // Phase 2 helpers for tcgen05.cp. Exposed for unit tests; the public
 // entry point remains `processTcgen05Cp`.
 [[noreturn]] void throw_cta_group_2(const char *instr_name);

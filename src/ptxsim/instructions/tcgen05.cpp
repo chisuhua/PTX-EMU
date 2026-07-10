@@ -564,7 +564,8 @@ void processTcgen05Wait(ThreadContext* context, const Tcgen05Instr& instr) {
 //
 // Phase 3 (Oracle 2026-07-08 A-path): MMA_WS is routed to
 // processTcgen05Mma (same as MMA); the ws qualifier scan is inside that
-// handler. FENCE remains throw (lands in Phase 4).
+// handler. FENCE dispatches to processTcgen05Fence (Phase 4 implementation,
+// ADR-0016 / Oracle Q6-B no-op marker).
 }  // namespace ptxsim
 
 // Tcgen05Handler is in global namespace (per instruction_handlers.h
@@ -606,11 +607,7 @@ void Tcgen05Handler::processTcgen05Operation(
         ptxsim::processTcgen05Cp(context, instr);
         break;
     case Tcgen05OpKind::FENCE:
-        throw UnsupportedInstructionException(
-            "tcgen05.fence",
-            "tcgen05.fence not yet implemented (per ADR-0016, "
-            "Phase 4 in implement-tcgen05-handlers-extended; see "
-            "Oracle Q6-B: no-op marker)");
+        ptxsim::processTcgen05Fence(context, instr);
         break;
     }
 }
