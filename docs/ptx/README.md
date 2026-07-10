@@ -48,7 +48,7 @@ docs/ptx/
 | `cvt.f32.f16` | ✅ | ✅ | ✅ | Full (T2-6 strategy pattern) |
 | **`st.async`** | ✅ | ❌ stub | ❌ | **Placeholder (T2-4 to remove)** |
 | **`red.async`** | ✅ | ❌ stub | ❌ | **Placeholder (T2-4 to remove)** |
-| **`tcgen05.*`** | ✅ | ❌ stub | ❌ | **Placeholder (T2-4 to remove)** |
+| **`tcgen05.*`** | ✅ | ✅ 11/11 | ✅ | **Full (ADR-0016, implement-tcgen05-handlers-extended Phase 4 `718095a`)** |
 | **`tensormap.replace`** | ✅ | ❌ stub | ❌ | **Placeholder (T2-4 to remove)** |
 | `st.bulk` | ✅ | ❌ stub | ❌ | Out of T2-4 scope (separate cleanup) |
 | `wmma.*` | ✅ | ❌ stub | ❌ | Stub (Tensor Core) |

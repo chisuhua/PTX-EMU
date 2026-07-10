@@ -86,9 +86,9 @@ cmake --build build --target ptxsim     # Build instruction handlers
   `Tcgen05Handler` class. `Tcgen05PipelineHandler` (3-stage pipeline:
   prepare/execute/commit, mirrors `WmmaPipelineHandler`) is the
   InstructionHandler base.
-- 6 deferred op_kinds (ALLOC/DEALLOC/RELINQUISH/CP/MMA_WS/FENCE) throw
-  `UnsupportedInstructionException` (per ADR-0016 §C5 fix #1) — lands
-  in `implement-tcgen05-handlers-extended`.
+- 6 deferred op_kinds (ALLOC/DEALLOC/RELINQUISH/CP/MMA_WS/FENCE) — all
+  implemented as of Phase 4 commit `718095a` (ADR-0016, Oracle Q6-B
+  no-op marker for FENCE; Q2-A cta_group::2 throws ADR-0018).
 
 ## TCGEN05 HANDLER TEST COVERAGE (2026-07, fix-tcgen05-test-coverage-gaps)
 
@@ -172,11 +172,22 @@ cmake --build build --target ptxsim     # Build instruction handlers
   - `tests/e2e/kernel/test_tcgen05_mma_ws.cu` — Priority 3 fallback
     (ptxas 13.0 does not support `tcgen05.mma.ws` on sm_100)
 
-## TCGEN05 REMAINING DEFERRED (FENCE only)
+## TCGEN05 FENCE HANDLER (2026-07, implement-tcgen05-handlers-extended Phase 4)
 
-- **1 deferred op_kind** (`FENCE`) still throws
-  `UnsupportedInstructionException` (per ADR-0016 §C5 fix #1) —
-  Phase 4 in `implement-tcgen05-handlers-extended` (Oracle Q6-B: no-op marker).
+- `tcgen05_fence.cpp` — `processTcgen05Fence` no-op marker (Oracle Q6-B /
+  design D8). Records fence position via `WarpContext::record_fence_position`
+  (backed by `WarpState::fence_position`); does NOT trigger membar / WarpBarrier
+  / active_mask mutation. `FencePosition` enum: kFenceNone / kFenceBefore /
+  kFenceAfter / kFenceUnknown (forward-compat bucket).
+- `cta_group::2` throws `UnsupportedInstructionException` referencing ADR-0018
+  (Q2-A consistency across 11/11 handlers).
+- **Test coverage**:
+  - `tests/unit/ptx_ir/test_tcgen05_extended_opkind.cpp` — 6 TEST_CASEs
+    (forward path before/after, error paths cta_group::2 + no-qualifier +
+    both-qualifiers, Q5-C state-modification audit)
+  - `tests/integration/tcgen05/test_tcgen05_extended_parse.cpp` — 4 TEST_CASEs
+    (forward path, alloc/fence/dealloc interleave, multi-warp independence,
+    cta_group::2 integration path)
 
 ## ATOMIC HANDLER (Phase 1+2, 2026-07)
 

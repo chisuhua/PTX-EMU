@@ -317,3 +317,25 @@ scope discipline、基础设施优先）**未变**。
 - baseline worktree(`bb30ea2`)PTX 一致
 - 16/16 tcgen05-tagged ctest PASS
 - 与 Phase 1.x critical fixes (`0a4358d`) + Phase 2 (`178457d`) + Phase 2.5 (`3b6ead4`) 共存
+
+## Phase 4: tcgen05.fence no-op marker (2026-07-10, Oracle Q6-B / design D8)
+
+**2026-07-10**: Phase 4 of `implement-tcgen05-handlers-extended` 落地(commit `718095a`):
+- 新增 `tcgen05_fence.cpp` (~100 LoC):`processTcgen05Fence` 实现为 **no-op marker**(per Oracle Q6-B)
+- `WarpState::fence_position` 扩展点(`int8_t`,4 enum 值:`kFenceNone / kFenceBefore / kFenceAfter / kFenceUnknown`)
+- `WarpContext::record_fence_position / get_last_fence_position` 访问器
+- `cta_group::2` 抛 `UnsupportedInstructionException` 含 ADR-0018 引用(Q2-A consistency)
+- 递归锁审计:**0** `lock_guard/unique_lock/std::mutex` matches 在 warp state path(grep 验证)
+- 6 unit + 4 integration + 1 e2e 测试(Q5-C 混合 oracle strategy):
+    - `unit_ptx_ir_tcgen05_extended_opkind.cpp`(6 cases / 15 assertions)
+    - `integration_tcgen05_extended_parse.cpp`(4 cases / 20 assertions)
+    - `e2e_tcgen05_alloc.cu`(Priority 3 fallback,ptxas 13.0 不支持 sm_100 alloc)
+- AGENTS.md + `src/ptxsim/instructions/AGENTS.md` + `docs/ptx/README.md` 同步 11/11 状态
+
+### 验证
+
+- 189/189 ctest PASS(原 186;Phase 4 新增 3 tests = `unit_extended_opkind` + `integration_extended_parse` + `e2e_tcgen05_alloc`)
+- 45/45 PTX syntax tests PASS
+- `ctest -L tcgen05` = 22/22 PASS(原 19)
+- baseline worktree(`bb30ea2`)PTX 一致
+- `tcgen05` 11/11 handler 已实现
