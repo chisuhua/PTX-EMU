@@ -406,6 +406,20 @@ set_tests_properties(integration_tcgen05_mma_ws PROPERTIES
     LABELS "integration;tcgen05;mma_ws;golden")
 
 # ============================================================================
+# Multi-op TMEM persistence test (Phase A Step 3 of Oracle 2026-07-10
+# FlashAttention-readiness audit). Validates Oracle H5 hypothesis:
+# TMEM state survives across mma/cp/mma chained operations.
+# T1: mma × 2 (verifies H1 overwrite-vs-accumulate)
+# T2: mma + cp (slot isolation between helper outputs)
+# T3: mma + cp + mma (pipeline chained ops)
+# ============================================================================
+add_catch_test(integration_tcgen05_mma_persistence
+    tcgen05/test_tcgen05_mma_persistence.cpp
+)
+set_tests_properties(integration_tcgen05_mma_persistence PROPERTIES
+    LABELS "integration;tcgen05;mma;cp;persistence;chain")
+
+# ============================================================================
 # Phase 4 of implement-tcgen05-handlers-extended (ADR-0016, Oracle Q5-C / Q6-B):
 # Integration tests for processTcgen05Fence no-op marker. Forward paths,
 # multi-warp independence, alloc/fence/dealloc interleave, cta_group::2 path.
