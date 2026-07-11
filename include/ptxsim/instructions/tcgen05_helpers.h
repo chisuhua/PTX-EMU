@@ -34,6 +34,14 @@ namespace ptxsim {
 // Reads A from TMEM slots [0..63] and B from TMEM slots [0..63] (interleaved
 // with A on a per-lane basis), writes C to TMEM slots [64..95].
 //
+// When accumulate=false (default): C slot is initialized to zero before
+//   the mma sum, matching pre-H1 overwrite behavior.
+// When accumulate=true: existing C slot values (f16) are read back,
+//   converted to f32, and added to the new mma sum before write-back.
+//   Caller must ensure single-warp execution (currently safe per SM
+//   scheduler sequential execution). Accumulate path uses f16 storage in
+//   Phase 1; Phase 2 (H2) switches to f32 storage for precision.
+//
 // Caller must ensure:
 //   - TMEM is allocated (via TmemAllocator or direct write)
 //   - Caller has validated scope (Q3-A: Q_F16 + Q_TCGEN_CTA_GROUP for ws path)
@@ -48,6 +56,6 @@ namespace ptxsim {
 // UNVERIFIED-AGAINST-HARDWARE: ws-specific weight-stationary layout transform
 // is NOT applied — the simulator uses identical fragment arithmetic for both
 // regular mma and mma.ws (deferred per tasks.md §4).
-void tcgen05_fragment_mma_f16(Tmem& tmem);
+void tcgen05_fragment_mma_f16(Tmem& tmem, bool accumulate = false);
 
 } // namespace ptxsim

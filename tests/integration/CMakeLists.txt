@@ -420,6 +420,18 @@ set_tests_properties(integration_tcgen05_mma_persistence PROPERTIES
     LABELS "integration;tcgen05;mma;cp;persistence;chain")
 
 # ============================================================================
+# Phase 1 (H1) B2 hardening: mma → commit → wait → mma sequence.
+# Guards against TcQueue pipeline corruption and verifies that the 2nd mma
+# after wait produces correct C output (overwrite in Phase 1; accumulate
+# path wired via H5 hook in Phases 3-4).
+# ============================================================================
+add_catch_test(integration_tcgen05_mma_commit_wait_sequence
+    tcgen05/test_tcgen05_mma_commit_wait_sequence.cpp
+)
+set_tests_properties(integration_tcgen05_mma_commit_wait_sequence PROPERTIES
+    LABELS "integration;tcgen05;mma;commit;wait;sequence")
+
+# ============================================================================
 # Phase 4 of implement-tcgen05-handlers-extended (ADR-0016, Oracle Q5-C / Q6-B):
 # Integration tests for processTcgen05Fence no-op marker. Forward paths,
 # multi-warp independence, alloc/fence/dealloc interleave, cta_group::2 path.

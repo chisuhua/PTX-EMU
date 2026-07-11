@@ -380,7 +380,7 @@ void processTcgen05Mma(ThreadContext* context, const Tcgen05Instr& instr) {
     }
 
     Tmem& tmem = cta->tmem();
-    tcgen05_fragment_mma_f16(tmem);
+    tcgen05_fragment_mma_f16(tmem, /*accumulate=*/false);
 
     if (ws_path) {
         PTX_DEBUG_EMU(

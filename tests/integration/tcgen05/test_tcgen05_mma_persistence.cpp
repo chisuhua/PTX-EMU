@@ -178,28 +178,62 @@ void require_c_slot_matches(Tmem &tmem,
 } // namespace
 
 // =============================================================================
-// T1: Repeated mma → observe overwrite-vs-accumulate behavior (H1 oracle).
+// T1: Repeated mma → accumulate behavior (H1 oracle, inverted from
+//     commit d3be589 which asserted overwrite).
+//
+// H1 adds `accumulate` parameter to tcgen05_fragment_mma_f16. When
+// accumulate=true, the 2nd mma reads the existing C slot and ADDS the
+// new mma result, yielding 2× golden. This test is the primary H1
+// assertion: 2nd mma on identical A,B → C = 2 * GOLDEN_MMA_F16_F16_F32.
 // =============================================================================
 
-TEST_CASE("processTcgen05Mma called twice with identical A,B leaves C "
-          "unchanged (overwrite, not accumulate)",
+TEST_CASE("processTcgen05Mma called twice with identical A,B accumulates "
+          "into C (2nd mma yields 2× golden)",
+          "[integration][tcgen05][mma][persistence][accumulate]") {
+    TestRig rig;
+    fill_tmem_with_golden_inputs(rig.tmem());
+
+    auto instr = make_regular_mma_instr();
+
+    // 1st mma via handler (baseline, overwrites into empty slot).
+    REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
+    require_c_slot_matches(rig.tmem(), GOLDEN_MMA_F16_F16_F32,
+                           "after 1st mma");
+
+    // 2nd mma via direct helper call with accumulate=true.
+    // Reads existing C f16 values, converts to f32, accumulates new sum.
+    ptxsim::tcgen05_fragment_mma_f16(rig.tmem(), /*accumulate=*/true);
+    std::array<float, 32> twice_golden{};
+    for (size_t k = 0; k < 32; ++k)
+        twice_golden[k] = 2.0f * GOLDEN_MMA_F16_F16_F32[k];
+    require_c_slot_matches(rig.tmem(), twice_golden,
+                           "after 2nd mma (direct helper, accumulate=true)");
+}
+
+// =============================================================================
+// T1_overwrite: Explicit accumulate=false preserves 1× behavior (H1
+//   backward-compat guard). When H1 adds the `accumulate` parameter,
+//   callers that pass false must get the same overwrite behavior as
+//   the pre-H1 baseline.
+// =============================================================================
+
+TEST_CASE("processTcgen05Mma with accumulate=false leaves C unchanged "
+          "(overwrite preserved via helper parameter)",
           "[integration][tcgen05][mma][persistence][overwrite]") {
     TestRig rig;
     fill_tmem_with_golden_inputs(rig.tmem());
 
     auto instr = make_regular_mma_instr();
 
-    // 1st mma — should produce golden C.
+    // 1st call via processTcgen05Mma (which passes accumulate=false).
     REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
     require_c_slot_matches(rig.tmem(), GOLDEN_MMA_F16_F16_F32,
-                           "after 1st mma");
+                           "after 1st mma (via handler, accumulate=false)");
 
-    // 2nd mma on the same inputs. Oracle H1 prediction: overwrite (no
-    // accumulator). If helper accidentally accumulated, golden values
-    // would become 2*(i+1)*(j+1); this assertion would then fail.
-    REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
+    // 2nd call directly on the helper (accumulate=false — overwrite).
+    ptxsim::tcgen05_fragment_mma_f16(rig.tmem(), /*accumulate=*/false);
     require_c_slot_matches(rig.tmem(), GOLDEN_MMA_F16_F16_F32,
-                           "after 2nd mma (same inputs)");
+                           "after direct helper call (accumulate=false)");
 }
 
 // =============================================================================
@@ -292,4 +326,34 @@ TEST_CASE("processTcgen05Mma -> processTcgen05Cp -> processTcgen05Mma "
         }
     }
     REQUIRE(at_least_one_element_changed);
+}
+
+// =============================================================================
+// T1_k_loop_4: 4× mma on identical A,B — sanity guard that accumulation
+//   scales linearly (no overflow/saturation for small k-loop depths).
+//   1st call via handler (overwrite baseline), 2nd-4th via direct helper
+//   with accumulate=true → C = 4 * GOLDEN_MMA_F16_F16_F32.
+// =============================================================================
+
+TEST_CASE("processTcgen05Mma called 4 times with identical A,B accumulates "
+          "into 4× golden",
+          "[integration][tcgen05][mma][persistence][k_loop][accumulate]") {
+    TestRig rig;
+    fill_tmem_with_golden_inputs(rig.tmem());
+
+    auto instr = make_regular_mma_instr();
+
+    REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
+    require_c_slot_matches(rig.tmem(), GOLDEN_MMA_F16_F16_F32,
+                           "after 1st mma");
+
+    ptxsim::tcgen05_fragment_mma_f16(rig.tmem(), /*accumulate=*/true);
+    ptxsim::tcgen05_fragment_mma_f16(rig.tmem(), /*accumulate=*/true);
+    ptxsim::tcgen05_fragment_mma_f16(rig.tmem(), /*accumulate=*/true);
+
+    std::array<float, 32> four_times_golden{};
+    for (size_t k = 0; k < 32; ++k)
+        four_times_golden[k] = 4.0f * GOLDEN_MMA_F16_F16_F32[k];
+    require_c_slot_matches(rig.tmem(), four_times_golden,
+                           "after 4 mma calls (1 handler + 3 accumulate)");
 }
