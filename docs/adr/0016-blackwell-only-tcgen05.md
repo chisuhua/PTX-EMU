@@ -339,3 +339,31 @@ scope discipline、基础设施优先）**未变**。
 - `ctest -L tcgen05` = 22/22 PASS(原 19)
 - baseline worktree(`bb30ea2`)PTX 一致
 - `tcgen05` 11/11 handler 已实现
+
+## 2026-07-11 Postmortem: H1+H2 fix (fix-tcgen05-mma-accumulator-and-f32-storage)
+
+### H1 Root Cause
+`tcgen05_fragment_mma_f16` (per `src/ptxsim/instructions/tcgen05_helpers.cpp:42,45,57`) 零初始化 `c_frag` 并覆写写入，从未读取 `c_slot` 已有值。FlashAttention QK^T/PV 矩阵乘需要 `+=` 累加器（沿 K 维循环），helper 缺乏此能力。
+
+### H1 Fix
+新增 `bool accumulate` 参数（默认 `false`）。`accumulate=true` 时先 `tmem.read(c_slot)` 预加载 C，f16→f32 转换，与新 sum 累加，写回。`processTcgen05Mma` (`src/ptxsim/instructions/tcgen05.cpp:383`) 显式传 `accumulate=false` 保持现有行为。
+
+### H2 Root Cause
+Helper 输出存为 `uint16_t` (f16)，与 PTX ISA §9.7.16 规定 `f16×f16→f32` 矛盾。`tests/reference/ptx_tcgen05/tcgen05_mma_golden.h:6` 声称 "32 f32 elements" 但实际是 f16 storage + f16→f32 readback 掩盖不一致。
+
+### H2 Fix
+Helper body 改 `c_frag` 类型从 `uint16_t` → `float`，删除 `f32_to_f16` 转换。Slot 利用率从 50%（64 bytes / 128 bytes）提升到 100%（128 bytes）。4 处 readback site 迁移到 `alignas(16) float c_arr[32] + std::memcpy` 模式（per Oracle Q3 推荐），数值等价。
+
+### Known Semantic Gap (debt for future)
+Helper `accumulate` 参数是 **simulator 内部决策**，**不解析真实 PTX `idesc.accumulate` bit**。完整修复需要 grammar + parser + visitor + handler 全栈修改（Oracle 2026-07-11 审计 C1 BLOCKER）。PTX ISA §9.7.16 中 accumulate 由 `idesc` 第 N 位 bit 控制（NVIDIA 内部微架构细节，未公开）。
+Follow-up change: `fix-tcgen05-idesc-parsing` (已 propose)。
+
+### Other BLOCKER Debt (Oracle 2026-07-11 审计)
+- **C2** ld/st 硬编码 slot 0 — Follow-up: `fix-tcgen05-ld-st-slot-routing` (已 propose)
+- **C3** commit/wait 硬编码 group_id=1 + `extractQualifiersFromContext` 丢弃 IMMEDIATE — Follow-up: `fix-tcgen05-commit-wait-group` (已 propose)
+- **C4** 多 warp slot 冲突 `c_slot = 64 + lane_id` — Follow-up: `fix-tcgen05-multi-warp-fragment` (已 propose)
+
+### Validation
+- Phase 1 (H1, `df1f6de`): 22/22 tcgen05 PASS (added 4 hardening tests including B2 sequence)
+- Phase 2 (H2, `f97863c`): 22/22 tcgen05 PASS (readback migration mechanical, no regressions)
+- Zero regressions introduced
