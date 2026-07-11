@@ -44,7 +44,9 @@
 #include <array>
 #include <cstdint>
 #include <cstdio>
+#include <fstream>
 #include <memory>
+#include <string>
 #include <vector>
 
 using ptxsim::reference::tcgen05::GOLDEN_MMA_F16_F16_F32;
@@ -151,7 +153,7 @@ void fill_tmem_with_golden_inputs(Tmem &tmem) {
 }
 
 // Read C fragments from slot[64..95] and compare against `expected`
-// (length-32 f32 array). TMEM stores f16; we re-convert for comparison.
+// (length-32 f32 array). TMEM stores f32 per Phase 2 H2 (PTX ISA §9.7.16).
 void require_c_slot_matches(Tmem &tmem,
                             const std::array<float, 32> &expected,
                             const char *context_info) {
@@ -160,16 +162,17 @@ void require_c_slot_matches(Tmem &tmem,
         tmem.read(static_cast<size_t>(64) + static_cast<size_t>(lane_id),
                   c_buf.data(), Tmem::kSlotSize);
 
+        alignas(16) float c_arr[32];
+        std::memcpy(c_arr, c_buf.data(), sizeof(c_arr));
+
         for (int i = 0; i < 8; ++i) {
             for (int j = 0; j < 4; ++j) {
                 const int idx = i * 4 + j;
-                const uint16_t actual_bits = static_cast<uint16_t>(
-                    c_buf[idx * 2] | (c_buf[idx * 2 + 1] << 8));
-                const float actual = f16_to_f32(actual_bits);
+                const float actual = c_arr[idx];
                 INFO(context_info << " lane=" << lane_id << " i=" << i
                      << " j=" << j << " expected=" << expected[idx]
                      << " actual=" << actual);
-                REQUIRE(actual == Catch::Approx(expected[idx]));
+                REQUIRE(actual == Catch::Approx(expected[idx]).epsilon(1e-6f));
             }
         }
     }
@@ -317,9 +320,10 @@ TEST_CASE("processTcgen05Mma -> processTcgen05Cp -> processTcgen05Mma "
         rig.tmem().read(static_cast<size_t>(64) +
                             static_cast<size_t>(lane_id),
                         c_buf.data(), Tmem::kSlotSize);
+        alignas(16) float c_arr[32];
+        std::memcpy(c_arr, c_buf.data(), sizeof(c_arr));
         for (int idx = 0; idx < 32 && !at_least_one_element_changed; ++idx) {
-            const float actual = f16_to_f32(static_cast<uint16_t>(
-                c_buf[idx * 2] | (c_buf[idx * 2 + 1] << 8)));
+            const float actual = c_arr[idx];
             if (actual != Catch::Approx(GOLDEN_MMA_F16_F16_F32[idx])) {
                 at_least_one_element_changed = true;
             }
@@ -356,4 +360,23 @@ TEST_CASE("processTcgen05Mma called 4 times with identical A,B accumulates "
         four_times_golden[k] = 4.0f * GOLDEN_MMA_F16_F16_F32[k];
     require_c_slot_matches(rig.tmem(), four_times_golden,
                            "after 4 mma calls (1 handler + 3 accumulate)");
+}
+
+// =============================================================================
+// HARDENING: verify helper has no f32→f16 conversion residue (Phase 2 invariant)
+// =============================================================================
+
+TEST_CASE("tcgen05_fragment_mma_f16 helper has no f32_to_f16 conversion "
+          "(Phase 2 invariant)",
+          "[integration][tcgen05][mma][helper_invariant]") {
+    // Runtime source-level guard: read helper source and verify the function
+    // body contains no f32_to_f16 call (removed by Phase 2 H2 for f32 storage).
+    // Path is relative to ctest working dir (build/tests/integration/).
+    std::ifstream f("../../../src/ptxsim/instructions/tcgen05_helpers.cpp");
+    REQUIRE(f.is_open());
+    std::string source((std::istreambuf_iterator<char>(f)),
+                       std::istreambuf_iterator<char>());
+    auto body_start = source.find("tcgen05_fragment_mma_f16");
+    REQUIRE(body_start != std::string::npos);
+    REQUIRE(source.find("f32_to_f16", body_start) == std::string::npos);
 }

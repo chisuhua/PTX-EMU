@@ -119,16 +119,17 @@ void require_c_slot_matches(Tmem &tmem,
         tmem.read(static_cast<size_t>(64) + static_cast<size_t>(lane_id),
                   c_buf.data(), Tmem::kSlotSize);
 
+        alignas(16) float c_arr[32];
+        std::memcpy(c_arr, c_buf.data(), sizeof(c_arr));
+
         for (int i = 0; i < 8; ++i) {
             for (int j = 0; j < 4; ++j) {
                 const int idx = i * 4 + j;
-                const uint16_t actual_bits = static_cast<uint16_t>(
-                    c_buf[idx * 2] | (c_buf[idx * 2 + 1] << 8));
-                const float actual = f16_to_f32(actual_bits);
+                const float actual = c_arr[idx];
                 INFO(context_info << " lane=" << lane_id << " i=" << i
                      << " j=" << j << " expected=" << expected[idx]
                      << " actual=" << actual);
-                REQUIRE(actual == Catch::Approx(expected[idx]));
+                REQUIRE(actual == Catch::Approx(expected[idx]).epsilon(1e-6f));
             }
         }
     }

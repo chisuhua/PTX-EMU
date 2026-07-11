@@ -148,16 +148,17 @@ TEST_CASE("processTcgen05Mma with ws+f16+cta_group qualifiers produces "
         rig.tmem().read(static_cast<size_t>(64) + static_cast<size_t>(lane_id),
                         c_buf.data(), Tmem::kSlotSize);
 
+        alignas(16) float c_arr[32];
+        std::memcpy(c_arr, c_buf.data(), sizeof(c_arr));
+
         for (int i = 0; i < 8; ++i) {
             for (int j = 0; j < 4; ++j) {
                 const int idx = i * 4 + j;
                 const float expected = GOLDEN_MMA_F16_F16_F32[static_cast<size_t>(idx)];
-                const uint16_t actual_bits = static_cast<uint16_t>(
-                    c_buf[idx * 2] | (c_buf[idx * 2 + 1] << 8));
-                const float actual = f16_to_f32(actual_bits);
+                const float actual = c_arr[idx];
                 INFO("lane=" << lane_id << " i=" << i << " j=" << j
                      << " expected=" << expected << " actual=" << actual);
-                REQUIRE(actual == Catch::Approx(expected));
+                REQUIRE(actual == Catch::Approx(expected).epsilon(1e-6f));
             }
         }
     }
@@ -184,13 +185,13 @@ TEST_CASE("processTcgen05Mma with op_kind=MMA_WS (direct construction) "
     // Read lane 0's C fragment and verify against golden.
     std::array<uint8_t, Tmem::kSlotSize> c_buf{};
     rig.tmem().read(64, c_buf.data(), Tmem::kSlotSize);
+    alignas(16) float c_arr[32];
+    std::memcpy(c_arr, c_buf.data(), sizeof(c_arr));
     for (int i = 0; i < 8; ++i) {
         for (int j = 0; j < 4; ++j) {
             const int idx = i * 4 + j;
             const float expected = GOLDEN_MMA_F16_F16_F32[static_cast<size_t>(idx)];
-            const uint16_t actual_bits = static_cast<uint16_t>(
-                c_buf[idx * 2] | (c_buf[idx * 2 + 1] << 8));
-            REQUIRE(f16_to_f32(actual_bits) == Catch::Approx(expected));
+            REQUIRE(c_arr[idx] == Catch::Approx(expected).epsilon(1e-6f));
         }
     }
 }

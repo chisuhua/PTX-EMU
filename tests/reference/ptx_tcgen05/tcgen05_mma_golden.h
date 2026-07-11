@@ -4,6 +4,10 @@
 //
 // Source: PTX ISA §9.7.16 specification (Blackwell sm_100+).
 // Layout: 8 rows × 4 cols = 32 f32 elements (per-lane fragment output).
+// Storage format: f32 (per PTX ISA §9.7.16, mma output dtype is f32).
+// Previously stored as f16 with f16→f32 readback; storage changed in
+// fix-tcgen05-mma-accumulator-and-f32-storage Phase 2 commit (Oracle H2).
+//
 //
 // Inputs (per fragment multiplication test):
 //   A[8][1] = {1.0f16, 2.0f16, 3.0f16, 4.0f16, 5.0f16, 6.0f16, 7.0f16, 8.0f16}
