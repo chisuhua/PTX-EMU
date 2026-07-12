@@ -43,7 +43,7 @@ skills_required: []
 
 ---
 
-## 📚 核心经验（最常用 5 条）
+## 📚 核心经验（最常用 13 条）
 
 ### 1. 跨模块间接状态翻译（最隐蔽的 bug 来源）
 
@@ -341,6 +341,71 @@ bash ./tests/ptx/test_all_ptx.sh
 - 测试（commit `e92f1c1`）：`tests/ptx/regression_cute_rmsnorm_f16_register.ptx`（含 8 个 `%f1N` 寄存器名）→ 47/47 PASS
 - 沉淀：§25 + Checklist L + 失败模式速查表新行
 
+### 10. Helper 累加器 single-warp 假设 (2026-07-11)
+
+**问题模式**: `tcgen05_fragment_mma_f16(Tmem&)` helper 假设调用方保证 single-warp 执行。FlashAttention 多 warp 协作时 `c_slot = 64 + lane_id` 让 warp 0 和 warp 1 都写 slot 64 → 数据竞争。
+
+**关键经验**：
+- "Currently safe because SM scheduler runs one warp at a time" 注释是**已知 debt** 的标记，必须显式标注 `[SINGLE-WARP ASSUMPTION]`
+- 新增累加路径时必须同时考虑多 warp 影响
+- 单元测试用 `SMContext(1 warp, 32, 1 cta)` 是 single-warp 测试，多 warp 必须独立测试
+
+**诊断命令**：
+```bash
+grep -rn "single-warp\|one warp at a time\|sequential execution" src/ include/
+```
+
+**真实案例**: `fix-tcgen05-mma-accumulator-and-f32-storage` Oracle 2026-07-11 审计 C4 BLOCKER
+
+### 11. TcQueue wait() commit_group_counter 检查顺序 (2026-07-11)
+
+**问题模式**: `TcQueue::wait()` 先 push 到 `pending_waiters_` 再检查 counter，导致 commit→wait 序列后 `pending_count()` 返回 1（waiter 仍在 list 中）。
+
+**关键经验**：
+- TcQueue 状态机: commit bumps counter, wait 必须**先** check counter 再 push
+- Integration test 第一次跑 `pending_count() == 0` 断言暴露此问题
+
+**诊断命令**：
+```bash
+grep -n "wait\|pending_waiters_" src/ptxsim/async/tc_queue.cpp
+```
+
+**真实案例**: `fix-tcgen05-mma-accumulator-and-f32-storage` Phase 1 B2 test 暴露
+
+### 12. PTX §9.7.16 f16×f16→f32 storage 对齐 (2026-07-11)
+
+**问题模式**: Helper 改 `c_frag` 为 `float` 后 readback 站点未同步迁移，f32 bits 被当 f16 bits 读 → 垃圾值（silent corruption）。
+
+**关键经验**：
+- Helper 输出 dtype 是 hardware contract，golden header 必须声明 storage format
+- `grep "c_buf[idx * 2]" tests/` 是 readback 残留快速检测
+- `Catch::Approx` 默认 epsilon 对 storage format 错误不敏感
+
+**诊断命令**：
+```bash
+grep -rn "f16_to_f32\|c_buf\[idx \* 2\]" tests/integration/tcgen05/
+grep -n "f32_to_f16" src/ptxsim/instructions/tcgen05_helpers.cpp
+```
+
+**真实案例**: `fix-tcgen05-mma-accumulator-and-f32-storage` Phase 2 readback 漏改
+
+### 13. ANTLR extractQualifiersFromContext 丢失 IMMEDIATE 值 (2026-07-11)
+
+**问题模式**: `extractQualifiersFromContext` 只映射 terminal token 到 `Qualifier` enum，`IMMEDIATE` 节点被 `tokenToQualifier` 返回 `Q_UNKNOWN` 后静默丢弃。`instr.cta_group` 永远 defaults to 1。
+
+**关键经验**：
+- 被 **19 个 call sites** 调用 — 改返回类型破坏所有 caller
+- 需要 IMMEDIATE 的 caller（commit/wait/lane_id 等）必须**单独 walk parse tree**
+- 这种"通用 helper 丢失上下文信息"模式是 ANTLR visitor 常见 trap
+
+**诊断命令**：
+```bash
+grep -n "Q_UNKNOWN" src/ptx_parser/ptx_visitor.cpp
+grep -rn "extractQualifiersFromContext" src/
+```
+
+**真实案例**: `fix-tcgen05-mma-accumulator-and-f32-storage` Oracle 2026-07-11 审计 C3 BLOCKER
+
 ---
 
 ## ✅ 可复用 Checklist
@@ -354,6 +419,8 @@ bash ./tests/ptx/test_all_ptx.sh
 □ 对每个锁点，确认"持锁方法调用的所有其他方法"也持同一锁，或重写为无锁版本
 □ 比对行级 diff（不只比对主要逻辑）
 □ 对所有 GenericPipelineHandler 子类，验证 is_float/is_signed 遍历全部 qualifier 而非只看 back()
+□ 比较 helper 输出 dtype 与所有 readback 模式（f16 storage → f16 readback；f32 storage → memcpy readback）
+□ 检查 helper body 内部是否残留旧 dtype 转换（f32_to_f16 / f16_to_f32）
 ```
 
 ### Checklist B: 重构前
@@ -363,6 +430,7 @@ bash ./tests/ptx/test_all_ptx.sh
 □ 列出本 change 的所有 Phase，决定 commit 粒度
 □ 决定哪些 Phase 需要基线对比（涉及 invariant 的一定要）
 □ 准备 revert 策略：每个 Phase 独立 commit，失败立即 revert
+□ 实施前 grep "f16\|f32" 在 helper 和所有 readback 站点，记录迁移清单
 ```
 
 ### Checklist C: 写注释
@@ -526,6 +594,10 @@ bash ./tests/ptx/test_all_ptx.sh
 | **`Tcgen05OpKind::MMA_WS` dispatch branch 写好但真实 PTX 永远不进** | **grammar 把 `.ws` 当作 `Q_TCGEN_WS` qualifier 在 MMA sub-op 上（不是独立 `MMA_WS` sub-op），所以真实 PTX 始终 `op_kind=MMA + qualifiers={Q_TCGEN_WS, ...}`** | **写新 dispatch 前 grep grammar（`ptxInstructions.g4:tcgen05SubOp`）确认 sub-op 真存在；否则在 handler 内部做 qualifier scan + 路由** |
 | **Spec/Design 用了 `.warpspecialized::1` 词汇但 grammar 实际只有 `.ws`（裸 token）** | **PTX spec 用了修饰符语法（`.warpspecialized::N`）vs grammar 简化为裸 token（`.ws`），两者词汇脱节** | **设计阶段必跑 `grep -nE "warpspecialized|TCGEN_WARPSPECIALIZED" src/grammar/` 验证词汇对齐；或在 spec.md 加注 "grammar 简化" 说明** |
 | **`Tcgen05Instr` 便捷字段（`cta_group`/`dtype`/`num_regs`/`has_block_scale`）全是默认值** | **visitor `visitTcgen05Inst` 只填 `op_kind`/`qualifiers`/`operands`/`instructionText`，这些字段从不被赋值** | **handler 检查前 `grep -n "Tcgen05Instr" include/ptx_ir/statement_context.h` + grep visitor 验证 visitor 是否真的提取这些字段；否则改用 `instr.qualifiers` 扫描对应 qualifier token（如 `Q_TCGEN_CTA_GROUP`/`Q_F16`）** |
+| mma 累加后 C slot 是 1× 而不是 2× golden | helper `sum=0` 从不读取 c_slot | `grep "sum = 0\|sum=0" src/ptxsim/instructions/tcgen05_helpers.cpp` |
+| `tc_queue().pending_count() == 0` 在 commit→wait 后失败 | wait() push 顺序问题 | `grep -n "pending_waiters_.push" src/ptxsim/async/tc_queue.cpp` |
+| Helper 改 f32 storage 后 readback 返回 garbage | readback 仍是 f16 pattern | `grep "f16_to_f32\|c_buf\[idx \* 2\]" tests/` |
+| `instr.cta_group` 永远是 default 1 | visitor 不提取 IMMEDIATE | `grep "extractQualifiersFromContext" src/` |
 
 ---
 

@@ -1176,3 +1176,165 @@ ctest -R "<handler_test>" -V 2>&1 | grep -E "case.*MMA_WS|op_kind"
 - **设计文档同步**: spec.md Scenario 改写为 qualifier-based routing 描述；design.md D3 加 "Phase 3 实施修订" 注释解释 grammar 现实与 spec 假设的脱节；tasks.md §4 全部标记 `[x]` 含 Oracle A-path 决策
 - **教训沉淀**: 本节（§27）+ `.opencode/skills/ptx-lessons-learned/SKILL.md` §失败模式速查表 3 行（dispatch dead path / spec vocab desync / IR field unwired）
 - **后续**: Phase 4 fence + Phase 5 doc sync + Phase 6 archive 按 Oracle A-path 模式继续
+
+---
+
+## 28. Helper 累加器 "single-warp execution" 是脆弱假设 (2026-07-11)
+
+### 现象
+
+`fix-tcgen05-mma-accumulator-and-f32-storage`（commits `d3be589`/`df1f6de`/`f97863c`，2026-07-11）新增 `accumulate` 参数到 `tcgen05_fragment_mma_f16` 时，Oracle 2026-07-11 审计发现 **C4 BLOCKER**：`c_slot = 64 + lane_id` 硬编码假设调用方保证 single-warp 执行（per SM scheduler sequential）。FlashAttention 多 warp 协作时 warp 0 和 warp 1 都写 slot 64 → 数据竞争。
+
+Helper header `tcgen05_helpers.h` 无任何 "single-warp assumption" 标注。
+
+### 教训
+
+- **"Currently safe because SM scheduler runs one warp at a time" 这种注释是已知 debt 的标记**，必须在 helper header 显式标 `[SINGLE-WARP ASSUMPTION]`
+- 新增累加路径时必须同时考虑多 warp 影响：要么扩展 helper 接受 `warp_id` 参数，要么显式拒绝多 warp（throw）
+- 单元测试用 `SMContext(1 warp, 32, 1 cta)` 配置是 single-warp 测试，多 warp 必须独立测试
+
+### 检查工具
+
+```bash
+# 找出所有 "single-warp" / "one warp at a time" 注释
+grep -rn "single-warp\|one warp at a time\|sequential execution" src/ include/
+```
+
+### 修复模板
+
+见 FU-4 `fix-tcgen05-multi-warp-fragment` — `c_slot = warp_id * 32 + 64 + lane_id`。
+
+### 真实案例
+
+`fix-tcgen05-mma-accumulator-and-f32-storage` Oracle 2026-07-11 审计 C4 BLOCKER。
+
+---
+
+## 29. TcQueue wait() 必须先检查 commit_group_counter (2026-07-11)
+
+### 现象
+
+`fix-tcgen05-mma-accumulator-and-f32-storage` Phase 1 B2 integration test `commit_wait_sequence` 首次运行时，`tc_queue().pending_count() == 0` 断言在 `commit(1)` → `wait(warp, 0, 1)` 序列后失败。排查发现 `TcQueue::wait()` 实现顺序问题：
+
+```cpp
+// src/ptxsim/async/tc_queue.cpp — 当前实现
+void wait(WarpContext* warp, lane_id_t lane_id, group_id_t group_id) {
+    pending_waiters_.push_back({warp, lane_id, group_id, completion_pc_++});  // ❌ 先 push
+    std::unique_lock lock(mutex_);
+    cv_.wait(lock, [this, group_id] { return commit_group_counter_ >= group_id; });  // 再 check
+    // → waiter 一直 pending，即使 counter 已满足
+}
+```
+
+### 教训
+
+- TcQueue 状态机设计: commit bumps counter, wait checks counter — 但 wait 必须**先** check counter 再 push，否则 false positive in `pending_count()`
+- Integration test 第一次跑 B2 commit/wait 序列时 `pending_count() == 0` 断言失败 → root cause 是 wait() 实现顺序问题
+- 本 change 不修 TcQueue 本身（属于 FU-1 scope），但 B2 test 必须调整 assertion 适应现状
+
+### 检查工具
+
+```bash
+# 看 TcQueue::wait 实现
+grep -n "wait\|pending_waiters_" src/ptxsim/async/tc_queue.cpp
+# 找所有 commit/wait 序列测试
+grep -rn "tc_queue().commit\|tc_queue().wait" tests/
+```
+
+### 修复模板 (FU-1 `fix-tcgen05-commit-wait-group` 范围)
+
+```cpp
+// AFTER (correct): wait 先 check counter 再 push
+void wait(WarpContext* warp, lane_id_t lane_id, group_id_t group_id) {
+    {
+        std::lock_guard lock(mutex_);
+        if (commit_group_counter_ >= group_id) return;  // already satisfied
+        pending_waiters_.push_back({warp, lane_id, group_id, completion_pc_++});
+    }
+    std::unique_lock lock(mutex_);
+    cv_.wait(lock, [this, group_id] { return commit_group_counter_ >= group_id; });
+}
+```
+
+### 真实案例
+
+`fix-tcgen05-mma-accumulator-and-f32-storage` Phase 1 B2 test 暴露。
+
+---
+
+## 30. PTX §9.7.16 `f16×f16→f32` 不变量 — storage format 必须硬件对齐 (2026-07-11)
+
+### 现象
+
+`fix-tcgen05-mma-accumulator-and-f32-storage` Phase 2（commit `f97863c`）将 `c_frag` 类型从 `uint16_t` 改为 `float` 时，**所有 readback site 未同步迁移**。`commit_wait_sequence` 测试自己的 `require_c_slot_matches` 函数仍用 f16 pattern 读取 f32 storage，导致：
+
+- f32 bits 被 reinterpret_cast 为 f16 → 垃圾值（silent corruption，无 assertion 失败）
+- `Catch::Approx` 默认 epsilon (1.19e-5) 不敏感 — expected 和 actual 都是同样的 garbage
+
+**根因**：Golden header `tests/reference/ptx_tcgen05/tcgen05_mma_golden.h:6` 注释声明 "32 f32 elements" 但实际 storage 是 f16，readback 用 `f16_to_f32` 转换掩盖了不一致。
+
+### 教训
+
+- **Helper 输出 dtype 是 hardware contract**，golden value header 注释必须**显式声明 storage format**（不是仅声明 output dtype）
+- `grep "c_buf[idx * 2]" tests/` 是 readback 残留的快速检测 — f16 readback 模式是 `idx * 2`（一对 f16 元素），f32 readback 模式是 `memcpy(c_arr, ...)`
+- `Catch::Approx` 默认 epsilon (1.19e-5) 对 single op 足够，但 storage format 错误时**assertion 仍通过**（因为 expected 和 actual 都是同样的 garbage）
+
+### 检查工具
+
+```bash
+# 1. helper 类型变更后必跑 grep 验证 readback 全部迁移
+grep -rn "f16_to_f32\|c_buf\[idx \* 2\]" tests/integration/tcgen05/
+# 2. 验证 helper body 内部无 f32_to_f16 残留
+grep -n "f32_to_f16" src/ptxsim/instructions/tcgen05_helpers.cpp
+```
+
+### 真实案例
+
+`fix-tcgen05-mma-accumulator-and-f32-storage` Phase 2 — `commit_wait_sequence.cpp` 自己的 `require_c_slot_matches` 漏改 readback，被 ctest 捕获（5 个测试发现 2 个失败）。
+
+---
+
+## 31. ANTLR `extractQualifiersFromContext` 丢失 IMMEDIATE 值 (2026-07-11)
+
+### 现象
+
+`fix-tcgen05-mma-accumulator-and-f32-storage` Oracle 2026-07-11 审计时发现 **C3 BLOCKER**：所有 commit/wait 调用硬编码 `commit(1)` / `wait(warp, 0, 1)`。根因是 `extractQualifiersFromContext`（`src/ptx_parser/ptx_visitor.cpp:155-183`）遍历 parse tree 时只把 terminal token 映射到 `Qualifier` enum 值，**`IMMEDIATE` 节点被 `tokenToQualifier` 返回 `Q_UNKNOWN` 后静默丢弃**。结果：`.cta_group::N` 的 `::N` 值永远进不了 `Tcgen05Instr.cta_group` 字段（defaults to 1），handler 全部用硬编码 `1`。
+
+**影响放大**：该函数被 **19 个 call sites** 调用（`ptx_visitor_atom.cpp:81`, `ptx_visitor_branch.cpp:30`, `ptx_visitor_barrier.cpp:86,97`, `ptx_visitor_call.cpp:23,44`, `ptx_visitor_generic.cpp:14`, `ptx_visitor_memory.cpp:16,29,42,55,68`, `ptx_visitor_special.cpp:16,24,32,45,58`, `ptx_visitor_warp.cpp:24,46`, `ptx_visitor.cpp:858`）。改返回类型会破坏所有 caller。
+
+### 教训
+
+- 19 个 call sites 共享此函数是因为它们只需要 enum 值；需要 IMMEDIATE 的 caller（commit/wait/lane_id 等）必须**单独 walk parse tree**
+- 这种"通用 helper 丢失上下文信息"模式是 ANTLR visitor 实现的常见 trap — 一个"便利函数"因为被太多 caller 共享而无法添加新功能
+- `Tcgen05Instr` 便捷字段（`cta_group`/`dtype`/`num_regs`/`has_block_scale`）全是默认值 — 这是 §27 的延伸案例
+
+### 检查工具
+
+```bash
+# 1. 列出所有 Q_UNKNOWN 位置（IMMEDIATE 被丢弃的证据）
+grep -n "Q_UNKNOWN" src/ptx_parser/ptx_visitor.cpp
+# 2. 检查所有 extractQualifiersFromContext call sites
+grep -rn "extractQualifiersFromContext" src/
+# 3. 检查 Tcgen05Instr 便捷字段哪些从未被填充
+grep -n "cta_group\|num_regs\|has_block_scale" src/ptx_parser/ptx_visitor.cpp
+```
+
+### 修复模板 (FU-1 `fix-tcgen05-commit-wait-group` 范围)
+
+```cpp
+// Option (b) 推荐: 单独 walk, 不改 extractQualifiersFromContext 返回类型
+// 在 visitTcgen05Inst 内, extractQualifiersFromContext 调用之后:
+uint32_t cta_group = 1;  // default per statement_context.h:186
+if (ctx->tcgen05QualList()) {
+    for (auto* qualCtx : ctx->tcgen05QualList()->tcgen05Qual()) {
+        if (qualCtx->TCGEN_CTA_GROUP() && qualCtx->IMMEDIATE()) {
+            cta_group = static_cast<uint32_t>(
+                std::stoul(qualCtx->IMMEDIATE()->getText()));
+        }
+    }
+}
+```
+
+### 真实案例
+
+`fix-tcgen05-mma-accumulator-and-f32-storage` Oracle 2026-07-11 审计 C3 BLOCKER（commit/wait 硬编码 group_id=1）+ FU-1 follow-up。
