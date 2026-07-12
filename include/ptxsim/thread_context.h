@@ -115,6 +115,15 @@ void *acquire_register(const RegOperand &op,
     return reg_access_->acquire_register(op, qualifier);
 }
 
+uint32_t read_reg_32(const RegOperand &reg) {
+    // Defensive: reg_access_ only created in init() or set_register_bank_manager.
+    // If neither ran (minimal TestRig), return 0 → accumulate=false = overwrite
+    // (matches Oracle D2.1 default).
+    if (!reg_access_ || !reg_access_->get_register_bank_manager()) return 0;
+    void *regAddr = acquire_register(reg, {});
+    return *static_cast<uint32_t *>(regAddr);
+}
+
     // Shared memory初始化
     void initialize_shared_memory(const std::string &name, uint64_t address);
 
@@ -256,7 +265,13 @@ StatementContext *get_current_statement() {
     void reset();
 void
 set_register_bank_manager(std::shared_ptr<RegisterBankManager> manager) {
-    reg_access_->set_register_bank_manager(manager);
+    if (!reg_access_) {
+        reg_access_ = std::make_unique<RegisterAccessLayer>(
+            manager, warp_id_, lane_id_,
+            ThreadIdx, BlockIdx, GridDim, BlockDim);
+    } else {
+        reg_access_->set_register_bank_manager(manager);
+    }
 }
 std::shared_ptr<RegisterBankManager> get_register_bank_manager() const {
     return reg_access_->get_register_bank_manager();
