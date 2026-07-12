@@ -1,32 +1,41 @@
 ## 0. Pre-Implementation
 
-- [ ] 0.1 Metis pre-implementation review (per ptx-lessons-learned §7/Checklist H):
-  - 输入：当前目录下 4 个 artifacts + `src/ptxsim/instructions/tcgen05.cpp:493,512,530,550` + `src/ptx_parser/ptx_visitor.cpp:155-183,841-885` + `include/ptx_ir/statement_factory.h:265-292` + `include/ptx_ir/statement_context.h:180-190`
-  - 要求：5 项 MUST-RESOLVE 全部解决才能 apply（hidden intentions / ambiguities / AI failure points / missing context）
-  - 输出决策：GO / ⚠️ CONDITIONAL / ❌ NO-GO
-- [ ] 0.2 验证 Oracle 引用真实存在：
+> **Order requirement** (per ptx-lessons-learned §4): 基线 worktree 必须在任何代码改动前建立。
+> 推荐顺序：0.1 baseline worktree → 0.2 验证 baseline → 0.3 Metis review → 0.4-0.6 后续。
+> 下列编号遵循"baseline FIRST"原则。
+
+- [ ] 0.1 **建立基线 worktree** (per ptx-lessons-learned §4，必须先做):
+  ```bash
+  # 切回 main 分支（如果当前在 sister change 分支上）
+  git checkout main  # 或 master，看项目实际主分支
+  git worktree add .worktrees/baseline-c3 $(git rev-parse HEAD)
+  cd .worktrees/baseline-c3
+  cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+  cmake --build build -j$(nproc)  # 必须全量 build（partial build 会导致 ctest 找不到目标）
+  cd build && ctest -L tcgen05 --output-on-failure
+  # 预期：所有 tcgen05-tagged 测试 PASS（与 main 一致）
+  ```
+- [ ] 0.2 验证 baseline tcgen05-tagged 测试通过:
+  ```bash
+  cd build && ctest -L "tcgen05" --output-on-failure
+  # 预期：所有现有 tcgen05 测试 PASS（包括 sister change H1+H2 实施后状态）
+  # 当前 baseline = 24 个 tcgen05-tagged 测试（已 grep 实证 ctest -N -L tcgen05）
+  ```
+- [ ] 0.3 跑 `./tests/ptx/test_all_ptx.sh` 确认 12 fixtures PASS（47/47 baseline）
+- [ ] 0.4 验证 Oracle 引用真实存在:
   ```bash
   grep -n "tc_queue().commit(" src/ptxsim/instructions/tcgen05.cpp  # 验证 line 512 硬编码
   grep -n "tc_queue().wait(" src/ptxsim/instructions/tcgen05.cpp   # 验证 line 550 硬编码
   grep -n "(void)instr" src/ptxsim/instructions/tcgen05.cpp       # 验证 line 493,530 cast
+  grep -rn "extractQualifiersFromContext(" src/ptx_parser/ | wc -l  # 实证：21（1 def + 20 caller）
   ```
-- [ ] 0.3 验证 baseline tcgen05-tagged 测试通过:
-  ```bash
-  cd build && ctest -L "tcgen05" --output-on-failure
-  # 预期：所有现有 tcgen05 测试 PASS（包括 sister change H1+H2 实施后状态）
-  ```
-- [ ] 0.4 跑 `./tests/ptx/test_all_ptx.sh` 确认 12 fixtures PASS（47/47 baseline）
-- [ ] 0.5 **建立基线 worktree** (per ptx-lessons-learned §4):
-  ```bash
-  git worktree add .worktrees/baseline-c3 $(git rev-parse HEAD)
-  cd .worktrees/baseline-c3
-  cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-  cmake --build build -j$(nproc)  # 必须全量 build
-  cd build && ctest -L tcgen05 --output-on-failure
-  # 预期：所有 tcgen05-tagged 测试 PASS（与 main 一致）
-  ```
+- [ ] 0.5 Metis pre-implementation review (per ptx-lessons-learned §7/Checklist H):
+  - 输入：当前目录下 4 个 artifacts + `src/ptxsim/instructions/tcgen05.cpp:493,512,530,550` + `src/ptx_parser/ptx_visitor.cpp:155-183,841-885` + `include/ptx_ir/statement_factory.h:265-292` + `include/ptx_ir/statement_context.h:180-190` + ANTLR 生成代码 `build/antlr4_generated_src/ptxParser.h:3958-4068`
+  - 要求：所有 MUST-RESOLVE 项全部解决才能 apply（hidden intentions / ambiguities / AI failure points / missing context）
+  - 输出决策：GO / ⚠️ CONDITIONAL / ❌ NO-GO
 - [ ] 0.6 创建工作分支:
   ```bash
+  git checkout main  # 确保在 main 上
   git checkout -b fix/tcgen05-commit-wait-group
   ```
 
@@ -70,18 +79,23 @@
   // NEW: C3 fix — extract cta_group IMMEDIATE value
   // Grammar: TCGEN_CTA_GROUP COLONCOLON IMMEDIATE (ptxInstructions.g4:451)
   // extractQualifiersFromContext drops the IMMEDIATE child silently.
+  // IMPORTANT: use ctx->tcgen05Qual() directly — grammar (DOT? tcgen05Qual)*
+  // generates direct vector accessor on Tcgen05InstContext, NOT a separate
+  // list context (per build/antlr4_generated_src/ptxParser.h:3967 verified).
   uint32_t cta_group = 1;  // default per statement_context.h:186
-  if (ctx->tcgen05QualList()) {
-      for (auto* qualCtx : ctx->tcgen05QualList()->tcgen05Qual()) {
-          if (qualCtx->TCGEN_CTA_GROUP() && qualCtx->IMMEDIATE()) {
-              cta_group = static_cast<uint32_t>(
-                  std::stoul(qualCtx->IMMEDIATE()->getText()));
-          }
+  for (auto* qualCtx : ctx->tcgen05Qual()) {        // ✅ verified ANTLR API
+      if (qualCtx->TCGEN_CTA_GROUP() && qualCtx->IMMEDIATE()) {
+          cta_group = static_cast<uint32_t>(
+              std::stoul(qualCtx->IMMEDIATE()->getText()));
       }
   }
   ```
-- [ ] 2.2.3 传给 `makeTcgen05Instr`:`makeTcgen05Instr(op_kind, qualifiers, operands, text, cta_group)`
-- [ ] 2.2.4 **MUST 验证 ANTLR 生成代码**:`ctx->tcgen05QualList()` 与 `qualCtx->TCGEN_CTA_GROUP()` API 名拼写正确（参考生成的 `ptxParser.cpp`）
+- [ ] 2.2.3 传给 `makeTcgen05Instr`:`makeTcgen05Instr(op_kind, qualifiers, operands, ctx->getText(), cta_group)`（注意：line 883 当前传 `ctx->getText()` 作为 text 参数，本任务需保留该参数 + 新增第 5 参数）
+- [ ] 2.2.4 ✅ **ANTLR API 已实证验证**（per design.md D1 + 0.4 任务）：
+  - `ctx->tcgen05Qual()` ✅ `build/antlr4_generated_src/ptxParser.h:3967` 存在
+  - `qualCtx->TCGEN_CTA_GROUP()` ✅ `ptxParser.h:4009` 存在
+  - `qualCtx->IMMEDIATE()` ✅ ANTLR 生成（所有 qualifier rule 共享 IMMEDIATE terminal accessor）
+  - ❌ **`ctx->tcgen05QualList()` 不存在**（artifact 初稿错误使用，Metis pre-impl review 已纠正）
 - [ ] 2.2.5 验证编译通过：`cmake --build build --target ptx_parser`
 
 ### 2.3 processTcgen05Commit 读 instr.cta_group（per design D3/D4）
@@ -114,14 +128,23 @@
 ### 3.1 New integration test: commit/wait group 序列
 
 - [ ] 3.1.1 新文件 `tests/integration/tcgen05/test_tcgen05_commit_wait_group.cpp`
-- [ ] 3.1.2 添加 CMakeLists.txt 到 `tests/integration/tcgen05/CMakeLists.txt`:
+  - 注：`tests/integration/tcgen05/` 子目录**存在**（含 7 个测试文件：test_alloc_dealloc_relinquish / test_tcgen05_cp / test_tcgen05_dispatch / test_tcgen05_extended_parse / test_tcgen05_mma_commit_wait_sequence / test_tcgen05_mma_persistence / test_tcgen05_mma_ws）
+  - 但子目录下**没有** `CMakeLists.txt`；所有 tcgen05 integration tests 都注册在 `tests/integration/CMakeLists.txt`
+- [ ] 3.1.2 在 `tests/integration/CMakeLists.txt` line 432 后追加新 entry:
   ```cmake
-  add_catch_test(integration_commit_wait_group
-      test_tcgen05_commit_wait_group.cpp
+  # ============================================================================
+  # Phase C3 (fix-tcgen05-commit-wait-group, ADR-0018): mma → commit(group=N)
+  # → wait(group=N) → mma sequence with explicit cta_group routing.
+  # Verifies that the C3 fix routes instr.cta_group (not hardcoded 1) through
+  # TcQueue commit/wait paths.
+  # ============================================================================
+  add_catch_test(integration_tcgen05_commit_wait_group
+      tcgen05/test_tcgen05_commit_wait_group.cpp
   )
-  set_tests_properties(integration_commit_wait_group PROPERTIES
-      LABELS "integration;tcgen05")
+  set_tests_properties(integration_tcgen05_commit_wait_group PROPERTIES
+      LABELS "integration;tcgen05;mma;commit;wait;group_routing")
   ```
+  - **ctest 命名遵循** AGENTS.md "ctest 命名约束"：带 `integration_` 前缀 + `tcgen05_` 命名空间（与现有 24 个 tcgen05-tagged 测试一致）
 - [ ] 3.1.3 复用 `tests/integration/tcgen05/test_tcgen05_mma_persistence.cpp` 中的 `TestRig` + `fill_tmem_with_golden_inputs` helper（如不可复用，新建专属 helper）
 - [ ] 3.1.4 TC1: `mma → commit(cta_group=2) → wait(cta_group=2) → mma` 序列立即返回（counter 满足）
   ```cpp
@@ -142,7 +165,7 @@
   ```
 - [ ] 3.1.5 TC2: `wait(cta_group=2) → 阻塞` 在没有 `commit(2)` 时（per Oracle 验证）
   - **NOTE**: 当前 `TcQueue::wait` 是阻塞实现，测试需要 `std::async(std::launch::async, ...)` + `future.wait_for(30s)` 检测 deadlock（per lessons-learned 失败模式速查表 "th.join() deadlock" 行）
-- [ ] 3.1.6 验证编译 + 运行: `ctest -R integration_commit_wait_group --output-on-failure`
+- [ ] 3.1.6 验证编译 + 运行: `ctest -R integration_tcgen05_commit_wait_group --output-on-failure`
 
 ### 3.2 New parse test: cta_group::2 解析
 
@@ -182,12 +205,18 @@
 - [ ] 4.2.2 对比 main tcgen05-tagged 测试:
   ```bash
   cd build && ctest -L tcgen05 --output-on-failure
-  # 预期：现有测试 PASS + 新增 2 测试 PASS（22+2 = 至少 24/24）
+  # 预期：现有 24 个测试 PASS + 新增 2 测试 PASS（24+2 = 至少 26/26）
+  # baseline = 24 (ctest -N -L tcgen05 已实证)
   ```
 - [ ] 4.2.3 **失败处理**: 任何已有测试回归 → 立即 `git revert HEAD`（per lessons-learned §3）
 
-### 4.3 ADR-0016 Postmortem 追加
+### 4.3 ADR-0016 Postmortem 追加 + ADR-0018 创建
 
+- [ ] 4.3.0 **创建 ADR-0018**（本 change 关键交付物，formalize cta_group::2 throw 语义）:
+  - 新建 `docs/adr/0018-tcgen05-cta-group-restriction.md`（内容已写好，per artifacts 返工）
+  - 更新 `docs/adr/README.md` 索引表（添加 ADR-0018 行）
+  - 更新 `docs/adr/README.md` "ADR 总数" 14 → 15
+  - 更新 `docs/adr/README.md` "最近更新" 表（添加 2026-07-12 行）
 - [ ] 4.3.1 读 `docs/adr/0016-blackwell-only-tcgen05.md` 找到 H1+H2 postmortem 段（per sister change）
 - [ ] 4.3.2 在其后追加:
   ```markdown
@@ -225,7 +254,7 @@
   - `fix-tcgen05-multi-warp-fragment` (FU-4, C4)
   - `tcgen05-flashattention-coverage` (FU-5, B1-B6 + E2E)
   ```
-- [ ] 4.3.3 `git add docs/adr/0016-blackwell-only-tcgen05.md`
+- [ ] 4.3.3 `git add docs/adr/0016-blackwell-only-tcgen05.md docs/adr/0018-tcgen05-cta-group-restriction.md docs/adr/README.md`
 
 ## 5. Phase 4 — Commit（per ptx-lessons-learned §6 artifacts-first + §3 2-Phase discipline）
 
@@ -235,14 +264,16 @@
           src/ptx_parser/ptx_visitor.cpp \
           src/ptxsim/instructions/tcgen05.cpp \
           tests/integration/tcgen05/test_tcgen05_commit_wait_group.cpp \
-          tests/integration/tcgen05/CMakeLists.txt \
+          tests/integration/CMakeLists.txt \
           tests/integration/ptx/test_tcgen05_mma_parse.cpp
   git commit -m "fix(tcgen05): route commit/wait group_id from instr.cta_group (Oracle C3)"
   ```
-- [ ] 5.2 **Commit 2 (Phase 2 — ADR postmortem)**:
+- [ ] 5.2 **Commit 2 (Phase 2 — ADR-0018 创建 + ADR-0016 postmortem)**:
   ```bash
-  git add docs/adr/0016-blackwell-only-tcgen05.md
-  git commit -m "docs(adr): ADR-0016 postmortem C3 fix (commit/wait group routing)"
+  git add docs/adr/0016-blackwell-only-tcgen05.md \
+          docs/adr/0018-tcgen05-cta-group-restriction.md \
+          docs/adr/README.md
+  git commit -m "docs(adr): ADR-0018 cta_group::2 throw semantics + ADR-0016 C3 postmortem"
   ```
 - [ ] 5.3 验证 commits: `git show HEAD --stat` + `git log --oneline -5`
 - [ ] 5.4 验证 `git revert HEAD` 后可恢复 baseline 状态（per design 回退策略）

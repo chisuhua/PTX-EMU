@@ -28,12 +28,12 @@ of hardcoding `group_id=1`. The hardcoded `lane_id=0` in
 - **THEN** the handler allocates `num_cols` TMEM slots via `TmemAllocator` (new abstraction layer, per Oracle Q1-A)
 - **AND** other CTAs in same kernel are not affected
 
-#### Scenario: cta_group::2 throws clear exception (per Oracle Q2-A)
+#### Scenario: cta_group::2 throws clear exception (per [ADR-0018](../../../docs/adr/0018-tcgen05-cta-group-restriction.md))
 
 - **WHEN** `tcgen05.*.cta_group::2.*` is dispatched
 - **THEN** the handler throws `UnsupportedInstructionException` with message containing "cluster abstraction not yet implemented (ADR-0018)"
 - **AND** no silent fallback to cta_group::1 behavior
-- **NOTE**: `cta_group::2` parsing path is enabled by `Tcgen05Instr::cta_group` field being populated; the throw occurs at handler dispatch, not at parse time.
+- **NOTE**: `cta_group::2` parsing path is enabled by `Tcgen05Instr::cta_group` field being populated (per [`specs/tcgen05-multi-group-commit-wait/spec.md`](tcgen05-multi-group-commit-wait/spec.md) — the C3 fix populates `cta_group=2`); the throw occurs at handler dispatch, not at parse time. Per [ADR-0018](../../../docs/adr/0018-tcgen05-cta-group-restriction.md) (created by `fix-tcgen05-commit-wait-group`), this throw is the formalized behavior across all 11 tcgen05 handlers.
 
 #### Scenario: weight-stationary mma.ws handler (per Oracle Q3-A scope)
 

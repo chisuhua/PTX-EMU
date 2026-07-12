@@ -2,7 +2,7 @@
 
 `tcgen05.commit` 和 `tcgen05.wait` 是 Blackwell Tensor Core 的屏障同步机制。`commit(N)` 推进 group_id=N 的 commit-counter，`wait(N)` 阻塞直到 counter ≥ N。FlashAttention FA3 producer-consumer pipeline 需要多个 group（QK^T、softmax、PV）区分同步边界。
 
-### 现状问题（已逐行验证，per Oracle 2026-07-11 session `ses_0aefd09c3ffeSqBIAGdxiRBFWC`）
+### 现状问题（已逐行验证，per Oracle 2026-07-11 审计 + 本 design 的独立实证验证）
 
 **问题 1：`Tcgen05Instr::cta_group` 便利字段从未填充**
 - 位置：`include/ptx_ir/statement_context.h:186` 默认 `cta_group = 1`
@@ -22,7 +22,7 @@
     - `TCGEN_CTA_GROUP` → `tokenToQualifier` 返回 `Q_TCGEN_CTA_GROUP` → 推入 vector ✓
     - `COLONCOLON` → `tokenToQualifier` 返回 `Q_UNKNOWN` → 丢弃
     - `IMMEDIATE` → `tokenToQualifier` 返回 `Q_UNKNOWN` → **静默丢弃** ✗
-- **风险**：19 个 call sites 调用此函数（已 grep 验证 `ptx_visitor*.cpp`），改返回类型会破坏所有 caller
+- **风险**：21 个 call sites（1 definition + 20 callers）调用此函数（已 grep 实证验证 `ptx_visitor*.cpp`），改返回类型会破坏所有 20 个 caller
 
 **问题 3：Handler 硬编码 `group_id=1`**
 - `src/ptxsim/instructions/tcgen05.cpp:512`:
@@ -75,37 +75,50 @@
 
 ### D1: IMMEDIATE 提取策略 — Option (b) 在 visitTcgen05Inst 加单独 parse tree walk
 
-**采纳**: Oracle Q5 推荐 Option (b)
+**采纳**: Option (b) — 在 `visitTcgen05Inst` 中加独立 parse tree walk
+
+**ANTLR 生成代码验证**（per Checklist H 实证 + Checklist L 强制）：
+
+| API 名称 | 真实存在 | 来源 |
+|---------|---------|------|
+| `Tcgen05InstContext::tcgen05Qual()` 返回 `std::vector<Tcgen05QualContext*>` | ✅ | `build/antlr4_generated_src/ptxParser.h:3967` |
+| `Tcgen05InstContext::tcgen05Qual(size_t i)` 返回单个 `Tcgen05QualContext*` | ✅ | `build/antlr4_generated_src/ptxParser.h:3968` |
+| `Tcgen05InstContext::tcgen05QualList()` | ❌ **不存在** | （ANTLR 规则 `(DOT? tcgen05Qual)*` 不生成单独的 list context）|
+| `Tcgen05QualContext::TCGEN_CTA_GROUP()` 返回 `antlr4::tree::TerminalNode*` | ✅ | `build/antlr4_generated_src/ptxParser.h:4009` |
+
+**采纳代码**:
 
 ```cpp
-// src/ptx_parser/ptx_visitor.cpp:858 后插入
+// src/ptx_parser/ptx_visitor.cpp:858 后插入（line 858 是 makeTcgen05Instr 调用）
 std::vector<Qualifier> qualifiers = extractQualifiersFromContext(ctx);
 
 // NEW: C3 fix — extract cta_group IMMEDIATE value
 // Grammar: TCGEN_CTA_GROUP COLONCOLON IMMEDIATE (ptxInstructions.g4:451)
 // extractQualifiersFromContext drops the IMMEDIATE child silently.
+// IMPORTANT: use tcgen05Qual() (NOT tcgen05QualList()) — grammar
+// (DOT? tcgen05Qual)* generates direct vector accessor on
+// Tcgen05InstContext, NOT a separate list context.
 uint32_t cta_group = 1;  // default per statement_context.h:186
-if (ctx->tcgen05QualList()) {
-    for (auto* qualCtx : ctx->tcgen05QualList()->tcgen05Qual()) {
-        if (qualCtx->TCGEN_CTA_GROUP() && qualCtx->IMMEDIATE()) {
-            cta_group = static_cast<uint32_t>(
-                std::stoul(qualCtx->IMMEDIATE()->getText()));
-        }
+for (auto* qualCtx : ctx->tcgen05Qual()) {        // ✅ verified API
+    if (qualCtx->TCGEN_CTA_GROUP() && qualCtx->IMMEDIATE()) {
+        cta_group = static_cast<uint32_t>(
+            std::stoul(qualCtx->IMMEDIATE()->getText()));
     }
 }
 
-// 传给 makeTcgen05Instr
-auto instr = makeTcgen05Instr(op_kind, qualifiers, operands, text, cta_group);
+// 传给 makeTcgen05Instr (line 883 — D2 adds 5th param)
+makeTcgen05Instr(op_kind, qualifiers, operands, ctx->getText(), cta_group);
 ```
 
 **拒绝的备选**:
 
 | 选项 | 拒绝理由 |
 |------|---------|
-| (a) 改 `extractQualifiersFromContext` 返回 `std::vector<std::pair<Qualifier, std::optional<int>>>` | 破坏 19 个 call sites（已 grep 验证）— blast radius 过大 |
-| (c) 新 grammar rule 捕获 IMMEDIATE 到 IR 直接 | 触发 ANTLR LL(*) prediction conflicts（per lessons-learned §9） |
+| (a) 改 `extractQualifiersFromContext` 返回 `std::vector<std::pair<Qualifier, std::optional<int>>>` | 破坏 20 个 caller（21 个 call sites - 1 definition，已 grep 实证）— blast radius 过大 |
+| (b') `ctx->tcgen05QualList()->tcgen05Qual()`（**错误 API**，artifact 初稿误用）| ANTLR 生成的 accessor 是 `tcgen05Qual()` 直接在 `Tcgen05InstContext` 上，**无 `tcgen05QualList()` 方法**（per ptxParser.h:3958-3975）。如果按初稿实施，编译失败 |
+| (c) 新 grammar rule 捕获 IMMEDIATE 到 IR 直接 | 触发 ANTLR LL(*) prediction conflicts（per lessons-learned §9 ANTLR bare token 风险）|
 
-**Tradeoff**: 单次 parse tree walk 有 O(n_qualifiers) 开销（每个 Tcgen05Instr 多 ~1μs）
+**Tradeoff**: 单次 parse tree walk 有 O(n_qualifiers) 开销（每个 Tcgen05Instr 多 ~1μs），可接受
 
 ### D2: `makeTcgen05Instr` 加可选参数 `uint32_t cta_group = 1`
 
@@ -154,11 +167,13 @@ cta->tc_queue().wait(warp, /*lane_id=*/0, instr.cta_group);
 | 风险 | 严重度 | 缓解 |
 |------|--------|------|
 | ANTLR 生成代码修改后 LL(*) 预测冲突 | — | **不修改 grammar**（per lessons-learned §9） |
-| `extractQualifiersFromContext` 19 个 call sites 回归 | High | Option (b) 不改该函数签名；新逻辑独立加在 `visitTcgen05Inst` |
+| `extractQualifiersFromContext` 21 个 call sites（20 caller + 1 definition）回归 | High | Option (b) 不改该函数签名；新逻辑独立加在 `visitTcgen05Inst` |
 | IMMEDIATE 值溢出（PTX 字面量超过 uint32） | Low | `std::stoul` 自然处理 + `static_cast<uint32_t>` 截断 |
 | `cta_group=0` 边界值（PTX 不允许但解析仍生效） | Low | handler 不校验，行为交由 `TcQueue` 处理 |
-| `tcgen05_commit_parse.cpp` 现有测试期望 `cta_group=1` 默认 | Medium | 新增 TC 验证 `cta_group::2` 解析；现有测试不动（默认 1 不变） |
+| `tcgen05_commit_parse.cpp` 现有测试期望 `cta_group=1` 默认 | Medium | 新增 TC 验证 `cta_group::2` 解析（factory-level）；现有测试不动（默认 1 不变）。**ANTLR parser 路径**由 `./tests/ptx/test_all_ptx.sh` 覆盖（per lessons-learned §9 + Checklist L） |
 | `processTcgen05Commit/Wait` 未真正读 `instr`（`(void)instr;`） | Low | D4 删除该 cast；编译期强制 `instr` 必须有 `cta_group` 字段 |
+| ANTLR API 名写错（`tcgen05QualList()` 不存在）| **Critical**（artifact 初稿误用，已纠正）| D1 采纳代码块注释强制使用 `ctx->tcgen05Qual()`；已 `grep -n "tcgen05Qual" build/antlr4_generated_src/ptxParser.h` 实证 |
+| `tests/integration/tcgen05/` 整个子目录不存在 | **Critical**（artifact 初稿假设）| 实证：子目录**存在**（含 7 个测试文件），但**无 CMakeLists.txt**；测试注册追加到 `tests/integration/CMakeLists.txt:432-...`（per ls 实证 + AGENTS.md "ctest 命名约束"）|
 
 ## Migration Plan
 
@@ -223,13 +238,11 @@ cta->tc_queue().wait(warp, /*lane_id=*/0, instr.cta_group);
 
 ## References
 
-- Oracle 2026-07-11 session: `ses_0aefd09c3ffeSqBIAGdxiRBFWC` (Q1-Q6 验证 + C3 推荐 Option (b))
-- Oracle sister session: `ses_0b3791d78ffewb52428kJJ2Irz` (原始 H1+H2 审计 + 5 个 HIGH/MEDIUM blockers)
 - Proposal: [proposal.md](proposal.md)
 - Specs:
   - New: [specs/tcgen05-multi-group-commit-wait/spec.md](specs/tcgen05-multi-group-commit-wait/spec.md)
   - Modified delta: [specs/tcgen05-handlers-extended/spec.md](specs/tcgen05-handlers-extended/spec.md)
 - ADR-0016: [docs/adr/0016-blackwell-only-tcgen05.md](../../../docs/adr/0016-blackwell-only-tcgen05.md)
-- ADR-0018: [docs/adr/0018-tcgen05-cta-group-restriction.md](../../../docs/adr/0018-tcgen05-cta-group-restriction.md)
+- ADR-0018 (本 change 新建): [docs/adr/0018-tcgen05-cta-group-restriction.md](../../../docs/adr/0018-tcgen05-cta-group-restriction.md)
 - ptx-lessons-learned: [.opencode/skills/ptx-lessons-learned/SKILL.md](../../../.opencode/skills/ptx-lessons-learned/SKILL.md) §3 + §4 + §6 + §7 + §9
-- Sister change (active): [../fix-tcgen05-mma-accumulator-and-f32-storage/](../fix-tcgen05-mma-accumulator-and-f32-storage/)
+- Sister change (archived 2026-07-11): [../../archive/2026-07-11-fix-tcgen05-mma-accumulator-and-f32-storage/](../../archive/2026-07-11-fix-tcgen05-mma-accumulator-and-f32-storage/)
