@@ -97,8 +97,16 @@ void TcQueue::wait(WarpContext* warp_ctx, lane_id_t lane_id,
 
     int completion_pc = static_cast<int>(warp_ctx->get_thread_pc(lane_id)) + 1;
 
+    // Oracle §29 fix: check counter BEFORE pushing to pending_waiters_.
+    // If the commit_group_counter already satisfies the wait group_id,
+    // return immediately — no need to block. Without this, commit(2)
+    // followed by wait(1) would leave a stale waiter in pending_waiters_
+    // (pending_count() == 1 even though the counter was sufficient).
     {
         std::lock_guard<std::mutex> lock(mu_);
+        if (commit_group_counter_.load(std::memory_order_acquire) >= group_id) {
+            return;
+        }
         pending_waiters_.push_back(
             {lane_id, group_id, completion_pc, warp_ctx});
     }

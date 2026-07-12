@@ -266,12 +266,14 @@ inline StatementContext makeTcgen05Instr(
     Tcgen05OpKind op_kind,
     const std::vector<Qualifier> &qualifiers,
     const std::vector<OperandContext> &operands,
-    const std::string &text = "") {
+    const std::string &text = "",
+    uint32_t cta_group = 1) {
     Tcgen05Instr instr;
     instr.op_kind = op_kind;
     instr.qualifiers = qualifiers;
     instr.operands = operands;
     instr.instructionText = text;
+    instr.cta_group = cta_group;  // Oracle C3 fix — route cta_group from visitor
     // Map op_kind to correct S_TCGEN05_* StatementType (fix-tcgen05-grammar-mr3 B2)
     StatementType stmt_type;
     switch (op_kind) {

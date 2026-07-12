@@ -367,3 +367,35 @@ Follow-up change: `fix-tcgen05-idesc-parsing` (已 propose)。
 - Phase 1 (H1, `df1f6de`): 22/22 tcgen05 PASS (added 4 hardening tests including B2 sequence)
 - Phase 2 (H2, `f97863c`): 22/22 tcgen05 PASS (readback migration mechanical, no regressions)
 - Zero regressions introduced
+
+## 2026-07-13 Postmortem: C3 fix (fix-tcgen05-commit-wait-group)
+
+### C3 Root Cause
+`processTcgen05Commit` (`tcgen05.cpp:512`) + `processTcgen05Wait` (`:550`) hardcoded `group_id=1` + `lane_id=0`. `Tcgen05Instr::cta_group` field (`statement_context.h:186`) was declared but never populated by visitor (`visitTcgen05Inst` at `ptx_visitor.cpp:858` only stored qualifiers as enum values, silently discarding the `IMMEDIATE` child of `TCGEN_CTA_GROUP COLONCOLON IMMEDIATE` per `extractQualifiersFromContext` at `ptx_visitor.cpp:155-183`).
+
+### C3 Fix
+1. **Visit-time extraction**: `visitTcgen05Inst` walks parse tree to find `TCGEN_CTA_GROUP` contexts and reads the `IMMEDIATE` child (Option (b) from Oracle 2026-07-11 Q5 — avoids breaking 19 `extractQualifiersFromContext` callers).
+2. **Handler reads IR field**: `processTcgen05Commit` now calls `commit(instr.cta_group)` instead of `commit(1)`; `processTcgen05Wait` calls `wait(warp, 0, instr.cta_group)`.
+3. **Default `cta_group=1`** preserves backward compatibility for all existing PTX without explicit `.cta_group::N`.
+4. **Bonus: TcQueue::wait() early return** (§29): checks `commit_group_counter_ >= group_id` BEFORE pushing to `pending_waiters_`, avoiding stale waiter entries.
+
+### Test Coverage
+- 2 new integration tests (`integration_tcgen05_commit_wait_group` — 3 TC: commit routing, commit→wait sequence, wait-block+release)
+- 1 new parse test (`integration_ptx_tcgen05_mma_parse` — `cta_group::2` extraction)
+- 2 new TcQueue unit tests (early return TC#15 + regression guard TC#16)
+- Full ctest: all PASS. PTX grammar: 45/45 PASS.
+
+### Known Semantic Gaps (debt for future)
+- `tcgen05.wait N` lane_id operand not parsed (per `ptx_op.def:136` `op_count=0`). Future: `fix-tcgen05-wait-lane-id` (FU-3.5).
+- Multi-group synchronization not yet exercised by E2E test. Future: `tcgen05-flashattention-coverage` (FU-5).
+
+### Follow-up Changes
+- `fix-tcgen05-idesc-parsing` (FU-2, C1)
+- `fix-tcgen05-ld-st-slot-routing` (FU-3, C2)
+- `fix-tcgen05-multi-warp-fragment` (FU-4, C4)
+- `tcgen05-flashattention-coverage` (FU-5)
+
+### Validation
+- 25/25 tcgen05 PASS (added 3 new tests: 1 integration + 1 parse + bonus TcQueue §29)
+- Full ctest: ALL PASS. PTX grammar: 45/45 PASS.
+- Zero regressions vs baseline `fd0fbb2` (24/24).

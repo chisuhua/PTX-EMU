@@ -314,3 +314,44 @@ TEST_CASE("commit_mid_range_wakes_subset", "[tc_queue][commit]") {
     REQUIRE(q.pending_count() == 0);
     REQUIRE(w.get_warp_state().threads[2].is_blocked == false);
 }
+
+// ---------------------------------------------------------------------------
+// 15. wait_returns_immediately_when_counter_already_meets_group (§29)
+// ---------------------------------------------------------------------------
+TEST_CASE("wait_returns_immediately_when_counter_already_meets_group",
+          "[tc_queue][wait][early_return][FU-1]") {
+    TcQueue q;
+    q.commit(2);
+
+    WarpContext w;
+    int lane = 5;
+    w.advance_thread_pc(lane, 100);
+
+    q.wait(&w, lane, 1u);
+
+    REQUIRE(q.pending_count() == 0);
+    auto& ts = w.get_warp_state().threads[lane];
+    REQUIRE(ts.is_blocked == false);
+}
+
+// ---------------------------------------------------------------------------
+// 16. wait_blocks_when_counter_below_group_then_commit_releases
+// ---------------------------------------------------------------------------
+TEST_CASE("wait_blocks_when_counter_below_group_then_commit_releases",
+          "[tc_queue][wait][early_return][FU-1]") {
+    TcQueue q;
+    q.commit(1);
+
+    WarpContext w;
+    int lane = 3;
+    w.advance_thread_pc(lane, 50);
+
+    q.wait(&w, lane, 2u);
+    REQUIRE(q.pending_count() == 1);
+    REQUIRE(w.get_warp_state().threads[lane].is_blocked == true);
+
+    q.commit(2);
+    REQUIRE(q.pending_count() == 0);
+    REQUIRE(w.get_warp_state().threads[lane].is_blocked == false);
+    REQUIRE(w.get_thread_pc(lane) == 51);
+}
