@@ -857,6 +857,22 @@ std::any PtxVisitor::visitTcgen05Inst(ptxparser::ptxParser::Tcgen05InstContext *
 
     std::vector<Qualifier> qualifiers = extractQualifiersFromContext(ctx);
 
+    // C3 fix: extract cta_group IMMEDIATE value from parse tree.
+    // Grammar: TCGEN_CTA_GROUP COLONCOLON IMMEDIATE (ptxInstructions.g4:451).
+    // extractQualifiersFromContext drops the IMMEDIATE child silently
+    // (tokenToQualifier returns Q_UNKNOWN for terminal nodes).
+    // Per Oracle Q5 Option (b): add separate parse-tree walk here instead
+    // of modifying extractQualifiersFromContext (which has 19 call sites).
+    uint32_t cta_group = 1;
+    if (ctx->tcgen05Qual().size()) {
+        for (auto* qualCtx : ctx->tcgen05Qual()) {
+            if (qualCtx->TCGEN_CTA_GROUP() && qualCtx->IMMEDIATE()) {
+                cta_group = static_cast<uint32_t>(
+                    std::stoul(qualCtx->IMMEDIATE()->getText()));
+            }
+        }
+    }
+
     std::vector<OperandContext> operands;
     auto opListCtx = ctx->tcgen05Operands();
     if (opListCtx) {
@@ -880,7 +896,8 @@ std::any PtxVisitor::visitTcgen05Inst(ptxparser::ptxParser::Tcgen05InstContext *
     }
 
     currentKernel->kernelStatements.push_back(
-        makeTcgen05Instr(op_kind, qualifiers, operands, ctx->getText()));
+        makeTcgen05Instr(op_kind, qualifiers, operands, ctx->getText(),
+                         cta_group));
     return nullptr;
 }
 

@@ -64,3 +64,39 @@ TEST_CASE("tcgen05.mma parse → IR",
     // Verify: instruction text retained
     REQUIRE(instr.instructionText == ptx_text);
 }
+
+TEST_CASE("tcgen05.mma.cta_group::2 populates instr.cta_group (FU-1 C3)",
+          "[integration][ptx][tcgen05][parse][cta_group][FU-1]") {
+    // FU-1 Oracle C3 fix: verify that makeTcgen05Instr with cta_group=2
+    // correctly stores the value. The visitor's IMMEDIATE extraction
+    // (ptx_visitor.cpp:visitTcgen05Inst) will be verified separately via
+    // full PTX parse path tests.
+    const std::string ptx_text =
+        "tcgen05.mma.kind::f16.cta_group::2 d, a, b, c;";
+
+    std::vector<Qualifier> qualifiers = {
+        Qualifier::Q_F16,
+        Qualifier::Q_TCGEN_CTA_GROUP,
+    };
+
+    std::vector<OperandContext> operands = {
+        OperandContext(RegOperand{"d", 0}),
+        OperandContext(RegOperand{"a", 0}),
+        OperandContext(RegOperand{"b", 0}),
+        OperandContext(RegOperand{"c", 0}),
+    };
+
+    auto stmt = ptxir::factory::makeTcgen05Instr(
+        Tcgen05OpKind::MMA, qualifiers, operands, ptx_text, /*cta_group=*/2);
+
+    REQUIRE(std::holds_alternative<Tcgen05Instr>(stmt.data));
+    const auto& instr = std::get<Tcgen05Instr>(stmt.data);
+
+    // Verify cta_group was stored (this FAILS pre-fix because old
+    // makeTcgen05Instr had no cta_group parameter)
+    REQUIRE(instr.cta_group == 2u);
+
+    // Verify Q_TCGEN_CTA_GROUP is in the qualifier list
+    REQUIRE(std::find(instr.qualifiers.begin(), instr.qualifiers.end(),
+                      Qualifier::Q_TCGEN_CTA_GROUP) != instr.qualifiers.end());
+}

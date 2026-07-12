@@ -490,7 +490,6 @@ void processTcgen05St(ThreadContext* context, const Tcgen05Instr& instr) {
 // Per ADR-0016 Phase 0.3: cluster arrive is opt-in via has_cluster_context().
 // ---------------------------------------------------------------------------
 void processTcgen05Commit(ThreadContext* context, const Tcgen05Instr& instr) {
-    (void)instr;  // op_kind already validated by caller dispatch
     // PTX ISA §9.7.16: tcgen05.commit — commit async tensor ops
     // UNVERIFIED-AGAINST-HARDWARE — PTX ISA §9.7.16
     WarpContext* warp = context->get_warp_context();
@@ -508,8 +507,8 @@ void processTcgen05Commit(ThreadContext* context, const Tcgen05Instr& instr) {
             "tcgen05.commit requires an active CTAContext");
     }
 
-    // UNVERIFIED-AGAINST-HARDWARE — group_id=1 per PTX ISA §9.7.16
-    cta->tc_queue().commit(1);
+    // Oracle C3 fix — use instr.cta_group from IR (was hardcoded 1)
+    cta->tc_queue().commit(instr.cta_group);
 
     // Wire ClusterContext: opt-in cluster arrive (per ADR-0016 Phase 0.3)
     if (cta->has_cluster_context()) {
@@ -517,7 +516,7 @@ void processTcgen05Commit(ThreadContext* context, const Tcgen05Instr& instr) {
         cta->cluster_context().cta_cluster_arrive(cta->blockIdx.x);
     }
 
-    PTX_DEBUG_EMU("tcgen05.commit: group_id=1 committed");
+    PTX_DEBUG_EMU("tcgen05.commit: group_id=%lu committed", instr.cta_group);
 }
 
 // ---------------------------------------------------------------------------
@@ -527,7 +526,6 @@ void processTcgen05Commit(ThreadContext* context, const Tcgen05Instr& instr) {
 // Per ADR-0016 Phase 0.3: cluster wait is opt-in via has_cluster_context().
 // ---------------------------------------------------------------------------
 void processTcgen05Wait(ThreadContext* context, const Tcgen05Instr& instr) {
-    (void)instr;  // op_kind already validated by caller dispatch
     // PTX ISA §9.7.16: tcgen05.wait — wait for async tensor ops completion
     // UNVERIFIED-AGAINST-HARDWARE — PTX ISA §9.7.16
     WarpContext* warp = context->get_warp_context();
@@ -545,9 +543,9 @@ void processTcgen05Wait(ThreadContext* context, const Tcgen05Instr& instr) {
             "tcgen05.wait requires an active CTAContext");
     }
 
-    // UNVERIFIED-AGAINST-HARDWARE — group_id=1, lane_id=0
-    // per PTX ISA §9.7.16
-    cta->tc_queue().wait(warp, 0, 1);
+    // Oracle C3 fix — use instr.cta_group from IR (was hardcoded 1).
+    // lane_id=0 retained per design D3 (multi-lane wait deferred to FU-3.5).
+    cta->tc_queue().wait(warp, /*lane_id=*/0, instr.cta_group);
 
     // Wire ClusterContext: opt-in cluster wait (per ADR-0016 Phase 0.3)
     if (cta->has_cluster_context()) {
@@ -555,7 +553,8 @@ void processTcgen05Wait(ThreadContext* context, const Tcgen05Instr& instr) {
         cta->cluster_context().cta_cluster_wait(cta->blockIdx.x);
     }
 
-    PTX_DEBUG_EMU("tcgen05.wait: waiting on group_id=1 for lane 0");
+    PTX_DEBUG_EMU("tcgen05.wait: waiting on group_id=%lu for lane 0",
+                  instr.cta_group);
 }
 
 // Tcgen05Handler::processTcgen05Operation — dispatches on instr.op_kind

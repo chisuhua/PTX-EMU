@@ -432,6 +432,15 @@ set_tests_properties(integration_tcgen05_mma_commit_wait_sequence PROPERTIES
     LABELS "integration;tcgen05;mma;commit;wait;sequence")
 
 # ============================================================================
+# FU-1 Oracle C3 fix: commit/wait cta_group routing integration test.
+# ============================================================================
+add_catch_test(integration_tcgen05_commit_wait_group
+    tcgen05/test_tcgen05_commit_wait_group.cpp
+)
+set_tests_properties(integration_tcgen05_commit_wait_group PROPERTIES
+    LABELS "integration;tcgen05;commit;wait;cta_group;FU-1")
+
+# ============================================================================
 # Phase 4 of implement-tcgen05-handlers-extended (ADR-0016, Oracle Q5-C / Q6-B):
 # Integration tests for processTcgen05Fence no-op marker. Forward paths,
 # multi-warp independence, alloc/fence/dealloc interleave, cta_group::2 path.
