@@ -399,3 +399,34 @@ Follow-up change: `fix-tcgen05-idesc-parsing` (已 propose)。
 - 25/25 tcgen05 PASS (added 3 new tests: 1 integration + 1 parse + bonus TcQueue §29)
 - Full ctest: ALL PASS. PTX grammar: 45/45 PASS.
 - Zero regressions vs baseline `fd0fbb2` (24/24).
+
+## 2026-07-13 Postmortem: C4 fix (fix-tcgen05-multi-warp-fragment)
+
+### C4 Root Cause
+`tcgen05_fragment_mma_f16` helper (`tcgen05_helpers.cpp:35`) 使用硬编码 `c_slot = 64 + lane_id`，单 warp 假设。多 warp 时 warp 0 和 warp 1 的 `lane_id=0` 都写 slot 64 → C slot 数据竞争。Helper header doc 标注了 `Currently safe because SM scheduler runs one warp at a time`（\[SINGLE-WARP ASSUMPTION\] debt marker per lessons-learned §10），但 FlashAttention FA3 producer-consumer pipeline 需要至少 2 个 warp 同时 mma。
+
+### C4 Fix
+1. **Helper signature**: `tcgen05_fragment_mma_f16(Tmem& tmem, int warp_id, bool accumulate = false)`
+2. **Slot formula**: `c_slot = warp_id * 32 + 64 + lane_id`
+3. **warp_id < 0**: 抛 `std::invalid_argument`
+4. **Caller**: `processTcgen05Mma` (`tcgen05.cpp:383`) 传入 `warp->get_warp_id()`（已存在 API，`tcgen05_alloc.cpp` 4 处使用）
+5. **5 个已有 test call sites**: `test_tcgen05_mma_persistence.cpp` 更新为显式传 `warp_id=0`（保持向后兼容）
+
+### Design Decisions
+- **D1**: warp_id 作为 helper 参数显式传入（编译期强制，比 runtime 检查更早发现漏更新）— 而非从 Tmem 内部推断（Tmem 无 owner_warp_id 字段）
+- **D2**: A/B slot 保持共享不变 `[0..63]`（minimal fix 原则 + FlashAttention FA3 Q per-warp + K shared via cp 实际语义匹配）
+- **D3**: 限制为 2-4 warp 支持（Tmem `kTotalSize=32KB`，4 warp × 4KB C + 8KB A/B = 24KB，余量 8KB）
+
+### Test Coverage
+- 1 new integration test (`integration_tcgen05_mma_multi_warp` — 5 TEST_CASEs: backward-compat, warp0, warp1, 2-warp no-conflict, negative-warp_id exception)
+- 5 updated existing call sites in `integration_tcgen05_mma_persistence`
+- Full ctest: ALL PASS. PTX grammar: 45/45 PASS.
+- 26/26 tcgen05 PASS (added 1 new test, 0 regressions vs baseline `32361a0`)
+
+### Known Limitations (debt for future)
+- A/B slot 保持共享不变 — 如果未来 multi-warp A/B partitioning 需求出现，需新增 follow-up change
+- >4 warp 当前未测试覆盖（Tmem 容量约束论证支持但未通过 E2E 验证）
+- Multi-warp mma 尚未由 FlashAttention E2E 测试驱动（待 FU-5 `tcgen05-flashattention-coverage`）
+
+### Follow-up Changes
+- `tcgen05-flashattention-coverage` (FU-5) — 本 change 的下游消费者

@@ -107,7 +107,8 @@ covering the 6 extended handlers with **mixed oracle strategy**:
 - **THEN** 1 unit test + 1 integration test + 2 E2E kernels PASS
 - **AND** no regression in core handler tests
 - **AND** all new golden values include `// UNVERIFIED-AGAINST-HARDWARE` comment
-- **AND** NEW per `fix-tcgen05-commit-wait-group`: `tests/integration/tcgen05/test_tcgen05_commit_wait_group.cpp` covers `mma→commit(cta_group=2)→wait(cta_group=2)→mma` sequence; PASS
+- **AND** NEW per `fix-tcgen05-commit-wait-group`: `tests/integration/tcgen05/test_tcgen05_commit_wait_group.cpp` covers `commit(cta_group=2) → wait(cta_group=2)` routing + blocking semantics (3 TEST_CASEs: commit-routes-cta_group, commit+wait-not-blocked-when-counter-satisfied, wait-blocks-when-counter<cta_group); PASS
+  // Post-archive correction (2026-07-12): Metis Round 2 F3.6 — 原描述含 mma 步骤但实际测试无 mma（per `test_tcgen05_commit_wait_group.cpp:74-129` 实证）
 
 #### Scenario: cta_group::2 parse test exists (NEW per `fix-tcgen05-commit-wait-group`)
 

@@ -205,7 +205,8 @@ TEST_CASE("processTcgen05Mma called twice with identical A,B accumulates "
 
     // 2nd mma via direct helper call with accumulate=true.
     // Reads existing C f16 values, converts to f32, accumulates new sum.
-    ptxsim::tcgen05_fragment_mma_f16(rig.tmem(), /*accumulate=*/true);
+    ptxsim::tcgen05_fragment_mma_f16(rig.tmem(), /*warp_id=*/0,
+                                    /*accumulate=*/true);
     std::array<float, 32> twice_golden{};
     for (size_t k = 0; k < 32; ++k)
         twice_golden[k] = 2.0f * GOLDEN_MMA_F16_F16_F32[k];
@@ -234,7 +235,8 @@ TEST_CASE("processTcgen05Mma with accumulate=false leaves C unchanged "
                            "after 1st mma (via handler, accumulate=false)");
 
     // 2nd call directly on the helper (accumulate=false — overwrite).
-    ptxsim::tcgen05_fragment_mma_f16(rig.tmem(), /*accumulate=*/false);
+    ptxsim::tcgen05_fragment_mma_f16(rig.tmem(), /*warp_id=*/0,
+                                    /*accumulate=*/false);
     require_c_slot_matches(rig.tmem(), GOLDEN_MMA_F16_F16_F32,
                            "after direct helper call (accumulate=false)");
 }
@@ -351,9 +353,12 @@ TEST_CASE("processTcgen05Mma called 4 times with identical A,B accumulates "
     require_c_slot_matches(rig.tmem(), GOLDEN_MMA_F16_F16_F32,
                            "after 1st mma");
 
-    ptxsim::tcgen05_fragment_mma_f16(rig.tmem(), /*accumulate=*/true);
-    ptxsim::tcgen05_fragment_mma_f16(rig.tmem(), /*accumulate=*/true);
-    ptxsim::tcgen05_fragment_mma_f16(rig.tmem(), /*accumulate=*/true);
+    ptxsim::tcgen05_fragment_mma_f16(rig.tmem(), /*warp_id=*/0,
+                                    /*accumulate=*/true);
+    ptxsim::tcgen05_fragment_mma_f16(rig.tmem(), /*warp_id=*/0,
+                                    /*accumulate=*/true);
+    ptxsim::tcgen05_fragment_mma_f16(rig.tmem(), /*warp_id=*/0,
+                                    /*accumulate=*/true);
 
     std::array<float, 32> four_times_golden{};
     for (size_t k = 0; k < 32; ++k)

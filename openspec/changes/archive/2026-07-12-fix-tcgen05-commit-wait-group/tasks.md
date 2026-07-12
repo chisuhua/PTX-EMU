@@ -172,15 +172,36 @@
 - [ ] 3.2.1 读 `tests/integration/ptx/test_tcgen05_mma_parse.cpp` 现有 TC 结构
 - [ ] 3.2.2 在同文件末尾追加新 TC:
   ```cpp
-  TEST_CASE("tcgen05.mma.cta_group::2 populates instr.cta_group == 2", 
+  TEST_CASE("tcgen05.mma.cta_group::2 populates instr.cta_group == 2",
              "[integration][tcgen05][parse][cta_group]") {
-      auto instr = parse_single_mma_instr(".cta_group::2");
+      // Factory-level test per test_tcgen05_mma_parse.cpp:7-9 header note
+      // (不驱动 ANTLR parser — 由 ./tests/ptx/test_all_ptx.sh 覆盖)
+      std::vector<Qualifier> qualifiers = {
+          Qualifier::Q_F16,              // .kind::f16
+          Qualifier::Q_TCGEN_CTA_GROUP,  // .cta_group::2
+      };
+      std::vector<OperandContext> operands = {
+          OperandContext(RegOperand{"d", 0}),
+          OperandContext(RegOperand{"a", 0}),
+          OperandContext(RegOperand{"b", 0}),
+          OperandContext(RegOperand{"c", 0}),
+      };
+      const std::string ptx_text =
+          "tcgen05.mma.kind::f16.cta_group::2 d, a, b, c;";
+
+      // Post-fix signature (per design D2): makeTcgen05Instr adds 5th param `cta_group`
+      auto stmt = ptxir::factory::makeTcgen05Instr(
+          Tcgen05OpKind::MMA, qualifiers, operands, ptx_text, /*cta_group=*/2);
+
+      REQUIRE(std::holds_alternative<Tcgen05Instr>(stmt.data));
+      const auto& instr = std::get<Tcgen05Instr>(stmt.data);
       REQUIRE(instr.cta_group == 2u);
-      REQUIRE(instr.qualifiers.size() >= 1);
-      // 验证 Q_TCGEN_CTA_GROUP 在 qualifier 列表
+      REQUIRE(instr.qualifiers.size() == 2);
       REQUIRE(std::find(instr.qualifiers.begin(), instr.qualifiers.end(),
                         Qualifier::Q_TCGEN_CTA_GROUP) != instr.qualifiers.end());
   }
+  // Post-archive correction (2026-07-12): Metis Round 2 F3.3 指出原代码用
+  // 不存在的 parse_single_mma_instr helper；改用 makeTcgen05Instr(..., /*cta_group=*/2)
   ```
 - [ ] 3.2.3 **NOTE**: `parse_single_mma_instr` 是 helper — 若不存在需要从 `test_tcgen05_mma_persistence.cpp` 或新建 Tcgen05Instr builder 复制
 - [ ] 3.2.4 验证编译 + 运行: `ctest -R test_tcgen05_mma_parse --output-on-failure`
@@ -205,8 +226,9 @@
 - [ ] 4.2.2 对比 main tcgen05-tagged 测试:
   ```bash
   cd build && ctest -L tcgen05 --output-on-failure
-  # 预期：现有 24 个测试 PASS + 新增 2 测试 PASS（24+2 = 至少 26/26）
-  # baseline = 24 (ctest -N -L tcgen05 已实证)
+  # 预期：现有 25 个测试 PASS + 新增 2 测试 PASS（25+2 = 至少 27/27）
+  # baseline = 25 (ctest -N -L tcgen05 已实证 — 含新 register 的 integration_tcgen05_commit_wait_group)
+  # Post-archive correction (2026-07-12): Metis Round 2 F3.2 指出原写 "24+2=26" 是错的
   ```
 - [ ] 4.2.3 **失败处理**: 任何已有测试回归 → 立即 `git revert HEAD`（per lessons-learned §3）
 
@@ -234,12 +256,13 @@
   ### Fix
   1. Visit-time extraction: `visitTcgen05Inst` walks parse tree to find
      `TCGEN_CTA_GROUP` contexts and reads the IMMEDIATE child (Option (b)
-     from Oracle 2026-07-11 Q5 analysis — avoids breaking 19 other
-     `extractQualifiersFromContext` callers)
+     per design.md D1 — avoids breaking 20 other `extractQualifiersFromContext`
+     callers, empirically verified: 1 definition + 20 callers = 21 call sites)
   2. Handler reads IR field: `processTcgen05Commit` now calls
      `commit(instr.cta_group)` instead of `commit(1)`; same for `wait`
   3. Default `cta_group=1` preserves backward compatibility for all
      existing PTX without explicit `.cta_group::N`
+  // Post-archive correction (2026-07-12): Metis Round 2 F3.4 修正 "19" → "20" (20 other callers)
   
   ### Known Semantic Gaps (debt for future)
   - `tcgen05.wait N` lane_id operand not parsed (per
