@@ -21,11 +21,21 @@
   ```bash
   openspec status --change fix-tcgen05-commit-wait-group --json | jq '.isComplete'
   ```
-- [ ] 0.5 **验证 `ThreadContext::read_reg_32` accessor 是否存在**（per OpenQuestion OQ1）:
+- [ ] 0.5 **🛑 HARD GATE: 验证 `ThreadContext::read_reg_32` accessor 是否存在**（per OpenQuestion OQ1, **Oracle 2026-07-11 BLOCKER**）:
   ```bash
-  grep -rn "read_reg_32\|register_bank_" include/ptxsim/core/thread_context.h src/ptxsim/core/thread_context.cpp | head -10
+  # Oracle 实证：accessor 名虚构，真实 API 是 reg_access_ (RegisterAccessLayer unique_ptr, thread_context.h:45)
+  grep -rn "read_reg_32\|register_bank_\|reg_access_\|RegisterAccessLayer" include/ptxsim/thread_context.h src/ptxsim/thread_context.cpp 2>/dev/null | head -15
   ```
-  - **NOTE**: 若不存在，加最小 accessor + 单元测试（参考 lessons-learned §1 跨模块状态翻译审计）
+  - **🛑 必须解决才能进入 Phase 1.1**：Oracle 实证确认 `read_reg_32` 不存在；当前 API 经 `reg_access_->acquire_register(op, qualifier)` + `get_register_bank_manager()` (thread_context.h:115, 261-262)
+  - **修复路径**：在 `include/ptxsim/thread_context.h` 添加最小 accessor 声明 + 实现：
+    ```cpp
+    // include/ptxsim/thread_context.h 新增（public 方法）
+    uint32_t read_reg_32(const RegOperand& reg) const;
+    // 实现通过 reg_access_->acquire_register(reg, Qualifier{}) + 解析 uint32_t
+    ```
+  - 加单元测试：`tests/unit/core/test_thread_context_read_reg.cpp` 验证 register-name → uint32_t 路径
+  - 此 HARD GATE 通过后，方可进入 §1.1 / §1.3 handler 改造
+  - **NOTE**: 路径修正 — `thread_context.h` 在 `include/ptxsim/`，**不在** `include/ptxsim/core/`（原 tasks.md §0.5 路径错误）
 - [ ] 0.6 **验证 `warp->get_warp_id()` 类型**（per OpenQuestion OQ3）:
   ```bash
   grep -n "get_warp_id" include/ptxsim/core/warp_context.h src/ptxsim/instructions/tcgen05_alloc.cpp
@@ -57,25 +67,29 @@
   // processTcgen05Mma at src/ptxsim/instructions/tcgen05.cpp
   bool accumulate = false;
   ```
-- [ ] 1.1.3 读 `include/ptxsim/instructions/tcgen05_helpers.h:51` 当前 helper 签名
-- [ ] 1.1.4 修改 helper 签名为 `void tcgen05_fragment_mma_f16(Tmem& tmem, int warp_id, bool accumulate = false);`
-- [ ] 1.1.5 helper header doc 添加 warp_id parameter 注释（per Oracle Q4 Option a）
-
-### 1.2 Helper body 修改（c_slot warp_id 偏移）
-
-- [ ] 1.2.1 读 `src/ptxsim/instructions/tcgen05_helpers.cpp:23` 当前 c_slot 公式
-- [ ] 1.2.2 改为:
-  ```cpp
-  // C1+FU-4 sync: c_slot per warp (per Oracle Q4 Option a)
-  // Single-warp callers passing warp_id=0 preserve prior layout (64 + lane_id)
-  size_t c_slot = static_cast<size_t>(warp_id) * 32 +
-                  static_cast<size_t>(64) + static_cast<size_t>(lane_id);
+- [ ] 1.1.3 验证 helper 签名（**Oracle 2026-07-11 实证：已是 3-param 最终态**）:
+  ```bash
+  grep -E "tcgen05_fragment_mma_f16.*warp_id.*accumulate" include/ptxsim/instructions/tcgen05_helpers.h
+  # 应输出：void tcgen05_fragment_mma_f16(Tmem& tmem, int warp_id, bool accumulate = false);
   ```
+  - **NOTE**: 不再修改 helper 签名（per Oracle Q5 D3 决策沿用已实施 API）
+- [ ] 1.1.4 验证 c_slot 公式（**Oracle 2026-07-11 实证：warp_id 偏移已落地**）:
+  ```bash
+  grep -E "c_slot.*warp_id.*\*.*32" src/ptxsim/instructions/tcgen05_helpers.cpp
+  # 应输出 c_slot = warp_id * 32 + 64 + lane_id
+  ```
+  - **NOTE**: 不再修改 helper body（per Oracle Q5 D3 决策沿用已实施 c_slot 公式）
+
+### 1.2 [REMOVED — 已在 active predecessor 实施]
+
+- **🗑️ 已删除**：§1.2 "Helper body 修改（c_slot warp_id 偏移）" 全部任务（§1.2.1, §1.2.2）
+- **原因**：Oracle 2026-07-11 实证 `tcgen05_helpers.cpp:42-44` 已是 `c_slot = warp_id * 32 + 64 + lane_id` 公式
+- **替代**：§1.1.3 / §1.1.4 验证步骤确认现状即可，不再修改源码
 
 ### 1.3 Handler 改造（idesc 运行时读取）
 
 - [ ] 1.3.1 读 `src/ptxsim/instructions/tcgen05.cpp:355-393` 当前 processTcgen05Mma
-- [ ] 1.3.2 在 helper 调用之前（第 383 行附近）添加 idesc 读取逻辑:
+- [ ] 1.3.2 在 helper 调用之前（第 383 行附近）添加 idesc 读取逻辑（**NOTE: `thread.read_reg_32` 来自 §0.5 HARD GATE 实施的 accessor；当前实际 API 路径需按 `reg_access_->acquire_register` 实施时确认**）:
   ```cpp
   // C1 fix: extract accumulate bit from idesc register at handler time (per Oracle C1)
   // idesc is a RegOperand (PTX ISA §9.7.16, operand[3]) — accumulate bit is bit 0 placeholder
@@ -83,69 +97,81 @@
   if (instr.operands.size() >= 4 &&
       instr.operands[3].type == OperandContext::Type::Reg) {
       const auto& idesc_reg = instr.operands[3].reg;
-      uint32_t idesc_val = thread.read_reg_32(idesc_reg);  // see OQ1
+      uint32_t idesc_val = thread.read_reg_32(idesc_reg);  // from §0.5 HARD GATE accessor
       accumulate = (idesc_val & 0x1u) != 0;  // bit 0 placeholder; calibrate via T4/T5
   }
   ```
 - [ ] 1.3.3 修改第 383 行 helper 调用:
   ```cpp
-  // BEFORE: tcgen05_fragment_mma_f16(tmem, /*accumulate=*/false);
+  // BEFORE: tcgen05_fragment_mma_f16(tmem, warp->get_warp_id(), /*accumulate=*/false);
+  //                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  //                                                  已传 warp_id (active predecessor 实施)；仅改 accumulate 参数
   // AFTER:  tcgen05_fragment_mma_f16(tmem, warp->get_warp_id(), accumulate);
   ```
 
 ### 1.4 Integration 测试：T4/T5（idesc-driven accumulate）
 
-- [ ] 1.4.1 读 `tests/integration/tcgen05/test_tcgen05_mma_persistence.cpp` 当前结构
-- [ ] 1.4.2 添加 T4 TC（idesc accumulate bit=1 → 2× GOLDEN 累加）:
-  ```cpp
-  TEST_CASE("processTcgen05Mma with idesc accumulate bit set yields accumulation",
-            "[integration][tcgen05][mma][idesc][accumulate]") {
-      TestRig rig;
-      fill_tmem_with_golden_inputs(rig.tmem());
-      // Set idesc register to accumulate bit set (bit 0 placeholder)
-      rig.thread().register_bank_["%r5"] = 0x1u;  // bit 0 = accumulate=true
-      
-      auto instr = make_regular_mma_instr();
-      instr.operands[3] = OperandContext{RegOperand{"%r5"}};  // idesc = %r5
-      
-      REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
-      REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));  // 2nd mma
-      require_c_slot_matches(rig.tmem(), /* 2 × */ golden_2x(),
-                             "after 2nd mma with idesc accumulate=1");
-  }
+> **🛑 Oracle 2026-07-11 BLOCKER**: 原 tasks.md §1.4.2-§1.4.4 测试代码示例**不可编译**：
+> - `rig.thread().register_bank_["%r5"]` — `register_bank_` 不是 ThreadContext 成员（实际是 `reg_access_`）
+> - `RegOperand{"%r5"}` — RegOperand 是 `{std::string name; int index}` 两字段，正确形式 `RegOperand{"r", 5}`
+> - `OperandContext{RegOperand{"%r5"}}` — brace-init 推断有歧义风险（OperandContext::data 是 std::variant）
+> 
+> **修复**: 改为**规格化**测试设计（不写伪代码），实施时根据 §0.5 HARD GATE 实施的真实 RegisterAccessLayer API 编写可编译代码。
+
+- [ ] 1.4.1 读 `tests/integration/tcgen05/test_tcgen05_mma_persistence.cpp` 当前结构（已有 `TestRig`, `fill_tmem_with_golden_inputs`, `make_regular_mma_instr`, `require_c_slot_matches` 助手）
+- [ ] 1.4.2 添加 T4 TC（idesc accumulate bit=1 → 2× GOLDEN 累加）— **规格化描述**:
+  ```text
+  TC: "processTcgen05Mma with idesc accumulate bit set yields accumulation"
+  Tag: [integration][tcgen05][mma][idesc][accumulate]
+  
+  Setup:
+    - TestRig rig
+    - fill_tmem_with_golden_inputs(rig.tmem())  // A=1..32, B=1..4
+    - 通过 §0.5 实施的 accessor 路径，设置 thread 持有寄存器（idesc RegOperand 指向的 uint32_t）值 = 0x1u
+      /* 注: 具体 API 由 §0.5 实施决定（如 thread.read_reg_32(reg) 或
+         rig.set_register_value(reg, value) 等）；使用 RegOperand{"r", 5}
+         表示 %r5，per operand_context.h:12-13 二字段定义 */
+    - make_regular_mma_instr() + 设置 instr.operands[3] = OperandContext(RegOperand{"r", 5})
+  
+  Action:
+    - ptxsim::processTcgen05Mma(&rig.thread(), instr)  // 1st mma
+    - ptxsim::processTcgen05Mma(&rig.thread(), instr)  // 2nd mma
+  
+  Assertion:
+    - require_c_slot_matches(rig.tmem(), 2x golden_2x, "after 2nd mma with idesc accumulate=1")
+    - 注: golden_2x = 2 × GOLDEN_MMA_F16_F16_F32（per tests/reference/ptx_tcgen05/tcgen05_mma_golden.h）
   ```
-- [ ] 1.4.3 添加 T5 TC（idesc accumulate bit=0 → 1× GOLDEN overwrite）:
-  ```cpp
-  TEST_CASE("processTcgen05Mma with idesc accumulate bit cleared yields overwrite",
-            "[integration][tcgen05][mma][idesc][overwrite]") {
-      TestRig rig;
-      fill_tmem_with_golden_inputs(rig.tmem());
-      rig.thread().register_bank_["%r5"] = 0x0u;  // accumulate=false
-      
-      auto instr = make_regular_mma_instr();
-      instr.operands[3] = OperandContext{RegOperand{"%r5"}};
-      
-      REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
-      REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
-      require_c_slot_matches(rig.tmem(), golden_1x(),  // overwrite semantics
-                             "after 2nd mma with idesc accumulate=0");
-  }
+- [ ] 1.4.3 添加 T5 TC（idesc accumulate bit=0 → 1× GOLDEN overwrite）— **规格化描述**:
+  ```text
+  TC: "processTcgen05Mma with idesc accumulate bit cleared yields overwrite"
+  Tag: [integration][tcgen05][mma][idesc][overwrite]
+  
+  Setup: 同 T4，但寄存器值 = 0x0u（accumulate bit cleared）
+  
+  Action: 同 T4（连续 2 次 mma）
+  
+  Assertion:
+    - require_c_slot_matches(rig.tmem(), golden_1x, "after 2nd mma with idesc accumulate=0")
+    - 注: 2nd mma 后 C == 1 × GOLDEN（overwrite 保留，与 active change T1_overwrite 语义一致）
   ```
-- [ ] 1.4.4 添加 T6 TC（idesc bit 位置 calibration helper）:
-  ```cpp
-  TEST_CASE("idesc bit calibration: bit 0 baseline test for future bit-position discovery",
-            "[integration][tcgen05][mma][idesc][calibration]") {
-      // 若未来发现 bit 位置非 bit 0，可复用此 TC 框架：
-      // - 改为 rig.thread().register_bank_["%r5"] = 0x2u;  // bit 1
-      // - 改为 rig.thread().register_bank_["%r5"] = 0x4u;  // bit 2
-      // 验证哪个 bit 触发 accumulate 语义，记录到 ADR-0016 postmortem
-      // 当前 placeholder 仅用于辅助未来校准，不作为必过测试
-  }
+- [ ] 1.4.4 添加 T6 TC（idesc bit 位置 calibration helper）— **规格化描述**:
+  ```text
+  TC: "idesc bit calibration: bit 0 baseline test for future bit-position discovery"
+  Tag: [integration][tcgen05][mma][idesc][calibration]
+  
+  Purpose: 提供位掩码发现框架。若 T4/T5 FAIL，依次尝试以下位掩码值:
+    - 0x1u (bit 0, current placeholder)
+    - 0x2u (bit 1)
+    - 0x4u (bit 2)
+    - 0x8u (bit 3)
+  
+  Assertion: 找到使 T4 PASS（idesc=mask → 2x GOLDEN）+ T5 PASS（idesc=0 → 1x GOLDEN）的位掩码
+  Output: 记录到 ADR-0016 Postmortem 段（per design.md D5 calibration procedure）
   ```
 - [ ] 1.4.5 **T4/T5 实施后首次运行验证**:
-  - 若 T4 FAIL：检查 `(idesc_val & 0x1u)` 是否正确，必要时调整位掩码至 `0x2u` 等，记录 calibration 步骤
-  - 若 T5 FAIL：检查 RegOperand 解析，确认 `instr.operands[3].type == Reg`
-  - 所有修正记录到 ADR-0016 Postmortem 段（per D5 calibration procedure）
+  - 若 T4 FAIL：检查 §0.5 实施的 accessor 路径是否正确返回 uint32_t；尝试 D5 位掩码候选
+  - 若 T5 FAIL：检查 RegOperand 解析（用 `RegOperand{"r", 5}` 二字段形式，不是单字段字符串）
+  - 所有修正记录到 ADR-0016 Postmortem 段
 
 ### 1.5 PTX 语法 fixture（per lessons-learned §L TDD）
 
@@ -262,12 +288,12 @@
 - ❌ **不许用 ctest 代替 `./tests/ptx/test_all_ptx.sh`** 验证 PTX 语法解析（lessons-learned §L）
 - ❌ **不许修改 grammar**（per本 change Non-Goals + active change design.md D1.1）
 
-## Effort 估算
+## Effort 估算（per Oracle 2026-07-11 review 校准）
 
 | Phase | Tasks | 估计时间 |
 |-------|-------|---------|
-| Phase 0 (Pre-impl) | 0.1-0.10 baseline + accessor 验证 | 1h |
-| Phase 1 (handler + helper) | 1.1-1.7 signature + warp_id + T4/T5 | 3-4h |
+| Phase 0 (Pre-impl) | 0.1-0.10 baseline + **HARD GATE §0.5 accessor 实施** | 1.5h |
+| Phase 1 (handler only — D3 已实施删除) | 1.1.1-1.1.2 + 1.1.3-1.1.4 verify-only + 1.3.1-1.3.3 + 1.4 + 1.5 + 1.6 + 1.7 | **2-3h** (vs 原 3-4h，因 D3 已不实施) |
 | Phase 2 (ADR) | 2.1-2.7 idesc bit 校准 + postmortem 段 | 1h |
 | Phase 3 (Archive) | 3.1-3.4 artifacts + archive + postmortem prompt | 30min |
-| **总计** | | **5.5-6.5h** |
+| **总计** | | **5-6h** (vs 原 5.5-6.5h；D3 工作删除节约 1h 但 HARD GATE 增加 0.5h) |

@@ -85,15 +85,15 @@ void processTcgen05Mma(ThreadContext& thread, const Tcgen05Instr& instr) {
 
 **Tradeoff**: 未来扩展需后续独立 change（如 `fix-tcgen05-idesc-full-parsing`）
 
-### D3: helper warp_id 参数同步加入（per Oracle Q4 Option a）
+### D3: helper warp_id 参数已存在 — 本 change 不再扩展（per Oracle 2026-07-11 review session `ses_0a8af7ff0ffeYHjA65F4uPwcKa`）
 
-**采纳**: helper signature 同步加 `int warp_id` 参数（即使单 warp 透传 `warp_id=0`），c_slot `= warp_id * 32 + 64 + lane_id`
+**采纳**: 沿用 active predecessor 已实施的 `int warp_id` 参数（实证：`tcgen05_helpers.h:70-71` 三参数签名 `tcgen05_fragment_mma_f16(Tmem& tmem, int warp_id, bool accumulate = false)` + `tcgen05_helpers.cpp:42-44` c_slot 公式 `warp_id * 32 + 64 + lane_id` + `tcgen05.cpp:383` 调用点已传 `warp->get_warp_id()`）。本 change 不再修改 helper 签名或 c_slot 公式。
 
 **拒绝的备选**:
-- (a) 仅加 `accumulate` 不加 `warp_id`：未来 FU-4 实施时需再次改 helper signature（2 次 churn）
-- (b) 推迟 warp_id 到 FU-4：增加 helper signature 变更次数
+- (a) 在本 change 再次扩展签名：产生 no-op diff + 风险引入错误（如重复 warp_id 参数或回滚 active 工作）
+- (b) 推迟到 FU-4：FU-4 不再需要改 helper 签名，仅需补多 warp 测试
 
-**Tradeoff**: 1 次签名扩展同时承载 C1 + 为 C4 铺路 vs 2 次小扩展
+**Tradeoff**: 沿用已实施 API（避免 churn + 符合 lessons-learned §7 "不要重做已实施工作"）vs 重新声明已落地工作
 
 ### D4: 回退策略（per lessons-learned §3）
 
@@ -132,11 +132,11 @@ void processTcgen05Mma(ThreadContext& thread, const Tcgen05Instr& instr) {
 | ID | Risk | Severity | Mitigation |
 |----|------|----------|------------|
 | R1 | idesc bit 位置 placeholder 错误 → T4/T5 FAIL | HIGH | D5 校准流程 + ADR postmortem 记录 |
-| R2 | `ThreadContext::read_reg_32` accessor 不存在 → 编译失败 | HIGH | Phase 1.1 实施前先 grep 验证 API；如不存在，加最小 accessor（与 lessons-learned §1 跨模块状态翻译原则一致） |
-| R3 | helper signature 扩展破坏 active change 已 merge 的 accumulate=false 调用 | MEDIUM | active change 已显式传 `accumulate=false`，签名扩展加新参数无破坏；`git blame` 验证 |
-| R4 | warp_id 单 warp 下行为与之前不一致 | LOW | `c_slot = 0 * 32 + 64 + lane_id = 64 + lane_id` 数学等价 active change 状态 |
-| R5 | 同时改 handler + helper signature 扩大 diff | LOW | Phase 1 单 atomic commit 内 diff 集中于 4 文件，行级 diff ≤ 30 行 |
-| R6 | PTX 解析不暴露 idesc（idesc 是内部寄存器名，PTX 用户赋名 `%r5`）→ 无法用真实 PTX 验证 | MEDIUM | T4/T5 测试直接构造 `instr.operands[3].reg = {name="%r5"}` + 设置 `thread.register_bank_["%r5"] = 1` 模拟 PTX 用户视角 |
+| R2 | `ThreadContext::read_reg_32` accessor 不存在（**Oracle 2026-07-11 实证**：`thread_context.h:45` 是 `reg_access_` (RegisterAccessLayer unique_ptr)，`register_bank_` 不是成员）→ 编译失败 | **BLOCKER** | **Phase 1.0 硬性前置门禁 (HARD GATE)**：tasks.md §0.5 升级为先在 `include/ptxsim/thread_context.h` 添加 `uint32_t read_reg_32(const RegOperand& reg) const` accessor（实现经 `reg_access_->acquire_register(op, qualifier)` → `RegisterBankManager` 路径）+ 加单元测试 + 此门禁通过后方可进入 §1.3 handler 改造（per lessons-learned §1 跨模块 API 契约）|
+| R3 | helper signature 扩展破坏 active change 已 merge 的 accumulate=false 调用 | N/A | **已消除**：D3 决策确认 helper 签名已是最终态，本 change 不再扩展签名 |
+| R4 | warp_id 单 warp 下行为与之前不一致 | N/A | **已消除**：D3 决策确认 `c_slot = warp_id * 32 + 64 + lane_id` 已实施，`warp_id=0` 数学等价 active change 状态 |
+| R5 | 同时改 handler + helper signature 扩大 diff | N/A | **已消除**：本 change 只改 handler + 加 accessor；helper 已不动 |
+| R6 | PTX 解析不暴露 idesc（idesc 是内部寄存器名，PTX 用户赋名 `%r5`）→ 无法用真实 PTX 验证 | MEDIUM | T4/T5 测试**规格化**描述（不写伪代码）：通过 `RegisterBankManager` API 设置 idesc RegOperand 指向的 uint32_t 寄存器值；具体 API 由实施时根据真实 `reg_access_->acquire_register` 路径编写 |
 | R7 | handler 运行时读寄存器与 SM scheduler 顺序执行假设冲突 | LOW | SM scheduler 顺序执行多 warp（per helper header comment "Currently safe because SM scheduler runs one warp at a time"），handler 内同步读寄存器无并发冲突 |
 
 ## Migration Plan
@@ -237,7 +237,7 @@ PTX: tcgen05.mma.accumulate::x.kind::f16.cta_group::1 [taddr], adesc, bdesc, ide
 
 | ID | Question | Resolution Strategy | Status |
 |----|----------|----------------------|--------|
-| OQ1 | `ThreadContext::read_reg_32` accessor 是否存在？ | Phase 1.1 grep `register_bank_` API；如不存在，加最小 accessor + 单元测试 | TBD (Phase 1.1 实施前解决) |
+| OQ1 | `ThreadContext::read_reg_32` accessor 是否存在？ | **Phase 1.0 硬性前置门禁 (HARD GATE)**：grep `reg_access_` / `RegisterAccessLayer` / `RegisterBankManager` API；**Oracle 2026-07-11 实证确认 accessor 不存在**，必须添加最小 accessor `uint32_t read_reg_32(const RegOperand& reg) const` 经 `reg_access_->acquire_register` 路径实现 + 加单元测试 | **BLOCKER** (Phase 1.0 必须解决) |
 | OQ2 | idesc bit 位置准确值（除 placeholder bit 0）？ | D5 校准流程 + ADR-0016 postmortem 记录 | TBD (Phase 1.2 实施时校准) |
-| OQ3 | `warp->get_warp_id()` 返回类型与 helper 参数 `int warp_id` 是否一致？ | Phase 1.1 grep API 签名 | TBD (Phase 1.1 实施前验证) |
-| OQ4 | active change Phase 1+2 是否已 merge（否则 helper 无 `accumulate` 参数）？ | `git log --oneline -- src/ptxsim/instructions/tcgen05_helpers.cpp` 验证 active commit | TBD (Phase 1.0 实施前检查) |
+| OQ3 | `warp->get_warp_id()` 返回类型与 helper 参数 `int warp_id` 是否一致？ | Phase 1.1 grep API 签名（实证：`tcgen05.cpp:383` 已传 `warp->get_warp_id()` 无编译错误，故类型匹配已验证） | RESOLVED (active predecessor 实施时已验证) |
+| OQ4 | active change Phase 1+2 是否已 merge（否则 helper 无 `accumulate` 参数）？ | `git log --oneline -- src/ptxsim/instructions/tcgen05_helpers.cpp` 验证 active commit | RESOLVED (Oracle 2026-07-11 实证：`tcgen05_helpers.h:70-71` 三参数签名已落地) |

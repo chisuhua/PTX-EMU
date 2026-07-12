@@ -20,10 +20,10 @@ Oracle 2026-07-11 审计识别 BLOCKER **C1**: 即使 `fix-tcgen05-mma-accumulat
 |------|------|-------|
 | `include/ptx_ir/statement_context.h:180-190` | `Tcgen05Instr` 新增 `bool accumulate = false` 字段 | 1 |
 | `src/ptxsim/instructions/tcgen05.cpp:355-393` | `processTcgen05Mma` 从 `instr.operands[3]` (idesc RegOperand) 读寄存器 + 提取 accumulate bit → 动态决定 helper 参数 | 1 |
-| `include/ptxsim/instructions/tcgen05_helpers.h:51` | helper 签名加 `int warp_id` 参数（per FU-4/C4 同步） | 1 |
-| `src/ptxsim/instructions/tcgen05_helpers.cpp:23` | `c_slot = warp_id * 32 + 64 + lane_id`（per Oracle Q4 Option a） | 1 |
-| `tests/integration/tcgen05/test_tcgen05_mma_persistence.cpp` | 新增 T4 (idesc.accumulate=1 → 真累加) + T5 (idesc.accumulate=0 → overwrite) | 2 |
+| `tests/integration/tcgen05/test_tcgen05_mma_persistence.cpp` | 新增 T4 (idesc.accumulate=1 → 真累加) + T5 (idesc.accumulate=0 → overwrite) + T6 (calibration helper) | 2 |
 | `docs/adr/0016-blackwell-only-tcgen05.md` | 追加 "2026-07-12 Postmortem: C1 fix" 段（含 idesc bit 位置实测记录） | 2 |
+
+> **Oracle 2026-07-11 review 校准 (session `ses_0a8af7ff0ffeYHjA65F4uPwcKa`)**: 原 proposal 误判 `helper signature + c_slot` 为待实施工作；实证显示二者已通过 active predecessor (`fix-tcgen05-mma-accumulator-and-f32-storage`) 的累积演进落地。已从 "修改" 表删除 2 行已实施项，避免 ghost work（per lessons-learned §7 "已实施但未清理" 反表象）。
 
 ### 不修改（明确 Non-Goals）
 - ❌ **不修改 grammar**：per active change `design.md:D1.1` 拒绝方案 (b)（新增 `Q_TCGEN_ACCUMULATE` Qualifier），本 change 沿用方案 (c)（handler 运行时从寄存器读）。不引入 lexer token / parser rule / qualifier enum 改动
@@ -71,14 +71,14 @@ Oracle 2026-07-11 审计识别 BLOCKER **C1**: 即使 `fix-tcgen05-mma-accumulat
 | 文件 | 变更类型 | LoC 估计 |
 |------|----------|---------|
 | `include/ptx_ir/statement_context.h` | 修改（+accumulate 字段） | +3 / 0 |
-| `src/ptxsim/instructions/tcgen05.cpp:355-393` | 修改（运行时 idesc 读取） | +15 / -3 |
-| `include/ptxsim/instructions/tcgen05_helpers.h:51` | 修改（+warp_id 参数） | +5 / -1 |
-| `src/ptxsim/instructions/tcgen05_helpers.cpp:23` | 修改（c_slot 加 warp_id 偏移） | +3 / -1 |
-| `src/ptxsim/instructions/tcgen05.cpp:383` | 修改（调用点传 warp_id + 动态 accumulate） | +2 / -1 |
-| `tests/integration/tcgen05/test_tcgen05_mma_persistence.cpp` | 新增 T4/T5 TCs | +50 / 0 |
+| `src/ptxsim/instructions/tcgen05.cpp:355-393` | 修改（运行时 idesc 读取 + 调用点改动态 accumulate） | +18 / -3 |
+| `tests/integration/tcgen05/test_tcgen05_mma_persistence.cpp` | 新增 T4/T5/T6 TCs | +60 / 0 |
 | `tests/ptx/tcgen05_mma_with_accumulate.ptx`（新文件）| 新增语法测试 | +15 / 0 |
+| `include/ptxsim/thread_context.h` | **新增** `read_reg_32(const RegOperand&) const` accessor（**Phase 1.0 硬性前置门禁**） | +5 / 0 |
 | `docs/adr/0016-blackwell-only-tcgen05.md` | 追加 Postmortem 段 | +40 / 0 |
-| **总计** | | **+133 / -6** |
+| **总计** | | **+141 / -3** |
+
+> **注**: helper 签名扩展 (`int warp_id`) 与 `c_slot` 偏移已由 active predecessor 累积实施（实证：`tcgen05_helpers.h:70-71`, `tcgen05_helpers.cpp:29,42-44`, `tcgen05.cpp:383` 已传 `warp->get_warp_id()`），不计入本 change 影响范围。
 
 ### 影响的依赖
 - 无新外部依赖
@@ -178,12 +178,12 @@ Oracle 2026-07-11 审计识别 BLOCKER **C1**: 即使 `fix-tcgen05-mma-accumulat
   - (b) 解析 dtype bit 让 helper 支持 multi-dtype：active change D2 (设计决策 D2) 已锁定 f16×f16→f32 dtype 不变
 - **Tradeoff**: 未来扩展需后续独立 change（如 `fix-tcgen05-idesc-full-parsing`）
 
-**决策 D3: warp_id 参数同步加入（per Oracle Q4 Option a）**
-- **采纳**: helper signature 同步加 `int warp_id` 参数（即使单 warp 透传 `warp_id=0`），c_slot `= warp_id * 32 + 64 + lane_id`
+**决策 D3: helper warp_id 参数已存在 — 本 change 不再扩展（per Oracle 2026-07-11 review session `ses_0a8af7ff0ffeYHjA65F4uPwcKa`）**
+- **采纳**: 沿用 active predecessor 已实施的 `int warp_id` 参数（实证：`tcgen05_helpers.h:70-71` 三参数签名 + `tcgen05_helpers.cpp:42-44` c_slot `warp_id * 32 + 64 + lane_id` 公式 + `tcgen05.cpp:383` 已传 `warp->get_warp_id()`）
 - **拒绝的备选**:
-  - (a) 仅加 `accumulate` 不加 `warp_id`：未来 FU-4 实施时需再次改 helper signature（违反 1 次签名变更原则）
-  - (b) 推迟 warp_id 到 FU-4：产生 2 次签名变更 churn
-- **Tradeoff**: 1 次 signature 扩展（同时承载 C1 + 为 C4 铺路）vs 2 次小扩展
+  - (a) 在本 change 再次扩展签名：产生 no-op diff + 风险引入错误（如重复 warp_id 参数）
+  - (b) 推迟到 FU-4：FU-4 不再需要改 helper 签名，仅需补多 warp 测试
+- **Tradeoff**: 沿用已实施 API（避免 churn + 符合 lessons-learned §7 "不要重做已实施工作"）vs 重新声明已落地工作
 
 **决策 D4: 回退策略（per lessons-learned §3）**
 - **采纳**: 2 atomic commits (Phase 1 + Phase 2) + 1 archive commit (Phase 3) = 3 commits
