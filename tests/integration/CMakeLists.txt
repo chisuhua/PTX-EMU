@@ -453,6 +453,17 @@ set_tests_properties(integration_tcgen05_extended_parse PROPERTIES
     LABELS "integration;tcgen05;fence;handler;audit")
 
 # ============================================================================
+# FU-4 Oracle C4 fix: multi-warp fragment isolation.
+# 5 TEST_CASEs: warp_id=0 backward compat, warp 0, warp 1, 2-warp parallel
+# no-conflict, warp_id=-1 exception.
+# ============================================================================
+add_catch_test(integration_tcgen05_mma_multi_warp
+    tcgen05/test_tcgen05_mma_multi_warp.cpp
+)
+set_tests_properties(integration_tcgen05_mma_multi_warp PROPERTIES
+    LABELS "integration;tcgen05;mma;multi_warp;FU-4")
+
+# ============================================================================
 # Memory 集成测试 — 驱动模拟器
 # B1 plan: shared memory layout, multi-buffer offsets, zero-init verification
 # ============================================================================

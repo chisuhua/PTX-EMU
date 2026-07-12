@@ -9,6 +9,8 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <stdexcept>
+#include <string>
 
 namespace ptxsim {
 namespace {
@@ -24,7 +26,13 @@ void load_c_slot(Tmem& tmem, size_t c_slot, T* c_frag, size_t count) {
 
 } // anonymous namespace
 
-void tcgen05_fragment_mma_f16(Tmem& tmem, bool accumulate) {
+void tcgen05_fragment_mma_f16(Tmem& tmem, int warp_id, bool accumulate) {
+    if (warp_id < 0) {
+        throw std::invalid_argument(
+            "tcgen05_fragment_mma_f16: warp_id must be >= 0 (got " +
+            std::to_string(warp_id) + ")");
+    }
+
     constexpr int ROWS = 8;
     constexpr int COLS_A = 8;
     constexpr int COLS_B = 4;
@@ -32,7 +40,9 @@ void tcgen05_fragment_mma_f16(Tmem& tmem, bool accumulate) {
     for (int lane_id = 0; lane_id < 32; ++lane_id) {
         size_t a_slot = static_cast<size_t>(lane_id) * 2;
         size_t b_slot = static_cast<size_t>(lane_id) * 2 + 1;
-        size_t c_slot = static_cast<size_t>(64) + static_cast<size_t>(lane_id);
+        size_t c_slot = static_cast<size_t>(warp_id) * 32
+                      + static_cast<size_t>(64)
+                      + static_cast<size_t>(lane_id);
 
         std::array<uint8_t, Tmem::kSlotSize> a_buf{};
         tmem.read(a_slot, a_buf.data(), Tmem::kSlotSize);
