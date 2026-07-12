@@ -61,6 +61,7 @@ docs/adr/
 | [0011](./0011-pipeline-architecture.md) | PTX→PTXIR 多阶段 Pipeline 架构 | Proposed | 2026-05-05 | Phase 12.1 |
 | [0014](./0014-independent-thread-scheduling.md) | Independent Thread Scheduling (ITS) 支持 | Proposed | 2026-05-25 | BUG-SIMT-001 |
 | [0016](./0016-blackwell-only-tcgen05.md) | Skip pre-Blackwell WMMA, only implement Blackwell tcgen05 (with TMA/cluster prerequisites) | Accepted | 2026-07-04 | `openspec/changes/implement-wmma-tensor-core/` |
+| [0018](./0018-tcgen05-cta-group-restriction.md) | tcgen05 cta_group::2 throws UnsupportedInstructionException (cluster abstraction deferred) | Accepted | 2026-07-12 | `openspec/changes/fix-tcgen05-commit-wait-group/` |
 
 ### Superseded (已被替代)
 
@@ -92,12 +93,13 @@ docs/adr/
 
 **维护**: PTX-EMU Architecture Team  
 **最后更新**: 2026-06-23  
-**ADR 总数**: 14
+**ADR 总数**: 15
 
 ## 最近更新
 
 | 日期 | 更新内容 | 关联 ADR |
 |------|---------|---------|
+| 2026-07-12 | 添加 tcgen05 cta_group::2 throw 语义 ADR（formalize scattered throw across 11 handlers） | 0018 |
 | 2026-06-23 | 添加 CVT 策略模式重构 ADR (T2-6 完成) | 0015 |
 | 2026-05-06 | 添加 pc_overridden_ 机制说明、while 循环收敛模式、Fallback 策略 | 0006, 0007, 0008 |
 | 2026-05-06 | 补充 barrier 场景回归测试覆盖 | 0008 |
