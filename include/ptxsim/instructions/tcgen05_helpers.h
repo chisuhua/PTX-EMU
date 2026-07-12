@@ -22,7 +22,10 @@
 //   - C output: TMEM slots [64..95],  c_slot = 64 + lane_id
 //   - A fragment: 8 rows × 8 cols (64 f16 elements)
 //   - B fragment: 8 rows × 4 cols (32 f16 elements) — note ROWS shared with A
-//   - C fragment: 8 rows × 4 cols (32 f16 elements)
+//   - C fragment: 8 rows × 4 cols (32 f32 elements per lane, 128 bytes fills slot).
+//   - C output: 32 f32 elements per lane (128 bytes, fills slot completely).
+//     Storage format changed from f16 in fix-tcgen05-mma-accumulator-and-f32-storage
+//     Phase 2 commit (Oracle H2 fix per PTX ISA §9.7.16).
 //   - Accumulation: C[i][j] = sum_k A[i][k] * B[k][j], f16↔f32 round-trip
 // =============================================================================
 
@@ -33,6 +36,11 @@ namespace ptxsim {
 // 32-lane × 8×4 f16 fragment multiply-accumulate.
 // Reads A from TMEM slots [0..63] and B from TMEM slots [0..63] (interleaved
 // with A on a per-lane basis), writes C to TMEM slots [64..95].
+//
+// When accumulate=false (default): C slot is initialized to zero before
+//   the mma sum, matching pre-H1 overwrite behavior.
+// When accumulate=true: existing C slot values (f32) are read back,
+//   accumulated in f32, and written back in f32 (Phase 2 H2).
 //
 // Caller must ensure:
 //   - TMEM is allocated (via TmemAllocator or direct write)
@@ -48,6 +56,6 @@ namespace ptxsim {
 // UNVERIFIED-AGAINST-HARDWARE: ws-specific weight-stationary layout transform
 // is NOT applied — the simulator uses identical fragment arithmetic for both
 // regular mma and mma.ws (deferred per tasks.md §4).
-void tcgen05_fragment_mma_f16(Tmem& tmem);
+void tcgen05_fragment_mma_f16(Tmem& tmem, bool accumulate = false);
 
 } // namespace ptxsim

@@ -61,7 +61,7 @@ TEST_CASE("GOLDEN_MMA_F16_F16_F32 contains hand-verifiable values",
             INFO("i=" << i << " j=" << j << " idx=" << idx
                  << " expected=" << a * b
                  << " actual=" << GOLDEN_MMA_F16_F16_F32[idx]);
-            REQUIRE(GOLDEN_MMA_F16_F16_F32[idx] == Catch::Approx(a * b));
+            REQUIRE(GOLDEN_MMA_F16_F16_F32[idx] == Catch::Approx(a * b).epsilon(1e-6f));
         }
     }
 }

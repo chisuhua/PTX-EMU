@@ -11,8 +11,20 @@
 #include <cstring>
 
 namespace ptxsim {
+namespace {
 
-void tcgen05_fragment_mma_f16(Tmem& tmem) {
+// Pre-load existing C slot for accumulation (per Oracle 2026-07-11 Q4).
+// T is the storage type (uint16_t for f16 in Phase 1, float for f32 in H2).
+template <typename T>
+void load_c_slot(Tmem& tmem, size_t c_slot, T* c_frag, size_t count) {
+    alignas(T) std::array<uint8_t, Tmem::kSlotSize> buf{};
+    tmem.read(c_slot, buf.data(), Tmem::kSlotSize);
+    std::memcpy(c_frag, buf.data(), count * sizeof(T));
+}
+
+} // anonymous namespace
+
+void tcgen05_fragment_mma_f16(Tmem& tmem, bool accumulate) {
     constexpr int ROWS = 8;
     constexpr int COLS_A = 8;
     constexpr int COLS_B = 4;
@@ -39,21 +51,30 @@ void tcgen05_fragment_mma_f16(Tmem& tmem) {
         for (int k = 0; k < ROWS * COLS_B; ++k)
             b_flat[k] = f16_to_f32(b_raw[k]);
 
-        std::array<uint16_t, ROWS * COLS_B> c_frag{};
+        std::array<float, ROWS * COLS_B> c_frag{};  // f32 storage (H2, PTX ISA §9.7.16)
+
+        if (accumulate) {
+            load_c_slot<float>(tmem, c_slot, c_frag.data(),
+                               ROWS * COLS_B);
+        }
+
         for (int i = 0; i < ROWS; ++i) {
             for (int j = 0; j < COLS_B; ++j) {
                 float sum = 0.0f;
+                if (accumulate) {
+                    sum += c_frag[i * COLS_B + j];  // direct f32 add (no f16→f32 round-trip)
+                }
                 for (int k = 0; k < COLS_A; ++k) {
                     sum += a_flat[i * COLS_A + k] *
                            b_flat[k * COLS_B + j];
                 }
-                c_frag[i * COLS_B + j] = f32_to_f16(sum);
+                c_frag[i * COLS_B + j] = sum;  // direct f32 store (no f32→f16 truncation)
             }
         }
 
         std::array<uint8_t, Tmem::kSlotSize> c_buf{};
         std::memcpy(c_buf.data(), c_frag.data(),
-                    c_frag.size() * sizeof(uint16_t));
+                    c_frag.size() * sizeof(float));
         tmem.write(c_slot, c_buf.data(), Tmem::kSlotSize);
     }
 }
