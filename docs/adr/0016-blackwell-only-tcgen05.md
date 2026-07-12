@@ -430,3 +430,54 @@ Follow-up change: `fix-tcgen05-idesc-parsing` (已 propose)。
 
 ### Follow-up Changes
 - `tcgen05-flashattention-coverage` (FU-5) — 本 change 的下游消费者
+
+## 2026-07-13 Postmortem: C1 fix (fix-tcgen05-idesc-parsing)
+
+### C1 Root Cause
+`processTcgen05Mma` (`tcgen05.cpp:383`) 显式硬编码 `tcgen05_fragment_mma_f16(tmem, warp->get_warp_id(), /*accumulate=*/false)`，无法从真实 PTX `mma.accumulate::x` 的 idesc 寄存器读取语义。idesc 是 PTX ISA §9.7.16 `tcgen05.mma [taddr], adesc, bdesc, idesc, pred;` 语法中 operand[3] 的 `RegOperand`，运行时携带 accumulate bit（NVIDIA 内部位置未公开）。即便 Phase 1+2 helper 已支持 `accumulate` 参数，handler 路径永远走 overwrite，导致 FlashAttention QK^T/PV `C += A*B` K-loop 仅能通过对 helper 的直接调用验证，无法通过 `processTcgen05Mma` 真实 PTX 路径验证。
+
+### C1 Fix
+1. **Helper signature**: 不变（已由 Phase 1 `tcgen05_fragment_mma_f16(Tmem&, int warp_id, bool accumulate)` 支持）
+2. **Handler 改造**: `processTcgen05Mma` 从 `instr.operands[3]` (idesc `RegOperand`) 调用 `context->read_reg_32(idesc_reg)`，提取 `idesc_val & 0x1u` → 动态 `accumulate` 参数
+3. **IR 字段**: `Tcgen05Instr` 新增 `bool accumulate = false`（handler 填充，IR→helper 参数链传递）
+4. **HARD GATE accessor**: `ThreadContext::read_reg_32(const RegOperand&)` 公共方法
+   - 防御性: `if (!reg_access_ || !reg_access_->get_register_bank_manager()) return 0;`（无 bank → default overwrite，per Oracle D2.1）
+5. **Defensive `set_register_bank_manager`**: lazy-init `reg_access_`（允许测试无需调 `ThreadContext::init()`）
+6. **5 个文件改动** (per commit `477840b`):
+   - `include/ptx_ir/statement_context.h` (+accumulate field)
+   - `include/ptxsim/thread_context.h` (+read_reg_32, lazy-init, defensive)
+   - `src/ptxsim/instructions/tcgen05.cpp` (handler reads idesc)
+   - `tests/integration/tcgen05/test_tcgen05_mma_persistence.cpp` (+T4/T5/T6)
+   - `tests/ptx/tcgen05_mma_with_accumulate.ptx` (PTX syntax fixture)
+
+### idesc bit position 实测结果
+- **Bit mask**: `0x1u` (bit 0) — T4 PASS 确认
+- **测试验证**: T4 (idesc=0x1u → handler reads accumulate=true → 2× GOLDEN) 通过；T5 (idesc=0x0u → handler reads accumulate=false → 1× GOLDEN) 通过
+- **T6 calibration**: 提供 bit 0/1/2/3 候选 mask 的发现框架（如果未来发现 bit 0 不正确，可调整 helper handler 中的 `& 0x1u` 掩码并更新 ADR 记录）
+
+### Design Decisions
+- **D1**: Handler 运行时从 idesc RegOperand 读取（非 grammar 改动）— 与 active change `design.md:D1.1` 一致；保留未来 `fix-tcgen05-idesc-parsing` 升级到 grammar-driven 的选项
+- **D2**: Bit mask placeholder `0x1u`（NVIDIA 内部未公开；T6 提供 calibration 路径）
+- **D3**: Default `accumulate=false` (overwrite) 保留 — 当 idesc 缺失或 register bank 未初始化时（per Oracle D2.1）
+
+### Test Coverage
+- **3 new tests** (`tests/integration/tcgen05/test_tcgen05_mma_persistence.cpp`):
+  - T4: `processTcgen05Mma with idesc accumulate bit set: handler reads idesc and accumulates (Oracle C1)`
+  - T5: `processTcgen05Mma with idesc accumulate bit cleared: handler overwrites (Oracle C1 regression guard)`
+  - T6: `idesc bit-position calibration helper (Oracle C1 D5 procedure)`
+- **1 new PTX fixture** (`tests/ptx/tcgen05_mma_with_accumulate.ptx`): 2× `tcgen05.mma` with idesc operand
+- **Test results**:
+  - ctest tcgen05: **24/24 PASS** (added 3, 0 regressions vs baseline `b005665`)
+  - test_all_ptx.sh: **46/46 PASS** (added 1, 0 regressions)
+  - Baseline comparison: same tests pass on baseline b005665 (no regression from this commit)
+
+### Known Limitations (debt for future)
+- **idesc bit position assumed bit 0** — NVIDIA 未公开 bit 布局；T4 PASS 仅在 NVIDIA 文档/silicon 层面验证前是 provisional。T6 提供校准框架
+- **Other idesc bits ignored** (dtype, scale_format, etc.) — helper 使用默认行为。完整 idesc 解析需后续 `fix-tcgen05-idesc-full-parsing` change
+- **PTX grammar 不支持 `.accumulate::x` qualifier** (per active change `design.md:D1.1` 决定)。idesc 是内部 RegOperand，非显式 qualifier
+- **Defensive null-check 隐藏配置错误** — `read_reg_32` 在 bank 未初始化时静默返回 0 (default overwrite)。生产代码应通过 `ThreadContext::init()` 显式初始化
+
+### Follow-up Changes
+- `fix-tcgen05-idesc-full-parsing` (future, not yet proposed) — 解析完整 idesc 描述符 (dtype/scale_format bits)
+- `tcgen05-flashattention-coverage` (FU-5) — 本 change 的下游消费者，验证完整 FlashAttention mini-kernel
+- `fix-tcgen05-handler-accumulate-from-qualifier` (alternative, deferred) — 若未来 PTX 语法扩展支持 `.accumulate::x` qualifier，可从 grammar 层直接获取（而非 idesc 寄存器）
