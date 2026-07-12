@@ -39,7 +39,7 @@
 |---|---|
 | pre-Blackwell WMMA (`wmma.mma.sync.*`, `wgmma.async.*`, `mma.sync.*`) | ✅ Permanent `UnsupportedInstructionException` |
 | Blackwell `tcgen05.*` (sm_100 / sm_120) | ✅ Real fragment arithmetic + ld/st + commit/wait |
-| Distributed shared memory | ✅ Deferred to `cta_group::2` (ADR-0018 candidate) |
+| Distributed shared memory | ✅ Deferred to `cta_group::2` (ADR-0018 Accepted 2026-07-12 — cluster abstraction deferred, handlers throw per ADR) |
 | sm_120 sparse / FP4 / mxfp8 | ✅ Out of scope (separate changes per feature) |
 
 ---
@@ -147,7 +147,7 @@ F6 / F7 (FP4 / mxfp8)           ← 高级 sub-byte 扩展（需硬件支持）
 |---|---|---|
 | ADR-0016 (Blackwell-only vision) | `docs/adr/0016-blackwell-only-tcgen05.md` | ✅ Accepted 2026-07-04 |
 | ADR-0017 (TMA host API) | 尚未存在 | 🟡 Candidate (per F2) |
-| ADR-0018 (distributed smem) | 尚未存在 | 🟡 Candidate (per F3) |
+| ADR-0018 (cta_group::2 throw) | `docs/adr/0018-tcgen05-cta-group-restriction.md` | ✅ Accepted 2026-07-12 (per `fix-tcgen05-commit-wait-group`) |
 | ADR-0019 (async scheduler) | 尚未存在 | 🟡 Candidate (per F4) |
 
 ### Implementation Files
