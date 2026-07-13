@@ -439,12 +439,17 @@ void processTcgen05Ld(ThreadContext* context, const Tcgen05Instr& instr) {
                 Tmem::kSlotSize);
 
     Tmem& tmem = cta->tmem();
-    // UNVERIFIED-AGAINST-HARDWARE — target slot 0 per PTX ISA §9.7.16
-    tmem.write(0, tmp, Tmem::kSlotSize);
+    // FU-3 C2 (Oracle Q5): allocate from per-warp implicit cursor instead
+    // of hardcoding slot 0. Real Blackwell ld has NO slot operand in PTX;
+    // the warp scheduler tracks the next available slot via register state.
+    // Consumer: processTcgen05St reads from warp->last_ld_slot().
+    size_t ld_slot = warp->allocate_ld_slot();
+    warp->set_last_ld_slot(ld_slot);
+    tmem.write(ld_slot, tmp, Tmem::kSlotSize);
 
-    PTX_DEBUG_EMU("tcgen05.ld: TMA desc global=0x%016lx → TMEM slot 0 "
+    PTX_DEBUG_EMU("tcgen05.ld: TMA desc global=0x%016lx → TMEM slot %zu "
                   "(%zu bytes)",
-                  desc->global_address, Tmem::kSlotSize);
+                  desc->global_address, ld_slot, Tmem::kSlotSize);
 }
 
 // ---------------------------------------------------------------------------
@@ -482,14 +487,18 @@ void processTcgen05St(ThreadContext* context, const Tcgen05Instr& instr) {
     // UNVERIFIED-AGAINST-HARDWARE — 128-byte transfer per PTX ISA §9.7.16
     uint8_t tmp[Tmem::kSlotSize];
     Tmem& tmem = cta->tmem();
-    tmem.read(0, tmp, Tmem::kSlotSize);
+    // FU-3 C2 (Oracle Q5): read from warp's last ld slot instead of
+    // hardcoding slot 0. This pairs with processTcgen05Ld which records
+    // its target slot via warp->set_last_ld_slot().
+    size_t st_slot = warp->last_ld_slot();
+    tmem.read(st_slot, tmp, Tmem::kSlotSize);
 
     std::memcpy(reinterpret_cast<void*>(desc->global_address),
                 tmp, Tmem::kSlotSize);
 
-    PTX_DEBUG_EMU("tcgen05.st: TMEM slot 0 → TMA desc global=0x%016lx "
+    PTX_DEBUG_EMU("tcgen05.st: TMEM slot %zu → TMA desc global=0x%016lx "
                   "(%zu bytes)",
-                  desc->global_address, Tmem::kSlotSize);
+                  st_slot, desc->global_address, Tmem::kSlotSize);
 }
 
 // ---------------------------------------------------------------------------

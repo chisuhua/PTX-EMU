@@ -296,6 +296,27 @@ public:
         return static_cast<FencePosition>(warp_state.fence_position);
     }
 
+    // FU-3 C2 (Oracle Q5): implicit per-warp slot cursor for tcgen05.ld/.st/.cp
+    //
+    // Per Oracle Q5 verification (bench/cute/include/cute/arch/copy_sm100.hpp):
+    // real Blackwell tcgen05.ld/st have NO slot operand in PTX. Slot management
+    // is IMPLICIT — the warp scheduler tracks slots via register state.
+    // This cursor implements that implicit tracking:
+    //   - ld allocates next available slot (0, 1, 2, ...), records as last
+    //   - st reads from last_ld_slot_ (the most recent ld target)
+    //   - cp uses separate pool (slots 32+) to avoid overlap with ld/st
+    //
+    // Consumers: processTcgen05Ld (tcgen05.cpp:443), processTcgen05St
+    // (tcgen05.cpp:485), processTcgen05Cp (tcgen05_cp.cpp:138).
+    // Without this cursor, ld/st/cp write to hardcoded slot 0, breaking
+    // FlashAttention QK^T→softmax→PV data flow (mma writes C to slot[64..95]).
+    void reset_ld_cursor() { next_ld_slot_ = 0; last_ld_slot_ = 0; }
+    size_t allocate_ld_slot() { return next_ld_slot_++; }
+    size_t last_ld_slot() const { return last_ld_slot_; }
+    void set_last_ld_slot(size_t slot) { last_ld_slot_ = slot; }
+    size_t allocate_cp_slot() { return next_cp_slot_++; }
+    void reset_cp_cursor() { next_cp_slot_ = 0; }
+
     void set_physical_block_id(int id) { physical_block_id = id; }
     int get_physical_block_id() const { return physical_block_id; }
 
@@ -304,6 +325,13 @@ public:
     // destroys first, then legacy fields. Legacy fields above remain
     // canonical source until A4c removes them.
     ptxsim::contexts::LaneMaskPod lane_mask_;
+
+    // FU-3 C2 (Oracle Q5): implicit per-warp ld/st/cp slot cursors.
+    // ld allocates from next_ld_slot_ (0,1,2,...), st reads last_ld_slot_.
+    // cp uses next_cp_slot_ (0..) offset by +32 to avoid ld/st overlap.
+    size_t next_ld_slot_ = 0;
+    size_t last_ld_slot_ = 0;
+    size_t next_cp_slot_ = 0;
 };
 
 #endif // WARP_CONTEXT_H

@@ -124,10 +124,12 @@ void processTcgen05Cp(ThreadContext *context, const Tcgen05Instr &instr) {
             "tcgen05.cp: shared memory access out of bounds");
     }
 
-    // TODO(Phase 3 of implement-tcgen05-handlers-extended): resolve from
-    // operand and shape qualifier; do not hardcode. Currently Phase 2
-    // destination slot: hardcoded to 0 (matches tcgen05.ld/st placeholder).
-    constexpr size_t kDestSlot = 0;
+    // FU-3 C2 (Oracle Q5): allocate from per-warp cp cursor (offset by 32
+    // to avoid overlap with ld/st slots 0..31). Real Blackwell cp has NO
+    // slot operand in PTX; slot management is implicit.
+    // Default cp slot: slot 32 + next_cp_slot_ (0, 1, 2, ...).
+    constexpr size_t kCpBaseSlot = 32;
+    size_t cp_slot = kCpBaseSlot + warp->allocate_cp_slot();
 
     uint8_t tmp[Tmem::kSlotSize];
     std::memcpy(tmp,
@@ -135,11 +137,11 @@ void processTcgen05Cp(ThreadContext *context, const Tcgen05Instr &instr) {
                 Tmem::kSlotSize);
 
     Tmem &tmem = cta->tmem();
-    tmem.write(kDestSlot, tmp, Tmem::kSlotSize);
+    tmem.write(cp_slot, tmp, Tmem::kSlotSize);
 
     PTX_DEBUG_EMU("tcgen05.cp: smem[cta=%d +0x%x] (=%zu bytes) → "
                   "tmem slot %zu",
-                  cta->blockIdx.x, smem_offset, Tmem::kSlotSize, kDestSlot);
+                  cta->blockIdx.x, smem_offset, Tmem::kSlotSize, cp_slot);
 }
 
 } // namespace ptxsim

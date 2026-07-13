@@ -89,7 +89,7 @@ Tcgen05Instr make_cp_instr_with_smem_offset(uint32_t smem_offset) {
 // Happy path: 128-byte copy from SMEM to TMEM slot 0
 // ============================================================================
 
-TEST_CASE("processTcgen05Cp copies 128 bytes from SMEM offset 0 to TMEM slot 0",
+TEST_CASE("processTcgen05Cp copies 128 bytes from SMEM offset 0 to TMEM cp slot",
           "[integration][tcgen05][cp][handler][happy_path]") {
     TestRig rig(4096);
 
@@ -103,13 +103,15 @@ TEST_CASE("processTcgen05Cp copies 128 bytes from SMEM offset 0 to TMEM slot 0",
     REQUIRE_NOTHROW(ptxsim::processTcgen05Cp(
         &rig.thread(), make_cp_instr_with_smem_offset(0)));
 
+    // FU-3 C2: cp writes to slot 32 (base 32 + cursor 0) instead of
+    // hardcoded slot 0. Verified by reading from the cp target slot.
     uint8_t actual[Tmem::kSlotSize] = {0};
-    rig.tmem().read(0, actual, Tmem::kSlotSize);
+    rig.tmem().read(32, actual, Tmem::kSlotSize);
     REQUIRE(std::memcmp(actual, expected, Tmem::kSlotSize) == 0);
 }
 
 TEST_CASE("processTcgen05Cp copies 128 bytes from non-zero SMEM offset to TMEM "
-          "slot 0",
+          "cp slot",
           "[integration][tcgen05][cp][handler][happy_path][offset]") {
     constexpr size_t kOffset = 256;
     TestRig rig(4096);
@@ -124,7 +126,7 @@ TEST_CASE("processTcgen05Cp copies 128 bytes from non-zero SMEM offset to TMEM "
         &rig.thread(), make_cp_instr_with_smem_offset(kOffset)));
 
     uint8_t actual[Tmem::kSlotSize] = {0};
-    rig.tmem().read(0, actual, Tmem::kSlotSize);
+    rig.tmem().read(32, actual, Tmem::kSlotSize);
     REQUIRE(std::memcmp(actual, expected, Tmem::kSlotSize) == 0);
 }
 
