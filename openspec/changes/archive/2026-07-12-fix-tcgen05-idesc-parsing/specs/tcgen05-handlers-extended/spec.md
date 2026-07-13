@@ -79,6 +79,11 @@ The system SHALL update documentation in the same change (each Phase end):
 - Root `AGENTS.md` known limitations table: tcgen05 → 11/11 handler implemented
 - `src/ptxsim/instructions/AGENTS.md`: `tcgen05.cpp` includes 11 handler
 
+#### Scenario: handler dispatch count updated
+- **WHEN** this change (or successor archive) is merged
+- **THEN** the root `AGENTS.md` "tcgen05 handler dispatch" entry reflects that the 6 extended handlers (mma/ld/st/commit/wait + dispatch) are wired with idesc-driven accumulate (per fix-tcgen05-idesc-parsing)
+- **AND** `src/ptxsim/instructions/AGENTS.md` documents the new `read_reg_32` accessor + lazy-init `set_register_bank_manager` defensive behavior
+
 ## Cross-Reference
 
 - Oracle 2026-07-11 BLOCKER C1 audit: session `ses_0aefd09c3ffeSqBIAGdxiRBFWC`

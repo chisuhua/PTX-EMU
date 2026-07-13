@@ -380,7 +380,16 @@ void processTcgen05Mma(ThreadContext* context, const Tcgen05Instr& instr) {
     }
 
     Tmem& tmem = cta->tmem();
-    tcgen05_fragment_mma_f16(tmem, warp->get_warp_id(), /*accumulate=*/false);
+    // C1 fix (fix-tcgen05-idesc-parsing): mma.accumulate bit from idesc operand[3]
+    bool accumulate = false;
+    if (instr.operands.size() >= 4 &&
+        instr.operands[3].kind() == OperandKind::REG) {
+        const RegOperand &idesc_reg =
+            std::get<RegOperand>(instr.operands[3].data);
+        uint32_t idesc_val = context->read_reg_32(idesc_reg);
+        accumulate = (idesc_val & 0x1u) != 0;
+    }
+    tcgen05_fragment_mma_f16(tmem, warp->get_warp_id(), accumulate);
 
     if (ws_path) {
         PTX_DEBUG_EMU(

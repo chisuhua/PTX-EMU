@@ -187,6 +187,8 @@ struct Tcgen05Instr {
     Tcgen05Dtype dtype = Tcgen05Dtype::F16;
     uint32_t num_regs = 0;         // .x1 / .x2 / .x4 (ld/st)
     bool has_block_scale = false;  // .block_scale flag (mma)
+    // C1 fix (fix-tcgen05-idesc-parsing): mma.accumulate bit from idesc; default false = overwrite (no PTX context)
+    bool accumulate = false;
 };
 
 // -----------------------------------------------------------------------------

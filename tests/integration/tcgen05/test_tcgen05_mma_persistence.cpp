@@ -385,3 +385,116 @@ TEST_CASE("tcgen05_fragment_mma_f16 helper has no f32_to_f16 conversion "
     REQUIRE(body_start != std::string::npos);
     REQUIRE(source.find("f32_to_f16", body_start) == std::string::npos);
 }
+
+// =============================================================================
+// T4: processTcgen05Mma with idesc accumulate bit set — handler reads idesc
+//   and passes accumulate=true to helper. 2nd mma → C = 2× golden.
+//   This is the primary Oracle C1 fix verification (per design.md D1, decision
+//   D1: "handler 运行时从 idesc RegOperand 读 accumulate bit").
+// =============================================================================
+
+TEST_CASE("processTcgen05Mma with idesc accumulate bit set: handler reads "
+          "idesc and accumulates (Oracle C1)",
+          "[integration][tcgen05][mma][idesc][accumulate]") {
+    TestRig rig;
+    fill_tmem_with_golden_inputs(rig.tmem());
+
+    auto register_bank = std::make_shared<RegisterBankManager>(1, 32);
+    register_bank->create_register("r5", sizeof(uint32_t));
+    rig.thread().set_register_bank_manager(register_bank);
+    uint32_t val = 0x1u;
+    std::memcpy(register_bank->get_register("r5", 0, 0), &val, sizeof(val));
+
+    auto instr = make_regular_mma_instr();
+    instr.operands[3] = OperandContext(RegOperand{"r", 5});
+
+    REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
+    REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
+
+    std::array<float, 32> twice_golden{};
+    for (size_t k = 0; k < 32; ++k)
+        twice_golden[k] = 2.0f * GOLDEN_MMA_F16_F16_F32[k];
+    require_c_slot_matches(rig.tmem(), twice_golden,
+                           "after 2 handler calls with idesc accumulate=1");
+}
+
+// =============================================================================
+// T5: processTcgen05Mma with idesc accumulate bit cleared — handler reads
+//   idesc and passes accumulate=false. 2nd mma overwrites 1st → C = 1× golden.
+//   Regression guard: bit-clear must produce overwrite, not silent accumulate.
+// =============================================================================
+
+TEST_CASE("processTcgen05Mma with idesc accumulate bit cleared: handler "
+          "overwrites (Oracle C1 regression guard)",
+          "[integration][tcgen05][mma][idesc][overwrite]") {
+    TestRig rig;
+    fill_tmem_with_golden_inputs(rig.tmem());
+
+    auto register_bank = std::make_shared<RegisterBankManager>(1, 32);
+    register_bank->create_register("r5", sizeof(uint32_t));
+    rig.thread().set_register_bank_manager(register_bank);
+    uint32_t val = 0x0u;
+    std::memcpy(register_bank->get_register("r5", 0, 0), &val, sizeof(val));
+
+    auto instr = make_regular_mma_instr();
+    instr.operands[3] = OperandContext(RegOperand{"r", 5});
+
+    REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
+    REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
+
+    require_c_slot_matches(rig.tmem(), GOLDEN_MMA_F16_F16_F32,
+                           "after 2 handler calls with idesc accumulate=0");
+}
+
+// =============================================================================
+// T6: idesc bit-position calibration — discovery framework for if T4/T5
+//   fail with the current 0x1u bit-mask placeholder. Records the discovered
+//   bit mask to ADR-0016 postmortem (per design.md D5).
+// =============================================================================
+
+TEST_CASE("idesc bit-position calibration helper (Oracle C1 D5 procedure)",
+          "[integration][tcgen05][mma][idesc][calibration]") {
+    const uint32_t candidate_masks[] = {0x1u, 0x2u, 0x4u, 0x8u};
+    const char *mask_labels[] = {"bit 0", "bit 1", "bit 2", "bit 3"};
+
+    for (size_t m = 0; m < sizeof(candidate_masks) / sizeof(candidate_masks[0]); ++m) {
+        TestRig rig;
+        fill_tmem_with_golden_inputs(rig.tmem());
+
+        auto register_bank = std::make_shared<RegisterBankManager>(1, 32);
+        register_bank->create_register("r5", sizeof(uint32_t));
+        rig.thread().set_register_bank_manager(register_bank);
+        uint32_t val = candidate_masks[m];
+        std::memcpy(register_bank->get_register("r5", 0, 0), &val, sizeof(val));
+
+        auto instr = make_regular_mma_instr();
+        instr.operands[3] = OperandContext(RegOperand{"r", 5});
+
+        REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
+        REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
+
+        std::array<float, 32> twice_golden{};
+        for (size_t k = 0; k < 32; ++k)
+            twice_golden[k] = 2.0f * GOLDEN_MMA_F16_F16_F32[k];
+
+        INFO("idesc mask=" << mask_labels[m]);
+        bool matched = true;
+        for (int lane = 0; lane < 32 && matched; ++lane) {
+            std::array<uint8_t, Tmem::kSlotSize> c_buf{};
+            rig.tmem().read(static_cast<size_t>(64) + static_cast<size_t>(lane),
+                            c_buf.data(), Tmem::kSlotSize);
+            alignas(16) float c_arr[32];
+            std::memcpy(c_arr, c_buf.data(), sizeof(c_arr));
+            for (int idx = 0; idx < 32 && matched; ++idx) {
+                if (c_arr[idx] !=
+                    Catch::Approx(twice_golden[idx]).epsilon(1e-6f)) {
+                    matched = false;
+                }
+            }
+        }
+        if (matched) {
+            SUCCEED("idesc accumulate bit is " << mask_labels[m]
+                   << " — record to ADR-0016 postmortem");
+        }
+    }
+}
