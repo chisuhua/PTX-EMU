@@ -481,3 +481,76 @@ Follow-up change: `fix-tcgen05-idesc-parsing` (已 propose)。
 - `fix-tcgen05-idesc-full-parsing` (future, not yet proposed) — 解析完整 idesc 描述符 (dtype/scale_format bits)
 - `tcgen05-flashattention-coverage` (FU-5) — 本 change 的下游消费者，验证完整 FlashAttention mini-kernel
 - `fix-tcgen05-handler-accumulate-from-qualifier` (alternative, deferred) — 若未来 PTX 语法扩展支持 `.accumulate::x` qualifier，可从 grammar 层直接获取（而非 idesc 寄存器）
+
+## 2026-07-13 Postmortem: C2 fix (fix-tcgen05-ld-st-slot-routing)
+
+### C2 Root Cause
+Oracle 2026-07-11 审计发现 `processTcgen05Ld` (tcgen05.cpp:443)、`processTcgen05St` (tcgen05.cpp:485)、`processTcgen05Cp` (tcgen05_cp.cpp:138) 三个 handler 均硬编码 TMEM slot `0`。mma handler 将 C 输出写入 `slot[64+lane_id]`（tcgen05_helpers.cpp:23），但 ld→st 始终读写 slot 0，导致 FlashAttention QK^T→softmax→PV 数据流完全断裂：ld 加载的 K tile 和 mma 消费的 slot 不在同一位置。
+
+`Tmem::read/write` (tmem.h:35-36) 本身已接受任意 slot_id，瓶颈是 handler 内部硬编码常量。
+
+### Oracle Q5 Verification
+**关键发现**: 真实 Blackwell PTX（bench/cute/include/cute/arch/copy_sm100.hpp）中 `tcgen05.ld` 和 `tcgen05.st` **没有 slot 操作数**：
+```
+tcgen05.ld.sync.aligned.16x256b.x1.b32 {%0, %1, %2, %3}, [%4];  // NO slot operand
+tcgen05.st.sync.aligned.16x256b.x1.b32 [%0], {%1, %2, %3, %4};   // NO slot operand
+```
+Slot 管理是**隐式的** — warp scheduler 通过 register state 跟踪。这推翻了原 grammar-based approach（添加 tmem_slot 操作数到 PTX 语法）。
+
+### C2 Fix (Option A: implicit per-warp cursor)
+**无 grammar 变更，无 PTX fixture 变更** — 与 FU-2 (fix-tcgen05-idesc-parsing) 成功模式一致。
+
+1. **WarpContext 新增 cursor API** (warp_context.h):
+   - `allocate_ld_slot()` — 返回 next_ld_slot_（0, 1, 2, ...），递增
+   - `set_last_ld_slot(slot)` / `last_ld_slot()` — 记录/读取最近 ld 目标
+   - `allocate_cp_slot()` — 独立 cp cursor（handler 偏移 +32）
+   - 私有字段: `next_ld_slot_`, `last_ld_slot_`, `next_cp_slot_`
+
+2. **ld handler** (tcgen05.cpp:446): `tmem.write(warp->allocate_ld_slot(), ...)` 替代硬编码 0，通过 `warp->set_last_ld_slot(ld_slot)` 记录
+
+3. **st handler** (tcgen05.cpp:493): `tmem.read(warp->last_ld_slot(), ...)` 替代硬编码 0
+
+4. **cp handler** (tcgen05_cp.cpp:132): `kCpBaseSlot(32) + warp->allocate_cp_slot()` 替代 kDestSlot=0，避免 ld/st 重叠
+
+### Design Decisions
+- **D1**: Implicit cursor 而非 grammar operand — per Oracle Q5 实证（真实 PTX 无 slot 操作数），零 breaking change
+- **D2**: ld/st 共享 cursor（next_ld_slot_），cp 独立 pool（+32 偏移）— ld→st 数据流配对 vs cp 独立语义
+- **D3**: Cursor 默认从 0 开始 — 向后兼容现有测试假设，第一个 ld 仍然到 slot 0
+
+### Files Changed (commit 2fd9185)
+| File | Change | Lines |
+|------|--------|-------|
+| `include/ptxsim/warp_context.h` | +cursor API (6 methods) + 3 private fields | +30 |
+| `src/ptxsim/instructions/tcgen05.cpp` | ld: tmem.write(cursor, ...), st: tmem.read(cursor, ...) | +8/-4 |
+| `src/ptxsim/instructions/tcgen05_cp.cpp` | kCpBaseSlot(32) + allocate_cp_slot() | +5/-4 |
+| `tests/integration/tcgen05/test_tcgen05_ld_st_slot_routing.cpp` | NEW: 7 TEST_CASEs (145 assertions) | +320 |
+| `tests/integration/CMakeLists.txt` | +integration_tcgen05_ld_st_slot_routing | +7 |
+| `tests/integration/tcgen05/test_tcgen05_cp.cpp` | slot 0→32 readbacks (2 tests) | +4/-4 |
+| `tests/integration/tcgen05/test_tcgen05_mma_persistence.cpp` | T2 cp slot 0→32 | +5/-4 |
+| **Total** | | **+392/-27** |
+
+### Test Coverage
+- **7 new tests** (`tests/integration/tcgen05/test_tcgen05_ld_st_slot_routing.cpp`):
+  - T1: cursor starts at 0, increments per ld
+  - T2: last_ld_slot persistence
+  - T3: cp cursor independent of ld cursor
+  - T4: ld writes to cursor-allocated slot (data verification)
+  - T5: st reads from last_ld_slot (data verification)
+  - T6: ld→st round-trip preserves alternating pattern
+  - T7: cp writes to slot 32+ (separate pool)
+- **2 existing tests updated**: cp slot 0→32 (test_tcgen05_cp.cpp), mma_persistence T2 (slot 0→32)
+- **Test results**:
+  - ctest tcgen05: **25/25 PASS** (baseline: 24, +1 new, 0 regressions)
+  - Full ctest: all pass
+  - test_all_ptx.sh: **46/46 PASS**
+  - Baseline comparison (a90bb61): 24/24 PASS (no regression from this commit)
+
+### Known Limitations (debt for future)
+- **Single-warp assumption**: cursor is per-warp, but multi-warp FlashAttention needs per-warp slot offsets (FU-4 `fix-tcgen05-multi-warp-fragment` 已通过 c_slot = 64 + lane_id + warp_id*32 解决 mma 侧；ld/st/cp 侧的多 warp 偏移未实现)
+- **cp slot pool fixed at 32**: 硬编码基址，可能与其他 slot 用户冲突（当前 ld/st 使用 0..N，mma 使用 64..95，cp 使用 32+，范围充足）
+- **Cursor reset**: 仅在 warp reset 时通过 `next_ld_slot_ = 0` 等默认构造重置；kernel 边界处无显式 reset 调用
+- **No grammar operand**: 若未来 PTX 扩展显式 slot 操作数，本方案需升级到 grammar-driven（保留 Option B/qualifier 路径作为 fallback）
+
+### Follow-up Changes
+- `fix-tcgen05-multi-warp-fragment` (FU-4/C4) — 已 merge：mma helper c_slot 偏移已含 warp_id，覆盖 mma 侧
+- `tcgen05-flashattention-coverage` (FU-5) — 本 change 的下游消费者，验证完整 FlashAttention mini-kernel 数据流
