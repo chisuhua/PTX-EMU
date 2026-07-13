@@ -453,6 +453,17 @@ set_tests_properties(integration_tcgen05_extended_parse PROPERTIES
     LABELS "integration;tcgen05;fence;handler;audit")
 
 # ============================================================================
+# FU-3 Oracle C2 fix: implicit per-warp slot cursor for ld/st/cp.
+# 7 TEST_CASEs: cursor API (3), ld slot routing (1), st readback (1),
+# ld→st round-trip (1), cp slot routing (1).
+# ============================================================================
+add_catch_test(integration_tcgen05_ld_st_slot_routing
+    tcgen05/test_tcgen05_ld_st_slot_routing.cpp
+)
+set_tests_properties(integration_tcgen05_ld_st_slot_routing PROPERTIES
+    LABELS "integration;tcgen05;ld;st;cp;slot;FU-3")
+
+# ============================================================================
 # FU-4 Oracle C4 fix: multi-warp fragment isolation.
 # 5 TEST_CASEs: warp_id=0 backward compat, warp 0, warp 1, 2-warp parallel
 # no-conflict, warp_id=-1 exception.

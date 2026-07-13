@@ -246,7 +246,7 @@ TEST_CASE("processTcgen05Mma with accumulate=false leaves C unchanged "
 // =============================================================================
 
 TEST_CASE("processTcgen05Cp after processTcgen05Mma preserves C output "
-          "(cp writes slot 0, mma wrote slot 64..95 — no cross-slot "
+          "(cp writes cp slot 32, mma wrote slot 64..95 — no cross-slot "
           "interference)",
           "[integration][tcgen05][mma][cp][persistence][slot_isolation]") {
     TestRig rig;
@@ -255,8 +255,8 @@ TEST_CASE("processTcgen05Cp after processTcgen05Mma preserves C output "
     auto mma = make_regular_mma_instr();
     REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), mma));
 
-    // cp from smem[256] → TMEM slot 0 (128 bytes). This should NOT touch
-    // slot[64..95] where the C output from the mma resides.
+    // cp from smem[256] → TMEM cp slot (base 32 + cursor 0 = 32).
+    // This should NOT touch slot[64..95] where the C output resides.
     constexpr uint32_t kSmemOffset = 256;
     for (size_t i = 0; i < Tmem::kSlotSize; ++i) {
         rig.smem()[kSmemOffset + i] =
@@ -271,14 +271,14 @@ TEST_CASE("processTcgen05Cp after processTcgen05Mma preserves C output "
     require_c_slot_matches(rig.tmem(), GOLDEN_MMA_F16_F16_F32,
                            "after mma -> cp (C should be preserved)");
 
-    // Slot 0 should hold the cp'd byte pattern (smem[256] byte stream).
-    uint8_t slot0[Tmem::kSlotSize];
-    rig.tmem().read(0, slot0, Tmem::kSlotSize);
+    // FU-3 C2: cp writes to slot 32 (base 32 + cursor 0), not slot 0.
+    uint8_t cp_slot[Tmem::kSlotSize];
+    rig.tmem().read(32, cp_slot, Tmem::kSlotSize);
     for (size_t i = 0; i < Tmem::kSlotSize; ++i) {
-        INFO("cp->slot0 byte " << i << ": expected="
+        INFO("cp->slot32 byte " << i << ": expected="
              << static_cast<int>(0xC0 + (i & 0x0F))
-             << " actual=" << static_cast<int>(slot0[i]));
-        REQUIRE(slot0[i] == static_cast<uint8_t>(0xC0 + (i & 0x0F)));
+             << " actual=" << static_cast<int>(cp_slot[i]));
+        REQUIRE(cp_slot[i] == static_cast<uint8_t>(0xC0 + (i & 0x0F)));
     }
 }
 
