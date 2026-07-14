@@ -554,3 +554,39 @@ Slot 管理是**隐式的** — warp scheduler 通过 register state 跟踪。�
 ### Follow-up Changes
 - `fix-tcgen05-multi-warp-fragment` (FU-4/C4) — 已 merge：mma helper c_slot 偏移已含 warp_id，覆盖 mma 侧
 - `tcgen05-flashattention-coverage` (FU-5) — 本 change 的下游消费者，验证完整 FlashAttention mini-kernel 数据流
+
+## 2026-07-14 Postmortem: FlashAttention Coverage Complete (FU-5)
+
+### Purpose
+Validate that all 4 Oracle BLOCKER fixes (H1/H2 + C1/C2/C3/C4) work together for the original FlashAttention target use case: QK^T → softmax → PV end-to-end data flow.
+
+### Coverage Gap Root Cause
+Oracle 2026-07-11 audit identified 7 BLOCKER/IMPORTANT test coverage gaps:
+- **B1**: No K=128+ accumulator stability test (max was 4× loop in persistence test)
+- **B4**: cp→mma data flow only "at least one element changed" assertion in persistence T3
+- **B5**: All tests single-warp (no 2-warp isolation test — resolved by FU-4 C4)
+- **D-E2E**: No FlashAttention E2E kernel
+
+### New Test Coverage (3 files + 1 header)
+- **include/ptxsim/testing/tmem_helpers.h** — shared TMEM helpers extracted from existing tests
+- **tests/integration/tcgen05/test_tcgen05_mma_k_loop_128.cpp** (B1) — 128 mma calls on identical A,B → C == 128×golden within 1e-3 relative tolerance
+- **tests/integration/tcgen05/test_tcgen05_mma_cp_data_flow.cpp** (B4) — cp→mma cross-slot isolation: cp writes to per-warp cursor slot 32 without corrupting C slots [64..95]
+- **tests/e2e/kernel/test_flashattention_mini.cu** (D-E2E) — 2-stage matmul FA pipeline: matmul_q_kt → host L1-normalize → matmul_p_v, matching blackwell_gemm pattern
+
+### Prerequisites (out-of-scope, archived separately)
+4 fix-* changes completed handler/visitor/slot routing fixes before FU-5:
+- `fix-tcgen05-commit-wait-group` (C3) — FU-1
+- `fix-tcgen05-idesc-parsing` (C1) — FU-2
+- `fix-tcgen05-ld-st-slot-routing` (C2) — FU-3
+- `fix-tcgen05-multi-warp-fragment` (C4) — FU-4
+
+### Test Results
+- **ctest tcgen05**: 27/27 PASS (baseline 25, +2 new integration, 0 regressions)
+- **test_all_ptx.sh**: 46/46 PASS
+- **E2E FA**: 1/1 PASS (T=4, D=16, 2-stage matmul via blackwell_gemm pattern)
+- **Implementation commits**: 3 atomic (per lessons-learned §3), 1 artifacts commit, 1 archive commit
+
+### Lessons Learned
+1. **cp writes to warp cursor slot, not mma A/B slots**: Initial cp→mma test design was conceptually flawed — cp writes to slot 32 (per FU-3 C2), not to slots [0..63] that mma reads from. Corrected to cross-slot isolation test.
+2. **E2E kernel PTX complexity**: expf() and fabsf() generate PTX function-call instructions unsupported by the simulator. Simplified to L1-normalize + 2-stage matmul pattern matching working e2e_blackwell_gemm.
+3. **tmem_helpers.h design**: Shared helper header enables all tcgen05 integration tests to reuse fill/verify functions, reducing code duplication and ensuring consistent golden value validation.
