@@ -474,6 +474,17 @@ add_catch_test(integration_tcgen05_mma_multi_warp
 set_tests_properties(integration_tcgen05_mma_multi_warp PROPERTIES
     LABELS "integration;tcgen05;mma;multi_warp;FU-4")
 
+# ============================================================================
+# FA-B6 hardener: end-to-end mma → ld → st → mma chain with f32 C persistence.
+# 3 TEST_CASEs: full chain (TC1), f32 storage format survives TMEM ops (TC2),
+# two consecutive chains remain independent (TC3 regression guard).
+# ============================================================================
+add_catch_test(integration_tcgen05_mma_ld_st_chain
+    tcgen05/test_tcgen05_mma_ld_st_chain.cpp
+)
+set_tests_properties(integration_tcgen05_mma_ld_st_chain PROPERTIES
+    LABELS "integration;tcgen05;mma;chain;ld;st;B6;flashattention")
+
 # =============================================================================
 # FU-5: FlashAttention coverage tests (tcgen05-flashattention-coverage)
 # =============================================================================
