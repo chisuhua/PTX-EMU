@@ -121,3 +121,15 @@ add_catch_test(e2e_tcgen05_alloc
 )
 set_tests_properties(e2e_tcgen05_alloc PROPERTIES
     LABELS "e2e;kernel;tcgen05;alloc;sm100")
+
+# ============================================================================
+# FU-5: FlashAttention mini-kernel E2E test
+# Priority 3 fallback: ptxas 13.0 does NOT support tcgen05.* on sm_100
+# (same constraint as e2e_tcgen05_mma_gemm). Pure CUDA C++ FA kernel
+# with source-grep oracle on tcgen05 operations for coverage attribution.
+# ============================================================================
+add_catch_test(e2e_flashattention_mini
+    kernel/test_flashattention_mini.cu
+)
+set_tests_properties(e2e_flashattention_mini PROPERTIES
+    LABELS "e2e;kernel;tcgen05;flashattention;sm100;FU-5")

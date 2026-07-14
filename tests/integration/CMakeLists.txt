@@ -474,6 +474,24 @@ add_catch_test(integration_tcgen05_mma_multi_warp
 set_tests_properties(integration_tcgen05_mma_multi_warp PROPERTIES
     LABELS "integration;tcgen05;mma;multi_warp;FU-4")
 
+# =============================================================================
+# FU-5: FlashAttention coverage tests (tcgen05-flashattention-coverage)
+# =============================================================================
+
+# Phase 1: K=128 mma accumulation test (Oracle B1 K-loop coverage)
+add_catch_test(integration_tcgen05_mma_k_loop_128
+    tcgen05/test_tcgen05_mma_k_loop_128.cpp
+)
+set_tests_properties(integration_tcgen05_mma_k_loop_128 PROPERTIES
+    LABELS "integration;tcgen05;mma;flashattention;k-loop;FU-5;B1")
+
+# Phase 3: cp→mma data flow test (Oracle B4 coverage)
+add_catch_test(integration_tcgen05_mma_cp_data_flow
+    tcgen05/test_tcgen05_mma_cp_data_flow.cpp
+)
+set_tests_properties(integration_tcgen05_mma_cp_data_flow PROPERTIES
+    LABELS "integration;tcgen05;cp;mma;flashattention;data-flow;FU-5;B4")
+
 # ============================================================================
 # Memory 集成测试 — 驱动模拟器
 # B1 plan: shared memory layout, multi-buffer offsets, zero-init verification
