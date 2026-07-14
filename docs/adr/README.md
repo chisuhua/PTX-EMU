@@ -53,6 +53,7 @@ docs/adr/
 | [0010](./0010-fake-cuda-runtime.md) | Fake CUDA Runtime 拦截机制 | Active | 2026-05-05 | Phase 0 |
 | [0012](./0012-per-thread-pc.md) | Per-Thread PC 设计（Volta+ SIMT 模型） | Active | 2026-05-05 | Phase 3 |
 | [0015](./0015-cvt-strategy-pattern.md) | CVT 指令策略模式重构 (Composition over Inheritance) | Active | 2026-06-23 | T2-6 (Phase 3) |
+| [0019](./0019-pc-management-extraction.md) | ThreadContext 持续瘦身：MemoryAccessor + InstructionPipeline accessor 方案 | Active | 2026-07-14 | `openspec/changes/god-class-refactor-thread-context-phase3/` |
 
 ### Proposed (规划中)
 
@@ -62,6 +63,7 @@ docs/adr/
 | [0014](./0014-independent-thread-scheduling.md) | Independent Thread Scheduling (ITS) 支持 | Proposed | 2026-05-25 | BUG-SIMT-001 |
 | [0016](./0016-blackwell-only-tcgen05.md) | Skip pre-Blackwell WMMA, only implement Blackwell tcgen05 (with TMA/cluster prerequisites) | Accepted | 2026-07-04 | `openspec/changes/implement-wmma-tensor-core/` |
 | [0018](./0018-tcgen05-cta-group-restriction.md) | tcgen05 cta_group::2 throws UnsupportedInstructionException (cluster abstraction deferred) | Accepted | 2026-07-12 | `openspec/changes/fix-tcgen05-commit-wait-group/` |
+| [0020](./0020-cpptlm-injection-points.md) | 接受 CppTLM Phase 8.B D1-Full 注入（IScoreboard / IPipelineLatencyProvider / ITensorCoreTiming） | Proposed | 2026-07-14 | `openspec/changes/cpptlm-phase8b-injection-points/`（待创建）|
 
 ### Superseded (已被替代)
 
@@ -92,13 +94,15 @@ docs/adr/
 ---
 
 **维护**: PTX-EMU Architecture Team  
-**最后更新**: 2026-06-23  
-**ADR 总数**: 15
+**最后更新**: 2026-07-14  
+**ADR 总数**: 17
 
 ## 最近更新
 
 | 日期 | 更新内容 | 关联 ADR |
 |------|---------|---------|
+| 2026-07-14 | 添加 CppTLM Phase 8.B D1-Full 注入点接受决策（3 个纯虚接口 + SMContext 3 setter + WarpContext 扩展 + RegisterAnalyzer 增强 + exe_once 三段式注入） | 0020 |
+| 2026-07-14 | 添加 ThreadContext 持续瘦身 ADR（MemoryAccessor + InstructionPipeline accessor 方案） | 0019 |
 | 2026-07-12 | 添加 tcgen05 cta_group::2 throw 语义 ADR（formalize scattered throw across 11 handlers） | 0018 |
 | 2026-06-23 | 添加 CVT 策略模式重构 ADR (T2-6 完成) | 0015 |
 | 2026-05-06 | 添加 pc_overridden_ 机制说明、while 循环收敛模式、Fallback 策略 | 0006, 0007, 0008 |
