@@ -123,10 +123,10 @@ PTX-EMU 仓库已完成 CppTLMBridge ABI 真值源首发。
 
 ## 🔍 验证清单（发出前）
 
-- [ ] Phase 1 commit 已 push 到 main
-- [ ] Commit hash 与消息中占位符一致
-- [ ] CPPTLMBRIDGE_VERSION 仍是 1（未意外 bump）
-- [ ] `static_assert(sizeof(cudaStream_t) <= sizeof(uint64_t))` 编译通过
+- [x] Phase 1 commit 已 push 到 main
+- [x] Commit hash 与消息中占位符一致: `8dc000eca9f78e8ee017eafcb305eb4ca62ffd6d`
+- [x] CPPTLMBRIDGE_VERSION 仍是 1（未意外 bump）
+- [x] `static_assert(sizeof(cudaStream_t) <= sizeof(uint64_t))` 编译通过
 - [x] 5 个虚方法签名与消息描述一致
 - [x] `g_cpptlm_bridge` extern 声明 + 默认 nullptr
 - [x] header 只 include `<cstddef>` + `<cstdint>` + `<cuda_runtime.h>`（无 CppTLM 依赖）
@@ -138,11 +138,12 @@ PTX-EMU 仓库已完成 CppTLMBridge ABI 真值源首发。
 发送后请更新本文件：
 - [x] Commit hash 锁定: `8dc000eca9f78e8ee017eafcb305eb4ca62ffd6d`
 - [x] 发送日期: 2026-07-15
-- [x] 发送渠道: `#cpptlm-integration` Slack / PR comment（待 push 到 origin 后发出）
+- [x] 发送渠道: 用户手动复制（无 Slack/邮件）
+- [x] Commit `8dc000ec` 已 push 到 origin main
 - [ ] CppTLM 确认收到:
 - [ ] CppTLM rebased:
 - [ ] CppTLM CI 验证 12 端点 static_assert:
 
 ---
 
-**最后更新**: 2026-07-15（HSK-1 锁定 commit `8dc000ec`，待 push + 发送）
+**最后更新**: 2026-07-15（HSK-1 commit `8dc000ec` 已 push 到 origin main，可立即发送）
