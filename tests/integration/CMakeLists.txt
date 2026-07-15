@@ -566,3 +566,21 @@ set_tests_properties(integration_tc_queue_with_cta_context PROPERTIES LABELS "in
 # integration_tcgen05_mma_sync — migrated to tests/integration/tcgen05/test_tcgen05_mma_parse.cpp (ADR-0016 Phase 2)
 # integration_tcgen05_ld_st_commit — migrated to tests/integration/tcgen05/test_tcgen05_ld_parse.cpp (ADR-0016 Phase 2)
 # ============================================================================
+
+# ============================================================================
+# CppTLM Bridge 集成测试 (cpptlm-d1-full change, ADR-0021)
+# ============================================================================
+add_catch_test(integration_cpptlm_singleton_guard
+    cpptlm/test_singleton_guard.cpp
+)
+set_tests_properties(integration_cpptlm_singleton_guard PROPERTIES LABELS "integration;cpptlm;singleton")
+
+add_catch_test(integration_cpptlm_async_launchkernel
+    cpptlm/test_async_launchkernel.cpp
+)
+set_tests_properties(integration_cpptlm_async_launchkernel PROPERTIES LABELS "integration;cpptlm;async")
+
+add_catch_test(integration_cpptlm_ld_st_bridge
+    cpptlm/test_ld_st_bridge.cpp
+)
+set_tests_properties(integration_cpptlm_ld_st_bridge PROPERTIES LABELS "integration;cpptlm;ld_st")

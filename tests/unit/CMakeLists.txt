@@ -669,3 +669,11 @@ add_catch_test(unit_ptx_ir_tcgen05_extended_opkind
 )
 set_tests_properties(unit_ptx_ir_tcgen05_extended_opkind PROPERTIES
     LABELS "unit;tcgen05;fence;handler;audit")
+
+# ============================================================================
+# CppTLM Bridge 单元测试 (cpptlm-d1-full change, ADR-0021)
+# ============================================================================
+add_catch_test(unit_cpptlm_bridge
+    cpptlm/test_cpptlm_bridge.cpp
+)
+set_tests_properties(unit_cpptlm_bridge PROPERTIES LABELS "unit;cpptlm;bridge")

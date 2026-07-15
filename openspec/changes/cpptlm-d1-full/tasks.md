@@ -225,19 +225,19 @@ Refs:
 
 ## Phase 7: 测试编写（~1.2d）
 
-- [ ] 7.1 创建 `tests/unit/cpptlm/test_cpptlm_bridge.cpp`（7 个 Bridge stub 测试）
-  - [ ] 7.1.1 `version() == 1` 测试
-  - [ ] 7.1.2 `submit_kernel()` 12 参数传递测试（mock bridge）
-  - [ ] 7.1.3 `poll_kernel()` 0 / >0 / UINT64_MAX 三种返回值测试
-  - [ ] 7.1.4 `synchronize_stream(stream_id)` 过滤测试
-  - [ ] 7.1.5 `global_access()` LD/ST timing-only 测试
-  - [ ] 7.1.6 `g_cpptlm_bridge == nullptr` 字节级回退测试
-  - [ ] 7.1.7 `static_assert(sizeof(cudaStream_t) <= sizeof(uint64_t))` 编译期测试（编译失败即为测试失败）
-- [ ] 7.2 创建 `tests/integration/cpptlm/test_async_launchkernel.cpp`（真实 kernel 路径走异步 bridge）
-- [ ] 7.3 创建 `tests/integration/cpptlm/test_ld_st_bridge.cpp`（GLOBAL LD/ST 走 bridge + 数据正确性对比 baseline）
-- [ ] 7.4 创建 `tests/integration/cpptlm/test_singleton_guard.cpp`（重复初始化 FATAL 中止）
-- [ ] 7.5 修改 `tests/CMakeLists.txt` 注册 4 个新测试目标
-- [ ] 7.6 运行 `./scripts/sanity.sh` 全绿 + `[unit;cudart] [integration;cudart]` 0 回归
+- [x] 7.1 创建 `tests/unit/cpptlm/test_cpptlm_bridge.cpp`（7 个 Bridge stub 测试）
+  - [x] 7.1.1 `version() == 1` 测试
+  - [x] 7.1.2 `submit_kernel()` 12 参数传递测试（mock bridge）
+  - [x] 7.1.3 `poll_kernel()` 0 / >0 / UINT64_MAX 三种返回值测试
+  - [x] 7.1.4 `synchronize_stream(stream_id)` 过滤测试
+  - [x] 7.1.5 `global_access()` LD/ST timing-only 测试
+  - [x] 7.1.6 `g_cpptlm_bridge == nullptr` 字节级回退测试
+  - [x] 7.1.7 `static_assert(sizeof(cudaStream_t) <= sizeof(uint64_t))` 编译期测试（编译失败即为测试失败）
+- [x] 7.2 创建 `tests/integration/cpptlm/test_async_launchkernel.cpp`（真实 kernel 路径走异步 bridge）
+- [x] 7.3 创建 `tests/integration/cpptlm/test_ld_st_bridge.cpp`（GLOBAL LD/ST 走 bridge + 数据正确性对比 baseline）
+- [x] 7.4 创建 `tests/integration/cpptlm/test_singleton_guard.cpp`（重复初始化 FATAL 中止）
+- [x] 7.5 修改 `tests/CMakeLists.txt` 注册 4 个新测试目标
+- [x] 7.6 运行 `./scripts/sanity.sh` 全绿 + `[unit;cudart] [integration;cudart]` 0 回归
 
 **Commit**:
 ```bash
