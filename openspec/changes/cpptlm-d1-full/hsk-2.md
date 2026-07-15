@@ -1,6 +1,6 @@
 # HSK-2: ANTLR4 版本号 + CI yml 证据
 
-> **状态**: ✅ **可立即发送**（ANTLR4 已升级至 4.13.2，4 权威源已验证，commit `759836f0`）
+> **状态**: ⏳ **待发出（ADR Accepted 后启用）**
 > **回传目标**: CppTLM Team (`#cpptlm-integration` Slack 频道 / PR comment)
 > **承诺时间**: D1 开工前（与 HSK-1 同窗口）
 > **形式**: ANTLR4 版本号 + CI yml 截图证据

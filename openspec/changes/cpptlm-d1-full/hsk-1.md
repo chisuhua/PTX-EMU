@@ -1,6 +1,6 @@
 # HSK-1: cppTLMBridge 头文件首发 commit hash
 
-> **状态**: ✅ **已发出**（commit hash 锁定，待 CppTLM 团队 rebase 确认）
+> **状态**: ⏳ **待发出（ADR Accepted 后启用）**
 > **回传目标**: CppTLM Team (`#cpptlm-integration` Slack 频道 / PR comment)
 > **承诺时间**: D1 开工前
 > **形式**: git commit hash + ABI 字段快照

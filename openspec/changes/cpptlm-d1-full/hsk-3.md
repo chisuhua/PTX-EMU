@@ -1,6 +1,6 @@
 # HSK-3: libcpptlm_cudart.so CMake 暴露方式草案
 
-> **状态**: 模板准备完成（CppTLM_COMMIT_HASH 待 D5 EOD 时填写）
+> **状态**: ⏳ **待发出（ADR Accepted 后启用，CPPTLM_COMMIT_HASH 待 D5 EOD 锁定）**
 > **回传目标**: CppTLM Team (`#cpptlm-integration` Slack 频道 / PR comment)
 > **承诺时间**: D5 EOD 前
 > **形式**: CMake 草案（3 选项对比，默认 ExternalProject_Add）

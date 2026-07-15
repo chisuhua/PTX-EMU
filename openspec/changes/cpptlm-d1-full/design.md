@@ -122,7 +122,7 @@ CUDA kernel ──→ libcudart.so (PTX-EMU) ──┬─→ Bridge 路径（异
 - `g_cpptlm_bridge` 全局指针：`nullptr` = 独立模式（字节级兼容）
 - `static_assert(sizeof(cudaStream_t) <= sizeof(uint64_t))`：防止未来 cudaStream_t 宽度变化导致隐式截断
 
-**约束验证**：`grep '#include' include/cudart/cpptlm_bridge.h` → 仅 `<cstdint>` + `<cuda_runtime.h>`
+**约束验证**：`grep '#include' include/cudart/cpptlm_bridge.h` → 仅 `<cstddef>` + `<cstdint>` + `<cuda_runtime.h>`
 
 ### 3.2 ABI 修订流程（D-PTX-1 关联）
 

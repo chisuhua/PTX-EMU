@@ -50,7 +50,7 @@ OpenSpec artifacts（proposal/design/spec/tasks）是**对外契约**——给 C
 cd /workspace/project/PTX-EMU
 # 编辑文件（参照综合任务书 §2.1 Task #1 完整代码）
 cmake --build build --target cudart  # 必须 PASS
-grep '#include' include/cudart/cpptlm_bridge.h  # MUST ONLY <cstdint> + <cuda_runtime.h>
+grep '#include' include/cudart/cpptlm_bridge.h  # MUST ONLY <cstddef> + <cstdint> + <cuda_runtime.h>
 ```
 
 **commit hash 记录**：实施完成后立即记录 commit hash 输出给 CppTLM（HSK-1）

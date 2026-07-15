@@ -2,7 +2,7 @@
 
 ### Requirement: cpptlm-bridge-interface
 
-The system MUST provide a `CppTLMBridge` abstract class in `include/cudart/cpptlm_bridge.h` with exactly five public pure virtual methods: `version() const`, `submit_kernel(uint64_t, const char*, uint32_t×6, const void**, size_t, size_t, uint64_t)`, `poll_kernel(uint64_t)`, `synchronize_stream(uint64_t)`, and `global_access(uint64_t, uint64_t, uint8_t)`. The header MUST define a `CPPTLMBRIDGE_VERSION` macro with integer value 1. A global raw pointer `g_cpptlm_bridge` of type `CppTLMBridge*` MUST be declared with `extern` and have default value `nullptr`. The header MUST include a `static_assert` verifying `sizeof(cudaStream_t) <= sizeof(uint64_t)`. The header MUST include only `<cstdint>` and `<cuda_runtime.h>`.
+The system MUST provide a `CppTLMBridge` abstract class in `include/cudart/cpptlm_bridge.h` with exactly five public pure virtual methods: `version() const`, `submit_kernel(uint64_t, const char*, uint32_t×6, const void**, size_t, size_t, uint64_t)`, `poll_kernel(uint64_t)`, `synchronize_stream(uint64_t)`, and `global_access(uint64_t, uint64_t, uint8_t)`. The header MUST define a `CPPTLMBRIDGE_VERSION` macro with integer value 1. A global raw pointer `g_cpptlm_bridge` of type `CppTLMBridge*` MUST be declared with `extern` and have default value `nullptr`. The header MUST include a `static_assert` verifying `sizeof(cudaStream_t) <= sizeof(uint64_t)`. The header MUST include only `<cstddef>`, `<cstdint>`, and `<cuda_runtime.h>`.
 
 #### Scenario: ABI 真值源 — header is the canonical source
 - **WHEN** CppTLM `ExternalProject_Add` 引用 PTX-EMU 仓库的 `include/cudart/cpptlm_bridge.h`
