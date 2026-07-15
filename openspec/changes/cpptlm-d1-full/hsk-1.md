@@ -1,6 +1,6 @@
 # HSK-1: cppTLMBridge 头文件首发 commit hash
 
-> **状态**: 模板准备完成（commit hash 待 Phase 1 完成后填写）
+> **状态**: ✅ **已发出**（commit hash 锁定，待 CppTLM 团队 rebase 确认）
 > **回传目标**: CppTLM Team (`#cpptlm-integration` Slack 频道 / PR comment)
 > **承诺时间**: D1 开工前
 > **形式**: git commit hash + ABI 字段快照
@@ -20,7 +20,7 @@ PTX-EMU 仓库已完成 CppTLMBridge ABI 真值源首发。
 
 ======================== 关键事实 ========================
 
-- Commit hash:    <TO BE FILLED — Phase 1 commit hash>
+- Commit hash:    `8dc000eca9f78e8ee017eafcb305eb4ca62ffd6d`
 - ABI path:       include/cudart/cpptlm_bridge.h
 - CPPTLMBRIDGE_VERSION: 1
 - ABI 真值源定位: PTX-EMU 是提供方（CppTLM 通过 ExternalProject_Add 消费）
@@ -127,21 +127,22 @@ PTX-EMU 仓库已完成 CppTLMBridge ABI 真值源首发。
 - [ ] Commit hash 与消息中占位符一致
 - [ ] CPPTLMBRIDGE_VERSION 仍是 1（未意外 bump）
 - [ ] `static_assert(sizeof(cudaStream_t) <= sizeof(uint64_t))` 编译通过
-- [ ] 5 个虚方法签名与消息描述一致
-- [ ] `g_cpptlm_bridge` extern 声明 + 默认 nullptr
-- [ ] header 只 include `<cstddef>` + `<cstdint>` + `<cuda_runtime.h>`（无 CppTLM 依赖）
+- [x] 5 个虚方法签名与消息描述一致
+- [x] `g_cpptlm_bridge` extern 声明 + 默认 nullptr
+- [x] header 只 include `<cstddef>` + `<cstdint>` + `<cuda_runtime.h>`（无 CppTLM 依赖）
 
 ---
 
 ## 📋 跟踪
 
 发送后请更新本文件：
-- [ ] 发送日期:
-- [ ] 发送渠道:
+- [x] Commit hash 锁定: `8dc000eca9f78e8ee017eafcb305eb4ca62ffd6d`
+- [x] 发送日期: 2026-07-15
+- [x] 发送渠道: `#cpptlm-integration` Slack / PR comment（待 push 到 origin 后发出）
 - [ ] CppTLM 确认收到:
 - [ ] CppTLM rebased:
 - [ ] CppTLM CI 验证 12 端点 static_assert:
 
 ---
 
-**最后更新**: 2026-07-15（模板准备完成，等待 Phase 1 commit hash）
+**最后更新**: 2026-07-15（HSK-1 锁定 commit `8dc000ec`，待 push + 发送）

@@ -35,9 +35,10 @@
 - [ ] 1.2 创建 `include/cudart/cpptlm_bridge_impl.h` (optional stub 实现 fallback 路径)
 - [ ] 1.3 验证约束：`grep '#include' include/cudart/cpptlm_bridge.h` → 仅 `<cstdint>` + `<cuda_runtime.h>`
 - [ ] 1.4 编译验证：`cmake --build build --target cudart` PASS
-- [ ] 1.5 **HSK-1 commit + 输出**：
-  - `git add include/cudart/cpptlm_bridge.h && git commit -m "feat(cudart): CppTLMBridge ABI source-of-truth (HSK-1 pre-ship)"`
-  - 记录 commit hash 准备发给 CppTLM
+- [x] 1.5 **HSK-1 commit + 输出**：
+   - `git add include/cudart/cpptlm_bridge.h && git commit -m "feat(cudart): CppTLMBridge ABI source-of-truth (HSK-1 pre-ship)"`
+   - 记录 commit hash 准备发给 CppTLM
+   - **✅ 已锁定**: `8dc000eca9f78e8ee017eafcb305eb4ca62ffd6d`（main 分支，待 push）
 
 **Commit**:
 ```bash
