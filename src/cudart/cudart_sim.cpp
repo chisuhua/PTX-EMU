@@ -43,6 +43,41 @@ using namespace ptxparser;
 #include <unistd.h>
 #include <vector>
 
+// ============================================================================
+// SingletonGuard (D-PTX-2): 检测 4 个全局单例的重复初始化
+// ============================================================================
+// F12b-LD 文档 §10.1 明确指 PTX-EMU 单例在多实例仿真中导致静默状态损坏。
+// SingletonGuard 在 __cudaRegisterFatBinary 入口检测重复调用，FATAL abort。
+// ============================================================================
+class SingletonGuard {
+public:
+    static SingletonGuard& instance() {
+        static SingletonGuard guard;
+        return guard;
+    }
+
+    // 返回 true 如果已经初始化过（重复调用）
+    bool check_and_mark() {
+        if (initialized_) {
+            return true;  // 重复初始化
+        }
+        initialized_ = true;
+        return false;  // 首次初始化
+    }
+
+    void reset() {
+        initialized_ = false;
+    }
+
+private:
+    SingletonGuard() = default;
+    ~SingletonGuard() = default;
+    SingletonGuard(const SingletonGuard&) = delete;
+    SingletonGuard& operator=(const SingletonGuard&) = delete;
+
+    bool initialized_ = false;
+};
+
 // 新增缺失的全局变量和数据结构
 std::map<uint64_t, std::string> func2name;
 std::map<uint64_t, cudaKernel_t> func2kernel;
@@ -140,6 +175,14 @@ size_t get_gpu_clock_from_context() {
 void **__cudaRegisterFatBinary(void **fatCubinHandle, void *fat_bin,
                                unsigned long long fat_bin_size,
                                unsigned int version) {
+    // SingletonGuard (D-PTX-2): 检测重复初始化，防止多实例仿真静默状态损坏
+    if (SingletonGuard::instance().check_and_mark()) {
+        std::cerr << "[FATAL] __cudaRegisterFatBinary called multiple times. "
+                  << "PTX-EMU does not support multi-instance simulation. "
+                  << "See ADR-0021 D-PTX-2 for details." << std::endl;
+        std::abort();
+    }
+
     // 初始化调试环境
     static bool debug_initialized = false;
     if (!debug_initialized) {

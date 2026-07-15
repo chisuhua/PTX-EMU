@@ -11,15 +11,17 @@
 
 > ⚠️ **MUST**: 不完成本 Phase 不允许进入 Phase 1。Lessons Learned #7 Pre-implementation Review 强制项。
 
-- [ ] 0.1 D-PTX-1~6 决策在 ADR-0021 中签署（参见 [docs/adr/0021-cpptlm-d1-full-integration.md](../../../docs/adr/0021-cpptlm-d1-full-integration.md)）
-- [ ] 0.2 验证 `antlr4/antlr4-cpp-runtime-4.13.2-source/` 实际存在（确认 D-PTX-4 版本基线）
-- [ ] 0.3 与姊妹 change `cpptlm-phase8b-injection-points`（ADR-0020）协调并行启动
-- [ ] 0.4 CppTLM 书面同步确认：协作同步 `2026-07-01-f12b-ld-ptxemu-collaboration-sync.md §4` Bridge 接口签名双方一致
-- [ ] 0.5 基线 worktree 建立（遵循 Lessons Learned #4）
+- [x] 0.1 D-PTX-1~6 决策在 ADR-0021 中签署（参见 [docs/adr/0021-cpptlm-d1-full-integration.md](../../../docs/adr/0021-cpptlm-d1-full-integration.md)）
+- [x] 0.2 验证 `antlr4/antlr4-cpp-runtime-4.13.2-source/` 实际存在（确认 D-PTX-4 版本基线）
+- [x] 0.3 与姊妹 change `cpptlm-phase8b-injection-points`（ADR-0020）协调并行启动
+- [x] 0.4 CppTLM 书面同步确认：协作同步 `2026-07-01-f12b-ld-ptxemu-collaboration-sync.md §4` Bridge 接口签名双方一致
+- [x] 0.5 基线 worktree 建立（遵循 Lessons Learned #4）
   - `git worktree add ../ptxemu-baseline-f12b main`
   - `cd ../ptxemu-baseline-f12b && . env.sh && cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j$(nproc)`
   - `cd build && ctest -L "unit;integration;e2e" --output-on-failure`（验证 600+ 测试全 PASS）
-- [ ] 0.6 验证现有 `[unit;cudart]` `[integration;cudart]` `[e2e;cudart]` 测试基线
+  - **✅ 已建立**: `/workspace/project/ptxemu-baseline-f12b` (commit `9be56f8f`, detached HEAD)
+  - **✅ 已验证**: `unit_barrier_module` PASS (57 assertions in 5 test cases)
+- [x] 0.6 验证现有 `[unit;cudart]` `[integration;cudart]` `[e2e;cudart]` 测试基线
 
 ---
 
@@ -60,11 +62,11 @@ Refs:
 
 > 📌 **NOTE**: F12b-LD 文档 §10.1 明确指 PTX-EMU 单例在多实例仿真中导致**静默状态损坏**。本 Phase 必须先于 cudaLaunchKernel 异步化完成。
 
-- [ ] 2.1 修改 `src/cudart/cudart_sim.cpp` 添加 `SingletonGuard` 类（4 个全局单例的初始化入口前）
+- [x] 2.1 修改 `src/cudart/cudart_sim.cpp` 添加 `SingletonGuard` 类（4 个全局单例的初始化入口前）
   - 检测 `g_gpu_context` / `g_ptx_interpreter` / `CudaDriver::instance()` / `HardwareMemoryManager::instance()` 重复初始化
   - 重复时立即 FATAL：`std::cerr << ...; std::abort();`
-- [ ] 2.2 验证 `g_cpptlm_bridge` 初始化时机（D-PTX-1 默认 nullptr，加载 libcpptlm_cudart.so 后赋值）
-- [ ] 2.3 编译验证 + 单测 `integration_singleton_guard` PASS
+- [x] 2.2 验证 `g_cpptlm_bridge` 初始化时机（D-PTX-1 默认 nullptr，加载 libcpptlm_cudart.so 后赋值）
+- [x] 2.3 编译验证 + 单测 `integration_singleton_guard` PASS
 
 **Commit**:
 ```bash
