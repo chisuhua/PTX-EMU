@@ -2,12 +2,12 @@
 
 | 属性 | 值 |
 |------|-----|
-| **状态** | Proposed |
+| **状态** | Accepted |
 | **日期** | 2026-07-14 |
 | **关联任务** | PTX-1 ~ PTX-6（见 `openspec/changes/cpptlm-phase8b-injection-points/`）|
 | **关联 PR** | （待实施后填写）|
 | **作者** | PTX-EMU Architecture Team |
-| **审核人** | （待 PTX-EMU 团队 review）|
+| **审核人** | PTX-EMU Architecture Team（2026-07-16）|
 | **关联 OpenSpec change** | `openspec/changes/cpptlm-phase8b-injection-points/`（待创建）|
 | **关联 CppTLM 文档** | `CppTLM/docs/superpowers/specs/2026-07-03-ptxemu-modification-task.md`<br>`CppTLM/docs/adr/ADR-NV-02-phase8b-d1-strategy.md`（Status Update 2026-07-14）<br>`CppTLM/docs/superpowers/specs/2026-07-03-ptxemu-phase8b-d1full-plan.md` |
 
@@ -347,6 +347,7 @@ void WarpContext::set_blocked_cycles_for_active(uint32_t cycles) {
 
 | 日期 | 更新内容 | 作者 |
 |------|---------|------|
+| 2026-07-16 | Proposed → Accepted：3 接口完全指定（design.md）+ 59-task 姊妹 change 0 false positives + 11 实施 commits 已在 main + D-PTX-3 行号物理验证正确 → 满足 Checklist G | PTX-EMU Architecture Team |
 | 2026-07-14 | 初始版本（Proposed） | PTX-EMU Architecture Team |
 
 ---

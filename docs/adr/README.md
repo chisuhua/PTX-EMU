@@ -54,6 +54,7 @@ docs/adr/
 | [0012](./0012-per-thread-pc.md) | Per-Thread PC 设计（Volta+ SIMT 模型） | Active | 2026-05-05 | Phase 3 |
 | [0015](./0015-cvt-strategy-pattern.md) | CVT 指令策略模式重构 (Composition over Inheritance) | Active | 2026-06-23 | T2-6 (Phase 3) |
 | [0019](./0019-pc-management-extraction.md) | ThreadContext 持续瘦身：MemoryAccessor + InstructionPipeline accessor 方案 | Active | 2026-07-14 | `openspec/changes/god-class-refactor-thread-context-phase3/` |
+| [0020](./0020-cpptlm-injection-points.md) | 接受 CppTLM Phase 8.B D1-Full 注入（IScoreboard / IPipelineLatencyProvider / ITensorCoreTiming） | Accepted | 2026-07-14 | `openspec/changes/cpptlm-phase8b-injection-points/` |
 
 ### Proposed (规划中)
 
@@ -63,8 +64,8 @@ docs/adr/
 | [0014](./0014-independent-thread-scheduling.md) | Independent Thread Scheduling (ITS) 支持 | Proposed | 2026-05-25 | BUG-SIMT-001 |
 | [0016](./0016-blackwell-only-tcgen05.md) | Skip pre-Blackwell WMMA, only implement Blackwell tcgen05 (with TMA/cluster prerequisites) | Accepted | 2026-07-04 | `openspec/changes/implement-wmma-tensor-core/` |
 | [0018](./0018-tcgen05-cta-group-restriction.md) | tcgen05 cta_group::2 throws UnsupportedInstructionException (cluster abstraction deferred) | Accepted | 2026-07-12 | `openspec/changes/fix-tcgen05-commit-wait-group/` |
-| [0020](./0020-cpptlm-injection-points.md) | 接受 CppTLM Phase 8.B D1-Full 注入（IScoreboard / IPipelineLatencyProvider / ITensorCoreTiming） | Proposed | 2026-07-14 | `openspec/changes/cpptlm-phase8b-injection-points/`（待创建）|
-| [0021](./0021-cpptlm-d1-full-integration.md) | CppTLM D1-Full MemoryBridge 集成（D-PTX-1~6 + HSK-1/2/3） | Active | 2026-07-15 | `openspec/changes/cpptlm-d1-full/` |
+| [0021](./0021-cpptlm-d1-full-integration.md) | CppTLM D1-Full MemoryBridge 集成（D-PTX-1~6 + HSK-1/2/3） | Proposed | 2026-07-15 | `openspec/changes/cpptlm-d1-full/` |
+| [0019](./0019-pc-management-extraction.md) | ThreadContext 持续瘦身：MemoryAccessor + InstructionPipeline accessor 方案 | Active | 2026-07-14 | `openspec/changes/god-class-refactor-thread-context-phase3/` |
 
 ### Superseded (已被替代)
 
