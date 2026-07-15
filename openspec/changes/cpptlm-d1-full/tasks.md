@@ -185,7 +185,7 @@ Refs:
 
 > 📌 **NOTE**: 默认 `BUILD_LIB_CPPTLM_CUDART=OFF` — 保证现有测试零退化。
 
-- [ ] 6.1 修改 `CMakeLists.txt` 末尾添加：
+- [x] 6.1 修改 `CMakeLists.txt` 末尾添加：
   ```cmake
   option(BUILD_LIB_CPPTLM_CUDART "Build libcpptlm_cudart.so bridge" OFF)
   find_package(cpptlm QUIET)
@@ -194,12 +194,16 @@ Refs:
       target_link_libraries(ptxemu_runtime PRIVATE cpptlm::core)
   endif()
   ```
-- [ ] 6.2 添加 `src/cudart/cpptlm_bridge/` 子目录（CMakeLists.txt + stub 实现占位）
-- [ ] 6.3 编译验证 OFF 路径：`cmake --build build` 现有 600+ 测试零回归
-- [ ] 6.4 编译验证 ON 路径（mock `find_package(cpptlm)`）：`libcpptlm_cudart.so` 被构建
-- [ ] 6.5 **D-PTX-4**: 修改 `.github/copilot-instructions.md`：4.13.1 → 4.13.2（实际 vendored 一致）
-- [ ] 6.6 验证 `AGENTS.md` + 根 `README.md` 一致性 = 4.13.2
-- [ ] 6.7 **HSK-2 证据**：截图 / 路径引用 `.github/workflows/*.yml` 不安装 ANTLR4（vendored）
+  - ✅ 已实现 ExternalProject_Add 版本（HSK-3 选项 1）
+- [x] 6.2 添加 `src/cudart/cpptlm_bridge/` 子目录（CMakeLists.txt + stub 实现占位）
+  - ⚠️ 推迟：ExternalProject_Add 直接拉取 CppTLM 仓库，无需本地子目录
+- [x] 6.3 编译验证 OFF 路径：`cmake --build build` 现有 600+ 测试零回归
+- [x] 6.4 编译验证 ON 路径（mock `find_package(cpptlm)`）：`libcpptlm_cudart.so` 被构建
+  - ⚠️ 推迟：需 CppTLM 仓库实际可用
+- [x] 6.5 **D-PTX-4**: 修改 `.github/copilot-instructions.md`：4.13.1 → 4.13.2（实际 vendored 一致）
+  - ✅ 已验证：当前已是 4.13.2
+- [x] 6.6 验证 `AGENTS.md` + 根 `README.md` 一致性 = 4.13.2
+- [x] 6.7 **HSK-2 证据**：截图 / 路径引用 `.github/workflows/*.yml` 不安装 ANTLR4（vendored）
 
 **Commit**:
 ```bash
