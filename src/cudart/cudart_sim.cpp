@@ -781,7 +781,37 @@ cudaError_t cudaMallocHost(void **ptr, size_t size) {
 cudaError_t cudaDeviceSynchronize() {
     PTX_DEBUG_EMU("Called cudaDeviceSynchronize()");
 
-    // 在仿真器中，同步是立即完成的
+    // ========================================================================
+    // Bridge 路径 (D-PTX-1 + Task #3): 遍历所有 active_streams
+    // ========================================================================
+    if (g_cpptlm_bridge) {
+        std::vector<uint64_t> completed_ids;
+
+        {
+            std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
+            for (const auto& [id, pk] : g_pending_kernels) {
+                if (!pk.completed) {
+                    uint64_t remaining = g_cpptlm_bridge->poll_kernel(id);
+                    if (remaining == 0) {
+                        completed_ids.push_back(id);
+                    }
+                }
+            }
+        }
+
+        // 循环外统一 erase（迭代器安全）
+        if (!completed_ids.empty()) {
+            std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
+            for (uint64_t id : completed_ids) {
+                g_pending_kernels.erase(id);
+            }
+        }
+
+        PTX_DEBUG_EMU("cudaDeviceSynchronize: completed %zu kernels", completed_ids.size());
+        return cudaSuccess;
+    }
+
+    // nullptr fallback: 同步是立即完成的
     return cudaSuccess;
 }
 
@@ -842,8 +872,14 @@ cudaError_t cudaStreamCreate(cudaStream_t *stream) {
         return cudaErrorInvalidValue;
     }
 
-    // 在仿真器中，流只是一个占位符
-    *stream = reinterpret_cast<cudaStream_t>(new int(0));
+    // ========================================================================
+    // Bridge 路径 (D-PTX-1 + Task #3): 生成唯一 64-bit stream_id
+    // ========================================================================
+    uint64_t stream_id = generate_kernel_id();  // 复用 kernel_id 生成器
+    g_active_streams.insert(stream_id);
+    *stream = reinterpret_cast<cudaStream_t>(static_cast<uintptr_t>(stream_id));
+
+    PTX_DEBUG_EMU("cudaStreamCreate: assigned stream_id=%lu", stream_id);
     return cudaSuccess;
 }
 
@@ -860,7 +896,43 @@ cudaError_t cudaStreamDestroy(cudaStream_t stream) {
 cudaError_t cudaStreamSynchronize(cudaStream_t stream) {
     PTX_DEBUG_EMU("Called cudaStreamSynchronize(%p)", stream);
 
-    // 在仿真器中，同步是立即完成的
+    uint64_t stream_id = reinterpret_cast<uintptr_t>(stream);
+
+    // ========================================================================
+    // Bridge 路径 (D-PTX-1 + Task #3): 按 stream_id 过滤 + poll_kernel
+    // ========================================================================
+    // 迭代器失效修复：先收集 completed_ids，循环外统一 erase
+    // （避免 range-for 中 unordered_map::erase 触发 UB）
+    // ========================================================================
+    if (g_cpptlm_bridge) {
+        std::vector<uint64_t> completed_ids;
+
+        {
+            std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
+            for (const auto& [id, pk] : g_pending_kernels) {
+                if (pk.stream_id == stream_id && !pk.completed) {
+                    uint64_t remaining = g_cpptlm_bridge->poll_kernel(id);
+                    if (remaining == 0) {
+                        completed_ids.push_back(id);
+                    }
+                }
+            }
+        }
+
+        // 循环外统一 erase（迭代器安全）
+        if (!completed_ids.empty()) {
+            std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
+            for (uint64_t id : completed_ids) {
+                g_pending_kernels.erase(id);
+            }
+        }
+
+        PTX_DEBUG_EMU("cudaStreamSynchronize: stream_id=%lu, completed %zu kernels",
+                      stream_id, completed_ids.size());
+        return cudaSuccess;
+    }
+
+    // nullptr fallback: 同步是立即完成的
     return cudaSuccess;
 }
 

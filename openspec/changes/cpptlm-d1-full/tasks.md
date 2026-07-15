@@ -121,16 +121,16 @@ Refs:
 
 > 📌 **NOTE**: 关键约束 — 迭代器安全模式必须应用：先 `completed_ids.push_back(id)` → 范围外统一 `erase()`（避免 range-for 中 `unordered_map::erase` 触发 UB）。
 
-- [ ] 4.1 修改 `cudaStreamSynchronize` 函数：
+- [x] 4.1 修改 `cudaStreamSynchronize` 函数：
   - bridge 路径：按 `stream_id` 过滤 → `bridge->poll_kernel(id)` → 完成 id 先 push `completed_ids` → 循环外统一 `erase()`
   - nullptr fallback：保留 `return cudaSuccess;` 立即返回
-- [ ] 4.2 修改 `cudaDeviceSynchronize` 函数：bridge 路径遍历 `g_active_streams`；nullptr fallback 调用 `g_gpu_context->wait_for_completion()`
-- [ ] 4.3 添加/修改 `cudaStreamCreate` 函数：
+- [x] 4.2 修改 `cudaDeviceSynchronize` 函数：bridge 路径遍历 `g_active_streams`；nullptr fallback 调用 `g_gpu_context->wait_for_completion()`
+- [x] 4.3 添加/修改 `cudaStreamCreate` 函数：
   - `next_kernel_id.fetch_add(1)` 生成 64-bit 唯一 ID
   - `g_active_streams.insert(id)`
   - `*pStream = reinterpret_cast<cudaStream_t>(static_cast<uintptr_t>(id))`
-- [ ] 4.4 验证迭代器失效修复：先 push 后 erase 的两阶段模式（避免 range-for 中 `unordered_map::erase` 触发 UB）
-- [ ] 4.5 编译验证 + 集成测试 `integration_cudart_sync` PASS
+- [x] 4.4 验证迭代器失效修复：先 push 后 erase 的两阶段模式（避免 range-for 中 `unordered_map::erase` 触发 UB）
+- [x] 4.5 编译验证 + 集成测试 `integration_cudart_sync` PASS
 
 **Commit**:
 ```bash
