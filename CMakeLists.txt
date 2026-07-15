@@ -69,15 +69,14 @@ set(DEFAULT_CUDA_ARCH "100" CACHE STRING "Default CUDA architecture")
 # ==============================
 # 🐜 ANTLR4 配置
 # ==============================
-set(ANTLR_EXECUTABLE ${CMAKE_SOURCE_DIR}/antlr4/antlr-4.11.1-complete.jar)
-set(ANTLR4_RUNTIME_SOURCE_DIR ${CMAKE_SOURCE_DIR}/antlr4/antlr4-cpp-runtime-4.11.1-source)
+set(ANTLR_EXECUTABLE ${CMAKE_SOURCE_DIR}/antlr4/antlr-4.13.2-complete.jar)
+set(ANTLR4_RUNTIME_SOURCE_DIR ${CMAKE_SOURCE_DIR}/antlr4/antlr4-cpp-runtime-4.13.2-source)
 set(ANTLR4_GENERATED_SRC_DIR ${CMAKE_CURRENT_BINARY_DIR}/antlr4_generated_src)
 
 file(MAKE_DIRECTORY ${ANTLR4_GENERATED_SRC_DIR})
 
 # 🔥 关键：禁用 ANTLR4 的测试和 demo，避免下载 googletest
-# (Removed: ANTLR4_BUILD_TESTS — ANTLR4 4.11.1 runtime doesn't define this option)
-# (Removed: ANTLR4_BUILD_CPP_TESTS — ANTLR4 4.11.1 runtime doesn't define this option)
+set(ANTLR_BUILD_CPP_TESTS OFF CACHE BOOL "Disable ANTLR4 C++ tests" FORCE)
 set(WITH_DEMO OFF CACHE BOOL "Disable ANTLR4 demo" FORCE)
 
 # 构建 ANTLR4 运行时

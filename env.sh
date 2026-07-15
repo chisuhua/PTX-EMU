@@ -57,7 +57,7 @@ fi
 #fi
 
 # 设置CLASSPATH和别名
-export CLASSPATH=".:$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/antlr4/antlr-4.11.1-complete.jar:$CLASSPATH"
+export CLASSPATH=".:$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/antlr4/antlr-4.13.2-complete.jar:$CLASSPATH"
 alias antlr4='java -Xmx500M -cp "$CLASSPATH" org.antlr.v4.Tool'
 alias grun='java -Xmx500M -cp "$CLASSPATH" org.antlr.v4.gui.TestRig'
 

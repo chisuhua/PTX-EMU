@@ -2,7 +2,7 @@
 
 ## Big picture (architecture)
 - 这是一个 C++/CUDA 的 PTX 模拟器：核心库在 src/ 下，包含 `ptx_ir`（IR 类型/语义上下文）、`ptxsim`（执行内核）和 `cudart`（CUDA runtime 替代实现，拦截并模拟 CUDA API）。见 [src/CMakeLists.txt](src/CMakeLists.txt)。
-- PTX 解析使用 ANTLR4：语法文件在 src/grammar/，生成源码输出到 build/antlr4_generated_src，并编进 `cudart`。ANTLR 运行时来自 antlr4/antlr4-cpp-runtime-4.13.1-source。见 [CMakeLists.txt](CMakeLists.txt)。
+- PTX 解析使用 ANTLR4：语法文件在 src/grammar/，生成源码输出到 build/antlr4_generated_src，并编进 `cudart`。ANTLR 运行时来自 antlr4/antlr4-cpp-runtime-4.13.2-source。见 [CMakeLists.txt](CMakeLists.txt)。
 - 执行层次：GPUContext → SMContext → CTAContext → WarpContext → ThreadContext；实现位于 src/ptxsim/core/，指令实现位于 src/ptxsim/instructions/。参见 [docs/gpgpu_arch.md](docs/gpgpu_arch.md)。
 
 ## 关键目录

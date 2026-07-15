@@ -56,7 +56,7 @@ cd build && ctest --output-on-failure
 
 - **PTX 指令覆盖**：参考 [docs/audits/debt-audit-2026-07-02.md](./audits/debt-audit-2026-07-02.md) 自动统计（避免硬编码）
 - **pre-Blackwell tcgen05**：永久抛 `UnsupportedInstructionException`（c5 Fix #1 + [ADR-0016](./docs/adr/0016-blackwell-only-tcgen05.md)）
-- **ANTLR 版本**：4.11.1 完全 vendored
+- **ANTLR 版本**：4.13.2 完全 vendored
 - **CUDA Toolkit**：环境自适应（`env.sh` 自动检测 `$(which nvcc)`）
 
 ## 贡献指南
