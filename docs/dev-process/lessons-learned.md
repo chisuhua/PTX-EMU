@@ -1338,3 +1338,38 @@ if (ctx->tcgen05QualList()) {
 ### 真实案例
 
 `fix-tcgen05-mma-accumulator-and-f32-storage` Oracle 2026-07-11 审计 C3 BLOCKER（commit/wait 硬编码 group_id=1）+ FU-1 follow-up。
+
+---
+
+## 32. CppTLM D1-Full MemoryBridge 集成经验 (2026-07-15)
+
+### 背景
+
+`cpptlm-d1-full` change 实现 CppTLM F12b-LD MemoryBridge 集成（ADR-0021），涉及 6 项架构决策（D-PTX-1~6）+ 3 个握手信号（HSK-1/2/3）+ 5 个 Phase 代码实施。
+
+### 教训
+
+1. **类型定义冲突**：`cpptlm_bridge.h` 定义 `cudaStream_t = struct CUstream_st*` 与 `cudart_intrinsics.h` 的 `typedef void* cudaStream_t` 冲突。修复：使用 `#if defined(__CUDACC_RUNTIME_H__)` 条件编译 + `#elif !defined(CUDA_STREAM_T_DEFINED)` fallback 到 `void*`，与 `cudart_intrinsics.h` 保持一致。
+
+2. **迭代器失效修复**：`cudaStreamSynchronize` / `cudaDeviceSynchronize` 中 range-for 遍历 `g_pending_kernels` 时调用 `erase()` 会触发 UB。修复模式：先收集 `completed_ids` 到 vector，循环外统一 `erase()`。
+
+3. **ExternalProject_Add vs add_subdirectory**：HSK-3 选项 1 选择 `ExternalProject_Add` 直接拉取 CppTLM 仓库，而非本地 `add_subdirectory`。优点：版本 pin（`GIT_TAG`）+ build 隔离 + 零 ABI 漂移。缺点：首次 build 需网络访问。
+
+4. **nullptr fallback 字节级兼容**：`g_cpptlm_bridge == nullptr` 时所有操作必须走原有同步路径（字节级相同）。这是 ADR-0021 D-PTX-1 的核心约束，确保现有 600+ 测试零回归。
+
+### 检查工具
+
+```bash
+# 1. 验证 bridge 全局指针状态
+grep -n "g_cpptlm_bridge" src/cudart/cudart_sim.cpp
+
+# 2. 检查迭代器安全模式
+grep -n "completed_ids" src/cudart/cudart_sim.cpp
+
+# 3. 验证 CMake ExternalProject_Add 配置
+grep -n "ExternalProject_Add" CMakeLists.txt
+```
+
+### 真实案例
+
+`cpptlm-d1-full` change Phase 2-7 实施（commits `f5ddb618` → `7724dc7f`），4 个测试文件 26 assertions 全 PASS。

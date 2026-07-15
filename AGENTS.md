@@ -537,7 +537,8 @@ GPUContext (全局内存, SM 列表)
 | tcgen05 测试覆盖 | 5 integration parse 测试 + 1 E2E GEMM kernel + f16×f16→f32 golden value (commit `fix-tcgen05-test-coverage-gaps` fd74261) + 12 TmemAllocator 单元测试 + 12 alloc/dealloc/relinquish handler 集成测试 + 7 tcgen05.cp 单元测试 + 3 tcgen05.cp 集成测试 + 1 tcgen05.cp E2E (Priority 3 fallback, ptxas 13.0 不支持 sm_100 cp) + **9 mma.ws scope 单元测试** + 3 mma.ws golden 集成测试 + 1 mma.ws E2E (Priority 3 fallback) (commits `486246a` + Phase 1.x + Phase 2 + Phase 3)。tcgen05-tagged ctest 全 PASS,`tests/ptx/test_all_ptx.sh` 45/45。 |
 | Atomic 操作 | 无真正原子性 (stub) |
 | Hopper (sm_90+) cluster | cluster 抽象未实现 — 实施中（[ADR-0016](docs/adr/0016-blackwell-only-tcgen05.md) Phase 0.3） |
-| Event/Stream API | fake 返回（不同步） |
+| Event/Stream API | fake 返回（不同步）；CppTLM bridge 激活后 `cudaStreamSynchronize` 走 `poll_kernel` 真实轮询（[ADR-0021](docs/adr/0021-cpptlm-d1-full-integration.md)）|
+| CppTLM F12b-LD MemoryBridge | `cpptlm_bridge.h` ABI 真值源已就绪（commit `8dc000ec`），5 虚方法 + `g_cpptlm_bridge` 全局指针。`cudaLaunchKernel` 异步路径 + `cudaStreamSynchronize` poll + GLOBAL LD/ST timing-only 桥接已实现（[ADR-0021](docs/adr/0021-cpptlm-d1-full-integration.md)）。默认 `g_cpptlm_bridge == nullptr` 时字节级兼容原有同步路径。|
 | 函数调用 | 未完全实现 |
 | Multi-PTX cubins | 累加所有 sections + `PTX_WARN_EMU` 警告 section 数量（parser-completeness Fix #2 + c5 Fix #3）。潜在风险：不同 section 可能定义同名符号（warning 告知用户检查）。`ptx_parser.cpp:60` 与 `cubin_utils.cpp` 行为对齐 |
 | Extern 函数声明 | 已支持双路径：1) `PtxListener::exitExternFuncStatement` (`ptx_parser.cpp:996`) 填充 `ptxContext.externFuncs`；2) `PtxVisitor::visitFunctionDecl` (`ptx_visitor.cpp:486`) 处理 extern form (add-extern-function-declaration Fix #1)。oracle test: `unit_extern_function` |

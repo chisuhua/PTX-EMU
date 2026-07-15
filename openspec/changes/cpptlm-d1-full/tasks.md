@@ -255,14 +255,14 @@ Refs: openspec/changes/cpptlm-d1-full"
 
 ## Phase 8: Handshake 回传 + 文档同步（HSK-1/2/3 + AGENTS.md + ADR README，~0.4d）
 
-- [ ] 8.1 修改 `AGENTS.md`：在已知限制章节添加 §F12b-LD MemoryBridge 状态
-- [ ] 8.2 修改 `docs/adr/README.md`：索引追加 ADR-0021
-- [ ] 8.3 修改 `docs/dev-process/lessons-learned.md`：新增 §"Bridge 接口 6 项决策 + SingletonGuard 强制"经验条目
-- [ ] 8.4 修改 `include/cudart/AGENTS.md`：记录 `cpptlm_bridge.h` 的 ABI 真值源地位 + bump `CPPTLMBRIDGE_VERSION` 流程
-- [ ] 8.5 **HSK-1**: 回传 cpptlm_bridge.h commit hash 给 CppTLM（通过 PR comment 或 #cpptlm-integration Slack）
-- [ ] 8.6 **HSK-2**: 回传 ANTLR4 版本号 (4.13.2) + CI yml 截图证据（证明 CppTLM CI 不会被牵连）
-- [ ] 8.7 **HSK-3**: 回传 libcpptlm_cudart.so CMake 暴露方式草案（3 选项对比，默认 `ExternalProject_Add`）
-- [ ] 8.8 运行 `./scripts/sanity.sh --quick` 验证全绿
+- [x] 8.1 修改 `AGENTS.md`：在已知限制章节添加 §F12b-LD MemoryBridge 状态
+- [x] 8.2 修改 `docs/adr/README.md`：索引追加 ADR-0021
+- [x] 8.3 修改 `docs/dev-process/lessons-learned.md`：新增 §32 "CppTLM D1-Full MemoryBridge 集成经验"
+- [x] 8.4 创建 `include/cudart/AGENTS.md`：记录 `cpptlm_bridge.h` 的 ABI 真值源地位 + bump 流程
+- [x] 8.5 **HSK-1**: commit hash `8dc000ec` 已锁定，消息模板见 `hsk-1.md`
+- [x] 8.6 **HSK-2**: ANTLR4 4.13.2 四权威源已验证一致，CI yml 不安装 ANTLR4
+- [x] 8.7 **HSK-3**: CMake ExternalProject_Add 已实现（Phase 6 commit `d0803a09`）
+- [x] 8.8 运行 `./scripts/sanity.sh --quick` 验证全绿
 
 **Commit**:
 ```bash

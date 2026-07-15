@@ -64,6 +64,7 @@ docs/adr/
 | [0016](./0016-blackwell-only-tcgen05.md) | Skip pre-Blackwell WMMA, only implement Blackwell tcgen05 (with TMA/cluster prerequisites) | Accepted | 2026-07-04 | `openspec/changes/implement-wmma-tensor-core/` |
 | [0018](./0018-tcgen05-cta-group-restriction.md) | tcgen05 cta_group::2 throws UnsupportedInstructionException (cluster abstraction deferred) | Accepted | 2026-07-12 | `openspec/changes/fix-tcgen05-commit-wait-group/` |
 | [0020](./0020-cpptlm-injection-points.md) | 接受 CppTLM Phase 8.B D1-Full 注入（IScoreboard / IPipelineLatencyProvider / ITensorCoreTiming） | Proposed | 2026-07-14 | `openspec/changes/cpptlm-phase8b-injection-points/`（待创建）|
+| [0021](./0021-cpptlm-d1-full-integration.md) | CppTLM D1-Full MemoryBridge 集成（D-PTX-1~6 + HSK-1/2/3） | Active | 2026-07-15 | `openspec/changes/cpptlm-d1-full/` |
 
 ### Superseded (已被替代)
 
@@ -94,13 +95,14 @@ docs/adr/
 ---
 
 **维护**: PTX-EMU Architecture Team  
-**最后更新**: 2026-07-14  
-**ADR 总数**: 17
+**最后更新**: 2026-07-15  
+**ADR 总数**: 18
 
 ## 最近更新
 
 | 日期 | 更新内容 | 关联 ADR |
 |------|---------|---------|
+| 2026-07-15 | 添加 CppTLM D1-Full MemoryBridge 集成 ADR（D-PTX-1~6 决策 + HSK-1/2/3 握手 + cpptlm_bridge.h ABI 真值源） | 0021 |
 | 2026-07-14 | 添加 CppTLM Phase 8.B D1-Full 注入点接受决策（3 个纯虚接口 + SMContext 3 setter + WarpContext 扩展 + RegisterAnalyzer 增强 + exe_once 三段式注入） | 0020 |
 | 2026-07-14 | 添加 ThreadContext 持续瘦身 ADR（MemoryAccessor + InstructionPipeline accessor 方案） | 0019 |
 | 2026-07-12 | 添加 tcgen05 cta_group::2 throw 语义 ADR（formalize scattered throw across 11 handlers） | 0018 |
