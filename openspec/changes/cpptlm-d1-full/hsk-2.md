@@ -173,4 +173,4 @@ CppTLM 集成 libcpptlm_cudart.so 时**不应**触发重新构建 ANTLR4 runtime
 
 ---
 
-**最后更新**: 2026-07-15（ANTLR4 升级至 4.13.2 完成，commit `759836f0`，状态更新为可立即发送）
+**最后更新**: 2026-07-16（状态从可立即发送 → 待发出，ADR Accepted 后启用）

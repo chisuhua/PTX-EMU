@@ -321,7 +321,7 @@ if (__builtin_expect(g_cpptlm_bridge != nullptr, 0)) {
 ### 正面影响
 
 1. **CppTLM 协同完整**：所有 6 项决策明确，CppTLM 团队可同步 rebase
-2. **HSK-1/2/3 可立即发出**：D-PTX-1（ABI）+ D-PTX-4（ANTLR4）+ D-PTX-6（CMake 草案）已签署
+2. **HSK-1/2/3 状态已定义**：HSK 状态机（本文 §HSK 状态机）锁定触发时机与验证命令；ADR Accepted 后启用
 3. **多实例仿真安全**：D-PTX-2 SingletonGuard 阻止静默状态损坏
 4. **向后兼容**：所有 6 项决策保留 `nullptr` 默认值回退路径，零退化
 5. **性能可控**：D-PTX-6 vtable + LTO 在 ±15% 预算内
