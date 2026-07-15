@@ -89,6 +89,49 @@ size_t _sharedMem;
 std::unique_ptr<GPUContext> g_gpu_context;
 std::unique_ptr<PtxInterpreter> g_ptx_interpreter;
 
+// ============================================================================
+// CppTLM Bridge 全局指针 (D-PTX-1)
+// ============================================================================
+// 默认 nullptr，加载 libcpptlm_cudart.so 后赋值。
+// nullptr 时所有操作走原有同步路径（字节级相同）。
+// ============================================================================
+#include "cudart/cpptlm_bridge.h"
+CppTLMBridge* g_cpptlm_bridge = nullptr;
+
+// ============================================================================
+// 异步 kernel 注册表 (D-PTX-1 + Task #2)
+// ============================================================================
+// PendingKernel: 记录已提交但未完成的 kernel
+// g_pending_kernels: kernel_id → PendingKernel 映射
+// g_active_streams: 活跃 stream ID 集合（含默认 stream 0）
+// ============================================================================
+struct PendingKernel {
+    uint64_t kernel_id;
+    std::string kernel_name;
+    uint64_t stream_id;
+    Dim3 grid_dim;
+    Dim3 block_dim;
+    size_t shared_mem;
+    std::vector<std::vector<uint8_t>> args_copy;  // deep-copy 的参数
+    bool completed = false;
+};
+
+static std::atomic<uint64_t> next_kernel_id{1};
+static std::unordered_map<uint64_t, PendingKernel> g_pending_kernels;
+static std::unordered_set<uint64_t> g_active_streams{0};  // 默认包含 stream 0
+static std::mutex g_pending_kernels_mutex;
+
+static uint64_t generate_kernel_id() {
+    return next_kernel_id.fetch_add(1);
+}
+
+static size_t count_kernel_args(void** args) {
+    if (!args) return 0;
+    size_t count = 0;
+    while (args[count] != nullptr) ++count;
+    return count;
+}
+
 // 配置文件路径
 // PTX_EMU_CONFIG 环境变量可覆盖默认 config.ini（用于按场景切换 trace/日志级别）
 static std::string get_config_file_path() {
@@ -408,6 +451,82 @@ cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim, dim3 blockDim,
         sharedMem = MAX_SHARED_MEM;
     }
 
+    // ========================================================================
+    // Bridge 异步路径 (D-PTX-1 + Task #2)
+    // ========================================================================
+    // 当 g_cpptlm_bridge != nullptr 时，走异步提交路径：
+    // 1. 生成唯一 kernel_id
+    // 2. deep-copy kernel args（bridge 调用后 host 端 args 可能失效）
+    // 3. 调用 bridge->submit_kernel() 异步提交
+    // 4. 注册到 g_pending_kernels 等待 poll
+    // 5. 立即返回 cudaSuccess
+    // ========================================================================
+    if (g_cpptlm_bridge) {
+        uint64_t kernel_id = generate_kernel_id();
+        uint64_t stream_id = reinterpret_cast<uintptr_t>(stream);
+
+        // deep-copy kernel args
+        std::vector<std::vector<uint8_t>> args_copy;
+        if (args) {
+            size_t arg_count = count_kernel_args(args);
+            args_copy.reserve(arg_count);
+            for (size_t i = 0; i < arg_count; ++i) {
+                if (args[i]) {
+                    // 假设每个参数最大 8 字节（指针或基本类型）
+                    std::vector<uint8_t> arg_data(8);
+                    std::memcpy(arg_data.data(), args[i], 8);
+                    args_copy.push_back(std::move(arg_data));
+                }
+            }
+        }
+
+        // 准备 bridge 调用参数
+        std::vector<const void*> bridge_args;
+        bridge_args.reserve(args_copy.size());
+        for (const auto& arg : args_copy) {
+            bridge_args.push_back(arg.data());
+        }
+
+        // 调用 bridge 异步提交
+        const char* kernel_name = func2name[(uint64_t)func].c_str();
+        int submit_result = g_cpptlm_bridge->submit_kernel(
+            kernel_id, kernel_name,
+            gridDim.x, gridDim.y, gridDim.z,
+            blockDim.x, blockDim.y, blockDim.z,
+            bridge_args.data(), bridge_args.size(),
+            sharedMem, stream_id);
+
+        if (submit_result != 0) {
+            std::cerr << "Error: CppTLM bridge submit_kernel failed with code " 
+                      << submit_result << std::endl;
+            return (cudaError_t)submit_result;
+        }
+
+        // 注册到 pending_kernels
+        {
+            std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
+            PendingKernel pk;
+            pk.kernel_id = kernel_id;
+            pk.kernel_name = kernel_name;
+            pk.stream_id = stream_id;
+            pk.grid_dim = gridDim3;
+            pk.block_dim = blockDim3;
+            pk.shared_mem = sharedMem;
+            pk.args_copy = std::move(args_copy);
+            pk.completed = false;
+            g_pending_kernels[kernel_id] = std::move(pk);
+        }
+
+        // 确保 stream 在 active_streams 中
+        g_active_streams.insert(stream_id);
+
+        PTX_DEBUG_EMU("cudaLaunchKernel: async submit kernel_id=%lu to CppTLM bridge", kernel_id);
+        return cudaSuccess;
+    }
+
+    // ========================================================================
+    // 原有同步路径（bridge == nullptr 时字节级相同）
+    // ========================================================================
     // 调用 PtxInterpreter 的 launch 函数，传递 sharedMem 参数
     try {
         g_ptx_interpreter->launchPtxInterpreter(

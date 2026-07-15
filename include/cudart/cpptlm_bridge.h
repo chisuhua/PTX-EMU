@@ -26,14 +26,14 @@
 #include <cstddef>
 #include <cstdint>
 
-// 必要时启用（cuda_runtime.h 在某些 PTX-EMU 构建配置中可能不可用）
-// 如果 cudaStream_t 不可用，提供 fallback 定义
-#ifdef __CUDACC_RUNTIME_H__
+// cudaStream_t 类型定义
+// 优先使用 cuda_runtime.h 的定义，否则使用 cudart_intrinsics.h 兼容的 void*
+#if defined(__CUDACC_RUNTIME_H__)
 #include <cuda_runtime.h>
-#else
-// Fallback: cudaStream_t 是 forward-declared pointer 类型
-// 大小通常为 8 字节（Linux/macOS 64-bit），满足 static_assert
-typedef struct CUstream_st* cudaStream_t;
+#elif !defined(CUDA_STREAM_T_DEFINED)
+// 与 cudart_intrinsics.h 保持一致：cudaStream_t = void*
+typedef void* cudaStream_t;
+#define CUDA_STREAM_T_DEFINED
 #endif
 
 /// Bridge ABI 版本号 — 编译期断言双方实现版本一致

@@ -88,17 +88,17 @@ Refs:
 
 > 📌 **NOTE**: 关键约束 — `g_cpptlm_bridge == nullptr` 时行为**字节级**与原同步路径相同。
 
-- [ ] 3.1 添加 `std::atomic<uint64_t> next_kernel_id{1}` + `generate_kernel_id()`
-- [ ] 3.2 添加 `PendingKernel` 数据结构（含 `stream_id` 字段）
-- [ ] 3.3 添加 `g_pending_kernels` (`unordered_map<uint64_t, PendingKernel>`)
-- [ ] 3.4 添加 `g_active_streams` (`unordered_set<uint64_t>` 含默认 `{0}`)
-- [ ] 3.5 添加 `register_pending_kernel()` helper + `count_kernel_args()` helper
-- [ ] 3.6 修改 `cudaLaunchKernel` 函数体（行 332-386）：
+- [x] 3.1 添加 `std::atomic<uint64_t> next_kernel_id{1}` + `generate_kernel_id()`
+- [x] 3.2 添加 `PendingKernel` 数据结构（含 `stream_id` 字段）
+- [x] 3.3 添加 `g_pending_kernels` (`unordered_map<uint64_t, PendingKernel>`)
+- [x] 3.4 添加 `g_active_streams` (`unordered_set<uint64_t>` 含默认 `{0}`)
+- [x] 3.5 添加 `register_pending_kernel()` helper + `count_kernel_args()` helper
+- [x] 3.6 修改 `cudaLaunchKernel` 函数体（行 332-386）：
   - 添加 `if (g_cpptlm_bridge) { ... }` 异步分支
   - 12 个参数全部传递给 `bridge->submit_kernel()`
   - `register_pending_kernel()` 注册后立即 `return cudaSuccess`
   - bridge == nullptr 走原有同步路径
-- [ ] 3.7 编译验证 + 单测 `unit_cpptlm_bridge` PASS
+- [x] 3.7 编译验证 + 单测 `unit_cpptlm_bridge` PASS
 - [ ] 3.8 集成测试 `integration_async_launchkernel`（真实 kernel 路径）
 
 **Commit**:
