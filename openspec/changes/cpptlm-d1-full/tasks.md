@@ -153,15 +153,16 @@ Refs:
 
 > 📌 **NOTE**: 关键约束 — `is_global_space()` 必须遍历整个 qualifier 列表而非仅 `back()`（Lessons Learned #5）。
 
-- [ ] 5.1 修改 `src/ptxsim/instructions/memory.cpp` 的 `LdHandler::processOperation()`：
+- [x] 5.1 修改 `src/ptxsim/instructions/memory.cpp` 的 `LdHandler::processOperation()`：
   - 添加 `g_cpptlm_bridge && is_global_space(addr)` 分支
   - 调用 `bridge->global_access(device_addr, 0, /*LD=*/0)`
   - latency 非 UINT64_MAX：`SimpleMemory::read()` + 返回 latency
   - UINT64_MAX 或 nullptr：fallback `processOperation_internal`
-- [ ] 5.2 修改 `StHandler::processOperation()` 类似 LD（非零 val，type=1）
-- [ ] 5.3 验证 `is_global_space()` 实现遍历整个 qualifier 列表（**Lessons Learned #5 强制**）
-- [ ] 5.4 编译验证 + 集成测试 `integration_ld_st_bridge` PASS
-- [ ] 5.5 验证 `[unit;memory]` `[e2e;memory]` 测试 0 回归（data correctness 比对 baseline）
+- [x] 5.2 修改 `StHandler::processOperation()` 类似 LD（非零 val，type=1）
+- [x] 5.3 验证 `is_global_space()` 实现遍历整个 qualifier 列表（**Lessons Learned #5 强制**）
+  - ✅ `getAddressSpace()` 已使用 for 循环遍历整个 qualifiers 列表
+- [x] 5.4 编译验证 + 集成测试 `integration_ld_st_bridge` PASS
+- [x] 5.5 验证 `[unit;memory]` `[e2e;memory]` 测试 0 回归（data correctness 比对 baseline）
 
 **Commit**:
 ```bash
