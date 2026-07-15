@@ -1,9 +1,10 @@
 # HSK-2: ANTLR4 版本号 + CI yml 证据
 
-> **状态**: 模板准备完成（Commit hash 待 Phase 6 修复文档后填写）
+> **状态**: ✅ **可立即发送**（ANTLR4 已升级至 4.13.2，4 权威源已验证，commit `759836f0`）
 > **回传目标**: CppTLM Team (`#cpptlm-integration` Slack 频道 / PR comment)
 > **承诺时间**: D1 开工前（与 HSK-1 同窗口）
 > **形式**: ANTLR4 版本号 + CI yml 截图证据
+> **关联 commit**: `759836f0 build(antlr): upgrade ANTLR4 4.11.1 → 4.13.2`
 
 ---
 
@@ -137,19 +138,20 @@ CppTLM 集成 libcpptlm_cudart.so 时**不应**触发重新构建 ANTLR4 runtime
 
 ## 🔍 验证清单（发出前）
 
-- [ ] `ls antlr4/antlr4-cpp-runtime-*` 输出包含 4.13.2
-- [ ] AGENTS.md + README.md + copilot-instructions.md 全部声明 4.13.2
-- [ ] `.github/workflows/*.yml` 不包含 ANTLR4 install
-- [ ] 修复 commit 已 push 到 main
-- [ ] Phase 6 commit hash 已记录
+- [x] `ls antlr4/antlr4-cpp-runtime-*` 输出包含 4.13.2
+- [x] AGENTS.md + README.md + copilot-instructions.md 全部声明 4.13.2
+- [x] `.github/workflows/*.yml` 不包含 ANTLR4 install
+- [x] 修复 commit 已 push 到 main
+- [x] Phase 6 commit hash 已记录: `759836f0` (build(antlr): upgrade ANTLR4 4.11.1 → 4.13.2)
 
 ---
 
 ## 📋 跟踪
 
 发送后请更新本文件：
-- [ ] 发送日期:
-- [ ] 发送渠道:
+- [x] 发送日期: 2026-07-15
+- [x] 发送渠道: 用户手动复制（无 Slack/邮件）
+- [x] ANTLR4 修复 commit: `759836f0` (build(antlr): upgrade ANTLR4 4.11.1 → 4.13.2)
 - [ ] CppTLM 确认收到:
 - [ ] CppTLM CI 已加入 ANTLR4 static_assert:
 - [ ] CppTLM 无升级需求:
@@ -171,4 +173,4 @@ CppTLM 集成 libcpptlm_cudart.so 时**不应**触发重新构建 ANTLR4 runtime
 
 ---
 
-**最后更新**: 2026-07-15（模板准备完成，等待 Phase 6 commit hash）
+**最后更新**: 2026-07-15（ANTLR4 升级至 4.13.2 完成，commit `759836f0`，状态更新为可立即发送）
