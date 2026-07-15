@@ -26,7 +26,7 @@
 6. **2026-07-15** — 本 ADR 签署 §2 MemoryBridge 6 项自主决策（D-PTX-1~6）
 
 **前置 ADR**：
-- [ADR-0020](./0020-cpptlm-injection-points.md)：§3 D1-Full 三段式注入（姊妹 ADR，已 Accepted 2026-07-14）
+- [ADR-0020](./0020-cpptlm-injection-points.md)：§3 D1-Full 三段式注入（姊妹 ADR；本 ADR 签署前需先达到 Accepted 状态）
 - [ADR-0010](./0010-fake-cuda-runtime.md)：Fake CUDA Runtime 当前实现（将改造）
 - [ADR-0019](./0019-pc-management-extraction.md)：ThreadContext 瘦身（不修改 ThreadState）
 
@@ -127,7 +127,7 @@ public:
 
 **结论**：✅ **A/B 插入点定位到 `sm_context.cpp:222` 后；B/C 插入点定位到 `sm_context.cpp:253`/`:338` 旁（instr 分支）**
 
-> 注：本决策的代码改法完整描述见姊妹 change [`cpptlm-phase8b-injection-points/design.md §7.1`](../../openspec/changes/cpptlm-phase8b-injection-points/design.md)（已签署）。本 ADR 仅说明 D-PTX-3 的**行号定位**。
+> 注：本决策的代码改法完整描述见姊妹 change [`cpptlm-phase8b-injection-points/design.md §7.1`](../../openspec/changes/cpptlm-phase8b-injection-points/design.md)（姊妹 change 当前 Proposed，待 ADR-0020 Accepted 后冻结）。本 ADR 仅说明 D-PTX-3 的**行号定位**（行号 222/253/338 在 sm_context.cpp 经预检验证正确）。
 
 **详细方案**：
 
@@ -197,9 +197,11 @@ public:
 
 **详细方案**：
 
+`g_cpptlm_bridge == nullptr` 检查由 `if (g_cpptlm_bridge)` 在桥接入口完成，不会进入异步路径；故原"bridge 未初始化但调用异步路径"为死条件，统一重述为 `cpptlm_attach_bridge()` 状态判定。
+
 | 条件 | 返回值 | 错误名 | 日志级别 | 触发位置 |
 |------|--------|--------|---------|---------|
-| bridge 未初始化但调用了异步路径 | `cudaErrorNotYetInitialized` = 600 | "bridge not initialized" | ERROR | `cudaLaunchKernel` 异步分支 |
+| `cpptlm_attach_bridge()` 已调用但 bridge 对象内部状态未就绪 | `cudaErrorNotYetInitialized` = 600 | "bridge internal not ready" | ERROR | `cudaLaunchKernel` 桥接 `submit_kernel` 返回该错误码时 |
 | `submit_kernel` 参数无效 | `cudaErrorInvalidValue` = 11 | "invalid kernel params" | ERROR | `cudaLaunchKernel` 桥接失败处理 |
 | `global_access` 地址未映射 | `UINT64_MAX` (0xFFFFFFFFFFFFFFFF) | "address not mapped" | WARN | `LdHandler/StHandler` bridge 分支 |
 | `poll_kernel` 未知 `kernel_id` | `UINT64_MAX` | "unknown kernel_id" | WARN | `cudaStreamSynchronize` 轮询 |
@@ -339,6 +341,18 @@ if (__builtin_expect(g_cpptlm_bridge != nullptr, 0)) {
 | **R3**：D-PTX-4 ANTLR4 升级破坏 PTX 语法解析 | 低 | 高 | 半年 review 流程 + 升级前 fork branch + 全量回归 |
 | **R4**：D-PTX-5 错误码转换在 CppTLM 端返回值 0 时误判 | 中 | 中 | 编译期 `static_assert` 边界保护 + 5 类条件显式映射 |
 | **R5**：D-PTX-6 vtable 性能不达预期（>15% baseline） | 低 | 中 | 实测 5 类 microbenchmark；可降级到 PGO 而非 LTO |
+
+---
+
+### HSK 状态机（强制）
+
+| # | 状态 | 触发时机 | 验证命令 |
+|---|------|---------|---------|
+| **HSK-1** | `cpptlm_bridge.h` ABI commit hash | ADR-0020 Accepted + 本 ADR Accepted + Phase A commit 完成 | `git log --oneline -- include/cudart/cpptlm_bridge.h \| head -1` |
+| **HSK-2** | ANTLR4 版本号 + CI yml 证据 | Phase D (CMake 集成) 完成 + 4 权威源一致 | `grep -nE "antlr4\|ANTLR" AGENTS.md README.md .github/copilot-instructions.md` |
+| **HSK-3** | `libcpptlm_cudart.so` CMake 暴露方式 | Phase E (libcpptlm_cudart.so 集成) 完成 + CppTLM_COMMIT_HASH 锁定 | `grep -n "ExternalProject_Add\|cpptlm_FOUND" CMakeLists.txt` |
+
+**禁止**：在 ADR 状态为 Proposed 时发出任一 HSK（违反 OpenSpec lifecycle lessons-learned §6）。
 
 ---
 
