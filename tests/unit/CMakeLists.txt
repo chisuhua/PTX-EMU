@@ -577,11 +577,18 @@ add_catch_test(unit_cuda_stream_handle
 set_tests_properties(unit_cuda_stream_handle PROPERTIES LABELS "unit;cudart;stream")
 
 # B3: cudaStreamDestroy UB delete + g_active_streams cleanup
-# (Metis second-pass review B3 — SEGFAULT on non-heap pointer delete)
+# (Metis second-pass review B3 - SEGFAULT on non-heap pointer delete)
 add_catch_test(unit_stream_destroy
     cudart/test_stream_destroy.cu
 )
 set_tests_properties(unit_stream_destroy PROPERTIES LABELS "unit;cudart;stream;destroy")
+
+# B2: cudaStreamSynchronize / cudaDeviceSynchronize polling loop
+# (Metis second-pass review B2 - single-pass poll returned with kernels pending)
+add_catch_test(unit_stream_sync_loop
+    cudart/test_stream_sync_loop.cpp
+)
+set_tests_properties(unit_stream_sync_loop PROPERTIES LABELS "unit;cudart;stream;sync")
 
 # ============================================================================
 # half-precision utility tests (phase3-half-precision-bugfix)

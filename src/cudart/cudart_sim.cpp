@@ -808,32 +808,49 @@ cudaError_t cudaDeviceSynchronize() {
     PTX_DEBUG_EMU("Called cudaDeviceSynchronize()");
 
     // ========================================================================
-    // Bridge 路径 (D-PTX-1 + Task #3): 遍历所有 active_streams
+    // Bridge 路径 (D-PTX-1 + Task #3): poll ALL pending kernels until complete
+    // ========================================================================
+    // B2 (Metis second-pass review): previously single-pass poll returned
+    // cudaSuccess even when kernels were still pending. Per CUDA spec,
+    // cudaDeviceSynchronize blocks until ALL work on ALL streams completes.
+    // Fix: while-loop that polls until g_pending_kernels is empty, erasing
+    // completed kernels (remaining == 0) or unknown ones (UINT64_MAX).
     // ========================================================================
     if (g_cpptlm_bridge) {
-        std::vector<uint64_t> completed_ids;
-
-        {
-            std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
-            for (const auto& [id, pk] : g_pending_kernels) {
-                if (!pk.completed) {
-                    uint64_t remaining = g_cpptlm_bridge->poll_kernel(id);
-                    if (remaining == 0) {
-                        completed_ids.push_back(id);
+        while (true) {
+            std::vector<uint64_t> completed_ids;
+            {
+                std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
+                if (g_pending_kernels.empty()) {
+                    break;  // all kernels drained - sync complete
+                }
+                for (const auto& [id, pk] : g_pending_kernels) {
+                    if (!pk.completed) {
+                        uint64_t remaining = g_cpptlm_bridge->poll_kernel(id);
+                        if (remaining == 0 || remaining == UINT64_MAX) {
+                            completed_ids.push_back(id);
+                        }
                     }
                 }
             }
-        }
 
-        // 循环外统一 erase（迭代器安全）
-        if (!completed_ids.empty()) {
-            std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
-            for (uint64_t id : completed_ids) {
-                g_pending_kernels.erase(id);
+            if (!completed_ids.empty()) {
+                std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
+                for (uint64_t id : completed_ids) {
+                    g_pending_kernels.erase(id);
+                }
             }
-        }
 
-        PTX_DEBUG_EMU("cudaDeviceSynchronize: completed %zu kernels", completed_ids.size());
+            // Re-check: if no progress this iteration and kernels remain,
+            // yield to avoid busy-spinning, then loop again.
+            {
+                std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
+                if (g_pending_kernels.empty()) {
+                    break;
+                }
+            }
+            std::this_thread::yield();
+        }
         return cudaSuccess;
     }
 
@@ -943,34 +960,63 @@ cudaError_t cudaStreamSynchronize(cudaStream_t stream) {
     // ========================================================================
     // Bridge 路径 (D-PTX-1 + Task #3): 按 stream_id 过滤 + poll_kernel
     // ========================================================================
+    // B2 (Metis second-pass review): previously single-pass poll returned
+    // cudaSuccess even when kernels on this stream were still pending. Per
+    // CUDA spec, cudaStreamSynchronize blocks until ALL work on the stream
+    // completes. Fix: while-loop that polls until no pending kernels remain
+    // for stream_id, erasing completed (remaining == 0) or unknown
+    // (UINT64_MAX) kernel IDs.
     // 迭代器失效修复：先收集 completed_ids，循环外统一 erase
     // （避免 range-for 中 unordered_map::erase 触发 UB）
     // ========================================================================
     if (g_cpptlm_bridge) {
-        std::vector<uint64_t> completed_ids;
-
-        {
-            std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
-            for (const auto& [id, pk] : g_pending_kernels) {
-                if (pk.stream_id == stream_id && !pk.completed) {
-                    uint64_t remaining = g_cpptlm_bridge->poll_kernel(id);
-                    if (remaining == 0) {
-                        completed_ids.push_back(id);
+        while (true) {
+            std::vector<uint64_t> completed_ids;
+            {
+                std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
+                bool stream_has_pending = false;
+                for (const auto& [id, pk] : g_pending_kernels) {
+                    if (pk.stream_id == stream_id) {
+                        stream_has_pending = true;
+                        if (!pk.completed) {
+                            uint64_t remaining = g_cpptlm_bridge->poll_kernel(id);
+                            if (remaining == 0 || remaining == UINT64_MAX) {
+                                completed_ids.push_back(id);
+                            }
+                        }
                     }
                 }
+                if (!stream_has_pending) {
+                    break;  // no pending kernels for this stream - sync done
+                }
             }
+
+            if (!completed_ids.empty()) {
+                std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
+                for (uint64_t id : completed_ids) {
+                    g_pending_kernels.erase(id);
+                }
+            }
+
+            // Re-check after erase: if the stream still has pending kernels,
+            // yield and loop again to poll them.
+            {
+                std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
+                bool still_pending = false;
+                for (const auto& [id, pk] : g_pending_kernels) {
+                    if (pk.stream_id == stream_id) {
+                        still_pending = true;
+                        break;
+                    }
+                }
+                if (!still_pending) {
+                    break;
+                }
+            }
+            std::this_thread::yield();
         }
 
-        // 循环外统一 erase（迭代器安全）
-        if (!completed_ids.empty()) {
-            std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
-            for (uint64_t id : completed_ids) {
-                g_pending_kernels.erase(id);
-            }
-        }
-
-        PTX_DEBUG_EMU("cudaStreamSynchronize: stream_id=%lu, completed %zu kernels",
-                      stream_id, completed_ids.size());
+        PTX_DEBUG_EMU("cudaStreamSynchronize: stream_id=%lu completed", stream_id);
         return cudaSuccess;
     }
 
