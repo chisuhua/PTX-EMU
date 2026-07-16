@@ -137,3 +137,18 @@ The `PipelineId` (0-5) and `TcPrecision` (0-5) enums in PTX-EMU MUST exactly mat
 - **WHEN** PTX-EMU 修改 `include/ptx_ir/ptx_op.def` 添加新指令
 - **THEN** 必须通知 CppTLM 团队同步更新 PipelineTLM 映射表
 - **AND** 在 `tasks.md` 中记录变更条目
+
+---
+
+### Requirement: ADR-0020 status MUST be Accepted before implementation
+ADR-0020 (`docs/adr/0020-cpptlm-injection-points.md`) status MUST transition from Proposed → Accepted (2026-07-16) before the cpptlm-phase8b-injection-points change enters implementation. This gates the spec-driven lifecycle per OpenSpec Checkpoint G.
+
+#### Scenario: ADR README reflects Accepted status
+- **WHEN** `grep "0020" docs/adr/README.md` is run
+- **THEN** ADR-0020 SHALL be listed in the **Accepted** section (not Proposed)
+- **AND** the ADR document `docs/adr/0020-cpptlm-injection-points.md` SHALL have `Status: Accepted` (transitioned 2026-07-16)
+
+#### Scenario: Implementation blocked until Accepted
+- **WHEN** `openspec apply --change cpptlm-phase8b-injection-points` is invoked
+- **AND** ADR-0020 status is still Proposed
+- **THEN** the apply command SHALL refuse to proceed until ADR-0020 transitions to Accepted
