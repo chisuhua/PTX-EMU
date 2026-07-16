@@ -576,6 +576,13 @@ add_catch_test(unit_cuda_stream_handle
 )
 set_tests_properties(unit_cuda_stream_handle PROPERTIES LABELS "unit;cudart;stream")
 
+# B3: cudaStreamDestroy UB delete + g_active_streams cleanup
+# (Metis second-pass review B3 — SEGFAULT on non-heap pointer delete)
+add_catch_test(unit_stream_destroy
+    cudart/test_stream_destroy.cu
+)
+set_tests_properties(unit_stream_destroy PROPERTIES LABELS "unit;cudart;stream;destroy")
+
 # ============================================================================
 # half-precision utility tests (phase3-half-precision-bugfix)
 # Validates f16_to_f32 / f32_to_f16 denormal/subnormal path correctness

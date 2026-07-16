@@ -912,10 +912,26 @@ cudaError_t cudaStreamCreate(cudaStream_t *stream) {
 cudaError_t cudaStreamDestroy(cudaStream_t stream) {
     PTX_DEBUG_EMU("Called cudaStreamDestroy(%p)", stream);
 
-    if (stream) {
-        delete reinterpret_cast<int *>(stream);
+    // Per CUDA spec: cudaStreamDestroy must be preceded by
+    // cudaStreamSynchronize to ensure all work completes. We track
+    // streams via g_active_streams (see cudaStreamCreate insert).
+    //
+    // B3 (Metis second-pass review): previously called
+    //   `delete reinterpret_cast<int *>(stream)` — UB because stream is a
+    //   uint64_t encoded as void* (never heap-allocated; see cudaStreamCreate
+    //   at line ~905). The fake runtime tracks streams in g_active_streams,
+    //   so destruction = erase the ID. Reuses g_pending_kernels_mutex per
+    //   state-modification-audit (lessons-learned §2): create/destroy
+    //   mutate the same set and must be symmetric under the same lock.
+    if (stream) {  // non-default stream (default stream is nullptr/0)
+        uint64_t stream_id = reinterpret_cast<uintptr_t>(stream);
+        {
+            std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
+            g_active_streams.erase(stream_id);
+        }
+        PTX_DEBUG_EMU("cudaStreamDestroy: removed stream_id=%lu", stream_id);
     }
-
+    // Default stream (nullptr/0): no-op per CUDA spec.
     return cudaSuccess;
 }
 
