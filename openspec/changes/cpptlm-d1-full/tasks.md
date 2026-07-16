@@ -286,7 +286,7 @@ Refs:
 - [ ] 所有 `[unit;cudart]` `[integration;cudart]` `[e2e;cudart]` 测试 PASS
 - [ ] `./scripts/sanity.sh` 全绿
 - [ ] AGENTS.md + docs/adr/README.md 更新
-- [ ] 3 个 Handshake（HSK-1/2/3）已发出
+- [ ] 3 个 Handshake（HSK-1/2/3）**待发出**（ADR-0021 Accepted + 三个 commit 完成后按 HSK 状态机顺序发出）
 - [ ] OpenSpec `status --change cpptlm-d1-full` 输出 `applyRequires=[]` 且所有 artifact `status=done`
 
 ## 序列化关系

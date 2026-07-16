@@ -123,7 +123,7 @@ PTX-EMU 仓库已完成 CppTLMBridge ABI 真值源首发。
 
 ## 🔍 验证清单（发出前）
 
-- [x] Phase 1 commit 已 push 到 main
+- [x] Phase 1 commit 在本地 main（未 push 到 origin）
 - [x] Commit hash 与消息中占位符一致: `8dc000eca9f78e8ee017eafcb305eb4ca62ffd6d`
 - [x] CPPTLMBRIDGE_VERSION 仍是 1（未意外 bump）
 - [x] `static_assert(sizeof(cudaStream_t) <= sizeof(uint64_t))` 编译通过
@@ -139,11 +139,11 @@ PTX-EMU 仓库已完成 CppTLMBridge ABI 真值源首发。
 - [x] Commit hash 锁定: `8dc000eca9f78e8ee017eafcb305eb4ca62ffd6d`
 - [x] 发送日期: 2026-07-15
 - [x] 发送渠道: 用户手动复制（无 Slack/邮件）
-- [x] Commit `8dc000ec` 已 push 到 origin main
+- [x] Commit `8dc000ec` 在本地 main（未 push 到 origin）
 - [ ] CppTLM 确认收到:
 - [ ] CppTLM rebased:
 - [ ] CppTLM CI 验证 12 端点 static_assert:
 
 ---
 
-**最后更新**: 2026-07-15（HSK-1 commit `8dc000ec` 已 push 到 origin main，可立即发送）
+**最后更新**: 2026-07-16（HSK-1 commit `8dc000ec` 在本地 main，未 push 到 origin；⏳ **待发出**（ADR-0021 Accepted + Phase A commit 完成时启用））
