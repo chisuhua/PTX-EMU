@@ -1373,3 +1373,320 @@ grep -n "ExternalProject_Add" CMakeLists.txt
 ### 真实案例
 
 `cpptlm-d1-full` change Phase 2-7 实施（commits `f5ddb618` → `7724dc7f`），4 个测试文件 26 assertions 全 PASS。
+
+---
+
+## 33. ABI 头声明 ↔ .cpp 实现必须配对提交（2026-07-16）
+
+### 现象
+
+`cpptlm-d1-full` change Phase 1 commit（`9be56f8f`）将 `cpptlm_bridge.h` 落地为 161 行完整头文件，包含 5 个纯虚方法 ABI 声明 + `CPPTLMBRIDGE_VERSION=1` 宏 + `static_assert(sizeof(cudaStream_t))` + `g_cpptlm_bridge` `extern` 声明。**但 `cpptlm_attach_bridge(CppTLMBridge*)` 和 `cpptlm_detach_bridge()` 两个 ABI 入口函数只有声明、没有定义**。CppTLM 加载 `libcpptlm_cudart.so` 调用这两个符号时链接期 undefined reference，导致 F12b-LD 集成无法实际启用。
+
+**Metis 二审**（2026-07-16 第一轮）发现此问题为 `❌ NO-GO BLOCKER (B1)`。
+
+### 教训
+
+- **"header 已 commit" ≠ "ABI 可用"**：只声明函数签名而不在同 PR 提供实现 = 链路口号承诺。运行 `nm -D build/lib/libcudart.so | grep <symbol>` 是验证 ABI 真值源活性的**唯一**手段
+- **跨 so 可见性必须在 ABI 头文件同步规定**：仅 `extern` 不够，必须配 `__attribute__((visibility("default")))` 或 MSVC `__declspec(dllexport)` 宏，否则 `libcpptlm_cudart.so` 无法定位 PTX-EMU libcudart.so 中的符号
+- **ABI 头文件声明 + 源文件实现应视为原子单元**：拆为两 commit 是隐式危害，必须在同一 Phase 同时落地或显式声明 ABI 暂时不可用
+- **"first-cuda-call 懒初始化" 模式不替代"符号必须存在"**：D-PTX-1 选择静态指针 + 懒初始化仅指**赋值时机**，不指**符号存在性**
+
+### 检查工具
+
+```bash
+# 1. 列出 ABI 头声明的所有 extern "C" / 跨 so 入口
+grep -nE "extern.*PTXEMU_BRIDGE_API|extern \"C\"" include/cudart/cpptlm_bridge.h
+
+# 2. 验证每个入口在 build 的 .so 中已导出符号（活函数，非死声明）
+nm -D build/lib/libcudart.so | grep cpptlm_attach_bridge
+nm -D build/lib/libcudart.so | grep cpptlm_detach_bridge
+# 期望：T cpptlm_attach_bridge + T cpptlm_detach_bridge（非 "U" 未定义）
+
+# 3. ABI 头声明与 .cpp 实现配对验证（手工或 grep）
+for sym in $(grep -E "^extern.*PTXEMU_BRIDGE_API|extern \"C\"" include/cudart/cpptlm_bridge.h | grep -oE "[a-z_]+ ?\(?[a-zA-Z_*]*\)?$" | sort -u); do
+  echo "Checking symbol: $sym"
+  grep -rn "$sym" src/ || echo "  ⚠️ WARNING: declaration without definition"
+done
+
+# 4. 编译期测试：尝试 link 一个最小 libcpptlm_cudart.so consumer
+g++ -shared -fPIC -xc++ - -olibtest_consumer.so <<< '
+extern "C" void cpptlm_attach_bridge(void*);
+int main(){ cpptlm_attach_bridge(nullptr); return 0; }
+'
+# 期望：链接 PASS（无 undefined reference）
+```
+
+### 真实案例
+
+`fix(cpptlm-d1-full/cudart_sim): implement cpptlm_attach_bridge + cpptlm_detach_bridge (B1)` commit `de016f79` — Metis 二审找出 B1 后修复。新增 `tests/unit/cpptlm/test_cpptlm_attach_bridge.cpp`（3 个测试）TDD：先 RED（编译期 undefined reference），后 GREEN（链接期符号导出）。`nm -D` 验证 `00000000000d8390 T cpptlm_attach_bridge` + `00000000000d8560 T cpptlm_detach_bridge`。
+
+---
+
+## 34. uintptr_t reinterpret_cast 编码陷阱：stream handle 不能 `delete`（2026-07-16）
+
+### 现象
+
+`cpptlm-d1-full` change commit `44b54cf2` 实现 `cudaStreamCreate/Destroy`：
+
+```cpp
+cudaError_t cudaStreamCreate(cudaStream_t *stream) {
+    uint64_t stream_id = generate_kernel_id();
+    g_active_streams.insert(stream_id);
+    *stream = reinterpret_cast<cudaStream_t>(static_cast<uintptr_t>(stream_id));  // 把整数编进指针类型
+}
+
+cudaError_t cudaStreamDestroy(cudaStream_t stream) {
+    if (stream) {
+        delete reinterpret_cast<int *>(stream);  // ⚠️ UB：stream 是 uint64_t，不是堆指针！
+    }
+    return cudaSuccess;
+}
+```
+
+`unit_cuda_stream_handle` 测试触发了 SIGSEGV。**根因**：把整数 reinterpret_cast 为指针后，`delete` 操作假定存在堆分配 — 这是 C++ UB。**同时**该函数缺少 `g_active_streams.erase(stream_id)`，导致 `cudaStreamCreate` + `cudaStreamDestroy` 反复调用时 `g_active_streams` 单调增长（泄漏）。
+
+### 教训
+
+- **整数 ↔ 指针 reinterpret 是 encoding，不是 allocation**：`*out = reinterpret_cast<T*>(static_cast<uintptr_t>(id))` 仅在**调用方**字段能容纳 `T*` 时合法，**不**代表 `out` 拥有堆分配
+- **delete-from-pointer 假设永远不成立 for encoded handles**：任何形如 `delete reinterpret_cast<int*>(uintptr_value);` 都是 UB，应该 grep 禁止
+- **`Create` + `Destroy` 必须对称清理所有记账资源**：`g_active_streams.insert(...)` 必须在 `Destroy` 中 `erase`；审计对称性是 `state-modification-audit` skill 的核心
+- **测试覆盖 SIGSEGV 路径**：单元测试必须包含反向调用（创建后销毁）才能捕获"无清理"的隐式内存泄漏
+- **AGENTS.md cudart 章节应明文禁止"stream handle 即指针"反模式**
+
+### 检查工具
+
+```bash
+# 1. grep 所有 delete-from-pointer 反模式（必须为空，否则命中 UB）
+grep -rnE "delete reinterpret_cast<.*>\(" src/cudart/
+
+# 2. 列出所有 Create/Destroy 对的资源清理对称性
+for create_fn in $(grep -lE "cuda.*Create\(" src/cudart/cudart_sim.cpp); do
+  echo "=== $create_fn ==="
+  create_body=$(sed -n '/cuda.*Create(/,/^}/p' "$create_fn")
+  # 提取 insert/insert/add/add/increment
+  echo "$create_body" | grep -E "\.(insert|push|emplace|add|increment)" || echo "  (no clear insert)"
+done
+
+# 3. 验证 g_active_streams 在 Create 和 Destroy 中严格对称
+grep -n "g_active_streams" src/cudart/cudart_sim.cpp
+# 期望：insert + erase 数量相同
+
+# 4. 运行单元测试 under AddressSanitizer 捕获 UB
+cmake -S . -B build_asan -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="-fsanitize=address -fno-omit-frame-pointer"
+cmake --build build_asan --target cudart
+cd build_asan && ctest -L "unit;cudart" --output-on-failure
+```
+
+### 真实案例
+
+`fix(cpptlm-d1-full/cudart_sim): cudaStreamDestroy — remove UB delete + add g_active_streams cleanup (B3)` commit `6cbdcc4c` — 修复后 `unit_cuda_stream_handle` PASS。修复后 `cudaStreamDestroy` 仅做 `g_active_streams.erase(stream_id)`，复用 `g_pending_kernels_mutex` 的 mutex。
+
+---
+
+## 35. 同步语义 ≠ 单次 poll：`cudaStreamSynchronize` 必须阻塞到完成（2026-07-16）
+
+### 现象
+
+`cudaStreamSynchronize` 第一个 bridge-aware 实现（commit `44b54cf2`）：
+
+```cpp
+if (g_cpptlm_bridge) {
+    std::vector<uint64_t> completed_ids;
+    for (const auto& [id, pk] : g_pending_kernels) {
+        if (pk.stream_id == stream_id && !pk.completed) {
+            uint64_t remaining = g_cpptlm_bridge->poll_kernel(id);
+            if (remaining == 0) completed_ids.push_back(id);
+        }
+    }
+    // erase...
+    return cudaSuccess;  // ⚠️ 即使有 remaining > 0 的 kernel 也立即返回！
+}
+```
+
+**CUDA 语义约束**：`cudaStreamSynchronize` 必须阻塞直到 stream 上**所有 work**完成。单次 poll 仅标记"现在完成"的 kernel，对 `remaining > 0` 的正在执行 kernel 直接放弃。
+
+### 教训
+
+- **"scan + return" 实现是"主动监测"语义，与 CUDA sync 不兼容**：实现同步函数时必须严格查规范 — 是要求"立即返回当前状态"还是"阻塞到完成"
+- **CUDA 同步原语是一个 LOOP，不是 snapshot**：任何 `cudaStreamSynchronize` / `cudaDeviceSynchronize` / `cudaEventSynchronize` 必须含 `while` 或 `wait`
+- **poll kernel 返回值 3 类语义必须全分支**：`remaining == 0` = 完成；`remaining > 0` = 等待中（继续 poll）；`UINT64_MAX` = 未知 kernel_id（spec 决策 = erase）
+- **空挂起检测是 while 循环的退出条件**：内层 `g_pending_kernels.empty() || stream_has_pending == false` 都必须 explicit 检查，避免死循环
+- **`std::this_thread::yield()` 防忙转**：while 循环内对 host 单线程 PTX-EMU 必须主动让出，否则 CPU 100%
+
+### 检查工具
+
+```bash
+# 1. 列出所有 cudaSync 函数实现，必须包含 while(true) 或 wait
+grep -nE "cudaStreamSynchronize|cudaDeviceSynchronize|cudaEventSynchronize" src/cudart/cudart_sim.cpp
+# 对每个函数 grep 内层循环：
+for fn in $(grep -E "cuda.*Synchronize\(" src/cudart/cudart_sim.cpp | grep -oE "cuda[A-Za-z]+"); do
+  echo "=== $fn ==="
+  grep -A30 "^cudaError_t $fn" src/cudart/cudart_sim.cpp | grep -E "while|for.*pending"
+done
+# 期望：每个 sync 函数体内有 while 或 for 遍历 pending kernels
+
+# 2. 验证 UINT64_MAX sentinel 处理
+grep -B2 -A2 "UINT64_MAX" src/cudart/cudart_sim.cpp
+# 期望：poll_kernel 返回后分支处理 UINT64_MAX 与 0
+
+# 3. 测试用 completion fence 验证不返回过早
+# 模板：在 poll 返回值固定 large number 时，sync 必须阻塞直到 bridge 更新
+```
+
+### 真实案例
+
+`fix(cpptlm-d1-full/cudart_sim): cudaStreamSynchronize/DeviceSynchronize real polling loop (B2)` commit `5dcccf40` — 单次 poll 替换为 `while (true) { ... }`。新增 `tests/unit/cudart/test_stream_sync_loop.cpp` 4 个契约测试（空 map 退出、不再 poll 完成的 kernel、`remaining > 0` 时继续循环）。
+
+---
+
+## 36. HSK 文档状态必须与 ADR 生命周期同步（2026-07-16）
+
+### 现象
+
+`cpptlm-d1-full` change 在 OpenSpec artifacts `hsk-1.md` / `hsk-2.md` / `hsk-3.md` 中：
+
+- hsk-1.md page top: `> **状态**: ✅ **已发出**（commit hash 锁定，待 CppTLM 团队 rebase 确认）`
+- hsk-1.md footer (line 148-149): `**HSK-1 commit `8dc000ec` 已 push 到 origin main，可立即发送**`
+- hsk-2.md: `> **状态**: ✅ **可立即发送**` + footer 同样声称已 push
+- hsk-3.md: 状态 `✅ 可立即发送` 但 `CPPTLM_COMMIT_HASH` 仍 `TBD`
+- tasks.md 验收标准: `3 个 Handshake（HSK-1/2/3）已发出`
+
+**真实状态**：ADR-0021 当前是 `Proposed`；OpenSpec 14/68 任务未完成；`8dc000ec` 是 history commit hash 而非 current commit hash；`origin main` 没有这些 commit（仅本地 12 commits ahead）。
+
+3 份 OpenSpec artifact 互相 + 与 ADR 状态 + 与 git 现状矛盾，违反 **Checkpoint J（artifacts 内部一致性）**。
+
+### 教训
+
+- **HSK 状态必须与 ADR lifecycle 绑死**：ADR Proposed 期间禁止任何 artifact 声称"已发出"；ADR Active 后才逐步发送 HSK-1/2/3
+- **OpenSpec artifact 顶部 + 底部状态必须一致**：page-top 状态 + footer claim + 验收标准三处任一不一致 = artifact 不可信
+- **fictional commit hash 必须替换为 `TBD (实际发出时锁定)`**：未真实发生的 commit 不允许写具体 hash
+- **Checklist J 是 artifacts 完整性的最低线**：4+ 个 OpenSpec artifact 任一项不一致 → 整个 change 必须返工
+- **HSK 状态机应在 ADR 主文中明文定义**：ADR `§HSK 状态机` 强制表列出 HSK-1/2/3 触发时机 + 验证命令 + 禁止在 ADR 状态 < Active 时发出的硬约束
+
+### 检查工具
+
+```bash
+# 1. 检查 OpenSpec artifact 顶部 vs 底部状态一致性
+for f in openspec/changes/<change>/*.md; do
+  top=$(grep -E "^> \*\*状态" "$f" | head -1)
+  bottom=$(grep -E "已发出|已 push|可立即发送" "$f" | tail -3)
+  if [ -n "$bottom" ]; then
+    echo "=== $f ==="
+    echo "top:    $top"
+    echo "bottom: $bottom"
+  fi
+done
+# 期望：无输出（所有 artifact 状态统一）
+
+# 2. 验证 ADR 当前 lifecycle vs artifacts 声称
+grep -n "状态" docs/adr/<adr>.md | head -1
+grep -nE "已发出|可立即发送" openspec/changes/<change>/hsk-*.md
+# 期望：ADR Proposed 时无任何"已发出"声称
+
+# 3. 验证所有 fictional commit hash 都被 TBD 替换
+for f in openspec/changes/<change>/*.md; do
+  git_hash=$(grep -oE "[a-f0-9]{40}" "$f" | head -1)
+  if [ -n "$git_hash" ]; then
+    if ! git cat-file -t "$git_hash" 2>/dev/null | grep -q commit; then
+      echo "⚠️ $f 引用 fictional commit $git_hash"
+    fi
+  fi
+done
+# 期望：无 warning
+```
+
+### 真实案例
+
+`fix(cpptlm-d1-full): unify HSK status in hsk-1.md footer + tasks.md 验收 (B4)` commit `c38c31e4` + 同期 `77302f0b`（hsk-2 footer 一致化）。统一为：
+
+> **状态**: ⏳ **待发出（ADR Accepted 后启用）**
+
+并新增 `§HSK 状态机` 在 ADR-0021，列出 HSK-1/2/3 触发时机与验证命令。
+
+---
+
+## 37. 文档 vs 实现发散：git log -- <file> 是 source of truth（2026-07-16）
+
+### 现象
+
+`cpptlm-d1-full` change `design.md §7.1`（lines 307-317）与 `spec.md` 描述 CMake 集成：
+
+> `find_package(cpptlm) + add_subdirectory(src/cudart/cpptlm_bridge) + target_link_libraries(ptxemu_runtime PRIVATE cpptlm::core)`
+
+但实际 `CMakeLists.txt:122-152`（commit `d0803a09`）使用：
+
+```
+ExternalProject_Add(cpptlm ...)
+...
+target_link_libraries(cudart PRIVATE <cpptlm_targets>)
+```
+
+实施 commit `d0803a09` 后文档未同步，5+ 天过去没人发现 — 因为新开发者读 `design.md` 会照搬 find_package 写法而编译失败。
+
+### 教训
+
+- **git log -- <file> 是 source of truth**：每次修改 CMakeLists.txt / 源文件时，必须同步 grep 引用该文件的 ADR / design / spec
+- **CMake 是 OpenSpec change 的"无声发散点"**：CMakeLists.txt 改动往往不被 OpenSpec "Capability" 列表捕获，但 ABI 行为完全由它定义
+- **Checklist J 强调 design ↔ spec 范围路径必须一致**：包括"路径示例"（`$d/design.md` vs `$d.design.md`）和"操作语义"（"添加 README" vs "git hash 不变"）
+- **design.md 中的"完整实现示例"必须 bit-equal 实际 commit**：`target_link_libraries(... cpptlm::core)` 这种具体 target 名错误是**最常见的 ABI 协作失败模式**
+- **设置 doc-drift 守护**：考虑 `pre-commit` hook 验证 `design.md` / `spec.md` 中任何 "Example CMake invocation" 必须与 `CMakeLists.txt` 在 grep 下正则匹配
+
+### 检查工具
+
+```bash
+# 1. 列出所有引用 CMake target / function 的 OpenSpec artifact，验证 vs 实际 CMakeLists.txt
+grep -rnE "find_package\(|add_subdirectory\(|ExternalProject_Add|target_link_libraries" openspec/changes/ | grep -E "\.md:"
+# 与 CMakeLists.txt grep 对比
+grep -nE "find_package\(|add_subdirectory\(|ExternalProject_Add" CMakeLists.txt
+# 不一致 → Checkpoint J 失败
+
+# 2. 当 commit 改 CMakeLists.txt 时必同步改 OpenSpec artifact（pre-commit hook）
+# .git/hooks/pre-commit 草稿：
+# ! git diff --cached --name-only | grep -q CMakeLists.txt && {
+#     git diff --cached --name-only | grep -q "openspec/changes/" || {
+#       echo "ERROR: CMakeLists.txt modified but no OpenSpec artifact updated"
+#       exit 1
+#     }
+#   }
+
+# 3. 验证 ADR "实施时间表" 中的 commit hash 必须真实存在 git
+for h in $(grep -oE "[a-f0-9]{8,12}" docs/adr/<adr>.md); do
+  git cat-file -t "$h" >/dev/null 2>&1 || echo "⚠️ fictional: $h"
+done
+```
+
+### 真实案例
+
+`fix(cpptlm-d1-full): align CMake docs with actual ExternalProject_Add approach (B5)` commit `0456418e` — 更新 `design.md §7.1` 和 `spec.md` 场景，与 commit `d0803a09` 的实际 `CMakeLists.txt` 实现一致。修复后 `grep "ExternalProject_Add" CMakeLists.txt` × 3、`design.md` × 6、`spec.md` × 5 完全匹配。
+
+---
+
+## 元教训：本次 cpptlm-d1-full 变更的 5 条 anti-pattern 综合教训
+
+### 1. "Implementation Done" 不等于 "Change Done"
+- 55/68 任务 `[x]` 已勾选 + 11 commits 已 push 不代表 change 完成
+- **强制钩子**：每次 OpenSpec change 实施前跑 Metis - Plan Consultant 子代理（`ptx-lessons-learned §7`）
+
+### 2. "两轮 Metis review 才看到 code-level blocker"
+- 第一轮发现 25+ doc-level 错误（A1/A2/A4/S1/HSK-I 等）
+- 第二轮才发现 code-level 阻塞（B1-B5）
+- **强制钩子**：Metis 二审时**必须**通过 `nm -D build/lib/lib<lib>.so | grep <symbol>` 验证 ABI 真值源活性；必须读 `*.cpp` 而非仅 ADR
+
+### 3. "OpenSpec artifact 状态机脱钩"
+- tasks.md `[x]` 是"完成"语义，OpenSpec status 是另一字段
+- **强制钩子**：每次 `[x]` 操作跑 `openspec validate --change <name>` 反查
+
+### 4. "Documentation 延迟更新" 是技术债务
+- design.md vs 实际 CMakeLists.txt 5+ 天发散没人发现
+- **强制钩子**：每次 commit `CMakeLists.txt` 必同步 `openspec/changes/<current>/design.md`（可 pre-commit 守护）
+
+### 5. "Pre-impl review" 应以"concrete symbols" 为单位
+- 文件存在 ≠ 符号可链
+- **强制钩子**：每次修改 ABI 头文件 = (header 改 + source 改 + `nm -D` 验证 + symbol 列表进 lessons-learned) 4 件套
+
+---
+
+**本批 §33-37 更新日期**: 2026-07-16  
+**关联 commit hash**: de016f79 / 6cbdcc4c / 5dcccf40 / c38c31e4 / 0456418e / 88d5962e  
+**ADR postmortem ref**: docs/adr/0021-cpptlm-d1-full-integration.md §2026-07-16 Postmortem  
+**OpenSpec change ref**: openspec/changes/cpptlm-d1-full/
