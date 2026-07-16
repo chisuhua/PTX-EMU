@@ -305,18 +305,36 @@ uint64_t LdHandler::processOperation(StatementContext& stmt,
 ### 7.1 CMakeLists.txt 修改
 
 ```cmake
-# CMakeLists.txt 末尾追加
+# CMakeLists.txt 末尾追加（实际实现，per commit d0803a09）
 
-option(BUILD_LIB_CPPTLM_CUDART "Build libcpptlm_cudart.so bridge" OFF)
-find_package(cpptlm QUIET)
+option(BUILD_LIB_CPPTLM_CUDART "Build libcpptlm_cudart.so bridge (requires CppTLM repo)" OFF)
 
-if(cpptlm_FOUND AND BUILD_LIB_CPPTLM_CUDART)
-    add_subdirectory(src/cudart/cpptlm_bridge)
-    target_link_libraries(ptxemu_runtime PRIVATE cpptlm::core)
+if(BUILD_LIB_CPPTLM_CUDART)
+    include(ExternalProject)
+
+    # CppTLM commit hash (HSK-3: 待 CppTLM 团队确认后替换)
+    set(CPPTLM_COMMIT_HASH "main" CACHE STRING "CppTLM git tag/commit to pin")
+
+    ExternalProject_Add(cpptlm
+        GIT_REPOSITORY  https://github.com/chisuhua/CppTLM.git
+        GIT_TAG         ${CPPTLM_COMMIT_HASH}
+        CMAKE_ARGS      -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/cpptlm-install
+                        -DBUILD_TESTING=OFF
+                        -DCPPTLM_BUILD_CUDART_BRIDGE=ON
+        UPDATE_DISCONNECTED TRUE  # 不自动 fetch，避免 ABI 漂移
+        BUILD_ALWAYS FALSE
+    )
+
+    # 链接 CppTLM 到 cudart 目标（不是 ptxemu_runtime）
+    add_dependencies(cudart cpptlm)
+    target_link_libraries(cudart PRIVATE ${CMAKE_BINARY_DIR}/cpptlm-install/lib/libcpptlm_cudart.so)
+    target_include_directories(cudart PRIVATE ${CMAKE_BINARY_DIR}/cpptlm-install/include)
 endif()
 ```
 
-**HSK-3 草案**：默认 `ExternalProject_Add`（任务书 §2.1 Task #5 建议），可配置切换 `find_library` / `pkg-config`。
+**B5 (Metis second-pass review)**：本节原先描述 `find_package(cpptlm) + add_subdirectory(src/cudart/cpptlm_bridge) + target_link_libraries(ptxemu_runtime PRIVATE cpptlm::core)`，但实际 `CMakeLists.txt`（per commit `d0803a09`）使用 `ExternalProject_Add` 从 CppTLM 仓库拉取 + 构建到 `${CMAKE_BINARY_DIR}/cpptlm-install/`，然后直接链接 `libcpptlm_cudart.so` 路径到 `cudart` 目标。本节已更新以匹配实现。
+
+**HSK-3 草案**：默认 `ExternalProject_Add`（任务书 §2.1 Task #5 建议），可配置切换 `find_library` / `pkg-config`（未来扩展，当前未实现）。
 
 ### 7.2 SingletonGuard（D-PTX-2）
 

@@ -154,12 +154,16 @@ The `CMakeLists.txt` MUST add an `option(BUILD_LIB_CPPTLM_CUDART "Build libcpptl
 - **AND** `g_cpptlm_bridge == nullptr`（默认）
 - **AND** 现有 600+ PTX-EMU 测试 PASS，与 baseline 字节级一致
 
-#### Scenario: ON + CppTLM found → 链接 libcpptlm_cudart.so
-- **WHEN** `cmake -DBUILD_LIB_CPPTLM_CUDART=ON ..` + `find_package(cpptlm)` 成功
-- **THEN** `src/cudart/cpptlm_bridge` 子目录被 add
-- **AND** `libcpptlm_cudart.so` 被构建到 `build/lib/`
-- **AND** `ptxemu_runtime` 链接到 `cpptlm::core`
+#### Scenario: ON + CppTLM ExternalProject_Add → 链接 libcpptlm_cudart.so
+- **WHEN** `cmake -DBUILD_LIB_CPPTLM_CUDART=ON ..`
+- **AND** `ExternalProject_Add(cpptlm GIT_REPOSITORY .../CppTLM.git GIT_TAG ${CPPTLM_COMMIT_HASH} ...)` 拉取 + 构建 CppTLM 到 `${CMAKE_BINARY_DIR}/cpptlm-install/`
+- **THEN** `libcpptlm_cudart.so` 被构建到 `build/cpptlm-install/lib/`
+- **AND** `cudart` 目标通过 `add_dependencies(cudart cpptlm)` 依赖 CppTLM
+- **AND** `cudart` 链接到 `${CMAKE_BINARY_DIR}/cpptlm-install/lib/libcpptlm_cudart.so`（直接路径，非 `cpptlm::core` imported target）
+- **AND** `cudart` include 目录添加 `${CMAKE_BINARY_DIR}/cpptlm-install/include`
 - **AND** `CPPTLMBRIDGE_VERSION` 编译期断言在双方都通过
+
+> **B5 (Metis second-pass review)**：本 Scenario 原描述 `find_package(cpptlm) + add_subdirectory + target_link_libraries(ptxemu_runtime PRIVATE cpptlm::core)`，但实际 `CMakeLists.txt`（commit `d0803a09`）使用 `ExternalProject_Add`。已更新以匹配实现。`find_package` / `add_subdirectory` / `cpptlm::core` imported target 均未实现，是未来可选扩展（HSK-3 草案 §find_library / §pkg-config 备选路径）。
 
 #### Scenario: HSK-3 CMake 暴露方式 — 草案生效
 - **WHEN** 实施 §Phase 5 (D5 EOD 前)
