@@ -99,6 +99,32 @@ std::unique_ptr<PtxInterpreter> g_ptx_interpreter;
 CppTLMBridge* g_cpptlm_bridge = nullptr;
 
 // ============================================================================
+// cpptlm_attach_bridge / cpptlm_detach_bridge ABI entry points (B1)
+// ============================================================================
+// Per ADR-0021 (D-PTX-1): CppTLM's libcpptlm_cudart.so calls these on
+// load/unload to install/uninstall the bridge pointer. Both are idempotent:
+//   - attach: overwrite is allowed (last-call-wins); nullptr bridges call to
+//     detach semantics per cpptlm_bridge.h:160 documentation contract.
+//   - detach: safe to call when already nullptr (no-op).
+//
+// Metis second-pass review B1: declarations in cpptlm_bridge.h:161,168 were
+// symbols without definitions, causing link errors. Implementations live
+// here (same TU as g_cpptlm_bridge per D-PTX-1) to ensure the global pointer
+// is mutated only through these ABI entry points.
+// ============================================================================
+extern "C" PTXEMU_BRIDGE_API void cpptlm_attach_bridge(CppTLMBridge* bridge) {
+    PTX_DEBUG_EMU("cpptlm_attach_bridge: bridge=%p (was %p)",
+                  (void*)bridge, (void*)g_cpptlm_bridge);
+    // nullptr bridge ≡ detach (per cpptlm_bridge.h:160 contract).
+    g_cpptlm_bridge = bridge;
+}
+
+extern "C" PTXEMU_BRIDGE_API void cpptlm_detach_bridge() {
+    PTX_DEBUG_EMU("cpptlm_detach_bridge (was %p)", (void*)g_cpptlm_bridge);
+    g_cpptlm_bridge = nullptr;
+}
+
+// ============================================================================
 // 异步 kernel 注册表 (D-PTX-1 + Task #2)
 // ============================================================================
 // PendingKernel: 记录已提交但未完成的 kernel

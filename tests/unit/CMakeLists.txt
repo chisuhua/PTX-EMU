@@ -677,3 +677,10 @@ add_catch_test(unit_cpptlm_bridge
     cpptlm/test_cpptlm_bridge.cpp
 )
 set_tests_properties(unit_cpptlm_bridge PROPERTIES LABELS "unit;cpptlm;bridge")
+
+# B1: cpptlm_attach_bridge / cpptlm_detach_bridge ABI entry points
+# (Metis second-pass review B1 — symbols declared without definition)
+add_catch_test(unit_cpptlm_attach_bridge
+    cpptlm/test_cpptlm_attach_bridge.cpp
+)
+set_tests_properties(unit_cpptlm_attach_bridge PROPERTIES LABELS "unit;cpptlm;bridge;attach")
