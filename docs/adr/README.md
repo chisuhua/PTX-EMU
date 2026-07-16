@@ -53,8 +53,11 @@ docs/adr/
 | [0010](./0010-fake-cuda-runtime.md) | Fake CUDA Runtime 拦截机制 | Active | 2026-05-05 | Phase 0 |
 | [0012](./0012-per-thread-pc.md) | Per-Thread PC 设计（Volta+ SIMT 模型） | Active | 2026-05-05 | Phase 3 |
 | [0015](./0015-cvt-strategy-pattern.md) | CVT 指令策略模式重构 (Composition over Inheritance) | Active | 2026-06-23 | T2-6 (Phase 3) |
+| [0016](./0016-blackwell-only-tcgen05.md) | Skip pre-Blackwell WMMA, only implement Blackwell tcgen05 | Accepted | 2026-07-04 | `openspec/changes/implement-wmma-tensor-core/` |
+| [0018](./0018-tcgen05-cta-group-restriction.md) | tcgen05 cta_group::2 throws UnsupportedInstructionException | Accepted | 2026-07-12 | `openspec/changes/fix-tcgen05-commit-wait-group/` |
 | [0019](./0019-pc-management-extraction.md) | ThreadContext 持续瘦身：MemoryAccessor + InstructionPipeline accessor 方案 | Active | 2026-07-14 | `openspec/changes/god-class-refactor-thread-context-phase3/` |
-| [0020](./0020-cpptlm-injection-points.md) | 接受 CppTLM Phase 8.B D1-Full 注入（IScoreboard / IPipelineLatencyProvider / ITensorCoreTiming） | Accepted | 2026-07-14 | `openspec/changes/cpptlm-phase8b-injection-points/` |
+| [0020](./0020-cpptlm-injection-points.md) | 接受 CppTLM Phase 8.B D1-Full 注入（IScoreboard / IPipelineLatencyProvider / ITensorCoreTiming） | Accepted | 2026-07-16 | `openspec/changes/cpptlm-phase8b-injection-points/` |
+| [0021](./0021-cpptlm-d1-full-integration.md) | CppTLM D1-Full MemoryBridge 集成（D-PTX-1~6 + HSK-1/2/3） | Active | 2026-07-16 | `openspec/changes/cpptlm-d1-full/` |
 
 ### Proposed (规划中)
 
@@ -62,10 +65,6 @@ docs/adr/
 |---|------|------|------|---------|
 | [0011](./0011-pipeline-architecture.md) | PTX→PTXIR 多阶段 Pipeline 架构 | Proposed | 2026-05-05 | Phase 12.1 |
 | [0014](./0014-independent-thread-scheduling.md) | Independent Thread Scheduling (ITS) 支持 | Proposed | 2026-05-25 | BUG-SIMT-001 |
-| [0016](./0016-blackwell-only-tcgen05.md) | Skip pre-Blackwell WMMA, only implement Blackwell tcgen05 (with TMA/cluster prerequisites) | Accepted | 2026-07-04 | `openspec/changes/implement-wmma-tensor-core/` |
-| [0018](./0018-tcgen05-cta-group-restriction.md) | tcgen05 cta_group::2 throws UnsupportedInstructionException (cluster abstraction deferred) | Accepted | 2026-07-12 | `openspec/changes/fix-tcgen05-commit-wait-group/` |
-| [0021](./0021-cpptlm-d1-full-integration.md) | CppTLM D1-Full MemoryBridge 集成（D-PTX-1~6 + HSK-1/2/3） | Proposed | 2026-07-15 | `openspec/changes/cpptlm-d1-full/` |
-| [0019](./0019-pc-management-extraction.md) | ThreadContext 持续瘦身：MemoryAccessor + InstructionPipeline accessor 方案 | Active | 2026-07-14 | `openspec/changes/god-class-refactor-thread-context-phase3/` |
 
 ### Superseded (已被替代)
 
@@ -96,13 +95,14 @@ docs/adr/
 ---
 
 **维护**: PTX-EMU Architecture Team  
-**最后更新**: 2026-07-15  
-**ADR 总数**: 18
+**最后更新**: 2026-07-16  
+**ADR 总数**: 19（其中 Active 16 / Accepted 2 / Proposed 1 / Superseded 0）
 
 ## 最近更新
 
 | 日期 | 更新内容 | 关联 ADR |
 |------|---------|---------|
+| 2026-07-16 | **cpptlm-d1-full 状态推进**：ADR-0021 Proposed → Active；ADR-0020 Proposed → Accepted；2 轮 Metis pre-impl review + 3 阶段 12 commits 修复所有 5 个 BLOCKER（B1 ABI 实现 / B2 sync loop / B3 stream destroy UB / B4 HSK 一致性 / B5 CMake 文档同步）+ sister spec 附录 + Postmortem 沉淀 | 0020, 0021 |
 | 2026-07-15 | 添加 CppTLM D1-Full MemoryBridge 集成 ADR（D-PTX-1~6 决策 + HSK-1/2/3 握手 + cpptlm_bridge.h ABI 真值源） | 0021 |
 | 2026-07-14 | 添加 CppTLM Phase 8.B D1-Full 注入点接受决策（3 个纯虚接口 + SMContext 3 setter + WarpContext 扩展 + RegisterAnalyzer 增强 + exe_once 三段式注入） | 0020 |
 | 2026-07-14 | 添加 ThreadContext 持续瘦身 ADR（MemoryAccessor + InstructionPipeline accessor 方案） | 0019 |

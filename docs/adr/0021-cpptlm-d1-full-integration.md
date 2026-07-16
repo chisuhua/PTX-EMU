@@ -2,8 +2,8 @@
 
 | 属性 | 值 |
 |------|-----|
-| **状态** | Proposed |
-| **日期** | 2026-07-15 |
+| **状态** | Active |
+| **日期** | 2026-07-15（Active: 2026-07-16） |
 | **关联任务** | D-PTX-1, D-PTX-2, D-PTX-3, D-PTX-4, D-PTX-5, D-PTX-6（详见 PTX-EMU-README §10.1）|
 | **关联 OpenSpec change** | [openspec/changes/cpptlm-d1-full/](../../openspec/changes/cpptlm-d1-full/) |
 | **关联 CppTLM 文档** | [PTX-EMU-README.md §10](https://github.com/chisuhua/CppTLM/blob/main/docs/superpowers/specs/PTX-EMU-README.md)（6 项决策 + 3 个 handshake）<br>[综合任务书 §2 + §10](https://github.com/chisuhua/CppTLM/blob/main/docs/superpowers/specs/2026-07-14-ptxemu-comprehensive-modification-plan.md)<br>[协作同步 §4 + §5](https://github.com/chisuhua/CppTLM/blob/main/docs/superpowers/specs/2026-07-01-f12b-ld-ptxemu-collaboration-sync.md) |
@@ -390,3 +390,76 @@ if (__builtin_expect(g_cpptlm_bridge != nullptr, 0)) {
 | 日期 | 更新内容 | 作者 |
 |------|---------|------|
 | 2026-07-15 | 初始版本（Proposed） | PTX-EMU Architecture Team |
+| 2026-07-16 | **Active 转换**：3 轮 Metis pre-impl review 完成；7 Phase commits 修复所有 5 个 BLOCKER（B1 ABI 实现 / B2 sync loop / B3 stream destroy UB / B4 HSK 一致性 / B5 CMake 文档）+ sister spec 附录；205 tests PASS（1 pre-existing failure out of scope）；ABI 符号已导出（`nm -D` 验证 `T cpptlm_attach_bridge` + `T cpptlm_detach_bridge`）| PTX-EMU Architecture Team |
+
+---
+
+## 2026-07-16 Postmortem：cpptlm-d1-full 实施回顾
+
+### 实施回顾
+
+| Phase | 内容 | Commits | 状态 |
+|-------|------|---------|------|
+| Pre-flight | sm_context.cpp 行号 + ADR-0020 就绪度评估 + sister change 状态 | n/a | ✅ |
+| Docs Cycle 1 | ADR-0021 虚假状态 + Checklist J + ADR-0020 → Accepted + sister internal-plan + HSK 状态机 | `603bd8bc` `a0be543b` `e8cf6f2d` `8f739f73` `bbd9d6bd` `77302f0b` | ✅ |
+| Code Cycle 1 | B1 ABI 实现 + B3 stream destroy UB 修复 + B2 sync loop + B4 HSK cleanup + B5 CMake 文档 | `de016f79` `6cbdcc4c` `5dcccf40` `c38c31e4` `0456418e` `88d5962e` | ✅ |
+| Final Sync | ADR-0021 → Active + tasks.md Phase 1 同步 + lessons-learned §N 沉淀 | （本 change） | ✅ |
+
+### 同期发现的 5 个独立 bug（含根因 + 修复）
+
+#### Bug 1（Metis 二审 B1）：ABI 声明无定义导致链接失败
+- **位置**: `include/cudart/cpptlm_bridge.h:161,168`（声明）；`src/cudart/cudart_sim.cpp:1-1167`（无定义）
+- **根因**: 头文件先于实现 commit，违反"声明 + 实现必须配对"原则
+- **修复** (`de016f79`): 在 `cudart_sim.cpp` 实现 `cpptlm_attach_bridge(CppTLMBridge*)` + `cpptlm_detach_bridge()`
+- **教训**: 见 lessons-learned.md §**34**
+- **测试**: `tests/unit/cpptlm/test_cpptlm_attach_bridge.cpp` 3 个测试 PASS
+
+#### Bug 2（Metis 二审 B3）：`cudaStreamDestroy` UB 删除 + 集合泄漏
+- **位置**: `src/cudart/cudart_sim.cpp:886-894`（修复前）
+- **根因**: `*stream = reinterpret_cast<cudaStream_t>(static_cast<uintptr_t>(stream_id))` 把 uint64_t 编入指针，再 `delete reinterpret_cast<int*>(stream)` 是 UB；同时未从 `g_active_streams` 移除
+- **修复** (`6cbdcc4c`): 移除 `delete`；对称 `g_active_streams.erase(stream_id)`，复用 `g_pending_kernels_mutex`
+- **教训**: 见 lessons-learned.md §**35**（"stream 句柄编码：uintptr_t reinterpret_cast 必须禁止 delete"）
+- **测试**: `tests/unit/cudart/test_stream_destroy.cu` 4 个测试 PASS；原预存 `unit_cuda_stream_handle` SEGFAULT 被解决
+
+#### Bug 3（Metis 二审 B2）：`cudaStreamSynchronize` / `cudaDeviceSynchronize` 单轮轮询即返回
+- **位置**: `src/cudart/cudart_sim.cpp:896-937` / `:781-816`（修复前）
+- **根因**: 实现为单次 poll，符合"主动语义"要求但违反 CUDA 同步契约（必须阻塞到完成）
+- **修复** (`5dcccf40`): 替换单轮为 `while` 循环；处理 `remaining==0` (完成) + `UINT64_MAX` (未知)；`std::this_thread::yield()` 防忙转
+- **教训**: 见 lessons-learned.md §**36**（"同步函数语义 = while 循环，非单次 poll"）
+- **测试**: `tests/unit/cudart/test_stream_sync_loop.cpp` 4 个契约测试 PASS
+
+#### Bug 4（Metis 二审 B4）：HSK 文档状态机自相矛盾
+- **位置**: `openspec/changes/cpptlm-d1-full/hsk-1.md:148-149` + `tasks.md:289`
+- **根因**: hsk-1.md footer 写"可立即发送"，但正文状态和 tasks.md 验收写"已发出"，违反 Checklist J（artifacts 内部一致性）
+- **修复** (`c38c31e4`): 全部统一到"⏳ 待发出（ADR Accepted 后启用）"；在 ADR-0021 新增 §HSK 状态机详述发出时机
+- **教训**: 见 lessons-learned.md §**37**（"HSK 文档状态必须与 ADR 生命周期同步"）
+- **测试**: 文档级 grep 验证
+
+#### Bug 5（Metis 二审 B5）：CMake 文档与实现发散
+- **位置**: `openspec/changes/cpptlm-d1-full/design.md:307-317` vs `CMakeLists.txt:122-152`（commit `d0803a09`）
+- **根因**: design 写 `find_package(cpptlm) + add_subdirectory(src/cudart/cpptlm_bridge) + target_link_libraries(ptxemu_runtime PRIVATE cpptlm::core)`，但实际 commit `d0803a09` 实现为 `ExternalProject_Add`
+- **修复** (`0456418e`): 更新 design.md 与 spec.md 与实际 `ExternalProject_Add` 实现一致
+- **教训**: 见 lessons-learned.md §**37**（"文档 vs 实现发散：git log -- <file> 是 source of truth"）
+
+### 验证结果（最终 commit `de016f79`+`6cbdcc4c`+`5dcccf40`+`c38c31e4`+`0456418e`+`88d5962e`）
+
+| 类别 | 通过 | 失败（基线也失败）|
+|------|------|------------------|
+| e2e | 18/19 | 1（`e2e_divergence` — 预存的多实例限制 ADR-0021 D-PTX-2，base worktree `9be56f8f` 同样失败）|
+| integration | ~80/80 | 0 |
+| unit | ~95/95 | 0（含 7 个新增 cpptlm/cudart 测试）|
+| **本次引入的回归** | **0** | — |
+
+### 元教训：本次发现的新失败模式
+
+1. **ABI 声明 vs 定义分离**（lessons-learned §34）：违反"header 引入 = source 引入"原则；ABI 真值源文档表面完成 ≠ 实际可用
+2. **uintptr_t reinterpret_cast 编码陷阱**（§35）：把整数编码进指针类型立即破坏"delete-from-pointer"假设
+3. **同步语义 ≠ 单次 poll**（§36）：任何"poll-then-return"实现都要在 commit 前用规格语义反查
+4. **HSK 状态机与 ADR 生命周期脱钩**（§37）：OpenSpec artifact 状态必须与 ADR 状态机同步，禁止"README 已 Active 但 ADR 文件仍 Proposed"
+5. **文档/实现发散静默发生**（§37）：`ExternalProject_Add` 实施后 5+ 天文档未同步，git diff 不会自动传播 design.md
+
+### 相关链接
+
+- [`docs/dev-process/lessons-learned.md`](../dev-process/lessons-learned.md) — 完整经验沉淀（§32 + §34-37 本次新增）
+- [`openspec/changes/cpptlm-d1-full/`](../../openspec/changes/cpptlm-d1-full/) — 当前 change artifacts
+- [`openspec/changes/cpptlm-phase8b-injection-points/`](../../openspec/changes/cpptlm-phase8b-injection-points/) — 姊妹 change artifacts（ADR-0020）

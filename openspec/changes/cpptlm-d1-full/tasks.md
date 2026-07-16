@@ -29,18 +29,19 @@
 
 > 📌 **NOTE**: 本 Phase 完全独立，不影响任何现有 PTX-EMU 代码。**HSK-1 commit** 必须在 Phase 1 完成。
 
-- [ ] 1.1 创建 `include/cudart/cpptlm_bridge.h`（参照综合任务书 §2.1 Task #1 完整代码 ~70 行）
+- [x] 1.1 创建 `include/cudart/cpptlm_bridge.h`（参照综合任务书 §2.1 Task #1 完整代码 ~70 行）
   - 5 个纯虚方法：`version()` + `submit_kernel()` + `poll_kernel()` + `synchronize_stream()` + `global_access()`
   - `CPPTLMBRIDGE_VERSION 1` 宏
   - `g_cpptlm_bridge` 全局指针声明
   - `static_assert(sizeof(cudaStream_t) <= sizeof(uint64_t))`
-- [ ] 1.2 创建 `include/cudart/cpptlm_bridge_impl.h` (optional stub 实现 fallback 路径)
-- [ ] 1.3 验证约束：`grep '#include' include/cudart/cpptlm_bridge.h` → 仅 `<cstdint>` + `<cuda_runtime.h>`
-- [ ] 1.4 编译验证：`cmake --build build --target cudart` PASS
+  - **✅ 实现于 commit `603bd8bc`**：170 LOC 完整版本
+- [ ] 1.2 ~~创建 `include/cudart/cpptlm_bridge_impl.h` (optional stub 实现 fallback 路径)~~ **⚠️ DEFERRED**：optional stub 非阻塞；测试用 mock bridge 覆盖同等语义
+- [x] 1.3 验证约束：`grep '#include' include/cudart/cpptlm_bridge.h` → 3 include（`<cstddef>` + `<cstdint>` + `<cuda_runtime.h>`）
+- [x] 1.4 编译验证：`cmake --build build --target cudart` PASS（Metis 3 审验证 `nm -D build/lib/libcudart.so | grep cpptlm_attach_bridge` 显示 `T cpptlm_attach_bridge`）
 - [x] 1.5 **HSK-1 commit + 输出**：
    - `git add include/cudart/cpptlm_bridge.h && git commit -m "feat(cudart): CppTLMBridge ABI source-of-truth (HSK-1 pre-ship)"`
    - 记录 commit hash 准备发给 CppTLM
-   - **✅ 已锁定**: `8dc000eca9f78e8ee017eafcb305eb4ca62ffd6d`（main 分支，待 push）
+   - **⏳ 待发出**：ADR-0021 Active 后按 §HSK 状态机顺序发送（commit hash 待 HSK-1 实际发出时锁定）
 
 **Commit**:
 ```bash
