@@ -13,6 +13,11 @@
 #include <set> // 添加set头文件
 #include <vector>
 
+// CppTLM Phase 8.B injection interfaces (ADR-0020)
+#include "ptxsim/scoreboard_interface.h"
+#include "ptxsim/pipeline_interface.h"
+#include "ptxsim/tensor_core_interface.h"
+
 class WarpScheduler;
 class CTAContext;
 class SharedMemoryManager;
@@ -56,6 +61,21 @@ public:
 
     // 设置warp调度器策略
     void set_warp_scheduler(std::unique_ptr<WarpScheduler> scheduler);
+
+    // === CppTLM Phase 8.B 注入点 (ADR-0020) ===
+    // Ownership: CppTLM libcpptlm_cudart.so; nullptr = byte-identical fallback
+    void set_scoreboard(IScoreboard* scoreboard) {
+        scoreboard_ = scoreboard;
+    }
+    void set_pipeline_latency_provider(IPipelineLatencyProvider* provider) {
+        pipeline_provider_ = provider;
+    }
+    void set_tensor_core_timing(ITensorCoreTiming* tc) {
+        tensor_core_timing_ = tc;
+    }
+    IScoreboard*              get_scoreboard()                const { return scoreboard_; }
+    IPipelineLatencyProvider* get_pipeline_latency_provider() const { return pipeline_provider_; }
+    ITensorCoreTiming*        get_tensor_core_timing()        const { return tensor_core_timing_; }
 
     // 获取当前活跃的warp数量
     size_t get_num_warps() const { return warps.size(); }
@@ -145,6 +165,11 @@ private:
     // Warp相关
     std::vector<std::unique_ptr<WarpContext>> warps;
     std::unique_ptr<WarpScheduler> warp_scheduler;
+
+    // CppTLM injection points (ADR-0020) — nullptr = byte-identical fallback
+    IScoreboard*              scoreboard_           = nullptr;
+    IPipelineLatencyProvider* pipeline_provider_    = nullptr;
+    ITensorCoreTiming*        tensor_core_timing_   = nullptr;
 
     // 使用unique_ptr管理CTAContext的生命周期
     std::map<int, std::unique_ptr<CTAContext>> managed_blocks;
