@@ -98,9 +98,9 @@ cd build && ctest --output-on-failure  # 验证全量测试基线
 ### PTX-1: IScoreboard 纯虚接口（30 min）
 
 **操作**：
-- [ ] 创建 `include/ptxsim/scoreboard_interface.h`
-- [ ] 包含 `<cstdint>` + `IScoreboard` 类（4 方法）
-- [ ] 编译验证：`cmake --build build --target ptxsim`
+- [x] 创建 `include/ptxsim/scoreboard_interface.h`
+- [x] 包含 `<cstdint>` + `IScoreboard` 类（4 方法）
+- [x] 编译验证：`cmake --build build --target ptxsim`
 
 **约束**：
 - ⚠️ MUST 仅 include `<cstdint>`（零外部依赖）
@@ -125,9 +125,9 @@ Refs:
 ### PTX-2: IPipelineLatencyProvider + PipelineId（30 min）
 
 **操作**：
-- [ ] 创建 `include/ptxsim/pipeline_interface.h`
-- [ ] 包含 `<cstdint>` + `<string>` + `PipelineId` enum + `IPipelineLatencyProvider` 类
-- [ ] 编译验证
+- [x] 创建 `include/ptxsim/pipeline_interface.h`
+- [x] 包含 `<cstdint>` + `<string>` + `PipelineId` enum + `IPipelineLatencyProvider` 类
+- [x] 编译验证
 
 **约束**：
 - ⚠️ MUST `PipelineId` 值 0-5 与 CppTLM `tlm::PipelineId` 一致
@@ -149,9 +149,9 @@ Refs: ADR-0020, CppTLM docs/superpowers/specs/2026-07-03-ptxemu-modification-tas
 ### PTX-3: ITensorCoreTiming + TcPrecision（30 min）
 
 **操作**：
-- [ ] 创建 `include/ptxsim/tensor_core_interface.h`
-- [ ] 包含 `<cstdint>` + `TcPrecision` enum + `ITensorCoreTiming` 类（3 方法）
-- [ ] `get_latency_mnk` 提供默认实现（退化到 `get_latency`）
+- [x] 创建 `include/ptxsim/tensor_core_interface.h`
+- [x] 包含 `<cstdint>` + `TcPrecision` enum + `ITensorCoreTiming` 类（3 方法）
+- [x] `get_latency_mnk` 提供默认实现（退化到 `get_latency`）
 
 **约束**：
 - ⚠️ MUST `TcPrecision` 值 0-5 与 CppTLM `tlm::TcPrecision` 一致
