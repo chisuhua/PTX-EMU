@@ -241,10 +241,10 @@ Refs: ADR-0020, CppTLM docs/superpowers/specs/2026-07-03-ptxemu-modification-tas
 ### PTX-5b: RegisterAnalyzer::get_dest_registers_as_ids（1.5 hour）
 
 **操作**：
-- [ ] 修改 `include/ptxsim/register_analyzer.h` + `src/ptxsim/register_analyzer.cpp`
-- [ ] 新增 public static 方法 `get_dest_registers_as_ids(const StatementContext&) -> vector<uint32_t>`
-- [ ] 通过 `stmt.visit()` 处理 `StatementContext.data` variant（与 `extract_registers_from_all_operands` 一致）
-- [ ] PoC 单元测试验证 7 种关键指令：`add.f32` / `ld.global.f32` / `st.global.f32` / `setp.eq.f32` / `atom.global.add.u32` / `bra` / `bar.sync`
+- [x] 修改 `include/ptxsim/register_analyzer.h` + `src/ptxsim/register_analyzer.cpp`
+- [x] 新增 public static 方法 `get_dest_registers_as_ids(const StatementContext&) -> vector<uint32_t>`
+- [x] 通过 `stmt.visit()` 处理 `StatementContext.data` variant（与 `extract_registers_from_all_operands` 一致）
+- [x] PoC 单元测试验证 7 种关键指令：`add.f32` / `ld.global.f32` / `st.global.f32` / `setp.eq.f32` / `atom.global.add.u32` / `bra` / `bar.sync`
 
 **约束**：
 - ⚠️ MUST **不修改**现有 `analyze_registers()`（避免破坏现有用户）

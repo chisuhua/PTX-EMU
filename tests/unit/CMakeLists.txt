@@ -704,3 +704,9 @@ add_catch_test(unit_cpptlm_injection_interfaces
     cpptlm/test_injection_interfaces.cpp
 )
 set_tests_properties(unit_cpptlm_injection_interfaces PROPERTIES LABELS "unit;cpptlm;inject")
+
+# PTX-5b: RegisterAnalyzer::get_dest_registers_as_ids (cpptlm-phase8b-injection-points)
+add_catch_test(unit_register_dest_extraction
+    register/test_dest_registers_extraction.cpp
+)
+set_tests_properties(unit_register_dest_extraction PROPERTIES LABELS "unit;register;dest")
