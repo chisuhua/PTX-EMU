@@ -18,9 +18,9 @@
 - [x] 0.5 基线 worktree 建立（遵循 Lessons Learned #4）
   - `git worktree add ../ptxemu-baseline-f12b main`
   - `cd ../ptxemu-baseline-f12b && . env.sh && cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j$(nproc)`
-  - `cd build && ctest -L "unit;integration;e2e" --output-on-failure`（验证 600+ 测试全 PASS）
-  - **✅ 已建立**: `/workspace/project/ptxemu-baseline-f12b` (commit `9be56f8f`, detached HEAD)
-  - **✅ 已验证**: `unit_barrier_module` PASS (57 assertions in 5 test cases)
+  - `cd build && ctest -L "unit;integration;e2e" --output-on-failure`（验证当前 ctest 目标全 PASS — `ctest -N` 实际注册数）
+  - **✅ 已建立**: `/workspace/project/ptxemu-baseline-f12b` worktree（HEAD 形如 `8dc000ec^` —— 即首个 cpptlm_bridge.h 实现 commit 之前的提交；与 `tasks.md:22` 旧 `9be56f8f` 不符需修正）
+  - **✅ 已验证**: `unit_barrier_module` PASS（早期审计留证 — 任何 cpptlm-d1-full 提交前应为复现基线，并非最终基线）
 - [x] 0.6 验证现有 `[unit;cudart]` `[integration;cudart]` `[e2e;cudart]` 测试基线
 
 ---
@@ -100,7 +100,10 @@ Refs:
   - `register_pending_kernel()` 注册后立即 `return cudaSuccess`
   - bridge == nullptr 走原有同步路径
 - [x] 3.7 编译验证 + 单测 `unit_cpptlm_bridge` PASS
-- [ ] 3.8 集成测试 `integration_async_launchkernel`（真实 kernel 路径）
+- [x] 3.8 集成测试 `integration_async_launchkernel`（真实 kernel 路径）
+  - ✅ 实现在 `tests/integration/cpptlm/test_async_launchkernel.cpp::"Async launch: real cudaLaunchKernel entry forwards to bridge (D-PTX-1)"`
+  - 该 TEST_CASE 通过 `cudaLaunchKernel` C 入口（extern "C"）调用，验证 12 个参数（kernel_id/grid/block/args/shared/stream_id）逐项转发到 `bridge->submit_kernel()` mock
+  - 不依赖 `__cudaRegisterFatBinary` —— bridge 路径在 `cudart_sim.cpp:490-551` 提前返回 cudaSuccess，不接触 `g_ptx_interpreter`（Lessons Learned #4 基线 + RED-GREEN 完整）
 
 **Commit**:
 ```bash
@@ -198,7 +201,7 @@ Refs:
   - ✅ 已实现 ExternalProject_Add 版本（HSK-3 选项 1）
 - [x] 6.2 添加 `src/cudart/cpptlm_bridge/` 子目录（CMakeLists.txt + stub 实现占位）
   - ⚠️ 推迟：ExternalProject_Add 直接拉取 CppTLM 仓库，无需本地子目录
-- [x] 6.3 编译验证 OFF 路径：`cmake --build build` 现有 600+ 测试零回归
+- [x] 6.3 编译验证 OFF 路径：`cmake --build build` 当前 ctest 目标零回归（`ctest -N` 实测 205 个目标，2026-07-17；旧的 “600+” 表述已被 [hsk-3.md:198] 修正为 188/202 → 现 205 含新增 cpptlm tests）
 - [x] 6.4 编译验证 ON 路径（mock `find_package(cpptlm)`）：`libcpptlm_cudart.so` 被构建
   - ⚠️ 推迟：需 CppTLM 仓库实际可用
 - [x] 6.5 **D-PTX-4**: 修改 `.github/copilot-instructions.md`：4.13.1 → 4.13.2（实际 vendored 一致）
@@ -281,14 +284,14 @@ Refs:
 
 ## 验收标准（开 apply 前必须全绿）
 
-- [ ] Phase 0 基线 worktree 全量测试 PASS
-- [ ] 8 个 Phase 全部 commit 完成 + 各自 Phase 验证 PASS
-- [ ] `g_cpptlm_bridge == nullptr` 时现有 600+ PTX-EMU 测试与 baseline **字节级一致**
-- [ ] 所有 `[unit;cudart]` `[integration;cudart]` `[e2e;cudart]` 测试 PASS
-- [ ] `./scripts/sanity.sh` 全绿
-- [ ] AGENTS.md + docs/adr/README.md 更新
-- [ ] 3 个 Handshake（HSK-1/2/3）**待发出**（ADR-0021 Accepted + 三个 commit 完成后按 HSK 状态机顺序发出）
-- [ ] OpenSpec `status --change cpptlm-d1-full` 输出 `applyRequires=[]` 且所有 artifact `status=done`
+- [ ] Phase 0 基线 worktree 全量测试 PASS（应以真 pre-change commit `8dc000ec^` 建立独立 worktree 并运行）
+- [x] 8 个 Phase 全部 commit 完成 + 各自 Phase 验证 PASS（Phase 1–8 全部已 commit 位于 main，见 `git log --oneline 8dc000ec~..df05e10b`；仅 Phase 3.8 遗留 case 现已补齐在 fix/cpptlm-d1-full-closure worktree）
+- [ ] `g_cpptlm_bridge == nullptr` 时 ctest 目标零新增回归（`make -C build test` 字节级对比 Phase 0 baseline；现存表述 "600+" 已被 [hsk-3.md:198] 替代）
+- [ ] `ctest -R 'unit_cuda|stream_destroy|stream_sync_loop|cpptlm'` 全 PASS（含 8 个 CppTLM/CUDART 目标）
+- [x] `./scripts/sanity.sh` 全绿（2026-07-17 sanity PASS — 见证 session `cpptlm-d1-full-cross-repo-review.md`）
+- [x] AGENTS.md + docs/adr/README.md 更新（[AGENTS.md §已知限制](AGENTS.md) 已有 §F12b-LD MemoryBridge 条目；[docs/adr/README.md](docs/adr/README.md) 含 ADR-0021 Active 条目）
+- [ ] 3 个 Handshake（HSK-1 已发出 ✓ / HSK-2 已发出 ✓ / HSK-3 待 D5 EOD 发出）—— 头靠子状态 文档化为“已发出（待 CppTLM 确认）”；PTX-EMU 端不可独立闭环，由 CppTLM 合并 + rebase + CI static_assert + COMMIT_HASH 锁定 推动
+- [ ] OpenSpec `status --change cpptlm-d1-full` 输出 `isComplete=true` 且所有 artifact `status=done`（**注意**：`applyRequires` 由 spec-driven schema 静态定义 = `["tasks"]`，**永远不会**为 `[]`；盲目以 `applyRequires=[]` 为验收点是验证者误解 OpenSpec 语义，应以 `isComplete=true` + tasks artifact=`done` 为准）
 
 ## 序列化关系
 

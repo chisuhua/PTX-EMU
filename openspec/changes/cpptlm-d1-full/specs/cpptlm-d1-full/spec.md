@@ -96,8 +96,10 @@ The `cudaStreamSynchronize`, `cudaDeviceSynchronize`, and `cudaStreamCreate` fun
 #### Scenario: nullptr 路径原始行为保留
 - **WHEN** `g_cpptlm_bridge == nullptr`
 - **THEN** `cudaStreamSynchronize` 返回 `cudaSuccess` 立即（原有行为）
-- **AND** `cudaDeviceSynchronize` 调用 `g_gpu_context->wait_for_completion()`
+- **AND** `cudaDeviceSynchronize` 立即返回 `cudaSuccess`（保留原有立即返回行为，不发起 `g_gpu_context->wait_for_completion()`）
 - **AND** `cudaStreamCreate` 行为不变
+
+> **Spec/Code 对齐说明（adopted 2026-07-17）**：`cudaDeviceSynchronize` 在 `src/cudart/cudart_sim.cpp:857-858` 实际行为是立即返回 `cudaSuccess`（保持与 main 同步路径字节级兼容）。原 spec 描述"调用 `g_gpu_context->wait_for_completion()`"未实施 — 选择修改 spec 以匹配代码，保证桥接关闭（`g_cpptlm_bridge == nullptr`）时字节级语义不变。如未来需要同步阻塞，可在新增 `cudaDeviceSynchronize_block` 入口实现并 bump `CPPTLMBRIDGE_VERSION`。
 
 #### Scenario: pending kernel 完成后清理
 - **WHEN** `bridge->poll_kernel(id)` 返回 0
@@ -152,7 +154,7 @@ The `CMakeLists.txt` MUST add an `option(BUILD_LIB_CPPTLM_CUDART "Build libcpptl
 - **AND** `cpptlm_bridge` 子目录**NOT**被包含
 - **AND** `libcpptlm_cudart.so` **NOT** 被构建
 - **AND** `g_cpptlm_bridge == nullptr`（默认）
-- **AND** 现有 600+ PTX-EMU 测试 PASS，与 baseline 字节级一致
+- **AND** 当前 ctest 目标（`ctest -N`）零新增回归，对比真实 pre-change commit `8dc000ec^` baseline
 
 #### Scenario: ON + CppTLM ExternalProject_Add → 链接 libcpptlm_cudart.so
 - **WHEN** `cmake -DBUILD_LIB_CPPTLM_CUDART=ON ..`

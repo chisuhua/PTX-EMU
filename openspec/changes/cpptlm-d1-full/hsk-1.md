@@ -1,9 +1,11 @@
 # HSK-1: cppTLMBridge 头文件首发 commit hash
 
-> **状态**: ⏳ **待发出（ADR Accepted 后启用）**
+> **状态**: ✅ **已发出（待 CppTLM 确认 / rebased / CI 验证 12 端点 static_assert）**
 > **回传目标**: CppTLM Team (`#cpptlm-integration` Slack 频道 / PR comment)
 > **承诺时间**: D1 开工前
 > **形式**: git commit hash + ABI 字段快照
+> **PTX-EMU 侧**: 消息草稿 + 手动复制发送已完成（2026-07-15）— 发送侧不可再推进
+> **CppTLM 侧 (pending)**: 接收确认 / rebase / 12 端点 `static_assert` — 外部闭环，不阻塞本地交付
 
 ---
 

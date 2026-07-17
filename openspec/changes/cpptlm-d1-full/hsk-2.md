@@ -1,10 +1,12 @@
 # HSK-2: ANTLR4 版本号 + CI yml 证据
 
-> **状态**: ⏳ **待发出（ADR Accepted 后启用）**
+> **状态**: ✅ **已发出（待 CppTLM 确认 / CI 加入双重 `static_assert` / 升级需求反馈）**
 > **回传目标**: CppTLM Team (`#cpptlm-integration` Slack 频道 / PR comment)
 > **承诺时间**: D1 开工前（与 HSK-1 同窗口）
 > **形式**: ANTLR4 版本号 + CI yml 截图证据
 > **关联 commit**: `759836f0 build(antlr): upgrade ANTLR4 4.11.1 → 4.13.2`
+> **PTX-EMU 侧**: 4 权威源验证 + 消息草稿 + 手动复制发送已完成
+> **CppTLM 侧 (pending)**: 接收确认 / CI 加入 / 升级需求 — 外部闭环
 
 ---
 
