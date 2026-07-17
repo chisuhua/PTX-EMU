@@ -276,10 +276,10 @@ Refs: ADR-0020, CppTLM docs/superpowers/specs/2026-07-03-ptxemu-modification-tas
 ### PTX-6: 三段式注入 + 4 辅助函数（4 hours）
 
 **操作**：
-- [ ] 修改 `src/ptxsim/core/sm_context.cpp`
-- [ ] 新增 4 辅助函数：`get_next_statement()` (返回 `StmtWithPc{stmt, pc, executed}` 三元组, 涵盖 fast/slow path 共享) / `get_dest_registers()` / `map_instruction_to_pipeline()` / `is_tensor_core_instruction()` / `map_instruction_to_tc_precision()`
-- [ ] `exe_once()` 插入 3 处注入点（Step A / B / C），使用 `warp_executed` 守卫和 `goto warp_done` 控制流
-- [ ] nullptr 完全回退（4 个注入点全 nullptr 时行为与改造前**字节级相同**）
+- [x] 修改 `src/ptxsim/core/sm_context.cpp`
+- [x] 新增 3 辅助函数 (匿名namespace, file-local)：`step_a_scoreboard_check` / `step_b_set_blocked_cycles` / `step_c_release_scoreboard` + 3 public static helpers (`map_instruction_to_pipeline` / `is_tensor_core_instruction` / `map_instruction_to_tc_precision`)
+- [x] `exe_once()` 插入 3 处注入点（Step A / B / C），使用 `warp_executed` 守卫和 `goto warp_done` 控制流（fast + slow 两条路径）
+- [x] nullptr 完全回退（4 个注入点全 nullptr 时行为与改造前**字节级相同**）
 
 **约束**：
 - ⚠️ MUST 严格遵循设计文档 `design.md §7` 的改造代码
