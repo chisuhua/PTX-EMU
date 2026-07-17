@@ -719,6 +719,12 @@ add_catch_test(unit_cpptlm_injection_interfaces
 )
 set_tests_properties(unit_cpptlm_injection_interfaces PROPERTIES LABELS "unit;cpptlm;inject")
 
+# PTX-7a: SMContext injection mock tests (cpptlm-phase8b-injection-points, ADR-0020)
+add_catch_test(unit_smcontext_injection
+    cpptlm/test_smcontext_injection.cpp
+)
+set_tests_properties(unit_smcontext_injection PROPERTIES LABELS "unit;cpptlm;injection")
+
 # PTX-5b: RegisterAnalyzer::get_dest_registers_as_ids (cpptlm-phase8b-injection-points)
 add_catch_test(unit_register_dest_extraction
     register/test_dest_registers_extraction.cpp

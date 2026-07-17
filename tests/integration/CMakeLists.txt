@@ -584,3 +584,9 @@ add_catch_test(integration_cpptlm_ld_st_bridge
     cpptlm/test_ld_st_bridge.cpp
 )
 set_tests_properties(integration_cpptlm_ld_st_bridge PROPERTIES LABELS "integration;cpptlm;ld_st")
+
+# PTX-7b: Scoreboard allocation integration tests (cpptlm-phase8b-injection-points, ADR-0020)
+add_catch_test(integration_scoreboard_allocation
+    cpptlm/test_scoreboard_allocation.cpp
+)
+set_tests_properties(integration_scoreboard_allocation PROPERTIES LABELS "integration;cpptlm;scoreboard")
