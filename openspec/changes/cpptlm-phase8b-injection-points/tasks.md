@@ -243,13 +243,14 @@ Refs: ADR-0020, CppTLM docs/superpowers/specs/2026-07-03-ptxemu-modification-tas
 **操作**：
 - [ ] 修改 `include/ptxsim/register_analyzer.h` + `src/ptxsim/register_analyzer.cpp`
 - [ ] 新增 public static 方法 `get_dest_registers_as_ids(const StatementContext&) -> vector<uint32_t>`
-- [ ] 通过 `std::visit` 处理 `StatementContext.data` variant
-- [ ] PoC 单元测试验证：`add.f32 %f1, %f2, %f3;` → `[%f1]`
+- [ ] 通过 `stmt.visit()` 处理 `StatementContext.data` variant（与 `extract_registers_from_all_operands` 一致）
+- [ ] PoC 单元测试验证 7 种关键指令：`add.f32` / `ld.global.f32` / `st.global.f32` / `setp.eq.f32` / `atom.global.add.u32` / `bra` / `bar.sync`
 
 **约束**：
 - ⚠️ MUST **不修改**现有 `analyze_registers()`（避免破坏现有用户）
-- ⚠️ MUST 通过 `OperandContext::get_kind() + get_reg_id()` 提取目标寄存器
-- ⚠️ MUST 处理 `instr.operands[0]` 和 `instr.dest` 两种结构（`if constexpr (requires ...)`）
+- ⚠️ MUST 使用 `OperandContext::kind()` 返回 `OperandKind`，从 `std::get<RegOperand>(dst.data).index` 取 reg ID（helper 不存在 — 严格使用 API 而非 design.md 旧版伪代码中的 `get_kind()/get_reg_id()`）
+- ⚠️ MUST 沿用 `stmt.visit()` 而非 `std::visit(stmt.data)`（statement_context.h:329-335 已有封装，等价但与现有 register_analyzer.cpp:58 风格一致）
+- ⚠️ MUST 不处理 `instr.dest` 字段（25 个 variant 无同时有 operands + 独立 dest 字段）
 
 **Commit**:
 ```bash

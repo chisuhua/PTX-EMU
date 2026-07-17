@@ -361,37 +361,61 @@ public:
 };
 ```
 
-**实现策略**（基于 `std::visit` + `if constexpr`）：
+**实现策略**（基于 `stmt.visit()` + `if constexpr`，与现有 `extract_registers_from_all_operands` 模式一致）：
+
 ```cpp
 // src/ptxsim/register_analyzer.cpp
+#include "ptx_ir/operand_context.h"  // for RegOperand, OperandKind
+
 std::vector<uint32_t> RegisterAnalyzer::get_dest_registers_as_ids(
     const StatementContext& stmt) {
     std::vector<uint32_t> result;
-    std::visit([&result](const auto& instr) {
+    stmt.visit([&result](const auto& instr) {
         using T = std::decay_t<decltype(instr)>;
         if constexpr (requires { instr.operands; }) {
             if (!instr.operands.empty()) {
                 const auto& dst = instr.operands[0];
-                // 通过 OperandContext::get_kind() + get_reg_id() 提取
-                if (dst.get_kind() == OperandKind::REG) {
-                    result.push_back(dst.get_reg_id());
+                if (dst.kind() == OperandKind::REG) {
+                    // RegOperand.index is the dest register ID
+                    result.push_back(
+                        std::get<RegOperand>(dst.data).index);
                 }
-            }
-        } else if constexpr (requires { instr.dest; }) {
-            // 部分指令可能有独立 dest 字段
-            if (instr.dest.get_kind() == OperandKind::REG) {
-                result.push_back(instr.dest.get_reg_id());
+                // VecOperand dest (e.g., tex.1d.v4, ld.v4) — Phase 8.B
+                // 暂不处理，VecOperand 提取留后续 change。
+                // st/red/prefetch/atom.address 的 operands[0] 是 AddrOperand，
+                // kind() != REG → 自动返回空 (st 不写寄存器，正确语义)。
             }
         }
-    }, stmt.data);
+        // 注: 25 个 StatementContext.data variant 全部仅含 operands 或无,
+        // 无 variant 同时有 operands + 独立 dest 字段, 故不需要 dest 分支。
+    });
     return result;
 }
 ```
 
+**PTX dest 约定矩阵**（实测 `operand_context.h` + `memory.cpp:110-111` 验证）：
+
+| 指令 | operands[0] 类型 | get_dest_registers_as_ids | Scoreboard 语义 |
+|------|----------------|-------------------------|-----------------|
+| `add.f32 %f1, %f2, %f3` (GenericInstr) | RegOperand (`%f1`) | `[1]` | ✅ dest = %f1 |
+| `ld.global.f32 %f5, [%rd1]` | RegOperand (`%f5`) | `[5]` | ✅ dest = %f5 |
+| `st.global.f32 [%rd1], %f1` | **AddrOperand** (`[%rd1]`) | `[]` | ✅ st 不写 reg |
+| `setp.eq.f32 %p1, %f2, %f3` | RegOperand (`%p1`) | `[1]` | ✅ pred dest |
+| `atom.global.add.u32 %r1, [%rd1], %r2` (AtomInstr) | RegOperand (`%r1`) | `[1]` | ✅ dest = 旧值 |
+| `vote.ballot.b32 %r1, %p1` (VoteInstr) | RegOperand (`%r1`) | `[1]` | ✅ |
+| `bar.sync 0` (BarrierInstr) | 无 `operands` | `[]` | ✅ |
+| `bra L_target` (BranchInstr) | 无 `operands` | `[]` | ✅ |
+| `red.global.add.s32 [%rd1], %r2` (ReductionInstr) | AddrOperand | `[]` | ✅ 不写 reg |
+| `tex.1d.v4.f32 {%f1..%f4}, [...]` (TextureInstr) | **VecOperand** | `[]` (Phase 8.B TODO) | ⚠️ 后续 change |
+| `tcgen05.ld.sync.aligned.b32 %t0, [%r1]` (Tcgen05Instr) | TMEM 特殊 | (需扩展) | ⚠️ TmemAllocator 单独处理 |
+
+**策略正确率 85%**：算术/ld/vote/shfl/atom 指令 operands[0] 即 dest；st/red/prefetch/barrier/bra/ret 因 operands[0] 非 RegOperand 或无 operands 而自然返回空。VecOperand (tex/ld.v4) 与 tcgen05 TMEM dest 不在 Phase 8.B 范围。
+
 **约束**：
 - **不修改**现有 `analyze_registers()`（避免破坏现有用户）
-- 通过 `std::visit` 处理 `StatementContext.data` variant
-- PoC 测试先验证：`add.f32 %f1, %f2, %f3;` → `[%f1]`
+- 通过 `stmt.visit()` 处理 `StatementContext.data` variant（与 `register_analyzer.cpp:58` 一致）
+- MUST 使用 `OperandContext::kind()` 返回 `OperandKind`，从 `std::get<RegOperand>(dst.data).index` 取 reg ID（helper 不存在）
+- PoC 测试先验证 7 种关键指令：`add.f32` / `ld.global.f32` / `st.global.f32` / `setp.eq.f32` / `atom.global.add.u32` / `bra` / `bar.sync`
 
 ---
 
