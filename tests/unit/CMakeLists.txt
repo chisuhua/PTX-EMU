@@ -364,6 +364,13 @@ add_catch_test(unit_sm_exe_once_helpers
 )
 set_tests_properties(unit_sm_exe_once_helpers PROPERTIES LABELS "unit;sm;ptx6;helper")
 
+# PTX-6: SMContext::step_b_set_blocked_cycles direct unit test
+# Locks 4-branch priority chain (commit 5b292a91 regression guard).
+add_catch_test(unit_sm_step_b_set_blocked_cycles
+    sm/test_step_b_set_blocked_cycles.cpp
+)
+set_tests_properties(unit_sm_step_b_set_blocked_cycles PROPERTIES LABELS "unit;sm;ptx6;step_b;injection")
+
 # ============================================================================
 # Sync 单元测试
 # ============================================================================
