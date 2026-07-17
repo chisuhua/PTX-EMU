@@ -1,6 +1,8 @@
 # HSK-4: PTX-EMU 3 纯虚接口头文件首发 commit hash
 
-> **状态**: ✅ **Ready to Send（2026-07-17）**
+> **状态**: ✅ **已发出（待 CppTLM 确认 / Adapter 实现 / 枚举 static_assert 验证）**
+
+**发送记录**: 2026-07-17, commits: `8acfd2d1` (IScoreboard) / `9e7361b9` (IPipelineLatencyProvider) / `463038e0` (ITensorCoreTiming), 伴随 Phase 1 完成
 > **回传目标**: CppTLM Team
 > **承诺时间**: Phase 1 完成后立即
 > **形式**: 3 个 git commit hash + 接口签名快照
@@ -101,6 +103,6 @@ Please confirm receipt and alignment.
 - [x] PipelineId 0-5 枚举值与 CppTLM 一致
 - [x] TcPrecision 0-5 枚举值与 CppTLM 一致
 - [x] `ptxsim` target 编译通过
-- [ ] 发送日期: **2026-07-17 Ready to Send**（3 commit hash 已锁定）
+- [x] 发送日期: **2026-07-17 已发出**（3 commit hash 已锁定：`8acfd2d1` / `9e7361b9` / `463038e0`）
 
-**最后更新**: 2026-07-17（3 接口已实现 + 21 测试 PASS；Ready to Send）
+**最后更新**: 2026-07-17（已发出 — 3 接口已实现 + 21 测试 PASS + Phase 2 SMContext 扩展进行中；待 CppTLM 确认）
