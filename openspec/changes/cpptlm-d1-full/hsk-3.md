@@ -1,9 +1,10 @@
 # HSK-3: libcpptlm_cudart.so CMake 暴露方式草案
 
-> **状态**: ⏳ **待发出（ADR Accepted 后启用，CPPTLM_COMMIT_HASH 待 D5 EOD 锁定）**
+> **状态**: ✅ **Ready to Send (CPPTLM_COMMIT_HASH 已锁定 2026-07-17)**
 > **回传目标**: CppTLM Team (`#cpptlm-integration` Slack 频道 / PR comment)
 > **承诺时间**: D5 EOD 前
 > **形式**: CMake 草案（3 选项对比，默认 ExternalProject_Add）
+> **锁定信息**: 选项 1 (ExternalProject_Add) + CPPTLM_COMMIT_HASH=`73e5422` + GIT_REPOSITORY=`https://github.com/chisuhua/CppTLM.git`
 
 ---
 
@@ -28,7 +29,7 @@ include(ExternalProject)
 
 ExternalProject_Add(cpptlm
     GIT_REPOSITORY  https://github.com/chisuhua/CppTLM.git
-    GIT_TAG         <CPPTLM_COMMIT_HASH>
+    GIT_TAG         73e5422  # P0 main merge: MemoryBridge + KernelLaunchTLM ext + 12 [f12b] tests + smoke
     CMAKE_ARGS      -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/cpptlm-install
                     -DBUILD_TESTING=OFF
                     -DCPPTLM_BUILD_CUDART_BRIDGE=ON
@@ -137,7 +138,9 @@ pkg-config --modversion cpptlm  # 验证
 - 反馈首选选项
 - PTX-EMU 实施 Phase 6 时按选定方案实施
 
-**CPPTLM_COMMIT_HASH** 也将在 D5 EOD 时确定（选项 1 必需）。
+**CPPTLM_COMMIT_HASH** 已锁定: `73e5422` (P0 main merge, 776/776 用例 / 15562 断言 + 12/12 [f12b] 测试)
+- 含 MemoryBridge + KernelLaunchTLM extension + `--f12b-ld` flag + vector_add 烟雾测试 + AsyncCompletionAdapter 占位
+- 不推荐 `main` (生产前必须固定 SHA,避免 ABI 漂移)
 
 ======================== 引用 ========================
 
@@ -198,7 +201,7 @@ pkg-config --modversion cpptlm  # 验证
 - [x] OFF 路径：现有 202 测试中 188 通过（14 环境性 CUDA SEGFAIL 需 GPU 环境，sandbox 无 GPU）
 - [x] ON 路径：ExternalProject_Add 草案完整（见上方 cmake 代码块）
 - [x] 选项 1 ExternalProject_Add 完整注释（其他开发者可读）
-- [ ] CPPTLM_COMMIT_HASH 占位符已替换（**待 D5 EOD**）
+- [x] CPPTLM_COMMIT_HASH 占位符已替换 → `73e5422` (2026-07-17)
 
 > **修正**: 原始声明"600+ 测试零回归"不准确——实际注册 202 个测试。188/202 通过 = 93.1% 基线。14 个 SEGFAIL 全部为 CUDA runtime 限制（`cudaLaunchKernel` 需真实 GPU device），与代码变更无关，详见 `docs/superpowers/specs/2026-07-15-phase05-baseline-report.md` 报告。
 
@@ -207,12 +210,12 @@ pkg-config --modversion cpptlm  # 验证
 ## 📋 跟踪
 
 发送后请更新本文件：
-- [ ] 发送日期: **待 D5 EOD 发送**（需 CppTLM_COMMIT_HASH 锁定后才能替换）
+- [ ] 发送日期: **2026-07-17 Ready to Send**（CPPTLM_COMMIT_HASH 已锁定 `73e5422`）
 - [ ] 发送渠道: 用户手动复制（无 Slack/邮件）
 - [ ] CppTLM 确认收到:
-- [ ] CppTLM 首选方案: **已确认选项 1**（见 CppTLM docs/superpowers/specs/2026-07-15-cpptlm-hsk-response.md）
-- [ ] CPPTLM_COMMIT_HASH 锁定: <hash>（**待 D5 EOD**）
-- [ ] CppTLM 提供 GIT_REPOSITORY URL 确认: `https://github.com/chisuhua/CppTLM.git`（**已确认**）
+- [x] CppTLM 首选方案: **已确认选项 1**（见 CppTLM docs/superpowers/specs/2026-07-15-cpptlm-hsk-response.md）
+- [x] CPPTLM_COMMIT_HASH 锁定: `73e5422`（2026-07-17 锁定,P0 main merge）
+- [x] CppTLM 提供 GIT_REPOSITORY URL 确认: `https://github.com/chisuhua/CppTLM.git`（**已确认**）
 
 ---
 
@@ -233,4 +236,4 @@ CppTLM 反馈 ──────────┐
 
 ---
 
-**最后更新**: 2026-07-15（Phase 6 CMake 完成，CMake commit `d0803a09`；OFF 路径 188/202 pass 已验证；等待 D5 EOD 锁定 CPPTLM_COMMIT_HASH 后发送）
+**最后更新**: 2026-07-17（CPPTLM_COMMIT_HASH 锁定 `73e5422` + GIT_REPOSITORY 确认 + 选项 1 确认；Ready to Send）
