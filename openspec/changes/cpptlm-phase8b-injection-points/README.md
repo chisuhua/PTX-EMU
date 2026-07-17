@@ -2,6 +2,7 @@
 
 Accept CppTLM Phase 8.B D1-Full injection: 3 pure-virtual interfaces + 3 SMContext setters + exe_once() three-step integration + WarpContext blocked_cycles per-warp extension + RegisterAnalyzer dest-registers extraction. Total ~2.5 days. Companion to CppTLM `openspec/changes/2026-06-24-gpu-soc-phase8b-core/`.
 
-**Status**: Proposed
-**ADR**: [docs/adr/0020-cpptlm-injection-points.md](../../../docs/adr/0020-cpptlm-injection-points.md)
+**Status**: Proposed → **Phase 0 部分锁定** (2026-07-16, PTX-0.1/0.2/0.4 通过 CppTLM commit `2b28505` 锁定)
+**ADR**: [docs/adr/0020-cpptlm-injection-points.md](../../../docs/adr/0020-cpptlm-injection-points.md) — Accepted (2026-07-14)
 **Triggered by**: CppTLM `docs/superpowers/specs/2026-07-03-ptxemu-modification-task.md` + `ADR-NV-02` Status Update 2026-07-14
+**Phase 0 锁定来源**: CppTLM commit `2b28505` (RFC-P1-001~004) → `docs/superpowers/specs/2026-07-16-rfcs-to-ptxemu-p1-injection.md`

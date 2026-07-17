@@ -1,6 +1,6 @@
 # Tasks: CppTLM Phase 8.B D1-Full 注入点
 
-> **Status**: Proposed（artifacts 准备完成；实施待 ADR-0020 → Accepted + OpenSpec change → Accepted 后启动）
+> **Status**: Proposed → **Phase 0 部分完成** (PTX-0.1/0.2/0.4 锁定于 2026-07-16, 来源 CppTLM commit `2b28505`)
 > **Parent**: `proposal.md` + `design.md` (cpptlm-phase8b-injection-points)
 > **ADR**: [docs/adr/0020-cpptlm-injection-points.md](../../../docs/adr/0020-cpptlm-injection-points.md)
 > **总工时**: ~2.5d
@@ -10,43 +10,67 @@
 ## 📚 Phase 0: 对齐 + 基线（强制最先完成，~0.5d）
 
 > ⚠️ **MUST**: 不完成本 Phase 不允许进入 Phase 1。Lessons Learned #7 Pre-implementation Review 强制项。
+>
+> **2026-07-16 更新**: PTX-0.1 / PTX-0.2 / PTX-0.4 已通过 CppTLM commit `2b28505` (RFC-P1-001~004) 完成对齐（见各子任务内 ✅ 来源标注）。
+> PTX-0.3 (PTX-EMU 内部序列化协调) + PTX-0.5 (基线 worktree) 待 PTX-EMU 团队在 Phase 1 实施前完成。
 
 ### PTX-0.1: 枚举值对齐确认（30 min）
 
 **验证内容**：
-- [ ] `PipelineId` 0-5 值与 CppTLM `tlm::PipelineId` 一致（双方 static_assert 验证）
-- [ ] `TcPrecision` 0-5 值与 CppTLM `tlm::TcPrecision` 一致
-- [ ] `StatementType` 枚举值稳定（X-Macro `include/ptx_ir/ptx_op.def` 不再变动）
+- [x] `PipelineId` 0-5 值与 CppTLM `tlm::PipelineId` 一致（双方 static_assert 验证）
+  - **来源锁定**: CppTLM commit `2b28505` (RFC-P1-003 §3.1) — 双端字字对应
+  - **CPPTLM 路径**: `CppTLM/docs/superpowers/specs/2026-07-16-rfcs-to-ptxemu-p1-injection.md` §3.1
+- [x] `TcPrecision` 0-5 值与 CppTLM `tlm::TcPrecision` 一致
+  - **来源锁定**: CppTLM commit `2b28505` (RFC-P1-003 §3.2) — 双端字字对应
+  - **CPPTLM 路径**: `CppTLM/docs/superpowers/specs/2026-07-16-rfcs-to-ptxemu-p1-injection.md` §3.2
+- [x] `StatementType` 枚举值稳定（X-Macro `include/ptx_ir/ptx_op.def` 不再变动）
+  - **来源锁定**: CppTLM 端已确认（cpptlm-d1-p1-pipeline-scoreboard/internal-plan.md §3 PTX-EMU Sync Points）
 
-**协作方式**：CppTLM 协作同步文档 `2026-07-01-f12b-ld-ptxemu-collaboration-sync.md §13.2` 邮件确认
+**协作方式**: ✅ 已通过 CppTLM commit `2b28505` (2026-07-16) 完成对齐（替代原 §13.2 邮件方式）
 
-**Commit**: 无（验证项）
+**Commit**: ✅ 本 commit (2026-07-16 Phase 0 alignment)
 
 ### PTX-0.2: 新增 API 清单确认（30 min）
 
 **验证内容**：
-- [ ] `WarpContext::set_blocked_cycles_for_active()` 签名（参数 + 返回类型）双方确认
-- [ ] `StatementContext` 目标寄存器提取 API 签名（返回 `vector<uint32_t>`）双方确认
-- [ ] Scoreboard stall 是否消耗 cycle（影响 `exe_once()` 行为）双方确认
+- [x] `WarpContext::set_blocked_cycles_for_active()` 签名（参数 + 返回类型）双方确认
+  - **本侧锁定**: 本 change `design.md §4` 已锁定 `void set_blocked_cycles_for_active(uint32_t cycles)`
+  - **CppTLM 答复 Q1**: 该方法不在 `IScoreboard` 接口中（属 WarpContext 子类行为），见 CppTLM commit `2b28505` (RFC-P1-004 Q1)
+- [x] `StatementContext` 目标寄存器提取 API 签名（返回 `vector<uint32_t>`）双方确认
+  - **本侧锁定**: 本 change `design.md §4` 已锁定 `std::vector<uint32_t> get_dest_registers_as_ids(const StatementContext&)`
+- [x] Scoreboard stall 是否消耗 cycle（影响 `exe_once()` 行为）双方确认
+  - **本侧锁定**: 本 change `spec.md §Step A Scenario` 已明确："`cycle_counter_` 不推进（不消耗功能性 cycle）"
 
-**Commit**: 无
+**协作方式**: ✅ 已通过 CppTLM commit `2b28505` + 本 change design.md/spec.md 锁定
+
+**Commit**: ✅ 本 commit (2026-07-16 Phase 0 alignment)
 
 ### PTX-0.3: 序列化协调（30 min）
 
 **验证内容**：
-- [ ] `cleanup-deprecated-barrier-apis` 归档状态确认
-- [ ] 与 `god-class-refactor-thread-context-phase3` 字段迁移路径协调
-- [ ] 与 `migrate-bar-warp-sync-to-barrier-module` barrier 交互测试协调
+- [ ] `cleanup-deprecated-barrier-apis` 归档状态确认 (待 PTX-EMU 团队验证)
+- [ ] 与 `god-class-refactor-thread-context-phase3` 字段迁移路径协调 (PTX-EMU 内部协调)
+- [ ] 与 `migrate-bar-warp-sync-to-barrier-module` barrier 交互测试协调 (PTX-EMU 内部协调)
 
-**Commit**: 无
+**协作方式**: 🔵 PTX-EMU 内部协调（无需 CppTLM 参与）
+
+**Commit**: 待实施时
 
 ### PTX-0.4: CppTLM 书面同步确认（30 min）
 
 **验证内容**：
-- [ ] CppTLM 协作同步文档 `2026-07-01-f12b-ld-ptxemu-collaboration-sync.md §13` 包含 PTX-EMU 接收信号
-- [ ] CppTLM 实施计划 `2026-06-24-gpu-soc-phase8b.md` 引用本 change ID
+- [x] CppTLM 协作同步文档 `2026-07-01-f12b-ld-ptxemu-collaboration-sync.md §13` 包含 PTX-EMU 接收信号
+  - **来源**: CppTLM 端已在 `2026-07-15-cpptlm-hsk-response.md` 确认 HSK-1/2/3
+- [x] CppTLM 实施计划 `2026-06-24-gpu-soc-phase8b.md` 引用本 change ID
+  - **来源**: CppTLM `cpptlm-d1-p1-pipeline-scoreboard/internal-plan.md §3` PTX-EMU Sync Points 引用 `cpptlm-phase8b-injection-points`
+- [x] CppTLM 端 RFC-P1-001~004 已发送（commit `2b28505`）
+  - **CPPTLM 路径**: `CppTLM/docs/superpowers/specs/2026-07-16-rfcs-to-ptxemu-p1-injection.md`
+- [x] CppTLM P2 AsyncCompletion 占位已交付（commit `e69cd1d`）
+  - **CPPTLM 路径**: `CppTLM/include/tlm/gpu/async_completion_adapter.hh` + 5 个 `[gpu][async]` 单测
 
-**Commit**: 无
+**协作方式**: ✅ 已通过 CppTLM commit `2b28505` (2026-07-16) 完成对齐
+
+**Commit**: ✅ 本 commit (2026-07-16 Phase 0 alignment)
 
 ### PTX-0.5: 基线 worktree 建立（10 min）
 

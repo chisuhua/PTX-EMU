@@ -227,6 +227,11 @@ public:
 **枚举一致性约束**（与 CppTLM `tlm::PipelineId` 0-5 同步）：
 - CppTLM Adapter 编译期 `static_assert(static_cast<uint32_t>(::PipelineId::P0_INT_FP32) == static_cast<uint32_t>(tlm::PipelineId::P0_INT_FP32))`
 
+**🔒 锁定来源**（2026-07-16 Phase 0 对齐）:
+- CppTLM commit `2b28505` (RFC-P1-003 §3.1) — 双端 PipelineId 6 值字字对应（0..5）
+- 完整双向对照表见 `internal-plan.md §5.1`
+- CppTLM 端文档：`CppTLM/docs/superpowers/specs/2026-07-16-rfcs-to-ptxemu-p1-injection.md`
+
 ### 3.3 ITensorCoreTiming（`include/ptxsim/tensor_core_interface.h`）
 
 ```cpp
@@ -252,6 +257,11 @@ public:
 ```
 
 **枚举一致性约束**：与 CppTLM `tlm::TcPrecision` 0-5 同步（同 §3.2 static_assert）
+
+**🔒 锁定来源**（2026-07-16 Phase 0 对齐）:
+- CppTLM commit `2b28505` (RFC-P1-003 §3.2) — 双端 TcPrecision 6 值字字对应（0..5）
+- 完整双向对照表见 `internal-plan.md §5.1`
+- CppTLM 端文档：`CppTLM/docs/superpowers/specs/2026-07-16-rfcs-to-ptxemu-p1-injection.md`
 
 ---
 

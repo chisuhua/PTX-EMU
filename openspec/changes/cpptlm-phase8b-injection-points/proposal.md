@@ -17,6 +17,11 @@ PTX-EMU 当前 `SMContext` 仅暴露**一个**外部注入点：`set_warp_schedu
 2. **2026-07-14**：[CppTLM ADR-NV-02 Status Update](../../../../CppTLM/docs/adr/ADR-NV-02-phase8b-d1-strategy.md) 将策略从 D1-Lite 升级为 D1-Full（WarpScheduler + Scoreboard + Pipeline + TensorCore 全部注入）
 3. **2026-07-14**：[CppTLM 协作同步文档](../../../../CppTLM/docs/superpowers/specs/2026-07-01-f12b-ld-ptxemu-collaboration-sync.md) 追加 §13 D1-Full 双路径协作
 4. **2026-07-14**：[CppTLM 实施计划](../../../../CppTLM/docs/superpowers/plans/2026-06-24-gpu-soc-phase8b.md) 修订为 D1-Full（573 行，含 Task 15a 4 个 Adapter）
+5. **2026-07-16**：CppTLM 端 P0 归档（commit `b94eccc`）+ P2 AsyncCompletion 占位实施（commit `e69cd1d`）+ Phase 0 对齐 RFC 发送（commit `2b28505`，[`2026-07-16-rfcs-to-ptxemu-p1-injection.md`](../../../../CppTLM/docs/superpowers/specs/2026-07-16-rfcs-to-ptxemu-p1-injection.md)），提供：
+   - **RFC-P1-001**: 3 接口签名（与本 change §3.1-§3.3 完全一致）
+   - **RFC-P1-003**: 12-endpoint enum 锁定（双端 PipelineId 6 + TcPrecision 6 字字对应）
+   - **RFC-P1-004**: Q1-Q5 答复（set_blocked_cycles_for_active 归属 + thread-safety + latency_mnk 退化 + AsyncCompletion 触发时机 + PipelineId 整数 lock）
+   - **Phase 0 对齐结果**: PTX-0.1 / PTX-0.2 / PTX-0.4 已通过 CppTLM commit 锁定（详见 `internal-plan.md §5`）
 
 **前置 change 假设**：
 
