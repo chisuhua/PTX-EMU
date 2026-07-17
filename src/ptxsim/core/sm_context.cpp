@@ -45,10 +45,13 @@ inline bool step_a_scoreboard_check(IScoreboard *scoreboard, WarpContext *warp,
 
 // Step B: Latency query + set_blocked_cycles_for_active. Priority chain:
 // pipeline_provider > tensor_core_timing > InstructionLatencyTable (fallback).
-// All three nullptr = use existing InstructionLatencyTable only.
+// When both injectors are nullptr, this is a NO-OP (byte-identical to
+// pre-change exe_once(), which did NOT set blocked_cycles from
+// InstructionLatencyTable — that was an LdHandler-only path).
 inline void step_b_set_blocked_cycles(IPipelineLatencyProvider *pipeline,
                                       ITensorCoreTiming *tc, WarpContext *warp,
                                       const StatementContext &stmt) {
+    if (!pipeline && !tc) return;  // both nullptr = no-op (preserve baseline)
     uint32_t instr_latency = 0;
     if (pipeline) {
         double frac = pipeline->get_fractional_cycles_by_type(
