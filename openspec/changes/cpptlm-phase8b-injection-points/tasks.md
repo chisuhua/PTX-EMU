@@ -422,15 +422,16 @@ Refs: ADR-0020, openspec/changes/cpptlm-phase8b-injection-points"
 
 ## 依赖
 
-- **必须先完成**: `cleanup-deprecated-barrier-apis` 归档（避免 `warp_state.wbars[0]` 字段迁移冲突）
+- **前置已满足**: `cleanup-deprecated-barrier-apis` 已归档（2026-06-20 per `openspec/changes/archive/2026-06-20-cleanup-deprecated-barrier-apis/`）✅
+- **前置已满足**: `migrate-bar-warp-sync-to-barrier-module` 已归档（2026-07-03 per `openspec/changes/archive/2026-07-03-migrate-bar-warp-sync-to-barrier-module/`）✅
 - **必须先完成**: Phase 0 对齐（PTX-0.1~0.5）
 - **下游依赖**: CppTLM Task 15（Adapter 层）依赖本 change 归档
-- **并行实施**: 与 `god-class-refactor-thread-context-phase3` 和 `migrate-bar-warp-sync-to-barrier-module` 并行（需关注字段迁移）
+- **并行实施**: 仅与 `god-class-refactor-thread-context-phase3` 并行（需关注 `blocked_cycles` 字段迁移）
 
 ## 序列化考虑
 
 | Active Change | 关系 | 建议 |
 |--------------|------|------|
-| `cleanup-deprecated-barrier-apis` | **前置** | 必须先归档（本 change 阻塞） |
+| `cleanup-deprecated-barrier-apis` | **已归档**（2026-06-20） | 前置条件已满足 ✅ |
+| `migrate-bar-warp-sync-to-barrier-module` | **已归档**（2026-07-03） | 并行协调已解除 ✅ |
 | `god-class-refactor-thread-context-phase3` | **并行** | 关注 `blocked_cycles` 字段迁移 |
-| `migrate-bar-warp-sync-to-barrier-module` | **并行** | 关注 barrier 后 PC 处理 |

@@ -27,10 +27,10 @@ PTX-EMU 当前 `SMContext` 仅暴露**一个**外部注入点：`set_warp_schedu
 
 - CppTLM `openspec/changes/2026-06-24-gpu-soc-phase8b-core/` OpenSpec change 修订完成（D1-Full）✅
 - CppTLM 任务书 `2026-07-03-ptxemu-modification-task.md` 已签发 ✅
-- 本 change 与现有 3 个 active changes 序列化（详见 tasks.md §序列化考虑）：
-  - `cleanup-deprecated-barrier-apis`（**前置**）：必须先归档，避免 `warp_state.wbars[0]` 字段迁移冲突
+- 本 change 与现有 active changes 序列化（详见 tasks.md §序列化考虑）：
+  - `cleanup-deprecated-barrier-apis`：**已归档**（2026-06-20 per `openspec/changes/archive/2026-06-20-cleanup-deprecated-barrier-apis/`）— 前置条件已满足 ✅
+  - `migrate-bar-warp-sync-to-barrier-module`：**已归档**（2026-07-03 per `openspec/changes/archive/2026-07-03-migrate-bar-warp-sync-to-barrier-module/`）— 并行协调已解除 ✅
   - `god-class-refactor-thread-context-phase3`（**并行**）：需关注 `blocked_cycles` 字段迁移路径
-  - `migrate-bar-warp-sync-to-barrier-module`（**并行**）：barrier 后 PC 处理与 `blocked_cycles` 交互
 
 **关联 PTX-EMU 经验沉淀**（来自 `docs/dev-process/lessons-learned.md`）：
 
