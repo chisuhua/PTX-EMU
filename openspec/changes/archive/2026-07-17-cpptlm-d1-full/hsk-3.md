@@ -1,6 +1,8 @@
 # HSK-3: libcpptlm_cudart.so CMake 暴露方式草案
 
-> **状态**: ✅ **Ready to Send (CPPTLM_COMMIT_HASH 已锁定 2026-07-17)**
+> **状态**: ✅ **已发出（待 CppTLM 确认 / CI ON-path 验证 / ExternalProject_Add end-to-end）**
+
+**发送记录**: 2026-07-17, CPPTLM_COMMIT_HASH=73e5422, 伴随 commit `93726f62` (archive + spec 晋升)
 > **回传目标**: CppTLM Team (`#cpptlm-integration` Slack 频道 / PR comment)
 > **承诺时间**: D5 EOD 前
 > **形式**: CMake 草案（3 选项对比，默认 ExternalProject_Add）
@@ -210,7 +212,7 @@ pkg-config --modversion cpptlm  # 验证
 ## 📋 跟踪
 
 发送后请更新本文件：
-- [ ] 发送日期: **2026-07-17 Ready to Send**（CPPTLM_COMMIT_HASH 已锁定 `73e5422`）
+- [x] 发送日期: **2026-07-17 已发出**（CPPTLM_COMMIT_HASH 已锁定 `73e5422`）
 - [ ] 发送渠道: 用户手动复制（无 Slack/邮件）
 - [ ] CppTLM 确认收到:
 - [x] CppTLM 首选方案: **已确认选项 1**（见 CppTLM docs/superpowers/specs/2026-07-15-cpptlm-hsk-response.md）
@@ -236,4 +238,4 @@ CppTLM 反馈 ──────────┐
 
 ---
 
-**最后更新**: 2026-07-17（CPPTLM_COMMIT_HASH 锁定 `73e5422` + GIT_REPOSITORY 确认 + 选项 1 确认；Ready to Send）
+**最后更新**: 2026-07-17（已发出 — CPPTLM_COMMIT_HASH=`73e5422` + 选项 1 ExternalProject_Add + GIT_REPOSITORY 确认；待 CppTLM 确认）
