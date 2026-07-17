@@ -19,9 +19,10 @@ namespace {
 
 // === Phase 8.B PTX-6: exe_once() 3-step injection helpers (ADR-0020) ===
 // File-local helpers — kept in anonymous namespace to avoid ABI exposure.
-// All three respect nullptr semantics: nullptr injector = byte-identical to
-// pre-injection behavior. Step A and Step C use scoreboard; Step B uses the
-// priority chain pipeline_provider → tensor_core_timing → InstructionLatencyTable.
+// Step A and Step C use scoreboard; both respect nullptr semantics
+// (nullptr injector = byte-identical to pre-injection behavior).
+// Step B has been extracted to SMContext::step_b_set_blocked_cycles
+// (public static) for direct unit testability.
 
 // Step A: Scoreboard hazard check. Returns true if execution may proceed,
 // false if RAW hazard detected or scoreboard full (caller should goto warp_done).
@@ -43,31 +44,9 @@ inline bool step_a_scoreboard_check(IScoreboard *scoreboard, WarpContext *warp,
     return true;
 }
 
-// Step B: Latency query + set_blocked_cycles_for_active. Priority chain:
-// pipeline_provider > tensor_core_timing > InstructionLatencyTable (fallback).
-// When both injectors are nullptr, this is a NO-OP (byte-identical to
-// pre-change exe_once(), which did NOT set blocked_cycles from
-// InstructionLatencyTable — that was an LdHandler-only path).
-inline void step_b_set_blocked_cycles(IPipelineLatencyProvider *pipeline,
-                                      ITensorCoreTiming *tc, WarpContext *warp,
-                                      const StatementContext &stmt) {
-    if (!pipeline && !tc) return;  // both nullptr = no-op (preserve baseline)
-    uint32_t instr_latency = 0;
-    if (pipeline) {
-        double frac = pipeline->get_fractional_cycles_by_type(
-            static_cast<int>(stmt.type),
-            SMContext::map_instruction_to_pipeline(stmt));
-        if (frac > 0.0) instr_latency = static_cast<uint32_t>(std::ceil(frac));
-    }
-    if (instr_latency == 0 && tc && SMContext::is_tensor_core_instruction(stmt)) {
-        instr_latency = tc->get_latency(
-            SMContext::map_instruction_to_tc_precision(stmt));
-    }
-    if (instr_latency == 0) {
-        instr_latency = ptxsim::getLatency(stmt.type).cycles;
-    }
-    if (instr_latency > 0) warp->set_blocked_cycles_for_active(instr_latency);
-}
+// Step B has been extracted to SMContext::step_b_set_blocked_cycles (public
+// static, see sm_context.h) for direct unit testability. The two call sites
+// in exe_once() now invoke SMContext::step_b_set_blocked_cycles.
 
 // Step C: Scoreboard release after successful execution. Caller MUST guard
 // with warp_executed flag to prevent releasing unallocated entries when
@@ -294,6 +273,28 @@ TcPrecision SMContext::map_instruction_to_tc_precision(const StatementContext &s
     return TcPrecision::FP16;
 }
 
+void SMContext::step_b_set_blocked_cycles(IPipelineLatencyProvider *pipeline,
+                                          ITensorCoreTiming *tc,
+                                          WarpContext *warp,
+                                          const StatementContext &stmt) {
+    if (!pipeline && !tc) return;  // both nullptr = no-op (preserve baseline)
+    uint32_t instr_latency = 0;
+    if (pipeline) {
+        double frac = pipeline->get_fractional_cycles_by_type(
+            static_cast<int>(stmt.type),
+            SMContext::map_instruction_to_pipeline(stmt));
+        if (frac > 0.0) instr_latency = static_cast<uint32_t>(std::ceil(frac));
+    }
+    if (instr_latency == 0 && tc && SMContext::is_tensor_core_instruction(stmt)) {
+        instr_latency = tc->get_latency(
+            SMContext::map_instruction_to_tc_precision(stmt));
+    }
+    if (instr_latency == 0) {
+        instr_latency = ptxsim::getLatency(stmt.type).cycles;
+    }
+    if (instr_latency > 0) warp->set_blocked_cycles_for_active(instr_latency);
+}
+
 EXE_STATE SMContext::exe_once() {
     cycle_counter_++; // 递增周期计数器
     if (sm_state != RUN) {
@@ -350,7 +351,7 @@ EXE_STATE SMContext::exe_once() {
                             // 【Phase 8.B PTX-6】Step A: Scoreboard hazard check
                             if (!step_a_scoreboard_check(scoreboard_, next_warp, *stmt)) goto warp_done;
                             // 【Phase 8.B PTX-6】Step B: Latency query → set_blocked_cycles_for_active
-                            step_b_set_blocked_cycles(pipeline_provider_, tensor_core_timing_, next_warp, *stmt);
+                            SMContext::step_b_set_blocked_cycles(pipeline_provider_, tensor_core_timing_, next_warp, *stmt);
                             if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
                                 if (ptxsim::DebugConfig::get().is_trace_cycle_enabled()) {
                                     PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_instruction(
@@ -442,7 +443,7 @@ EXE_STATE SMContext::exe_once() {
                     // 【Phase 8.B PTX-6】Step A: Scoreboard hazard check
                     if (!step_a_scoreboard_check(scoreboard_, next_warp, *stmt)) goto warp_done;
                     // 【Phase 8.B PTX-6】Step B: Latency query → set_blocked_cycles_for_active
-                    step_b_set_blocked_cycles(pipeline_provider_, tensor_core_timing_, next_warp, *stmt);
+                    SMContext::step_b_set_blocked_cycles(pipeline_provider_, tensor_core_timing_, next_warp, *stmt);
                     if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
                         if (ptxsim::DebugConfig::get().is_trace_cycle_enabled()) {
                             PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_instruction(

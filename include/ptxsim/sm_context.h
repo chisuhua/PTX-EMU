@@ -83,6 +83,17 @@ public:
     static bool is_tensor_core_instruction(const StatementContext &stmt);
     static PipelineId map_instruction_to_pipeline(const StatementContext &stmt);
     static TcPrecision map_instruction_to_tc_precision(const StatementContext &stmt);
+    // Step B: Latency query + set_blocked_cycles_for_active. Priority chain:
+    // pipeline_provider > tensor_core_timing > InstructionLatencyTable (fallback).
+    // When both injectors are nullptr, this is a NO-OP (byte-identical to
+    // pre-change exe_once(), which did NOT set blocked_cycles from
+    // InstructionLatencyTable - setting blocked_cycles from that table was
+    // an LdHandler-only path, see memory.cpp:47,71,139).
+    // Public static for testability (tests/unit/sm/test_step_b_set_blocked_cycles.cpp).
+    static void step_b_set_blocked_cycles(IPipelineLatencyProvider *pipeline,
+                                          ITensorCoreTiming *tc,
+                                          WarpContext *warp,
+                                          const StatementContext &stmt);
 
     // 获取当前活跃的warp数量
     size_t get_num_warps() const { return warps.size(); }
