@@ -698,3 +698,9 @@ add_catch_test(unit_cpptlm_attach_bridge
     cpptlm/test_cpptlm_attach_bridge.cpp
 )
 set_tests_properties(unit_cpptlm_attach_bridge PROPERTIES LABELS "unit;cpptlm;bridge;attach")
+
+# Phase 8.B injection interfaces (cpptlm-phase8b-injection-points, ADR-0020)
+add_catch_test(unit_cpptlm_injection_interfaces
+    cpptlm/test_injection_interfaces.cpp
+)
+set_tests_properties(unit_cpptlm_injection_interfaces PROPERTIES LABELS "unit;cpptlm;inject")
