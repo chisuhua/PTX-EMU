@@ -35,6 +35,10 @@ inline bool step_a_scoreboard_check(IScoreboard *scoreboard, WarpContext *warp,
     auto warp_id = static_cast<uint32_t>(warp->get_physical_warp_id());
     std::vector<uint32_t> allocated;
     for (auto reg_id : dest_regs) {
+        // Skip duplicate reg_ids to prevent double-release on rollback
+        // (e.g., instructions that reference the same register multiple times).
+        if (std::find(allocated.begin(), allocated.end(), reg_id) != allocated.end())
+            continue;
         if (!scoreboard->allocate(reg_id, warp_id)) {
             for (auto prev : allocated) scoreboard->release(prev, warp_id);
             return false;
@@ -57,6 +61,13 @@ inline void step_c_release_scoreboard(IScoreboard *scoreboard, WarpContext *warp
     auto dest_regs = RegisterAnalyzer::get_dest_registers_as_ids(stmt);
     auto warp_id = static_cast<uint32_t>(warp->get_physical_warp_id());
     for (auto reg_id : dest_regs) scoreboard->release(reg_id, warp_id);
+}
+
+/// Dest register extraction wrapper — aligns with design.md §7.2 helper list.
+/// Delegates to RegisterAnalyzer::get_dest_registers_as_ids for the actual
+/// StatementContext variant traversal.
+inline std::vector<uint32_t> get_dest_registers(const StatementContext &stmt) {
+    return RegisterAnalyzer::get_dest_registers_as_ids(stmt);
 }
 
 }  // anonymous namespace
@@ -246,14 +257,35 @@ bool SMContext::is_tensor_core_instruction(const StatementContext &stmt) {
 }
 
 PipelineId SMContext::map_instruction_to_pipeline(const StatementContext &stmt) {
-    if (stmt.type >= StatementType::S_TCGEN05_ALLOC &&
-        stmt.type <= StatementType::S_TCGEN05_FENCE) {
+    if (is_tensor_core_instruction(stmt)) {
         return PipelineId::P4_TC;
     }
     if (stmt.type == StatementType::S_LD || stmt.type == StatementType::S_ST ||
         stmt.type == StatementType::S_ATOM) {
         return PipelineId::P3_LSU;
     }
+    // SFU (Special Function Unit) instructions → P2_SFU
+    switch (stmt.type) {
+        case StatementType::S_SIN:
+        case StatementType::S_COS:
+        case StatementType::S_LG2:
+        case StatementType::S_EX2:
+        case StatementType::S_RCP:
+        case StatementType::S_RSQRT:
+        case StatementType::S_SQRT:
+        case StatementType::S_TANH:
+            return PipelineId::P2_SFU;
+        default: break;
+    }
+    // FP64 instructions → P1_FP64 (detect by .f64 qualifier)
+    if (std::holds_alternative<GenericInstr>(stmt.data)) {
+        const auto &instr = std::get<GenericInstr>(stmt.data);
+        for (const auto &q : instr.qualifiers) {
+            if (q == Qualifier::Q_F64) return PipelineId::P1_FP64;
+        }
+    }
+    // Default: integer/FP32 → P0_INT_FP32 (V_SIMD for vector/SIMD ops not
+    // distinguishable from StatementType alone — map to P0 as baseline.)
     return PipelineId::P0_INT_FP32;
 }
 
@@ -350,8 +382,6 @@ EXE_STATE SMContext::exe_once() {
                         if (stmt) {
                             // 【Phase 8.B PTX-6】Step A: Scoreboard hazard check
                             if (!step_a_scoreboard_check(scoreboard_, next_warp, *stmt)) goto warp_done;
-                            // 【Phase 8.B PTX-6】Step B: Latency query → set_blocked_cycles_for_active
-                            SMContext::step_b_set_blocked_cycles(pipeline_provider_, tensor_core_timing_, next_warp, *stmt);
                             if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
                                 if (ptxsim::DebugConfig::get().is_trace_cycle_enabled()) {
                                     PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_instruction(
@@ -364,6 +394,17 @@ EXE_STATE SMContext::exe_once() {
                             }
                             next_warp->execute_warp_instruction(*stmt, target_pc);
                             warp_executed = true;
+                            // 【Phase 8.B PTX-6】Step B: Latency query → set_blocked_cycles_for_active
+                            // (MUST run AFTER execute: the instruction must execute before threads are
+                            // blocked, otherwise is_lane_active() returns false and skip all lanes.)
+                            try {
+                                SMContext::step_b_set_blocked_cycles(pipeline_provider_, tensor_core_timing_, next_warp, *stmt);
+                            } catch (...) {
+                                // Scoreboard rollback on exception: Step A allocated slots that Step C
+                                // would release. If Step B throws, we must release them now.
+                                if (scoreboard_) step_c_release_scoreboard(scoreboard_, next_warp, *stmt);
+                                throw;
+                            }
                             // 【Phase 8.B PTX-6】Step C: Scoreboard release (gated by warp_executed
                             // to prevent releasing unallocated entries on Step A failure)
                             step_c_release_scoreboard(scoreboard_, next_warp, *stmt);
@@ -442,8 +483,6 @@ EXE_STATE SMContext::exe_once() {
                 if (stmt) {
                     // 【Phase 8.B PTX-6】Step A: Scoreboard hazard check
                     if (!step_a_scoreboard_check(scoreboard_, next_warp, *stmt)) goto warp_done;
-                    // 【Phase 8.B PTX-6】Step B: Latency query → set_blocked_cycles_for_active
-                    SMContext::step_b_set_blocked_cycles(pipeline_provider_, tensor_core_timing_, next_warp, *stmt);
                     if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
                         if (ptxsim::DebugConfig::get().is_trace_cycle_enabled()) {
                             PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_instruction(
@@ -457,6 +496,14 @@ EXE_STATE SMContext::exe_once() {
 
                     next_warp->execute_warp_instruction(*stmt, pc);
                     warp_executed = true;
+                    // 【Phase 8.B PTX-6】Step B: Latency query → set_blocked_cycles_for_active
+                    // (MUST run AFTER execute — same constraint as fast path.)
+                    try {
+                        SMContext::step_b_set_blocked_cycles(pipeline_provider_, tensor_core_timing_, next_warp, *stmt);
+                    } catch (...) {
+                        if (scoreboard_) step_c_release_scoreboard(scoreboard_, next_warp, *stmt);
+                        throw;
+                    }
                     // 【Phase 8.B PTX-6】Step C: Scoreboard release (gated by warp_executed)
                     step_c_release_scoreboard(scoreboard_, next_warp, *stmt);
 

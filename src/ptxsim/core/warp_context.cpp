@@ -538,7 +538,11 @@ void WarpContext::decrement_blocked_cycles(ptxsim::WarpState &ws) {
 
 void WarpContext::set_blocked_cycles_for_active(uint32_t cycles) {
     for (auto& thread : warp_state.threads) {
-        if (thread.is_active && !thread.is_blocked) {
+        // Skip threads that are already blocked (barrier, previous instruction
+        // latency, etc.) and threads at barrier (status == Blocked) to prevent
+        // interaction between blocked_cycles and barrier state machine.
+        if (thread.is_active && !thread.is_blocked &&
+            thread.status != ptxsim::ThreadStatus::Blocked) {
             thread.blocked_cycles_remaining = cycles;
             thread.is_blocked = true;
         }
