@@ -357,6 +357,13 @@ add_catch_test(unit_streaming_admission
 )
 set_tests_properties(unit_streaming_admission PROPERTIES LABELS "unit;sm;admission;streaming;regression;BUG-SM-ADMISSION-OVERFLOW")
 
+# PTX-6: SMContext::exe_once() 3-step injection helper methods
+# (cpptlm-phase8b-injection-points, ADR-0020)
+add_catch_test(unit_sm_exe_once_helpers
+    sm/test_exe_once_helpers.cpp
+)
+set_tests_properties(unit_sm_exe_once_helpers PROPERTIES LABELS "unit;sm;ptx6;helper")
+
 # ============================================================================
 # Sync 单元测试
 # ============================================================================

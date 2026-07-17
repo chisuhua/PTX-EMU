@@ -188,6 +188,42 @@ void SMContext::try_admit_pending_blocks() {
     }
 }
 
+// === CppTLM D1-Full injection helpers (Phase 8.B PTX-6, ADR-0020) ===
+// Public static for testability (tests/unit/sm/test_exe_once_helpers.cpp).
+
+bool SMContext::is_tensor_core_instruction(const StatementContext &stmt) {
+    return stmt.type >= StatementType::S_TCGEN05_ALLOC &&
+           stmt.type <= StatementType::S_TCGEN05_FENCE;
+}
+
+PipelineId SMContext::map_instruction_to_pipeline(const StatementContext &stmt) {
+    if (stmt.type >= StatementType::S_TCGEN05_ALLOC &&
+        stmt.type <= StatementType::S_TCGEN05_FENCE) {
+        return PipelineId::P4_TC;
+    }
+    if (stmt.type == StatementType::S_LD || stmt.type == StatementType::S_ST ||
+        stmt.type == StatementType::S_ATOM) {
+        return PipelineId::P3_LSU;
+    }
+    return PipelineId::P0_INT_FP32;
+}
+
+TcPrecision SMContext::map_instruction_to_tc_precision(const StatementContext &stmt) {
+    if (std::holds_alternative<GenericInstr>(stmt.data)) {
+        const auto &instr = std::get<GenericInstr>(stmt.data);
+        for (const auto &q : instr.qualifiers) {
+            switch (q) {
+                case Qualifier::Q_F16: return TcPrecision::FP16;
+                case Qualifier::Q_BF16: return TcPrecision::BF16;
+                case Qualifier::Q_TCGEN_TF32: return TcPrecision::TF32;
+                case Qualifier::Q_F8: return TcPrecision::FP8;
+                default: continue;
+            }
+        }
+    }
+    return TcPrecision::FP16;
+}
+
 EXE_STATE SMContext::exe_once() {
     cycle_counter_++; // 递增周期计数器
     if (sm_state != RUN) {

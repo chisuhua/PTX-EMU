@@ -77,6 +77,13 @@ public:
     IPipelineLatencyProvider* get_pipeline_latency_provider() const { return pipeline_provider_; }
     ITensorCoreTiming*        get_tensor_core_timing()        const { return tensor_core_timing_; }
 
+    // 【NEW】CppTLM D1-Full injection (ADR-0020, Phase 8.B PTX-6):
+    // Static helper methods for exe_once() 3-step injection. Public for
+    // testability (unit tests in tests/unit/sm/test_exe_once_helpers.cpp).
+    static bool is_tensor_core_instruction(const StatementContext &stmt);
+    static PipelineId map_instruction_to_pipeline(const StatementContext &stmt);
+    static TcPrecision map_instruction_to_tc_precision(const StatementContext &stmt);
+
     // 获取当前活跃的warp数量
     size_t get_num_warps() const { return warps.size(); }
 
