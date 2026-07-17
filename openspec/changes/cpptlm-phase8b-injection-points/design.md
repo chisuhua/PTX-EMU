@@ -442,7 +442,8 @@ EXE_STATE SMContext::exe_once() {
 }
 ```
 
-**改造后**（3 处注入 + nullptr 字节级回退）：
+**改造后**（3 处注入 + nullptr 字节级回退 + warp_executed 守卫 + Step B/C 仅在执行路径触发）：
+
 ```cpp
 EXE_STATE SMContext::exe_once() {
     cycle_counter_++;
@@ -453,25 +454,28 @@ EXE_STATE SMContext::exe_once() {
     next_warp = warp_scheduler->schedule_next();
 
     if (next_warp) {
+        next_warp->set_scheduled(true);
         auto [stmt, pc] = get_next_statement(next_warp);
+        bool warp_executed = false;
 
         // === NEW Step A: Scoreboard 检查 ===
         if (scoreboard_) {
             scoreboard_->tick();
-            if (!scoreboard_->has_free_entry()) goto skip_warp_execution;
+            if (!scoreboard_->has_free_entry()) goto warp_done;
             auto dest_regs = get_dest_registers(*stmt);
             auto warp_id = static_cast<uint32_t>(next_warp->get_physical_warp_id());
             std::vector<uint32_t> allocated_so_far;
             for (auto reg_id : dest_regs) {
                 if (!scoreboard_->allocate(reg_id, warp_id)) {
                     for (auto prev : allocated_so_far) scoreboard_->release(prev, warp_id);
-                    goto skip_warp_execution;
+                    goto warp_done;  // scoreboard 已回滚，跳过 Step B/C
                 }
                 allocated_so_far.push_back(reg_id);
             }
         }
 
-        // === NEW Step B: 延迟查询 ===
+        // === NEW Step B: 延迟查询 (priority chain) ===
+        // priority: pipeline_provider_ > tensor_core_timing_ > InstructionLatencyTable
         uint32_t instr_latency = 0;
         if (pipeline_provider_) {
             double frac = pipeline_provider_->get_fractional_cycles_by_type(
@@ -479,31 +483,48 @@ EXE_STATE SMContext::exe_once() {
             if (frac > 0.0) instr_latency = static_cast<uint32_t>(std::ceil(frac));
         }
         if (instr_latency == 0 && tensor_core_timing_ && is_tensor_core_instruction(*stmt)) {
-            instr_latency = tensor_core_timing_->get_latency(map_instruction_to_tc_precision(*stmt));
+            instr_latency = tensor_core_timing_->get_latency(
+                map_instruction_to_tc_precision(*stmt));
         }
         if (instr_latency == 0) {
-            instr_latency = InstructionLatencyTable::instance().get(stmt->type).cycles;
+            instr_latency = ptxsim::getLatency(stmt->type).cycles;
         }
         if (instr_latency > 0) next_warp->set_blocked_cycles_for_active(instr_latency);
 
-        // 执行指令（原有逻辑）
+        // 执行指令（原有 fast/slow path 逻辑）
         next_warp->execute_warp_instruction(*stmt, pc);
+        warp_executed = true;
 
-        // === NEW Step C: Scoreboard 释放 ===
-        if (scoreboard_) {
+        // === NEW Step C: Scoreboard 释放 (仅 warp_executed) ===
+        if (warp_executed && scoreboard_) {
             auto dest_regs = get_dest_registers(*stmt);
             auto warp_id = static_cast<uint32_t>(next_warp->get_physical_warp_id());
             for (auto reg_id : dest_regs) scoreboard_->release(reg_id, warp_id);
         }
 
         check_reconvergence();
+
+    warp_done:
+        next_warp->set_scheduled(false);  // 必须在 goto 目标之前
     }
 
-skip_warp_execution:
     update_state();
     return sm_state;
 }
 ```
+
+**关键设计约束**（Oracle review 2026-07-17 验证）：
+
+1. **`warp_executed` 守卫** — 防止 Step A 失败时 Step C 释放未分配的寄存器（**严重 BUG**：scoreboard 状态损坏）
+2. **`goto warp_done` 替代 `goto skip_warp_execution`** — 目标在 `set_scheduled(false)` **之前**，避免跳过 scheduler 状态清理
+3. **Step B 仅在 Step A 成功后执行** — 防止 scoreboard 跳过时**虚假阻塞** warp N 周期（指令未执行）
+4. **`ptxsim::getLatency()` free function** — 替代 `InstructionLatencyTable::instance().get().cycles`（向后兼容接口）
+5. **`is_tensor_core_instruction()`** — `stmt.type >= S_TCGEN05_ALLOC && stmt.type <= S_TCGEN05_FENCE`（X-Macro 11 entries 连续，ptx_op.def:127-137）
+
+**Divergent path 集成**（实际 `sm_context.cpp:191-385` 有 fast/slow 两条路径）：
+
+- Step A/B/C 在两条路径中**均需执行**（设计统一通过 `get_next_statement()` 抽象 + `warp_executed` 标记传播）
+- 具体实现见 `get_next_statement()` 辅助函数 §7.2 — 返回 `{stmt, pc, executed}` 三元组
 
 ### 7.2 4 个辅助函数
 
@@ -511,19 +532,94 @@ skip_warp_execution:
 // sm_context.cpp 内部辅助函数
 
 /// 封装 lanes_by_pc 选择 + sample_lane + sample_thread->get_statement_at(pc)
-static std::pair<StatementContext*, int> get_next_statement(WarpContext* warp) {
+/// Fast path: lanes_by_pc.size() == 1, 直接取首个 PC
+/// Slow path: 选择第一组全 non_blocked 的 PC group, fallback 到第一组
+struct StmtWithPc {
+    StatementContext* stmt;
+    int pc;
+    bool executed;  // true = fast/slow path 都成功执行, false = 无有效语句
+};
+static StmtWithPc get_next_statement(WarpContext* warp) {
     auto lanes_by_pc = warp->get_lanes_by_pc();
-    // 选择第一组非阻塞 PC → sample_lane = lanes[0]
-    // sample_thread = warp->get_thread(sample_lane)
-    // stmt = sample_thread->get_statement_at(pc)
-    // [与 PTX-EMU 现有代码一致]
-    // ... 实际实现需对接 PTX-EMU 内部 API
-    return {stmt, pc};
+    if (lanes_by_pc.empty()) return {nullptr, -1, false};
+    int target_pc = -1;
+    const std::vector<int>* selected_lanes = nullptr;
+    if (lanes_by_pc.size() == 1) {
+        // Fast path
+        auto it = lanes_by_pc.begin();
+        target_pc = it->first;
+        selected_lanes = &it->second;
+    } else {
+        // Slow path: 选第一组 all non_blocked
+        auto& ws = warp->get_warp_state();
+        for (const auto& [candidate_pc, candidate_lanes] : lanes_by_pc) {
+            bool all_non_blocked = true;
+            for (int lane : candidate_lanes) {
+                if (ws.threads[lane].is_blocked) {
+                    all_non_blocked = false;
+                    break;
+                }
+            }
+            if (all_non_blocked) {
+                target_pc = candidate_pc;
+                selected_lanes = &candidate_lanes;
+                break;
+            }
+        }
+        if (target_pc < 0) {
+            // Fallback: 第一组
+            auto it = lanes_by_pc.begin();
+            target_pc = it->first;
+            selected_lanes = &it->second;
+        }
+    }
+    int sample_lane = selected_lanes->front();
+    ThreadContext* sample_thread = warp->get_thread(sample_lane);
+    if (!sample_thread || target_pc < 0 ||
+        target_pc >= static_cast<int>(sample_thread->statements_size())) {
+        return {nullptr, -1, false};
+    }
+    StatementContext* stmt = sample_thread->get_statement_at(target_pc);
+    return {stmt, target_pc, stmt != nullptr};
 }
 
-/// 从 StatementContext 提取目标寄存器 ID 列表
+/// 从 StatementContext 提取目标寄存器 ID 列表 (包装 PTX-5b)
 static std::vector<uint32_t> get_dest_registers(const StatementContext& stmt) {
     return RegisterAnalyzer::get_dest_registers_as_ids(stmt);
+}
+
+/// PTX 指令 → PipelineId 映射
+static PipelineId map_instruction_to_pipeline(const StatementContext& stmt) {
+    // 通过 stmt.type 映射:
+    // S_ADD, S_MUL, S_FFMA → P0_INT_FP32
+    // S_LD, S_ST → P3_LSU
+    // tcgen05.* → P4_TC
+    // ... 完整映射表见 tasks.md PTX-6 实施 (CppTLM 端 RFC-P1-001 提供)
+    return PipelineId::P0_INT_FP32;  // 默认 fallback
+}
+
+/// 判断是否为 TensorCore 指令 (基于 X-Macro enum range)
+static bool is_tensor_core_instruction(const StatementContext& stmt) {
+    // ptx_op.def:127-137 — S_TCGEN05_ALLOC..S_TCGEN05_FENCE 连续 11 entries
+    return stmt.type >= StatementType::S_TCGEN05_ALLOC &&
+           stmt.type <= StatementType::S_TCGEN05_FENCE;
+}
+
+/// PTX 指令 → TcPrecision 映射
+static TcPrecision map_instruction_to_tc_precision(const StatementContext& stmt) {
+    // 遍历 stmt.qualifiers 匹配 .f16/.bf16/.tf32
+    for (const auto& q : stmt.qualifiers) {
+        switch (q) {
+            case Qualifier::Q_F16: return TcPrecision::FP16;
+            case Qualifier::Q_BF16: return TcPrecision::BF16;
+            case Qualifier::Q_TF32: return TcPrecision::TF32;
+            case Qualifier::Q_F8:  return TcPrecision::FP8;
+            case Qualifier::Q_F4:  return TcPrecision::FP4;
+            case Qualifier::Q_F6:  return TcPrecision::FP6;
+            default: continue;
+        }
+    }
+    return TcPrecision::FP16;  // fallback
 }
 
 /// PTX 指令 → PipelineId 映射

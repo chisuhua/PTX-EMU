@@ -277,13 +277,17 @@ Refs: ADR-0020, CppTLM docs/superpowers/specs/2026-07-03-ptxemu-modification-tas
 
 **操作**：
 - [ ] 修改 `src/ptxsim/core/sm_context.cpp`
-- [ ] 新增 4 辅助函数：`get_next_statement()` / `get_dest_registers()` / `map_instruction_to_pipeline()` / `is_tensor_core_instruction()` / `map_instruction_to_tc_precision()`
-- [ ] `exe_once()` 插入 3 处注入点（Step A / B / C）
+- [ ] 新增 4 辅助函数：`get_next_statement()` (返回 `StmtWithPc{stmt, pc, executed}` 三元组, 涵盖 fast/slow path 共享) / `get_dest_registers()` / `map_instruction_to_pipeline()` / `is_tensor_core_instruction()` / `map_instruction_to_tc_precision()`
+- [ ] `exe_once()` 插入 3 处注入点（Step A / B / C），使用 `warp_executed` 守卫和 `goto warp_done` 控制流
 - [ ] nullptr 完全回退（4 个注入点全 nullptr 时行为与改造前**字节级相同**）
 
 **约束**：
 - ⚠️ MUST 严格遵循设计文档 `design.md §7` 的改造代码
-- ⚠️ MUST 使用 `goto skip_warp_execution` 实现 Step A 失败跳过（非 `return`，避免外层逻辑错乱）
+- ⚠️ MUST 使用 `goto warp_done` 实现 Step A 失败跳过（目标在 `set_scheduled(false)` **之前**）
+- ⚠️ MUST Step B 和 Step C **仅在 warp_executed 路径执行**（Step A 失败时跳过 — Oracle 2026-07-17 BUG-2/BUG-3 验证）
+- ⚠️ MUST Step C 用 `warp_executed` 守卫（防止释放未分配 regs 导致 scoreboard 状态损坏）
+- ⚠️ MUST Step B 用 `ptxsim::getLatency(stmt->type).cycles` 作为 fallback（向后兼容 free function）
+- ⚠️ MUST `is_tensor_core_instruction()` 用 `stmt.type >= S_TCGEN05_ALLOC && stmt.type <= S_TCGEN05_FENCE` 范围比较（X-Macro 11 entries 连续，ptx_op.def:127-137）
 - ⚠️ MUST 延迟取 `ceil(double) → uint32_t`
 - ⚠️ MUST Pipeline 优先级高于 TensorCore 高于 InstructionLatencyTable
 
