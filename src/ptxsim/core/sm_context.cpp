@@ -2,15 +2,82 @@
 // #include "memory/memory_manager.h"        // 添加MemoryManager头文件
 #include "memory/resource_manager.h"      // 添加ResourceManager头文件
 #include "memory/shared_memory_manager.h" // 添加SharedMemoryManager头文件
+#include "ptx_ir/instruction_latency_table.h"  // Phase 8.B PTX-6 (ADR-0020)
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/cta_context.h"
 #include "ptxsim/ptx_config.h"
+#include "ptxsim/register_analyzer.h"  // Phase 8.B PTX-6 (ADR-0020)
 #include "ptxsim/warp_trace_formatter.h"     // 添加ptx_config头文件
 #include "ptxsim/warp_scheduler.h" // 添加warp调度器头文件
 #include "utils/logger.h"          // 添加logger头文件
 #include <algorithm>
 #include <cassert>
+#include <cmath>  // Phase 8.B PTX-6 — for std::ceil(double→uint32_t)
 #include <set>
+
+namespace {
+
+// === Phase 8.B PTX-6: exe_once() 3-step injection helpers (ADR-0020) ===
+// File-local helpers — kept in anonymous namespace to avoid ABI exposure.
+// All three respect nullptr semantics: nullptr injector = byte-identical to
+// pre-injection behavior. Step A and Step C use scoreboard; Step B uses the
+// priority chain pipeline_provider → tensor_core_timing → InstructionLatencyTable.
+
+// Step A: Scoreboard hazard check. Returns true if execution may proceed,
+// false if RAW hazard detected or scoreboard full (caller should goto warp_done).
+inline bool step_a_scoreboard_check(IScoreboard *scoreboard, WarpContext *warp,
+                                    const StatementContext &stmt) {
+    if (!scoreboard) return true;  // nullptr = skip injection
+    scoreboard->tick();
+    if (!scoreboard->has_free_entry()) return false;
+    auto dest_regs = RegisterAnalyzer::get_dest_registers_as_ids(stmt);
+    auto warp_id = static_cast<uint32_t>(warp->get_physical_warp_id());
+    std::vector<uint32_t> allocated;
+    for (auto reg_id : dest_regs) {
+        if (!scoreboard->allocate(reg_id, warp_id)) {
+            for (auto prev : allocated) scoreboard->release(prev, warp_id);
+            return false;
+        }
+        allocated.push_back(reg_id);
+    }
+    return true;
+}
+
+// Step B: Latency query + set_blocked_cycles_for_active. Priority chain:
+// pipeline_provider > tensor_core_timing > InstructionLatencyTable (fallback).
+// All three nullptr = use existing InstructionLatencyTable only.
+inline void step_b_set_blocked_cycles(IPipelineLatencyProvider *pipeline,
+                                      ITensorCoreTiming *tc, WarpContext *warp,
+                                      const StatementContext &stmt) {
+    uint32_t instr_latency = 0;
+    if (pipeline) {
+        double frac = pipeline->get_fractional_cycles_by_type(
+            static_cast<int>(stmt.type),
+            SMContext::map_instruction_to_pipeline(stmt));
+        if (frac > 0.0) instr_latency = static_cast<uint32_t>(std::ceil(frac));
+    }
+    if (instr_latency == 0 && tc && SMContext::is_tensor_core_instruction(stmt)) {
+        instr_latency = tc->get_latency(
+            SMContext::map_instruction_to_tc_precision(stmt));
+    }
+    if (instr_latency == 0) {
+        instr_latency = ptxsim::getLatency(stmt.type).cycles;
+    }
+    if (instr_latency > 0) warp->set_blocked_cycles_for_active(instr_latency);
+}
+
+// Step C: Scoreboard release after successful execution. Caller MUST guard
+// with warp_executed flag to prevent releasing unallocated entries when
+// Step A failed.
+inline void step_c_release_scoreboard(IScoreboard *scoreboard, WarpContext *warp,
+                                      const StatementContext &stmt) {
+    if (!scoreboard) return;  // nullptr = skip injection
+    auto dest_regs = RegisterAnalyzer::get_dest_registers_as_ids(stmt);
+    auto warp_id = static_cast<uint32_t>(warp->get_physical_warp_id());
+    for (auto reg_id : dest_regs) scoreboard->release(reg_id, warp_id);
+}
+
+}  // anonymous namespace
 
 SMContext::SMContext(int max_warps, int max_threads_per_sm,
                      size_t shared_mem_size, int sm_id)
@@ -259,6 +326,7 @@ EXE_STATE SMContext::exe_once() {
     if (next_warp) {
         // 设置warp为被调度状态
         next_warp->set_scheduled(true);
+        bool warp_executed = false;
 
         // [Divergent Execution Fix] Execute instructions for all unique PC groups
         // Fast path: if all schedulable lanes share the same PC, use the old path
@@ -276,6 +344,10 @@ EXE_STATE SMContext::exe_once() {
                 if (target_pc >= 0 && target_pc < static_cast<int>(sample_thread->statements_size())) {
                     StatementContext* stmt = sample_thread->get_statement_at(target_pc);
                         if (stmt) {
+                            // 【Phase 8.B PTX-6】Step A: Scoreboard hazard check
+                            if (!step_a_scoreboard_check(scoreboard_, next_warp, *stmt)) goto warp_done;
+                            // 【Phase 8.B PTX-6】Step B: Latency query → set_blocked_cycles_for_active
+                            step_b_set_blocked_cycles(pipeline_provider_, tensor_core_timing_, next_warp, *stmt);
                             if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
                                 if (ptxsim::DebugConfig::get().is_trace_cycle_enabled()) {
                                     PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_instruction(
@@ -287,6 +359,10 @@ EXE_STATE SMContext::exe_once() {
                                 }
                             }
                             next_warp->execute_warp_instruction(*stmt, target_pc);
+                            warp_executed = true;
+                            // 【Phase 8.B PTX-6】Step C: Scoreboard release (gated by warp_executed
+                            // to prevent releasing unallocated entries on Step A failure)
+                            step_c_release_scoreboard(scoreboard_, next_warp, *stmt);
                             // Check SIMT stack reconvergence after every instruction
                             // (not just branch/barrier, because lanes may reach reconvergence
                             // point on any instruction, e.g., after a label or fallthrough)
@@ -360,6 +436,10 @@ EXE_STATE SMContext::exe_once() {
                 StatementContext* stmt = sample_thread->get_statement_at(pc);
 
                 if (stmt) {
+                    // 【Phase 8.B PTX-6】Step A: Scoreboard hazard check
+                    if (!step_a_scoreboard_check(scoreboard_, next_warp, *stmt)) goto warp_done;
+                    // 【Phase 8.B PTX-6】Step B: Latency query → set_blocked_cycles_for_active
+                    step_b_set_blocked_cycles(pipeline_provider_, tensor_core_timing_, next_warp, *stmt);
                     if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
                         if (ptxsim::DebugConfig::get().is_trace_cycle_enabled()) {
                             PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_instruction(
@@ -372,6 +452,9 @@ EXE_STATE SMContext::exe_once() {
                     }
 
                     next_warp->execute_warp_instruction(*stmt, pc);
+                    warp_executed = true;
+                    // 【Phase 8.B PTX-6】Step C: Scoreboard release (gated by warp_executed)
+                    step_c_release_scoreboard(scoreboard_, next_warp, *stmt);
 
                     // Check SIMT stack reconvergence after every instruction
                     {
@@ -421,6 +504,9 @@ EXE_STATE SMContext::exe_once() {
         }
 
         // 执行完后取消warp的被调度状态
+        // 【Phase 8.B PTX-6】warp_done label: target of `goto warp_done` from Step A failure
+        // (must be BEFORE set_scheduled(false) per Oracle 2026-07-17 BUG-1 fix)
+    warp_done:
         next_warp->set_scheduled(false);
     }
 
