@@ -36,6 +36,14 @@ public:
     static std::vector<RegisterInfo>
     analyze_registers(const std::vector<StatementContext> &statements);
 
+    // 【NEW】CppTLM D1-Full injection (ADR-0020, Phase 8.B PTX-5b):
+    // Extract dest (write) register IDs for Scoreboard hazard detection.
+    // Strategy: operands[0] is dest for arithmetic/ld/vote/shfl/atom;
+    // st/red/prefetch/barrier/bra/ret naturally return [] (no dest reg).
+    // VecOperand (tex/ld.v4) and tcgen05.TMEM dest are out of Phase 8.B scope.
+    static std::vector<uint32_t> get_dest_registers_as_ids(
+        const StatementContext &stmt);
+
 private:
     // 从单个语句中提取寄存器信息
     static void extract_registers_from_statement(

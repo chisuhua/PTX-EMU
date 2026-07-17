@@ -16,6 +16,26 @@ std::vector<RegisterInfo> RegisterAnalyzer::analyze_registers(
     return result;
 }
 
+std::vector<uint32_t> RegisterAnalyzer::get_dest_registers_as_ids(
+    const StatementContext &stmt) {
+    std::vector<uint32_t> result;
+    stmt.visit([&result](const auto &instr) {
+        using T = std::decay_t<decltype(instr)>;
+        if constexpr (requires { instr.operands; }) {
+            if (!instr.operands.empty()) {
+                const auto &dst = instr.operands[0];
+                if (dst.kind() == OperandKind::REG) {
+                    result.push_back(
+                        std::get<RegOperand>(dst.data).index);
+                }
+                // VecOperand (tex/ld.v4) — Phase 8.B TODO
+                // st/red/prefetch's operands[0] is AddrOperand → kind() != REG → skip
+            }
+        }
+    });
+    return result;
+}
+
 void RegisterAnalyzer::extract_registers_from_statement(
     const StatementContext &stmt,
     std::unordered_set<RegisterInfo, RegisterInfoHash> &registers) {
