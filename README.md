@@ -55,6 +55,7 @@ cd build && ctest --output-on-failure
 ## 已知限制
 
 - **PTX 指令覆盖**：参考 [docs/audits/debt-audit-2026-07-02.md](./audits/debt-audit-2026-07-02.md) 自动统计（避免硬编码）
+- **CppTLM D1-Full MemoryBridge**：**已归档（2026-07-17）** — ABI 真值源 `include/cudart/cpptlm_bridge.h`（5 虚方法 + `g_cpptlm_bridge` 全局指针）+ 异步 `cudaLaunchKernel` + `cudaStreamSynchronize` 真实轮询 + GLOBAL LD/ST timing-only 桥接。默认 `g_cpptlm_bridge == nullptr` 时字节级兼容原有同步路径。详见 [ADR-0021](./docs/adr/0021-cpptlm-d1-full-integration.md) + `openspec/specs/cpptlm-d1-full/`。
 - **pre-Blackwell tcgen05**：永久抛 `UnsupportedInstructionException`（c5 Fix #1 + [ADR-0016](./docs/adr/0016-blackwell-only-tcgen05.md)）
 - **ANTLR 版本**：4.13.2 完全 vendored
 - **CUDA Toolkit**：环境自适应（`env.sh` 自动检测 `$(which nvcc)`）
