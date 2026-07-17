@@ -1,10 +1,13 @@
 /**
- * TDD Red-Phase: stub test for 3 CppTLM injection interfaces.
+ * Phase 8.B injection interfaces ABI 真值源测试 (TDD Green).
  *
- * This test will FAIL to compile until the three headers are created:
- *   - include/ptxsim/scoreboard_interface.h  (IScoreboard)
- *   - include/ptxsim/pipeline_interface.h   (IPipelineLatencyProvider + PipelineId)
- *   - include/ptxsim/tensor_core_interface.h (ITensorCoreTiming + TcPrecision)
+ * 覆盖 3 个纯虚接口:
+ *   - IScoreboard (4 方法 ABI + mock 实现)
+ *   - IPipelineLatencyProvider (2 方法 ABI + PipelineId enum 0-5)
+ *   - ITensorCoreTiming (3 方法 ABI + TcPrecision enum 0-5 + 默认 get_latency_mnk)
+ *
+ * 21 assertions 验证 ABI 编译 + 方法签名 + enum 值；CppTLM 端 Adapter
+ * 通过 static_assert 验证双方一致性 (RFC-P1-001~004).
  *
  * Phase 8.B PTX-1/2/3 — cpptlm-phase8b-injection-points
  * Ref: ADR-0020, design.md §3

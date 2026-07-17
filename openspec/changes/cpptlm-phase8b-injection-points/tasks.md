@@ -176,12 +176,12 @@ Refs: ADR-0020, CppTLM docs/superpowers/specs/2026-07-03-ptxemu-modification-tas
 ### PTX-4: SMContext 6 个 public 方法 + 3 私有成员（1 hour）
 
 **操作**：
-- [ ] 修改 `include/ptxsim/sm_context.h`
-- [ ] +3 `#include`（3 个接口头文件）
-- [ ] +3 setter：`set_scoreboard` / `set_pipeline_latency_provider` / `set_tensor_core_timing`
-- [ ] +3 getter
-- [ ] +3 私有成员（裸指针，默认 nullptr）
-- [ ] **不修改构造函数**
+- [x] 修改 `include/ptxsim/sm_context.h`
+- [x] +3 `#include`（3 个接口头文件）
+- [x] +3 setter：`set_scoreboard` / `set_pipeline_latency_provider` / `set_tensor_core_timing`
+- [x] +3 getter
+- [x] +3 私有成员（裸指针，默认 nullptr）
+- [x] **不修改构造函数**
 
 **约束**：
 - ⚠️ MUST 使用裸指针（非 `unique_ptr`）：所有权归外部 libcpptlm_cudart.so
