@@ -394,7 +394,7 @@ grep -n "f32_to_f16" src/ptxsim/instructions/tcgen05_helpers.cpp
 **问题模式**: `extractQualifiersFromContext` 只映射 terminal token 到 `Qualifier` enum，`IMMEDIATE` 节点被 `tokenToQualifier` 返回 `Q_UNKNOWN` 后静默丢弃。`instr.cta_group` 永远 defaults to 1。
 
 **关键经验**：
-- 被 **19 个 call sites** 调用 — 改返回类型破坏所有 caller
+- 被 **19 个 call sites** 调用 - 改返回类型破坏所有 caller
 - 需要 IMMEDIATE 的 caller（commit/wait/lane_id 等）必须**单独 walk parse tree**
 - 这种"通用 helper 丢失上下文信息"模式是 ANTLR visitor 常见 trap
 
@@ -405,6 +405,54 @@ grep -rn "extractQualifiersFromContext" src/
 ```
 
 **真实案例**: `fix-tcgen05-mma-accumulator-and-f32-storage` Oracle 2026-07-11 审计 C3 BLOCKER
+
+### 14. "byte-identical fallback" 契约必须由测试锁定 (2026-07-17)
+
+**问题模式**: `step_b_set_blocked_cycles` 注释承诺 "All three nullptr = use existing InstructionLatencyTable only"，但实现中 nullptr 路径**fallthrough 到 `getLatency()` + `set_blocked_cycles_for_active()`**--这是 `exe_once()` 历史上从未有过的行为（`blocked_cycles` 设置此前仅 LdHandler 路径）。注释承诺 no-op，实现未兑现。
+
+**关键经验**：
+- "byte-identical fallback" / "nullptr = no-op" 契约**必须由直接单元测试锁定**，不能仅靠注释
+- fallthrough 也是调用--"代码看起来没显式调用" ≠ no-op
+- 注释承诺 no-op 时，必须明确列出"pre-change 路径中该状态变量由谁设置"（否则注释本身就是错的）
+- 匿名命名空间内的 file-local 函数无法直接测试 -> 需提取为 public static 方法（与 `is_tensor_core_instruction` 等 helper 一致）
+
+**诊断命令**：
+```bash
+# 1. 查找所有 "byte-identical" / "no-op" 契约注释
+grep -rn "byte-identical\|no-op\|nullptr = " src/ptxsim/ include/ptxsim/
+
+# 2. 对每个 no-op 契约，验证是否有测试锁定
+grep -rn "no-op\|byte-identical" tests/
+
+# 3. 验证 file-local 函数可测试性（匿名命名空间 = 不可直接测试）
+grep -B2 "namespace {" src/ptxsim/core/*.cpp
+```
+
+**修复模板**：
+```cpp
+// BEFORE (buggy): 注释承诺 no-op，但 nullptr 路径 fallthrough
+inline void step_b(IPipeline* p, ITc* tc, Warp* w, const Stmt& s) {
+    // nullptr = byte-identical fallback  <-- 注释承诺
+    uint32_t latency = 0;
+    if (p) { /* ... */ }
+    if (latency == 0 && tc) { /* ... */ }
+    if (latency == 0) latency = getLatency(s);  // <-- nullptr 时也执行！
+    if (latency > 0) w->set_blocked_cycles(latency);
+}
+
+// AFTER (fixed): 显式 early return + 测试锁定
+inline void step_b(IPipeline* p, ITc* tc, Warp* w, const Stmt& s) {
+    if (!p && !tc) return;  // both nullptr = no-op (TESTED)
+    // ... priority chain ...
+}
+// + 4 个单元测试覆盖 4 条分支（both nullptr / pipeline / tc / fallback）
+```
+
+**真实案例**:
+- `commit 367fd6a5` (feat) 引入 `step_b_set_blocked_cycles`，声称 "0 regression"
+- `commit 5b292a91` (fix) 修复回归：`unit_simt_integration` 2 个断言失败（`pc_groups_after == 1 got 0`, `threads[0].pc == 1 got 0`）
+- 回归在 feat 提交后**下一个提交**即被发现，说明 TDD 纪律有效，但 feat 提交的 "0 regression" 声明不准确
+- 修复后补 `tests/unit/sm/test_step_b_set_blocked_cycles.cpp` 4 个 case 直接锁定 4 条分支
 
 ---
 

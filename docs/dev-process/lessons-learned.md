@@ -1690,3 +1690,88 @@ done
 **关联 commit hash**: de016f79 / 6cbdcc4c / 5dcccf40 / c38c31e4 / 0456418e / 88d5962e  
 **ADR postmortem ref**: docs/adr/0021-cpptlm-d1-full-integration.md §2026-07-16 Postmortem  
 **OpenSpec change ref**: openspec/changes/cpptlm-d1-full/
+
+---
+
+## 38. "byte-identical fallback" 契约必须由测试锁定（2026-07-17）
+
+### 现象
+
+Commit `367fd6a5`（feat: exe_once 3-step injection）引入 `step_b_set_blocked_cycles`，注释写 "All three nullptr = use existing InstructionLatencyTable only"，commit message 声称 "0 regression"。下一个 commit `5b292a91`（fix）发现 `unit_simt_integration` 2 个断言失败：
+- `pc_groups_after == 1 got 0`
+- `threads[0].pc == 1 got 0`
+
+### Root Cause
+
+`step_b_set_blocked_cycles` 在两个 injector 都为 `nullptr` 时**不是 no-op**，而是 fallthrough 到 `ptxsim::getLatency()` + `set_blocked_cycles_for_active()`。这是 `exe_once()` 历史上从未有过的行为--`blocked_cycles` 设置此前仅在 `LdHandler` 路径（`memory.cpp:47,71,139`）中出现。
+
+注释承诺 no-op，实现未兑现。fallthrough 也是调用，"代码看起来没显式调用" ≠ no-op。
+
+### 教训
+
+1. **"byte-identical fallback" / "nullptr = no-op" 契约必须由直接单元测试锁定**，不能仅靠注释
+2. **fallthrough 也是调用** -- "代码看起来没显式调用" ≠ no-op
+3. **注释承诺 no-op 时，必须明确列出"pre-change 路径中该状态变量由谁设置"**（否则注释本身就是错的，如本案注释说"use existing InstructionLatencyTable only"，但 pre-change `exe_once()` 根本没用过 InstructionLatencyTable）
+4. **匿名命名空间内的 file-local 函数无法直接测试** -> 需提取为 public static 方法（与 `is_tensor_core_instruction` 等 helper 一致的可测试性先例）
+5. **commit message 声称 "0 regression" 不等于真 0 回归** -- 必须跑 `./scripts/sanity.sh`（含 `unit_simt_integration`，在 Tier 5）
+
+### 检查工具
+
+```bash
+# 1. 查找所有 "byte-identical" / "no-op" 契约注释
+grep -rn "byte-identical\|no-op\|nullptr = " src/ptxsim/ include/ptxsim/
+
+# 2. 对每个 no-op 契约，验证是否有测试锁定
+grep -rn "no-op\|byte-identical" tests/
+
+# 3. 验证 file-local 函数可测试性（匿名命名空间 = 不可直接测试）
+grep -B2 "namespace {" src/ptxsim/core/*.cpp
+```
+
+### 修复模板
+
+```cpp
+// BEFORE (buggy): 注释承诺 no-op，但 nullptr 路径 fallthrough
+inline void step_b(IPipeline* p, ITc* tc, Warp* w, const Stmt& s) {
+    // nullptr = byte-identical fallback  <-- 注释承诺
+    uint32_t latency = 0;
+    if (p) { /* ... */ }
+    if (latency == 0 && tc) { /* ... */ }
+    if (latency == 0) latency = getLatency(s);  // <-- nullptr 时也执行！
+    if (latency > 0) w->set_blocked_cycles(latency);
+}
+
+// AFTER (fixed): 显式 early return + 测试锁定 4 条分支
+inline void step_b(IPipeline* p, ITc* tc, Warp* w, const Stmt& s) {
+    if (!p && !tc) return;  // both nullptr = no-op (TESTED)
+    // ... priority chain ...
+}
+// + tests/unit/sm/test_step_b_set_blocked_cycles.cpp:
+//   Case 1: both nullptr -> blocked_cycles_remaining == 0 (no-op)
+//   Case 2: pipeline returns 2.5 -> blocked_cycles_remaining == 3 (ceil)
+//   Case 3: tc + TC instruction -> blocked_cycles_remaining == tc->get_latency()
+//   Case 4: fallback -> blocked_cycles_remaining == getLatency(stmt.type).cycles
+```
+
+### 真实案例
+
+- `commit 367fd6a5` (feat) 引入 `step_b_set_blocked_cycles`，声称 "0 regression"
+- `commit 5b292a91` (fix) 修复回归：`unit_simt_integration` 2 个断言失败
+- 回归在 feat 提交后**下一个提交**即被发现，说明 TDD 纪律有效，但 feat 的 "0 regression" 声明不准确（可能未跑完整 `sanity.sh --quick`，或仅跑 subset）
+- 修复后补 `tests/unit/sm/test_step_b_set_blocked_cycles.cpp` 4 个 case 直接锁定 4 条分支
+- 函数从匿名命名空间提取为 `SMContext::step_b_set_blocked_cycles`（public static），与 `is_tensor_core_instruction` 等 3 个 helper 一致
+
+### 关联
+
+- **Skill**: `.opencode/skills/ptx-lessons-learned/SKILL.md` §14（同步新增）
+- **回归 commit**: `367fd6a5`（feat，引入 bug）
+- **修复 commit**: `5b292a91`（fix，回归修复）
+- **测试 commit**: 本次（TDD 补测，4 case 锁定 4 分支）
+- **spec 契约**: cpptlm-phase8b-injection-points design.md §2.4 "byte-identical fallback"
+- **ADR**: ADR-0020（CppTLM D1-Full injection points）
+
+---
+
+**§38 更新日期**: 2026-07-17  
+**关联 commit hash**: 367fd6a5 / 5b292a91  
+**Skill ref**: `.opencode/skills/ptx-lessons-learned/SKILL.md` §14
