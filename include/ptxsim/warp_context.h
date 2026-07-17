@@ -122,6 +122,12 @@ public:
     // caller must invoke update_active_mask() afterwards if needed.
     static void decrement_blocked_cycles(ptxsim::WarpState &ws);
 
+    // 【NEW】CppTLM D1-Full injection (ADR-0020, Phase 8.B PTX-5a):
+    // Set blocked_cycles_remaining + is_blocked for ALL active+non-blocked threads
+    // in the warp. Replaces per-thread LD-only path. Calls update_active_mask()
+    // to keep active_mask[] / active_count synchronized (T2-1 contract).
+    void set_blocked_cycles_for_active(uint32_t cycles);
+
     // 设置活跃掩码
     void set_active_mask(int lane_id, bool active);
 

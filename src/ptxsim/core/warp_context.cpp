@@ -535,3 +535,15 @@ void WarpContext::decrement_blocked_cycles(ptxsim::WarpState &ws) {
         }
     }
 }
+
+void WarpContext::set_blocked_cycles_for_active(uint32_t cycles) {
+    for (auto& thread : warp_state.threads) {
+        if (thread.is_active && !thread.is_blocked) {
+            thread.blocked_cycles_remaining = cycles;
+            thread.is_blocked = true;
+        }
+    }
+    // T2-1 contract: keep active_mask[] / active_count synchronized with
+    // warp_state mutations so scheduler sees the change immediately.
+    update_active_mask();
+}

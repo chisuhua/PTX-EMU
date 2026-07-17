@@ -211,9 +211,10 @@ Refs: ADR-0020, openspec/changes/cpptlm-phase8b-injection-points"
 ### PTX-5a: WarpContext::set_blocked_cycles_for_active（30 min）
 
 **操作**：
-- [ ] 修改 `include/ptxsim/warp_context.h` + `src/ptxsim/core/warp_context.cpp`
-- [ ] 新增 public 方法 `set_blocked_cycles_for_active(uint32_t cycles)`
-- [ ] 内部遍历 `warp_state_.threads`，对 `is_active && !is_blocked` 的线程设置 `blocked_cycles_remaining = cycles; is_blocked = true`
+- [x] 修改 `include/ptxsim/warp_context.h` + `src/ptxsim/core/warp_context.cpp`
+- [x] 新增 public 方法 `set_blocked_cycles_for_active(uint32_t cycles)`
+- [x] 内部遍历 `warp_state_.threads`，对 `is_active && !is_blocked` 的线程设置 `blocked_cycles_remaining = cycles; is_blocked = true`
+- [x] 调用 `update_active_mask()` 同步 active_mask[] / active_count (T2-1 contract)
 
 **约束**：
 - ⚠️ MUST 不修改 `ThreadState` 结构体布局
