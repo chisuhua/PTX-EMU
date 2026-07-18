@@ -207,3 +207,43 @@ cudaError_t cudaEventCreate(cudaEvent_t* event) {
 
 - [架构评审报告 - 4.4 Fake CUDA Runtime](../reports/architecture-review-report.md#44-fake-cuda-runtime)
 - [任务计划 - T11.3.x ExecutionContext 引入](../reports/task-plan.md#sprint-113-execution-context-引入day-9-10)
+
+## 2026-07-18 Postmortem：add-cudart-unit-test-coverage 实施回顾
+
+### 实施回顾
+
+| Phase | 内容 | 状态 |
+|-------|------|------|
+| 1 | Memory API 测试（cudaMalloc/Free/Memcpy/Memset）— 14 用例 | ✅ |
+| 2 | Stream API 补充测试（cudaStreamCreate/Destroy/Synchronize）— 5 用例 | ✅ |
+
+### 关键发现
+
+#### 发现 1: Proposal 事实性错误 — "零直接单元测试"不实
+- **错误**: proposal 声称 `tests/unit/cudart/` "零直接单元测试"
+- **实际**: 已有 3 个测试文件（248 行）覆盖 Stream API
+- **影响**: C4 原本的 Stream API 范围需调整为"互补"而非"新建"
+- **教训**: 任何 proposal 的"当前状态"声明必须用 `find`/`grep` 等工具验证，不可依赖记忆或审计文档的间接描述
+
+#### 发现 2: `.cpp` 文件的 cudart 单测不能使用 `<cuda_runtime.h>`
+- **问题**: g++ 编译的 `.cpp` 文件无法引用 CUDA Toolkit 头文件
+- **解决**: 使用项目自身的 `cudart/cudart_intrinsics.h`（定义了所有 CUDA 类型），函数通过 `extern "C"` 直接链接
+- **对比**: 已有 Stream 测试用 `.cu` 扩展名（nvcc 编译，可访问 `<cuda_runtime.h>`）
+
+#### 发现 3: CudaDriver 需要显式初始化 SimpleMemory
+- **问题**: `cudaMalloc` 等函数依赖 `CudaDriver::instance().get_global_pool()` 返回非空
+- **解决**: 测试夹具使用 RAII 模式，每个测试前初始化 `SimpleMemory(1<<30)` 并 `set_simple_memory()`
+
+### 验证结果
+
+| 测试 | 结果 |
+|------|------|
+| `unit_cudart_memory` (14 用例, 1522 assertions) | ✅ PASS |
+| `unit_cudart_stream` (5 用例, 17 assertions) | ✅ PASS |
+| 已有 cudart 测试 (3 个) | ✅ 无回归 |
+| barrier/simt/e2e (14 tests) | ✅ 0 回归 |
+
+### 相关链接
+
+- [openspec/changes/add-cudart-unit-test-coverage/](../../openspec/changes/add-cudart-unit-test-coverage/) — change artifacts
+- [openspec/specs/cudart-unit-test/](../../openspec/specs/cudart-unit-test/) — synced spec

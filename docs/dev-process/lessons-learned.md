@@ -1836,3 +1836,26 @@ set_blocked_cycles_for_active(latency);   // THEN block for latency
 **§39 更新日期**: 2026-07-18  
 **关联 commit hash**: 290ebf88  
 **Skill ref**: `.opencode/skills/ptx-lessons-learned/SKILL.md` §39（待同步）
+
+## §40：Proposal 当前状态声明必须工具验证
+
+### 现象
+
+`add-cudart-unit-test-coverage` 的 proposal 声称 `tests/unit/cudart/` "零直接单元测试"，但实际已有 3 个测试文件（248 行代码）。这导致 C4 的 Stream API 范围需要从"新建"调整为"互补"。究其原因是 proposal 依赖审计文档的间接描述，未用 `find`/`ls` 工具直接验证目录状态。
+
+### 教训
+
+- Proposal 中任何关于"当前文件/目录/测试等存在性"的声称，必须用工具直接验证
+- 审计文档是二级来源，可能滞后或描述不精确
+- `find <dir> -type f | wc -l` 和 `ls <dir>` 的 5 秒验证成本可避免数小时的返工
+
+### 真实案例
+
+- **表现**: C4 Stream API 测试范围需要修正
+- **修复**: 承认已有 3 个测试，新增 Stream 测试仅覆盖互补场景（唯一性、recreate、nullptr）
+- **日期**: 2026-07-18
+
+### 关联
+
+- **change**: `openspec/changes/add-cudart-unit-test-coverage/`
+- **ADR**: ADR-0010 §2026-07-18 Postmortem
