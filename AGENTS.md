@@ -33,38 +33,6 @@
 3. **复杂迁移必须分 Phase commit**：每个 Phase 独立可回退。**任何已有测试回归 → 立即 revert 该 Phase，不混入后续 commit**。
 4. **基线 worktree 是最低成本保险**：重大重构前 1 分钟建立，节省数小时争论"这个失败是基线的还是我的"。
 
-> **沉淀元规则**: 新发现的 bug 模式必须立即写入 `ptx-lessons-learned` + `lessons-learned.md` + 相关 ADR postmortem。这是防止"经验随归档而消失"的强制钩子。
-
----
-
-## 🛑 OpenSpec 流程 + 经验沉淀（最高优先级）
-
-**任何 OpenSpec change 的 propose/apply/archive 阶段都强制应用项目经验沉淀**。
-
-### 必读（OpenSpec 流程开始前）
-
-- **Skill**: [`.opencode/skills/ptx-lessons-learned/SKILL.md`](.opencode/skills/ptx-lessons-learned/SKILL.md) — 16 个核心经验 + 4 个 checklist + 失败模式速查表
-- **完整文档**: [`docs/dev-process/lessons-learned.md`](docs/dev-process/lessons-learned.md) — 具体案例 + 代码片段 + 长篇解释
-- **互补**: [`docs/dev-process/debugging-strategy.md`](docs/dev-process/debugging-strategy.md)（问题分类与快速验证）
-
-### 强制集成点
-
-| OpenSpec 阶段 | 必查 | 来源 |
-|-------------|------|------|
-| **propose** | Design-Time Checklist（4 项）+ Proposal 模板增强 | `.opencode/skills/openspec-propose/SKILL.md` |
-| **apply** | 基线 worktree + Checklist A（迁移）+ D（commit 前）+ 失败处理纪律 | `.opencode/skills/openspec-apply-change/SKILL.md` |
-| **archive** | **强制 Prompt 询问生成 postmortem**（用户必须明确选择） | `.opencode/skills/openspec-archive-change/SKILL.md` |
-| **adr-compliance-check** | Cross-Check 5 个 lessons-learned 失败模式（A-E） | `.opencode/skills/adr-compliance-check/SKILL.md` |
-
-### 4 条最常犯的错误（详见 ptx-lessons-learned）
-
-1. **跨模块间接状态翻译**：迁移函数时漏掉看似冗余的 `set_state(BAR_SYNC)`，因为下一模块的 `sync_to_warp_state()` 才把它翻译为 `is_blocked = true`。**必须行级 Diff，不只比对主要逻辑**。
-2. **递归锁死锁**：持锁方法调用同锁的其他 public 方法 = `std::mutex` 死锁。**互斥量需要"使用同一锁的所有代码路径"做集中审计**。
-3. **复杂迁移必须分 Phase commit**：每个 Phase 独立可回退。**任何已有测试回归 → 立即 revert 该 Phase，不混入后续 commit**。
-4. **基线 worktree 是最低成本保险**：重大重构前 1 分钟建立，节省数小时争论"这个失败是基线的还是我的"。
-
-> **沉淀元规则**: 新发现的 bug 模式必须立即写入 `ptx-lessons-learned` + `lessons-learned.md` + 相关 ADR postmortem。这是防止"经验随归档而消失"的强制钩子。
-
 ---
 
 ## 🛑 PTX 语法修改流程（最高优先级）
