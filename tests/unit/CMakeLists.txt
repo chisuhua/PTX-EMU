@@ -682,3 +682,17 @@ add_catch_test(unit_register_dest_extraction
     register/test_dest_registers_extraction.cpp
 )
 set_tests_properties(unit_register_dest_extraction PROPERTIES LABELS "unit;register;dest")
+
+# ============================================================================
+# CUDA Runtime Memory API 单元测试 (add-cudart-unit-test-coverage, ADR-0010)
+# ============================================================================
+add_catch_test(unit_cudart_memory
+    cudart/test_cudart_memory.cpp
+)
+set_tests_properties(unit_cudart_memory PROPERTIES LABELS "unit;cudart;memory")
+
+# CUDA Runtime Stream API 补充单元测试 (互补已有 3 个测试)
+add_catch_test(unit_cudart_stream
+    cudart/test_cudart_stream.cpp
+)
+set_tests_properties(unit_cudart_stream PROPERTIES LABELS "unit;cudart;stream")
