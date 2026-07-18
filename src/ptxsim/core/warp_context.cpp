@@ -348,16 +348,18 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt,
 
         if (thread->get_state() == BAR_SYNC) {
             if (cta_context_ != nullptr) {
-                auto* wbar = cta_context_->get_barrier_module().get_warp_barrier(0);
-                bool is_warp_barrier = (wbar != nullptr && wbar->is_initialized());
+                auto *wbar =
+                    cta_context_->get_barrier_module().get_warp_barrier(0);
+                bool is_warp_barrier =
+                    (wbar != nullptr && wbar->is_initialized());
                 bool warp_barrier_complete =
                     is_warp_barrier &&
-                    cta_context_->get_barrier_module().is_warp_barrier_complete(0);
+                    cta_context_->get_barrier_module().is_warp_barrier_complete(
+                        0);
 
                 if (!warp_barrier_complete) {
-                    PTX_WARN_EMU(
-                        "Fallback CTA sync: lane %d, wbar incomplete",
-                        thread->lane_id_);
+                    PTX_WARN_EMU("Fallback CTA sync: lane %d, wbar incomplete",
+                                 thread->lane_id_);
                     cta_context_->get_barrier_module().arrive_at_cta_barrier(
                         thread->bar_id, thread);
                 }
@@ -537,7 +539,7 @@ void WarpContext::decrement_blocked_cycles(ptxsim::WarpState &ws) {
 }
 
 void WarpContext::set_blocked_cycles_for_active(uint32_t cycles) {
-    for (auto& thread : warp_state.threads) {
+    for (auto &thread : warp_state.threads) {
         // Skip threads that are already blocked (barrier, previous instruction
         // latency, etc.) and threads at barrier (status == Blocked) to prevent
         // interaction between blocked_cycles and barrier state machine.

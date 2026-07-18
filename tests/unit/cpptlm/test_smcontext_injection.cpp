@@ -51,20 +51,20 @@ struct MockScoreboard : IScoreboard {
 
     explicit MockScoreboard(int max) : max_entries(max) {}
 
-    bool has_free_entry() const override {
-        return used_entries < max_entries;
-    }
+    bool has_free_entry() const override { return used_entries < max_entries; }
 
     bool allocate(uint32_t /*reg_id*/, uint32_t /*warp_id*/) override {
         allocate_count++;
-        if (used_entries >= max_entries) return false;
+        if (used_entries >= max_entries)
+            return false;
         used_entries++;
         return true;
     }
 
     bool release(uint32_t /*reg_id*/, uint32_t /*warp_id*/) override {
         release_count++;
-        if (used_entries > 0) used_entries--;
+        if (used_entries > 0)
+            used_entries--;
         return true;
     }
 
@@ -80,14 +80,13 @@ struct MockPipelineFixed : IPipelineLatencyProvider {
 
     explicit MockPipelineFixed(double cycles) : fixed_cycles(cycles) {}
 
-    double get_fractional_cycles(const std::string&,
-                                  PipelineId) const override {
+    double get_fractional_cycles(const std::string &,
+                                 PipelineId) const override {
         call_count++;
         return fixed_cycles;
     }
 
-    double get_fractional_cycles_by_type(int,
-                                          PipelineId) const override {
+    double get_fractional_cycles_by_type(int, PipelineId) const override {
         call_count++;
         return fixed_cycles;
     }
@@ -119,18 +118,18 @@ struct MockTensorCoreFixed : ITensorCoreTiming {
 std::unique_ptr<WarpContext> make_warp_with_one_active_thread() {
     auto warp = std::make_unique<WarpContext>();
 
-    Dim3 blockIdx  = {0, 0, 0};
+    Dim3 blockIdx = {0, 0, 0};
     Dim3 threadIdx = {0, 0, 0};
-    Dim3 gridDim   = {1, 1, 1};
-    Dim3 blockDim  = {32, 1, 1};
+    Dim3 gridDim = {1, 1, 1};
+    Dim3 blockDim = {32, 1, 1};
 
     std::vector<StatementContext> statements;
     std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
 
     auto thread = std::make_unique<ThreadContext>();
-    thread->init(blockIdx, threadIdx, gridDim, blockDim, statements,
-                 &name2Sym, label2pc, nullptr, nullptr);
+    thread->init(blockIdx, threadIdx, gridDim, blockDim, statements, &name2Sym,
+                 label2pc, nullptr, nullptr);
 
     warp->add_thread(std::move(thread), 0);
     REQUIRE(warp->get_active_count() == 1);
@@ -143,7 +142,7 @@ StatementContext make_stmt(StatementType type) {
     return stmt;
 }
 
-}  // namespace
+} // namespace
 
 // -----------------------------------------------------------------------
 // Test 1: nullptr injection = no-op
@@ -152,8 +151,7 @@ StatementContext make_stmt(StatementType type) {
 // step_b_set_blocked_cycles is a no-op when both injectors are null.
 // This is the byte-identical fallback contract from design.md §2.4.
 // -----------------------------------------------------------------------
-TEST_CASE("SMContext: nullptr injection = no-op",
-          "[unit][cpptlm][injection]") {
+TEST_CASE("SMContext: nullptr injection = no-op", "[unit][cpptlm][injection]") {
     SMContext sm(4, 128, 4096, 0);
 
     // Default injectors must be nullptr
@@ -162,10 +160,10 @@ TEST_CASE("SMContext: nullptr injection = no-op",
     REQUIRE(sm.get_tensor_core_timing() == nullptr);
 
     auto warp_ptr = make_warp_with_one_active_thread();
-    WarpContext& warp = *warp_ptr;
+    WarpContext &warp = *warp_ptr;
     auto stmt = make_stmt(S_ADD);
 
-    WarpState& ws = warp.get_warp_state();
+    WarpState &ws = warp.get_warp_state();
     REQUIRE(ws.threads[0].is_active);
     REQUIRE_FALSE(ws.threads[0].is_blocked);
     REQUIRE(ws.threads[0].blocked_cycles_remaining == 0);
@@ -188,7 +186,7 @@ TEST_CASE("SMContext: nullptr injection = no-op",
 TEST_CASE("SMContext: scoreboard limits concurrent operations",
           "[unit][cpptlm][injection]") {
     SMContext sm(4, 128, 4096, 0);
-    MockScoreboard sb(2);  // max 2 entries
+    MockScoreboard sb(2); // max 2 entries
     sm.set_scoreboard(&sb);
 
     // Verify injection
@@ -206,7 +204,7 @@ TEST_CASE("SMContext: scoreboard limits concurrent operations",
 
     // 3rd allocate: FAILS (over limit)
     REQUIRE(sb.allocate(2, 0) == false);
-    REQUIRE(sb.used_entries == 2);  // unchanged
+    REQUIRE(sb.used_entries == 2); // unchanged
     REQUIRE(sb.allocate_count == 3);
 }
 
@@ -255,14 +253,14 @@ TEST_CASE("SMContext: pipeline overrides InstructionLatencyTable",
     sm.set_pipeline_latency_provider(&pipeline);
 
     auto warp_ptr = make_warp_with_one_active_thread();
-    WarpContext& warp = *warp_ptr;
+    WarpContext &warp = *warp_ptr;
     auto stmt = make_stmt(S_ADD);
 
     // Pipeline returns 4.22 -> ceil(4.22) = 5
-    SMContext::step_b_set_blocked_cycles(
-        &pipeline, /*tc=*/nullptr, &warp, stmt);
+    SMContext::step_b_set_blocked_cycles(&pipeline, /*tc=*/nullptr, &warp,
+                                         stmt);
 
-    WarpState& ws = warp.get_warp_state();
+    WarpState &ws = warp.get_warp_state();
     REQUIRE(ws.threads[0].is_blocked);
     REQUIRE(ws.threads[0].blocked_cycles_remaining == 5);
     REQUIRE(pipeline.call_count >= 1);
@@ -277,18 +275,18 @@ TEST_CASE("SMContext: pipeline overrides InstructionLatencyTable",
 TEST_CASE("SMContext: tensor_core overrides default TC latency",
           "[unit][cpptlm][injection]") {
     SMContext sm(4, 128, 4096, 0);
-    MockPipelineFixed pipeline(0.0);   // pipeline returns 0 -> fallthrough
+    MockPipelineFixed pipeline(0.0); // pipeline returns 0 -> fallthrough
     MockTensorCoreFixed tc(29);
     sm.set_pipeline_latency_provider(&pipeline);
     sm.set_tensor_core_timing(&tc);
 
     auto warp_ptr = make_warp_with_one_active_thread();
-    WarpContext& warp = *warp_ptr;
-    auto stmt = make_stmt(S_TCGEN05_MMA);  // TC instruction
+    WarpContext &warp = *warp_ptr;
+    auto stmt = make_stmt(S_TCGEN05_MMA); // TC instruction
 
     SMContext::step_b_set_blocked_cycles(&pipeline, &tc, &warp, stmt);
 
-    WarpState& ws = warp.get_warp_state();
+    WarpState &ws = warp.get_warp_state();
     REQUIRE(ws.threads[0].is_blocked);
     REQUIRE(ws.threads[0].blocked_cycles_remaining == 29);
     REQUIRE(tc.call_count >= 1);
@@ -310,13 +308,13 @@ TEST_CASE("SMContext: tensor_core falls back when pipeline returns 0",
     sm.set_tensor_core_timing(&tc);
 
     auto warp_ptr = make_warp_with_one_active_thread();
-    WarpContext& warp = *warp_ptr;
+    WarpContext &warp = *warp_ptr;
     auto stmt = make_stmt(S_TCGEN05_MMA);
 
     // Pipeline returns 0.0 -> step_b falls through to TC
     SMContext::step_b_set_blocked_cycles(&pipeline, &tc, &warp, stmt);
 
-    WarpState& ws = warp.get_warp_state();
+    WarpState &ws = warp.get_warp_state();
     // Verify fallback: 29 from TC, not from pipeline
     REQUIRE(ws.threads[0].is_blocked);
     REQUIRE(ws.threads[0].blocked_cycles_remaining == 29);
@@ -360,7 +358,7 @@ TEST_CASE("SMContext: all three injection points active simultaneously",
     // Exercise pipeline + TC via step_b with a TC instruction.
     // Pipeline returns 0.0 -> step_b falls through to TC.
     auto warp_ptr = make_warp_with_one_active_thread();
-    WarpContext& warp = *warp_ptr;
+    WarpContext &warp = *warp_ptr;
     auto stmt = make_stmt(S_TCGEN05_MMA);
 
     SMContext::step_b_set_blocked_cycles(&pipeline, &tc, &warp, stmt);
@@ -372,6 +370,6 @@ TEST_CASE("SMContext: all three injection points active simultaneously",
     REQUIRE(tc.call_count >= 1);
 
     // Correct latency from TC fallback: 17
-    WarpState& ws = warp.get_warp_state();
+    WarpState &ws = warp.get_warp_state();
     REQUIRE(ws.threads[0].blocked_cycles_remaining == 17);
 }

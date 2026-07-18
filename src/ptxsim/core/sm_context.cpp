@@ -1,18 +1,18 @@
 #include "ptxsim/sm_context.h"
 // #include "memory/memory_manager.h"        // 添加MemoryManager头文件
-#include "memory/resource_manager.h"      // 添加ResourceManager头文件
-#include "memory/shared_memory_manager.h" // 添加SharedMemoryManager头文件
-#include "ptx_ir/instruction_latency_table.h"  // Phase 8.B PTX-6 (ADR-0020)
+#include "memory/resource_manager.h"          // 添加ResourceManager头文件
+#include "memory/shared_memory_manager.h"     // 添加SharedMemoryManager头文件
+#include "ptx_ir/instruction_latency_table.h" // Phase 8.B PTX-6 (ADR-0020)
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/cta_context.h"
 #include "ptxsim/ptx_config.h"
-#include "ptxsim/register_analyzer.h"  // Phase 8.B PTX-6 (ADR-0020)
-#include "ptxsim/warp_trace_formatter.h"     // 添加ptx_config头文件
-#include "ptxsim/warp_scheduler.h" // 添加warp调度器头文件
-#include "utils/logger.h"          // 添加logger头文件
+#include "ptxsim/register_analyzer.h"    // Phase 8.B PTX-6 (ADR-0020)
+#include "ptxsim/warp_scheduler.h"       // 添加warp调度器头文件
+#include "ptxsim/warp_trace_formatter.h" // 添加ptx_config头文件
+#include "utils/logger.h"                // 添加logger头文件
 #include <algorithm>
 #include <cassert>
-#include <cmath>  // Phase 8.B PTX-6 — for std::ceil(double→uint32_t)
+#include <cmath> // Phase 8.B PTX-6 — for std::ceil(double→uint32_t)
 #include <set>
 
 namespace {
@@ -25,22 +25,27 @@ namespace {
 // (public static) for direct unit testability.
 
 // Step A: Scoreboard hazard check. Returns true if execution may proceed,
-// false if RAW hazard detected or scoreboard full (caller should goto warp_done).
+// false if RAW hazard detected or scoreboard full (caller should goto
+// warp_done).
 inline bool step_a_scoreboard_check(IScoreboard *scoreboard, WarpContext *warp,
                                     const StatementContext &stmt) {
-    if (!scoreboard) return true;  // nullptr = skip injection
+    if (!scoreboard)
+        return true; // nullptr = skip injection
     scoreboard->tick();
-    if (!scoreboard->has_free_entry()) return false;
+    if (!scoreboard->has_free_entry())
+        return false;
     auto dest_regs = RegisterAnalyzer::get_dest_registers_as_ids(stmt);
     auto warp_id = static_cast<uint32_t>(warp->get_physical_warp_id());
     std::vector<uint32_t> allocated;
     for (auto reg_id : dest_regs) {
         // Skip duplicate reg_ids to prevent double-release on rollback
         // (e.g., instructions that reference the same register multiple times).
-        if (std::find(allocated.begin(), allocated.end(), reg_id) != allocated.end())
+        if (std::find(allocated.begin(), allocated.end(), reg_id) !=
+            allocated.end())
             continue;
         if (!scoreboard->allocate(reg_id, warp_id)) {
-            for (auto prev : allocated) scoreboard->release(prev, warp_id);
+            for (auto prev : allocated)
+                scoreboard->release(prev, warp_id);
             return false;
         }
         allocated.push_back(reg_id);
@@ -55,12 +60,15 @@ inline bool step_a_scoreboard_check(IScoreboard *scoreboard, WarpContext *warp,
 // Step C: Scoreboard release after successful execution. Caller MUST guard
 // with warp_executed flag to prevent releasing unallocated entries when
 // Step A failed.
-inline void step_c_release_scoreboard(IScoreboard *scoreboard, WarpContext *warp,
+inline void step_c_release_scoreboard(IScoreboard *scoreboard,
+                                      WarpContext *warp,
                                       const StatementContext &stmt) {
-    if (!scoreboard) return;  // nullptr = skip injection
+    if (!scoreboard)
+        return; // nullptr = skip injection
     auto dest_regs = RegisterAnalyzer::get_dest_registers_as_ids(stmt);
     auto warp_id = static_cast<uint32_t>(warp->get_physical_warp_id());
-    for (auto reg_id : dest_regs) scoreboard->release(reg_id, warp_id);
+    for (auto reg_id : dest_regs)
+        scoreboard->release(reg_id, warp_id);
 }
 
 /// Dest register extraction wrapper — aligns with design.md §7.2 helper list.
@@ -70,7 +78,7 @@ inline std::vector<uint32_t> get_dest_registers(const StatementContext &stmt) {
     return RegisterAnalyzer::get_dest_registers_as_ids(stmt);
 }
 
-}  // anonymous namespace
+} // anonymous namespace
 
 SMContext::SMContext(int max_warps, int max_threads_per_sm,
                      size_t shared_mem_size, int sm_id)
@@ -132,9 +140,9 @@ bool SMContext::add_block(std::unique_ptr<CTAContext> block) {
         return false;
     }
     if (required_shared_mem > max_shared_mem) {
-        PTX_DEBUG_EMU(
-            "Block requires %zu shared mem > SM max %zu — cannot ever fit, dropping",
-            required_shared_mem, max_shared_mem);
+        PTX_DEBUG_EMU("Block requires %zu shared mem > SM max %zu — cannot "
+                      "ever fit, dropping",
+                      required_shared_mem, max_shared_mem);
         return false;
     }
 
@@ -215,8 +223,8 @@ void SMContext::try_admit_pending_blocks() {
         int reservation_id = block->get_reservation_id();
         void *shared_mem_space = nullptr;
         if (req_smem > 0 && shared_mem_manager_) {
-            shared_mem_space = shared_mem_manager_->allocate(
-                req_smem, reservation_id);
+            shared_mem_space =
+                shared_mem_manager_->allocate(req_smem, reservation_id);
             if (!shared_mem_space) {
                 release_resources(reservation_id);
                 PTX_DEBUG_EMU(
@@ -232,8 +240,7 @@ void SMContext::try_admit_pending_blocks() {
         physical_block_warp_counts[physical_block_id] = req_warps;
         managed_blocks.insert({physical_block_id, std::move(block)});
 
-        auto block_warps =
-            managed_blocks[physical_block_id]->release_warps();
+        auto block_warps = managed_blocks[physical_block_id]->release_warps();
         for (auto &warp : block_warps) {
             warp->set_physical_block_id(physical_block_id);
             warp->set_physical_warp_id(next_physical_warp_id++);
@@ -256,7 +263,8 @@ bool SMContext::is_tensor_core_instruction(const StatementContext &stmt) {
            stmt.type <= StatementType::S_TCGEN05_FENCE;
 }
 
-PipelineId SMContext::map_instruction_to_pipeline(const StatementContext &stmt) {
+PipelineId
+SMContext::map_instruction_to_pipeline(const StatementContext &stmt) {
     if (is_tensor_core_instruction(stmt)) {
         return PipelineId::P4_TC;
     }
@@ -266,22 +274,24 @@ PipelineId SMContext::map_instruction_to_pipeline(const StatementContext &stmt) 
     }
     // SFU (Special Function Unit) instructions → P2_SFU
     switch (stmt.type) {
-        case StatementType::S_SIN:
-        case StatementType::S_COS:
-        case StatementType::S_LG2:
-        case StatementType::S_EX2:
-        case StatementType::S_RCP:
-        case StatementType::S_RSQRT:
-        case StatementType::S_SQRT:
-        case StatementType::S_TANH:
-            return PipelineId::P2_SFU;
-        default: break;
+    case StatementType::S_SIN:
+    case StatementType::S_COS:
+    case StatementType::S_LG2:
+    case StatementType::S_EX2:
+    case StatementType::S_RCP:
+    case StatementType::S_RSQRT:
+    case StatementType::S_SQRT:
+    case StatementType::S_TANH:
+        return PipelineId::P2_SFU;
+    default:
+        break;
     }
     // FP64 instructions → P1_FP64 (detect by .f64 qualifier)
     if (std::holds_alternative<GenericInstr>(stmt.data)) {
         const auto &instr = std::get<GenericInstr>(stmt.data);
         for (const auto &q : instr.qualifiers) {
-            if (q == Qualifier::Q_F64) return PipelineId::P1_FP64;
+            if (q == Qualifier::Q_F64)
+                return PipelineId::P1_FP64;
         }
     }
     // Default: integer/FP32 → P0_INT_FP32 (V_SIMD for vector/SIMD ops not
@@ -289,16 +299,22 @@ PipelineId SMContext::map_instruction_to_pipeline(const StatementContext &stmt) 
     return PipelineId::P0_INT_FP32;
 }
 
-TcPrecision SMContext::map_instruction_to_tc_precision(const StatementContext &stmt) {
+TcPrecision
+SMContext::map_instruction_to_tc_precision(const StatementContext &stmt) {
     if (std::holds_alternative<GenericInstr>(stmt.data)) {
         const auto &instr = std::get<GenericInstr>(stmt.data);
         for (const auto &q : instr.qualifiers) {
             switch (q) {
-                case Qualifier::Q_F16: return TcPrecision::FP16;
-                case Qualifier::Q_BF16: return TcPrecision::BF16;
-                case Qualifier::Q_TCGEN_TF32: return TcPrecision::TF32;
-                case Qualifier::Q_F8: return TcPrecision::FP8;
-                default: continue;
+            case Qualifier::Q_F16:
+                return TcPrecision::FP16;
+            case Qualifier::Q_BF16:
+                return TcPrecision::BF16;
+            case Qualifier::Q_TCGEN_TF32:
+                return TcPrecision::TF32;
+            case Qualifier::Q_F8:
+                return TcPrecision::FP8;
+            default:
+                continue;
             }
         }
     }
@@ -309,22 +325,26 @@ void SMContext::step_b_set_blocked_cycles(IPipelineLatencyProvider *pipeline,
                                           ITensorCoreTiming *tc,
                                           WarpContext *warp,
                                           const StatementContext &stmt) {
-    if (!pipeline && !tc) return;  // both nullptr = no-op (preserve baseline)
+    if (!pipeline && !tc)
+        return; // both nullptr = no-op (preserve baseline)
     uint32_t instr_latency = 0;
     if (pipeline) {
         double frac = pipeline->get_fractional_cycles_by_type(
             static_cast<int>(stmt.type),
             SMContext::map_instruction_to_pipeline(stmt));
-        if (frac > 0.0) instr_latency = static_cast<uint32_t>(std::ceil(frac));
+        if (frac > 0.0)
+            instr_latency = static_cast<uint32_t>(std::ceil(frac));
     }
-    if (instr_latency == 0 && tc && SMContext::is_tensor_core_instruction(stmt)) {
-        instr_latency = tc->get_latency(
-            SMContext::map_instruction_to_tc_precision(stmt));
+    if (instr_latency == 0 && tc &&
+        SMContext::is_tensor_core_instruction(stmt)) {
+        instr_latency =
+            tc->get_latency(SMContext::map_instruction_to_tc_precision(stmt));
     }
     if (instr_latency == 0) {
         instr_latency = ptxsim::getLatency(stmt.type).cycles;
     }
-    if (instr_latency > 0) warp->set_blocked_cycles_for_active(instr_latency);
+    if (instr_latency > 0)
+        warp->set_blocked_cycles_for_active(instr_latency);
 }
 
 EXE_STATE SMContext::exe_once() {
@@ -342,8 +362,9 @@ EXE_STATE SMContext::exe_once() {
     // Decrement blocked_cycles_remaining for ALL warps BEFORE scheduling
     // (B4.1 Bug #2 + #3: must run every tick, even for warps not yet selected,
     // so that newly-unblocked lanes become schedulable in the SAME tick).
-    for (auto& w : warps) {
-        if (!w) continue;
+    for (auto &w : warps) {
+        if (!w)
+            continue;
         WarpContext::decrement_blocked_cycles(w->get_warp_state());
     }
 
@@ -353,8 +374,9 @@ EXE_STATE SMContext::exe_once() {
     // only updated by update_active_mask(). Without this fix, active_count
     // stays at 0, is_active() returns false, and the warp scheduler skips
     // the warp forever — causing a hang on any kernel with ld.global.
-    for (auto& w : warps) {
-        if (w) w->update_active_mask();
+    for (auto &w : warps) {
+        if (w)
+            w->update_active_mask();
     }
 
     // 调度下一个warp执行
@@ -364,87 +386,123 @@ EXE_STATE SMContext::exe_once() {
         next_warp->set_scheduled(true);
         bool warp_executed = false;
 
-        // [Divergent Execution Fix] Execute instructions for all unique PC groups
-        // Fast path: if all schedulable lanes share the same PC, use the old path
+        // [Divergent Execution Fix] Execute instructions for all unique PC
+        // groups Fast path: if all schedulable lanes share the same PC, use the
+        // old path
         auto lanes_by_pc = next_warp->get_lanes_by_pc();
 
         if (lanes_by_pc.size() == 1) {
             // Fast path: non-divergent, all lanes at same PC
             auto it = lanes_by_pc.begin();
             int target_pc = it->first;
-            const auto& lanes = it->second;
+            const auto &lanes = it->second;
             int sample_lane = lanes[0];
-            ThreadContext* sample_thread = next_warp->get_thread(sample_lane);
+            ThreadContext *sample_thread = next_warp->get_thread(sample_lane);
 
             if (sample_thread) {
-                if (target_pc >= 0 && target_pc < static_cast<int>(sample_thread->statements_size())) {
-                    StatementContext* stmt = sample_thread->get_statement_at(target_pc);
-                        if (stmt) {
-                            // 【Phase 8.B PTX-6】Step A: Scoreboard hazard check
-                            if (!step_a_scoreboard_check(scoreboard_, next_warp, *stmt)) goto warp_done;
-                            if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
-                                if (ptxsim::DebugConfig::get().is_trace_cycle_enabled()) {
-                                    PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_instruction(
-                                        cycle_counter_, sm_id_, next_warp->get_warp_id(),
-                                        target_pc, stmt->instructionText,
-                                        next_warp->get_exec_mask()).c_str());
-                                } else {
-                                    print_warp_status(next_warp);
-                                }
+                if (target_pc >= 0 &&
+                    target_pc <
+                        static_cast<int>(sample_thread->statements_size())) {
+                    StatementContext *stmt =
+                        sample_thread->get_statement_at(target_pc);
+                    if (stmt) {
+                        // 【Phase 8.B PTX-6】Step A: Scoreboard hazard check
+                        if (!step_a_scoreboard_check(scoreboard_, next_warp,
+                                                     *stmt))
+                            goto warp_done;
+                        if (ptxsim::DebugConfig::get()
+                                .is_trace_warp_enabled()) {
+                            if (ptxsim::DebugConfig::get()
+                                    .is_trace_cycle_enabled()) {
+                                PTX_DEBUG_EMU(
+                                    "%s",
+                                    ptxsim::WarpTraceFormatter::
+                                        format_instruction(
+                                            cycle_counter_, sm_id_,
+                                            next_warp->get_warp_id(), target_pc,
+                                            stmt->instructionText,
+                                            next_warp->get_exec_mask())
+                                            .c_str());
+                            } else {
+                                print_warp_status(next_warp);
                             }
-                            next_warp->execute_warp_instruction(*stmt, target_pc);
-                            warp_executed = true;
-                            // 【Phase 8.B PTX-6】Step B: Latency query → set_blocked_cycles_for_active
-                            // (MUST run AFTER execute: the instruction must execute before threads are
-                            // blocked, otherwise is_lane_active() returns false and skip all lanes.)
-                            try {
-                                SMContext::step_b_set_blocked_cycles(pipeline_provider_, tensor_core_timing_, next_warp, *stmt);
-                            } catch (...) {
-                                // Scoreboard rollback on exception: Step A allocated slots that Step C
-                                // would release. If Step B throws, we must release them now.
-                                if (scoreboard_) step_c_release_scoreboard(scoreboard_, next_warp, *stmt);
-                                throw;
+                        }
+                        next_warp->execute_warp_instruction(*stmt, target_pc);
+                        warp_executed = true;
+                        // 【Phase 8.B PTX-6】Step B: Latency query →
+                        // set_blocked_cycles_for_active (MUST run AFTER
+                        // execute: the instruction must execute before threads
+                        // are blocked, otherwise is_lane_active() returns false
+                        // and skip all lanes.)
+                        try {
+                            SMContext::step_b_set_blocked_cycles(
+                                pipeline_provider_, tensor_core_timing_,
+                                next_warp, *stmt);
+                        } catch (...) {
+                            // Scoreboard rollback on exception: Step A
+                            // allocated slots that Step C would release. If
+                            // Step B throws, we must release them now.
+                            if (scoreboard_)
+                                step_c_release_scoreboard(scoreboard_,
+                                                          next_warp, *stmt);
+                            throw;
+                        }
+                        // 【Phase 8.B PTX-6】Step C: Scoreboard release (gated
+                        // by warp_executed to prevent releasing unallocated
+                        // entries on Step A failure)
+                        step_c_release_scoreboard(scoreboard_, next_warp,
+                                                  *stmt);
+                        // Check SIMT stack reconvergence after every
+                        // instruction (not just branch/barrier, because lanes
+                        // may reach reconvergence point on any instruction,
+                        // e.g., after a label or fallthrough)
+                        {
+                            size_t stack_depth_before =
+                                next_warp->get_simt_stack().depth();
+                            int reconvergence_pc = -1;
+                            if (!next_warp->get_simt_stack().empty()) {
+                                reconvergence_pc = next_warp->get_simt_stack()
+                                                       .top()
+                                                       .reconvergence_pc;
                             }
-                            // 【Phase 8.B PTX-6】Step C: Scoreboard release (gated by warp_executed
-                            // to prevent releasing unallocated entries on Step A failure)
-                            step_c_release_scoreboard(scoreboard_, next_warp, *stmt);
-                            // Check SIMT stack reconvergence after every instruction
-                            // (not just branch/barrier, because lanes may reach reconvergence
-                            // point on any instruction, e.g., after a label or fallthrough)
-                            {
-                                size_t stack_depth_before = next_warp->get_simt_stack().depth();
-                                int reconvergence_pc = -1;
-                                if (!next_warp->get_simt_stack().empty()) {
-                                    reconvergence_pc = next_warp->get_simt_stack().top().reconvergence_pc;
-                                }
-                                while (next_warp->check_reconvergence()) {
-                                    // Keep popping until no more convergent entries
-                                }
-                                // 汇聚点调试输出：检测到 SIMT 栈弹出（reconvergence）
-                                if (ptxsim::DebugConfig::get().is_trace_convergence_enabled() &&
-                                    next_warp->get_simt_stack().depth() < stack_depth_before) {
-                                    auto current_lanes = next_warp->get_lanes_by_pc();
-                                    if (current_lanes.size() == 1) {
-                                        uint32_t merged_mask = 0;
-                                        for (int lane : current_lanes.begin()->second) {
-                                            merged_mask |= (1u << lane);
-                                        }
-                                        int merged_pc = current_lanes.begin()->first;
-                                        PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_reconvergence(
-                                            reconvergence_pc, merged_pc, merged_mask).c_str());
+                            while (next_warp->check_reconvergence()) {
+                                // Keep popping until no more convergent entries
+                            }
+                            // 汇聚点调试输出：检测到 SIMT
+                            // 栈弹出（reconvergence）
+                            if (ptxsim::DebugConfig::get()
+                                    .is_trace_convergence_enabled() &&
+                                next_warp->get_simt_stack().depth() <
+                                    stack_depth_before) {
+                                auto current_lanes =
+                                    next_warp->get_lanes_by_pc();
+                                if (current_lanes.size() == 1) {
+                                    uint32_t merged_mask = 0;
+                                    for (int lane :
+                                         current_lanes.begin()->second) {
+                                        merged_mask |= (1u << lane);
                                     }
+                                    int merged_pc =
+                                        current_lanes.begin()->first;
+                                    PTX_DEBUG_EMU(
+                                        "%s", ptxsim::WarpTraceFormatter::
+                                                  format_reconvergence(
+                                                      reconvergence_pc,
+                                                      merged_pc, merged_mask)
+                                                      .c_str());
                                 }
                             }
                         }
+                    }
                 }
             }
         } else if (!lanes_by_pc.empty()) {
             int pc = -1;
-            const std::vector<int>* selected_lanes = nullptr;
+            const std::vector<int> *selected_lanes = nullptr;
             bool found_non_blocked = false;
 
-            auto& ws = next_warp->get_warp_state();
-            for (const auto& [candidate_pc, candidate_lanes] : lanes_by_pc) {
+            auto &ws = next_warp->get_warp_state();
+            for (const auto &[candidate_pc, candidate_lanes] : lanes_by_pc) {
                 bool all_non_blocked = true;
                 for (int lane : candidate_lanes) {
                     if (ws.threads[lane].is_blocked) {
@@ -466,7 +524,7 @@ EXE_STATE SMContext::exe_once() {
                 selected_lanes = &it->second;
             }
 
-            const auto& lanes = *selected_lanes;
+            const auto &lanes = *selected_lanes;
 
             // 构建当前执行 group 的真实 lane mask
             uint32_t current_exec_mask = 0;
@@ -475,20 +533,26 @@ EXE_STATE SMContext::exe_once() {
             }
 
             int sample_lane = lanes[0];
-            ThreadContext* sample_thread = next_warp->get_thread(sample_lane);
+            ThreadContext *sample_thread = next_warp->get_thread(sample_lane);
 
-            if (sample_thread && pc >= 0 && pc < sample_thread->statements_size()) {
-                StatementContext* stmt = sample_thread->get_statement_at(pc);
+            if (sample_thread && pc >= 0 &&
+                pc < sample_thread->statements_size()) {
+                StatementContext *stmt = sample_thread->get_statement_at(pc);
 
                 if (stmt) {
                     // 【Phase 8.B PTX-6】Step A: Scoreboard hazard check
-                    if (!step_a_scoreboard_check(scoreboard_, next_warp, *stmt)) goto warp_done;
+                    if (!step_a_scoreboard_check(scoreboard_, next_warp, *stmt))
+                        goto warp_done;
                     if (ptxsim::DebugConfig::get().is_trace_warp_enabled()) {
-                        if (ptxsim::DebugConfig::get().is_trace_cycle_enabled()) {
-                            PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_instruction(
-                                cycle_counter_, sm_id_, next_warp->get_warp_id(),
-                                pc, stmt->instructionText,
-                                current_exec_mask).c_str());
+                        if (ptxsim::DebugConfig::get()
+                                .is_trace_cycle_enabled()) {
+                            PTX_DEBUG_EMU(
+                                "%s",
+                                ptxsim::WarpTraceFormatter::format_instruction(
+                                    cycle_counter_, sm_id_,
+                                    next_warp->get_warp_id(), pc,
+                                    stmt->instructionText, current_exec_mask)
+                                    .c_str());
                         } else {
                             print_warp_status(next_warp);
                         }
@@ -496,30 +560,41 @@ EXE_STATE SMContext::exe_once() {
 
                     next_warp->execute_warp_instruction(*stmt, pc);
                     warp_executed = true;
-                    // 【Phase 8.B PTX-6】Step B: Latency query → set_blocked_cycles_for_active
-                    // (MUST run AFTER execute — same constraint as fast path.)
+                    // 【Phase 8.B PTX-6】Step B: Latency query →
+                    // set_blocked_cycles_for_active (MUST run AFTER execute —
+                    // same constraint as fast path.)
                     try {
-                        SMContext::step_b_set_blocked_cycles(pipeline_provider_, tensor_core_timing_, next_warp, *stmt);
+                        SMContext::step_b_set_blocked_cycles(
+                            pipeline_provider_, tensor_core_timing_, next_warp,
+                            *stmt);
                     } catch (...) {
-                        if (scoreboard_) step_c_release_scoreboard(scoreboard_, next_warp, *stmt);
+                        if (scoreboard_)
+                            step_c_release_scoreboard(scoreboard_, next_warp,
+                                                      *stmt);
                         throw;
                     }
-                    // 【Phase 8.B PTX-6】Step C: Scoreboard release (gated by warp_executed)
+                    // 【Phase 8.B PTX-6】Step C: Scoreboard release (gated by
+                    // warp_executed)
                     step_c_release_scoreboard(scoreboard_, next_warp, *stmt);
 
                     // Check SIMT stack reconvergence after every instruction
                     {
-                        size_t stack_depth_before = next_warp->get_simt_stack().depth();
+                        size_t stack_depth_before =
+                            next_warp->get_simt_stack().depth();
                         int reconvergence_pc = -1;
                         if (!next_warp->get_simt_stack().empty()) {
-                            reconvergence_pc = next_warp->get_simt_stack().top().reconvergence_pc;
+                            reconvergence_pc = next_warp->get_simt_stack()
+                                                   .top()
+                                                   .reconvergence_pc;
                         }
                         while (next_warp->check_reconvergence()) {
                             // Keep popping until no more convergent entries
                         }
                         // 汇聚点调试输出：检测到 SIMT 栈弹出
-                        if (ptxsim::DebugConfig::get().is_trace_convergence_enabled() &&
-                            next_warp->get_simt_stack().depth() < stack_depth_before) {
+                        if (ptxsim::DebugConfig::get()
+                                .is_trace_convergence_enabled() &&
+                            next_warp->get_simt_stack().depth() <
+                                stack_depth_before) {
                             auto current_lanes = next_warp->get_lanes_by_pc();
                             if (current_lanes.size() == 1) {
                                 // 所有路径到达汇聚点（reconvergence）
@@ -528,8 +603,12 @@ EXE_STATE SMContext::exe_once() {
                                     merged_mask |= (1u << lane);
                                 }
                                 int merged_pc = current_lanes.begin()->first;
-                                PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_reconvergence(
-                                    reconvergence_pc, merged_pc, merged_mask).c_str());
+                                PTX_DEBUG_EMU("%s",
+                                              ptxsim::WarpTraceFormatter::
+                                                  format_reconvergence(
+                                                      reconvergence_pc,
+                                                      merged_pc, merged_mask)
+                                                      .c_str());
                             } else if (current_lanes.size() > 1) {
                                 // 仍有未到达汇聚点的路径
                                 auto it = current_lanes.begin();
@@ -538,8 +617,13 @@ EXE_STATE SMContext::exe_once() {
                                 for (int lane : it->second) {
                                     next_mask |= (1u << lane);
                                 }
-                                PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_convergence_remaining(
-                                    reconvergence_pc, current_lanes, next_pc, next_mask).c_str());
+                                PTX_DEBUG_EMU("%s",
+                                              ptxsim::WarpTraceFormatter::
+                                                  format_convergence_remaining(
+                                                      reconvergence_pc,
+                                                      current_lanes, next_pc,
+                                                      next_mask)
+                                                      .c_str());
                             }
                         }
                     }
@@ -549,14 +633,17 @@ EXE_STATE SMContext::exe_once() {
             // Log divergence info if enabled
             if (ptxsim::DebugConfig::get().is_trace_divergence_enabled() &&
                 lanes_by_pc.size() > 1) {
-                PTX_DEBUG_EMU("%s", ptxsim::WarpTraceFormatter::format_divergence(
-                    lanes_by_pc).c_str());
+                PTX_DEBUG_EMU(
+                    "%s",
+                    ptxsim::WarpTraceFormatter::format_divergence(lanes_by_pc)
+                        .c_str());
             }
         }
 
         // 执行完后取消warp的被调度状态
-        // 【Phase 8.B PTX-6】warp_done label: target of `goto warp_done` from Step A failure
-        // (must be BEFORE set_scheduled(false) per Oracle 2026-07-17 BUG-1 fix)
+        // 【Phase 8.B PTX-6】warp_done label: target of `goto warp_done` from
+        // Step A failure (must be BEFORE set_scheduled(false) per Oracle
+        // 2026-07-17 BUG-1 fix)
     warp_done:
         next_warp->set_scheduled(false);
     }
@@ -564,11 +651,11 @@ EXE_STATE SMContext::exe_once() {
     // 更新状态
     update_state();
 
-// 从DebugConfig单例获取warp跟踪配置，仅在非cycle模式时打印完整状态
-if (ptxsim::DebugConfig::get().is_trace_warp_enabled() &&
-    !ptxsim::DebugConfig::get().is_trace_cycle_enabled()) {
-    print_warp_status(); // 打印所有warp的状态
-}
+    // 从DebugConfig单例获取warp跟踪配置，仅在非cycle模式时打印完整状态
+    if (ptxsim::DebugConfig::get().is_trace_warp_enabled() &&
+        !ptxsim::DebugConfig::get().is_trace_cycle_enabled()) {
+        print_warp_status(); // 打印所有warp的状态
+    }
 
     return sm_state;
 }
@@ -815,7 +902,7 @@ void SMContext::print_warp_status(const WarpContext *warp,
         }
     }
 
-        // 为每个不同的PC值打印一行信息
+    // 为每个不同的PC值打印一行信息
     for (const auto &[pc, lanes] : pc_to_lanes) {
         std::string lane_states = "";
         for (int lane = 0; lane < WarpContext::WARP_SIZE; ++lane) {
@@ -832,38 +919,40 @@ void SMContext::print_warp_status(const WarpContext *warp,
     }
 }
 
-void SMContext::set_divergence_execution_mode(ptxsim::DivergenceExecutionMode mode) {
+void SMContext::set_divergence_execution_mode(
+    ptxsim::DivergenceExecutionMode mode) {
     divergence_mode_ = mode;
-    PTX_DEBUG_EMU("SM %d: Set divergence execution mode to %s",
-                   sm_id_, ptxsim::divergence_execution_mode_to_string(mode));
+    PTX_DEBUG_EMU("SM %d: Set divergence execution mode to %s", sm_id_,
+                  ptxsim::divergence_execution_mode_to_string(mode));
 }
 
-ptxsim::DivergenceExecutionMode SMContext::get_divergence_execution_mode() const {
+ptxsim::DivergenceExecutionMode
+SMContext::get_divergence_execution_mode() const {
     return divergence_mode_;
 }
 
-int SMContext::select_next_group(const std::vector<int>& active_lanes) {
+int SMContext::select_next_group(const std::vector<int> &active_lanes) {
     // With multiple active paths, select based on divergence mode
     if (active_lanes.size() <= 1) {
         return 0; // No divergence, use first group
     }
 
     switch (divergence_mode_) {
-        case ptxsim::DivergenceExecutionMode::Sequential:
-            // Execute groups in order - just return first for now
-            return 0;
+    case ptxsim::DivergenceExecutionMode::Sequential:
+        // Execute groups in order - just return first for now
+        return 0;
 
-        case ptxsim::DivergenceExecutionMode::Interleaved:
-            // Use round-robin or similar to switch dynamically
-            return 0; // Could implement round-robin counter per warp
+    case ptxsim::DivergenceExecutionMode::Interleaved:
+        // Use round-robin or similar to switch dynamically
+        return 0; // Could implement round-robin counter per warp
 
-        case ptxsim::DivergenceExecutionMode::ShortestFirst:
-            // Estimate path length and execute shortest first
-            // For now, fall through to sequential
-            return 0;
+    case ptxsim::DivergenceExecutionMode::ShortestFirst:
+        // Estimate path length and execute shortest first
+        // For now, fall through to sequential
+        return 0;
 
-        default:
-            return 0;
+    default:
+        return 0;
     }
 }
 
@@ -871,6 +960,6 @@ void SMContext::suspend_and_switch(int current_group, int next_group) {
     // Suspend current group and switch to next_group
     // This is a placeholder for future blocking implementation (Phase 3)
     // For now, we just proceed with the next group selection
-    PTX_DEBUG_EMU("SM %d: Suspend group %d, switch to group %d",
-                   sm_id_, current_group, next_group);
+    PTX_DEBUG_EMU("SM %d: Suspend group %d, switch to group %d", sm_id_,
+                  current_group, next_group);
 }
