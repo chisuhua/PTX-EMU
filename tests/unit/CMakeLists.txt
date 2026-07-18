@@ -529,55 +529,7 @@ set_tests_properties(unit_memory_global_f32 PROPERTIES LABELS "unit;ptx;memory;g
 # unit_tcgen05_mma_fragment — migrated to tests/unit/ptx/test_tcgen05_qualifier.cpp (ADR-0016 Phase 2)
 # unit_tcgen05_ld_st — migrated to tests/unit/ptx/test_tcgen05_opkind.cpp (ADR-0016 Phase 2)
 
-# ---------------------------------------------------------------------------
-# A2 cleanup (2026-06): the 7 tests below all `<<<1, 1>>>` real GPU kernels
-# and verify NVIDIA's PTX semantics — they do NOT exercise the PTX-EMU
-# simulator. They were moved to tests/reference/ptx_builtin/ as a
-# historical "semantic reference". Simulator-driven equivalents live in
-# tests/integration/ptx/ (see integration_ptx_ld_st_shared and
-# integration_ptx_integer_arith). Disabled per Oracle A2 recommendation.
-# ============================================================================
-# add_catch_test(unit_ptx_integer
-#     ptx/test_ptx_integer.cu
-#     ptx/ptx_integer_arith.cu
-# )
-# set_tests_properties(unit_ptx_integer PROPERTIES LABELS "unit;ptx;integer")
-#
-# add_catch_test(unit_ptx_float
-#     ptx/test_ptx_float.cu
-#     ptx/ptx_float_arith.cu
-# )
-# set_tests_properties(unit_ptx_float PROPERTIES LABELS "unit;ptx;float")
-#
-# add_catch_test(unit_ptx_extended
-#     ptx/test_ptx_extended.cu
-#     ptx/ptx_extended_prec.cu
-# )
-# set_tests_properties(unit_ptx_extended PROPERTIES LABELS "unit;ptx;integer")
-#
-# add_catch_test(unit_ptx_bitwise
-#     ptx/test_ptx_bitwise.cu
-#     ptx/ptx_bitwise_shift.cu
-# )
-# set_tests_properties(unit_ptx_bitwise PROPERTIES LABELS "unit;ptx;bitwise")
-#
-# add_catch_test(unit_ptx_cvt
-#     ptx/test_ptx_cvt.cu
-#     ptx/ptx_cvt_arith.cu
-# )
-# set_tests_properties(unit_ptx_cvt PROPERTIES LABELS "unit;ptx;cvt")
-#
-# add_catch_test(unit_ptx_ld_st
-#     ptx/test_ptx_ld_st.cu
-#     ptx/ptx_ld_st.cu
-# )
-# set_tests_properties(unit_ptx_ld_st PROPERTIES LABELS "unit;ptx;ld_st")
-#
-# add_catch_test(unit_ptx_cvta
-#     ptx/test_ptx_cvta.cu
-#     ptx/ptx_cvta.cu
-# )
-# set_tests_properties(unit_ptx_cvta PROPERTIES LABELS "unit;ptx;cvta")
+
 
 # ============================================================================
 # CUDA Runtime 拦截单元测试 (T1-2)
