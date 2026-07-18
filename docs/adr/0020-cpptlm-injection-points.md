@@ -2,7 +2,7 @@
 
 | 属性 | 值 |
 |------|-----|
-| **状态** | Accepted |
+| **状态** | Active (2026-07-18) |
 | **日期** | 2026-07-14 |
 | **关联任务** | PTX-1 ~ PTX-6（见 `openspec/changes/cpptlm-phase8b-injection-points/`）|
 | **关联 PR** | （待实施后填写）|

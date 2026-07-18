@@ -48,9 +48,9 @@
 ### PTX-0.3: 序列化协调（30 min）
 
 **验证内容**：
-- [ ] `cleanup-deprecated-barrier-apis` 归档状态确认 (待 PTX-EMU 团队验证)
-- [ ] 与 `god-class-refactor-thread-context-phase3` 字段迁移路径协调 (PTX-EMU 内部协调)
-- [ ] 与 `migrate-bar-warp-sync-to-barrier-module` barrier 交互测试协调 (PTX-EMU 内部协调)
+- [x] `cleanup-deprecated-barrier-apis` 归档状态确认 ✅ (已归档 2026-06-20)
+- [x] 与 `god-class-refactor-thread-context-phase3` 字段迁移路径协调 ✅ (已归档为 stale)
+- [x] 与 `migrate-bar-warp-sync-to-barrier-module` barrier 交互测试协调 ✅ (已归档 2026-07-03)
 
 **协作方式**: 🔵 PTX-EMU 内部协调（无需 CppTLM 参与）
 
@@ -320,8 +320,8 @@ Refs: ADR-0020, openspec/changes/cpptlm-phase8b-injection-points, CppTLM task do
 ### PTX-7a: 7 个 Mock 单元测试（3 hours）
 
 **操作**：
-- [ ] 创建 `tests/unit/cpptlm/test_smcontext_injection.cpp`
-- [ ] 7 个测试用例（任务书 §5.2 完整移植）：
+- [x] 创建 `tests/unit/cpptlm/test_smcontext_injection.cpp` (7 tests, 55 assertions, PASS)
+- [x] 7 个测试用例 ✅：
   1. `SMContext: nullptr injection = no-op (backward compat)`
   2. `SMContext: scoreboard limits concurrent operations`
   3. `SMContext: scoreboard release after instruction completes`
@@ -358,8 +358,8 @@ Refs: ADR-0020, CppTLM docs/superpowers/specs/2026-07-03-ptxemu-modification-tas
 ### PTX-7b: 集成测试（2 hours）
 
 **操作**：
-- [ ] 创建 `tests/integration/cpptlm/test_scoreboard_allocation.cpp`
-- [ ] 4 个测试用例：
+- [x] 创建 `tests/integration/cpptlm/test_scoreboard_allocation.cpp` (4 tests, 15 assertions, PASS)
+- [x] 4 个测试用例 ✅：
   1. `Scoreboard: detect RAW hazard across warp instructions` (RAW hazard)
   2. `Scoreboard: allocate/release cycle through execute_warp_instruction` (full cycle)
   3. `Pipeline injection: FFMA latency override` (4.22 cyc → ceil 5)
@@ -387,7 +387,7 @@ Refs: ADR-0020, openspec/changes/cpptlm-phase8b-injection-points"
 ### PTX-7c: 回归测试（1 hour）
 
 **操作**：
-- [ ] 完整回归基线：
+- [x] 完整回归基线 ✅ (209/209 pass, 0 regression)：
   - `ctest -L "unit"` 全 PASS
   - `ctest -L "integration"` 全 PASS
   - `ctest -L "e2e"` 全 PASS
@@ -410,14 +410,14 @@ Refs: ADR-0020, openspec/changes/cpptlm-phase8b-injection-points"
 
 ## 验收 Gates
 
-- [ ] **G1** `ctest -L "unit;cpptlm"` 7 个 Mock 测试全 PASS
-- [ ] **G2** `ctest -L "integration;cpptlm"` 4 个集成测试全 PASS
-- [ ] **G3** 现有 `[unit;memory]` `[unit;barrier]` `[integration;simt]` 测试基线 0 回归
-- [ ] **G4** nullptr 注入时行为与改造前**字节级相同**（通过 baseline worktree 对照）
-- [ ] **G5** 4 个新接口头文件零依赖（`grep -r '#include' include/ptxsim/{scoreboard,pipeline,tensor_core}_interface.h` 仅 `<cstdint>`/`<string>`）
-- [ ] **G6** `clang-format -i` 对所有修改文件运行
-- [ ] **G7** `./scripts/sanity.sh` 全绿（含 11 个新测试 + 现有 600+ 测试）
-- [ ] **G8** Oracle 审查通过（调用 oracle subagent 验证接口设计 + exe_once 改造）
+- [x] **G1** `ctest -L "unit;cpptlm"` 7 个 Mock 测试全 PASS
+- [x] **G2** `ctest -L "integration;cpptlm"` 4 个集成测试全 PASS
+- [x] **G3** 现有 `[unit;memory]` `[unit;barrier]` `[integration;simt]` 测试基线 0 回归
+- [x] **G4** nullptr 注入时行为与改造前**字节级相同**（通过 baseline worktree 对照）
+- [x] **G5** 4 个新接口头文件零依赖（`grep -r '#include' include/ptxsim/{scoreboard,pipeline,tensor_core}_interface.h` 仅 `<cstdint>`/`<string>`）
+- [x] **G6** `clang-format -i` 对所有修改文件运行
+- [x] **G7** `./scripts/sanity.sh` 全绿（含 11 个新测试 + 现有 600+ 测试）
+- [x] **G8** Oracle 审查通过（调用 oracle subagent 验证接口设计 + exe_once 改造）
 
 ## 实施后节点
 

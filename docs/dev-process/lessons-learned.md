@@ -1775,3 +1775,64 @@ inline void step_b(IPipeline* p, ITc* tc, Warp* w, const Stmt& s) {
 **§38 更新日期**: 2026-07-17  
 **关联 commit hash**: 367fd6a5 / 5b292a91  
 **Skill ref**: `.opencode/skills/ptx-lessons-learned/SKILL.md` §14
+
+---
+
+## 39. Step B（延迟查询）必须在 execute 之后执行（2026-07-18）
+
+### 教训
+
+在 `exe_once()` 中新增注入点时，**延迟/阻塞操作必须在指令执行之后设置**。
+
+### 失败模式
+
+```cpp
+// ❌ WRONG: Step B before execute — set_blocked_cycles_for_active 设置
+// is_blocked=true 后，execute_warp_instruction 的 is_lane_active() 返回 false，
+// 所有 lane 被跳过 → 指令永不执行。
+set_blocked_cycles_for_active(latency);  // blocks all active threads
+execute_warp_instruction(stmt, pc);       // all lanes skipped!
+
+// ✅ CORRECT: Step B after execute
+execute_warp_instruction(stmt, pc);       // instruction executes normally
+set_blocked_cycles_for_active(latency);   // THEN block for latency
+```
+
+### 为什么静默
+
+所有现有测试使用 nullptr injector。当 `pipeline_provider_` 和 `tensor_core_timing_` 均为 nullptr 时，`step_b_set_blocked_cycles` 直接 return（no-op），不触发 `set_blocked_cycles_for_active`。只有注入真实 CppTLM timing 模型（非 nullptr）才会暴露。
+
+### 发现过程
+
+2026-07-18 Oracle 审查 `cpptlm-phase8b-injection-points` 的已提交代码（PTX-1~6）。审计 `step_b_set_blocked_cycles` 调用点（`sm_context.cpp` fast path + divergent path）时发现 Step B 在 `execute_warp_instruction` **之前**。调用链：`set_blocked_cycles_for_active` → 设置 `is_blocked=true, blocked_cycles_remaining=N` → `is_lane_schedulable()` 返回 false → `is_lane_active()` 返回 false → `execute_warp_instruction` 的 lane 活性检查跳过所有线程。结果：当 injectors 非 nullptr 时，**模拟器完全停止执行指令**。
+
+设计文档（`design.md §7.1`）本身也指定 Step B 在 execute 之前 — 属于设计层面缺陷。
+
+### 诱因
+
+- **设计假设错误**：认为 "查询延迟 → 设置 blocked_cycles → 执行指令" 等价于流水线仿真。但 PTX-EMU 的执行模型是"指令立即执行（组合逻辑），然后线程阻塞 N 周期（模拟结果延迟）"。
+- **nullptr 掩盖**：默认 nullptr 使 Step B 成为 no-op，隐藏了顺序敏感性问题。
+- **无非 nullptr 测试**：Phase 1-4 实现期间未编写注入真实 Mock 的测试（Phase 5 才计划）。
+
+### 量化影响
+
+- **修复范围**: `sm_context.cpp` 2 处（fast path line 354→after 365, divergent path line 446→after 458）
+- **验证**: `ctest -E e2e_divergence$` → 210/210 pass（2 个新增测试 + 0 回归）
+- **预防**: PTX-7a Test 4/5/6 注入非 nullptr Mock，验证指令执行后 blocked_cycles 正确设置
+
+### 预防规则
+
+1. 任何新增的**线程状态修改**（`is_blocked`, `is_active`, `blocked_cycles_remaining`）必须在 `execute_warp_instruction` 之后执行
+2. Phase 1-4 实现阶段必须至少有一个**非 nullptr 注入点测试**（不能仅靠 Phase 5 才覆盖）
+3. Oracle 审查应关注调用**顺序**，不只是调用**存在性**
+
+### 关联
+
+- **修复 commit**: `290ebf88`
+- **设计文档**: design.md §7.1
+- **审查 commit**: `fb990cb3`（design.md §7.1 control flow fix — 修复了其他问题但保留了 Step B 顺序错误）
+- **ADR**: ADR-0020
+
+**§39 更新日期**: 2026-07-18  
+**关联 commit hash**: 290ebf88  
+**Skill ref**: `.opencode/skills/ptx-lessons-learned/SKILL.md` §39（待同步）
