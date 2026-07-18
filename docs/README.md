@@ -13,7 +13,7 @@
 
 | 目录 | 文档数 | 用途 |
 |------|--------|------|
-| [`adr/`](./adr/) | 15 | 架构决策记录（ADR-0001~0015）— 重大设计选择的上下文与决策 |
+| [`adr/`](./adr/) | 22 | 架构决策记录（ADR-0001~0021，0017 缺失）— 重大设计选择的上下文与决策 |
 | [`architecture/`](./architecture/) | 4 | 系统架构设计（SIMT v2、GPGPU-SIM 对比、sm_90/100） |
 | [`technical_design/`](./technical_design/) | 2 | 详细技术设计（barrier module、implicit reconvergence） |
 
@@ -30,15 +30,15 @@
 | 目录 | 文档数 | 用途 |
 |------|--------|------|
 | [`reports/`](./reports/) | 10 | 项目报告（Phase 报告、test 报告、bug 复现） |
-| [`audits/`](./audits/) | 4 | 健康审计与债务审查（HEALTH-AUDIT + ERRATA + debt-audit） |
+| [`audits/`](./audits/) | 5 | 健康审计与债务审查（HEALTH-AUDIT + ERRATA + debt-audit） |
 
 ### 4. 流程与技能
 
 | 目录 | 文档数 | 用途 |
 |------|--------|------|
-| [`dev-process/`](./dev-process/) | 2 | 开发流程（lessons-learned、debugging-strategy） |
-| [`skills/`](./skills/) | 8 | 技能沉淀（人类可读导航，**可加载技能在 `.opencode/skills/`**） |
-| [`superpowers/`](./superpowers/) | 6 | 超级能力沉淀（specs/plans/findings） |
+| [`dev-process/`](./dev-process/) | 3 | 开发流程（lessons-learned、debugging-strategy） |
+| [`skills/`](./skills/) | 3 | 技能沉淀（人类可读导航，**可加载技能在 `.opencode/skills/`**） |
+| [`superpowers/`](./superpowers/) | 25 | 超级能力沉淀（specs/plans/findings） |
 
 ### 5. PTX 与解析
 
@@ -50,7 +50,7 @@
 
 | 目录 | 文档数 | 用途 |
 |------|--------|------|
-| [`roadmap/`](./roadmap/) | 1 | Roadmap（活跃 OpenSpec changes 即未来项） |
+| [`roadmap/`](./roadmap/) | 2 | Roadmap（活跃 OpenSpec changes 即未来项） |
 | [`research/`](./research/) | 8 | 外部技术调研（NVIDIA 官方 + 开源参考） |
 
 ### 7. 附录与归档
@@ -58,7 +58,7 @@
 | 目录 | 文档数 | 用途 |
 |------|--------|------|
 | [`appendix/`](./appendix/) | 4 | 附录（CHANGELOG、GLOSSARY、REFERENCES、RELEASE-NOTES） |
-| [`archive/`](./archive/) | 50+ | 历史归档（pre-simt-v2、PTX 指令副本等） |
+| [`archive/`](./archive/) | 56 | 历史归档（pre-simt-v2、PTX 指令副本等） |
 
 > **自动统计**: 上述"文档数"由 `scripts/check-docs-index.sh` 生成（`find docs/<dir> -type f | wc -l`）
 

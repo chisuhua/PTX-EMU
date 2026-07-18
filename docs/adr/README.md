@@ -64,6 +64,7 @@ docs/adr/
 | # | 标题 | 状态 | 日期 | 关联任务 |
 |---|------|------|------|---------|
 | [0011](./0011-pipeline-architecture.md) | PTX→PTXIR 多阶段 Pipeline 架构 | Proposed | 2026-05-05 | Phase 12.1 |
+| [0013](./0013-statement-factory-test-unification.md) | StatementContext 测试统一模式 — statement_factory + execute_warp_instruction | Proposed | 2026-05-09 | — |
 | [0014](./0014-independent-thread-scheduling.md) | Independent Thread Scheduling (ITS) 支持 | Proposed | 2026-05-25 | BUG-SIMT-001 |
 
 ### Superseded (已被替代)
@@ -96,7 +97,7 @@ docs/adr/
 
 **维护**: PTX-EMU Architecture Team  
 **最后更新**: 2026-07-16  
-**ADR 总数**: 19（其中 Active 16 / Accepted 2 / Proposed 1 / Superseded 0）
+**ADR 总数**: 20（其中 Active 14 / Accepted 3 / Proposed 3 / Superseded 0）
 
 ## 最近更新
 

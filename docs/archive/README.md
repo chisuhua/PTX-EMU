@@ -1,7 +1,7 @@
 # 历史归档目录
 
 **状态**: 🗄️ Archived Documents  
-**最后整理**: 2026-04-11  
+**最后整理**: 2026-07-18  
 
 ---
 
@@ -9,11 +9,12 @@
 
 | 子目录 | 用途 | 文档数 |
 |--------|------|--------|
-| [`phase-plans/`](./phase-plans/) | Phase 计划 | 8 |
+| [`phase-plans/`](./phase-plans/) | Phase 计划 | 14 |
 | [`approvals/`](./approvals/) | 审批文档 | 1 |
-| [`code-reviews/`](./code-reviews/) | 代码审查 | 12 |
-| [`ptx-instruction-reference/`](./ptx-instruction-reference/) | PTX 指令参考 | 19 |
-| [`misc/`](./misc/) | 杂项文档 | 12 |
+| [`code-reviews/`](./code-reviews/) | 代码审查 | 6 |
+| [`ptx-instruction-reference/`](./ptx-instruction-reference/) | PTX 指令参考 | 13 |
+| [`misc/`](./misc/) | 杂项文档 | 14 |
+| [`2026-04-simt-v2/`](./2026-04-simt-v2/) | SIMT v2 早期设计 | 6 |
 
 ---
 
@@ -103,4 +104,4 @@
 ---
 
 **维护**: 归档文档不再更新，仅供历史参考  
-**最后整理**: 2026-04-11
+**最后整理**: 2026-07-18
