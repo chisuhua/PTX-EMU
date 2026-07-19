@@ -671,6 +671,12 @@ add_catch_test(unit_cpptlm_injection_interfaces
 )
 set_tests_properties(unit_cpptlm_injection_interfaces PROPERTIES LABELS "unit;cpptlm;inject")
 
+# Cosim smoke test (cpptlm-p1-ptxemu-shim, ADR-0021 §2026-07-19 Postmortem)
+add_catch_test(unit_cpptlm_cosim_smoke
+    cpptlm/test_cosim_smoke.cpp
+)
+set_tests_properties(unit_cpptlm_cosim_smoke PROPERTIES LABELS "unit;cpptlm;cosim;smoke")
+
 # PTX-7a: SMContext injection mock tests (cpptlm-phase8b-injection-points, ADR-0020)
 add_catch_test(unit_smcontext_injection
     cpptlm/test_smcontext_injection.cpp
