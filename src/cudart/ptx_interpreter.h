@@ -6,6 +6,7 @@
 #include "ptx_ir/statement_context.h"
 #include "ptxsim/common_types.h"
 #include "ptxsim/execution_types.h"
+#include "ptxsim/gpu_context.h"
 // #include "utils/dim3.h"
 #include <map>
 #include <memory>
@@ -34,6 +35,15 @@ public:
 
     void launchPtxInterpreter(PtxContext &ptx, std::string &kernel, void **args,
                               Dim3 &gridDim, Dim3 &blockDim, size_t sharedMem = 0);
+
+    // 准备 KernelLaunchRequest（含 IR 符号表、标签、内存分配），但不提交。
+    // 用于 bridge 路径：调用方获取完整 request 后，可追加 on_complete
+    // 回调再自行 submit。
+    KernelLaunchRequest prepareKernelLaunchRequest(PtxContext &ptx,
+                                                   const std::string &kernel,
+                                                   void **args, Dim3 &gridDim,
+                                                   Dim3 &blockDim,
+                                                   size_t sharedMem);
 
     // 内部方法，接收必要的参数用于构建KernelLaunchRequest
     void funcInterpreter(std::map<std::string, std::unique_ptr<Symtable>> &name2Sym,

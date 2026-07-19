@@ -96,6 +96,7 @@ std::unique_ptr<PtxInterpreter> g_ptx_interpreter;
 // nullptr 时所有操作走原有同步路径（字节级相同）。
 // ============================================================================
 #include "cudart/cpptlm_bridge.h"
+#include "cudart/cpptlm_bridge/PtxEmuDriverShim.h"
 CppTLMBridge* g_cpptlm_bridge = nullptr;
 
 // ============================================================================
@@ -122,6 +123,57 @@ extern "C" PTXEMU_BRIDGE_API void cpptlm_attach_bridge(CppTLMBridge* bridge) {
 extern "C" PTXEMU_BRIDGE_API void cpptlm_detach_bridge() {
     PTX_DEBUG_EMU("cpptlm_detach_bridge (was %p)", (void*)g_cpptlm_bridge);
     g_cpptlm_bridge = nullptr;
+}
+
+// ============================================================================
+// CppTLM D1-Full P1: cpptlm_set_driver ABI (PTX-EMU → CppTLM)
+// ============================================================================
+// 方向: PTX-EMU 向 CppTLM 注册 PtxEmuDriverShim 实例 + 方法 vtable。
+// CppTLM 侧的 DriverWrapper 通过此 vtable 调用 shim 的 advance() 等。
+//
+// 弱符号: 本文件提供空实现（无 CppTLM 时 no-op）。CppTLM 的
+// libcpptlm_cudart.so 加载后其强定义覆盖此弱符号。
+// ============================================================================
+static PtxEmuDriverShim* g_ptx_emu_driver_shim = nullptr;
+
+// ── Vtable 包装函数 ──
+static int shim_advance(void* shim, uint32_t max, uint32_t* actual) {
+    return static_cast<PtxEmuDriverShim*>(shim)->advance(max, *actual);
+}
+static void shim_inject_scoreboard(void* shim, uint32_t sm_id, void* sb_ptr) {
+    // CppTLM passes unique_ptr via void*; PTX-EMU takes ownership
+    auto sb = std::unique_ptr<IScoreboard>(static_cast<IScoreboard*>(sb_ptr));
+    static_cast<PtxEmuDriverShim*>(shim)->inject_scoreboard(sm_id, std::move(sb));
+}
+static void shim_inject_pipeline(void* shim, uint32_t sm_id, void* pp_ptr) {
+    auto pp = std::unique_ptr<IPipelineLatencyProvider>(
+        static_cast<IPipelineLatencyProvider*>(pp_ptr));
+    static_cast<PtxEmuDriverShim*>(shim)->inject_pipeline(sm_id, std::move(pp));
+}
+static void shim_inject_tensor_core(void* shim, uint32_t sm_id, void* tc_ptr) {
+    auto tc = std::unique_ptr<ITensorCoreTiming>(
+        static_cast<ITensorCoreTiming*>(tc_ptr));
+    static_cast<PtxEmuDriverShim*>(shim)->inject_tensor_core(sm_id, std::move(tc));
+}
+static int shim_is_kernel_complete(void* shim, uint64_t kid) {
+    return static_cast<PtxEmuDriverShim*>(shim)->is_kernel_complete(kid) ? 1 : 0;
+}
+static void shim_mark_complete(void* shim, uint64_t kid) {
+    static_cast<PtxEmuDriverShim*>(shim)->mark_complete(kid);
+}
+static uint32_t shim_num_sms(void* shim) {
+    return static_cast<PtxEmuDriverShim*>(shim)->num_sms();
+}
+static void shim_destroy(void* shim) {
+    delete static_cast<PtxEmuDriverShim*>(shim);
+}
+
+/// Weak no-op: called by initialize_environment() regardless of CppTLM presence.
+/// When libcpptlm_cudart.so is loaded, its strong definition takes over.
+extern "C" void cpptlm_set_driver(void* shim, PtxEmuDriverApi api) {
+    PTX_DEBUG_EMU("cpptlm_set_driver (weak no-op): shim=%p", shim);
+    (void)shim;
+    (void)api;
 }
 
 // ============================================================================
@@ -227,6 +279,34 @@ void initialize_environment() {
         g_gpu_context = std::make_unique<GPUContext>();
         g_gpu_context->init();
         g_ptx_interpreter = std::make_unique<PtxInterpreter>();
+    }
+
+    // =====================================================================
+    // CppTLM D1-Full P1: 创建 PtxEmuDriverShim + vtable + 注册到 CppTLM
+    // g_gpu_context 已初始化完成，构建 PtxEmuDriverApi vtable 并通过
+    // cpptlm_set_driver() 传递给 CppTLM。
+    //
+    // Weak symbol: 无 CppTLM 时 cpptlm_set_driver 是 no-op（安全）。
+    // CppTLM 的 libcpptlm_cudart.so 加载后其强定义接管。
+    // =====================================================================
+    {
+        auto* shim = new PtxEmuDriverShim(g_gpu_context.get());
+        g_ptx_emu_driver_shim = shim;
+
+        PtxEmuDriverApi api{};
+        api.advance             = shim_advance;
+        api.inject_scoreboard   = shim_inject_scoreboard;
+        api.inject_pipeline     = shim_inject_pipeline;
+        api.inject_tensor_core  = shim_inject_tensor_core;
+        api.is_kernel_complete  = shim_is_kernel_complete;
+        api.mark_complete       = shim_mark_complete;
+        api.num_sms             = shim_num_sms;
+        api.destroy             = shim_destroy;
+
+        cpptlm_set_driver(shim, api);
+
+        PTX_INFO_EMU("PtxEmuDriverShim registered (ctx=%p, shim=%p)",
+                     (void*)g_gpu_context.get(), (void*)shim);
     }
 }
 
@@ -545,6 +625,43 @@ cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim, dim3 blockDim,
 
         // 确保 stream 在 active_streams 中
         g_active_streams.insert(stream_id);
+
+        // ====================================================================
+        // CppTLM D1-Full P1: 双路径 enqueue — 同时提交到 GPUContext
+        // 驱动真实 PTX 指令执行（H1 fix + M1 fix + NEW-M1 fix）
+        // ====================================================================
+        // 此前 bridge 路径仅提交到 CppTLM 但不 enqueue 到 GPUContext，
+        // 导致 poll_kernel 立即返回 0（完成）。现在通过
+        // prepareKernelLaunchRequest() 获取完整 IR（statements/name2Sym/
+        // label2pc），追加 mark_complete 回调后提交到 GPUContext::task_queue。
+        //
+        // Null checks: g_ptx_interpreter 可能未初始化（测试场景），
+        // 此时跳过 PTX enqueue，仅走 bridge 提交路径。
+        // ====================================================================
+        if (g_ptx_interpreter && g_gpu_context) {
+            try {
+                auto req = g_ptx_interpreter->prepareKernelLaunchRequest(
+                    g_ptx_interpreter->get_ptx_context(),
+                    func2name[(uint64_t)func], args,
+                    gridDim3, blockDim3, sharedMem);
+
+                // Chain on_complete: first free memory (original callback),
+                // then mark kernel complete (for CppTLM is_kernel_complete)
+                auto orig_cb = std::move(req.on_complete);
+                req.on_complete = [kernel_id,
+                                   orig_cb = std::move(orig_cb)]() {
+                    if (orig_cb) orig_cb();       // free param/global/local memory
+                    if (g_ptx_emu_driver_shim)    // notify CppTLM
+                        g_ptx_emu_driver_shim->mark_complete(kernel_id);
+                };
+
+                g_gpu_context->submit_kernel_request(std::move(req));
+                PTX_DEBUG_EMU("cudaLaunchKernel: enqueued kernel_id=%lu to GPUContext for PTX execution", kernel_id);
+            } catch (const std::exception& e) {
+                PTX_ERROR_EMU("cudaLaunchKernel bridge path: prepareKernelLaunchRequest failed: %s", e.what());
+                // Bridge submit already succeeded; don't fail the launch
+            }
+        }
 
         PTX_DEBUG_EMU("cudaLaunchKernel: async submit kernel_id=%lu to CppTLM bridge", kernel_id);
         return cudaSuccess;

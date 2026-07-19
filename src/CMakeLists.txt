@@ -43,6 +43,7 @@ set(SOURCES
     cudart/cuda_driver.cpp  # 添加新的驱动内存管理器
     cudart/simple_memory_allocator.cpp
     cudart/cudart_sim.cpp
+    cudart/cpptlm_bridge/PtxEmuDriverShim.cpp  # CppTLM D1-Full P1
     utils/cubin_utils.cpp
     ptxsim/atomic/atomic_mutex.cpp  # Phase 2 of implement-atomic-cas-and-true-atomicity
     ${ANTLR4_GENERATED_SOURCES}

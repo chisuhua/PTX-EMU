@@ -128,8 +128,8 @@ option(BUILD_LIB_CPPTLM_CUDART "Build libcpptlm_cudart.so bridge (requires CppTL
 if(BUILD_LIB_CPPTLM_CUDART)
     include(ExternalProject)
 
-    # CppTLM commit hash (HSK-3: 待 CppTLM 团队确认后替换)
-    set(CPPTLM_COMMIT_HASH "main" CACHE STRING "CppTLM git tag/commit to pin")
+    # CppTLM commit hash (pin to verified P0+P1 Phase 1 commit)
+    set(CPPTLM_COMMIT_HASH "73e5422" CACHE STRING "CppTLM git tag/commit to pin")
 
     ExternalProject_Add(cpptlm
         GIT_REPOSITORY  https://github.com/chisuhua/CppTLM.git
@@ -137,6 +137,7 @@ if(BUILD_LIB_CPPTLM_CUDART)
         CMAKE_ARGS      -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/cpptlm-install
                         -DBUILD_TESTING=OFF
                         -DCPPTLM_BUILD_CUDART_BRIDGE=ON
+                        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         UPDATE_DISCONNECTED TRUE  # 不自动 fetch，避免 ABI 漂移
         BUILD_ALWAYS FALSE
     )

@@ -44,7 +44,7 @@ public:
 TEST_CASE("CppTLMBridge version() returns CPPTLMBRIDGE_VERSION", "[cpptlm][bridge]") {
     MockCppTLMBridge bridge;
     REQUIRE(bridge.version() == CPPTLMBRIDGE_VERSION);
-    REQUIRE(CPPTLMBRIDGE_VERSION == 1);
+    REQUIRE(CPPTLMBRIDGE_VERSION == 2);
 }
 
 TEST_CASE("CppTLMBridge submit_kernel() accepts 12 parameters", "[cpptlm][bridge]") {
