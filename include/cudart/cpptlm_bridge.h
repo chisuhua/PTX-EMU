@@ -206,13 +206,9 @@ struct PtxEmuDriverApi {
 };
 
 /// PTX-EMU 调用此函数向 CppTLM 注册 driver。
-/// - shim:   PtxEmuDriverShim 实例的不透明指针
-/// - api:    包含 8 个函数指针的 vtable
-///
-/// 弱符号: PTX-EMU 提供空实现（无 CppTLM 时安全 no-op）；
-///         CppTLM 的 libcpptlm_cudart.so 加载后其强定义覆盖此弱符号。
-extern "C" void cpptlm_set_driver(void* shim, PtxEmuDriverApi api)
-    __attribute__((weak));
+/// PTX-EMU 提供 __attribute__((weak)) 空实现（无 CppTLM 时安全 no-op）；
+/// CppTLM 的 cpptlm_core（通过 --whole-archive 链接）提供强定义覆盖。
+extern "C" void cpptlm_set_driver(void* shim, PtxEmuDriverApi api);
 
 /// 编译期断言 cudaStream_t 宽度可存入 uint64_t
 ///

@@ -134,12 +134,18 @@ if(BUILD_LIB_CPPTLM_CUDART)
                             "Set CPPT LM_SOURCE_DIR to the correct path.")
     endif()
 
-    # 构建 CppTLM 作为子项目
+    # 构建 CppTLM 作为子项目（强制 PIC：cpptlm_core 将被链接到 libcudart.so）
+    set(_prev_pic ${CMAKE_POSITION_INDEPENDENT_CODE})
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
     add_subdirectory(${CPPTLM_SOURCE_DIR} ${CMAKE_BINARY_DIR}/cpptlm)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ${_prev_pic})
 
     # 链接 CppTLM 到 cudart 目标
+    # --whole-archive: 强制纳入 cpptlm_core 所有对象，确保 CppTLM 的
+    # cpptlm_set_driver 强定义覆盖 PTX-EMU 的 __attribute__((weak)) 版本
     add_dependencies(cudart cpptlm_core)
-    target_link_libraries(cudart cpptlm_core)
+    target_link_libraries(cudart
+        -Wl,--whole-archive cpptlm_core -Wl,--no-whole-archive)
     include_directories(${CPPTLM_SOURCE_DIR}/include)
 
     message(STATUS "CppTLM bridge enabled: using local repo at ${CPPTLM_SOURCE_DIR}")

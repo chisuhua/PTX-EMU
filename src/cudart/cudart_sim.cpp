@@ -168,9 +168,9 @@ static void shim_destroy(void* shim) {
     delete static_cast<PtxEmuDriverShim*>(shim);
 }
 
-/// Weak no-op: called by initialize_environment() regardless of CppTLM presence.
-/// When libcpptlm_cudart.so is loaded, its strong definition takes over.
-extern "C" void cpptlm_set_driver(void* shim, PtxEmuDriverApi api) {
+// CppTLM D1-Full P1 weak no-op: 无 CppTLM 时安全 fallback。
+// CppTLM 的 cpptlm_core（通过 --whole-archive 链接）提供强定义覆盖此弱符号。
+extern "C" __attribute__((weak)) void cpptlm_set_driver(void* shim, PtxEmuDriverApi api) {
     PTX_DEBUG_EMU("cpptlm_set_driver (weak no-op): shim=%p", shim);
     (void)shim;
     (void)api;
