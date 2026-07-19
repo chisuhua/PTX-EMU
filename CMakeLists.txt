@@ -144,8 +144,8 @@ if(BUILD_LIB_CPPTLM_CUDART)
 
     # 链接 CppTLM 到 cudart 目标
     add_dependencies(cudart cpptlm)
-    target_link_libraries(cudart PRIVATE ${CMAKE_BINARY_DIR}/cpptlm-install/lib/libcpptlm_cudart.so)
-    target_include_directories(cudart PRIVATE ${CMAKE_BINARY_DIR}/cpptlm-install/include)
+    target_link_libraries(cudart ${CMAKE_BINARY_DIR}/cpptlm-install/lib/libcpptlm_cudart.so)
+    include_directories(${CMAKE_BINARY_DIR}/cpptlm-install/include)
 
     message(STATUS "CppTLM bridge enabled: ExternalProject_Add from ${CPPTLM_COMMIT_HASH}")
 else()
