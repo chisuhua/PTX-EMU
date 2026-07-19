@@ -463,3 +463,57 @@ if (__builtin_expect(g_cpptlm_bridge != nullptr, 0)) {
 - [`docs/dev-process/lessons-learned.md`](../dev-process/lessons-learned.md) — 完整经验沉淀（§32 + §34-37 本次新增）
 - [`openspec/changes/cpptlm-d1-full/`](../../openspec/changes/cpptlm-d1-full/) — 当前 change artifacts
 - [`openspec/changes/cpptlm-phase8b-injection-points/`](../../openspec/changes/cpptlm-phase8b-injection-points/) — 姊妹 change artifacts（ADR-0020）
+
+---
+
+## 2026-07-19 Postmortem：cpptlm-p1-ptxemu-shim 实施回顾
+
+### 实施回顾
+
+| Phase | 内容 | Commits | 状态 |
+|-------|------|---------|------|
+| 0 | OpenSpec artifacts 提交 | `f6c7279a` | ✅ |
+| 1 | PtxInterpreter::prepareKernelLaunchRequest() 提取 | `13325cd8` | ✅ |
+| 2 | PtxEmuDriverShim 实现 | `13325cd8` | ✅ |
+| 3 | Bridge path 双路径 enqueue + on_complete 回调链 | `13325cd8` | ✅ |
+| 4 | cpptlm_set_driver ABI + PtxEmuDriverApi vtable | `13325cd8` | ✅ |
+| 5 | 构建配置（pin commit + PIC） | `a541e074`, `35ffeba8`, `97539fdb` | ✅ |
+| 6 | 验证：ctest 212/213 PASS + nm T symbol | — | ✅ |
+
+### 关键技术决策
+
+#### D7: Weak symbol vs --whole-archive
+
+最初设计使用 `__attribute__((weak))` 让 CppTLM 的强定义覆盖 PTX-EMU 的弱定义。
+但静态库（`.a`）链接时，链接器仅在符号未定义时才拉入对象文件——弱定义已满足
+符号需求，CppTLM 的强定义被跳过。解决方案：`-Wl,--whole-archive cpptlm_core -Wl,--no-whole-archive`。
+
+#### D8: add_subdirectory 替代 ExternalProject_Add
+
+本地开发环境使用 `add_subdirectory(/workspace/project/CppTLM)` 替代 `ExternalProject_Add`，
+配置项 `CPPTLM_SOURCE_DIR` 支持覆盖。CppTLM 需要 PIC：`set(CMAKE_POSITION_INDEPENDENT_CODE ON)`
+在 `add_subdirectory` 前设置，完成后恢复。
+
+#### D9: PtxEmuDriverApi vtable 跨 .so ABI
+
+8 个函数指针的 vtable struct 在 cpptlm_bridge.h（ABI 真值源）定义，PTX-EMU 侧通过
+static wrapper 函数填充，CppTLM 侧 DriverWrapper 通过 vtable 调用，避免直接依赖
+PTX-EMU 符号。CppTLM 侧 `01882a2` 已实现对应 DriverWrapper。
+
+### 验证结果（BUILD_LIB_CPPTLM_CUDART=ON, commit 97539fdb）
+
+| 类别 | 通过 | 预存失败 |
+|------|------|---------|
+| ctest 全量 | 212 | 1 (e2e_divergence, SingletonGuard) |
+
+### 新增教训（追加到 lessons-learned.md §41）
+
+1. **静态库 weak symbol 无法被同 .so 内的强定义覆盖** — 必须使用 `--whole-archive`
+2. **add_subdirectory 外部项目时需保存/恢复 CMAKE_POSITION_INDEPENDENT_CODE**
+3. **跨仓库 vtable ABI 设计**: 函数指针 struct 比直接头文件依赖更灵活
+
+### 相关链接
+
+- [`docs/dev-process/lessons-learned.md`](../dev-process/lessons-learned.md) §41
+- [`openspec/changes/archive/2026-07-19-cpptlm-p1-ptxemu-shim/`](../../openspec/changes/archive/2026-07-19-cpptlm-p1-ptxemu-shim/)
+- CppTLM 侧: commit `01882a2`, PR #N/A

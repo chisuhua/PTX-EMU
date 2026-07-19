@@ -1859,3 +1859,33 @@ set_blocked_cycles_for_active(latency);   // THEN block for latency
 
 - **change**: `openspec/changes/add-cudart-unit-test-coverage/`
 - **ADR**: ADR-0010 §2026-07-18 Postmortem
+
+## 41. 静态库 weak symbol 跨 .so 覆盖失败（2026-07-19）
+
+### 现象
+
+PTX-EMU 定义 `__attribute__((weak)) cpptlm_set_driver()`，CppTLM 静态库 `libcpptlm_core.a`
+定义同名的强符号。两者链接到同一 `libcudart.so` 后，`nm` 输出显示 `W`（weak），
+CppTLM 的强定义未被采纳。运行时 `initialize_environment()` 调用的是 PTX-EMU 的弱 no-op。
+
+### 教训
+
+- **静态库链接规则**：链接器只在符号**未定义**时才从 `.a` 拉入对象文件。
+  weak 定义已满足符号需求 → 静态库中的强定义被跳过。
+- **修复**：`target_link_libraries(cudart -Wl,--whole-archive cpptlm_core -Wl,--no-whole-archive)`
+  强制纳入所有对象，编译期覆盖。
+- **备选方案**：`dlsym(RTLD_NEXT, "func")` 运行时查找（更灵活但有运行时开销），或
+  将 CppTLM 编译为 `.so`（标准动态链接路径）。
+- **add_subdirectory 外部项目**：需在 `add_subdirectory` 前 `set(CMAKE_POSITION_INDEPENDENT_CODE ON)`
+  并在完成后恢复原值，否则 `.a → .so` 链接时报 `R_X86_64_TPOFF32` 重定位错误。
+
+### 真实案例
+
+- **bug 表现**: `nm build/lib/libcudart.so | grep cpptlm_set_driver` → `W`（预期 `T`）
+- **修复**: `97539fdb` — `--whole-archive` + PIC save/restore
+- **验证**: `nm` 输出 `T cpptlm_set_driver`，ctest 212/213 PASS
+
+### 关联
+
+- **change**: `openspec/changes/archive/2026-07-19-cpptlm-p1-ptxemu-shim/`
+- **ADR**: ADR-0021 §2026-07-19 Postmortem
