@@ -122,32 +122,27 @@ install(DIRECTORY bin/
 # 🔗 CppTLM Bridge 集成 (HSK-3 + D-PTX-6)
 # ==============================
 # 默认 OFF：保证现有测试零退化
-# ON 路径：ExternalProject_Add 拉取 CppTLM 仓库 + 构建 libcpptlm_cudart.so
-option(BUILD_LIB_CPPTLM_CUDART "Build libcpptlm_cudart.so bridge (requires CppTLM repo)" OFF)
+# ON 路径：直接引用本地 CppTLM 仓库（/workspace/project/CppTLM）构建并链接
+option(BUILD_LIB_CPPTLM_CUDART "Build libcpptlm_cudart.so bridge (requires local CppTLM repo)" OFF)
 
 if(BUILD_LIB_CPPTLM_CUDART)
-    include(ExternalProject)
+    # CppTLM 本地路径（可通过 CPPT LM_SOURCE_DIR 覆盖）
+    set(CPPTLM_SOURCE_DIR "/workspace/project/CppTLM" CACHE PATH "Local CppTLM repository path")
 
-    # CppTLM commit hash (pin to verified P0+P1 Phase 1 commit)
-    set(CPPTLM_COMMIT_HASH "73e5422" CACHE STRING "CppTLM git tag/commit to pin")
+    if(NOT EXISTS "${CPPTLM_SOURCE_DIR}/CMakeLists.txt")
+        message(FATAL_ERROR "CppTLM not found at ${CPPTLM_SOURCE_DIR}. "
+                            "Set CPPT LM_SOURCE_DIR to the correct path.")
+    endif()
 
-    ExternalProject_Add(cpptlm
-        GIT_REPOSITORY  https://github.com/chisuhua/CppTLM.git
-        GIT_TAG         ${CPPTLM_COMMIT_HASH}
-        CMAKE_ARGS      -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/cpptlm-install
-                        -DBUILD_TESTING=OFF
-                        -DCPPTLM_BUILD_CUDART_BRIDGE=ON
-                        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-        UPDATE_DISCONNECTED TRUE  # 不自动 fetch，避免 ABI 漂移
-        BUILD_ALWAYS FALSE
-    )
+    # 构建 CppTLM 作为子项目
+    add_subdirectory(${CPPTLM_SOURCE_DIR} ${CMAKE_BINARY_DIR}/cpptlm)
 
     # 链接 CppTLM 到 cudart 目标
-    add_dependencies(cudart cpptlm)
-    target_link_libraries(cudart ${CMAKE_BINARY_DIR}/cpptlm-install/lib/libcpptlm_cudart.so)
-    include_directories(${CMAKE_BINARY_DIR}/cpptlm-install/include)
+    add_dependencies(cudart cpptlm_core)
+    target_link_libraries(cudart cpptlm_core)
+    include_directories(${CPPTLM_SOURCE_DIR}/include)
 
-    message(STATUS "CppTLM bridge enabled: ExternalProject_Add from ${CPPTLM_COMMIT_HASH}")
+    message(STATUS "CppTLM bridge enabled: using local repo at ${CPPTLM_SOURCE_DIR}")
 else()
     message(STATUS "CppTLM bridge disabled (BUILD_LIB_CPPTLM_CUDART=OFF)")
 endif()
