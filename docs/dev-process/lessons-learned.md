@@ -1889,3 +1889,37 @@ CppTLM 的强定义未被采纳。运行时 `initialize_environment()` 调用的
 
 - **change**: `openspec/changes/archive/2026-07-19-cpptlm-p1-ptxemu-shim/`
 - **ADR**: ADR-0021 §2026-07-19 Postmortem
+
+## 42. Auto-advance 机制天然解决单次 exe_once() 的 admit+judge 竞态（2026-07-21）
+
+### 现象
+
+`GPUContext::exe_once()` 在 bridge 路径下 admit kernel（`execute_kernel_internal` 设置 SM=RUN）后立即判 `all_warps_finished()`，同一调用内存在"admit kernel → SM=RUN → `sm->exe_once()` 可能不调度 warp → 判 EXIT"的竞态。此前受此影响的 bridge-path 测试通过 attach-bridge-after-launch（走同步路径）规避。
+
+### 教训
+
+- **while-loop 驱动执行天然避免单次调用的时序问题**：`PtxEmuDriverShim::advance(max_cycles)` 在 while 循环中反复调用 `exe_once()`，首次 admit → SM=RUN，后续调用执行 → EXIT。这天然分离了 admit 与 judge，不需要显式的"just_admitted flag"或 `exe_once()` 内部重构
+- **auto-advance at sync point 是正确的架构模式**：标准 CUDA 程序的 `cudaDeviceSynchronize` 是最高效的 advance 触发点（用户已显式表示"等待完成"），比在 `cudaLaunchKernel` 中 auto-advance（破坏异步语义）更优
+- **环境变量 ceiling 是防止死锁的简单有效机制**：`PTX_EMU_MAX_ADVANCE_CYCLES`（默认 10M）防止病态 kernel 永久挂起，比硬编码超时更灵活
+
+### 真实案例
+
+- **bug 表现**: `test_cosim_vector_add.cu` 在 bridge-attached-before-launch 场景下输出全零
+- **根因**: 单次 `exe_once()` 内 admit→可能不执行→判 EXIT
+- **修复**: `cudaDeviceSynchronize` / `cudaStreamSynchronize(0)` 中先 `advance(max_cycles, actual)` 再 poll，while-loop 反复 `exe_once()` 直至 EXIT
+- **验证**: `e2e_cosim_vector_add` ON 模式 64/64 golden match + 零回归
+
+### 诊断命令
+
+```bash
+# 验证 advance 实际执行了 PTX 指令
+grep -n "advance" src/cudart/cudart_sim.cpp
+# 检查 advance ceiling 配置
+echo $PTX_EMU_MAX_ADVANCE_CYCLES
+```
+
+### 关联
+
+- **change**: `openspec/changes/auto-co-sim-standalone/`
+- **commit**: `10e8ad38`
+- **ADR**: ADR-0021 §2026-07-21 Fix Record
