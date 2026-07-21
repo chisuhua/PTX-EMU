@@ -77,7 +77,7 @@ CppTLM 侧 (GpuSocTLM::tick())
 | **G2** | `PipelineTLM` 延迟模型为空 (全部 1.0) | 🟡 MEDIUM | `CppTLM/src/tlm/gpu/pipeline_tlm.cc` | 实现真实指令延迟查表 (FFMA 4.22, GLOBAL_LD 200+, etc) |
 | **G3** | `TensorCoreTLM` 延迟模型为空 (全部 1) | 🟡 MEDIUM | `CppTLM/src/tlm/gpu/tensor_core_tlm.cc` | 实现真实 TC 延迟 (MMA.FP16=8, TF32=4, FP8=16, etc) |
 | **G4** | `exe_once` 三段式注入在真实 CppTLM 注入下未经验证 | 🟡 MEDIUM | PTX-EMU `src/ptxsim/core/sm_context.cpp` | 端到端测试验证 Step A/B/C 正确运转 |
-| **G5** | `PipelineId`/`TcPrecision` 双向 `static_assert` 未验证 | 🟢 LOW | CppTLM 侧需实现 | 编译期验证 12 端点枚举一致 |
+| **G5** | `PipelineId`/`TcPrecision` 双向 `static_assert` | ✅ **DONE** | CppTLM vendored copy `include/cudart/cpptlm_bridge.h:240-306` (`namespace abi_guards_g_d4`；PTX-EMU 原件仅 226 行，不含此块） | 16/16 static_assert PASS（12 端点枚举 + 4 签名级 `decltype` 验证），含负向测试——已通过 G-D4 验收门（2026-07-18） |
 | **G6** | ~~LD/ST 延迟仍走 PTX-EMU 内置表~~ → ✅ **已解决**: `step_b_set_blocked_cycles()` 已调用 `pipeline_provider_->get_fractional_cycles_by_type(stmt.type, map_instruction_to_pipeline(stmt))`，其中 `map_instruction_to_pipeline` 已路由 S_LD/S_ST/S_ATOM → P3_LSU。`pipeline_provider_==nullptr` 时 fallback 到 `InstructionLatencyTable`。Phase 2a 实现 PipelineTLM 后**自动激活**，无需 PTX-EMU 侧改动 | 🟢 DONE | `src/ptxsim/core/sm_context.cpp` `step_b_set_blocked_cycles()` (fast-path ~L437, slow-path ~L564) | 待 Phase 2a PipelineTLM 实现后验证——已自动生效 |
 
 ---
@@ -88,6 +88,7 @@ CppTLM 侧 (GpuSocTLM::tick())
 
 > **目标**: 确认 Phase 1-4 的起点状态无回归，避免后续调试时根因混淆
 > **工时**: PTX-EMU 侧 0.3 天
+> **注意**: 本阶段为纯基线回归验证，与 HSK 状态机无关。HSK-1/2/3 已于 2026-07-17 由 CppTLM 端回复 Closed（见 §五）。当前阻塞项为 HSK-4/5 rebase 验证。
 
 #### 0.5.1 OFF 模式全量回归
 
@@ -406,33 +407,120 @@ uint64_t MemoryBridge::global_access(uint64_t device_addr, ...) {
 | Backward compatibility | OFF mode byte-level regression | ✅ | Phase 0.5 + Phase 3.2 |
 | Mock injection testability | Mock 注入点调用计数 | ✅ | Phase 3.4 |
 
+#### HSK 合规
+
+| HSK | 要求 | 覆盖 | 对应任务 |
+|-----|------|------|---------|
+| **HSK-4** | IScoreboard / IPipelineLatencyProvider / ITensorCoreTiming 接口 enum 值与 CppTLM RFC-P1-003 字节级一致 | ✅ | G5 done (16/16 static_assert) + Phase 2a 延迟表 |
+| **HSK-5** | exe_once Step A/B/C 三段注入在真实 CppTLM 驱动下行为正确 | ✅ | Phase 3.4 (G4 Mock 注入验证) |
+
 > **Phase 3 完成标准**: 本矩阵 100% ✅（无 ⚠️ 残留）
+
+---
+
+### Phase 6: 协作执行流程
+
+> PTX-EMU ↔ CppTLM 双端步骤依赖与门禁
+
+```mermaid
+graph TD
+    subgraph PRE["🏁 前置 — 已完成"]
+        G5["G5: 16/16 static_assert ✅"]
+        HSK1_3["HSK-1/2/3 Closed ✅"]
+        HSK4_5_ACK["HSK-4/5 Ack ✅"]
+        G6["G6 代码已就绪 ✅"]
+    end
+
+    subgraph PTX["🔵 PTX-EMU 侧"]
+        P05["Phase 0.5<br/>基线验证<br/>0.3d"]
+        P1_VER["Phase 1.2<br/>PTX-EMU 验证<br/>0.3d"]
+        P3["Phase 3<br/>E2E 验证 + G4 Mock<br/>0.5w"]
+        P4["Phase 4<br/>优化 + 文档<br/>0.2w"]
+    end
+
+    subgraph CPTLM["🟠 CppTLM 侧"]
+        HSK45_CI["HSK-4/5 rebase<br/>+ CI 编译验证"]
+        G1_FIX["Phase 1.1<br/>get_ptx_emu_driver<br/>+ poll_kernel 修复<br/>0.3d"]
+        P2A["Phase 2a<br/>PipelineTLM P0/P3/P4<br/>+ TensorCoreTLM<br/>0.5w"]
+        P2B["Phase 2b<br/>V_SIMD/FP64/SFU<br/>0.5-1w"]
+        P3_CPPTLM["Phase 3<br/>CppTLM 验证<br/>0.5w"]
+        P4_CPPTLM["Phase 4<br/>LRU cache<br/>0.3w"]
+    end
+
+    G5 --> HSK45_CI
+    HSK1_3 --> P05
+    HSK4_5_ACK --> HSK45_CI
+    HSK45_CI -->|"门禁: static_assert 绿"| G1_FIX
+    P05 --> G1_FIX
+    G1_FIX -->|"KernelLaunchTLM 新增 getter"| P1_VER
+    P1_VER -->|"poll_kernel 可用"| P2A
+    G6 --> P2A
+    P2A --> P2B
+    P2A -->|"P0/P3/P4 延迟就绪"| P3
+    P2B -->|"FP64/SFU/SIMD 补全"| P3
+    P3 --> P3_CPPTLM
+    P3 -->|"性能测量数据"| P4
+    P3_CPPTLM --> P4_CPPTLM
+
+    style HSK45_CI fill:#ffd700,stroke:#333
+    style G1_FIX fill:#ff6347,stroke:#333,color:#fff
+    style P2A fill:#ff8c00,stroke:#333
+```
+
+#### 步骤表
+
+| # | 步骤 | 仓库 | 输入 | 输出 | 验证方式 | 串/并行 |
+|---|------|------|------|------|---------|---------|
+| **S0** | HSK-4/5 rebase + CI | CppTLM | G5 done, HSK-4/5 Ack | `static_assert` 16/16 CI 绿 | CppTLM CI 日志 URL | 串行（门禁） |
+| **S1** | Phase 0.5 基线验证 | PTX-EMU | HSK-1/2/3 Closed | OFF/ON 双模式无回归 | `ctest` 全量 PASS | 串行（门禁） |
+| **S2** | Phase 1.1 poll_kernel 修复 | CppTLM | S0 + S1 | `get_ptx_emu_driver()` getter, `poll_kernel` 查完成 | CppTLM `cpptlm_tests` PASS | 串行 |
+| **S3** | Phase 1.2 PTX-EMU 验证 | PTX-EMU | S2 (新 .so) | 双模式 e2e_cosim_vector_add PASS | StubBridge + 真实 MemoryBridge | 串行 |
+| **S4** | Phase 2a 核心管线延迟 | CppTLM | S3 | PipelineTLM P0/P3/P4 + TensorCoreTLM | CppTLM `[gpu][d1p1]` PASS | 串行 |
+| **S5** | Phase 2b 剩余管线延迟 | CppTLM | S4 | V_SIMD/FP64/SFU 补全 | 同 S4 | **🟡 可并行** |
+| **S6** | Phase 3 PTX-EMU E2E 验证 | PTX-EMU | S4(核心) + S5(可选) | 10 测试 + G4 Mock 注入 | `ctest` 全量 + traceability 100% | 串行 |
+| **S7** | Phase 3 CppTLM 性能测量 | CppTLM | S6 (同 .so) | tick overhead + advance 吞吐 | 与 S6 共享 .so | **🟢 与 S6 并行** |
+| **S8** | Phase 4 优化 + 文档 | 双端 | S6 + S7 | LRU cache + 精度/性能报告 | 文档审核 | 串行 |
+
+#### 门禁卡
+
+| 门禁 | 位置 | 条件 | 失效后果 |
+|------|------|------|---------|
+| 🟡 **S0→S2** | HSK-4/5 CI | CppTLM rebase `cpptlm_bridge.h` + 3 接口头, `static_assert` 16/16 绿 | 枚举值错位导致时序模型静默错误 |
+| 🔴 **S2→S3** | G1 getter | `KernelLaunchTLM::get_ptx_emu_driver()` 存在, `poll_kernel` 查询可用 | poll_kernel 无法获知 kernel 完成状态 |
+| 🟡 **S5→S6** | Phase 3 准入 | Phase 2a 完成即可启动核心测试(S6)；Phase 2b 完成后补 FP64/SFU/SIMD 测试 | 无 2b 则 Phase 3 FP64/SFU 测试降级 |
 
 | 功能 | PTX-EMU 文件 | CppTLM 文件 |
 |------|-------------|------------|
 | ABI 真值源 | `include/cudart/cpptlm_bridge.h` | `include/cudart/cpptlm_bridge.h` (vendored) |
-| Scoreboard 接口 | `include/ptxsim/scoreboard_interface.h` | `src/tlm/gpu/scoreboard_tlm.{hh,cc}` |
-| Pipeline 接口 | `include/ptxsim/pipeline_interface.h` | `src/tlm/gpu/pipeline_tlm.{hh,cc}` |
-| TC Timing 接口 | `include/ptxsim/tensor_core_interface.h` | `src/tlm/gpu/tensor_core_tlm.{hh,cc}` |
+| Scoreboard 接口 | `include/ptxsim/scoreboard_interface.h` | `include/tlm/gpu/scoreboard_tlm.hh` + `src/tlm/gpu/scoreboard_tlm.cc` |
+| Pipeline 接口 | `include/ptxsim/pipeline_interface.h` | `include/tlm/gpu/pipeline_tlm.hh` + `src/tlm/gpu/pipeline_tlm.cc` |
+| TC Timing 接口 | `include/ptxsim/tensor_core_interface.h` | `include/tlm/gpu/tensor_core_tlm.hh` + `src/tlm/gpu/tensor_core_tlm.cc` |
 | Driver vtable | `src/cudart/cpptlm_bridge/PtxEmuDriverShim.cpp` | `src/tlm/gpu/ptx_emu_driver_shim.cc` |
 | 三段式注入 | `src/ptxsim/core/sm_context.cpp` Step A/B/C | `include/tlm/gpu/ptx_emu_driver.hh` `IPtxEmuDriver` |
 | Bridge 异步路径 | `src/cudart/cudart_sim.cpp:600-712` | `src/tlm/gpu/memory_bridge.cc` `MemoryBridge` |
 | Kernel 调度 | `src/ptxsim/core/gpu_context.cpp` `exe_once` | `src/tlm/gpu/kernel_launch_tlm.cc` `tick()` |
 | GPU SoC 推进 | `PtxEmuDriverShim::advance()` | `src/tlm/gpu/gpu_soc_tlm.cc` `tick()` |
-| 注入接线 | `initialize_environment()` 创建 shim | `src/main.cpp:140-148` for-loop inject_* |
+| 注入接线 | `initialize_environment()` 创建 shim | `src/main.cpp:140-155` for-loop inject_*（含 nullptr fallback 分支） |
 | 同步 sync | `src/cudart/cudart_sim.cpp:981-1044` | `src/tlm/gpu/memory_bridge.cc:100-132` |
 
 ---
 
 ## 五、HSK 握手状态
 
-| HSK | 主题 | 草稿 | 已发出 | CppTLM CI 验证 | 备注 |
-|-----|------|------|--------|-------------|------|
-| **HSK-1** | ABI commit hash 锁定 | ✅ (`docs/superpowers/hsk-drafts/`) | ⏳ Phase 0.5 commit 后发出 | ⏳ 等待 CppTLM CI `static_assert(CPPTLMBRIDGE_VERSION==1)` 绿 | 触发时机：Phase 0.5 基线验证通过后 commit，以该 commit hash 锁定 ABI |
-| **HSK-2** | ANTLR4 4.13.2 版本契约 | ✅ | ⏳ | ⏳ CppTLM 侧验证 ANTLR runtime 版本一致 | |
-| **HSK-3** | CMake `ExternalProject_Add` 暴露方式 | ✅ (与 spec.md B5 对齐) | ⏳ | ⏳ CppTLM ExternalProject 编译 PTX-EMU 成功 | |
+> **截至 2026-07-21**（与 CppTLM AGENTS.md:191-208 对齐）:
+> 🟢 HSK-1/2/3 Closed（2026-07-17 CppTLM 已回复）
+> 🟡 HSK-4/5 Ack（已交付，待 CppTLM rebase 编译验证）
+> 当前阻塞项: HSK-4/5 rebase 验证，非 HSK-1/2/3。
 
-> **Phase 1 启动门禁**: HSK-1/2/3 须推进到"已发出 + CppTLM CI 验证通过（提供 PR URL 或 CI 日志 URL 为证）"。详见 ADR-0021 §HSK 状态机。
+| HSK | 主题 | 状态 | CppTLM 回复 | 锁定 commit / 证据 |
+|-----|------|:----:|-----------|-------------------|
+| **HSK-1** | ABI commit hash 锁定 | ✅ Closed | 2026-07-17 `hsk-1-2-3-responses.md` | PTX-EMU commit `8dc000ec` + `CPPTLMBRIDGE_VERSION=1` |
+| **HSK-2** | ANTLR4 4.13.2 版本契约 | ✅ Closed | 同上，N/A for CppTLM | 4 权威源全为 4.13.2 |
+| **HSK-3** | CMake `ExternalProject_Add` 暴露方式 | ✅ Closed | 同上 | `CPPTLM_COMMIT_HASH=73e5422` |
+| **HSK-4** | 3 纯虚接口头文件 (IScoreboard/IPipelineLatencyProvider/ITensorCoreTiming) | 🟡 Ack | 2026-07-17 `hsk-4-5-responses.md` | PTX-EMU commits `8acfd2d1` / `9e7361b9` / `463038e0`；enum 值与 CppTLM RFC-P1-003 字节级一致 |
+| **HSK-5** | exe_once 3-step 注入 (Step A/B/C) | 🟡 Ack | 同上 | PTX-EMU commits `367fd6a5` + `921b4542`；27/27 helpers + 13/13 barrier PASS |
+
+> **当前真实门禁**（替代原 "HSK-1/2/3 须推进"）: HSK-4/5 须推进到 CppTLM CI rebase + 编译验证通过（`static_assert` 16/16 + 签名级 `decltype`）。详见 CppTLM `openspec/changes/cpptlm-d1-p1-pipeline-scoreboard/tasks.md` G-D4 验收门 + `docs/superpowers/specs/2026-07-17-hsk-4-5-responses.md`。
 
 ---
 
