@@ -326,27 +326,16 @@ void initialize_environment() {
 
         cpptlm_set_driver(shim, api);
 
-        PTX_INFO_EMU("PtxEmuDriverShim registered (ctx=%p, shim=%p)",
+PTX_INFO_EMU("PtxEmuDriverShim registered (ctx=%p, shim=%p)",
                      (void*)g_gpu_context.get(), (void*)shim);
 
-        // auto-co-sim-standalone: BUILD_LIB_CPPTLM_CUDART=ON 时默认
-        // 启用 StubBridge 自动协同仿真。设置 EMU_NO_BRIDGE=1 可禁用。
-        if (!g_bridge_user_override) {
-#ifdef BUILD_LIB_CPPTLM_CUDART
-            if (!std::getenv("EMU_NO_BRIDGE")) {
-                static StubBridge stub_bridge;
-                g_cpptlm_bridge = &stub_bridge;
-                PTX_INFO_EMU("StubBridge auto-attached at %p",
-                             (void*)&stub_bridge);
-            }
-#else
-            if (std::getenv("EMU_COSIM")) {
-                static StubBridge stub_bridge;
-                g_cpptlm_bridge = &stub_bridge;
-                PTX_INFO_EMU("StubBridge auto-attached at %p (EMU_COSIM=1)",
-                             (void*)&stub_bridge);
-            }
-#endif
+        // auto-co-sim-standalone: 默认同步模式，EMU_COSIM=1 激活协同仿真
+        if (!g_bridge_user_override
+            && std::getenv("EMU_COSIM")) {
+            static StubBridge stub_bridge;
+            g_cpptlm_bridge = &stub_bridge;
+            PTX_INFO_EMU("StubBridge auto-attached at %p (EMU_COSIM=1)",
+                         (void*)&stub_bridge);
         }
     }
 }
