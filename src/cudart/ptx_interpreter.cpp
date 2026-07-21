@@ -64,6 +64,10 @@ KernelLaunchRequest PtxInterpreter::prepareKernelLaunchRequest(
     PtxContext &ptx, const std::string &kernel, void **args, Dim3 &gridDim,
     Dim3 &blockDim, size_t sharedMem) {
 
+    // 确保 InstructionFactory 已初始化（bridge 路径不走 launchPtxInterpreter，
+    // 其调用的 initialize() 是唯一的初始化入口；此处添加幂等调用以覆盖 bridge 路径）
+    InstructionFactory::initialize();
+
     // 根据 kernel 名称获取 kernelContext（同 launchPtxInterpreter）
     this->ptxContext = &ptx;
     this->gridDim = gridDim;

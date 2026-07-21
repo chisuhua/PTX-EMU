@@ -39,7 +39,7 @@
 | `TensorCoreTLM` | ⚠️ P1 占位 (全部 return 1) | `src/tlm/gpu/tensor_core_tlm.cc` |
 | `KernelLaunchTLM::tick()` 调用 `driver_->advance()` | ✅ 就绪 | `src/tlm/gpu/kernel_launch_tlm.cc` |
 | `GpuSocTLM::tick()` 递归推进子模块 | ✅ 就绪 | `src/tlm/gpu/gpu_soc_tlm.cc` |
-| `main.cpp --f12b-ld` per-SM 注入 for-loop | ✅ 就绪 | `src/main.cpp:140-148` |
+| `main.cpp --f12b-ld` per-SM 注入 for-loop | ✅ 就绪 | `src/main.cpp:140-155`（含 nullptr fallback 分支） |
 | `poll_kernel` 查询 PTX-EMU 完成状态 | ⚠️ P0 (立即返回 0, 不查 PTX-EMU) | `src/tlm/gpu/memory_bridge.cc:88-98` |
 
 ### 端到端数据流
@@ -411,7 +411,7 @@ uint64_t MemoryBridge::global_access(uint64_t device_addr, ...) {
 
 | HSK | 要求 | 覆盖 | 对应任务 |
 |-----|------|------|---------|
-| **HSK-4** | IScoreboard / IPipelineLatencyProvider / ITensorCoreTiming 接口 enum 值与 CppTLM RFC-P1-003 字节级一致 | ✅ | G5 done (16/16 static_assert) + Phase 2a 延迟表 |
+| **HSK-4** | IScoreboard / IPipelineLatencyProvider / ITensorCoreTiming 接口 enum 值与 CppTLM RFC-P1-003 字节级一致 | ✅ | G5 done (16/16 static_assert PASS，2026-07-18 编译期已验收)；Phase 2a 为运行时延迟表补充 |
 | **HSK-5** | exe_once Step A/B/C 三段注入在真实 CppTLM 驱动下行为正确 | ✅ | Phase 3.4 (G4 Mock 注入验证) |
 
 > **Phase 3 完成标准**: 本矩阵 100% ✅（无 ⚠️ 残留）
