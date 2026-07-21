@@ -133,3 +133,11 @@ add_catch_test(e2e_flashattention_mini
 )
 set_tests_properties(e2e_flashattention_mini PROPERTIES
     LABELS "e2e;kernel;tcgen05;flashattention;sm100;FU-5")
+
+# ============================================================================
+# CppTLM Co-Simulation E2E 测试 — 标准 CUDA 程序，自动协同仿真
+# ============================================================================
+add_catch_test(e2e_cosim_vector_add
+    cosim/test_cosim_vector_add.cu
+)
+set_tests_properties(e2e_cosim_vector_add PROPERTIES LABELS "e2e;cosim")

@@ -97,7 +97,14 @@ std::unique_ptr<PtxInterpreter> g_ptx_interpreter;
 // ============================================================================
 #include "cudart/cpptlm_bridge.h"
 #include "cudart/cpptlm_bridge/PtxEmuDriverShim.h"
+#include "cudart/stub_bridge.h"
 CppTLMBridge* g_cpptlm_bridge = nullptr;
+
+// g_bridge_user_override: 当用户通过 cpptlm_attach_bridge() 显式注入
+// mock bridge 时设为 true，阻止 initialize_environment() 的 StubBridge
+// auto-attach 覆盖用户的 mock。cpptlm_detach_bridge() 重置为 false。
+// 见 auto-co-sim-standalone design.md D1。
+static bool g_bridge_user_override = false;
 
 // ============================================================================
 // cpptlm_attach_bridge / cpptlm_detach_bridge ABI entry points (B1)
@@ -118,11 +125,13 @@ extern "C" PTXEMU_BRIDGE_API void cpptlm_attach_bridge(CppTLMBridge* bridge) {
                   (void*)bridge, (void*)g_cpptlm_bridge);
     // nullptr bridge ≡ detach (per cpptlm_bridge.h:160 contract).
     g_cpptlm_bridge = bridge;
+    g_bridge_user_override = (bridge != nullptr);
 }
 
 extern "C" PTXEMU_BRIDGE_API void cpptlm_detach_bridge() {
     PTX_DEBUG_EMU("cpptlm_detach_bridge (was %p)", (void*)g_cpptlm_bridge);
     g_cpptlm_bridge = nullptr;
+    g_bridge_user_override = false;
 }
 
 // ============================================================================
@@ -208,6 +217,18 @@ static size_t count_kernel_args(void** args) {
     size_t count = 0;
     while (args[count] != nullptr) ++count;
     return count;
+}
+
+// auto-co-sim-standalone D2: 读取 PTX_EMU_MAX_ADVANCE_CYCLES 环境变量
+// 返回 advance ceiling 上限（默认 10,000,000）。
+// 每次 sync 调用独立计算（不跨调用累计）。
+static uint32_t get_max_advance_cycles() {
+    const char* env = std::getenv("PTX_EMU_MAX_ADVANCE_CYCLES");
+    if (env && env[0] != '\0') {
+        long val = std::atol(env);
+        if (val > 0) return static_cast<uint32_t>(val);
+    }
+    return 10'000'000;  // 默认 10M cycles
 }
 
 // 配置文件路径
@@ -307,6 +328,16 @@ void initialize_environment() {
 
         PTX_INFO_EMU("PtxEmuDriverShim registered (ctx=%p, shim=%p)",
                      (void*)g_gpu_context.get(), (void*)shim);
+
+#ifdef BUILD_LIB_CPPTLM_CUDART
+        // auto-co-sim-standalone D1: 自动 attach StubBridge（仅在用户未
+        // 显式 override 时，允许测试通过 cpptlm_attach_bridge 注入 mock）。
+        if (!g_bridge_user_override) {
+            static StubBridge stub_bridge;
+            g_cpptlm_bridge = &stub_bridge;
+            PTX_INFO_EMU("StubBridge auto-attached at %p", (void*)&stub_bridge);
+        }
+#endif
     }
 }
 
@@ -574,7 +605,22 @@ cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim, dim3 blockDim,
         // deep-copy kernel args
         std::vector<std::vector<uint8_t>> args_copy;
         if (args) {
-            size_t arg_count = count_kernel_args(args);
+            // D3: 从 PTX context kernelParams.size() 获取权威参数计数，
+            // SIZE_MAX 哨兵区分"无参 kernel"和"PTX context 未找到"。
+            size_t arg_count = SIZE_MAX;
+            const char* kernel_name = func2name[(uint64_t)func].c_str();
+            if (g_ptx_interpreter) {
+                auto& ptx = g_ptx_interpreter->get_ptx_context();
+                for (auto& kc : ptx.ptxKernels) {
+                    if (kc.kernelName == kernel_name) {
+                        arg_count = kc.kernelParams.size();
+                        break;
+                    }
+                }
+            }
+            if (arg_count == SIZE_MAX) {
+                arg_count = count_kernel_args(args);  // fallback
+            }
             args_copy.reserve(arg_count);
             for (size_t i = 0; i < arg_count; ++i) {
                 if (args[i]) {
@@ -934,6 +980,29 @@ cudaError_t cudaDeviceSynchronize() {
     // completed kernels (remaining == 0) or unknown ones (UINT64_MAX).
     // ========================================================================
     if (g_cpptlm_bridge) {
+        // D2: auto-advance — 驱动 PTX 执行后再轮询
+        if (g_ptx_emu_driver_shim) {
+            uint32_t actual = 0;
+            uint32_t max_cycles = get_max_advance_cycles();
+            int result = g_ptx_emu_driver_shim->advance(max_cycles, actual);
+            if (result < 0) {
+                PTX_ERROR_EMU("cudaDeviceSynchronize: advance failed (err=%d)", result);
+                return (cudaError_t)999;
+            }
+            // advance 耗尽上限且 GPUContext 仍非 EXIT → 清理并返回错误
+            if (g_gpu_context && g_gpu_context->get_state() != EXIT) {
+                PTX_ERROR_EMU("cudaDeviceSynchronize: advance ceiling exhausted (max_cycles=%u, actual=%u)",
+                              max_cycles, actual);
+                // 清理执行状态
+                g_gpu_context->clear_requests();
+                {
+                    std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
+                    g_pending_kernels.clear();
+                }
+                return (cudaError_t)999;
+            }
+        }
+
         while (true) {
             std::vector<uint64_t> completed_ids;
             {
@@ -1087,6 +1156,19 @@ cudaError_t cudaStreamSynchronize(cudaStream_t stream) {
     // （避免 range-for 中 unordered_map::erase 触发 UB）
     // ========================================================================
     if (g_cpptlm_bridge) {
+        // D2: auto-advance only for default stream (0)
+        // per design.md: non-zero stream sync not supported — user should use
+        // cudaDeviceSynchronize for non-default streams.
+        if (stream_id == 0 && g_ptx_emu_driver_shim) {
+            uint32_t actual = 0;
+            uint32_t max_cycles = get_max_advance_cycles();
+            int result = g_ptx_emu_driver_shim->advance(max_cycles, actual);
+            if (result < 0) {
+                PTX_ERROR_EMU("cudaStreamSynchronize: advance failed (err=%d)", result);
+                return (cudaError_t)999;
+            }
+        }
+
         while (true) {
             std::vector<uint64_t> completed_ids;
             {

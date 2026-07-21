@@ -346,3 +346,9 @@ void GPUContext::wait_for_completion() {
         state = exe_once();
     } while (state != EXIT);
 }
+
+void GPUContext::clear_requests() {
+    std::lock_guard<std::mutex> lock(queue_mutex);
+    task_queue = std::queue<KernelLaunchRequest>();
+    executing_requests.clear();
+}

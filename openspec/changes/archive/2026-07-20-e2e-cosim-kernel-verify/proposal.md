@@ -6,8 +6,8 @@ CppTLM P1 PTX-EMU shim 已实现但缺少**用真实 CUDA kernel 验证完整协
 
 缺少的验证：
 - bridge 路径下 `cudaLaunchKernel` → `prepareKernelLaunchRequest()` → IR 正确性
-- `GPUContext::exe_once()` 真实执行 PTX 指令
-- `on_complete` → `mark_complete` → `is_kernel_complete` 回调链
+- `GPUContext::exe_once()` 真实执行 PTX 指令（由测试内 `g_ptx_emu_driver_shim->advance()` 驱动）
+- `on_complete` → `mark_complete` 回调链（通过 golden value 匹配 + `cudaDeviceSynchronize` 返回间接验证）
 - kernel 执行后内存/寄存器输出正确性（golden value 对比）
 
 ## What Changes
@@ -17,9 +17,11 @@ CppTLM P1 PTX-EMU shim 已实现但缺少**用真实 CUDA kernel 验证完整协
 - **新增** `tests/e2e/cosim/kernel_vector_add.cu` — CUDA vectorAdd kernel（~30 LOC CUDA）
 - **新增** `tests/e2e/cosim/test_cosim_vector_add.cpp` — Catch2 E2E 测试
   - 编译 CUDA → 提取 PTX → `__cudaRegisterFatBinary` → `cudaLaunchKernel`
-  - bridge 模式下验证完整链路：submit → execute → on_complete → mark_complete
+  - bridge 模式下验证完整链路：submit → 测试驱动 advance() 执行 → on_complete → mark_complete
   - 回读 GPU 内存输出，与 CPU golden value 对比
 - **修改** `tests/e2e/CMakeLists.txt` — 添加 `e2e_cosim_vector_add` 测试目标
+- **修改** `src/cudart/cpptlm_bridge/PtxEmuDriverShim.h` — 新增 `extern PtxEmuDriverShim* g_ptx_emu_driver_shim;`（+1 行）
+- **修改** `src/cudart/cudart_sim.cpp:137` — 移除 `static` 关键字（±0 行）
 
 ### 影响
 
@@ -28,7 +30,9 @@ CppTLM P1 PTX-EMU shim 已实现但缺少**用真实 CUDA kernel 验证完整协
 | `tests/e2e/cosim/kernel_vector_add.cu` | 新增 | ~30 |
 | `tests/e2e/cosim/test_cosim_vector_add.cpp` | 新增 | ~100 |
 | `tests/e2e/CMakeLists.txt` | 修改 | +10 |
-| **合计** | | **~140** |
+| `src/cudart/cpptlm_bridge/PtxEmuDriverShim.h` | 修改 | +1 |
+| `src/cudart/cudart_sim.cpp` | 修改 | ±0 |
+| **合计** | | **~141** |
 
 ## Capabilities
 
@@ -38,11 +42,12 @@ CppTLM P1 PTX-EMU shim 已实现但缺少**用真实 CUDA kernel 验证完整协
 
 ## Impact
 
-纯测试新增，不影响任何现有代码路径。`BUILD_LIB_CPPTLM_CUDART=OFF` 时测试标记为 SKIP。
+以测试新增为主（~140 LOC），附带 1 行生产代码符号可见性变更（+1 / ±0，零行为变更）。
+详见 [design.md §D6 - 执行驱动模型](design.md#d6-执行驱动模型)。`BUILD_LIB_CPPTLM_CUDART=OFF` 时测试目标不存在（ctest 无匹配）。
 
 ## Design-Time Checklist
 
-- [x] 无函数迁移（纯新增测试）
+- [x] 无函数迁移（纯新增 + 1 行可见性提升）
 - [x] 无状态修改
 - [x] 单 Phase 推进（1 commit）
 - [x] 引用 ADR-0021 §2026-07-19 Postmortem

@@ -517,3 +517,100 @@ PTX-EMU 符号。CppTLM 侧 `01882a2` 已实现对应 DriverWrapper。
 - [`docs/dev-process/lessons-learned.md`](../dev-process/lessons-learned.md) §41
 - [`openspec/changes/archive/2026-07-19-cpptlm-p1-ptxemu-shim/`](../../openspec/changes/archive/2026-07-19-cpptlm-p1-ptxemu-shim/)
 - CppTLM 侧: commit `01882a2`, PR #N/A
+
+---
+
+## 2026-07-20 Postmortem：e2e-cosim-kernel-verify 实施回顾
+
+### 实施回顾
+
+| Phase | 内容 | 状态 |
+|-------|------|------|
+| 0 | OpenSpec artifacts + 1 行可见性变更（移除 `g_ptx_emu_driver_shim` 的 `static`） | ✅ |
+| 1 | E2E 测试 + MockBridge + vectorAdd kernel（内联） | ✅ |
+| 2 | 验证：BUILD_LIB_CPPTLM_CUDART=ON 测试 PASS（17 assertions），OFF 测试目标不存在 | ✅ |
+
+### 关键技术决策
+
+#### D10：测试 attach bridge AFTER launch（规避已知 bug）
+
+`openspec/changes/e2e-cosim-kernel-verify/design.md` D6 规定测试需在 `cudaLaunchKernel` **之前** attach bridge，让 `cudaLaunchKernel` 走 dual-enqueue 路径。实施中发现 bridge 路径存在 **2-cycle completion bug**（见下），调整为 attach bridge AFTER launch，kernel 走同步路径（`launchPtxInterpreter` + `wait_for_completion`），bridge 仅用于 `cudaDeviceSynchronize` 的 polling loop。
+
+#### D11：count_kernel_args 修复拆分为独立 follow-up
+
+实施中曾为 bridge 路径 `cudaLaunchKernel` 的 `count_kernel_args` 添加 segfault 修复（用 PTX context `kernelParams.size()` 替代 nullptr 哨兵遍历）。Oracle 审查指出此修复超出 design.md:131-135 Non-Goals（"不修改核心桥接逻辑"），且因测试走同步路径而不被触发。已 revert，提议独立 change `fix-bridge-arg-count-segfault`。
+
+### 已知限制（deferred to follow-up changes）
+
+#### L1：Bridge path 2-cycle completion bug
+
+- **症状**：bridge attached BEFORE `cudaLaunchKernel` 时，`g_ptx_emu_driver_shim->advance()` 返回 `result=2 (KernelComplete) actual=2`，kernel 输出全零
+- **复现**：`test_cosim_vector_add.cu` 中将 `cpptlm_attach_bridge(&mock)` 移到 `vectorAdd<<<>>>()` 之前即可触发
+- **根因假设**（Oracle Q2 Hypothesis 3）：`GPUContext::exe_once()` 在同一调用内既 admit kernel 又因 SM state 立即判 `all_warps_finished()`，导致 `gpu_state = EXIT`。同步路径不触发因 SM 初始化上下文不同
+- **修复位置**：`src/ptxsim/core/gpu_context.cpp:246-336`（`exe_once`）+ `src/ptxsim/core/sm_context.cpp:350-400`（`SMContext::exe_once` + `all_warps_finished`）
+- **Follow-up change**：`fix-bridge-path-2-cycle-exit`（多日 runtime 调试）
+
+#### L2：Bridge path arg-count segfault
+
+- **症状**：kernel args 含非指针类型（如 `int N`）时，`cudaLaunchKernel` bridge 路径 `count_kernel_args` 的 nullptr 哨兵遍历越界 segfault
+- **触发场景**：`vectorAdd<<<>>>(d_A, d_B, d_C, N)` 当 `g_cpptlm_bridge != nullptr` 时
+- **Follow-up change**：`fix-bridge-arg-count-segfault`（独立 TDD change）
+
+### 教训（追加到 lessons-learned.md §42）
+
+1. **OpenSpec Non-Goals 是硬约束**：`design.md` 的 Non-Goals 段不可在实施中悄然扩展。即使发现了真实 bug，也应 split 成独立 change 以保留原 change 的 scope purity 和审计追溯能力
+2. **测试路径偏离应显式 amend spec**：当实施中无法满足 spec 的 SHALL 语句时，必须显式 amend spec 加入 known limitation Scenario + NOTE 解释。禁止默默改测试路径而 spec 保持原样
+3. **Oracle 审查是 scope drift 的有效检测器**：Oracle 审查发现 test_cosim_vector_add.cu 实际走同步路径而 spec 要求 bridge 路径，以及 `count_kernel_args` 修复违反 Non-Goals。两个偏差均通过文件:行级证据被精确识别
+4. **TDD 三阶段纪律可避免 scope creep**：当实施中发现需要修改生产代码超出原始 scope 时，应先暂停并 propose 独立 change，而非直接修改以保持"测试通过"
+
+### 相关链接
+
+- [`openspec/changes/e2e-cosim-kernel-verify/`](../../openspec/changes/e2e-cosim-kernel-verify/)（本 change）
+- Follow-up: `openspec/changes/fix-bridge-arg-count-segfault/`（待 propose）
+- Follow-up: `openspec/changes/fix-bridge-path-2-cycle-exit/`（待 propose）
+- Test: `tests/e2e/cosim/test_cosim_vector_add.cu`
+
+## 2026-07-21 Fix Record: auto-co-sim-standalone implements L1 + L2 + auto-attach + auto-advance
+
+### Fix Summary
+
+| ID | Issue | Fix Mechanism | Commit |
+|----|-------|---------------|--------|
+| L1 | 2-cycle completion bug | Auto-advance: `cudaDeviceSynchronize` calls `advance()` which repeatedly calls `exe_once()` until EXIT, naturally separating admit from execution | `auto-co-sim-standalone` Phase 1 |
+| L2 | Arg-count segfault | `count_kernel_args` replaced by PTX context `kernelParams.size()` lookup with `SIZE_MAX` sentinel for fallback | `auto-co-sim-standalone` Phase 1 (D3) |
+| — | Manual bridge attach | `StubBridge` auto-attached in `initialize_environment()` when `BUILD_LIB_CPPTLM_CUDART=ON` | `auto-co-sim-standalone` Phase 1 (D1) |
+| — | Manual advance() call | Auto-advance in `cudaDeviceSynchronize` and `cudaStreamSynchronize(0)` before poll loop | `auto-co-sim-standalone` Phase 1 (D2) |
+
+### Key Insight: Auto-advance inherently resolves L1
+
+The original 2-cycle completion bug manifests when a single `exe_once()` call both admits a kernel (via `execute_kernel_internal`) and immediately judges `all_warps_finished()` → EXIT — kernel never executes, output all zero.
+
+The auto-advance mechanism (`g_ptx_emu_driver_shim->advance()`) calls `exe_once()` in a `while` loop until `GPUContext::get_state() == EXIT`. This means:
+1. First `exe_once()`: admits kernel, sets SM to RUN, may or may not execute a warp
+2. Subsequent `exe_once()`: SMs are RUN, executes instructions, eventually reaches EXIT
+
+Thus the L1 bug is **resolved by the auto-advance architecture** without explicit `exe_once()` refactoring.
+
+### Advance ceiling safety
+
+Environment variable `PTX_EMU_MAX_ADVANCE_CYCLES` (default 10M) prevents pathological kernels (infinite loops / barrier deadlock) from hanging forever. Exhausting the ceiling triggers `GPUContext::clear_requests()` + `g_pending_kernels` cleanup + `(cudaError_t)999` return.
+
+### Regression Results
+
+| Mode | Test | Result |
+|------|------|--------|
+| OFF | `ctest -L e2e` (excl. pre-existing SingletonGuard) | All PASS |
+| OFF | `ctest -L unit` | 88/88 PASS |
+| OFF | `ctest -L integration` | All PASS |
+| ON | `e2e_cosim_vector_add` | PASS (64/64 golden match) |
+| PTX | `tests/ptx/test_all_ptx.sh` | 46/46 PASS |
+
+### Verification Artifacts
+
+- `tests/e2e/cosim/test_cosim_vector_add.cu` — pure standard CUDA program (no PTX-EMU APIs)
+- `src/cudart/stub_bridge.h` — zero-latency StubBridge (5 virtual methods)
+- `src/cudart/cudart_sim.cpp` — D1 (auto-attach) + D2 (auto-advance) + D3 (arg-count fix) + D6 (static cleanup)
+- `src/cudart/cpptlm_bridge/PtxEmuDriverShim.h` — removed `extern g_ptx_emu_driver_shim`
+- `include/ptxsim/gpu_context.h` — added `clear_requests()`
+- `src/ptxsim/core/gpu_context.cpp` — implemented `clear_requests()`
+- `tests/e2e/CMakeLists.txt` — removed `BUILD_LIB_CPPTLM_CUDART` condition

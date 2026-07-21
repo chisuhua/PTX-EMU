@@ -140,6 +140,9 @@ public:
     // 获取设备内存
     SimpleMemory* get_device_memory() { return device_memory.get(); }
 
+    // 清空任务队列和执行中请求（病态 kernel 清理用）
+    void clear_requests();
+
 private:
     // GPU配置
     GPUConfig config;
