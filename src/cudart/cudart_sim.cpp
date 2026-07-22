@@ -607,25 +607,31 @@ cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim, dim3 blockDim,
             // D3: 从 PTX context kernelParams.size() 获取权威参数计数，
             // SIZE_MAX 哨兵区分"无参 kernel"和"PTX context 未找到"。
             size_t arg_count = SIZE_MAX;
+            std::vector<size_t> param_byte_sizes_from_ptx;
             const char* kernel_name = func2name[(uint64_t)func].c_str();
             if (g_ptx_interpreter) {
                 auto& ptx = g_ptx_interpreter->get_ptx_context();
                 for (auto& kc : ptx.ptxKernels) {
                     if (kc.kernelName == kernel_name) {
                         arg_count = kc.kernelParams.size();
+                        param_byte_sizes_from_ptx.reserve(arg_count);
+                        for (auto& p : kc.kernelParams)
+                            param_byte_sizes_from_ptx.push_back(p.byteSize);
                         break;
                     }
                 }
             }
             if (arg_count == SIZE_MAX) {
-                arg_count = count_kernel_args(args);  // fallback
+                arg_count = count_kernel_args(args);
             }
             args_copy.reserve(arg_count);
             for (size_t i = 0; i < arg_count; ++i) {
                 if (args[i]) {
-                    // 假设每个参数最大 8 字节（指针或基本类型）
-                    std::vector<uint8_t> arg_data(8);
-                    std::memcpy(arg_data.data(), args[i], 8);
+                    size_t param_size = 8;
+                    if (i < param_byte_sizes_from_ptx.size() && param_byte_sizes_from_ptx[i] > 0)
+                        param_size = param_byte_sizes_from_ptx[i];
+                    std::vector<uint8_t> arg_data(param_size);
+                    std::memcpy(arg_data.data(), args[i], param_size);
                     args_copy.push_back(std::move(arg_data));
                 }
             }
@@ -755,6 +761,8 @@ void __cudaRegisterVar(void **fatCubinHandle, char *hostVar,
     g_ptx_interpreter->constName2addr[s] = (uint64_t)hostVar;
 }
 
+cudaError_t cudaDeviceSynchronize();
+
 cudaError_t cudaMemcpy(void *dst, const void *src, size_t count,
                        cudaMemcpyKind kind) {
     PTX_DEBUG_EMU("Called cudaMemcpy(%p, %p, %zu, %d)", dst, src, count, kind);
@@ -767,6 +775,16 @@ cudaError_t cudaMemcpy(void *dst, const void *src, size_t count,
         PTX_WARN_CUDART("cudaMemcpy REJECT: invalid args (dst=%p src=%p count=%zu)",
                         dst, src, count);
         return cudaErrorInvalidValue;
+    }
+
+    // per CUDA spec, cudaMemcpy is synchronous - ensure all pending
+    // kernels complete before any data transfer.
+    // Guard: only auto-sync for D2H/D2D (reading from device requires
+    // all kernels complete); H2D is non-blocking.
+    if ((kind == cudaMemcpyDeviceToHost || kind == cudaMemcpyDeviceToDevice) &&
+        g_cpptlm_bridge && g_ptx_emu_driver_shim) {
+        cudaError_t sync_err = cudaDeviceSynchronize();
+        if (sync_err != cudaSuccess) return sync_err;
     }
 
     // 获取CudaDriver的全局内存池地址
