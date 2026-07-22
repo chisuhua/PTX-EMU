@@ -85,12 +85,7 @@ run_test "integration" -L integration
 
 echo -e "\n${CYAN}[TEST] E2E 测试 (bridge 路径 + auto-advance)${NC}"
 run_test "e2e_cosim_vector_add" -R e2e_cosim_vector_add
-# Known EMU_COSIM=1 failures: tcgen05 MMA/scoreboard bridge path
-# regression (Phase 2a TLM injection confirmed NOT the cause — tests
-# fail even with zero injection; root cause is in bridge kernel launch
-# + GPUContext task_queue flow for tcgen05 kernel types). Separately
-# tracked as "bridge-tcgen05-regression".
-run_test "e2e (excl. SingletonGuard+tcgen05)" -L e2e -E 'e2e_divergence$|e2e_blackwell_gemm|e2e_flashattention_mini'
+run_test "e2e (excl. SingletonGuard)" -L e2e -E 'e2e_divergence$'
 
 echo -e "\n${CYAN}[TEST] PTX 语法测试${NC}"
 echo -n "  test_all_ptx.sh ... "

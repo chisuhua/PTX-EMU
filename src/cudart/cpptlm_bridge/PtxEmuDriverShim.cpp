@@ -17,7 +17,8 @@ int PtxEmuDriverShim::advance(uint32_t max_cycles, uint32_t& actual) {
 
     actual = 0;
     try {
-        while (actual < max_cycles && ctx_->get_state() != EXIT) {
+        while (actual < max_cycles && (ctx_->get_state() != EXIT ||
+                                        ctx_->has_pending_tasks())) {
             ctx_->exe_once();
             ++actual;
         }
