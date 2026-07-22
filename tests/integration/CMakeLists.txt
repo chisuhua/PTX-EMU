@@ -590,3 +590,18 @@ add_catch_test(integration_scoreboard_allocation
     cpptlm/test_scoreboard_allocation.cpp
 )
 set_tests_properties(integration_scoreboard_allocation PROPERTIES LABELS "integration;cpptlm;scoreboard")
+
+# ============================================================================
+# Phase 3.4: G4 Mock 注入 — exe_once 三段式注入点调用计数验证
+# ============================================================================
+add_catch_test(integration_mock_injection_fast_path
+    cpptlm/test_mock_injection_fast_path.cpp
+)
+set_tests_properties(integration_mock_injection_fast_path PROPERTIES
+    LABELS "integration;cpptlm;g4;mock;fast_path")
+
+add_catch_test(integration_mock_injection_slow_path
+    cpptlm/test_mock_injection_slow_path.cpp
+)
+set_tests_properties(integration_mock_injection_slow_path PROPERTIES
+    LABELS "integration;cpptlm;g4;mock;slow_path")
