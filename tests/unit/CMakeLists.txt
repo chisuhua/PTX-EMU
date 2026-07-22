@@ -702,3 +702,24 @@ add_catch_test(unit_cudart_stream
     cudart/test_cudart_stream.cpp
 )
 set_tests_properties(unit_cudart_stream PROPERTIES LABELS "unit;cudart;stream")
+
+# ============================================================================
+# Phase 3: CppTLM co-simulation 单元测试 (spec traceability 100%)
+# ============================================================================
+# cpptlm-d1-full: "bridge submit 失败 → 错误码传递"
+add_catch_test(unit_bridge_submit_error
+    cpptlm/test_bridge_submit_error.cpp
+)
+set_tests_properties(unit_bridge_submit_error PROPERTIES LABELS "unit;cpptlm;bridge;submit_error")
+
+# cpptlm-d1-full: "is_global_space() 遍历整个 qualifier 列表" (Lessons Learned #1)
+add_catch_test(unit_is_global_space_qualifier_walk
+    cpptlm/test_is_global_space_walk.cpp
+)
+set_tests_properties(unit_is_global_space_qualifier_walk PROPERTIES LABELS "unit;qualifier;global_space;lessons")
+
+# cpptlm-d1-full: "kernel_id 唯一性保证"
+add_catch_test(unit_kernel_id_uniqueness
+    cpptlm/test_kernel_id_uniqueness.cpp
+)
+set_tests_properties(unit_kernel_id_uniqueness PROPERTIES LABELS "unit;cpptlm;bridge;kernel_id")
