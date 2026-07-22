@@ -141,3 +141,20 @@ add_catch_test(e2e_cosim_vector_add
     cosim/test_cosim_vector_add.cu
 )
 set_tests_properties(e2e_cosim_vector_add PROPERTIES LABELS "e2e;cosim")
+
+# ============================================================================
+# Phase 3: CppTLM Co-Simulation E2E 测试 (auto-co-sim spec traceability)
+# ============================================================================
+# auto-co-sim: "advance ceiling prevents hang"
+add_catch_test(e2e_cosim_infinite_loop_ceiling
+    cosim/test_cosim_infinite_loop_ceiling.cu
+)
+set_tests_properties(e2e_cosim_infinite_loop_ceiling PROPERTIES
+    LABELS "e2e;cosim;ceiling")
+
+# auto-co-sim: "repeated cudaDeviceSynchronize drains all pending kernels"
+add_catch_test(e2e_cosim_multi_kernel_drain
+    cosim/test_cosim_multi_kernel_drain.cu
+)
+set_tests_properties(e2e_cosim_multi_kernel_drain PROPERTIES
+    LABELS "e2e;cosim;drain")
