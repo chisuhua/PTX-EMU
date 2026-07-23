@@ -50,7 +50,7 @@
 
 ## 7. 文档同步
 
-- [x] 7.1 在 `docs/adr/0008-barrier-semantics.md` §2026-07-03 "已知未完成 / lifecycle 单元测试" 一项追加："已通过本 change (`barrier-module-lifecycle-tests`) 补完，覆盖 `BarrierModule::release_warp_barrier` + `WarpBarrier` lifecycle + `participation_mask` 边界 7 个测试（test_barrier_module_release.cpp: 3 cases / test_warp_barrier_lifecycle.cpp: 2 cases / test_participation_mask_boundaries.cpp: 2 cases）。注：BUG-RECONVERGENCE-SIMPLEGEMM re-init 不变量仍由 test_barrier_module.cpp 覆盖。"
+- [x] 7.1 在 `docs/adr/ADR-0008-barrier-semantics.md` §2026-07-03 "已知未完成 / lifecycle 单元测试" 一项追加："已通过本 change (`barrier-module-lifecycle-tests`) 补完，覆盖 `BarrierModule::release_warp_barrier` + `WarpBarrier` lifecycle + `participation_mask` 边界 7 个测试（test_barrier_module_release.cpp: 3 cases / test_warp_barrier_lifecycle.cpp: 2 cases / test_participation_mask_boundaries.cpp: 2 cases）。注：BUG-RECONVERGENCE-SIMPLEGEMM re-init 不变量仍由 test_barrier_module.cpp 覆盖。"
 - [x] 7.2 **可选**：若 `tests/unit/barrier/AGENTS.md` 存在，在其中列出 3 个新测试文件
 - [x] 7.3 **可选**：更新 `docs/dev-process/lessons-learned.md` 顶部"来源"行加本次 change 引用（本 change 不是新教训，是 §19 的实操落地，故非强制）
 

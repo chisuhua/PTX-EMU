@@ -1,6 +1,6 @@
 # Tasks: Blackwell tcgen05 独立命名空间(ANTLR + IR)
 
-> **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) Accepted
+> **架构依据**: [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) Accepted
 > **依赖**: [proposal.md](proposal.md) + [design.md](design.md) + [specs/](specs/)
 > **范围**: 6 atomic commits,每个独立可 revert (per `ptx-lessons-learned` §3)
 > **测试覆盖**: 13 .ptx 端到端 + 5 单元 + 5 集成 + 2 迁移 = 25 个新测试目标
@@ -261,7 +261,7 @@
 
 ### 6.2 ADR Update
 
-- [ ] 6.2.1 编辑 `docs/adr/0016-blackwell-only-tcgen05.md`:
+- [ ] 6.2.1 编辑 `docs/adr/ADR-0016-blackwell-only-tcgen05.md`:
   - [ ] 6.2.1.1 在 "更新记录" 追加段落: "2026-07-XX — tcgen05 独立命名空间 (commit <sha>)"
   - [ ] 6.2.1.2 引用本 change: "Ref: openspec/changes/implement-tcgen05-syntax-ir/"
   - [ ] 6.2.1.3 NOTE:不修改决策本身,仅追加更新记录(per ADR lifecycle)

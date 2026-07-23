@@ -260,7 +260,7 @@
 
 ### 4.2 新建 ADR-0019
 
-- [ ] 4.2.1 新建 `docs/adr/0019-pc-management-extraction.md`:
+- [ ] 4.2.1 新建 `docs/adr/ADR-0019-pc-management-extraction.md`:
   - 复制 `docs/adr/template.md` 为起点
   - 记录 Phase 1+2 决策（`SimtPcManager`、`RegisterAccessLayer` 提取）
   - 记录 Phase 3.1 取消教训（状态发散根因分析，外部直接赋值）

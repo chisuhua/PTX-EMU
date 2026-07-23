@@ -54,7 +54,7 @@ void CvtHandler::processOperation(...) {
 ### 待更新的文档
 
 - `docs/audits/debt-audit-2026-07-02.md §P0-C1` — 标为 active debt，实际已实现
-- `docs/adr/0015-cvt-strategy-pattern.md` — ADR 中是否已追加"完成"段待确认
+- `docs/adr/ADR-0015-cvt-strategy-pattern.md` — ADR 中是否已追加"完成"段待确认
 - `src/ptxsim/instructions/AGENTS.md` 或 `cvt/README.md` — STRUCTURE 段是否反映"4 Strategy + dispatcher"实际结构
 
 ### 约束（来自 lessons-learned §6 + AGENTS.md）
@@ -187,7 +187,7 @@ void CvtHandler::processOperation(...) {
 
 1. **更新 `docs/audits/debt-audit-2026-07-02.md §P0-C1`**：
    - status: active → ✅ RESOLVED by `change fix-cvt-strategy-actual-split` (commit <hash>)
-2. **更新 `docs/adr/0015-cvt-strategy-pattern.md`**：
+2. **更新 `docs/adr/ADR-0015-cvt-strategy-pattern.md`**：
    - 追加 "2026-07 Fix: 死代码清理" 段
 3. **更新 `src/ptxsim/instructions/AGENTS.md` STRUCTURE**：
    - cvt/ 目录清单：cvt_strategy.{h,cpp} + cvt_{int_to_int,float_to_float,int_to_float,float_to_int,helpers}.{h,cpp}
@@ -218,14 +218,14 @@ cmake --build build && ctest -L "unit;cvt" && ctest -L "integration;cvt"
    - 选项 B：创建空目录占位（防止后续目录冲突）
    - **倾向**：选项 A（最小触碰，遵循 Non-Goal）
 
-3. **`docs/adr/0015-cvt-strategy-pattern.md` 是否已有 "完成状态" 段？**
-   - 待 Phase 2 实施时验证（先 `grep "2026-07" docs/adr/0015-...md`）
+3. **`docs/adr/ADR-0015-cvt-strategy-pattern.md` 是否已有 "完成状态" 段？**
+   - 待 Phase 2 实施时验证（先 `grep "2026-07" docs/adr/ADR-0015-...md`）
    - 已有则补充"死代码清理"小节；无则新建段
 
 ## Ref
 
 - `archive/2026-06-24-phase3-t2-6-cvt-strategy-pattern/` — Stale artifact 本 change 修复
-- `docs/adr/0015-cvt-strategy-pattern.md` — CVT 策略模式 ADR（本 change 追加确认状态）
+- `docs/adr/ADR-0015-cvt-strategy-pattern.md` — CVT 策略模式 ADR（本 change 追加确认状态）
 - `docs/audits/debt-audit-2026-07-02.md §P0-C1` — Active debt（修复后 RESOLVED）
 - `.opencode/skills/ptx-lessons-learned/SKILL.md §6` — Stale artifact 反模式来源
 - `.opencode/skills/openspec-propose/SKILL.md §Design-Time Checklist` — Checklist A/B/D/E/G 集成要求

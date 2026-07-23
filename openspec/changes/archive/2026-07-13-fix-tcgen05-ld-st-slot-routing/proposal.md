@@ -1,6 +1,6 @@
 # Fix tcgen05.ld/.st/.cp Hardcoded TMEM Slot Routing
 
-> **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) — Blackwell-only tcgen05
+> **架构依据**: [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) — Blackwell-only tcgen05
 > **前置 change**: [`../fix-tcgen05-mma-accumulator-and-f32-storage/`](../fix-tcgen05-mma-accumulator-and-f32-storage/) (helper 累加器 + f32 storage 已完成；当前 change 解决 BLOCKER C2)
 > **Oracle 2026-07-11 BLOCKER 审计**: session `ses_0b3791d78ffewb52428kJJ2Irz` 第 C2 条（HIGH confidence）— ld/st/cp slot 硬编码 `0`，与 mma 写 C 到 `slot[64..95]` 矛盾
 > **强制 lessons-learned**: [`ptx-lessons-learned`](../../../.opencode/skills/ptx-lessons-learned/SKILL.md) §3 (Phase commit) + §4 (baseline worktree) + §6 (artifacts-first) + §7 (Pre-impl Review) + §9 (ANTLR bare token 反模式)
@@ -39,7 +39,7 @@ Oracle 2026-07-11 审计 `tcgen05.ld` / `tcgen05.st` / `tcgen05.cp` 三个 handl
 | `tests/integration/ptx/test_tcgen05_cp_parse.cpp` | 同上（若存在） | 1 |
 | `tests/integration/tcgen05/test_tcgen05_*.cpp`（现有） | 全量跑回归，确保 op_count 变化不破现有测试 | 1 + 2 |
 | `tests/integration/tcgen05/test_tcgen05_ld_st_slot_routing.cpp` (新文件) | 行为测试：ld 写 `tmem_slot=32` 后 mma 读 slot 32 等于 ld 输入 | 2 |
-| `docs/adr/0016-blackwell-only-tcgen05.md` | 追加 "2026-07-12 Postmortem: C2 fix" 段 | 3 (archive) |
+| `docs/adr/ADR-0016-blackwell-only-tcgen05.md` | 追加 "2026-07-12 Postmortem: C2 fix" 段 | 3 (archive) |
 
 ### 不修改（Non-Goals）
 
@@ -131,7 +131,7 @@ Oracle 2026-07-11 审计 `tcgen05.ld` / `tcgen05.st` / `tcgen05.cp` 三个 handl
 | `tests/integration/ptx/test_tcgen05_ld_parse.cpp` | 修改（加 tmem_slot 断言） | +15 |
 | `tests/integration/ptx/test_tcgen05_st_parse.cpp` | 修改（加 tmem_slot 断言） | +15 |
 | `tests/integration/tcgen05/test_tcgen05_ld_st_slot_routing.cpp` | 新增文件 | ~120 |
-| `docs/adr/0016-blackwell-only-tcgen05.md` | 追加 Postmortem 段 | +30 |
+| `docs/adr/ADR-0016-blackwell-only-tcgen05.md` | 追加 Postmortem 段 | +30 |
 | **总计** | | **+203 / -6** |
 
 ### 影响的依赖
@@ -149,7 +149,7 @@ Oracle 2026-07-11 审计 `tcgen05.ld` / `tcgen05.st` / `tcgen05.cp` 三个 handl
 
 ### 影响的文档
 
-- `docs/adr/0016-blackwell-only-tcgen05.md` — 追加段
+- `docs/adr/ADR-0016-blackwell-only-tcgen05.md` — 追加段
 - `openspec/specs/tcgen05-handlers-core/spec.md` — 新增 delta spec（"LD/ST slot 来自指令"）
 - `openspec/specs/tcgen05-handlers-extended/spec.md` — 新增 delta spec（"CP slot 来自指令"）
 - `openspec/specs/tcgen05-ir-types/spec.md` — 新增 delta spec（"Tcgen05Instr.tmem_slot 字段"）
@@ -253,7 +253,7 @@ Oracle 2026-07-11 审计 `tcgen05.ld` / `tcgen05.st` / `tcgen05.cp` 三个 handl
 - Oracle 2026-07-11 split 验证: session `ses_0aefd09c3ffeSqBIAGdxiRBFWC` Q1 + Q5（推荐 Option b IMMEDIATE walk）
 - 前置 change: [`../fix-tcgen05-mma-accumulator-and-f32-storage/`](../fix-tcgen05-mma-accumulator-and-f32-storage/)
 - Ref (archived): [`../../archive/2026-07-10-implement-tcgen05-handlers-extended/`](../../archive/2026-07-10-implement-tcgen05-handlers-extended/)
-- ADR-0016: [docs/adr/0016-blackwell-only-tcgen05.md](../../../docs/adr/0016-blackwell-only-tcgen05.md)
+- ADR-0016: [docs/adr/ADR-0016-blackwell-only-tcgen05.md](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md)
 - ptx-lessons-learned: [`.opencode/skills/ptx-lessons-learned/SKILL.md`](../../../.opencode/skills/ptx-lessons-learned/SKILL.md) §3, §4, §6, §7, §9, §L
 - ptx-grammar-modification skill: [`.opencode/skills/ptx-grammar-modification/SKILL.md`](../../../.opencode/skills/ptx-grammar-modification/SKILL.md)
 - PTX ISA §9.7.16 (tcgen05.ld/.st/.cp semantics)

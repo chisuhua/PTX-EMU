@@ -26,7 +26,7 @@
 - **更新 README "状态" 行**：从 "Phase 10 进行中" → "Phase 10 完成；H5 规划中（参考 post-tcgen05-roadmap.md）"
 - **更新 "PTX 指令覆盖"**：从硬编码 "~67%" → 引用 docs/audits 自动统计
 - **添加 tcgen05 文档导航**：
-  - 指向 `docs/adr/0016-blackwell-only-tcgen05.md`（架构决策）
+  - 指向 `docs/adr/ADR-0016-blackwell-only-tcgen05.md`（架构决策）
   - 指向 `docs/dev-process/post-tcgen05-roadmap.md`（未来 H5 规划）
   - 指向 `docs/dev-process/lessons-learned.md`（§19 cross-module state translation post-tcgen05）
 - **添加 "已实现功能" 章节**（与"已知限制"并列）：列出 tcgen05、TMA、TMEM、cluster arrive/wait、TcQueue
@@ -59,7 +59,7 @@
 | 文件 | 改动类型 | 工作量 |
 |------|---------|--------|
 | `README.md` | 修改 "状态" / "已知限制" / "PTX 指令覆盖" / "CUDA Toolkit" 4 个章节 | 30min |
-| `docs/adr/0016-blackwell-only-tcgen05.md` | 不修改（仅 README 引用） | 0 |
+| `docs/adr/ADR-0016-blackwell-only-tcgen05.md` | 不修改（仅 README 引用） | 0 |
 | `docs/dev-process/post-tcgen05-roadmap.md` | 不修改（仅 README 引用） | 0 |
 
 **受影响的受众**：

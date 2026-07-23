@@ -137,7 +137,7 @@ Total: ~660 行 (line-by-line 算入 init/reset/dump_state 等跨类别的函数
 
 ### Decision 7: ADR-0019 (Not ADR-0017)
 
-**选择**: The new ADR is `docs/adr/0019-pc-management-extraction.md`. `0017` is missing from the ADR directory (jumps 0016 → 0018); `0018` is taken by `tcgen05-cta-group-restriction`. Using `0019` is the next free number.
+**选择**: The new ADR is `docs/adr/ADR-0019-pc-management-extraction.md`. `0017` is missing from the ADR directory (jumps 0016 → 0018); `0018` is taken by `tcgen05-cta-group-restriction`. Using `0019` is the next free number.
 
 **理由**:
 - ADR numbering convention is sequential
@@ -268,7 +268,7 @@ Total: ~660 行 (line-by-line 算入 init/reset/dump_state 等跨类别的函数
 2. Stop the back-fill in `init()` (lines 79-91) and `reset()` (lines 225-226)
 3. Compile + test
 4. Delete the 4 POD fields from `ThreadContext`
-5. Create `docs/adr/0019-pc-management-extraction.md` recording 3-Phase history
+5. Create `docs/adr/ADR-0019-pc-management-extraction.md` recording 3-Phase history
 6. Update `docs/adr/README.md` to add ADR-0019 link
 7. Update `src/ptxsim/core/AGENTS.md` `WHERE TO LOOK` and `KEY FILES` tables for `MemoryAccessor` and `InstructionPipeline`
 8. **Final verification**: `wc -l src/ptxsim/core/thread_context.cpp` ≤ 300; all 198 + 6 new tests pass

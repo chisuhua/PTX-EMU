@@ -2,7 +2,7 @@
 
 > **依赖**: [proposal.md](proposal.md) - 已确认
 > **范围**: 本 change 仅交付语法 + IR 命名空间;handler 实现在 change-3,基础设施审计在 change-2
-> **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) (Accepted 2026-07-04)
+> **架构依据**: [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) (Accepted 2026-07-04)
 
 ## Context
 

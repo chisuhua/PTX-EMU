@@ -111,7 +111,7 @@
 
 - [ ] 5.1 根 `AGENTS.md` 已知限制表:tcgen05 5 core handler 已实现
 - [ ] 5.2 `src/ptxsim/instructions/AGENTS.md`:添加 `tcgen05.cpp` 说明
-- [ ] 5.3 `docs/adr/0016-blackwell-only-tcgen05.md` 追加更新记录(本 change commit 引用)
+- [ ] 5.3 `docs/adr/ADR-0016-blackwell-only-tcgen05.md` 追加更新记录(本 change commit 引用)
 - [ ] 5.4 `git add AGENTS.md src/ptxsim/instructions/AGENTS.md docs/adr/`
 - [ ] 5.5 `git commit -m "docs: update AGENTS + ADR for tcgen05 5 core handler (ADR-0016)"`
 

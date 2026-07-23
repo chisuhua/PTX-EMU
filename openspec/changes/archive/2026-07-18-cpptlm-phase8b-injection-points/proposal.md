@@ -42,10 +42,10 @@ PTX-EMU 当前 `SMContext` 仅暴露**一个**外部注入点：`set_warp_schedu
 
 **关联 ADR**：
 
-- [ADR-0020](../../docs/adr/0020-cpptlm-injection-points.md)：接受 CppTLM D1-Full 注入（核心决策）
-- [ADR-0009](../../docs/adr/0009-xmacro-instruction-dispatch.md)：StatementType 枚举来源（X-Macro）
-- [ADR-0008](../../docs/adr/0008-barrier-semantics.md)：barrier 语义（`blocked_cycles` 与 barrier 交互）
-- [ADR-0019](../../docs/adr/0019-pc-management-extraction.md)：ThreadContext 瘦身（需关注 `blocked_cycles` 字段迁移）
+- [ADR-0020](../../docs/adr/ADR-0020-cpptlm-injection-points.md)：接受 CppTLM D1-Full 注入（核心决策）
+- [ADR-0009](../../docs/adr/ADR-0009-xmacro-instruction-dispatch.md)：StatementType 枚举来源（X-Macro）
+- [ADR-0008](../../docs/adr/ADR-0008-barrier-semantics.md)：barrier 语义（`blocked_cycles` 与 barrier 交互）
+- [ADR-0019](../../docs/adr/ADR-0019-pc-management-extraction.md)：ThreadContext 瘦身（需关注 `blocked_cycles` 字段迁移）
 
 **关联 Skill**：
 
@@ -111,7 +111,7 @@ PTX-EMU 当前 `SMContext` 仅暴露**一个**外部注入点：`set_warp_schedu
 - **CppTLM 协作同步**：`CppTLM/docs/superpowers/specs/2026-07-01-f12b-ld-ptxemu-collaboration-sync.md` §13
 - **CppTLM 实施计划**：`CppTLM/docs/superpowers/plans/2026-06-24-gpu-soc-phase8b.md`（573 行 D1-Full）
 - **CppTLM OpenSpec change**：`CppTLM/openspec/changes/2026-06-24-gpu-soc-phase8b-core/`
-- **PTX-EMU ADR-0020**：`docs/adr/0020-cpptlm-injection-points.md`（本 change 决策依据）
+- **PTX-EMU ADR-0020**：`docs/adr/ADR-0020-cpptlm-injection-points.md`（本 change 决策依据）
 - **PTX-EMU 现有 OpenSpec changes**：
   - `cleanup-deprecated-barrier-apis`（**前置**，归档后启动本 change）
   - `god-class-refactor-thread-context-phase3`（**并行**，关注 blocked_cycles 字段迁移）

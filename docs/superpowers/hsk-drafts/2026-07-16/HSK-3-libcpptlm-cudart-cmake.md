@@ -159,7 +159,7 @@ ExternalProject_Add(cpptlm_async
 ## 📎 交叉引用
 
 - PTX-EMU 端 commit `d0803a09`（HSK-3 + D-PTX-6 libcpptlm_cudart 集成）: https://github.com/chisuhua/PTX-EMU/commit/d0803a09
-- PTX-EMU 端 ADR-0021 §D-PTX-6: https://github.com/chisuhua/PTX-EMU/blob/380a8b6a/docs/adr/0021-cpptlm-d1-full-integration.md#决策-d-ptx-6-性能预算vtable-优化-编译期内联
+- PTX-EMU 端 ADR-0021 §D-PTX-6: https://github.com/chisuhua/PTX-EMU/blob/380a8b6a/docs/adr/ADR-0021-cpptlm-d1-full-integration.md#决策-d-ptx-6-性能预算vtable-优化-编译期内联
 - PTX-EMU 端 design.md §7.1（B5 修复 commit `0456418e` 后）: https://github.com/chisuhua/PTX-EMU/blob/380a8b6a/openspec/changes/cpptlm-d1-full/design.md
 - PTX-EMU 端 spec.md（B5 修复 commit `0456418e` 后）: https://github.com/chisuhua/PTX-EMU/blob/380a8b6a/openspec/changes/cpptlm-d1-full/specs/cpptlm-d1-full/spec.md
 - 综合任务书: https://github.com/chisuhua/CppTLM/blob/main/docs/superpowers/specs/2026-07-14-ptxemu-comprehensive-modification-plan.md §2.1 Task #4

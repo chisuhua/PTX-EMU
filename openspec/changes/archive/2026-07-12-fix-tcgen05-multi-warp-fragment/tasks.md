@@ -252,7 +252,7 @@
 
 ### 3.1 ADR-0016 Postmortem 追加
 
-- [ ] 3.1.1 读 `docs/adr/0016-blackwell-only-tcgen05.md` 最末段
+- [ ] 3.1.1 读 `docs/adr/ADR-0016-blackwell-only-tcgen05.md` 最末段
 - [ ] 3.1.2 追加 "2026-07-11 Postmortem: Multi-warp fragment (Oracle C4 fix)" 段:
   ```markdown
   ## 2026-07-11 Postmortem: Multi-warp fragment (Oracle C4 fix)
@@ -276,7 +276,7 @@
 
 ### 3.2 ADR commit
 
-- [ ] 3.2.1 `git add docs/adr/0016-blackwell-only-tcgen05.md`
+- [ ] 3.2.1 `git add docs/adr/ADR-0016-blackwell-only-tcgen05.md`
 - [ ] 3.2.2 `git commit -m "docs(adr): ADR-0016 postmortem C4 multi-warp fragment (Oracle 2026-07-11)"`
 
 ### 3.3 Archive change

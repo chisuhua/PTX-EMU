@@ -1,6 +1,6 @@
 # Fill tcgen05 5 Core Handler Test Coverage Gaps
 
-> **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) Accepted
+> **架构依据**: [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) Accepted
 > **前置 change**: `archive/2026-07-07-implement-tcgen05-handlers-core` (Change-3b, archived 2026-07-07 @ `df6dde7`)
 > **设计时教训**: `ptx-lessons-learned` §3(分 Phase commit)+ §7(Pre-impl review)
 > **Metis 审查修订**: 见底部 "Metis 审查修订记录" — 8 项关键假设错误已修正

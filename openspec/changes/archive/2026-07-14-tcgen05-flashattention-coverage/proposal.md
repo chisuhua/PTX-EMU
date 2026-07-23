@@ -1,6 +1,6 @@
 # FlashAttention 测试覆盖（基于 tcgen05）
 
-> **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) — Blackwell-only tcgen05; [ADR-0018](../../../docs/adr/0018-tcgen05-cta-group-restriction.md) — cta_group::2 throws
+> **架构依据**: [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) — Blackwell-only tcgen05; [ADR-0018](../../../docs/adr/ADR-0018-tcgen05-cta-group-restriction.md) — cta_group::2 throws
 > **Oracle 2026-07-11 审计**: session `ses_0aefd09c3ffeSqBIAGdxiRBFWC` (FlashAttention readiness audit — 7 BLOCKER/IMPORTANT 测试覆盖缺口)
 > **Oracle 2026-07-11 API 审查**: session `ses_0b026333bffePgrqVq7PDJNeR1` (Q3 readback 模式 + Q4 `load_c_slot` helper)
 > **Metis pre-implementation review**: session `ses_0b1a0cdb1ffenbhbciQ1n0x236` (per checklist H — 必查项)
@@ -116,7 +116,7 @@ Oracle 2026-07-11 FlashAttention readiness 审计 (`ses_0aefd09c3ffeSqBIAGdxiRBF
 ### 影响的文档
 
 - `README.md` — "已实现功能"章节同步（per lessons-learned §8）
-- `docs/adr/0016-blackwell-only-tcgen05.md` — Phase 3 archive 追加 "2026-07-XX Postmortem: FlashAttention coverage" 段
+- `docs/adr/ADR-0016-blackwell-only-tcgen05.md` — Phase 3 archive 追加 "2026-07-XX Postmortem: FlashAttention coverage" 段
 - `.opencode/notes/postmortem-tcgen05-flashattention-coverage.md`（若 user 在 archive 时选 Yes 生成）
 
 ## Design-Time Checklist (per ptx-lessons-learned)

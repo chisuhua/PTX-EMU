@@ -246,7 +246,7 @@ tests/unit/barrier/                          ← 可能
 | `tests/unit/barrier/*.cpp` (3 个) | 迁移 | ⚠ 提及但没列具体 |
 | `tests/integration/{exec,pc,simt,sync}/*.cpp` (4 个) | 删除 `#include "ptxsim/wbar.h"`(可能仅 include) | ❌ 遗漏 |
 | `tests/unit/{exec,simt,common}/*.cpp` (4 个) | 删除 `#include "ptxsim/wbar.h"`(可能仅 include) | ❌ 遗漏 |
-| `docs/adr/0008-barrier-semantics.md` | 追加 "Phase 6 清理完成" postmortem | ❌ 遗漏 |
+| `docs/adr/ADR-0008-barrier-semantics.md` | 追加 "Phase 6 清理完成" postmortem | ❌ 遗漏 |
 
 **19 个测试文件 include `ptxsim/wbar.h`**(grep 已验证)
 
@@ -393,7 +393,7 @@ if (thread->get_state() == BAR_SYNC) {
 
 | 文件 | 动作 | 内容 |
 |------|------|------|
-| `docs/adr/0008-barrier-semantics.md` | 追加段 | "2026-06-20:Phase 6 partial cleanup - BsyncManager 与 SM 级 barrier 状态删除;Wbar struct 保留到独立 change `migrate-bar-warp-sync-to-barrier-module`(Phase 5);barrier.cpp:386 BAR_SYNC 设置(commit f033312 修复)保持" |
+| `docs/adr/ADR-0008-barrier-semantics.md` | 追加段 | "2026-06-20:Phase 6 partial cleanup - BsyncManager 与 SM 级 barrier 状态删除;Wbar struct 保留到独立 change `migrate-bar-warp-sync-to-barrier-module`(Phase 5);barrier.cpp:386 BAR_SYNC 设置(commit f033312 修复)保持" |
 | `src/ptxsim/core/AGENTS.md` | MODIFY | 删除 "Barrier sync \| `sm_context.cpp` \| `synchronize_barrier()`" 行 + KNOWN ISSUES 中 `synchronize_barrier() may not update active_mask` 注释(改为指向 `test_post_barrier_divergence.cpp` 作为 BUG 文档) |
 | `src/ptxsim/AGENTS.md` | MODIFY | line 42 注释更新:"`BarHandler` MUST route through `BarrierModule` API — `BarWarpSyncHandler` still uses `Wbar` (Phase 5 deferred)" |
 | `tests/AGENTS.md` | MODIFY | line 15 "barrier/Wbar 数据结构" 描述保持(Wbar 仍存在);`bsync` 描述移到 `archive/` |
@@ -464,7 +464,7 @@ Commit 3: docs(barrier): update ADR/AGENTS/OpenSpec for partial cleanup
 - **审查时长**: ~5 分钟(主对话)+ ~3 分钟(Oracle 后台)
 - **关联文档**:
   - `docs/dev-process/lessons-learned.md`(项目经验沉淀,强制引用)
-  - `docs/adr/0008-barrier-semantics.md`(Barrier 语义 ADR)
+  - `docs/adr/ADR-0008-barrier-semantics.md`(Barrier 语义 ADR)
   - `.opencode/skills/ptx-barrier-mechanism/`(屏障机制全解)
   - `.opencode/skills/ptx-lessons-learned/`(项目经验沉淀)
   - `.opencode/skills/adr-compliance-check/`(ADR 合规检查)

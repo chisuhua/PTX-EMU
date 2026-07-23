@@ -144,7 +144,7 @@ All artifacts complete. All tasks complete.
 
 ### Postmortem 模板（如用户同意）
 
-在对应 ADR 文件追加段落（参考 `docs/adr/0008-barrier-semantics.md` §"2026-06-18 Postmortem"）：
+在对应 ADR 文件追加段落（参考 `docs/adr/ADR-0008-barrier-semantics.md` §"2026-06-18 Postmortem"）：
 
 ```markdown
 ## YYYY-MM-DD Postmortem：<change-name> 实施回顾

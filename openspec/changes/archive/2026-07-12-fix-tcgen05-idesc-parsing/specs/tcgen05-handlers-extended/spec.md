@@ -91,5 +91,5 @@ The system SHALL update documentation in the same change (each Phase end):
 - Active predecessor (parallel): `fix-tcgen05-mma-accumulator-and-f32-storage/` (provides `bool accumulate` helper parameter)
 - Active predecessor (parallel, FU-1): `fix-tcgen05-commit-wait-group/` (independent of this change)
 - New capability detail: `openspec/changes/fix-tcgen05-idesc-parsing/specs/tcgen05-idesc-parsing/spec.md`
-- ADR-0016: [docs/adr/0016-blackwell-only-tcgen05.md](../../../docs/adr/0016-blackwell-only-tcgen05.md) (Postmortem section added in this change)
+- ADR-0016: [docs/adr/ADR-0016-blackwell-only-tcgen05.md](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) (Postmortem section added in this change)
 - [ptx-lessons-learned](../../../.opencode/skills/ptx-lessons-learned/SKILL.md) §3, §4, §6, §7

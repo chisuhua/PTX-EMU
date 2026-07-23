@@ -1,6 +1,6 @@
 # Fix tcgen05 Grammar LL(*) Conflict + Migrate Old Tests (Change-1 MR-3 + MR-4)
 
-> **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) Accepted
+> **架构依据**: [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) Accepted
 > **前置 change**: `archive/2026-07-06-implement-tcgen05-syntax-ir` (Change-1, archived)
 > **跨 Change 拆分**: 本 change 是 4-change 路线图的第 3a 步,handler 实施的**硬前置**
 > **设计时教训**: `ptx-lessons-learned` §3(分 Phase commit)+ §6(artifacts-first)+ §7(Pre-impl review)
@@ -132,7 +132,7 @@ handler 实施(change-3b)硬依赖 grammar 正确性,故本 change 是 **change-
 
 ### 影响的文档
 
-- `docs/adr/0016-blackwell-only-tcgen05.md`(追加本 change archive commit 引用)
+- `docs/adr/ADR-0016-blackwell-only-tcgen05.md`(追加本 change archive commit 引用)
 - `openspec/changes/archive/2026-07-XX-fix-tcgen05-grammar-mr3/`(archive)
 - `openspec/specs/tcgen05-{grammar,parse-tests,ir-types}/spec.md`(修订)
 

@@ -43,7 +43,7 @@ PTX-EMU 当前存在**双轨 barrier 实现并存**的技术债：旧 `Wbar` 结
 | `tests/integration/barrier/test_cta_barrier_memory_visibility.cpp` | **修改**：删除 L138-184 work-around，验证 `BarHandler` bug 修复后路径独立可用 |
 | `docs/research/barrier-semantics/04-ptx-emu-current-implementation.md` | **重写**：描述新 `BarrierModule` 生产路径，移除旧实现描述 |
 | `docs/technical_design/barrier_module_design.md` | **更新**：状态从"草稿"改为"已落地 v1"；补迁移路径章节 |
-| `docs/adr/0008-barrier-semantics.md` | **追加**：描述 `BarrierModule` 集成决策与状态机映射（State enum: Uninitialized/Initializing/Waiting/Complete/Released）|
+| `docs/adr/ADR-0008-barrier-semantics.md` | **追加**：描述 `BarrierModule` 集成决策与状态机映射（State enum: Uninitialized/Initializing/Waiting/Complete/Released）|
 | `src/ptxsim/AGENTS.md` + `src/ptxsim/instructions/AGENTS.md` | **更新**：描述 `src/ptxsim/barrier/` 子目录为生产路径 |
 
 ## References

@@ -41,7 +41,7 @@ PTX-EMU 在 commit `12390b7` 合并 `fix/barrier-architecture-migration` 后，`
 | `include/ptxsim/warp_context.h` | **修改**（Phase 7）：删除 `get_wbar()` compat shim 声明 |
 | `src/ptxsim/core/warp_context.cpp` | **修改**（Phase 7）：删除 `get_wbar()` 实现（L540-556） |
 | `tests/integration/divergence/` | **新增**：分歧 warp 两半 barrier 完整生命周期测试 |
-| `docs/adr/0008-barrier-semantics.md` | **追加**：`force_reconvergence + BarrierModule` 交互设计决策 + Wbar 删除记录 |
+| `docs/adr/ADR-0008-barrier-semantics.md` | **追加**：`force_reconvergence + BarrierModule` 交互设计决策 + Wbar 删除记录 |
 
 ## References
 

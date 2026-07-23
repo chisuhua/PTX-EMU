@@ -1,6 +1,6 @@
 # Design: Blackwell tcgen05 Handler Implementation (Phase 1-3)
 
-> **架构依据**: [ADR-0016](../../../../docs/adr/0016-blackwell-only-tcgen05.md)
+> **架构依据**: [ADR-0016](../../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md)
 > **前置 change**: `implement-wmma-tensor-core-phase-0-infra` (per `Ref:` after archive)
 > **后置 change**: TBD (`fix-cute-sm100-headers` if spike fails, or follow-up features)
 

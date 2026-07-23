@@ -71,7 +71,7 @@ The system SHALL modify `processTcgen05Wait` (in `src/ptxsim/instructions/tcgen0
 
 #### Scenario: cta_group::2 with this change still throws per ADR-0018
 
-- **NOTE**: This requirement scopes ONLY `cta_group::1` (default) and routing via `instr.cta_group`. For `cta_group::2` semantics, see [ADR-0018](../../../docs/adr/0018-tcgen05-cta-group-restriction.md) (created by this change): handlers throw `UnsupportedInstructionException` with message containing "cluster abstraction not yet implemented (ADR-0018)". The C3 fix does **not** change `cta_group::2` throw behavior — it only adds `cta_group::N` routing for the already-supported `cta_group::1` path.
+- **NOTE**: This requirement scopes ONLY `cta_group::1` (default) and routing via `instr.cta_group`. For `cta_group::2` semantics, see [ADR-0018](../../../docs/adr/ADR-0018-tcgen05-cta-group-restriction.md) (created by this change): handlers throw `UnsupportedInstructionException` with message containing "cluster abstraction not yet implemented (ADR-0018)". The C3 fix does **not** change `cta_group::2` throw behavior — it only adds `cta_group::N` routing for the already-supported `cta_group::1` path.
 
 ### Requirement: makeTcgen05Instr SHALL accept optional cta_group parameter
 

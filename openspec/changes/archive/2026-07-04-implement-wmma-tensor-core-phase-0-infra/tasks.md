@@ -1,6 +1,6 @@
 # Tasks: Blackwell tcgen05 Infrastructure (Phase 0)
 
-> **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md)
+> **架构依据**: [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md)
 > **前置 change**: `replace-silent-stub-failures` (archived 2026-07-04)
 > **后续 change**: `implement-wmma-tensor-core-tcgen05` (per `Ref:` after archive)
 > **Phase 范围**: 0.0 (artifacts tracked) + 0.1-0.4 (4 子系统) + 0.5 (4 micro 集成) = **9 commits**
@@ -15,7 +15,7 @@
 - [ ] 0.0.3 `git status` 验证 artifacts tracked (proposal / design / specs/wmma-tensor-core/spec / tasks)
 - [ ] 0.0.4 commit: `git commit -m "docs(openspec): track implement-wmma-tensor-core-phase-0-infra artifacts (ADR-0016)"`
 - [ ] 0.0.5 `git ls-files openspec/changes/implement-wmma-tensor-core-phase-0-infra/` 验证非空
-- [ ] 0.0.6 ADR-0016（docs/adr/0016-blackwell-only-tcgen05.md）随本批 change 提交
+- [ ] 0.0.6 ADR-0016（docs/adr/ADR-0016-blackwell-only-tcgen05.md）随本批 change 提交
 
 ---
 

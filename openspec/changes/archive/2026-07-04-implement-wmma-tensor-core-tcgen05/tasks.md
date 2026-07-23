@@ -1,6 +1,6 @@
 # Tasks: Blackwell tcgen05 Handler Implementation (Phase 1-3)
 
-> **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md)
+> **架构依据**: [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md)
 > **前置 change**: `implement-wmma-tensor-core-phase-0-infra` (本批 archive 后)
 > **后续**: spec publish (本 change archive 后) → cute_rmsnorm 升级等 follow-up
 > **总 commits**: **5 commits** (1.1, 1.2, 2.1, 2.2, 3.1)

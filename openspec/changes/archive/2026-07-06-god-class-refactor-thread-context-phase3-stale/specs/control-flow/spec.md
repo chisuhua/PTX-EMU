@@ -140,7 +140,7 @@ The `InstructionPipeline` class SHALL provide the following public methods (curr
 
 ### Requirement: `InstructionPipeline` preserves PC lifecycle invariant
 
-`_execute_once()` SHALL preserve the `set_next_pc(current_pc + 1)` → `handler->ExecPipe(this, statement)` → `commit_pc()` sequence byte-identically (`AGENTS.md` §CONVENTIONS, `docs/adr/0003-commit-pc-pattern.md`). After migration to `InstructionPipeline`, the only change is the **location** of the call (`pipeline_->_execute_once()` instead of `this->_execute_once()`); the **sequence, arguments, and line numbers** SHALL match.
+`_execute_once()` SHALL preserve the `set_next_pc(current_pc + 1)` → `handler->ExecPipe(this, statement)` → `commit_pc()` sequence byte-identically (`AGENTS.md` §CONVENTIONS, `docs/adr/ADR-0003-commit-pc-pattern.md`). After migration to `InstructionPipeline`, the only change is the **location** of the call (`pipeline_->_execute_once()` instead of `this->_execute_once()`); the **sequence, arguments, and line numbers** SHALL match.
 
 #### Scenario: PC advances by 1 for non-branch non-barrier instructions
 

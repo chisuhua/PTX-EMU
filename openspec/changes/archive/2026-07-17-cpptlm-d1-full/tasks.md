@@ -2,7 +2,7 @@
 
 > **Status**: Proposed
 > **Parent**: `proposal.md` + `design.md` (cpptlm-d1-full)
-> **ADR**: [docs/adr/0021-cpptlm-d1-full-integration.md](../../../docs/adr/0021-cpptlm-d1-full-integration.md)
+> **ADR**: [docs/adr/ADR-0021-cpptlm-d1-full-integration.md](../../../docs/adr/ADR-0021-cpptlm-d1-full-integration.md)
 > **总工时**: ~5d（PTX-EMU 端 §2 MemoryBridge 5 项任务 + SingletonGuard + ANTLR4 修正 + 3 个 handshake）
 
 ---
@@ -11,7 +11,7 @@
 
 > ⚠️ **MUST**: 不完成本 Phase 不允许进入 Phase 1。Lessons Learned #7 Pre-implementation Review 强制项。
 
-- [x] 0.1 D-PTX-1~6 决策在 ADR-0021 中签署（参见 [docs/adr/0021-cpptlm-d1-full-integration.md](../../../docs/adr/0021-cpptlm-d1-full-integration.md)）
+- [x] 0.1 D-PTX-1~6 决策在 ADR-0021 中签署（参见 [docs/adr/ADR-0021-cpptlm-d1-full-integration.md](../../../docs/adr/ADR-0021-cpptlm-d1-full-integration.md)）
 - [x] 0.2 验证 `antlr4/antlr4-cpp-runtime-4.13.2-source/` 实际存在（确认 D-PTX-4 版本基线）
 - [x] 0.3 与姊妹 change `cpptlm-phase8b-injection-points`（ADR-0020）协调并行启动
 - [x] 0.4 CppTLM 书面同步确认：协作同步 `2026-07-01-f12b-ld-ptxemu-collaboration-sync.md §4` Bridge 接口签名双方一致

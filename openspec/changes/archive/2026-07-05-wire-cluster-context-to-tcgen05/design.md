@@ -203,7 +203,7 @@ Refs: archive/2026-07-04-implement-wmma-tensor-core-phase-0-infra/ (ClusterConte
 ### Phase 3: 文档同步（Fix #3）
 
 ```bash
-# 3.1 更新 docs/adr/0016-blackwell-only-tcgen05.md
+# 3.1 更新 docs/adr/ADR-0016-blackwell-only-tcgen05.md
 # 添加 §2026-07-06 cluster 接入状态
 
 # 3.2 更新 docs/dev-process/post-tcgen05-roadmap.md

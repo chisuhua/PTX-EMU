@@ -1,6 +1,6 @@
 # Audit Blackwell tcgen05 Infrastructure (TMA + TMEM + Cluster + TcQueue)
 
-> **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) Accepted
+> **架构依据**: [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) Accepted
 > **前置 change**: `archive/2026-07-06-implement-tcgen05-syntax-ir` (Change-1, archived)
 > **4-Change 拆分**: 本 change 是第 2 步(共 4 步),**仅审计 4 个 Blackwell 底层子系统**(无源码修改)
 > **设计时教训**: `ptx-lessons-learned` §3(分 Phase commit)+ §6(artifacts-first)+ §7(Pre-impl review)+ Metis MR-3(Phase B 反应式设计已移除)
@@ -140,7 +140,7 @@ handler 实施(Change-3)前必须先**审计**基础设施可工作,否则 handl
 
 - `docs/audits/2026-07-XX-tcgen05-infra-audit.md`(主要交付物)
 - 根 `AGENTS.md` 已知限制表(更新 cluster 状态,若 readiness = L3)
-- `docs/adr/0016-blackwell-only-tcgen05.md`(追加审计 commit 引用)
+- `docs/adr/ADR-0016-blackwell-only-tcgen05.md`(追加审计 commit 引用)
 
 ## Design-Time Checklist (Lessons-Learned)
 

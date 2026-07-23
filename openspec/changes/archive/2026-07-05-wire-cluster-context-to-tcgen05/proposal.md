@@ -73,7 +73,7 @@ $ grep -rn "init_cluster_context\|cta_cluster_arrive\|cta_cluster_wait" src/ inc
 | `src/ptxsim/core/gpu_context.cpp` | 添加 init_cluster_context opt-in 调用 | ~10 行 |
 | `src/ptxsim/instructions/wmma.cpp` | commit/wait 增加 has_cluster_context check | ~10 行 |
 | `tests/unit/cluster/test_cluster_tcgen05_integration.cpp` | 新增 oracle 测试 | 新文件 |
-| `docs/adr/0016-blackwell-only-tcgen05.md` | 同步 cluster 接入状态 | ~5 行 |
+| `docs/adr/ADR-0016-blackwell-only-tcgen05.md` | 同步 cluster 接入状态 | ~5 行 |
 | `docs/dev-process/post-tcgen05-roadmap.md` | 标注本 change 完成 F0 | ~3 行 |
 
 **受影响的 ADR**：

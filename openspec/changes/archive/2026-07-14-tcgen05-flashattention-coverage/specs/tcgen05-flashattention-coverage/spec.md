@@ -141,8 +141,8 @@ files (instead of the default `1.19e-5` epsilon per
 - Oracle 2026-07-11 audit: session `ses_0aefd09c3ffeSqBIAGdxiRBFWC` (7 BLOCKER/IMPORTANT gaps)
 - Oracle 2026-07-11 API 审查: session `ses_0b026333bffePgrqVq7PDJNeR1`
 - Metis pre-impl review: session `ses_0b1a0cdb1ffenbhbciQ1n0x236` (per checklist H)
-- ADR-0016: [docs/adr/0016-blackwell-only-tcgen05.md](../../../docs/adr/0016-blackwell-only-tcgen05.md)
-- ADR-0018: [docs/adr/0018-tcgen05-cta-group-restriction.md](../../../docs/adr/0018-tcgen05-cta-group-restriction.md)
+- ADR-0016: [docs/adr/ADR-0016-blackwell-only-tcgen05.md](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md)
+- ADR-0018: [docs/adr/ADR-0018-tcgen05-cta-group-restriction.md](../../../docs/adr/ADR-0018-tcgen05-cta-group-restriction.md)
 - Ref: [`archive/2026-07-10-implement-tcgen05-handlers-extended/`](../../archive/2026-07-10-implement-tcgen05-handlers-extended/)
 - [proposal.md](../../proposal.md), [design.md](../../design.md), [tasks.md](../../tasks.md)
 - FU-1..FU-4 dependencies: [fix-tcgen05-mma-accumulator-and-f32-storage/proposal.md §Follow-Up Changes](../../fix-tcgen05-mma-accumulator-and-f32-storage/proposal.md)

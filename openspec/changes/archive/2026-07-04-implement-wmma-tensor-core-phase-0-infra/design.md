@@ -1,6 +1,6 @@
 # Design: Blackwell tcgen05 Infrastructure (Phase 0)
 
-> **架构依据**: [ADR-0016](../../../../docs/adr/0016-blackwell-only-tcgen05.md)
+> **架构依据**: [ADR-0016](../../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md)
 > **前置 change**: `replace-silent-stub-failures` (archived 2026-07-04)
 > **后续 change**: `implement-wmma-tensor-core-tcgen05` (per `Ref:` after archive)
 

@@ -30,7 +30,7 @@
 | `openspec/changes/integrate-barrier-module-cta-warp/specs/warp-barrier-unification/spec.md` | 修改 L19 | Major 3（拼写）|
 | `openspec/changes/integrate-barrier-module-cta-warp/design.md` | 修改 L178 + 风险表 | Major 1 + Major 4 |
 | `openspec/changes/integrate-barrier-module-cta-warp/proposal.md` | 修改 5 处行号 | Major 2 |
-| `docs/adr/0008-barrier-semantics.md` | 追加 §"2026-06-17 追加" | Major 8 |
+| `docs/adr/ADR-0008-barrier-semantics.md` | 追加 §"2026-06-17 追加" | Major 8 |
 | `tests/unit/barrier/test_barrier_module.cpp` | 新增 1 个 TEST_CASE | Blocker 1 验证门 |
 
 ---
@@ -511,12 +511,12 @@ git commit -m "docs(openspec): correct work-around line number references"
 ### Task 2.5: 追加 ADR-0008 §"2026-06-17 追加"
 
 **Files:**
-- Modify: `docs/adr/0008-barrier-semantics.md`
+- Modify: `docs/adr/ADR-0008-barrier-semantics.md`
 
 - [ ] **Step 1: 读取 ADR-0008 末尾**
 
 ```bash
-tail -30 docs/adr/0008-barrier-semantics.md
+tail -30 docs/adr/ADR-0008-barrier-semantics.md
 ```
 
 - [ ] **Step 2: 追加新章节**
@@ -551,7 +551,7 @@ tail -30 docs/adr/0008-barrier-semantics.md
 - [ ] **Step 3: 验证**
 
 ```bash
-tail -20 docs/adr/0008-barrier-semantics.md
+tail -20 docs/adr/ADR-0008-barrier-semantics.md
 ```
 
 Expected: 看到 "2026-06-17 追加" 章节
@@ -559,7 +559,7 @@ Expected: 看到 "2026-06-17 追加" 章节
 - [ ] **Step 4: 提交**
 
 ```bash
-git add docs/adr/0008-barrier-semantics.md
+git add docs/adr/ADR-0008-barrier-semantics.md
 git commit -m "docs(adr): append BarrierModule integration decision to ADR-0008"
 ```
 

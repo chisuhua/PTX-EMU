@@ -114,7 +114,7 @@
 1. 提取内存访问方法到独立类
 2. 提取控制流编排方法
 3. `ThreadContext` 行数目标 ~200 行
-4. 新增 `docs/adr/0017-pc-management-extraction.md`
+4. 新增 `docs/adr/ADR-0017-pc-management-extraction.md`
 
 ### Rollback 策略
 

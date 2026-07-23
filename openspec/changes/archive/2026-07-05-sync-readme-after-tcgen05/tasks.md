@@ -97,7 +97,7 @@
   ```markdown
   ## 已实现功能
 
-  - **Blackwell tcgen05**：完整实现 `.mma` / `.ld` / `.st` / `.commit` / `.wait`（commit `4151268` Fix #14）— 详见 [docs/adr/0016-blackwell-only-tcgen05.md](./docs/adr/0016-blackwell-only-tcgen05.md)
+  - **Blackwell tcgen05**：完整实现 `.mma` / `.ld` / `.st` / `.commit` / `.wait`（commit `4151268` Fix #14）— 详见 [docs/adr/ADR-0016-blackwell-only-tcgen05.md](./docs/adr/ADR-0016-blackwell-only-tcgen05.md)
   - **TMA descriptors**：异步拷贝 descriptor 解析（commit `ad527f5` Fix #5）
   - **TMEM**：per-CTA Tensor Memory（commit `758edb0` Fix #6）
   - **Cluster arrive/wait**：分布式 shared memory 同步（commit `e513235` Fix #7）
@@ -112,7 +112,7 @@
   -- **ANTLR 版本**：4.11.1 完全 vendored
   -- **CUDA Toolkit**：11.4.4 测试通过
   +- **PTX 指令覆盖**：参考 [docs/audits/debt-audit-2026-07-02.md](./docs/audits/debt-audit-2026-07-02.md) 自动统计（避免硬编码）
-  +- **pre-Blackwell tcgen05**：永久抛 `UnsupportedInstructionException`（c5 Fix #1 + [ADR-0016](./docs/adr/0016-blackwell-only-tcgen05.md)）
+  +- **pre-Blackwell tcgen05**：永久抛 `UnsupportedInstructionException`（c5 Fix #1 + [ADR-0016](./docs/adr/ADR-0016-blackwell-only-tcgen05.md)）
   +- **ANTLR 版本**：4.11.1 完全 vendored
   +- **CUDA Toolkit**：环境自适应（`env.sh` 自动检测 `$(which nvcc)`）
   ```
@@ -141,13 +141,13 @@
 
 - [x] 3.1 在 "文档导航" 表格添加新行（line 33 之后）:
   ```markdown
-  | Blackwell tcgen05 架构 | [docs/adr/0016-blackwell-only-tcgen05.md](./docs/adr/0016-blackwell-only-tcgen05.md) |
+  | Blackwell tcgen05 架构 | [docs/adr/ADR-0016-blackwell-only-tcgen05.md](./docs/adr/ADR-0016-blackwell-only-tcgen05.md) |
   | tcgen05 实施 roadmap | [docs/dev-process/post-tcgen05-roadmap.md](./docs/dev-process/post-tcgen05-roadmap.md) |
   ```
 - [x] 3.2 验证:
   ```bash
   grep -n "0016-blackwell\|post-tcgen05" README.md  # 应返回 2 行
-  test -f docs/adr/0016-blackwell-only-tcgen05.md && echo "ADR-0016 exists" || echo "MISSING"
+  test -f docs/adr/ADR-0016-blackwell-only-tcgen05.md && echo "ADR-0016 exists" || echo "MISSING"
   test -f docs/dev-process/post-tcgen05-roadmap.md && echo "roadmap exists" || echo "MISSING"
   ```
 - [x] 3.3 commit:
@@ -156,7 +156,7 @@
   git commit -m "docs(readme): link Blackwell tcgen05 ADR + roadmap (Fix #3)
 
   Add references to:
-  - docs/adr/0016-blackwell-only-tcgen05.md (architecture decision)
+  - docs/adr/ADR-0016-blackwell-only-tcgen05.md (architecture decision)
   - docs/dev-process/post-tcgen05-roadmap.md (H5 planning)
   - docs/dev-process/lessons-learned.md (§19 cross-module state translation)"
   ```
@@ -261,7 +261,7 @@
   - `tests/unit/ptx/test_tcgen05_ld_st.cpp`
   - `tests/integration/tcgen05/test_tcgen05_ld_st_commit.cpp`
   - `tests/e2e/kernel/test_blackwell_gemm.cu`
-  - `docs/adr/0016-blackwell-only-tcgen05.md`
+  - `docs/adr/ADR-0016-blackwell-only-tcgen05.md`
   - `docs/dev-process/post-tcgen05-roadmap.md`
   - `docs/audits/debt-audit-2026-07-02.md`
 - [x] **实证 3 — env.sh 自动检测验证**: `grep "NVCC_PATH=\$(which nvcc)" env.sh` 返回实际行（Decision 3 措辞依据）

@@ -94,7 +94,7 @@ change SHALL be proposed to parse `idesc.accumulate` from the grammar
 down to the helper.
 
 #### Scenario: ADR-0016 documents idesc semantic gap
-- **WHEN** `docs/adr/0016-blackwell-only-tcgen05.md` is read
+- **WHEN** `docs/adr/ADR-0016-blackwell-only-tcgen05.md` is read
 - **THEN** a "2026-07-11 Postmortem: H1+H2 fix" section SHALL exist
 - **AND** it SHALL explain: "Helper `accumulate` parameter is simulator 内部决策，不解析真实 PTX `idesc.accumulate` bit. 完整修复需要 grammar + parser + visitor + handler 全栈修改."
 - **AND** it SHALL reference the follow-up change placeholder: `fix-tcgen05-idesc-parsing` (to be proposed)
@@ -131,6 +131,6 @@ slot were always zero).
 - Metis pre-implementation review session `ses_0b1a0cdb1ffenbhbciQ1n0x236` (3 MUST-RESOLVE 全部采纳)
 - Ref: [`archive/2026-07-10-implement-tcgen05-handlers-extended/`](../../../archive/2026-07-10-implement-tcgen05-handlers-extended/)
 - Step 1 commit `d3be589 test(tcgen05): add multi-op TMEM persistence integration test`
-- [ADR-0016 §2026-07-11 Postmortem: H1+H2 fix](../../../docs/adr/0016-blackwell-only-tcgen05.md) (added in this change)
+- [ADR-0016 §2026-07-11 Postmortem: H1+H2 fix](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) (added in this change)
 - [ptx-lessons-learned](../../../.opencode/skills/ptx-lessons-learned/SKILL.md) §3, §4, §6, §7
 - [proposal.md](../../proposal.md), [design.md](../../design.md), [tasks.md](../../tasks.md)

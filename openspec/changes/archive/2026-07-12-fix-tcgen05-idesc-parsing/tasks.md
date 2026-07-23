@@ -215,7 +215,7 @@
 
 ## 2. Phase 2: ADR Postmortem + idesc bit 位置记录（commit 2）
 
-- [ ] 2.1 读 `docs/adr/0016-blackwell-only-tcgen05.md` 找到最末段
+- [ ] 2.1 读 `docs/adr/ADR-0016-blackwell-only-tcgen05.md` 找到最末段
 - [ ] 2.2 追加 "2026-07-12 Postmortem: C1 fix" 段:
   ```markdown
   ## 2026-07-12 Postmortem: C1 fix
@@ -244,7 +244,7 @@
   ```
 - [ ] 2.3 `cd build && ctest -R "tcgen05" --output-on-failure` 最终验证
 - [ ] 2.4 对比 baseline worktree（与 Phase 1 + ADR 改动叠加验证）
-- [ ] 2.5 `git add docs/adr/0016-blackwell-only-tcgen05.md`
+- [ ] 2.5 `git add docs/adr/ADR-0016-blackwell-only-tcgen05.md`
 - [ ] 2.6 `git commit -m "docs(adr): ADR-0016 postmortem C1 fix + idesc bit position record"`
 - [ ] 2.7 验证 commit: `git show HEAD --stat`
 

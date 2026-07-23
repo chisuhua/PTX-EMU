@@ -183,7 +183,7 @@ git commit -m "test(barrier): register BarrierModule lifecycle + mask boundary t
 
 ### Phase 3: 文档同步（如有）
 
-- `docs/adr/0008-barrier-semantics.md` 可能追加一行注释指向新测试（不强制）
+- `docs/adr/ADR-0008-barrier-semantics.md` 可能追加一行注释指向新测试（不强制）
 - `tests/unit/barrier/AGENTS.md`（如存在）列出新测试文件
 
 ### Rollback Strategy
@@ -210,6 +210,6 @@ git reset --hard HEAD~1   # 仅当未 push
 
 - Proprosal: [`proposal.md`](./proposal.md)
 - 前置 change（已归档）：`openspec/changes/archive/2026-07-03-migrate-bar-warp-sync-to-barrier-module/`
-- ADR-0008：`docs/adr/0008-barrier-semantics.md` §2026-06-18 + §2026-07-03
+- ADR-0008：`docs/adr/ADR-0008-barrier-semantics.md` §2026-06-18 + §2026-07-03
 - Skill：`ptx-barrier-mechanism`、`ptx-lessons-learned`（§1/§18/§19）、`test-coverage-enforcer`
 - Code Review Issue I1：`migrate-bar-warp-sync-to-barrier-module` review issues I1：lifecycle 单元测试缺失

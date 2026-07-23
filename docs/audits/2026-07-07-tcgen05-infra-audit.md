@@ -6,7 +6,7 @@
 > ClusterContext + TcQueue + wmma.cpp L320-565 handler segment)
 > **References**: `openspec/changes/extend-blackwell-tcgen05-infra/proposal.md`;
 > `openspec/changes/extend-blackwell-tcgen05-infra/design.md` (Decision 4 + 5);
-> `docs/adr/0016-blackwell-only-tcgen05.md`; `ptx-lessons-learned` skill §1-§8
+> `docs/adr/ADR-0016-blackwell-only-tcgen05.md`; `ptx-lessons-learned` skill §1-§8
 > **Method**: Pure read-only (per Metis MR-3); every claim cites `file:line`
 > in source. No builds run during this audit; baseline ctest data reused
 > verbatim from `proposal.md` §Why + Design-Time Checklist.
@@ -646,7 +646,7 @@ per BarWarpSyncHandler pattern. Handler at `wmma.cpp:556` calls
 
 - `openspec/changes/extend-blackwell-tcgen05-infra/proposal.md` (Decision 4/5 source)
 - `openspec/changes/extend-blackwell-tcgen05-infra/design.md` (D4/D5 detail)
-- `docs/adr/0016-blackwell-only-tcgen05.md` (architectural lock)
+- `docs/adr/ADR-0016-blackwell-only-tcgen05.md` (architectural lock)
 - `.opencode/skills/ptx-barrier-mechanism/SKILL.md` (BarWarpSyncHandler pattern)
 - `.opencode/skills/ptx-lessons-learned/SKILL.md` §1, §2 (cross-module state,
   recursive lock avoidance)

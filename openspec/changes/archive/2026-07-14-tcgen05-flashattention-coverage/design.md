@@ -276,7 +276,7 @@ git commit -m "docs(openspec): tcgen05-flashattention-coverage artifacts"
 
 # 2. ADR-0016 追加 postmortem 段
 # (per design.md D7 + ptx-lessons-learned §G Checklist)
-git add docs/adr/0016-blackwell-only-tcgen05.md
+git add docs/adr/ADR-0016-blackwell-only-tcgen05.md
 git commit -m "docs(adr): ADR-0016 postmortem FlashAttention coverage"
 
 # 3. openspec archive
@@ -366,8 +366,8 @@ git worktree remove .worktrees/baseline-fa
 - Oracle 2026-07-11 audit: session `ses_0aefd09c3ffeSqBIAGdxiRBFWC` (FlashAttention readiness — 7 BLOCKER/IMPORTANT gaps)
 - Oracle 2026-07-11 API 审查: session `ses_0b026333bffePgrqVq7PDJNeR1`
 - Metis pre-impl review: session `ses_0b1a0cdb1ffenbhbciQ1n0x236` (per checklist H)
-- ADR-0016: [docs/adr/0016-blackwell-only-tcgen05.md](../../../docs/adr/0016-blackwell-only-tcgen05.md)
-- ADR-0018: [docs/adr/0018-tcgen05-cta-group-restriction.md](../../../docs/adr/0018-tcgen05-cta-group-restriction.md)
+- ADR-0016: [docs/adr/ADR-0016-blackwell-only-tcgen05.md](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md)
+- ADR-0018: [docs/adr/ADR-0018-tcgen05-cta-group-restriction.md](../../../docs/adr/ADR-0018-tcgen05-cta-group-restriction.md)
 - ptx-lessons-learned: [.opencode/skills/ptx-lessons-learned/SKILL.md](../../../.opencode/skills/ptx-lessons-learned/SKILL.md) §3+§4+§6+§8, Checklists D+E+H+I
 - test-coverage-enforcer skill: [.opencode/skills/test-coverage-enforcer/SKILL.md](../../../.opencode/skills/test-coverage-enforcer/SKILL.md)
 - FU-1..FU-4: [proposal.md §Follow-Up Changes](../fix-tcgen05-mma-accumulator-and-f32-storage/proposal.md)

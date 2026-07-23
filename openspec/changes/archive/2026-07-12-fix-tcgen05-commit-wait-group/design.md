@@ -186,7 +186,7 @@ cta->tc_queue().wait(warp, /*lane_id=*/0, instr.cta_group);
    - `src/ptxsim/instructions/tcgen05.cpp:493,530`: 删除 `(void)instr;`
    - `tests/integration/tcgen05/test_tcgen05_commit_wait_group.cpp`: 新增（commit group=2 + wait group=2 序列）
    - `tests/integration/ptx/test_tcgen05_mma_parse.cpp`: 追加 `cta_group::2` 解析验证 TC
-   - `docs/adr/0016-blackwell-only-tcgen05.md`: 追加 "2026-07-12 Postmortem: C3 fix" 段
+   - `docs/adr/ADR-0016-blackwell-only-tcgen05.md`: 追加 "2026-07-12 Postmortem: C3 fix" 段
 
 2. **Pre-Phase 0 (实施前必做)**:
    - Metis pre-implementation review (per lessons-learned §7/Checklist H)
@@ -242,7 +242,7 @@ cta->tc_queue().wait(warp, /*lane_id=*/0, instr.cta_group);
 - Specs:
   - New: [specs/tcgen05-multi-group-commit-wait/spec.md](specs/tcgen05-multi-group-commit-wait/spec.md)
   - Modified delta: [specs/tcgen05-handlers-extended/spec.md](specs/tcgen05-handlers-extended/spec.md)
-- ADR-0016: [docs/adr/0016-blackwell-only-tcgen05.md](../../../docs/adr/0016-blackwell-only-tcgen05.md)
-- ADR-0018 (本 change 新建): [docs/adr/0018-tcgen05-cta-group-restriction.md](../../../docs/adr/0018-tcgen05-cta-group-restriction.md)
+- ADR-0016: [docs/adr/ADR-0016-blackwell-only-tcgen05.md](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md)
+- ADR-0018 (本 change 新建): [docs/adr/ADR-0018-tcgen05-cta-group-restriction.md](../../../docs/adr/ADR-0018-tcgen05-cta-group-restriction.md)
 - ptx-lessons-learned: [.opencode/skills/ptx-lessons-learned/SKILL.md](../../../.opencode/skills/ptx-lessons-learned/SKILL.md) §3 + §4 + §6 + §7 + §9
 - Sister change (archived 2026-07-11): [../../archive/2026-07-11-fix-tcgen05-mma-accumulator-and-f32-storage/](../../archive/2026-07-11-fix-tcgen05-mma-accumulator-and-f32-storage/)

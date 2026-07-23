@@ -189,7 +189,7 @@ PTX-EMU 在 commit `12390b7`(merge `fix/barrier-architecture-migration`)后:
 29. **Commit**: `refactor(barrier): remove SM-level barrier state and migrate warp_context fallback`(`7914764`)
 
 ### Phase 4 (Commit 3): 文档同步(半天,独立可 revert)
-30. `docs/adr/0008-barrier-semantics.md` 追加 "2026-06-20 Phase 6 partial cleanup" 段落,记录:`BsyncManager` 与 SM 级 barrier 状态删除 + `Wbar` struct 保留到 Phase 5 + `warp_context.cpp:283-296` BAR_SYNC fallback 替换为 `BarrierModule::arrive_at_cta_barrier` + 引用 commit `f033312` lessons-learned §1 BAR_SYNC 翻译链
+30. `docs/adr/ADR-0008-barrier-semantics.md` 追加 "2026-06-20 Phase 6 partial cleanup" 段落,记录:`BsyncManager` 与 SM 级 barrier 状态删除 + `Wbar` struct 保留到 Phase 5 + `warp_context.cpp:283-296` BAR_SYNC fallback 替换为 `BarrierModule::arrive_at_cta_barrier` + 引用 commit `f033312` lessons-learned §1 BAR_SYNC 翻译链
 31. `src/ptxsim/core/AGENTS.md`: 删除 "Barrier sync | `sm_context.cpp` | `synchronize_barrier()`" 行(line 22);删除 KNOWN ISSUES 中 `synchronize_barrier() may not update active_mask` 注释(line 85);改为指向 `tests/integration/divergence/test_post_barrier_divergence.cpp` 作为 BUG 文档(known issue 仍存在)
 32. `src/ptxsim/AGENTS.md`: line 42 注释更新("`BarWarpSyncHandler` still uses `Wbar` (Phase 5 deferred)");保留 line 48 "DO NOT add new uses of Wbar struct" 警告(Wbar 仍存在)
 33. `tests/AGENTS.md`: 更新 line 21 "sync/ 同步原语" 描述(保留);`bsync` 描述移到 `archive/` 或删除

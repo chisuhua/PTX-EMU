@@ -1,6 +1,6 @@
 # Tasks: Fix tcgen05 Grammar LL(*) Conflict + Migrate Old Tests
 
-> **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) Accepted
+> **架构依据**: [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) Accepted
 > **依赖**: [proposal.md](proposal.md) + [design.md](design.md) + 3 specs in [specs/](specs/)
 > **范围**: 6 atomic commits,每步独立可 revert(per `ptx-lessons-learned` §3)
 > **Lessons-learned**: Checklist E(artifacts tracked) + Checklist G(OpenSpec lifecycle)

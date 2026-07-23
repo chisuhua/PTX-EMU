@@ -128,7 +128,7 @@ void release_cta_barrier(int cta_barrier_id, CTAContext* cta_ctx);
 
 ## 已实现的 Phase 5 推迟（2026-06-18）
 
-> 详细 postmortem 见 [`docs/adr/0008-barrier-semantics.md` §2026-06-18 Postmortem](../../../docs/adr/0008-barrier-semantics.md#2026-06-18-postmortemplase-5-推迟决策) 和 [`docs/dev-process/lessons-learned.md`](../../../docs/dev-process/lessons-learned.md)。
+> 详细 postmortem 见 [`docs/adr/ADR-0008-barrier-semantics.md` §2026-06-18 Postmortem](../../../docs/adr/ADR-0008-barrier-semantics.md#2026-06-18-postmortemplase-5-推迟决策) 和 [`docs/dev-process/lessons-learned.md`](../../../docs/dev-process/lessons-learned.md)。
 
 **实际状态**：
 - Phase 5 实施 commit `36dbb9a` 引入 6 个分歧/集成测试回归（基线 `00f698f` 通过）

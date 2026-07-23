@@ -253,7 +253,7 @@
 
 ### 3.2 ADR-0016 Postmortem 追加
 
-- [ ] 3.2.1 读 `docs/adr/0016-blackwell-only-tcgen05.md` 找到最末段
+- [ ] 3.2.1 读 `docs/adr/ADR-0016-blackwell-only-tcgen05.md` 找到最末段
 - [ ] 3.2.2 追加 "2026-07-11 Postmortem: H1+H2 fix" 段（per design.md D7）:
   ```markdown
   ## 2026-07-11 Postmortem: H1+H2 fix
@@ -276,7 +276,7 @@
 
 ### 3.3 ADR commit
 
-- [ ] 3.3.1 `git add docs/adr/0016-blackwell-only-tcgen05.md`
+- [ ] 3.3.1 `git add docs/adr/ADR-0016-blackwell-only-tcgen05.md`
 - [ ] 3.3.2 `git commit -m "docs(adr): ADR-0016 postmortem H1+H2 (Oracle 2026-07-10 FlashAttention readiness)"`
 
 ### 3.4 Archive change

@@ -43,7 +43,7 @@
 
 ## 5. 切换 BarWarpSyncHandler 到 BarrierModule（Warp 路径）
 
-> **⚠️ DEFERRED (2026-06-18)**: 实施 commit `36dbb9a` 引入 6 个分歧/集成测试回归（基线 `00f698f` 通过），已在 commit `f033312` 中 revert。详细原因见 [`docs/adr/0008-barrier-semantics.md` 2026-06-18 Postmortem](../../docs/adr/0008-barrier-semantics.md#2026-06-18-postmortemplase-5-推迟决策) 和 [`docs/dev-process/lessons-learned.md`](../../docs/dev-process/lessons-learned.md)。
+> **⚠️ DEFERRED (2026-06-18)**: 实施 commit `36dbb9a` 引入 6 个分歧/集成测试回归（基线 `00f698f` 通过），已在 commit `f033312` 中 revert。详细原因见 [`docs/adr/ADR-0008-barrier-semantics.md` 2026-06-18 Postmortem](../../docs/adr/ADR-0008-barrier-semantics.md#2026-06-18-postmortemplase-5-推迟决策) 和 [`docs/dev-process/lessons-learned.md`](../../docs/dev-process/lessons-learned.md)。
 >
 > **失败模式**: 分歧 warp 的两半 lanes（0-15 vs 16-31）在 post-barrier PC 处卡住，无法到达 MAIN_LOOP_PC。`force_reconvergence` 路径与正常 barrier 释放路径的交互存在问题。
 >

@@ -2,7 +2,7 @@
 
 > **Status**: Proposed (artifacts-first commit pending)
 > **Parent**: `proposal.md` (cpptlm-phase8b-injection-points)
-> **ADR**: [docs/adr/0020-cpptlm-injection-points.md](../../../docs/adr/0020-cpptlm-injection-points.md)
+> **ADR**: [docs/adr/ADR-0020-cpptlm-injection-points.md](../../../docs/adr/ADR-0020-cpptlm-injection-points.md)
 > **Triggered by**: CppTLM `2026-07-03-ptxemu-modification-task.md` + ADR-NV-02 Status Update 2026-07-14
 
 ---
@@ -709,4 +709,4 @@ static TcPrecision map_instruction_to_tc_precision(const StatementContext& stmt)
 - `docs/dev-process/debugging-strategy.md` 问题分类与快速验证
 - `CppTLM/openspec/changes/2026-06-24-gpu-soc-phase8b-core/specs/gpu-soc-phase8b.md` REQ-GPU-8B-1~9（对应本 change 7 个 REQ-CPPT-EMU-1~7）
 - `CppTLM/docs/superpowers/specs/2026-07-03-ptxemu-phase8b-d1full-plan.md` §1.5 PTX-EMU 侧变更清单
-- `docs/adr/0020-cpptlm-injection-points.md` 决策依据
+- `docs/adr/ADR-0020-cpptlm-injection-points.md` 决策依据

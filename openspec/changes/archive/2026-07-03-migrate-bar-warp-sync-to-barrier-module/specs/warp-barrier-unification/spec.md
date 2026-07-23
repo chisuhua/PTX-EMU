@@ -85,4 +85,4 @@ The `BarWarpSyncHandler::processOperation` MUST NOT call `sm_ctx->bsync_manager_
 
 - 本 change **不实现 `bar.warp.sync` membermask 的 UB 检测**（已记录在 ADR-0008 未来工作）
 - 本 change 假设 `cleanup-deprecated-barrier-apis` 已完成或同步进行
-- commit `36dbb9a` 失败 postmortem 详见 `docs/dev-process/lessons-learned.md` 与 `docs/adr/0008-barrier-semantics.md` §2026-06-18
+- commit `36dbb9a` 失败 postmortem 详见 `docs/dev-process/lessons-learned.md` 与 `docs/adr/ADR-0008-barrier-semantics.md` §2026-06-18

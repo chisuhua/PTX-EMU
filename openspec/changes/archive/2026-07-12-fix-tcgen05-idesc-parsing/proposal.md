@@ -1,6 +1,6 @@
 # Fix tcgen05.mma Handler — Parse idesc.accumulate Bit for Real Accumulate Routing
 
-> **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) — Blackwell-only tcgen05
+> **架构依据**: [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) — Blackwell-only tcgen05
 > **Oracle 2026-07-11 审计**: BLOCKER **C1**（handler accumulate routing），session `ses_0aefd09c3ffeSqBIAGdxiRBFWC`
 > **Predecessor (Active)**: [`fix-tcgen05-mma-accumulator-and-f32-storage`](../fix-tcgen05-mma-accumulator-and-f32-storage/) — Phase 1+2 实施后 helper 已支持 `accumulate` 参数
 > **Predecessor (Active)**: [`fix-tcgen05-commit-wait-group`](../fix-tcgen05-commit-wait-group/) — FU-1 (C3) visitTcgen05Inst IMMEDIATE extraction pattern
@@ -21,7 +21,7 @@ Oracle 2026-07-11 审计识别 BLOCKER **C1**: 即使 `fix-tcgen05-mma-accumulat
 | `include/ptx_ir/statement_context.h:180-190` | `Tcgen05Instr` 新增 `bool accumulate = false` 字段 | 1 |
 | `src/ptxsim/instructions/tcgen05.cpp:355-393` | `processTcgen05Mma` 从 `instr.operands[3]` (idesc RegOperand) 读寄存器 + 提取 accumulate bit → 动态决定 helper 参数 | 1 |
 | `tests/integration/tcgen05/test_tcgen05_mma_persistence.cpp` | 新增 T4 (idesc.accumulate=1 → 真累加) + T5 (idesc.accumulate=0 → overwrite) + T6 (calibration helper) | 2 |
-| `docs/adr/0016-blackwell-only-tcgen05.md` | 追加 "2026-07-12 Postmortem: C1 fix" 段（含 idesc bit 位置实测记录） | 2 |
+| `docs/adr/ADR-0016-blackwell-only-tcgen05.md` | 追加 "2026-07-12 Postmortem: C1 fix" 段（含 idesc bit 位置实测记录） | 2 |
 
 > **Oracle 2026-07-11 review 校准 (session `ses_0a8af7ff0ffeYHjA65F4uPwcKa`)**: 原 proposal 误判 `helper signature + c_slot` 为待实施工作；实证显示二者已通过 active predecessor (`fix-tcgen05-mma-accumulator-and-f32-storage`) 的累积演进落地。已从 "修改" 表删除 2 行已实施项，避免 ghost work（per lessons-learned §7 "已实施但未清理" 反表象）。
 
@@ -75,7 +75,7 @@ Oracle 2026-07-11 审计识别 BLOCKER **C1**: 即使 `fix-tcgen05-mma-accumulat
 | `tests/integration/tcgen05/test_tcgen05_mma_persistence.cpp` | 新增 T4/T5/T6 TCs | +60 / 0 |
 | `tests/ptx/tcgen05_mma_with_accumulate.ptx`（新文件）| 新增语法测试 | +15 / 0 |
 | `include/ptxsim/thread_context.h` | **新增** `read_reg_32(const RegOperand&) const` accessor（**Phase 1.0 硬性前置门禁**） | +5 / 0 |
-| `docs/adr/0016-blackwell-only-tcgen05.md` | 追加 Postmortem 段 | +40 / 0 |
+| `docs/adr/ADR-0016-blackwell-only-tcgen05.md` | 追加 Postmortem 段 | +40 / 0 |
 | **总计** | | **+141 / -3** |
 
 > **注**: helper 签名扩展 (`int warp_id`) 与 `c_slot` 偏移已由 active predecessor 累积实施（实证：`tcgen05_helpers.h:70-71`, `tcgen05_helpers.cpp:29,42-44`, `tcgen05.cpp:383` 已传 `warp->get_warp_id()`），不计入本 change 影响范围。
@@ -91,7 +91,7 @@ Oracle 2026-07-11 审计识别 BLOCKER **C1**: 即使 `fix-tcgen05-mma-accumulat
 - Grammar / parser / visitor（per Non-Goals）
 
 ### 影响的文档
-- `docs/adr/0016-blackwell-only-tcgen05.md` — 追加 C1 Postmortem 段
+- `docs/adr/ADR-0016-blackwell-only-tcgen05.md` — 追加 C1 Postmortem 段
 - 根 `AGENTS.md` 已知限制表 — **不修改**（本 change 是内部精度提升，未改变对外能力声明）
 - `src/ptxsim/instructions/AGENTS.md` — 不修改（handler dispatch 表不变）
 

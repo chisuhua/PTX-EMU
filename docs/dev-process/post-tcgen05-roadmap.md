@@ -145,9 +145,9 @@ F6 / F7 (FP4 / mxfp8)           ← 高级 sub-byte 扩展（需硬件支持）
 
 | ADR | 路径 | 状态 |
 |---|---|---|
-| ADR-0016 (Blackwell-only vision) | `docs/adr/0016-blackwell-only-tcgen05.md` | ✅ Accepted 2026-07-04 |
+| ADR-0016 (Blackwell-only vision) | `docs/adr/ADR-0016-blackwell-only-tcgen05.md` | ✅ Accepted 2026-07-04 |
 | ADR-0017 (TMA host API) | 尚未存在 | 🟡 Candidate (per F2) |
-| ADR-0018 (cta_group::2 throw) | `docs/adr/0018-tcgen05-cta-group-restriction.md` | ✅ Accepted 2026-07-12 (per `fix-tcgen05-commit-wait-group`) |
+| ADR-0018 (cta_group::2 throw) | `docs/adr/ADR-0018-tcgen05-cta-group-restriction.md` | ✅ Accepted 2026-07-12 (per `fix-tcgen05-commit-wait-group`) |
 | ADR-0019 (async scheduler) | 尚未存在 | 🟡 Candidate (per F4) |
 
 ### Implementation Files
@@ -276,7 +276,7 @@ git commit -m "archive(<name>): ..."     # single atomic commit
 
 - [`docs/dev-process/lessons-learned.md`](./lessons-learned.md) — 项目核心经验沉淀（含 §1/§2/§5）
 - [`docs/dev-process/debugging-strategy.md`](./debugging-strategy.md) — 调试策略
-- [`docs/adr/0016-blackwell-only-tcgen05.md`](../adr/0016-blackwell-only-tcgen05.md) — Blackwell-only 基础 ADR
+- [`docs/adr/ADR-0016-blackwell-only-tcgen05.md`](../adr/0016-blackwell-only-tcgen05.md) — Blackwell-only 基础 ADR
 - `openspec/AGENTS.md` — OpenSpec 流程规则
 - AGENTS.md — 项目总入口
 

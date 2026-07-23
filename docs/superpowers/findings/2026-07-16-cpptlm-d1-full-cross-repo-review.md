@@ -682,7 +682,7 @@ FACT, 高置信度（来自 `cpptlm-f12b-ld-impl/tasks.md`）:
 **FACT, 高置信度**:
 - `docs/superpowers/specs/2026-07-14-ptxemu-comprehensive-modification-plan.md` 标注 "Supersedes: 2026-07-03-ptxemu-modification-task.md (仅 D1-Full Compute 部分)"
 - ADR 引用 `ADR-NV-02-phase8b-d1-strategy.md` 与 `ADR-NV-01-gpu-soc-architecture-target.md`（来自综合任务书 §0.3 + §6）
-- PTX-EMU 端有 ADR-0021（`docs/adr/0021-cpptlm-d1-full-integration.md`，未独立审计）
+- PTX-EMU 端有 ADR-0021（`docs/adr/ADR-0021-cpptlm-d1-full-integration.md`，未独立审计）
 - 2026-07-16 RFC **评审快照时 untracked，现已在 commit `e9014de` 提交**（§1 [PATCH in-session]）— 4 项跨端契约询问（RFC-001~004）尚无 PTX-EMU 回执；任何"符合 ADR-XXXX 决策"的声明需逐条对照 ADR 实际内容
 
 ---
@@ -1000,7 +1000,7 @@ CppTLM 端 (可启动):
 | **CppTLM** | P0 tasks.md 勾选 | `ea60cbc` → `openspec/changes/cpptlm-f12b-ld-impl/tasks.md` | ✅ Merged |
 | **CppTLM** | Phase 0.5 baseline | `docs/superpowers/specs/2026-07-15-phase05-baseline-report.md` (781/781 用例 / 15574 断言) | ✅ Verified |
 | **CppTLM** | HSK-1/2/3 + D1-Full 状态回复 | `25e7e3c` → `docs/superpowers/specs/2026-07-17-hsk-1-2-3-responses.md` | ✅ Sent |
-| **PTX-EMU** | ADR-0020 | `docs/adr/0020-cpptlm-injection-points.md` Status: Accepted | ✅ Accepted |
+| **PTX-EMU** | ADR-0020 | `docs/adr/ADR-0020-cpptlm-injection-points.md` Status: Accepted | ✅ Accepted |
 | **PTX-EMU** | Phase 0 对齐 | `df05e10b` (Q1-Q5 + 12-endpoint enum 锁定) | ✅ Aligned |
 | **PTX-EMU** | HSK-3 Ready to Send | `6b367cad` (CPPTLM_COMMIT_HASH=73e5422 锁定) | ✅ Ready |
 | **PTX-EMU** | cpptlm-d1-full 实施 | 51/61 → 55/61 tasks (Phase 1-7 [x]) | ⚠️ 验收 10 项未闭 |

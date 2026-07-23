@@ -39,7 +39,7 @@ Phase 1 of `implement-tcgen05-handlers-extended` 已 commit (`486246a`)，新增
 | `tests/integration/CMakeLists.txt` | 注册 3 个新集成测试 |
 | `AGENTS.md` | "已知限制" 表: tcgen05 3/11 deferred (CP/MMA_WS/FENCE) |
 | `src/ptxsim/instructions/AGENTS.md` | "TCGEN05 HANDLER DISPATCH" 节: 3 deferred → CP/MMA_WS/FENCE |
-| `docs/adr/0016-blackwell-only-tcgen05.md` | 追加 Phase 1 + Phase 1.x 完成记录 |
+| `docs/adr/ADR-0016-blackwell-only-tcgen05.md` | 追加 Phase 1 + Phase 1.x 完成记录 |
 
 ### 不修改
 
@@ -92,7 +92,7 @@ Phase 1 of `implement-tcgen05-handlers-extended` 已 commit (`486246a`)，新增
 
 - `AGENTS.md`（"已知限制" 表更新）
 - `src/ptxsim/instructions/AGENTS.md`（TCGEN05 DISPATCH 节）
-- `docs/adr/0016-blackwell-only-tcgen05.md`（Phase 1 + 1.x 完成记录）
+- `docs/adr/ADR-0016-blackwell-only-tcgen05.md`（Phase 1 + 1.x 完成记录）
 - 增量沉淀至 `.opencode/skills/ptx-lessons-learned/SKILL.md`（Oracle "read-only methods don't hold mu_" 是新教训）
 
 ## Design-Time Checklist

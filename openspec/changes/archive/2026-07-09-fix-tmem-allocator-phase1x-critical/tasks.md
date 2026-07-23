@@ -71,7 +71,7 @@
 
 ## 7. Update ADR-0016 (Per Oracle Q7-A)
 
-- [ ] 7.1 `docs/adr/0016-blackwell-only-tcgen05.md` 追加段落:
+- [ ] 7.1 `docs/adr/ADR-0016-blackwell-only-tcgen05.md` 追加段落:
   - [ ] 标题: "2026-07-09: Phase 1 of implement-tcgen05-handlers-extended 完成 + Phase 1.x 修订"
   - [ ] 内容: 3/11 deferred → 0 deferred for alloc-family; cp/mma_ws/fence 待 Phase 2-4
 

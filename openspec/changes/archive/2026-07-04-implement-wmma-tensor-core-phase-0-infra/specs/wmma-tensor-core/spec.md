@@ -1,6 +1,6 @@
 ## ADDED Requirements
 
-> **Scope**: Blackwell `tcgen05.*` 基础设施 (Phase 0)，per [ADR-0016](../../../../docs/adr/0016-blackwell-only-tcgen05.md).
+> **Scope**: Blackwell `tcgen05.*` 基础设施 (Phase 0)，per [ADR-0016](../../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md).
 > 本 spec 仅覆盖 4 个基础设施子系统 (TMA + TMEM + cluster + async queue);
 > `tcgen05.mma/ld/st/commit/wait` handler 实现与 GEMM e2e kernel 由
 > `implement-wmma-tensor-core-tcgen05` change 交付。

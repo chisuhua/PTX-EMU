@@ -1,6 +1,6 @@
 # Wire tcgen05 Handlers to Dispatch Pipeline
 
-> **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) Accepted
+> **架构依据**: [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) Accepted
 > **前置 spec**: [openspec/specs/tcgen05-ir-types/spec.md](../../specs/tcgen05-ir-types/spec.md) — 已设计完整的 `Tcgen05PipelineHandler` 模式,本 change **落实**该 spec
 > **前置 change**: `implement-tcgen05-handlers-core` (archived @ df6dde7) — 写了 5 个 `processTcgen05*` 自由函数但**未接入 dispatch**(死代码)
 > **依赖 change**: `fix-tcgen05-test-coverage-gaps` — 提供 dead-code coverage 测试基础设施(独立 commit 后,死代码不再"死代码",那些测试成为真实路径验证)

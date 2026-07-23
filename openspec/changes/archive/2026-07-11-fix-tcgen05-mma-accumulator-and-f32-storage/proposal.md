@@ -1,6 +1,6 @@
 # Fix tcgen05.mma Fragment Helper — Add Accumulator + f32 Output Storage
 
-> **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) — Blackwell-only tcgen05
+> **架构依据**: [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) — Blackwell-only tcgen05
 > **Ref** (不能 amend 的已归档 change): [`archive/2026-07-10-implement-tcgen05-handlers-extended/`](../../archive/2026-07-10-implement-tcgen05-handlers-extended/) (commit `bc0ef60`)
 > **Oracle 2026-07-10 报告**: session `ses_0b3791d78ffewb52428kJJ2Irz` (5 HIGH/MEDIUM confidence blockers)
 > **Oracle 2026-07-10 API 审查**: session `ses_0b026333bffePgrqVq7PDJNeR1` (H1/H2 具体 API 细节：idesc/accumulate 默认/readback index)
@@ -157,7 +157,7 @@ FU-1 (C3) — 基础前置（visitor IMMEDIATE 提取 pattern + handler 读 inst
 1. `git add openspec/changes/fix-tcgen05-mma-accumulator-and-f32-storage/` + 4 个 md artifacts
 2. **先 commit artifacts**（per lessons-learned §6 — artifacts FIRST）: `docs(openspec): fix-tcgen05-mma-accumulator-and-f32-storage artifacts`
 3. ADR-0016 追加 "2026-07-11 Postmortem: H1+H2 fix" 段（per lessons-learned §G Checklist）
-4. `git add docs/adr/0016-blackwell-only-tcgen05.md` → commit `docs(adr): ADR-0016 postmortem H1+H2`
+4. `git add docs/adr/ADR-0016-blackwell-only-tcgen05.md` → commit `docs(adr): ADR-0016 postmortem H1+H2`
 5. `openspec archive fix-tcgen05-mma-accumulator-and-f32-storage --yes` → 归档
 6. 跑 `cd build && ctest --output-on-failure` 全量验证
 7. 跑 `./tests/ptx/test_all_ptx.sh` 验证
@@ -183,7 +183,7 @@ FU-1 (C3) — 基础前置（visitor IMMEDIATE 提取 pattern + handler 读 inst
 | `tests/integration/tcgen05/test_tcgen05_mma_persistence.cpp` | 修改（T1 反转 + 新增 T1_overwrite） | +30 / -10 |
 | `tests/integration/tcgen05/test_tcgen05_mma_ws.cpp` | 修改（readback f16→f32） | +10 / -10 |
 | `tests/reference/ptx_tcgen05/tcgen05_mma_golden.h` | 修改（注释更新） | +5 / -2 |
-| `docs/adr/0016-blackwell-only-tcgen05.md` | 追加段（postmortem） | +30 |
+| `docs/adr/ADR-0016-blackwell-only-tcgen05.md` | 追加段（postmortem） | +30 |
 | **总计** | | **+106 / -32** |
 
 ### 影响的依赖
@@ -201,7 +201,7 @@ FU-1 (C3) — 基础前置（visitor IMMEDIATE 提取 pattern + handler 读 inst
 
 - `src/ptxsim/instructions/AGENTS.md` — 不需修改（handler dispatch 表不变）
 - `src/ptxsim/AGENTS.md` — 不需修改（architecture 不变）
-- `docs/adr/0016-blackwell-only-tcgen05.md` — 追加 "2026-07-11 Postmortem: H1+H2 fix" 段
+- `docs/adr/ADR-0016-blackwell-only-tcgen05.md` — 追加 "2026-07-11 Postmortem: H1+H2 fix" 段
 - 根 `AGENTS.md` 已知限制表 — 不需修改（H1+H2 是内部修正，未改变对外能力）
 
 ## Design-Time Checklist (Lessons-Learned, per `ptx-lessons-learned`)

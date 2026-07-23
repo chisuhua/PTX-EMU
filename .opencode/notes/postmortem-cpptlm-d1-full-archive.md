@@ -232,7 +232,7 @@ not gating the archive.
 
 - Archived change: `openspec/changes/archive/2026-07-17-cpptlm-d1-full/`
 - Promoted spec: `openspec/specs/cpptlm-d1-full/spec.md`
-- ADR-0021: `docs/adr/0021-cpptlm-d1-full-integration.md`
+- ADR-0021: `docs/adr/ADR-0021-cpptlm-d1-full-integration.md`
 - Lessons-learned (round 2): `docs/dev-process/lessons-learned.md` §33-37 (commit `380a8b6a`)
 - Cross-repo review: `docs/superpowers/findings/2026-07-16-cpptlm-d1-full-cross-repo-review.md`
 - HSK drafts: `openspec/changes/cpptlm-d1-full/hsk-{1,2,3}.md`

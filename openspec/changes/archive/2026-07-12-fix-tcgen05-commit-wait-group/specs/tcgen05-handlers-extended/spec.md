@@ -28,12 +28,12 @@ of hardcoding `group_id=1`. The hardcoded `lane_id=0` in
 - **THEN** the handler allocates `num_cols` TMEM slots via `TmemAllocator` (new abstraction layer, per Oracle Q1-A)
 - **AND** other CTAs in same kernel are not affected
 
-#### Scenario: cta_group::2 throws clear exception (per [ADR-0018](../../../docs/adr/0018-tcgen05-cta-group-restriction.md))
+#### Scenario: cta_group::2 throws clear exception (per [ADR-0018](../../../docs/adr/ADR-0018-tcgen05-cta-group-restriction.md))
 
 - **WHEN** `tcgen05.*.cta_group::2.*` is dispatched
 - **THEN** the handler throws `UnsupportedInstructionException` with message containing "cluster abstraction not yet implemented (ADR-0018)"
 - **AND** no silent fallback to cta_group::1 behavior
-- **NOTE**: `cta_group::2` parsing path is enabled by `Tcgen05Instr::cta_group` field being populated (per [`specs/tcgen05-multi-group-commit-wait/spec.md`](tcgen05-multi-group-commit-wait/spec.md) — the C3 fix populates `cta_group=2`); the throw occurs at handler dispatch, not at parse time. Per [ADR-0018](../../../docs/adr/0018-tcgen05-cta-group-restriction.md) (created by `fix-tcgen05-commit-wait-group`), this throw is the formalized behavior across all 11 tcgen05 handlers.
+- **NOTE**: `cta_group::2` parsing path is enabled by `Tcgen05Instr::cta_group` field being populated (per [`specs/tcgen05-multi-group-commit-wait/spec.md`](tcgen05-multi-group-commit-wait/spec.md) — the C3 fix populates `cta_group=2`); the throw occurs at handler dispatch, not at parse time. Per [ADR-0018](../../../docs/adr/ADR-0018-tcgen05-cta-group-restriction.md) (created by `fix-tcgen05-commit-wait-group`), this throw is the formalized behavior across all 11 tcgen05 handlers.
 
 #### Scenario: weight-stationary mma.ws handler (per Oracle Q3-A scope)
 
@@ -123,12 +123,12 @@ The system SHALL update documentation in the same change (each Phase end):
 - Root `AGENTS.md` known limitations table: tcgen05 → 11/11 handler implemented
 - `src/ptxsim/instructions/AGENTS.md`: `tcgen05.cpp` includes 11 handler
 - `docs/ptx/README.md` status table updated
-- `docs/adr/0016-blackwell-only-tcgen05.md` appends update record
+- `docs/adr/ADR-0016-blackwell-only-tcgen05.md` appends update record
 
 #### Scenario: documentation reflects 11/11 tcgen05 handlers
 
 - **WHEN** the change is complete (all 6 Phases done)
 - **THEN** `git grep "11/11"` on `AGENTS.md` and `docs/ptx/README.md` returns the updated status
-- **AND** `docs/adr/0016-blackwell-only-tcgen05.md` includes a section noting the change archive commit
+- **AND** `docs/adr/ADR-0016-blackwell-only-tcgen05.md` includes a section noting the change archive commit
 - **AND** no remaining references to "deferred" or "UnsupportedInstructionException" for these 6 handlers
-- **AND** NEW per `fix-tcgen05-commit-wait-group`: `docs/adr/0016-blackwell-only-tcgen05.md` includes a "2026-07-12 Postmortem: C3 fix" section
+- **AND** NEW per `fix-tcgen05-commit-wait-group`: `docs/adr/ADR-0016-blackwell-only-tcgen05.md` includes a "2026-07-12 Postmortem: C3 fix" section

@@ -2,7 +2,7 @@
 
 > **Status**: Proposed
 > **Parent**: `proposal.md` (cpptlm-d1-full)
-> **ADR**: [docs/adr/0021-cpptlm-d1-full-integration.md](../../../docs/adr/0021-cpptlm-d1-full-integration.md)（D-PTX-1~6 决策记录）
+> **ADR**: [docs/adr/ADR-0021-cpptlm-d1-full-integration.md](../../../docs/adr/ADR-0021-cpptlm-d1-full-integration.md)（D-PTX-1~6 决策记录）
 > **Triggered by**: CppTLM `2026-07-14-ptxemu-comprehensive-modification-plan.md §2` + `PTX-EMU-README §10`
 > **Companion**: `cpptlm-phase8b-injection-points`（姊妹 change，§3 D1-Full 注入点）
 
@@ -383,7 +383,7 @@ bool SingletonGuard::initialized_ = false;
 
 | 组件 | 影响类型 | 说明 |
 |------|---------|------|
-| `docs/adr/0021-cpptlm-d1-full-integration.md` | **新增** | D-PTX-1~6 决策记录（~200 行） |
+| `docs/adr/ADR-0021-cpptlm-d1-full-integration.md` | **新增** | D-PTX-1~6 决策记录（~200 行） |
 | `include/cudart/cpptlm_bridge.h` | **新增** | CppTLMBridge 抽象接口（~70 LOC） |
 | `include/cudart/cpptlm_bridge_impl.h` | **新增**（optional） | Bridge 默认 stub 实现（~20 LOC） |
 | `include/cudart/AGENTS.md` | **修改** | Bridge ABI 真值源地位记录 |

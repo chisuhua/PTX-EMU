@@ -193,7 +193,7 @@ void tcgen05_fragment_mma_f16(Tmem& tmem, int warp_id,
 | Test | `tests/integration/tcgen05/test_tcgen05_mma_multi_warp.cpp` | 新增文件（4 TC） |
 | CMake | `tests/integration/tcgen05/CMakeLists.txt` | 新增 ctest target |
 | Helper doc | `include/ptxsim/instructions/tcgen05_helpers.h:43-46` | 注释更新 |
-| ADR-0016 | `docs/adr/0016-blackwell-only-tcgen05.md` | postmortem 段 |
+| ADR-0016 | `docs/adr/ADR-0016-blackwell-only-tcgen05.md` | postmortem 段 |
 | AGENTS.md | 根 `AGENTS.md` 已知限制表 | 限制更新（s/multi-warp 已支持/g） |
 
 ### 不影响的组件（per Oracle Q4 + Q6）
@@ -311,7 +311,7 @@ void tcgen05_fragment_mma_f16(Tmem& tmem, int warp_id,
 - Oracle 2026-07-11 API 审查: session `ses_0af21612bffeKevR9nC1HzBRhL` (Metis pre-impl review for sister H1+H2)
 - Sister change: [`../fix-tcgen05-mma-accumulator-and-f32-storage/`](../fix-tcgen05-mma-accumulator-and-f32-storage/) (H1+H2 — helper 内部 fix，已 propose)
 - Foundation change: [`../fix-tcgen05-commit-wait-group/`](../fix-tcgen05-commit-wait-group/) (C3 — visitor IMMEDIATE 提取 pattern)
-- ADR-0016: [docs/adr/0016-blackwell-only-tcgen05.md](../../../docs/adr/0016-blackwell-only-tcgen05.md)
+- ADR-0016: [docs/adr/ADR-0016-blackwell-only-tcgen05.md](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md)
 - ptx-lessons-learned: [.opencode/skills/ptx-lessons-learned/SKILL.md](../../../.opencode/skills/ptx-lessons-learned/SKILL.md) §3, §4, §6, §7
 - proposal.md: [`./proposal.md`](./proposal.md)
 - tasks.md: [`./tasks.md`](./tasks.md) (待创建)

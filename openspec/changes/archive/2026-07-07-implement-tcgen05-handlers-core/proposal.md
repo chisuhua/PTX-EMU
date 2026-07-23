@@ -1,6 +1,6 @@
 # Implement Blackwell tcgen05 Core Handlers (5 instructions + golden-value tests)
 
-> **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) Accepted
+> **架构依据**: [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) Accepted
 > **前置 changes**:
 >   - `archive/2026-07-06-implement-tcgen05-syntax-ir` (Change-1, archived)
 >   - `fix-tcgen05-grammar-mr3` (Change-3a, pending) — **硬前置**(grammar 必须 100% 正确)
@@ -59,7 +59,7 @@ Change-1 建立了独立 tcgen05 命名空间(grammar + IR),Change-3a 修复 gra
 | `tests/integration/CMakeLists.txt` | 注册 5 个新集成测试 |
 | `tests/e2e/CMakeLists.txt` | 注册新 E2E kernel |
 | 根 `AGENTS.md` | 更新已知限制表(tcgen05 handler 已实现) |
-| `docs/adr/0016-blackwell-only-tcgen05.md` | 追加 Phase 1-2 archive commit 引用 |
+| `docs/adr/ADR-0016-blackwell-only-tcgen05.md` | 追加 Phase 1-2 archive commit 引用 |
 
 ### 不修改(范围外)
 
@@ -158,7 +158,7 @@ Change-1 建立了独立 tcgen05 命名空间(grammar + IR),Change-3a 修复 gra
 | `tests/e2e/kernel/test_tcgen05_mma_gemm.cu`(1 个) | 新增 | +150 |
 | `tests/ptx/reference/tcgen05_mma_golden.h` | 新增(golden values) | +100 |
 | 多个 CMakeLists.txt | 注册 | +30 |
-| `docs/adr/0016-*.md` + AGENTS.md | 文档 | +30 |
+| `docs/adr/ADR-0016-*.md` + AGENTS.md | 文档 | +30 |
 | **总计** | | **+1110** |
 
 ### 影响的依赖
@@ -179,7 +179,7 @@ Change-1 建立了独立 tcgen05 命名空间(grammar + IR),Change-3a 修复 gra
 
 - 根 `AGENTS.md`(已知限制表)
 - `src/ptxsim/instructions/AGENTS.md`(目录说明)
-- `docs/adr/0016-blackwell-only-tcgen05.md`(更新记录)
+- `docs/adr/ADR-0016-blackwell-only-tcgen05.md`(更新记录)
 - `docs/dev-process/lessons-learned.md`(可选 §24)
 
 ## Design-Time Checklist (Lessons-Learned)

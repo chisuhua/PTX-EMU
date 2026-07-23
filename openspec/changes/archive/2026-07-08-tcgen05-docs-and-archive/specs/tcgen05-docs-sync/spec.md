@@ -11,7 +11,7 @@ reference ADR-0016.
 - **AND** "pre-Blackwell WMMA permanently throws" line remains
 
 #### Scenario: ADR-0016 updated record
-- **WHEN** `tail -50 docs/adr/0016-blackwell-only-tcgen05.md` is run
+- **WHEN** `tail -50 docs/adr/ADR-0016-blackwell-only-tcgen05.md` is run
 - **THEN** a new "更新记录" entry exists with the change's commit hash and date
 
 ### Requirement: openspec/specs/ final spec state

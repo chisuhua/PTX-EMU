@@ -79,7 +79,7 @@ PTX-EMU 的 CppTLM co-simulation 基础设施已就绪（bridge ABI + PtxEmuDriv
 
 ## Refs
 
-- [ADR-0021 §2026-07-20 Postmortem L1+L2](docs/adr/0021-cpptlm-d1-full-integration.md)
+- [ADR-0021 §2026-07-20 Postmortem L1+L2](docs/adr/ADR-0021-cpptlm-d1-full-integration.md)
 - [`openspec/changes/archive/2026-07-20-e2e-cosim-kernel-verify/`](openspec/changes/archive/2026-07-20-e2e-cosim-kernel-verify/)
 - Oracle 审查 sessions `ses_0812c1edfffekcd3iB4cDf1xKN` + `ses_08120fb5fffexGNRjWWupXHw58`
 - 相关 skills：`ptx-debug`、`ptx-instruction-pipeline`、`ptx-barrier-mechanism`、`ptx-lessons-learned`、`regression-bisect`、`state-modification-audit`

@@ -1,7 +1,7 @@
 ## 0. 强制 Root Cause 分析（必做！在 Phase 1 之前完成）
 
 - [ ] 0.1 阅读 commit `36dbb9a`（实施）与 `f033312`（revert）的 commit message + diff
-- [ ] 0.2 阅读 `docs/dev-process/lessons-learned.md` 与 `docs/adr/0008-barrier-semantics.md` §2026-06-18 Postmortem
+- [ ] 0.2 阅读 `docs/dev-process/lessons-learned.md` 与 `docs/adr/ADR-0008-barrier-semantics.md` §2026-06-18 Postmortem
 - [ ] 0.3 列出 commit `36dbb9a` 引入的具体代码变更（vs revert 后）
 - [ ] 0.4 输出 `failure_root_cause.md` 文档：本 change 必须解决的具体 bug 列表
 - [ ] 0.5 **如果 root cause 未明确，STOP 实施，等待更多调查**（不重蹈覆辙）
@@ -72,7 +72,7 @@
 
 ## 5. 文档同步
 
-- [x] 5.1 更新 `docs/adr/0008-barrier-semantics.md`：追加 §"BarWarpSyncHandler 迁移 + Wbar 删除"（2026-07-03 完成，see §2026-07-03）
+- [x] 5.1 更新 `docs/adr/ADR-0008-barrier-semantics.md`：追加 §"BarWarpSyncHandler 迁移 + Wbar 删除"（2026-07-03 完成，see §2026-07-03）
 - [x] 5.2 更新 `src/ptxsim/instructions/AGENTS.md`：将"barrier.cpp (指令分发入口) → barrier/barrier_module.cpp (实际状态管理)"标注 BarWarpSyncHandler 也走 BarrierModule API（2026-07-03 完成 by docs(barrier): sync AGENTS.md）
 - [x] 5.3 更新 `src/ptxsim/core/AGENTS.md`：移除 `Wbar` / `warp_state.wbars[]` 相关 ANTI-PATTERNS 条目；澄清 `BUG-POSTBARRIER-TWOHALVES` fix 现在由 `BarrierModule::release_warp_barrier` 封装（2026-07-03 完成 by docs(barrier): sync AGENTS.md）
 

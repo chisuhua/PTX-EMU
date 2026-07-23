@@ -79,7 +79,7 @@ PTX-EMU 在 commit `12390b7`(merge `fix/barrier-architecture-migration`)后已�
 
 | 文件 | 影响 |
 |------|------|
-| `docs/adr/0008-barrier-semantics.md` | 追加 "2026-06-20 Phase 6 partial cleanup" 段落;更新"废弃/暂留项"表 |
+| `docs/adr/ADR-0008-barrier-semantics.md` | 追加 "2026-06-20 Phase 6 partial cleanup" 段落;更新"废弃/暂留项"表 |
 | `src/ptxsim/core/AGENTS.md` | 删除 line 22 `synchronize_barrier()` 行 + line 85 KNOWN ISSUE 注释(改为指向 `test_post_barrier_divergence.cpp`);line 42 注释更新 |
 | `src/ptxsim/AGENTS.md` | line 42 注释更新("`BarWarpSyncHandler` still uses `Wbar` (Phase 5 deferred)");保留 line 48 "DO NOT add new uses of Wbar" 警告 |
 | `tests/AGENTS.md` | line 21 描述更新 |

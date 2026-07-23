@@ -3,7 +3,7 @@
 > **Status**: Draft (companion to OpenSpec change `openspec/changes/cpptlm-phase8b-injection-points/`)
 > **Audience**: PTX-EMU 团队工程师（含未来 6 个月后的自己）
 > **From**: PTX-EMU Architecture Team
-> **关联**: [proposal.md](./proposal.md) + [design.md](./design.md) + [specs/cpptlm-injection-points/spec.md](./specs/cpptlm-injection-points/spec.md) + [tasks.md](./tasks.md) + [ADR-0020](../../../docs/adr/0020-cpptlm-injection-points.md)
+> **关联**: [proposal.md](./proposal.md) + [design.md](./design.md) + [specs/cpptlm-injection-points/spec.md](./specs/cpptlm-injection-points/spec.md) + [tasks.md](./tasks.md) + [ADR-0020](../../../docs/adr/ADR-0020-cpptlm-injection-points.md)
 
 ---
 
@@ -188,7 +188,7 @@ ctest -L "unit;integration;e2e" --output-on-failure
 | CppTLM | P2 AsyncCompletion 占位 | `e69cd1d` → `include/tlm/gpu/async_completion_adapter.hh` | ✅ Merged |
 | CppTLM | P1 RFC-P1-001~004 | `2b28505` → `docs/superpowers/specs/2026-07-16-rfcs-to-ptxemu-p1-injection.md` | ✅ Sent |
 | CppTLM | Phase 0.5 baseline | `docs/superpowers/specs/2026-07-15-phase05-baseline-report.md` (781/781 用例 / 15574 断言) | ✅ Verified |
-| PTX-EMU | ADR-0020 | `docs/adr/0020-cpptlm-injection-points.md` Status: Accepted | ✅ Accepted |
+| PTX-EMU | ADR-0020 | `docs/adr/ADR-0020-cpptlm-injection-points.md` Status: Accepted | ✅ Accepted |
 | PTX-EMU | 本 change artifacts | proposal/design/internal-plan/tasks/specs | ✅ Phase 0 答复锁定（待 OpenSpec change → Active） |
 
 ### 5.5 解锁条件（PTX-EMU 端 Phase 1 启动前置）

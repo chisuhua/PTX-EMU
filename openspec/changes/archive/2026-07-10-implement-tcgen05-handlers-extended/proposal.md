@@ -1,6 +1,6 @@
 # Implement Extended tcgen05 Handlers (6 remaining: ALLOC/DEALLOC/RELINQUISH/CP/FENCE/MMA_WS)
 
-> **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) Accepted
+> **架构依据**: [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) Accepted
 > **前置 changes**(全部必须 archive 后才能执行本 change):
 >   - `archive/2026-07-06-implement-tcgen05-syntax-ir` (Change-1, archived)
 >   - `fix-tcgen05-grammar-mr3` (Change-3a, pending) — **硬前置**(grammar 必须 100% 正确)
@@ -54,7 +54,7 @@ Change-3b 实施 5 个 **core handler**(MMA/LD/ST/COMMIT/WAIT),但 Blackwell `tc
 | `tests/e2e/CMakeLists.txt` | 注册新 E2E kernel |
 | `src/ptxsim/instructions/AGENTS.md` | 更新 `tcgen05.cpp` 包含 extended handler |
 | 根 `AGENTS.md` | 已知限制表标注 "tcgen05 11/11 handler 已实现" |
-| `docs/adr/0016-blackwell-only-tcgen05.md` | 追加 "11 handler 全实现" 标记 |
+| `docs/adr/ADR-0016-blackwell-only-tcgen05.md` | 追加 "11 handler 全实现" 标记 |
 
 ### 不修改(范围外)
 
@@ -196,7 +196,7 @@ Change-3b 实施 5 个 **core handler**(MMA/LD/ST/COMMIT/WAIT),但 Blackwell `tc
 
 - 根 `AGENTS.md`(已知限制表)
 - `src/ptxsim/instructions/AGENTS.md`(目录说明)
-- `docs/adr/0016-blackwell-only-tcgen05.md`(更新记录)
+- `docs/adr/ADR-0016-blackwell-only-tcgen05.md`(更新记录)
 
 ## Design-Time Checklist (Lessons-Learned)
 
@@ -292,7 +292,7 @@ Change-3b 实施 5 个 **core handler**(MMA/LD/ST/COMMIT/WAIT),但 Blackwell `tc
 **决策 D5:relinquish 语义**
 - **per-warp permit**: 每个 warp 有自己的 allocate permit,relinquish 后其他 warp 可 alloc
 - 备选:per-CTA 单一 permit — 拒绝,违反 NVIDIA 硬件(CTA-specialized 场景)
-- 理由:per `docs/adr/0016-*.md` 描述的 CTA-specialized warp 场景
+- 理由:per `docs/adr/ADR-0016-*.md` 描述的 CTA-specialized warp 场景
 
 **决策 D6:cp SMEM 源(Oracle Q4-B 简化)**
 - **`.shared::cta` 源**: cp 只支持 per-CTA shared memory(per PTX ISA)

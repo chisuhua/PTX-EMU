@@ -16,7 +16,7 @@
 #### Scenario: New developer searches for Blackwell tcgen05 documentation
 - **WHEN** developer needs to find Blackwell tcgen05 architecture / roadmap docs
 - **THEN** README.md "文档导航" section MUST link to:
-  - `docs/adr/0016-blackwell-only-tcgen05.md` (architecture decision)
+  - `docs/adr/ADR-0016-blackwell-only-tcgen05.md` (architecture decision)
   - `docs/dev-process/post-tcgen05-roadmap.md` (H5 planning)
 
 #### Scenario: Reader wants current status

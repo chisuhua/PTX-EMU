@@ -39,10 +39,10 @@
 
 按 P0-D2 修正顺序：
 
-1. **ADR-0003** (`docs/adr/0003-commit-pc-pattern.md`)：
+1. **ADR-0003** (`docs/adr/ADR-0003-commit-pc-pattern.md`)：
    在 "PC 写入入口" 章节追加 "Removed 2026-07-XX: `force_set_pc`" 段落，
    明确由 `set_pc()` 取代。
-2. **ADR-0008** (`docs/adr/0008-barrier-semantics.md`)：
+2. **ADR-0008** (`docs/adr/ADR-0008-barrier-semantics.md`)：
    在代码示例旁加 `// 历史实现，已移除` 注释（不删示例，保留历史）。
 3. **`src/ptxsim/core/AGENTS.md`** + **`src/ptxsim/instructions/AGENTS.md`**：
    "DO NOT use `set_pc()` — use `commit_pc()` or `force_set_pc()`"

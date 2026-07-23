@@ -200,7 +200,7 @@
 
 ## Phase 3: 文档同步（Fix #3）
 
-- [ ] 3.1 更新 `docs/adr/0016-blackwell-only-tcgen05.md`
+- [ ] 3.1 更新 `docs/adr/ADR-0016-blackwell-only-tcgen05.md`
   - 添加 §2026-07-06 ClusterContext 接入 tcgen05 commit/wait 状态
 - [ ] 3.2 更新 `docs/dev-process/post-tcgen05-roadmap.md`
   - 标注 F0 (ClusterContext 接入) 已完成

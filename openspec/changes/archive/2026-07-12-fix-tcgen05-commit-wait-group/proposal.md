@@ -17,7 +17,7 @@ Oracle 2026-07-11 审计发现 `tcgen05.commit` 和 `tcgen05.wait` 指令存在 
 - **修改** `include/ptx_ir/statement_factory.h::makeTcgen05Instr`：新增可选参数 `uint32_t cta_group = 1`（默认 1 保留所有现有调用点向后兼容）。
 - **修改** `src/ptxsim/instructions/tcgen05.cpp::processTcgen05Commit`（line 493）：删除 `(void)instr;` 忽略，改调 `cta->tc_queue().commit(instr.cta_group)` 替代 `commit(1)`。
 - **修改** `src/ptxsim/instructions/tcgen05.cpp::processTcgen05Wait`（line 530）：同上，改调 `cta->tc_queue().wait(warp, /*lane_id=*/0, instr.cta_group)` 替代 `wait(warp, 0, 1)`（lane_id 操作数解析属于 future FU-3.5 子任务，本 change 仅做 group_id）。
-- **新增** 测试 `tests/integration/tcgen05/test_tcgen05_commit_wait_group.cpp`：验证 `commit(2)` + `wait(2)` 序列；验证 `cta_group::2` 解析路径（per [ADR-0018](../../../docs/adr/0018-tcgen05-cta-group-restriction.md) 已 throw 路径不变）。
+- **新增** 测试 `tests/integration/tcgen05/test_tcgen05_commit_wait_group.cpp`：验证 `commit(2)` + `wait(2)` 序列；验证 `cta_group::2` 解析路径（per [ADR-0018](../../../docs/adr/ADR-0018-tcgen05-cta-group-restriction.md) 已 throw 路径不变）。
 - **NEW**: 测试 `tests/integration/ptx/test_tcgen05_mma_parse.cpp`：追加 `cta_group::2` 解析验证（`instr.cta_group == 2`）。注：本测试仅 factory-level（直接调用 `makeTcgen05Instr` 构造 instr），**不驱动 ANTLR parser**；per `test_tcgen05_mma_parse.cpp:7-9` 头部注释明确说明。ANTLR parser 路径验证由 `./tests/ptx/test_all_ptx.sh` 覆盖（per ptx-lessons-learned §9 + Checklist L）。
 
 **BREAKING**: 无（`cta_group` 默认 `1` + 所有现有测试 PTX 默认隐含 `cta_group::1`，handler 现在读 `instr.cta_group` 但值仍为 1，行为不变）。
@@ -55,8 +55,8 @@ Oracle 2026-07-11 审计发现 `tcgen05.commit` 和 `tcgen05.wait` 指令存在 
 
 ### ADR / Spec 同步
 
-- **ADR-0016** (`docs/adr/0016-blackwell-only-tcgen05.md`)：追加 "2026-07-12 Postmortem: C3 fix" 段
-- **ADR-0018** (`docs/adr/0018-tcgen05-cta-group-restriction.md`)：**本 change 新建**（formalize `cta_group::2` throw 语义，之前隐式分散在 11 个 handler 的注释中）
+- **ADR-0016** (`docs/adr/ADR-0016-blackwell-only-tcgen05.md`)：追加 "2026-07-12 Postmortem: C3 fix" 段
+- **ADR-0018** (`docs/adr/ADR-0018-tcgen05-cta-group-restriction.md`)：**本 change 新建**（formalize `cta_group::2` throw 语义，之前隐式分散在 11 个 handler 的注释中）
 - 根 `AGENTS.md`：不变（handler dispatch 表无变化）
 
 ## Design-Time Checklist (Lessons-Learned)
@@ -121,7 +121,7 @@ Oracle 2026-07-11 审计发现 `tcgen05.commit` 和 `tcgen05.wait` 指令存在 
 
 - Sister change (archived 2026-07-11): [`../../archive/2026-07-11-fix-tcgen05-mma-accumulator-and-f32-storage/`](../../archive/2026-07-11-fix-tcgen05-mma-accumulator-and-f32-storage/)
 - Ref (archived 2026-07-10): [`../../archive/2026-07-10-implement-tcgen05-handlers-extended/`](../../archive/2026-07-10-implement-tcgen05-handlers-extended/)
-- ADR-0016: [docs/adr/0016-blackwell-only-tcgen05.md](../../../docs/adr/0016-blackwell-only-tcgen05.md)
-- ADR-0018 (本 change 新建): [docs/adr/0018-tcgen05-cta-group-restriction.md](../../../docs/adr/0018-tcgen05-cta-group-restriction.md)
+- ADR-0016: [docs/adr/ADR-0016-blackwell-only-tcgen05.md](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md)
+- ADR-0018 (本 change 新建): [docs/adr/ADR-0018-tcgen05-cta-group-restriction.md](../../../docs/adr/ADR-0018-tcgen05-cta-group-restriction.md)
 - ptx-lessons-learned: [.opencode/skills/ptx-lessons-learned/SKILL.md](../../../.opencode/skills/ptx-lessons-learned/SKILL.md)
 - PTX ISA §9.7.16 (tcgen05.commit/wait semantics)

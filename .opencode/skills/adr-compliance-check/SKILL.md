@@ -247,7 +247,7 @@ grep -n "pc != current_inst_pc" src/ptxsim/core/warp_context.cpp
 
 ```bash
 # 1. 读取相关 ADR 的合规检查清单
-cat docs/adr/0006-simt-stack-management.md | grep -A 20 "合规检查"
+cat docs/adr/ADR-0006-simt-stack-management.md | grep -A 20 "合规检查"
 
 # 2. 对照检查代码实现
 # 3. 标记检查项为完成或问题
@@ -385,7 +385,7 @@ grep "deprecated" include/ptxsim/wbar.h
 - ✅ 新代码应使用 `BarrierModule` / `WarpBarrier` / `CTABarrier`
 - ✅ 旧代码引用应标注 `// TODO: migrate to BarrierModule`
 
-**关联决策**: `docs/adr/0008-barrier-semantics.md` §"2026-06-18 Postmortem"（Phase 5 推迟决策）
+**关联决策**: `docs/adr/ADR-0008-barrier-semantics.md` §"2026-06-18 Postmortem"（Phase 5 推迟决策）
 
 ### 集成到 ADR 合规报告
 

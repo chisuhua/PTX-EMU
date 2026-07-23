@@ -250,7 +250,7 @@
 
 ### 6.2 ADR-0016 Postmortem 追加
 
-- [ ] 6.2.1 读 `docs/adr/0016-blackwell-only-tcgen05.md` 找到最末段
+- [ ] 6.2.1 读 `docs/adr/ADR-0016-blackwell-only-tcgen05.md` 找到最末段
 - [ ] 6.2.2 追加 "2026-07-XX Postmortem: FlashAttention coverage" 段：
   ```markdown
   ## 2026-07-XX Postmortem: FlashAttention coverage
@@ -285,7 +285,7 @@
 
 ### 6.3 ADR commit
 
-- [ ] 6.3.1 `git add docs/adr/0016-blackwell-only-tcgen05.md`
+- [ ] 6.3.1 `git add docs/adr/ADR-0016-blackwell-only-tcgen05.md`
 - [ ] 6.3.2 `git commit -m "docs(adr): ADR-0016 postmortem FlashAttention coverage (Oracle 2026-07-11)"`
 
 ### 6.4 Archive change

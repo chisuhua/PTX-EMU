@@ -1,6 +1,6 @@
 # Fill tcgen05 5 Core Handler Test Coverage Gaps — Design
 
-> **架构依据**: [ADR-0016](../../../../docs/adr/0016-blackwell-only-tcgen05.md) Accepted
+> **架构依据**: [ADR-0016](../../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) Accepted
 > **前置 change**: `implement-tcgen05-handlers-core` (archived @ `df6dde7`)
 > **核心 Metis 修正**: D1 (helpers) / D2 (path) / D3 (f16 风险) / **D4 (handler 死代码 + dead code coverage 策略)**
 

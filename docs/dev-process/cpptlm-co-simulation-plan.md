@@ -528,8 +528,8 @@ graph TD
 
 | 文档 | 路径 |
 |------|------|
-| ADR-0020 注入决策 | `docs/adr/0020-cpptlm-injection-points.md` |
-| ADR-0021 D1-Full 集成 | `docs/adr/0021-cpptlm-d1-full-integration.md` |
+| ADR-0020 注入决策 | `docs/adr/ADR-0020-cpptlm-injection-points.md` |
+| ADR-0021 D1-Full 集成 | `docs/adr/ADR-0021-cpptlm-d1-full-integration.md` |
 | D1-Full spec | `openspec/specs/cpptlm-d1-full/spec.md` |
 | Auto-co-sim spec | `openspec/specs/auto-co-simulation/spec.md` |
 | Spec Traceability Matrix | 本文档 §三.5 |

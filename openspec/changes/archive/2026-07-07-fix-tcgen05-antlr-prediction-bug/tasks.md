@@ -10,7 +10,7 @@
 >
 > 本 change 仅保留 artifacts 作为历史参考。如需重新激活，请新建 `fix-*` change（per lessons-learned §6）并先跑 Pre-impl review (Checklist H)。
 
-> **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) Accepted
+> **架构依据**: [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) Accepted
 > **依赖**: [proposal.md](proposal.md) + [design.md](design.md) + 1 spec in [specs/](specs/)
 > **范围**: 3-4 atomic commits,每步独立可 revert(per `ptx-lessons-learned` §3)
 > **Lessons-learned**: Checklist A(函数迁移)+ D(commit 前)+ E(artifacts tracked) + H(pre-impl review)

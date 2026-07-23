@@ -38,7 +38,7 @@ cd build && ctest --output-on-failure
 | SIMT 架构 | [docs/architecture/SIMT-ARCHITECTURE-V2.md](./docs/architecture/SIMT-ARCHITECTURE-V2.md) |
 | 开发指南 | [docs/developer-guide/](./docs/developer-guide/) |
 | ADR 索引 | [docs/adr/README.md](./docs/adr/README.md) |
-| Blackwell tcgen05 架构 | [docs/adr/0016-blackwell-only-tcgen05.md](./docs/adr/0016-blackwell-only-tcgen05.md) |
+| Blackwell tcgen05 架构 | [docs/adr/ADR-0016-blackwell-only-tcgen05.md](./docs/adr/ADR-0016-blackwell-only-tcgen05.md) |
 | tcgen05 实施 roadmap | [docs/dev-process/post-tcgen05-roadmap.md](./docs/dev-process/post-tcgen05-roadmap.md) |
 | 健康审计 | [docs/audits/HEALTH-AUDIT-2026-06-21.md](./docs/audits/HEALTH-AUDIT-2026-06-21.md) |
 | 审计勘误 | [docs/audits/HEALTH-AUDIT-2026-06-21-ERRATA.md](./docs/audits/HEALTH-AUDIT-2026-06-21-ERRATA.md) |
@@ -46,7 +46,7 @@ cd build && ctest --output-on-failure
 
 ## 已实现功能
 
-- **Blackwell tcgen05**：完整实现 `.mma` / `.ld` / `.st` / `.commit` / `.wait`（commit `4151268` Fix #14）— 详见 [docs/adr/0016-blackwell-only-tcgen05.md](./docs/adr/0016-blackwell-only-tcgen05.md)
+- **Blackwell tcgen05**：完整实现 `.mma` / `.ld` / `.st` / `.commit` / `.wait`（commit `4151268` Fix #14）— 详见 [docs/adr/ADR-0016-blackwell-only-tcgen05.md](./docs/adr/ADR-0016-blackwell-only-tcgen05.md)
 - **TMA descriptors**：异步拷贝 descriptor 解析（commit `ad527f5` Fix #5）
 - **TMEM**：per-CTA Tensor Memory（commit `758edb0` Fix #6）
 - **Cluster arrive/wait**：分布式 shared memory 同步（commit `e513235` Fix #7）
@@ -55,9 +55,9 @@ cd build && ctest --output-on-failure
 ## 已知限制
 
 - **PTX 指令覆盖**：参考 [docs/audits/debt-audit-2026-07-02.md](./audits/debt-audit-2026-07-02.md) 自动统计（避免硬编码）
-- **CppTLM D1-Full MemoryBridge**：**已归档（2026-07-17）** — ABI 真值源 `include/cudart/cpptlm_bridge.h`（5 虚方法 + `g_cpptlm_bridge` 全局指针）+ 异步 `cudaLaunchKernel` + `cudaStreamSynchronize` 真实轮询 + GLOBAL LD/ST timing-only 桥接。默认 `g_cpptlm_bridge == nullptr` 时字节级兼容原有同步路径。详见 [ADR-0021](./docs/adr/0021-cpptlm-d1-full-integration.md) + `openspec/specs/cpptlm-d1-full/`。
-- **CppTLM bridge auto-co-sim**：标准 CUDA 程序在 `BUILD_LIB_CPPTLM_CUDART=ON` 下零修改自动协同仿真（commit `auto-co-sim-standalone`）。详见 [ADR-0021](docs/adr/0021-cpptlm-d1-full-integration.md)。
-- **pre-Blackwell tcgen05**：永久抛 `UnsupportedInstructionException`（c5 Fix #1 + [ADR-0016](./docs/adr/0016-blackwell-only-tcgen05.md)）
+- **CppTLM D1-Full MemoryBridge**：**已归档（2026-07-17）** — ABI 真值源 `include/cudart/cpptlm_bridge.h`（5 虚方法 + `g_cpptlm_bridge` 全局指针）+ 异步 `cudaLaunchKernel` + `cudaStreamSynchronize` 真实轮询 + GLOBAL LD/ST timing-only 桥接。默认 `g_cpptlm_bridge == nullptr` 时字节级兼容原有同步路径。详见 [ADR-0021](./docs/adr/ADR-0021-cpptlm-d1-full-integration.md) + `openspec/specs/cpptlm-d1-full/`。
+- **CppTLM bridge auto-co-sim**：标准 CUDA 程序在 `BUILD_LIB_CPPTLM_CUDART=ON` 下零修改自动协同仿真（commit `auto-co-sim-standalone`）。详见 [ADR-0021](docs/adr/ADR-0021-cpptlm-d1-full-integration.md)。
+- **pre-Blackwell tcgen05**：永久抛 `UnsupportedInstructionException`（c5 Fix #1 + [ADR-0016](./docs/adr/ADR-0016-blackwell-only-tcgen05.md)）
 - **ANTLR 版本**：4.13.2 完全 vendored
 - **CUDA Toolkit**：环境自适应（`env.sh` 自动检测 `$(which nvcc)`）
 

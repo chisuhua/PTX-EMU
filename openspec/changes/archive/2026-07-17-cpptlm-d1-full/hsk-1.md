@@ -70,7 +70,7 @@ PTX-EMU 仓库已完成 CppTLMBridge ABI 真值源首发。
 
 ======================== 引用 ========================
 
-- ADR-0021 (PTX-EMU docs/adr/0021-cpptlm-d1-full-integration.md): D-PTX-1 决策
+- ADR-0021 (PTX-EMU docs/adr/ADR-0021-cpptlm-d1-full-integration.md): D-PTX-1 决策
 - openspec/changes/cpptlm-d1-full/ (change artifacts)
 - 综合任务书 §2.1 Task #1 (cppTLMBridge 接口定义)
 - 协作同步 §5 (cppTLMBridge 接口定义补充)

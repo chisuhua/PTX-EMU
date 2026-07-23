@@ -1,6 +1,6 @@
 # Wire tcgen05 Handlers to Dispatch Pipeline — Design
 
-> **架构依据**: [ADR-0016](../../../../docs/adr/0016-blackwell-only-tcgen05.md) Accepted
+> **架构依据**: [ADR-0016](../../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) Accepted
 > **Spec 来源**: [openspec/specs/tcgen05-ir-types/spec.md](../../specs/tcgen05-ir-types/spec.md) — 设计意图已锁定,本 design 落实实施细节
 > **前置 change**: `implement-tcgen05-handlers-core` (df6dde7)
 

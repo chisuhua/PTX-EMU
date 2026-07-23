@@ -1,6 +1,6 @@
 ## MODIFIED Requirements
 
-> **Delta scope**: per [ADR-0016](../../../../docs/adr/0016-blackwell-only-tcgen05.md),
+> **Delta scope**: per [ADR-0016](../../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md),
 > pre-Blackwell WMMA 抛 `UnsupportedInstructionException` **永久**（per
 > `replace-silent-stub-failures` baseline + `implement-wmma-tensor-core-phase-0-infra`
 > archive unchanged behavior）。

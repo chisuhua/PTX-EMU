@@ -46,8 +46,8 @@ grep -rn "get_wbar\|wbar\.h\|warp_state\.wbars\|current_wbar_id" include/ src/ t
   - `ThreadContext::force_set_pc()` 声明 + 实现
 - **测试重写**：`tests/unit/pc/test_pc_management.cpp` 4 处引用（按行决策，
   见 design.md Decision 1）
-- **文档同步**：`docs/adr/0003-commit-pc-pattern.md`、
-  `docs/adr/0008-barrier-semantics.md`、`src/ptxsim/core/AGENTS.md`、
+- **文档同步**：`docs/adr/ADR-0003-commit-pc-pattern.md`、
+  `docs/adr/ADR-0008-barrier-semantics.md`、`src/ptxsim/core/AGENTS.md`、
   `src/ptxsim/instructions/AGENTS.md`、`src/ptxsim/instructions/barrier.cpp`
 
 ## Non-Goals

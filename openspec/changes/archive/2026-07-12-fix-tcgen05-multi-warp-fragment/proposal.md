@@ -1,6 +1,6 @@
 # Fix tcgen05.mma Fragment — Multi-Warp Slot Offset (Oracle C4 BLOCKER)
 
-> **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) — Blackwell-only tcgen05
+> **架构依据**: [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) — Blackwell-only tcgen05
 > **Sister change（已 propose）**: [`../fix-tcgen05-mma-accumulator-and-f32-storage/`](../fix-tcgen05-mma-accumulator-and-f32-storage/) — H1+H2 helper 内部修复（单 warp 路径）
 > **Foundation change（dependency）**: [`../fix-tcgen05-commit-wait-group/`](../fix-tcgen05-commit-wait-group/) — visitor IMMEDIATE 提取 pattern（先合本 change 的前置）
 > **Oracle 2026-07-11 审查**: session `ses_0aefd09c3ffeSqBIAGdxiRBFWC` (Oracle C4 BLOCKER + 4 follow-ups split 验证 Q1-Q6)
@@ -54,7 +54,7 @@ sister change `fix-tcgen05-mma-accumulator-and-f32-storage`（Oracle H1+H2 单 w
 | `src/ptxsim/instructions/tcgen05.cpp:383` | 修改（调用点传 warp_id） | +1 / -1 | 编译期强制 |
 | `tests/integration/tcgen05/test_tcgen05_mma_multi_warp.cpp` | 新增 4 TC | +80 | 不依赖现有测试 |
 | `tests/integration/tcgen05/CMakeLists.txt` | 新增 ctest target | +5 | 一致命名 `unit_*` / `integration_*` 前缀 |
-| `docs/adr/0016-blackwell-only-tcgen05.md` | 追加 postmortem 段 | +25 | per checklist G |
+| `docs/adr/ADR-0016-blackwell-only-tcgen05.md` | 追加 postmortem 段 | +25 | per checklist G |
 | `AGENTS.md` | 更新已知限制表（"single-warp 顺序执行" → "multi-warp fragment layout 已 support"） | +1 / -1 | 取消旧限制 |
 | **总计** | | **+120 / -8** | |
 
@@ -74,7 +74,7 @@ sister change `fix-tcgen05-mma-accumulator-and-f32-storage`（Oracle H1+H2 单 w
 ### Affected Documentation
 
 - `include/ptxsim/instructions/tcgen05_helpers.h` — helper doc 注释（per Checklist C）
-- `docs/adr/0016-blackwell-only-tcgen05.md` — 追加 postmortem 段（per Checklist G + lessons-learned §6）
+- `docs/adr/ADR-0016-blackwell-only-tcgen05.md` — 追加 postmortem 段（per Checklist G + lessons-learned §6）
 - `根 AGENTS.md` — 已知限制表（"single-warp 顺序执行" 限制更新，per lessons-learned §8 — 重大功能交付须同步 README；multi-warp fragment 是 helper 内部修复，但限制表的"single-warp"已不再准确，需更新）
 - `openspec/specs/tcgen05-handlers-extended/spec.md` — 通过 delta spec 更新（sister change 已 MODIFIED 一次；本 change 第二轮 MODIFIED 需协调）
 

@@ -191,7 +191,7 @@ void tcgen05_fragment_mma_f16(Tmem& tmem, bool accumulate = false);
 
 ### D7: ADR 处理 — 追加 postmortem 段
 
-**采纳**: 在 `docs/adr/0016-blackwell-only-tcgen05.md` 追加 "2026-07-11 Postmortem: H1+H2 fix" 段
+**采纳**: 在 `docs/adr/ADR-0016-blackwell-only-tcgen05.md` 追加 "2026-07-11 Postmortem: H1+H2 fix" 段
 
 ```markdown
 ## 2026-07-11 Postmortem: H1+H2 fix
@@ -454,7 +454,7 @@ static void load_c_slot(Tmem& tmem, size_t c_slot, T* c_frag, size_t count) {
 
 - Oracle 2026-07-10 report: session `ses_0b3791d78ffewb52428kJJ2Irz` (5 blockers)
 - Metis pre-implementation review: session `ses_0b1a0cdb1ffenbhbciQ1n0x236`
-- ADR-0016: [docs/adr/0016-blackwell-only-tcgen05.md](../../../docs/adr/0016-blackwell-only-tcgen05.md)
+- ADR-0016: [docs/adr/ADR-0016-blackwell-only-tcgen05.md](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md)
 - Ref (archived): [`archive/2026-07-10-implement-tcgen05-handlers-extended/`](../../archive/2026-07-10-implement-tcgen05-handlers-extended/)
 - ptx-lessons-learned: [.opencode/skills/ptx-lessons-learned/SKILL.md](../../../.opencode/skills/ptx-lessons-learned/SKILL.md)
 - step 1 commit (persistence test): `d3be589 test(tcgen05): add multi-op TMEM persistence integration test`

@@ -95,7 +95,7 @@ Pipeline:
 
 ## 📎 交叉引用
 
-- PTX-EMU 端 ADR-0021 §D-PTX-4: https://github.com/chisuhua/PTX-EMU/blob/380a8b6a/docs/adr/0021-cpptlm-d1-full-integration.md#决策-d-ptx-4-antlr4-版本策略
+- PTX-EMU 端 ADR-0021 §D-PTX-4: https://github.com/chisuhua/PTX-EMU/blob/380a8b6a/docs/adr/ADR-0021-cpptlm-d1-full-integration.md#决策-d-ptx-4-antlr4-版本策略
 - PTX-EMU 端 commit `9c992e26`（hsk-2 stale references）: https://github.com/chisuhua/PTX-EMU/commit/9c992e26
 - 协作同步: https://github.com/chisuhua/CppTLM/blob/main/docs/superpowers/specs/2026-07-14-ptxemu-comprehensive-modification-plan.md §2.1 Task #5
 - 姊妹 change 设计: https://github.com/chisuhua/PTX-EMU/blob/main/openspec/changes/cpptlm-phase8b-injection-points/design.md §2

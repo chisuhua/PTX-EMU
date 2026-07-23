@@ -1,6 +1,6 @@
 # Phase 1-3: Blackwell tcgen05 Handler Implementation
 
-> **架构决策**: 本 change scope 由 [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) 锁定。
+> **架构决策**: 本 change scope 由 [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) 锁定。
 >
 > **前置 change**: `implement-wmma-tensor-core-phase-0-infra` (archived 2026-07-04)
 > **Ref**: archive/2026-07-04-implement-wmma-tensor-core-phase-0-infra/

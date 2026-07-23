@@ -40,7 +40,7 @@ This change picks up the remaining responsibilities that still mix memory addres
 - **Phase 3.3 (~1h)**: Delete legacy PODs (`exec_state_`, `reg_pred_`, `memory_`, `program_ref_`) and add ADR-0019
   - POD deletion is gated on Phase 1+2's "zero readers" grep verification, plus a fresh grep of the post-Phase-3.2 tree
   - The 4 PODs are still being back-filled in `init()` (`thread_context.cpp:79-91`) and `reset()` (`thread_context.cpp:225-226` per Metis audit); Phase 3.3 first stops the back-fill, verifies no readers, then deletes the fields
-  - Add `docs/adr/0019-pc-management-extraction.md` recording 3-Phase decision history (0017 is missing from `docs/adr/`, 0018 is taken by `tcgen05-cta-group-restriction`; 0019 is the next free number)
+  - Add `docs/adr/ADR-0019-pc-management-extraction.md` recording 3-Phase decision history (0017 is missing from `docs/adr/`, 0018 is taken by `tcgen05-cta-group-restriction`; 0019 is the next free number)
 
 - **Final target**: `thread_context.cpp` ≤ 300 lines (revised from 250 — current code is 727, with Phase 1+2 delegations adding ~200 more lines than the prior estimate accounted for). After Phase 3.3, `thread_context.cpp` will be a pure delegation hub.
 
@@ -67,7 +67,7 @@ This change picks up the remaining responsibilities that still mix memory addres
 | `src/ptxsim/instruction_base.cpp` (4 个 PipelineHandler 基类) | Phase 3.2.1 — 通过 accessor 读取 operand buffer（不改 handler 签名） |
 | `src/ptxsim/instructions/barrier.cpp` (BarWarpSyncHandler) | Phase 3.2.2 — 通过 accessor 读取 `operand_is_immediate_` |
 | `src/ptxsim/core/cta_context.cpp` (lines 89, 224, 320) | Phase 3.0 — 外部直接赋值改为 setter 调用 |
-| `docs/adr/0019-pc-management-extraction.md` (新) | 决策记录（替代原计划的 ADR-0017） |
+| `docs/adr/ADR-0019-pc-management-extraction.md` (新) | 决策记录（替代原计划的 ADR-0017） |
 | 测试 | **新增 ~6 个类型一单元测试**（MemoryAccessor 3 个 + InstructionPipeline 3 个）；198 个已有测试需保持全绿 |
 
 ## Prerequisites from Previous Phase
@@ -106,7 +106,7 @@ Before implementing Phase 3.2:
 
 ### 文档同步
 - [ ] `src/ptxsim/core/AGENTS.md`: 新增 `MemoryAccessor` + `InstructionPipeline` 条目（更新 `WHERE TO LOOK` 与 `KEY FILES` 表）
-- [ ] `docs/adr/0019-pc-management-extraction.md` 新建：Phase 1+2 决策 + Phase 3.1 取消教训 + Phase 3.2 accessor 方案
+- [ ] `docs/adr/ADR-0019-pc-management-extraction.md` 新建：Phase 1+2 决策 + Phase 3.1 取消教训 + Phase 3.2 accessor 方案
 - [ ] `docs/adr/README.md` 追加 ADR-0019 链接
 - [ ] `tasks.md` Phase 状态变更已说明
 

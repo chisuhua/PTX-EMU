@@ -602,7 +602,7 @@ if (is_divergent) {
 
 - `docs/architecture/sm90_100.md` — Hopper/Blackwell 架构
 - `docs/architecture/SIMT-ARCHITECTURE-V2.md` — SIMT v2.0 架构设计
-- `docs/adr/0014-independent-thread-scheduling.md` — ITS 设计 ADR
+- `docs/adr/ADR-0014-independent-thread-scheduling.md` — ITS 设计 ADR
 - `include/ptxsim/simt_stack.h` — SIMT Stack 接口
 - `include/ptxsim/warp_context.h` — WarpContext 接口
 - `src/ptxsim/core/warp_context.cpp` — WarpContext 实现

@@ -25,10 +25,10 @@
 - **#5 类型判断依赖 `qualifiers.back()`**：`is_global_space()` 必须遍历整个 qualifier 列表而非仅末尾（LD/ST handler 调用栈）
 
 **关联 ADR**：
-- [ADR-0020](../../docs/adr/0020-cpptlm-injection-points.md)：姊妹 change 决策依据（§3 注入点）
-- [ADR-0021](../../docs/adr/0021-cpptlm-d1-full-integration.md)（本 change 创建）：D-PTX-1~6 自主决策
-- [ADR-0009](../../docs/adr/0009-xmacro-instruction-dispatch.md)：StatementType 枚举来源
-- [ADR-0010](../../docs/adr/0010-fake-cuda-runtime.md)：Fake CUDA Runtime（`cudart_sim.cpp` 当前实现）
+- [ADR-0020](../../docs/adr/ADR-0020-cpptlm-injection-points.md)：姊妹 change 决策依据（§3 注入点）
+- [ADR-0021](../../docs/adr/ADR-0021-cpptlm-d1-full-integration.md)（本 change 创建）：D-PTX-1~6 自主决策
+- [ADR-0009](../../docs/adr/ADR-0009-xmacro-instruction-dispatch.md)：StatementType 枚举来源
+- [ADR-0010](../../docs/adr/ADR-0010-fake-cuda-runtime.md)：Fake CUDA Runtime（`cudart_sim.cpp` 当前实现）
 
 **关联 Skill**：
 - `ptx-lessons-learned`：经验沉淀快速决策树 + 4 个 checklist
@@ -41,7 +41,7 @@
 
 ### 新增产物
 
-- **新增** `docs/adr/0021-cpptlm-d1-full-integration.md`：D-PTX-1~6 决策记录（PTX-EMU 自治）
+- **新增** `docs/adr/ADR-0021-cpptlm-d1-full-integration.md`：D-PTX-1~6 决策记录（PTX-EMU 自治）
 - **新增** `include/cudart/cpptlm_bridge.h`：`CppTLMBridge` 抽象接口（5 个虚方法 + `CPPTLMBRIDGE_VERSION` 编译期断言 + `g_cpptlm_bridge` 全局指针 + `cudaStream_t` 宽度 `static_assert`）
 - **新增** `include/cudart/cpptlm_bridge_impl.h` (optional)：Bridge 默认实现 stub（方便测试 fallback 路径）
 - **修改** `src/cudart/cudart_sim.cpp`：
@@ -86,7 +86,7 @@
 
 | 文件 | 类型 | 工时 | 验证 |
 |------|------|:---:|------|
-| `docs/adr/0021-cpptlm-d1-full-integration.md` | **新增** | 0.2d | Oracle 审阅 |
+| `docs/adr/ADR-0021-cpptlm-d1-full-integration.md` | **新增** | 0.2d | Oracle 审阅 |
 | `openspec/changes/cpptlm-d1-full/{proposal,design,specs/cpptlm-d1-full,tasks,internal-plan}.md` | **新增** | 0.3d | `openspec status --change cpptlm-d1-full` 输出 `applyRequires=[]` |
 | `include/cudart/cpptlm_bridge.h` | **新增** | 0.2d | 编译通过 + `CPPTLMBRIDGE_VERSION == 1` + `static_assert(cudaStream_t <= uint64_t)` |
 | `include/cudart/cpptlm_bridge_impl.h` (optional) | **新增** | 0.1d | 编译通过 + 默认 nullptr 实现 |

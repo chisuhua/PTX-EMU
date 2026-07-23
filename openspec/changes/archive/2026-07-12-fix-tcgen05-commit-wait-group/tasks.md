@@ -235,11 +235,11 @@
 ### 4.3 ADR-0016 Postmortem 追加 + ADR-0018 创建
 
 - [ ] 4.3.0 **创建 ADR-0018**（本 change 关键交付物，formalize cta_group::2 throw 语义）:
-  - 新建 `docs/adr/0018-tcgen05-cta-group-restriction.md`（内容已写好，per artifacts 返工）
+  - 新建 `docs/adr/ADR-0018-tcgen05-cta-group-restriction.md`（内容已写好，per artifacts 返工）
   - 更新 `docs/adr/README.md` 索引表（添加 ADR-0018 行）
   - 更新 `docs/adr/README.md` "ADR 总数" 14 → 15
   - 更新 `docs/adr/README.md` "最近更新" 表（添加 2026-07-12 行）
-- [ ] 4.3.1 读 `docs/adr/0016-blackwell-only-tcgen05.md` 找到 H1+H2 postmortem 段（per sister change）
+- [ ] 4.3.1 读 `docs/adr/ADR-0016-blackwell-only-tcgen05.md` 找到 H1+H2 postmortem 段（per sister change）
 - [ ] 4.3.2 在其后追加:
   ```markdown
   ## 2026-07-12 Postmortem: C3 fix (commit/wait group routing)
@@ -277,7 +277,7 @@
   - `fix-tcgen05-multi-warp-fragment` (FU-4, C4)
   - `tcgen05-flashattention-coverage` (FU-5, B1-B6 + E2E)
   ```
-- [ ] 4.3.3 `git add docs/adr/0016-blackwell-only-tcgen05.md docs/adr/0018-tcgen05-cta-group-restriction.md docs/adr/README.md`
+- [ ] 4.3.3 `git add docs/adr/ADR-0016-blackwell-only-tcgen05.md docs/adr/ADR-0018-tcgen05-cta-group-restriction.md docs/adr/README.md`
 
 ## 5. Phase 4 — Commit（per ptx-lessons-learned §6 artifacts-first + §3 2-Phase discipline）
 
@@ -293,8 +293,8 @@
   ```
 - [ ] 5.2 **Commit 2 (Phase 2 — ADR-0018 创建 + ADR-0016 postmortem)**:
   ```bash
-  git add docs/adr/0016-blackwell-only-tcgen05.md \
-          docs/adr/0018-tcgen05-cta-group-restriction.md \
+  git add docs/adr/ADR-0016-blackwell-only-tcgen05.md \
+          docs/adr/ADR-0018-tcgen05-cta-group-restriction.md \
           docs/adr/README.md
   git commit -m "docs(adr): ADR-0018 cta_group::2 throw semantics + ADR-0016 C3 postmortem"
   ```

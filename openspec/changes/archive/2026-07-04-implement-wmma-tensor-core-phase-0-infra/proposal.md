@@ -1,6 +1,6 @@
 # Phase 0: Blackwell tcgen05 Infrastructure (TMA + TMEM + Cluster + Async Queue)
 
-> **架构决策**: 本 change scope 由 [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) 锁定。
+> **架构决策**: 本 change scope 由 [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) 锁定。
 >
 > **本 change 仅交付 Phase 0（基础设施 9 commits）**；Phase 1-3（tcgen05.mma/ld/st/commit/wait/GEMM e2e）由独立 OpenSpec change `implement-wmma-tensor-core-tcgen05` 交付，本 change archive 后 propose。
 >

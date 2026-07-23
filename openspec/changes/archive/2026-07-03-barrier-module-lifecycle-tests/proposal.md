@@ -35,7 +35,7 @@
 | `tests/unit/barrier/` | **新增**：`test_barrier_module_release.cpp`（约 100 行）+ `test_warp_barrier_lifecycle.cpp`（约 80 行）+ `test_participation_mask_boundaries.cpp`（约 60 行） |
 | `tests/CMakeLists.txt` | **修改**：3 个新 `add_catch_test` 目标，按 `unit_` 前缀 + `[unit;barrier]` 标签 |
 | 生产代码 | **无修改** —— 这是测试补完 change，不是实现 change |
-| `docs/adr/0008-barrier-semantics.md` | **可能追加** §2026-XX 注释："direct unit tests now cover release_warp_barrier state translation" |
+| `docs/adr/ADR-0008-barrier-semantics.md` | **可能追加** §2026-XX 注释："direct unit tests now cover release_warp_barrier state translation" |
 | `docs/dev-process/lessons-learned.md` | **不追加** —— §19 已经覆盖了本次迁移的成功证据 |
 
 ## ⚠️ 风险与历史教训
@@ -72,7 +72,7 @@
 - 前置 change（已归档 2026-07-03）：`openspec/changes/archive/2026-07-03-migrate-bar-warp-sync-to-barrier-module/`
   - §2026-07-03 postmortem 提到"已知未完成 / lifecycle 单元测试" follow-up
   - Code Review Issue I1 列举了 3 个测试缺口
-- ADR-0008（barrier 语义增强）：`docs/adr/0008-barrier-semantics.md` §2026-06-18 决策记录 OR logic 单点拥有者
+- ADR-0008（barrier 语义增强）：`docs/adr/ADR-0008-barrier-semantics.md` §2026-06-18 决策记录 OR logic 单点拥有者
 - Skill：`ptx-barrier-mechanism`（屏障机制全解）—— 测试断言 point 必读
 - Skill：`ptx-lessons-learned`（§18 OpenSpec artifacts 教训 + §19 跨模块状态翻译成功案例）
 - Skill：`test-coverage-enforcer`（Wbar API 测试覆盖率保证）

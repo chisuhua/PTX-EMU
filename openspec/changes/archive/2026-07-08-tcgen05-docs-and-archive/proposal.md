@@ -1,6 +1,6 @@
 # tcgen05 Documentation Sync + Archive (Final Documentation Update)
 
-> **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) Accepted
+> **架构依据**: [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) Accepted
 > **前置 changes**(全部必须 archive 后才能执行本 change):
 >   - `archive/2026-07-06-implement-tcgen05-syntax-ir` (Change-1, ✅ archived)
 >   - `archive/2026-07-06-extend-blackwell-tcgen05-infra` (Change-2, ✅ archived)
@@ -16,7 +16,7 @@ Change-1(grammar + IR) + Change-2(infra 审计) + Change-3a(grammar fix) + Chang
 1. **根 `AGENTS.md` 已知限制表**仍标注 "pre-Blackwell tcgen05 永久抛异常" → 不准确,handler 已实施
 2. **`src/grammar/AGENTS.md`** 仍描述旧 wmma 路径 → 需标注 tcgen05 替代
 3. **`src/ptxsim/instructions/AGENTS.md`** 仍主要描述 wmma.cpp → 需标注 tcgen05.cpp
-4. **`docs/adr/0016-blackwell-only-tcgen05.md`** 更新记录缺失 Phase 1-3 archive 引用
+4. **`docs/adr/ADR-0016-blackwell-only-tcgen05.md`** 更新记录缺失 Phase 1-3 archive 引用
 5. **`docs/dev-process/lessons-learned.md`** 缺 §24 新案例(per `ptx-lessons-learned` §24 重大功能交付清单)
 6. **OpenSpec `openspec/specs/`** 缺最终 spec 状态(各 change 的 spec delta 未 publish)
 
@@ -31,7 +31,7 @@ Change-1(grammar + IR) + Change-2(infra 审计) + Change-3a(grammar fix) + Chang
 | `AGENTS.md`(根) | 更新已知限制表:pre-Blackwell → 标注"handler 已实现,详见 ADR-0016" |
 | `src/grammar/AGENTS.md` | 更新 lexer/parser 规则说明,标注 tcgen05 替代 wmma |
 | `src/ptxsim/instructions/AGENTS.md` | 更新目录说明,标注 `tcgen05.cpp`(5 core handler + 可选 extended) |
-| `docs/adr/0016-blackwell-only-tcgen05.md` | 在 "更新记录" 追加 5-6 个 archive commit 引用 |
+| `docs/adr/ADR-0016-blackwell-only-tcgen05.md` | 在 "更新记录" 追加 5-6 个 archive commit 引用 |
 | `docs/dev-process/lessons-learned.md` | 追加 §24:重大功能交付清单(per Checklist I) |
 | `docs/audits/` | 引用 Change-2 审计报告路径(若已 archive) |
 | `openspec/specs/` | 验证 Change-1 spec delta 已 publish(tcgen05-{grammar,ir-types,parse-tests}) |
@@ -70,7 +70,7 @@ Change-1(grammar + IR) + Change-2(infra 审计) + Change-3a(grammar fix) + Chang
 3. **`src/ptxsim/instructions/AGENTS.md`**:更新目录说明
    - 标注 `tcgen05.cpp` 存在
    - 标注 `wmma.cpp` 保留 pre-Blackwell 路径
-4. **`docs/adr/0016-blackwell-only-tcgen05.md`**:追加 "更新记录" 段落
+4. **`docs/adr/ADR-0016-blackwell-only-tcgen05.md`**:追加 "更新记录" 段落
    - 2026-07-XX:tokens: tcgen05 added
    - 2026-07-XX:tcgen05 core handlers implemented
    - 2026-07-XX:tcgen05 extended handlers (optional)
@@ -114,7 +114,7 @@ Change-1(grammar + IR) + Change-2(infra 审计) + Change-3a(grammar fix) + Chang
 | `AGENTS.md` | 修改(已知限制表) | +20 |
 | `src/grammar/AGENTS.md` | 修改(规则说明) | +20 |
 | `src/ptxsim/instructions/AGENTS.md` | 修改(目录说明) | +20 |
-| `docs/adr/0016-blackwell-only-tcgen05.md` | 修改(更新记录) | +30 |
+| `docs/adr/ADR-0016-blackwell-only-tcgen05.md` | 修改(更新记录) | +30 |
 | `docs/dev-process/lessons-learned.md` | 追加 §24 | +100 |
 | `openspec/changes/tcgen05-docs-and-archive/` | 新增(proposal + design + tasks) | +500 |
 | **总计** | | **+690** |
@@ -134,7 +134,7 @@ Change-1(grammar + IR) + Change-2(infra 审计) + Change-3a(grammar fix) + Chang
 - 根 `AGENTS.md`
 - `src/grammar/AGENTS.md`
 - `src/ptxsim/instructions/AGENTS.md`
-- `docs/adr/0016-blackwell-only-tcgen05.md`
+- `docs/adr/ADR-0016-blackwell-only-tcgen05.md`
 - `docs/dev-process/lessons-learned.md`
 - `openspec/specs/`(验证,不修改)
 
@@ -188,7 +188,7 @@ Change-1(grammar + IR) + Change-2(infra 审计) + Change-3a(grammar fix) + Chang
 ## 本 change 特有设计决策(per Metis F.2)
 
 **决策 D1:文档 sync 优先级**
-- 优先:`AGENTS.md` + `docs/adr/0016-*.md` + `docs/dev-process/lessons-learned.md`(per Checklist I)
+- 优先:`AGENTS.md` + `docs/adr/ADR-0016-*.md` + `docs/dev-process/lessons-learned.md`(per Checklist I)
 - 次要:各 `src/**/AGENTS.md`(per-change 局部)
 - 拒绝:为每个 Phase 都新建 lessons-learned 章节(过度文档化,应每 change 1 节)
 

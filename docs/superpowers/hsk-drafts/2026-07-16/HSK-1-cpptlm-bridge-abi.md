@@ -150,7 +150,7 @@ nm -D build/lib/libcpptlm_cudart.so | grep -E "T cpptlm_(attach|detach)_bridge"
 
 ## 📎 交叉引用
 
-- PTX-EMU 端 ADR-0021 §HSK 状态机: https://github.com/chisuhua/PTX-EMU/blob/380a8b6a/docs/adr/0021-cpptlm-d1-full-integration.md#hsk-状态机强制
+- PTX-EMU 端 ADR-0021 §HSK 状态机: https://github.com/chisuhua/PTX-EMU/blob/380a8b6a/docs/adr/ADR-0021-cpptlm-d1-full-integration.md#hsk-状态机强制
 - ABI 头文件: https://github.com/chisuhua/PTX-EMU/blob/380a8b6a/include/cudart/cpptlm_bridge.h
 - CppTLM 协作同步: https://github.com/chisuhua/CppTLM/blob/main/docs/superpowers/specs/2026-07-01-f12b-ld-ptxemu-collaboration-sync.md §4
 - 综合任务书: https://github.com/chisuhua/CppTLM/blob/main/docs/superpowers/specs/2026-07-14-ptxemu-comprehensive-modification-plan.md §2.1 Task #1

@@ -55,12 +55,12 @@ The system SHALL 更新 `docs/audits/debt-audit-2026-07-02.md §P0-C1` 的状态
 - **WHEN** 阅读 P0-C1 段
 - **THEN** 段内说明本 debt 系"误判"（archive 已实施 4 个 Strategy 类）
 
-### Requirement: 同步 `docs/adr/0015-cvt-strategy-pattern.md`
+### Requirement: 同步 `docs/adr/ADR-0015-cvt-strategy-pattern.md`
 
-The system SHALL 在 `docs/adr/0015-cvt-strategy-pattern.md` 追加 "2026-07 Fix: 死代码清理" 段，说明本 change 的背景与结果。
+The system SHALL 在 `docs/adr/ADR-0015-cvt-strategy-pattern.md` 追加 "2026-07 Fix: 死代码清理" 段，说明本 change 的背景与结果。
 
 #### Scenario: ADR 含 2026-07 Fix 段
-- **WHEN** `grep "2026-07 Fix" docs/adr/0015-cvt-strategy-pattern.md`
+- **WHEN** `grep "2026-07 Fix" docs/adr/ADR-0015-cvt-strategy-pattern.md`
 - **THEN** 至少 1 行匹配
 
 ### Requirement: 同步 STRUCTURE 文档（如存在）
@@ -133,7 +133,7 @@ The system SHALL 保持 `select_strategy()` dispatch 行为完全一致：
 - `design.md` §Decisions — 5 个关键决策（保留 dispatcher 签名、不引入 SatStrategy、3 Phase 等）
 - `tasks.md` §Phase 0-2 — 实施步骤
 - `archive/2026-06-24-phase3-t2-6-cvt-strategy-pattern/` — 本 change 修复对象
-- `docs/adr/0015-cvt-strategy-pattern.md` — Phase 2 待追加 Fix 段
+- `docs/adr/ADR-0015-cvt-strategy-pattern.md` — Phase 2 待追加 Fix 段
 - `docs/audits/debt-audit-2026-07-02.md §P0-C1` — Phase 2 待标记 RESOLVED
 - `.opencode/skills/ptx-lessons-learned/SKILL.md §6` — 关键决策依据
 - Metis pre-implementation review（2026-07-05）— 揭示 change scope 修订原因

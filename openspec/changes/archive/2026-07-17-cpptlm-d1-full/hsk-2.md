@@ -80,7 +80,7 @@ grep -rE "antlr4-install|ANTLR.*install|antlr4-cpp-runtime" .github/workflows/
 
 ======================== 引用 ========================
 
-- ADR-0021 (PTX-EMU docs/adr/0021-cpptlm-d1-full-integration.md): D-PTX-4 决策
+- ADR-0021 (PTX-EMU docs/adr/ADR-0021-cpptlm-d1-full-integration.md): D-PTX-4 决策
 - openspec/changes/cpptlm-d1-full/tasks.md Phase 6
 - 综合任务书 §2.1 Task #5 (ANTLR4 version: >= 4.13.2)
 - 协作同步 §10 (ANTLR4 runtime 约束)

@@ -1,6 +1,6 @@
 # Backfill tcgen05.cp Test Coverage and Exception Cleanup
 
-> **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) Accepted
+> **架构依据**: [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) Accepted
 > **关联提交**: `178457d` (`feat(handlers): implement tcgen05.cp smem→tmem (ADR-0016, Phase 2, Oracle Q4-B/Q2-A)`)
 > **设计时教训**: `ptx-lessons-learned` §3 (分 Phase commit) + §6/§7 (OpenSpec artifact 完整性 + Metis pre-implementation review) + §9 (bare string lexer token 禁用)
 

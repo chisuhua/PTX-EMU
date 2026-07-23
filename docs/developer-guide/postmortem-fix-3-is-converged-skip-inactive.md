@@ -11,7 +11,7 @@
 
 > **如果你只想知道结论**，看下面三处即可，本文其余内容（调试过程、诊断模板）是**经验沉淀**而非必读：
 >
-> 1. **ADR-0006**：[`docs/adr/0006-simt-stack-management.md`](../adr/0006-simt-stack-management.md) §"三个字段的角色分工（Fix 1 + Fix 3 后澄清）" — `active_mask` / `return_mask` / `is_active` 各用在哪
+> 1. **ADR-0006**：[`docs/adr/ADR-0006-simt-stack-management.md`](../adr/0006-simt-stack-management.md) §"三个字段的角色分工（Fix 1 + Fix 3 后澄清）" — `active_mask` / `return_mask` / `is_active` 各用在哪
 > 2. **KNOWN_ISSUES**：[`docs/developer-guide/KNOWN_ISSUES.md`](./KNOWN_ISSUES.md) §"B4.2 — simpleCONV-{int,float,double} hang at SIMT stack reconvergence point (FIXED 2026-06-25)" — 症状、链路、验证命令
 > 3. **代码位置**：`src/ptxsim/core/simt_stack.cpp:7-25` `is_converged`（核心修复）
 
@@ -238,7 +238,7 @@ timeout 60 ./build/bin/simpleCONV-double # ← exit 0
 - `src/ptxsim/core/sm_context.cpp:230-265` — 调度器 `lanes_by_pc` + `while check_reconvergence`
 - `include/ptxsim/simt_stack.h:12-21` — `SIMTStackEntry` 结构
 - `src/ptxsim/core/AGENTS.md` — **DUAL STATE MECHANISM / T2-1 必读**
-- `docs/adr/0006-simt-stack-management.md` — SIMT stack 设计决策
+- `docs/adr/ADR-0006-simt-stack-management.md` — SIMT stack 设计决策
 - `docs/developer-guide/KNOWN_ISSUES.md §"simpleCONV hang"` — bug 上下文
 - [postmortem-fix-1-gate-active-vs-return-mask.md](./postmortem-fix-1-gate-active-vs-return-mask.md) — 同类问题参考（门控侧）
 - [open-fix-2-sbar-deadlock.md](./open-fix-2-sbar-deadlock.md) — `S_BAR` 死锁（仍 OPEN，与本次修复无关）

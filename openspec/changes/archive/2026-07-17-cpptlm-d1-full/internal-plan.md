@@ -3,7 +3,7 @@
 > **Status**: Draft (companion to OpenSpec change `openspec/changes/cpptlm-d1-full/`)
 > **Audience**: PTX-EMU 团队工程师（含未来 6 个月后的自己）
 > **From**: PTX-EMU Architecture Team
-> **关联**: [proposal.md](./proposal.md) + [design.md](./design.md) + [specs/cpptlm-d1-full/spec.md](./specs/cpptlm-d1-full/spec.md) + [tasks.md](./tasks.md) + [ADR-0021](../../../docs/adr/0021-cpptlm-d1-full-integration.md)
+> **关联**: [proposal.md](./proposal.md) + [design.md](./design.md) + [specs/cpptlm-d1-full/spec.md](./specs/cpptlm-d1-full/spec.md) + [tasks.md](./tasks.md) + [ADR-0021](../../../docs/adr/ADR-0021-cpptlm-d1-full-integration.md)
 
 ---
 

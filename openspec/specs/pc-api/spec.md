@@ -59,8 +59,8 @@ ADR-0003、ADR-0008、`src/ptxsim/core/AGENTS.md`、
 
 - **WHEN** 运行
   ```bash
-  grep -rn "force_set_pc" docs/adr/0003-commit-pc-pattern.md \
-    docs/adr/0008-barrier-semantics.md \
+  grep -rn "force_set_pc" docs/adr/ADR-0003-commit-pc-pattern.md \
+    docs/adr/ADR-0008-barrier-semantics.md \
     src/ptxsim/core/AGENTS.md \
     src/ptxsim/instructions/AGENTS.md
   ```

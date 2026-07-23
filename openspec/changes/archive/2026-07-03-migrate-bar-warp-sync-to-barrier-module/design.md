@@ -192,7 +192,7 @@ bm->arrive(lane_id);  // 调用 WarpBarrier::arrive
 > **来自 lessons-learned.md §1**：跨模块间接状态翻译是常见失败模式。commit `36dbb9a` 失败根因未完整记录。
 
 - [ ] 0.1 阅读 commit `36dbb9a`（实施）与 `f033312`（revert）的 commit message + diff
-- [ ] 0.2 阅读 `docs/dev-process/lessons-learned.md` 与 `docs/adr/0008-barrier-semantics.md` §2026-06-18 Postmortem
+- [ ] 0.2 阅读 `docs/dev-process/lessons-learned.md` 与 `docs/adr/ADR-0008-barrier-semantics.md` §2026-06-18 Postmortem
 - [ ] 0.3 列出 commit `36dbb9a` 引入的具体代码变更（vs revert 后）
 - [ ] 0.4 输出 `failure_root_cause.md` 文档：本 change 必须解决的具体 bug 列表
 - [ ] 0.5 **如果 root cause 未明确，STOP 实施，等待更多调查**（不重蹈覆辙）
@@ -245,7 +245,7 @@ bm->arrive(lane_id);  // 调用 WarpBarrier::arrive
 
 ### Phase 5: 文档 + 发布（半天）
 
-- [ ] 5.1 更新 `docs/adr/0008-barrier-semantics.md`：追加 §"BarWarpSyncHandler 迁移 + Wbar 删除"
+- [ ] 5.1 更新 `docs/adr/ADR-0008-barrier-semantics.md`：追加 §"BarWarpSyncHandler 迁移 + Wbar 删除"
 - [ ] 5.2 更新 `src/ptxsim/instructions/AGENTS.md` + `src/ptxsim/core/AGENTS.md`：移除 `Wbar` / `warp_state.wbars[]` 相关描述
 - [ ] 5.3 在 worktree 中创建最终 commit：`git add . && git commit -m "feat(barrier): migrate BarWarpSyncHandler to BarrierModule API + delete legacy Wbar"`
 - [ ] 5.4 合并到主分支：`git checkout main && git merge --no-ff feat/migrate-bar-warp-sync -m "Merge..."`

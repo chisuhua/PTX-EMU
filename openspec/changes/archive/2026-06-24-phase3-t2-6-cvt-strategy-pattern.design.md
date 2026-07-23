@@ -18,7 +18,7 @@
 - 策略模式重构（**Composition 而非 Inheritance**）: `IntToIntStrategy` / `IntToFloatStrategy` / `FloatToFloatStrategy` / `FloatToIntStrategy` / `RoundingMode`
 - 新增 94 个 integration tests
 - P1-4.1 bug 修复（f32→s32 / f64→s64 路径补 r2 写入）
-- 写 ADR-0015 (`docs/adr/0015-cvt-strategy-pattern.md`)
+- 写 ADR-0015 (`docs/adr/ADR-0015-cvt-strategy-pattern.md`)
 
 **Non-Goals:**
 - CvtHandler 类拆分（X-Macro 约束禁止）
@@ -123,7 +123,7 @@
 - 原 artifacts: `openspec/changes/archive/2026-06-24-phase3-t2-6-cvt-strategy-pattern/{proposal.md,tasks.md,README.md}`
 - 关联 change: `openspec/changes/archive/2026-06-24-phase3-cvt-precision-bugfix/` (Step 1 暴露的 denormal bug)
 - 关联 change: `openspec/changes/archive/2026-06-24-phase3-half-precision-bugfix/` (Step 2 复用的 half_utils 修复)
-- ADR-0015: CVT 策略模式 (本 change 实施产生) — `docs/adr/0015-cvt-strategy-pattern.md`
+- ADR-0015: CVT 策略模式 (本 change 实施产生) — `docs/adr/ADR-0015-cvt-strategy-pattern.md`
 - ADR-0009: X-Macro + Weak Symbol 指令分发模式 (Composition 约束根因)
 - Lessons-Learned: §6 (类型一 vs 类型二测试发现能力差异 — 5 helpers 单元测试 + 94 integration tests 三层覆盖)
 - 审计原文: `docs/audits/HEALTH-AUDIT-2026-06-21.md` (P2-1 触发本 change)

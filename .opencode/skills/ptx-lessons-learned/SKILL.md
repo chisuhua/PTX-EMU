@@ -679,7 +679,7 @@ inline void step_b(IPipeline* p, ITc* tc, Warp* w, const Stmt& s) {
 
 - **完整经验文档**: [`docs/dev-process/lessons-learned.md`](../../docs/dev-process/lessons-learned.md)（16 章节，~600 行）
 - **调试策略**: [`docs/dev-process/debugging-strategy.md`](../../docs/dev-process/debugging-strategy.md)（含"跨模块状态翻译检查"章节）
-- **Postmortem 案例**: [`docs/adr/0008-barrier-semantics.md`](../../docs/adr/0008-barrier-semantics.md) §2026-06-18 Postmortem
+- **Postmortem 案例**: [`docs/adr/ADR-0008-barrier-semantics.md`](../../docs/adr/ADR-0008-barrier-semantics.md) §2026-06-18 Postmortem
 - **原 change 计划**: [`docs/superpowers/plans/2026-06-18-integrate-barrier-module-cta-warp-fix.md`](../../docs/superpowers/plans/2026-06-18-integrate-barrier-module-cta-warp-fix.md)
 - **领域知识**: [`.opencode/skills/ptx-barrier-mechanism/`](./ptx-barrier-mechanism/)、[`.opencode/skills/ptx-instruction-pipeline/`](./ptx-instruction-pipeline/)
 - **状态审计**: [`.opencode/skills/state-modification-audit/`](./state-modification-audit/)（与本 skill 经验 1 配套使用）

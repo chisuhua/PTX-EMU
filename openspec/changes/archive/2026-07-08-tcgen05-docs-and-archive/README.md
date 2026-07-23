@@ -41,7 +41,7 @@
   - 根因(5 点):`ptx_op.def:129-136` 注释排除 / `InstructionFactory::initialize()` 仅从 def 注册 / `ThreadContext::_execute_once():143` 返回 nullptr
   - 修复:`3a30da8` + `d3afaf5` + `cc49ae7` 三个 commit 组成
   - 5 教训 + 3 检查工具 bash + 真实案例(`tests/e2e/kernel/test_blackwell_gemm.cu` 假 PASS)
-- [`docs/adr/0016-blackwell-only-tcgen05.md` §Phase 1-2 完成记录](../../../../docs/adr/0016-blackwell-only-tcgen05.md) — 5 core handler 测试覆盖 (`fd74261`) + handler dispatch 管道接入 (`cc49ae7`)
+- [`docs/adr/ADR-0016-blackwell-only-tcgen05.md` §Phase 1-2 完成记录](../../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) — 5 core handler 测试覆盖 (`fd74261`) + handler dispatch 管道接入 (`cc49ae7`)
 - [`openspec/changes/archive/2026-07-07-fix-tcgen05-antlr-prediction-bug/README.md`](../2026-07-07-fix-tcgen05-antlr-prediction-bug/README.md) — 姊妹 cross-reference:ANTLR4 lexer bare token 根因(per §25)
 
 ## 关联 commits

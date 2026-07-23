@@ -64,7 +64,7 @@
 
 ## 4. 文档同步(Commit 3,独立可 revert)
 
-- [x] 4.1 `docs/adr/0008-barrier-semantics.md` 追加 "2026-06-20 Phase 6 partial cleanup" 段落,记录:
+- [x] 4.1 `docs/adr/ADR-0008-barrier-semantics.md` 追加 "2026-06-20 Phase 6 partial cleanup" 段落,记录:
       - `BsyncManager` 与 SM 级 barrier 状态删除
       - `Wbar` struct 保留到 Phase 5
       - `warp_context.cpp:283-296` BAR_SYNC fallback 替换为 `BarrierModule::arrive_at_cta_barrier`

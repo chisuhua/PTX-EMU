@@ -76,10 +76,10 @@ The system SHALL update documentation in the same change (each Phase end):
 - Root `AGENTS.md` known limitations table: tcgen05 → 11/11 handler implemented
 - `src/ptxsim/instructions/AGENTS.md`: `tcgen05.cpp` includes 11 handler
 - `docs/ptx/README.md` status table updated
-- `docs/adr/0016-blackwell-only-tcgen05.md` appends update record
+- `docs/adr/ADR-0016-blackwell-only-tcgen05.md` appends update record
 
 #### Scenario: documentation reflects 11/11 tcgen05 handlers
 - **WHEN** the change is complete (all 6 Phases done)
 - **THEN** `git grep "11/11"` on `AGENTS.md` and `docs/ptx/README.md` returns the updated status
-- **AND** `docs/adr/0016-blackwell-only-tcgen05.md` includes a section noting the change archive commit
+- **AND** `docs/adr/ADR-0016-blackwell-only-tcgen05.md` includes a section noting the change archive commit
 - **AND** no remaining references to "deferred" or "UnsupportedInstructionException" for these 6 handlers

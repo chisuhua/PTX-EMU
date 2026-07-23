@@ -126,7 +126,7 @@
   //
   // 详见:
   //   - ADR-0015 (CVT 策略模式)
-  //   - docs/adr/0015-cvt-strategy-pattern.md
+  //   - docs/adr/ADR-0015-cvt-strategy-pattern.md
   // =============================================================================
   ```
 - [x] 1.3.2 验证 `grep "Sub-task 4 将" cvt_strategy.cpp` 无匹配
@@ -214,11 +214,11 @@
   - lessons-learned §6 反模式案例（stale artifact 误标 debt）
   ```
 
-### 2.2 更新 `docs/adr/0015-cvt-strategy-pattern.md`
+### 2.2 更新 `docs/adr/ADR-0015-cvt-strategy-pattern.md`
 
 - [x] 2.2.1 验证当前 ADR 是否有 "2026-07 Fix" 段
   ```bash
-  grep -n "2026-07" docs/adr/0015-cvt-strategy-pattern.md || echo "no existing fix section"
+  grep -n "2026-07" docs/adr/ADR-0015-cvt-strategy-pattern.md || echo "no existing fix section"
   ```
 - [x] 2.2.2 追加 "2026-07 Fix: Dead Code Cleanup" 段（若无）
   ```markdown
@@ -288,14 +288,14 @@
 - [x] 2.5.1 提交
   ```bash
   git add docs/audits/debt-audit-2026-07-02.md \
-          docs/adr/0015-cvt-strategy-pattern.md \
+          docs/adr/ADR-0015-cvt-strategy-pattern.md \
           src/ptxsim/instructions/AGENTS.md 2>/dev/null || true
   git commit -m "docs(cvt): sync stale artifact fix + debt-audit RESOLVED (Fix #2)
 
   Phase 2 of fix-cvt-strategy-actual-split.
   Synced 3 documentation artifacts to reflect actual completion:
   - docs/audits/debt-audit-2026-07-02.md §P0-C1: active → RESOLVED
-  - docs/adr/0015-cvt-strategy-pattern.md: appended '2026-07 Fix' section
+  - docs/adr/ADR-0015-cvt-strategy-pattern.md: appended '2026-07 Fix' section
   - src/ptxsim/instructions/AGENTS.md STRUCTURE: cvt/ layout
 
   Final verification:
@@ -387,7 +387,7 @@ cmake --build build && ctest -R "cvt"
 - `design.md` — 5 个 Decision + 3 Phase 规划
 - `spec.md` — 修订后的 Requirements
 - `archive/2026-06-24-phase3-t2-6-cvt-strategy-pattern/` — 本 change 修复对象
-- `docs/adr/0015-cvt-strategy-pattern.md` — Phase 2 待追加完成段
+- `docs/adr/ADR-0015-cvt-strategy-pattern.md` — Phase 2 待追加完成段
 - `docs/audits/debt-audit-2026-07-02.md §P0-C1` — Phase 2 待标记 RESOLVED
 - `.opencode/skills/ptx-lessons-learned/SKILL.md §6` — 关键决策依据
 - Metis pre-implementation review（2026-07-05）— 揭示原计划 scope 错误

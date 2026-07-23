@@ -1,6 +1,6 @@
 # Cleanup wmma Namespace (complete removal of pre-Blackwell path)
 
-> **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) Accepted
+> **架构依据**: [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) Accepted
 > **前置 changes**:
 >   - `archive/2026-07-06-implement-tcgen05-syntax-ir/` (Change-1, archived)
 >   - `extend-blackwell-tcgen05-infra` (Change-2, pending)
@@ -56,7 +56,7 @@ Change-4 是 4-change 拆分的**最终清理**,无新功能。
 | `src/CMakeLists.txt` | 移除 wmma.cpp 引用 |
 | 多个 `src/**/CMakeLists.txt` | 移除相关引用 |
 | 根 `AGENTS.md` | 移除 "WMMA stub throw" 描述,标注 "pre-Blackwell 永久拒绝" |
-| `docs/adr/0016-blackwell-only-tcgen05.md` | 追加 Change-4 archive commit 引用 + 验证 pre-Blackwell 路径完全消失 |
+| `docs/adr/ADR-0016-blackwell-only-tcgen05.md` | 追加 Change-4 archive commit 引用 + 验证 pre-Blackwell 路径完全消失 |
 
 ### 不修改
 
@@ -105,7 +105,7 @@ Change-4 是 4-change 拆分的**最终清理**,无新功能。
 ### Phase 3: 文档 + Archive(独立 commit,per Checklist G + I)
 
 1. 根 `AGENTS.md` 更新:pre-Blackwell 标记为 "永久拒绝,无代码路径"
-2. `docs/adr/0016-blackwell-only-tcgen05.md` 追加 Change-4 archive 引用
+2. `docs/adr/ADR-0016-blackwell-only-tcgen05.md` 追加 Change-4 archive 引用
 3. `docs/dev-process/lessons-learned.md` 追加 §24 "命名空间清理" 案例
 4. archive
 
@@ -148,7 +148,7 @@ Change-4 是 4-change 拆分的**最终清理**,无新功能。
 - 根 `AGENTS.md`(更新 wmma 状态)
 - `src/grammar/AGENTS.md`(删除 wmma 规则说明)
 - `src/ptxsim/instructions/AGENTS.md`(删除 wmma.cpp 描述)
-- `docs/adr/0016-blackwell-only-tcgen05.md`(追加更新记录)
+- `docs/adr/ADR-0016-blackwell-only-tcgen05.md`(追加更新记录)
 - `docs/dev-process/lessons-learned.md`(追加 §24)
 - `docs/audits/HEALTH-AUDIT-2026-06-21.md`(可选:更新 wmma 相关条目)
 

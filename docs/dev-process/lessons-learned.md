@@ -350,7 +350,7 @@ The OR logic must live in the CALLER.
 | `barrier.cpp` BarHandler 改用 BarrierModule | `src/ptxsim/instructions/AGENTS.md`（"barrier/ subdirectory"） |
 | `barrier_module.cpp` release_cta_barrier 新增 | `docs/research/barrier-semantics/04-ptx-emu-current-implementation.md` |
 | `Wbar` 标记 `[[deprecated]]` | `src/ptxsim/core/AGENTS.md`（"DO NOT add new uses"） |
-| 整体架构变更 | `docs/adr/0008-barrier-semantics.md`（追加 2026-06-17 段落） |
+| 整体架构变更 | `docs/adr/ADR-0008-barrier-semantics.md`（追加 2026-06-17 段落） |
 | Phase 5 部分推迟 | `openspec/changes/.../tasks.md`（标记 Phase 5 为 deferred） |
 
 ### 教训
@@ -536,7 +536,7 @@ grep -rn "qualifiers\[" src/
 - **日期**: 2026-06-18
 - **关联 commit**: `f033312` (fix(barrier): revert Phase 5 + fix BAR_SYNC state + CTABarrier deadlock)
 - **关联 change**: `openspec/changes/integrate-barrier-module-cta-warp/`
-- **关联 ADR**: `docs/adr/0008-barrier-semantics.md`（已追加 2026-06-18 postmortem）
+- **关联 ADR**: `docs/adr/ADR-0008-barrier-semantics.md`（已追加 2026-06-18 postmortem）
 - **关联 plan**: `docs/superpowers/plans/2026-06-18-integrate-barrier-module-cta-warp-fix.md`
 - **关联 skills**: `.opencode/skills/ptx-barrier-mechanism/`, `.opencode/skills/regression-bisect/`, `.opencode/skills/state-modification-audit/`
 
@@ -627,7 +627,7 @@ git diff HEAD openspec/changes/  # 应无差异（若审计基于 HEAD）
 - **触发 commit**: `0e311566`（feat）+ `f5640042`（chore, P0-A5 删除 Wbar）+ `0bab6487`（tests 修复）
 - **§1 fix 的应用**: `src/ptxsim/barrier/barrier_module.cpp:111-134` `release_warp_barrier` —— OR 逻辑、is_blocked/status/is_active 全部在一个函数体内集中
 - **§1 fix 的迁移验证**: 23/23 barrier 测试包括 `unit_post_barrier_two_halves`（BUG-POSTBARRIER-TWOHALVES）、`unit_barrier_reconvergence_simplegemm`（BUG-RECONVERGENCE-SIMPLEGEMM）、`e2e_barrier_warp_sync` 全部 PASS
-- **ADR 更新**: `docs/adr/0008-barrier-semantics.md` §2026-07-03 追加完整 postmortem（含 Phase 3/Phase 7/Phase 7b 三 commit 拆分 + lessons §1/§2/§4 的应用证据）
+- **ADR 更新**: `docs/adr/ADR-0008-barrier-semantics.md` §2026-07-03 追加完整 postmortem（含 Phase 3/Phase 7/Phase 7b 三 commit 拆分 + lessons §1/§2/§4 的应用证据）
 - **关键决策**: "OR logic 是单一所有者（single owner）"，不再分散到所有 barrier caller —— `BarrierModule::release_warp_barrier` 是唯一拥有 OR 语义的函数
 
 ### 与 §1 §2 §4 的对比
@@ -719,7 +719,7 @@ test -f <path> && echo exists || echo missing
   - 实施 commits 全部 0 回归（14 CVT + 33 PTX + e2e GEMM + 全套 178 ctest PASS）
 - **沉淀位置**:
   - `openspec/changes/fix-cvt-strategy-actual-split/{proposal,design,tasks}.md` §Scope 修订说明
-  - `docs/adr/0015-cvt-strategy-pattern.md` §2026-07 Fix 段（含 lessons-learned §20 案例沉淀）
+  - `docs/adr/ADR-0015-cvt-strategy-pattern.md` §2026-07 Fix 段（含 lessons-learned §20 案例沉淀）
   - `.opencode/skills/ptx-lessons-learned/SKILL.md`（新增 §20 + Checklist H）
   - 本 lessons-learned.md §20（本节）
 
@@ -1688,7 +1688,7 @@ done
 
 **本批 §33-37 更新日期**: 2026-07-16  
 **关联 commit hash**: de016f79 / 6cbdcc4c / 5dcccf40 / c38c31e4 / 0456418e / 88d5962e  
-**ADR postmortem ref**: docs/adr/0021-cpptlm-d1-full-integration.md §2026-07-16 Postmortem  
+**ADR postmortem ref**: docs/adr/ADR-0021-cpptlm-d1-full-integration.md §2026-07-16 Postmortem  
 **OpenSpec change ref**: openspec/changes/cpptlm-d1-full/
 
 ---

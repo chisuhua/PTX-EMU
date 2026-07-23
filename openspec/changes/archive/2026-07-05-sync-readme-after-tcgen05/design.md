@@ -51,7 +51,7 @@ README.md 应反映：
 2. **PTX 指令覆盖**: 链接到自动统计（避免硬编码）
 3. **WMMA/Tensor Core**: 已完整实现，含 .mma/.ld/.st/.commit/.wait（commit `4151268` Fix #14）
 4. **CUDA Toolkit**: 环境自适应（env.sh 自动检测）
-5. **文档导航**: 新增 `docs/adr/0016-blackwell-only-tcgen05.md` 链接
+5. **文档导航**: 新增 `docs/adr/ADR-0016-blackwell-only-tcgen05.md` 链接
 
 ## Decisions
 
@@ -85,7 +85,7 @@ README.md 应反映：
 ### Decision 4: 添加 tcgen05 文档导航（3 个引用）
 
 **引用列表**:
-1. `docs/adr/0016-blackwell-only-tcgen05.md` — 架构决策（Blackwell-only 限制 + pre-Blackwell 抛 `UnsupportedInstructionException`）
+1. `docs/adr/ADR-0016-blackwell-only-tcgen05.md` — 架构决策（Blackwell-only 限制 + pre-Blackwell 抛 `UnsupportedInstructionException`）
 2. `docs/dev-process/post-tcgen05-roadmap.md` — H5 后续规划
 3. `docs/dev-process/lessons-learned.md` — §19 跨模块状态翻译成功案例
 

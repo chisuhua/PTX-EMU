@@ -1,6 +1,6 @@
 ## ADDED Requirements
 
-> **Scope**: Blackwell `tcgen05.*` feature 层 (Phase 1-3), per [ADR-0016](../../../../docs/adr/0016-blackwell-only-tcgen05.md).
+> **Scope**: Blackwell `tcgen05.*` feature 层 (Phase 1-3), per [ADR-0016](../../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md).
 > 本 spec 覆盖 5 个 handler-implementation MUST (`tcgen05.mma`, `ld/st`, `commit/wait`, GEMM e2e, AGENTS sync, rename);
 > 4 个基础设施子系统 MUST (TMA + TMEM + cluster + TcQueue) 由前置 change
 > `implement-wmma-tensor-core-phase-0-infra` 交付并 publish。

@@ -1,6 +1,6 @@
 # Fix tcgen05 ANTLR LL(*) Prediction Bug in Qualifier Kleene Star
 
-> **架构依据**: [ADR-0016](../../../docs/adr/0016-blackwell-only-tcgen05.md) Accepted
+> **架构依据**: [ADR-0016](../../../docs/adr/ADR-0016-blackwell-only-tcgen05.md) Accepted
 > **前置 change**: `archive/2026-07-07-fix-tcgen05-grammar-mr3` (Change-3a, archived 2026-07-07)
 > **后续 change 软依赖**: `implement-tcgen05-handlers-core` (Change-3b, pending) — 不强制，但 grammar 修正提升其测试覆盖率
 > **设计时教训**: `ptx-lessons-learned` §3(分 Phase commit)+ §6(artifacts-first)+ §7(Pre-impl review)

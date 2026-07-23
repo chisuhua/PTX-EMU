@@ -2,7 +2,7 @@
 
 > **Status**: Proposed → **Phase 0 部分完成** (PTX-0.1/0.2/0.4 锁定于 2026-07-16, 来源 CppTLM commit `2b28505`)
 > **Parent**: `proposal.md` + `design.md` (cpptlm-phase8b-injection-points)
-> **ADR**: [docs/adr/0020-cpptlm-injection-points.md](../../../docs/adr/0020-cpptlm-injection-points.md)
+> **ADR**: [docs/adr/ADR-0020-cpptlm-injection-points.md](../../../docs/adr/ADR-0020-cpptlm-injection-points.md)
 > **总工时**: ~2.5d
 
 ---

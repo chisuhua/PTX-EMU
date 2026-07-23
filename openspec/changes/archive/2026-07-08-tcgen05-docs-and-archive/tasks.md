@@ -27,7 +27,7 @@
 - [ ] 2.1 根 `AGENTS.md`:更新已知限制表 — tcgen05 5 core handler 已实现(per ADR-0016)
 - [ ] 2.2 `src/grammar/AGENTS.md`:更新 lexer/parser 规则说明,标注 `tcgen05Inst` 替代 `wmmaInst`
 - [ ] 2.3 `src/ptxsim/instructions/AGENTS.md`:添加 `tcgen05.cpp` 说明,标注 `wmma.cpp` 保留 pre-Blackwell 路径
-- [ ] 2.4 `docs/adr/0016-blackwell-only-tcgen05.md`:在"更新记录"追加 4-5 个 archive commit 引用
+- [ ] 2.4 `docs/adr/ADR-0016-blackwell-only-tcgen05.md`:在"更新记录"追加 4-5 个 archive commit 引用
 - [ ] 2.5 `docs/dev-process/lessons-learned.md`:追加 §26 "tcgen05 5-core-handler 交付"(ref §25 根因)
   - 4-change 路线图回顾 + df6dde7 关键设计决策(op_kind dispatch)
   - 跨 change 并发风险:handler 签名变更与 god-class refactor 的串行约束

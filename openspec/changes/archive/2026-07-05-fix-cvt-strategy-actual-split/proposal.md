@@ -16,7 +16,7 @@
 - **修复 stale 文件头注释**（`cvt_strategy.cpp:1-16`）：将"Sub-task 4 将 GeneralCvtStrategy::convert() 拆为 5 个具体策略"改为实际状态描述（4 Strategy 类已就位）
 - **同步 4 个文档**：
   1. `docs/audits/debt-audit-2026-07-02.md §P0-C1` — 状态 active → ✅ RESOLVED（引用新 commit）
-  2. `docs/adr/0015-cvt-strategy-pattern.md` — 追加"2026-07 Fix: 死代码清理"段
+  2. `docs/adr/ADR-0015-cvt-strategy-pattern.md` — 追加"2026-07 Fix: 死代码清理"段
   3. `src/ptxsim/instructions/cvt/README.md` 或等效 — 说明 4 个活 Strategy 文件的角色
   4. `src/ptxsim/instructions/AGENTS.md` STRUCTURE — 更新 cvt/ 目录清单
 
@@ -40,7 +40,7 @@
 
 - `src/ptxsim/instructions/cvt/cvt_strategy.cpp`（1061 行 → ~140 行 dispatcher）— 删除 line 104-1031
 - `docs/audits/debt-audit-2026-07-02.md §P0-C1` — 状态更新
-- `docs/adr/0015-cvt-strategy-pattern.md` — 追加 Fix 段
+- `docs/adr/ADR-0015-cvt-strategy-pattern.md` — 追加 Fix 段
 - `src/ptxsim/instructions/AGENTS.md` 或 `cvt/README.md` — STRUCTURE 段
 
 **未受影响（明确列出以避免误改）**：
@@ -101,7 +101,7 @@
 ## Ref
 
 - `archive/2026-06-24-phase3-t2-6-cvt-strategy-pattern/` — Stale artifact 本 change 修复
-- `docs/adr/0015-cvt-strategy-pattern.md` — CVT 策略模式 ADR（本 change 追加完成确认）
+- `docs/adr/ADR-0015-cvt-strategy-pattern.md` — CVT 策略模式 ADR（本 change 追加完成确认）
 - `docs/audits/debt-audit-2026-07-02.md §P0-C1` — Active debt（修复后 RESOLVED）
 - `.opencode/skills/ptx-lessons-learned/SKILL.md §6` — Stale artifact 反模式来源
 - `.opencode/skills/openspec-propose/SKILL.md §Design-Time Checklist` — Checklist A/B/D/E/G 集成要求

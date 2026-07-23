@@ -242,7 +242,7 @@ int count_arrived_in_participation() const {
 ### 立即（本次任务范围）
 
 1. **修测试期望值**（选项 A）— 让 `integration_warp_barrier` 通过
-2. **记录决策**到 `docs/adr/0008-barrier-semantics.md`（追加 update log）— 锚定"warp-级到达计数"为正式设计决策
+2. **记录决策**到 `docs/adr/ADR-0008-barrier-semantics.md`（追加 update log）— 锚定"warp-级到达计数"为正式设计决策
 
 ### 短期（1-2 sprint）
 

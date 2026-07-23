@@ -332,7 +332,7 @@ git commit -m "fix(tcgen05): route ld/st/cp to instruction-specified tmem_slot (
 per ptx-lessons-learned §6/§G：
 1. `git add openspec/changes/fix-tcgen05-ld-st-slot-routing/`
 2. commit `docs(openspec): fix-tcgen05-ld-st-slot-routing artifacts`
-3. `docs/adr/0016-blackwell-only-tcgen05.md` 追加 "2026-07-12 Postmortem: C2 fix" 段
+3. `docs/adr/ADR-0016-blackwell-only-tcgen05.md` 追加 "2026-07-12 Postmortem: C2 fix" 段
 4. commit ADR
 5. `openspec archive fix-tcgen05-ld-st-slot-routing --yes`
 6. 强制 postmortem prompt（per openspec-archive-change skill）
@@ -404,7 +404,7 @@ per ptx-lessons-learned §6/§G：
 - 关联 change (前置): `openspec/changes/fix-tcgen05-commit-wait-group/` (FU-1, C3)
 - 关联 change (后续): `openspec/changes/fix-tcgen05-multi-warp-fragment/` (FU-4, C4) 与 `openspec/changes/tcgen05-flashattention-coverage/` (FU-5)
 - Ref (archived): `openspec/changes/archive/2026-07-10-implement-tcgen05-handlers-extended/`
-- ADR-0016: `docs/adr/0016-blackwell-only-tcgen05.md`
+- ADR-0016: `docs/adr/ADR-0016-blackwell-only-tcgen05.md`
 - ptx-lessons-learned: `.opencode/skills/ptx-lessons-learned/SKILL.md` §3, §4, §6, §7, §9, §L
 - ptx-grammar-modification skill: `.opencode/skills/ptx-grammar-modification/SKILL.md`
 - ptx-debug skill: `.opencode/skills/ptx-debug/SKILL.md` (Phase 1 step 0 `cuobjdump` 验证)
