@@ -2,8 +2,10 @@
 
 > **PTX 模拟器**: C++20/CUDA PTX 模拟器，ANTLR4 解析 PTX，fake libcudart.so 拦截 CUDA runtime
 > **C++ 标准**: C++20（含 CUDA 代码）
-> **ANTLR 版本**: 4.13.2（antlr-4.13.2-complete.jar）
-> **Generated**: 2026-07-03 | **Commit**: 4b9d6e1 | **Branch**: main
+> **ANTLR 版本**: 4.13.2（antlr-4.13.2-complete.jar, vendored in antlr4/）
+> **CUDA 架构**: sm_100（虚拟架构，用于测试）
+> **OpenSpec**: v1.4.1 | **CppTLM**: 始终链接，`EMU_COSIM=1` 激活协同仿真
+> **Generated**: 2026-07-23
 
 ---
 
@@ -147,12 +149,23 @@ cmake --build build --target ptxir      # PTXIR 序列化库（ptxir_writer + pt
 
 # 重生成 ANTLR 解析器（改 .g4 后）
 cmake --build build --target GenerateParser
+
+# CppTLM 协同仿真（需 EMU_COSIM=1）
+EMU_COSIM=1 ./scripts/regression-cosim.sh
+
+# 独立回归脚本
+./scripts/regression.sh              # 自动构建 + 全量回归
+./scripts/regression.sh --quick      # 跳过 benchmarks
 ```
 
 **依赖**: CMake ≥ 3.15, CUDA Toolkit, GCC, Java, ccache（可选自动启用）
 
+**CppTLM**: 始终链接（`cpptlm_core` via `--whole-archive`），运行时通过 `EMU_COSIM=1` 环境变量激活协同仿真。默认 `g_cpptlm_bridge == nullptr` 时字节级兼容原有同步路径。
+
 **输出目录**: `build/bin/` (可执行文件), `build/lib/` (共享库)
 `libcudart.so` 自动软链到项目根目录 `lib/`
+
+**工作流**: 重大重构或 OpenSpec 变更前，建议在 `.worktrees/` 建立隔离 worktree 作为基线保险。已有工作流示例：`baseline-wmma-cleanup/`、`fix-tcgen05-idesc-parsing/`、`pre-cpptlm-d1/`。
 
 ---
 
@@ -500,17 +513,15 @@ GPUContext (全局内存, SM 列表)
 
 | 类别 | 状态 |
 |------|------|
-| WMMA/Tensor Core | Blackwell `tcgen05.*` 5 core handler + test(commit `df6dde7`) + dispatch(commit `fix-tcgen05-handler-dispatch` cc49ae7) + 测试覆盖(commit `fix-tcgen05-test-coverage-gaps` fd74261) — 见 [ADR-0016](docs/adr/ADR-0016-blackwell-only-tcgen05.md) + `src/ptxsim/instructions/tcgen05.cpp`。pre-Blackwell 永久抛 `UnsupportedInstructionException`。 |
-| tcgen05 handler dispatch | 11 S_TCGEN05_* X-Macro + `Tcgen05PipelineHandler` 3-stage pipeline + `Tcgen05Handler::processTcgen05Operation` (commit `fix-tcgen05-handler-dispatch`)。**11/11 handler 已实现** (commits `486246a` Phase 1 + `178457d` Phase 2 + `3b6ead4` Phase 2.5 + Phase 3 + Phase 1.x + `bdb629c` cp-test-coverage + `718095a` Phase 4)：5 core (mma/ld/st/commit/wait) + 3 alloc-family (alloc/dealloc/relinquish_alloc_permit) + cp + mma.ws（qualifier-routed inside processTcgen05Mma per Oracle 2026-07-08 A-path, since grammar has no MMA_WS sub-op）+ fence (no-op marker per Oracle Q6-B / design D8)。cta_group::2 抛清晰异常（ADR-0018）。 |
-| tcgen05 测试覆盖 | 5 integration parse 测试 + 1 E2E GEMM kernel + f16×f16→f32 golden value (commit `fix-tcgen05-test-coverage-gaps` fd74261) + 12 TmemAllocator 单元测试 + 12 alloc/dealloc/relinquish handler 集成测试 + 7 tcgen05.cp 单元测试 + 3 tcgen05.cp 集成测试 + 1 tcgen05.cp E2E (Priority 3 fallback, ptxas 13.0 不支持 sm_100 cp) + **9 mma.ws scope 单元测试** + 3 mma.ws golden 集成测试 + 1 mma.ws E2E (Priority 3 fallback) (commits `486246a` + Phase 1.x + Phase 2 + Phase 3)。tcgen05-tagged ctest 全 PASS,`tests/ptx/test_all_ptx.sh` 45/45。 |
+| WMMA/Tensor Core | Blackwell `tcgen05.*` 11/11 handler 已实现（5 core + 3 alloc + cp + mma.ws + fence），参见 `src/ptxsim/instructions/tcgen05.cpp` + [ADR-0016](docs/adr/ADR-0016-blackwell-only-tcgen05.md)。pre-Blackwell 永久抛 `UnsupportedInstructionException`。 |
+| tcgen05 cta_group | cta_group::1 已实现；cta_group::2 抛清晰异常（[ADR-0018](docs/adr/ADR-0018-tcgen05-cta-group-restriction.md)）。 |
 | Atomic 操作 | 无真正原子性 (stub) |
-| Hopper (sm_90+) cluster | cluster 抽象未实现 — 实施中（[ADR-0016](docs/adr/ADR-0016-blackwell-only-tcgen05.md) Phase 0.3） |
-| Event/Stream API | fake 返回（不同步）；CppTLM bridge 激活后 `cudaStreamSynchronize` 走 `poll_kernel` 真实轮询（[ADR-0021](docs/adr/ADR-0021-cpptlm-d1-full-integration.md)）|
-| CppTLM F12b-LD MemoryBridge | **已归档（2026-07-17）** — `cpptlm_bridge.h` ABI 真值源已就绪（commit `8dc000ec`），5 虚方法 + `g_cpptlm_bridge` 全局指针。`cudaLaunchKernel` 异步路径 + `cudaStreamSynchronize` poll + GLOBAL LD/ST timing-only 桥接已实现。归档至 `openspec/changes/archive/2026-07-17-cpptlm-d1-full/`，spec 晋升至 `openspec/specs/cpptlm-d1-full/`。详见 [ADR-0021](docs/adr/ADR-0021-cpptlm-d1-full-integration.md)。默认 `g_cpptlm_bridge == nullptr` 时字节级兼容原有同步路径。|
-| CppTLM bridge path auto-co-sim | **已实施（2026-07-21）** — `auto-co-sim-standalone`: StubBridge 自动 attach + `cudaDeviceSynchronize`/`cudaStreamSynchronize` auto-advance + `count_kernel_args` segfault 修复 + 2-cycle completion 修复（自动 advance 回环）。标准 CUDA 程序在 `BUILD_LIB_CPPTLM_CUDART=ON` 下零修改自动协同仿真。`test_cosim_vector_add.cu` 退化为纯标准 CUDA 程序。详见 [ADR-0021](docs/adr/ADR-0021-cpptlm-d1-full-integration.md)。|
+| Hopper (sm_90+) cluster | cluster 抽象未实现（[ADR-0016](docs/adr/ADR-0016-blackwell-only-tcgen05.md) Phase 0.3） |
+| Event/Stream API | fake 返回（不同步）；CppTLM bridge 激活后 `cudaStreamSynchronize` 走真实轮询（[ADR-0021](docs/adr/ADR-0021-cpptlm-d1-full-integration.md)）|
+| CppTLM MemoryBridge | **已归档（2026-07-17）** — `cpptlm_bridge.h` ABI 就绪，异步 launch + poll + GLOBAL LD/ST timing-only 桥接。默认 `g_cpptlm_bridge == nullptr` 时字节级兼容。标准 CUDA 程序在 `BUILD_LIB_CPPTLM_CUDART=ON` 下零修改自动协同仿真。详见 [ADR-0021](docs/adr/ADR-0021-cpptlm-d1-full-integration.md)。 |
 | 函数调用 | 未完全实现 |
-| Multi-PTX cubins | 累加所有 sections + `PTX_WARN_EMU` 警告 section 数量（parser-completeness Fix #2 + c5 Fix #3）。潜在风险：不同 section 可能定义同名符号（warning 告知用户检查）。`ptx_parser.cpp:60` 与 `cubin_utils.cpp` 行为对齐 |
-| Extern 函数声明 | 已支持双路径：1) `PtxListener::exitExternFuncStatement` (`ptx_parser.cpp:996`) 填充 `ptxContext.externFuncs`；2) `PtxVisitor::visitFunctionDecl` (`ptx_visitor.cpp:486`) 处理 extern form (add-extern-function-declaration Fix #1)。oracle test: `unit_extern_function` |
+| Multi-PTX cubins | 累加所有 sections + `PTX_WARN_EMU` 警告。潜在风险：不同 section 可能定义同名符号。 |
+| Extern 函数声明 | 已支持双路径（`PtxListener` + `PtxVisitor`），oracle test: `unit_extern_function` |
 | `assert(false)` | 多处 → 遇未处理代码路径会崩溃 |
 
 ### 安全假设
@@ -541,6 +552,26 @@ GPUContext (全局内存, SM 列表)
 - `docs/debugging_guide.md` - 调试与日志
 - `docs/sm90_100.md` - Hopper/Blackwell 架构
 - `.opencode/skills/README.md` - 技能索引与调用关系
+- `roadmap.md` - 项目路线图（当前 Phase 10 + Phase 3 债务修复）
+- `docs/dev-process/lessons-learned.md` - 项目经验沉淀（具体案例 + 代码片段）
+- `docs/dev-process/debugging-strategy.md` - 问题分类与快速验证
+
+### 子目录 AGENTS.md
+
+各模块有独立 AGENTS.md 提供针对性指导：
+
+| 文件 | 内容 |
+|------|------|
+| `tests/AGENTS.md` | 测试目录结构、命令、反模式 |
+| `src/ptxsim/AGENTS.md` | 执行引擎结构、barrier 约定、反模式 |
+| `src/cudart/AGENTS.md` | CUDA runtime 拦截、关键文件 |
+| `configs/AGENTS.md` | 配置/调试组件及级别、反模式 |
+
+### GitHub CI
+
+- `.github/workflows/build-test.yml` — push/PR 构建 + ctest（xfail 允许失败不阻塞合并）
+- `.github/workflows/docs-validate.yml` — docs/ 变更触发文档索引校验
+- `.github/workflows/generate-ptxir.yml` — PTXIR 文件自动生成
 
 <!-- code-review-graph MCP tools -->
 ## MCP Tools: code-review-graph
