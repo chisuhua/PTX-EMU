@@ -80,7 +80,7 @@ public:
 
   /// 返回桥接实现的 ABI 版本（必须等于 CPPTLMBRIDGE_VERSION）
   /// CppTLM 端 MemoryBridge::version() 返回相同值
-  /// @return ABI 版本号（当前 = 1）
+  /// @return ABI 版本号（当前 = 2）
   virtual int version() const = 0;
 
   /// 提交一个 kernel（异步！立即返回）
@@ -175,7 +175,7 @@ extern "C" PTXEMU_BRIDGE_API void cpptlm_detach_bridge();
 // CppTLM 对端。CppTLM 侧的 DriverWrapper 通过 vtable 调用 shim 方法。
 //
 // 方向: PTX-EMU → CppTLM（与 cpptlm_attach_bridge 方向相反）
-// 实现: CppTLM 的 libcpptlm_cudart.so 提供强定义；
+// 实现: CppTLM 的 cpptlm_core（通过 --whole-archive 链接到 libcudart.so）提供强定义；
 //       PTX-EMU 的 libcudart.so 提供 __attribute__((weak)) 空实现。
 //
 // 与 cpptlm_attach_bridge 的区别:
@@ -208,7 +208,7 @@ struct PtxEmuDriverApi {
 /// PTX-EMU 调用此函数向 CppTLM 注册 driver。
 /// PTX-EMU 提供 __attribute__((weak)) 空实现（无 CppTLM 时安全 no-op）；
 /// CppTLM 的 cpptlm_core（通过 --whole-archive 链接）提供强定义覆盖。
-extern "C" void cpptlm_set_driver(void* shim, PtxEmuDriverApi api);
+extern "C" PTXEMU_BRIDGE_API void cpptlm_set_driver(void* shim, PtxEmuDriverApi api);
 
 /// 编译期断言 cudaStream_t 宽度可存入 uint64_t
 ///

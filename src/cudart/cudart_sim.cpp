@@ -308,7 +308,7 @@ void initialize_environment() {
     // cpptlm_set_driver() 传递给 CppTLM。
     //
     // Weak symbol: 无 CppTLM 时 cpptlm_set_driver 是 no-op（安全）。
-    // CppTLM 的 libcpptlm_cudart.so 加载后其强定义接管。
+    // CppTLM 的 cpptlm_set_driver 强定义（通过 --whole-archive 在 libcudart.so 中覆盖弱符号）。
     // =====================================================================
     {
         auto* shim = new PtxEmuDriverShim(g_gpu_context.get());
@@ -1008,7 +1008,9 @@ cudaError_t cudaDeviceSynchronize() {
             }
             // advance 耗尽上限且 GPUContext 仍非 EXIT → 清理并返回错误
             if (g_gpu_context && g_gpu_context->get_state() != EXIT) {
-                PTX_ERROR_EMU("cudaDeviceSynchronize: advance ceiling exhausted (max_cycles=%u, actual=%u)",
+                PTX_ERROR_EMU("cudaDeviceSynchronize: advance ceiling exhausted "
+                              "(max_cycles=%u, actual=%u). "
+                              "Set PTX_EMU_MAX_ADVANCE_CYCLES to increase limit.",
                               max_cycles, actual);
                 // 清理执行状态
                 g_gpu_context->clear_requests();

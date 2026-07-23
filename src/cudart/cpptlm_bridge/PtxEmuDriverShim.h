@@ -7,7 +7,7 @@
 //
 // CppTLM retrieves this instance via cpptlm_set_driver() and
 // reinterpret_casts back to IPtxEmuDriver* before calling virtual methods.
-// This file is only compiled when BUILD_LIB_CPPTLM_CUDART=ON.
+// This file is always compiled (CppTLM is always linked since commit 84212a9d).
 
 #include "ptxsim/scoreboard_interface.h"
 #include "ptxsim/pipeline_interface.h"
