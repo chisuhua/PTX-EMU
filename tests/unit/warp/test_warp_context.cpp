@@ -10,10 +10,12 @@ void test_warp_creation() {
 
     WarpContext warp;
 
-    // 检查默认状态
-    assert(warp.get_active_count() == 32);
-    assert(warp.is_active() == true);
-    assert(warp.get_active_mask() == 0xFFFFFFFF); // 所有线程默认活跃
+    // WarpContext now starts empty (active_count=0) — threads are activated
+    // via add_thread() or set_active_mask(). This reflects the SIMT v2.0
+    // design where WarpState is the authoritative source of lane activity.
+    assert(warp.get_active_count() == 0);
+    assert(warp.is_active() == false);
+    assert(warp.get_active_mask() == 0);
 
     std::cout << "Warp creation test passed." << std::endl;
 }
@@ -72,7 +74,8 @@ void test_warp_completion() {
 
     WarpContext warp;
 
-    // 初始时warp不完成
+    // 激活所有线程（WarpContext 现在默认空状态）
+    warp.set_active_mask(0xFFFFFFFF);
     assert(warp.is_finished() == false);
 
     // 设置所有线程为非活跃

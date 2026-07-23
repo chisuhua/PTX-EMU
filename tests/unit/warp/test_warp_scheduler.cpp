@@ -17,6 +17,11 @@ void test_round_robin_scheduler() {
     auto warp2 = std::make_unique<WarpContext>();
     auto warp3 = std::make_unique<WarpContext>();
     
+    // WarpContext 现在默认空状态（active_count=0），需要手动激活
+    warp1->set_active_mask(0xFFFFFFFF);
+    warp2->set_active_mask(0xFFFFFFFF);
+    warp3->set_active_mask(0xFFFFFFFF);
+    
     // 设置warp ID
     warp1->set_warp_id(0);
     warp2->set_warp_id(1);
@@ -58,6 +63,11 @@ void test_greedy_scheduler() {
     auto warp2 = std::make_unique<WarpContext>();
     auto warp3 = std::make_unique<WarpContext>();
     
+    // WarpContext 现在默认空状态（active_count=0），需要手动激活
+    warp1->set_active_mask(0xFFFFFFFF);
+    warp2->set_active_mask(0xFFFFFFFF);
+    warp3->set_active_mask(0xFFFFFFFF);
+    
     // 设置warp ID
     warp1->set_warp_id(0);
     warp2->set_warp_id(1);
@@ -86,6 +96,10 @@ void test_scheduler_with_inactive_warps() {
     // 创建一些warp用于测试
     auto warp1 = std::make_unique<WarpContext>();
     auto warp2 = std::make_unique<WarpContext>();
+    
+    // WarpContext 现在默认空状态（active_count=0），需要手动激活
+    warp1->set_active_mask(0xFFFFFFFF);
+    warp2->set_active_mask(0xFFFFFFFF);
     
     // 设置warp ID
     warp1->set_warp_id(0);
