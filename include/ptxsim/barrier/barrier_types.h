@@ -10,7 +10,7 @@ namespace ptxsim {
 static constexpr int MAX_BARRIERS_PER_CTA = 16;
 
 // Maximum warp-level barriers (per warp)
-static constexpr int MAX_WARP_BARRIERS = 4;
+static constexpr int MAX_WARP_BARRIERS = 16;
 
 // Warp size (NVIDIA standard)
 static constexpr int WARP_SIZE = 32;

@@ -133,8 +133,6 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
         return;
     }
     BarrierModule& bm = cta_ctx->get_barrier_module();
-    constexpr int WBAR_ID = 0;
-    WarpBarrier* wbar = bm.get_warp_barrier(WBAR_ID);
 
     ptxsim::WarpState& warp_state = warp_ctx->get_warp_state();
     int lane_id = context->lane_id_;
@@ -142,6 +140,37 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
 
     if (reconvergence_pc == 0 || reconvergence_pc == (int)current_pc) {
         reconvergence_pc = (int)current_pc + 1;
+    }
+
+    // Find the appropriate warp barrier slot:
+    //   1. First, look for an existing INITIALIZED barrier at the same
+    //      barrier_pc (reuse — other lanes may have already arrived)
+    //   2. If none found, allocate the first UNINITIALIZED slot
+    //
+    // This preserves the single-barrier semantics of bar.warp.sync while
+    // supporting 16 slots for future multi-barrier CUTLASS scenarios.
+    // Without step 1, each lane's arrival allocates a different slot
+    // and the barrier never completes.
+    int wbar_id = 0;
+    WarpBarrier* wbar = nullptr;
+    for (int i = 0; i < BarrierModule::MAX_WARP_BARRIERS; ++i) {
+        WarpBarrier* candidate = bm.get_warp_barrier(i);
+        if (candidate && candidate->is_initialized() &&
+            candidate->get_barrier_pc() == current_pc) {
+            wbar_id = i;
+            wbar = candidate;
+            break;
+        }
+    }
+    if (!wbar) {
+        for (int i = 0; i < BarrierModule::MAX_WARP_BARRIERS; ++i) {
+            WarpBarrier* candidate = bm.get_warp_barrier(i);
+            if (!candidate || !candidate->is_initialized()) {
+                wbar_id = i;
+                wbar = bm.get_warp_barrier(wbar_id);
+                break;
+            }
+        }
     }
 
     uint32_t dynamic_mask = 0;
@@ -163,12 +192,12 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
     if (unique_pcs.size() > 1 && !wbar_was_initialized) {
         warp_ctx->force_reconvergence_at_barrier(static_cast<int>(current_pc));
 
-        bm.init_warp_barrier(WBAR_ID, static_mask, reconvergence_pc, current_pc);
-        wbar = bm.get_warp_barrier(WBAR_ID);
+        bm.init_warp_barrier(wbar_id, static_mask, reconvergence_pc, current_pc);
+        wbar = bm.get_warp_barrier(wbar_id);
         wbar->arrive(lane_id);
 
         if (wbar->is_complete()) {
-            bm.release_warp_barrier(WBAR_ID, warp_ctx);
+            bm.release_warp_barrier(wbar_id, warp_ctx);
             set_pc_overridden(true);
         } else {
             warp_state.threads[lane_id].is_blocked = true;
@@ -184,10 +213,10 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
     if (!wbar->is_initialized()) {
         uint32_t participation_mask = (dynamic_mask != 0) ? (dynamic_mask & static_mask) : static_mask;
         if (participation_mask == 0) participation_mask = static_mask;
-        bm.init_warp_barrier(WBAR_ID, participation_mask, reconvergence_pc, current_pc);
-        wbar = bm.get_warp_barrier(WBAR_ID);
+        bm.init_warp_barrier(wbar_id, participation_mask, reconvergence_pc, current_pc);
+        wbar = bm.get_warp_barrier(wbar_id);
         PTX_DEBUG_EMU("bar.warp.sync: Initialized wbar[%d] with mask=0x%X, reconvergence_pc=%d",
-                      WBAR_ID, participation_mask, reconvergence_pc);
+                      wbar_id, participation_mask, reconvergence_pc);
     }
 
     wbar->arrive(lane_id);
@@ -202,7 +231,7 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
                       wbar->get_expected_count(), reconvergence_pc,
                       wbar->get_participation_mask(), wbar->get_arrived_mask());
 
-        bm.release_warp_barrier(WBAR_ID, warp_ctx);
+        bm.release_warp_barrier(wbar_id, warp_ctx);
         set_pc_overridden(true);
     } else {
         warp_state.threads[lane_id].is_blocked = true;

@@ -21,7 +21,7 @@ namespace ptxsim {
 
 class BarrierModule {
 public:
-    static constexpr int MAX_WARP_BARRIERS = 4;
+    static constexpr int MAX_WARP_BARRIERS = 16;
     static constexpr int MAX_CTA_BARRIERS = 16;
 
     BarrierModule();

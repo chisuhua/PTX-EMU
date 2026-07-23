@@ -120,7 +120,7 @@ TEST_CASE("BarrierModule warp barrier management", "[barrier][barrier_module]") 
 
     SECTION("Get invalid warp barrier returns nullptr") {
         REQUIRE(bm.get_warp_barrier(-1) == nullptr);
-        REQUIRE(bm.get_warp_barrier(4) == nullptr);
+        REQUIRE(bm.get_warp_barrier(16) == nullptr);
     }
 
     SECTION("arrive_at_warp_barrier returns false until complete") {

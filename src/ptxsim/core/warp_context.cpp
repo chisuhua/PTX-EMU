@@ -348,16 +348,19 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt,
 
         if (thread->get_state() == BAR_SYNC) {
             if (cta_context_ != nullptr) {
-                auto *wbar =
-                    cta_context_->get_barrier_module().get_warp_barrier(0);
-                bool is_warp_barrier =
-                    (wbar != nullptr && wbar->is_initialized());
-                bool warp_barrier_complete =
-                    is_warp_barrier &&
-                    cta_context_->get_barrier_module().is_warp_barrier_complete(
-                        0);
+                // Scan all warp barrier slots for any incomplete barrier.
+                // With 16 slots (ADR-0008), the active barrier can be on any slot.
+                auto& bm = cta_context_->get_barrier_module();
+                bool any_wbar_incomplete = false;
+                for (int i = 0; i < ptxsim::MAX_WARP_BARRIERS; ++i) {
+                    auto* wbar = bm.get_warp_barrier(i);
+                    if (wbar && wbar->is_initialized() && !wbar->is_complete()) {
+                        any_wbar_incomplete = true;
+                        break;
+                    }
+                }
 
-                if (!warp_barrier_complete) {
+                if (any_wbar_incomplete) {
                     PTX_WARN_EMU("Fallback CTA sync: lane %d, wbar incomplete",
                                  thread->lane_id_);
                     cta_context_->get_barrier_module().arrive_at_cta_barrier(
