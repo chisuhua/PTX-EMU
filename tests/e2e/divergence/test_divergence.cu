@@ -1,9 +1,12 @@
 /**
- * @file test_divergence.cpp
+ * @file test_divergence.cu
  * @brief Warp divergence 的 Catch2 单元测试
  *
  * 每个测试启动一个 kernel (1 block × 32 threads = 1 warp)，
  * 各 lane 将结果写到 32-int buffer，host 端验证。
+ *
+ * Kernel 定义内联于此文件中，避免多 .cu 文件触发
+ * PTX-EMU SingletonGuard（__cudaRegisterFatBinary multi-instance FATAL）。
  */
 #include "catch_amalgamated.hpp"
 #include <cstdint>
@@ -12,6 +15,120 @@
 
 // CUDA 运行时
 #include <cuda_runtime.h>
+
+// ====================================================================
+// Kernel 定义（原 divergence_kernels.cu，合并以避免多模块注册）
+// ====================================================================
+
+// 1. 简单 if-else: tid==0 vs tid!=0
+__global__ void divergence_if_else(int* buf) {
+    int tid = threadIdx.x;
+    if (tid == 0)
+        buf[tid] = 100;
+    else
+        buf[tid] = 200;
+}
+
+// 2. 多路分歧: tid < 8, 8 <= tid < 16, 16 <= tid < 24, 24 <= tid
+__global__ void divergence_multi_path(int* buf) {
+    int tid = threadIdx.x;
+    if (tid < 8) {
+        buf[tid] = 10;
+    } else if (tid < 16) {
+        buf[tid] = 20;
+    } else if (tid < 24) {
+        buf[tid] = 30;
+    } else {
+        buf[tid] = 40;
+    }
+}
+
+// 3. 嵌套 if-else: 外层 <16 vs >=16，内层 <8 vs >=8
+__global__ void divergence_nested_if(int* buf) {
+    int tid = threadIdx.x;
+    if (tid < 16) {
+        if (tid < 8)
+            buf[tid] = 1;
+        else
+            buf[tid] = 2;
+    } else {
+        buf[tid] = 3;
+    }
+}
+
+// 4. 循环内分歧: 0-15每轮+1, 16-31每轮+10, 5轮
+__global__ void divergence_loop_if(int* buf) {
+    int tid = threadIdx.x;
+    int val = 0;
+    for (int i = 0; i < 5; i++) {
+        if (tid < 16)
+            val += 1;
+        else
+            val += 10;
+    }
+    buf[tid] = val;
+}
+
+// 5. 不等长循环: 0-15 循环3次, 16-31 循环7次
+__global__ void divergence_uneven_loop(int* buf) {
+    int tid = threadIdx.x;
+    int limit = (tid < 16) ? 3 : 7;
+    int val = 0;
+    for (int i = 0; i < limit; i++) {
+        val += tid;
+    }
+    buf[tid] = val;
+}
+
+// 6. 混合: if-else + 循环 + if-else
+__global__ void divergence_mixed(int* buf) {
+    int tid = threadIdx.x;
+    int val = tid;
+
+    if (tid < 16)
+        val += 100;
+    else
+        val += 200;
+
+    for (int i = 0; i < 3; i++)
+        val += 1;
+
+    if (tid % 2 == 0)
+        val *= 2;
+    else
+        val *= 3;
+
+    buf[tid] = val;
+}
+
+// 7. 递归式分歧: 每一轮只有一半lane活跃
+__global__ void divergence_reduction(int* buf) {
+    int tid = threadIdx.x;
+    int val = tid;
+    for (int mask = 16; mask > 0; mask >>= 1) {
+        if (tid < mask)
+            val += 1;
+    }
+    buf[tid] = val;
+}
+
+// 8. 分歧 + barrier.sync 后恢复
+__global__ void divergence_barrier_sync(int* buf) {
+    __shared__ int shared_data[32];
+    int tid = threadIdx.x;
+    int lane = tid % 32;
+    int value;
+    if (tid < 16) {
+        value = 100;
+        for (int i = 0; i <= lane; i++) value += i;
+    } else {
+        value = 200;
+        for (int i = 1; i <= lane - 15; i++) value *= i;
+    }
+    shared_data[lane] = value;
+    __syncthreads();
+    buf[32-lane] = shared_data[lane];
+}
 
 // ====================================================================
 // 测试辅助 — 直接通过类型签名启动 kernel!
@@ -58,18 +175,6 @@ static void print_path_summary(const int* buf) {
         }
     }
 }
-
-// ====================================================================
-// 外部 kernel 声明（定义在 divergence_kernels.cu 中）
-// ====================================================================
-extern __global__ void divergence_if_else(int*);
-extern __global__ void divergence_multi_path(int*);
-extern __global__ void divergence_nested_if(int*);
-extern __global__ void divergence_loop_if(int*);
-extern __global__ void divergence_uneven_loop(int*);
-extern __global__ void divergence_mixed(int*);
-extern __global__ void divergence_reduction(int*);
-extern __global__ void divergence_barrier_sync(int*);
 
 // ====================================================================
 // 测试用例

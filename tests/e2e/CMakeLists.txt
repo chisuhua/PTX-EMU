@@ -33,7 +33,6 @@ set_tests_properties(e2e_ldglobal_simple PROPERTIES LABELS "e2e;ldglobal")
 # ============================================================================
 add_catch_test(e2e_divergence
     divergence/test_divergence.cu
-    divergence/divergence_kernels.cu
 )
 set_tests_properties(e2e_divergence PROPERTIES LABELS "e2e;divergence;warp")
 
