@@ -16,28 +16,29 @@ using namespace ptxsim;
 namespace {
 
 struct MockSlowScoreboard : IScoreboard {
-    int check_calls = 0, alloc_calls = 0, release_calls = 0;
-    bool has_free_entry() const override { const_cast<MockSlowScoreboard*>(this)->check_calls++; return true; }
+    mutable int check_calls = 0;
+    int alloc_calls = 0, release_calls = 0;
+    bool has_free_entry() const override { check_calls++; return true; }
     bool allocate(uint32_t, uint32_t) override { alloc_calls++; return true; }
     bool release(uint32_t, uint32_t) override { release_calls++; return true; }
     void tick() override {}
 };
 
 struct MockSlowPipeline : IPipelineLatencyProvider {
-    int cycles_calls = 0;
+    mutable int cycles_calls = 0;
     double get_fractional_cycles(const std::string&, PipelineId) const override {
-        const_cast<MockSlowPipeline*>(this)->cycles_calls++;
+        cycles_calls++;
         return 4.22;
     }
     double get_fractional_cycles_by_type(int, PipelineId) const override {
-        const_cast<MockSlowPipeline*>(this)->cycles_calls++;
+        cycles_calls++;
         return 4.22;
     }
 };
 
 struct MockSlowTensorCore : ITensorCoreTiming {
-    int latency_calls = 0;
-    uint32_t get_latency(TcPrecision) const override { const_cast<MockSlowTensorCore*>(this)->latency_calls++; return 8; }
+    mutable int latency_calls = 0;
+    uint32_t get_latency(TcPrecision) const override { latency_calls++; return 8; }
     uint32_t get_throughput_cycles(TcPrecision) const override { return 1; }
 };
 

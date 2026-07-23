@@ -16,28 +16,29 @@ using namespace ptxsim;
 namespace {
 
 struct CallCounterScoreboard : IScoreboard {
-    int check_calls = 0, alloc_calls = 0, release_calls = 0;
-    bool has_free_entry() const override { const_cast<CallCounterScoreboard*>(this)->check_calls++; return true; }
+    mutable int check_calls = 0;
+    int alloc_calls = 0, release_calls = 0;
+    bool has_free_entry() const override { check_calls++; return true; }
     bool allocate(uint32_t, uint32_t) override { alloc_calls++; return true; }
     bool release(uint32_t, uint32_t) override { release_calls++; return true; }
     void tick() override {}
 };
 
 struct CallCounterPipeline : IPipelineLatencyProvider {
-    int cycles_calls = 0;
+    mutable int cycles_calls = 0;
     double get_fractional_cycles(const std::string&, PipelineId) const override {
-        const_cast<CallCounterPipeline*>(this)->cycles_calls++;
+        cycles_calls++;
         return 0.0;
     }
     double get_fractional_cycles_by_type(int, PipelineId) const override {
-        const_cast<CallCounterPipeline*>(this)->cycles_calls++;
+        cycles_calls++;
         return 0.0;
     }
 };
 
 struct CallCounterTensorCore : ITensorCoreTiming {
-    int latency_calls = 0;
-    uint32_t get_latency(TcPrecision) const override { const_cast<CallCounterTensorCore*>(this)->latency_calls++; return 0; }
+    mutable int latency_calls = 0;
+    uint32_t get_latency(TcPrecision) const override { latency_calls++; return 0; }
     uint32_t get_throughput_cycles(TcPrecision) const override { return 0; }
 };
 
