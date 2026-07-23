@@ -307,8 +307,8 @@ foreach(TEST_NAME ${PTX_ALL_TESTS})
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
 
     # 设置超时：防御性措施，防止任何测试死锁导致 ctest 永久挂起
-    # mini 套件最慢 ~1.3s，60s 足够覆盖正常路径
-    set_tests_properties(${TEST_NAME} PROPERTIES TIMEOUT 60)
+    # mini 套件最慢 ~1.3s，basic 套件（如 aligned-types）在 PTX 模拟下可能需要数分钟
+    set_tests_properties(${TEST_NAME} PROPERTIES TIMEOUT 600)
 
     # 设置工作目录和GPU配置环境变量
     list(FIND PTX_BASIC_TESTS ${TEST_NAME} IS_BASIC_TEST)
