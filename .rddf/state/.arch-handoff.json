@@ -1,0 +1,11 @@
+{
+  "version": "1",
+  "created": "2026-07-23T15:55:00+08:00",
+  "arch_done": true,
+  "adr_count": 21,
+  "adr_naming": "ADR-NNNN-slug.md",
+  "roadmap": "roadmap.md",
+  "gap_analysis": "docs/architecture/rdd-workflow-compliance-gap-analysis.md",
+  "adr_latest": "ADR-0022-cpptlm-unified-build.md",
+  "notes": "ADR renaming completed (0001-*.md → ADR-NNNN-*.md); all internal/external references updated; CppTLM unified build ADR-0022 signed; rdd-workflow compliance gap analysis created."
+}
