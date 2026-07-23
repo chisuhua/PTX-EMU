@@ -155,5 +155,5 @@ class ThreadContext {
 
 ## 参考
 
-- [ADR-0002: PC 权威源统一到 WarpState](./0002-pc-unification.md)
+- [ADR-0002: PC 权威源统一到 WarpState](./ADR-0002-pc-unification.md)
 - [GPU Pipeline 调研](../archive/misc/GPU-PIPELINE-RESEARCH.md)

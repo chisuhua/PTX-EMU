@@ -180,4 +180,4 @@ static StatementContext make_barrier_stmt(uint32_t mask, int reconv_pc) { ... }
 ## 参考
 
 - [statement_factory.h](file:///workspace/project/PTX-EMU/include/ptx_ir/statement_factory.h)
-- [ADR-0009: X-Macro + Weak Symbol 指令分发模式](./0009-xmacro-instruction-dispatch.md)
+- [ADR-0009: X-Macro + Weak Symbol 指令分发模式](./ADR-0009-xmacro-instruction-dispatch.md)

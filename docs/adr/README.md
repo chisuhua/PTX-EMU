@@ -41,31 +41,32 @@ docs/adr/
 
 | # | 标题 | 状态 | 日期 | 关联任务 |
 |---|------|------|------|---------|
-| [0001](./0001-exception-hierarchy.md) | 异常层次体系替代 assert | Active | 2026-05-03 | T11.1.1-T11.1.4 |
-| [0002](./0002-pc-unification.md) | PC 权威源统一到 WarpState | Active | 2026-05-04 | T11.2.1-T11.2.6 |
-| [0003](./0003-commit-pc-pattern.md) | commit_pc / force_set_pc 分离 | Active | 2026-05-04 | T11.2.2 |
-| [0004](./0004-natural-stall-mechanism.md) | 自然停顿机制 is_warp_ready_to_fetch | Active | 2026-05-04 | T11.2.4 |
-| [0005](./0005-memory-region-registration.md) | MemoryRegion 注册机制 | Active | 2026-05-03 | T11.1.5-T11.1.7 |
-| [0006](./0006-simt-stack-management.md) | SIMT Stack 显式控制流管理 | Active | 2026-05-05 | Phase 2 |
-| [0007](./0007-cfg-post-dominator.md) | CFG Post-Dominator 收敛分析 | Active | 2026-05-05 | Phase 1 |
-| [0008](./0008-barrier-semantics.md) | Barrier 语义增强 - Convergence + Memory Fence | Active | 2026-05-05 | Phase 4 |
-| [0009](./0009-xmacro-instruction-dispatch.md) | X-Macro + Weak Symbol 指令分发模式 | Active | 2026-05-05 | Phase 0-9 |
-| [0010](./0010-fake-cuda-runtime.md) | Fake CUDA Runtime 拦截机制 | Active | 2026-05-05 | Phase 0 |
-| [0012](./0012-per-thread-pc.md) | Per-Thread PC 设计（Volta+ SIMT 模型） | Active | 2026-05-05 | Phase 3 |
-| [0015](./0015-cvt-strategy-pattern.md) | CVT 指令策略模式重构 (Composition over Inheritance) | Active | 2026-06-23 | T2-6 (Phase 3) |
-| [0016](./0016-blackwell-only-tcgen05.md) | Skip pre-Blackwell WMMA, only implement Blackwell tcgen05 | Accepted | 2026-07-04 | `openspec/changes/implement-wmma-tensor-core/` |
-| [0018](./0018-tcgen05-cta-group-restriction.md) | tcgen05 cta_group::2 throws UnsupportedInstructionException | Accepted | 2026-07-12 | `openspec/changes/fix-tcgen05-commit-wait-group/` |
-| [0019](./0019-pc-management-extraction.md) | ThreadContext 持续瘦身：MemoryAccessor + InstructionPipeline accessor 方案 | Active | 2026-07-14 | `openspec/changes/god-class-refactor-thread-context-phase3/` |
-| [0020](./0020-cpptlm-injection-points.md) | 接受 CppTLM Phase 8.B D1-Full 注入（IScoreboard / IPipelineLatencyProvider / ITensorCoreTiming） | Accepted | 2026-07-16 | `openspec/changes/cpptlm-phase8b-injection-points/` |
-| [0021](./0021-cpptlm-d1-full-integration.md) | CppTLM D1-Full MemoryBridge 集成（D-PTX-1~6 + HSK-1/2/3） | Active | 2026-07-16 | `openspec/changes/cpptlm-d1-full/` |
+| [0001](./ADR-0001-exception-hierarchy.md) | 异常层次体系替代 assert | Active | 2026-05-03 | T11.1.1-T11.1.4 |
+| [0002](./ADR-0002-pc-unification.md) | PC 权威源统一到 WarpState | Active | 2026-05-04 | T11.2.1-T11.2.6 |
+| [0003](./ADR-0003-commit-pc-pattern.md) | commit_pc / force_set_pc 分离 | Active | 2026-05-04 | T11.2.2 |
+| [0004](./ADR-0004-natural-stall-mechanism.md) | 自然停顿机制 is_warp_ready_to_fetch | Active | 2026-05-04 | T11.2.4 |
+| [0005](./ADR-0005-memory-region-registration.md) | MemoryRegion 注册机制 | Active | 2026-05-03 | T11.1.5-T11.1.7 |
+| [0006](./ADR-0006-simt-stack-management.md) | SIMT Stack 显式控制流管理 | Active | 2026-05-05 | Phase 2 |
+| [0007](./ADR-0007-cfg-post-dominator.md) | CFG Post-Dominator 收敛分析 | Active | 2026-05-05 | Phase 1 |
+| [0008](./ADR-0008-barrier-semantics.md) | Barrier 语义增强 - Convergence + Memory Fence | Active | 2026-05-05 | Phase 4 |
+| [0009](./ADR-0009-xmacro-instruction-dispatch.md) | X-Macro + Weak Symbol 指令分发模式 | Active | 2026-05-05 | Phase 0-9 |
+| [0010](./ADR-0010-fake-cuda-runtime.md) | Fake CUDA Runtime 拦截机制 | Active | 2026-05-05 | Phase 0 |
+| [0012](./ADR-0012-per-thread-pc.md) | Per-Thread PC 设计（Volta+ SIMT 模型） | Active | 2026-05-05 | Phase 3 |
+| [0015](./ADR-0015-cvt-strategy-pattern.md) | CVT 指令策略模式重构 (Composition over Inheritance) | Active | 2026-06-23 | T2-6 (Phase 3) |
+| [0016](./ADR-0016-blackwell-only-tcgen05.md) | Skip pre-Blackwell WMMA, only implement Blackwell tcgen05 | Accepted | 2026-07-04 | `openspec/changes/implement-wmma-tensor-core/` |
+| [0018](./ADR-0018-tcgen05-cta-group-restriction.md) | tcgen05 cta_group::2 throws UnsupportedInstructionException | Accepted | 2026-07-12 | `openspec/changes/fix-tcgen05-commit-wait-group/` |
+| [0019](./ADR-0019-pc-management-extraction.md) | ThreadContext 持续瘦身：MemoryAccessor + InstructionPipeline accessor 方案 | Active | 2026-07-14 | `openspec/changes/god-class-refactor-thread-context-phase3/` |
+| [0020](./ADR-0020-cpptlm-injection-points.md) | 接受 CppTLM Phase 8.B D1-Full 注入（IScoreboard / IPipelineLatencyProvider / ITensorCoreTiming） | Accepted | 2026-07-16 | `openspec/changes/cpptlm-phase8b-injection-points/` |
+| [0021](./ADR-0021-cpptlm-d1-full-integration.md) | CppTLM D1-Full MemoryBridge 集成（D-PTX-1~6 + HSK-1/2/3） | Active | 2026-07-16 | `openspec/changes/cpptlm-d1-full/` |
+| [0022](./ADR-0022-cpptlm-unified-build.md) | CppTLM + PTX-EMU 统一构建链路（`--whole-archive` 替代独立 `.so` + `dlopen`） | Accepted | 2026-07-23 | `openspec/changes/cpptlm-d1-full/` |
 
 ### Proposed (规划中)
 
 | # | 标题 | 状态 | 日期 | 关联任务 |
 |---|------|------|------|---------|
-| [0011](./0011-pipeline-architecture.md) | PTX→PTXIR 多阶段 Pipeline 架构 | Proposed | 2026-05-05 | Phase 12.1 |
-| [0013](./0013-statement-factory-test-unification.md) | StatementContext 测试统一模式 — statement_factory + execute_warp_instruction | Proposed | 2026-05-09 | — |
-| [0014](./0014-independent-thread-scheduling.md) | Independent Thread Scheduling (ITS) 支持 | Proposed | 2026-05-25 | BUG-SIMT-001 |
+| [0011](./ADR-0011-pipeline-architecture.md) | PTX→PTXIR 多阶段 Pipeline 架构 | Proposed | 2026-05-05 | Phase 12.1 |
+| [0013](./ADR-0013-statement-factory-test-unification.md) | StatementContext 测试统一模式 — statement_factory + execute_warp_instruction | Proposed | 2026-05-09 | — |
+| [0014](./ADR-0014-independent-thread-scheduling.md) | Independent Thread Scheduling (ITS) 支持 | Proposed | 2026-05-25 | BUG-SIMT-001 |
 
 ### Superseded (已被替代)
 
@@ -96,13 +97,14 @@ docs/adr/
 ---
 
 **维护**: PTX-EMU Architecture Team  
-**最后更新**: 2026-07-16  
-**ADR 总数**: 20（其中 Active 14 / Accepted 3 / Proposed 3 / Superseded 0）
+**最后更新**: 2026-07-23  
+**ADR 总数**: 21（其中 Active 14 / Accepted 4 / Proposed 3 / Superseded 0）
 
 ## 最近更新
 
 | 日期 | 更新内容 | 关联 ADR |
 |------|---------|---------|
+| 2026-07-23 | **CppTLM 统一构建链路**：ADR-0022 Accepted — `--whole-archive` 替代独立 `.so` + `dlopen`；CppTLM Oracle 审查通过，P1/P2/P3/S1 修复已完成 | 0022 |
 | 2026-07-16 | **cpptlm-d1-full 状态推进**：ADR-0021 Proposed → Active；ADR-0020 Proposed → Accepted；2 轮 Metis pre-impl review + 3 阶段 12 commits 修复所有 5 个 BLOCKER（B1 ABI 实现 / B2 sync loop / B3 stream destroy UB / B4 HSK 一致性 / B5 CMake 文档同步）+ sister spec 附录 + Postmortem 沉淀 | 0020, 0021 |
 | 2026-07-15 | 添加 CppTLM D1-Full MemoryBridge 集成 ADR（D-PTX-1~6 决策 + HSK-1/2/3 握手 + cpptlm_bridge.h ABI 真值源） | 0021 |
 | 2026-07-14 | 添加 CppTLM Phase 8.B D1-Full 注入点接受决策（3 个纯虚接口 + SMContext 3 setter + WarpContext 扩展 + RegisterAnalyzer 增强 + exe_once 三段式注入） | 0020 |

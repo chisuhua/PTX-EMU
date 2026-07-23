@@ -231,7 +231,7 @@ ADR 颁布后（2026-06-23），5 个具体 Strategy 类（`FloatToFloat` / `Flo
 
 - Phase 3 master plan: `docs/superpowers/plans/2026-06-23-phase3-critical-debt.md`
 - T2-6 task list: `openspec/changes/phase3-t2-6-cvt-strategy-pattern/tasks.md`
-- X-Macro dispatch ADR: `docs/adr/0009-xmacro-instruction-dispatch.md`
+- X-Macro dispatch ADR: `docs/adr/ADR-0009-xmacro-instruction-dispatch.md`
 - half_utils ADR (planned): `openspec/changes/half_utils-bugfix/`
 - Sub-task 1 commit: `86e0786` (Red test) + `d3c77b5` (Green: extract helpers)
 - Sub-task 2 commit: `2f3c150` (delegate to half_utils.h)

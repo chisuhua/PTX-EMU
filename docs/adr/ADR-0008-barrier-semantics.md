@@ -345,7 +345,7 @@ API（`step_warp`）。本次更新将这些断言的期望值改为与 warp-级
 
 - [PTX ISA 9.1 Section 9.7.13.1 - Barrier Synchronization](../archive/ptx-instruction-reference/9.7.13_sync_comm.md)
 - [SIMT 架构文档](../architecture/SIMT-ARCHITECTURE-V2.md#34-barrier-机制)
-- [ADR-0006: SIMT Stack 显式控制流管理](./0006-simt-stack-management.md)
+- [ADR-0006: SIMT Stack 显式控制流管理](./ADR-0006-simt-stack-management.md)
 
 ## 2026-06-18 追加：BarrierModule 集成与状态机扩展（commit 13b6b36 ~ 83be5f7）
 

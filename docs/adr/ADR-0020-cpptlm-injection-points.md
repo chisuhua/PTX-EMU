@@ -364,8 +364,8 @@ void WarpContext::set_blocked_cycles_for_active(uint32_t cycles) {
 
 ### PTX-EMU 内部
 
-- [ADR-0009 X-Macro 指令分发模式](0009-xmacro-instruction-dispatch.md) —— StatementType 枚举来源
-- [ADR-0019 PC management extraction](0019-pc-management-extraction.md) —— 同步活跃 change：`god-class-refactor-thread-context-phase3`
+- [ADR-0009 X-Macro 指令分发模式](ADR-0009-xmacro-instruction-dispatch.md) —— StatementType 枚举来源
+- [ADR-0019 PC management extraction](ADR-0019-pc-management-extraction.md) —— 同步活跃 change：`god-class-refactor-thread-context-phase3`
 - [`docs/dev-process/lessons-learned.md`](../dev-process/lessons-learned.md) —— 16 章节经验沉淀（跨模块翻译、递归锁、分 Phase commit、基线 worktree 等）
 - [`.opencode/skills/ptx-lessons-learned/SKILL.md`](../../.opencode/skills/ptx-lessons-learned/SKILL.md) —— 经验沉淀快速决策树 + 4 个 checklist + 失败模式速查表
 - [`.opencode/skills/ptx-instruction-pipeline/SKILL.md`](../../.opencode/skills/ptx-instruction-pipeline/SKILL.md) —— 指令执行流水线（`exe_once()` 上下文）

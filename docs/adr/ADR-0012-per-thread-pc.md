@@ -176,4 +176,4 @@ WarpContext* RoundRobinWarpScheduler::schedule_next() {
 
 - [SIMT 架构文档 - 7.1 Per-Thread PC vs Per-Warp PC](../architecture/SIMT-ARCHITECTURE-V2.md#71-per-thread-pc-vs-per-warp-pc)
 - [NVIDIA Volta Architecture Whitepaper](../archive/misc/sm90_100.md)
-- [ADR-0002: PC 权威源统一到 WarpState](./0002-pc-unification.md)
+- [ADR-0002: PC 权威源统一到 WarpState](./ADR-0002-pc-unification.md)

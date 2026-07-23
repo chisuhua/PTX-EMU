@@ -9,7 +9,7 @@
 | **作者** | project architect (Metis pre-impl review 2026-07-12) |
 | **审核人** | TBD |
 | **Supersedes** | 无 |
-| **Related** | [ADR-0016](./0016-blackwell-only-tcgen05.md) (Blackwell-only scope + cluster prerequisites) |
+| **Related** | [ADR-0016](./ADR-0016-blackwell-only-tcgen05.md) (Blackwell-only scope + cluster prerequisites) |
 
 ## 上下文
 
@@ -146,7 +146,7 @@ if (instr.cta_group == 2) {
 
 ## 参考
 
-- [ADR-0016: Blackwell-only tcgen05](./0016-blackwell-only-tcgen05.md) — 主范围 ADR（cluster prerequisites 标记为未实现）
+- [ADR-0016: Blackwell-only tcgen05](./ADR-0016-blackwell-only-tcgen05.md) — 主范围 ADR（cluster prerequisites 标记为未实现）
 - [docs/dev-process/post-tcgen05-roadmap.md](../dev-process/post-tcgen05-roadmap.md) — 跟踪 cluster abstraction 长期 roadmap
 - PTX ISA §9.7.16 — `tcgen05.*` 指令族 cta_group 语义
 - `openspec/changes/fix-tcgen05-commit-wait-group/` — 本 ADR 第一个引用方

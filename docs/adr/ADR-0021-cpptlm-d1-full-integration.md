@@ -7,7 +7,7 @@
 | **关联任务** | D-PTX-1, D-PTX-2, D-PTX-3, D-PTX-4, D-PTX-5, D-PTX-6（详见 PTX-EMU-README §10.1）|
 | **关联 OpenSpec change** | [openspec/changes/cpptlm-d1-full/](../../openspec/changes/cpptlm-d1-full/) |
 | **关联 CppTLM 文档** | [PTX-EMU-README.md §10](https://github.com/chisuhua/CppTLM/blob/main/docs/superpowers/specs/PTX-EMU-README.md)（6 项决策 + 3 个 handshake）<br>[综合任务书 §2 + §10](https://github.com/chisuhua/CppTLM/blob/main/docs/superpowers/specs/2026-07-14-ptxemu-comprehensive-modification-plan.md)<br>[协作同步 §4 + §5](https://github.com/chisuhua/CppTLM/blob/main/docs/superpowers/specs/2026-07-01-f12b-ld-ptxemu-collaboration-sync.md) |
-| **姊妹 ADR** | [ADR-0020](./0020-cpptlm-injection-points.md)（§3 D1-Full 三段式注入，已存在 2026-07-14）|
+| **姊妹 ADR** | [ADR-0020](./ADR-0020-cpptlm-injection-points.md)（§3 D1-Full 三段式注入，已存在 2026-07-14）|
 
 ---
 
@@ -26,9 +26,9 @@
 6. **2026-07-15** — 本 ADR 签署 §2 MemoryBridge 6 项自主决策（D-PTX-1~6）
 
 **前置 ADR**：
-- [ADR-0020](./0020-cpptlm-injection-points.md)：§3 D1-Full 三段式注入（姊妹 ADR；本 ADR 签署前需先达到 Accepted 状态）
-- [ADR-0010](./0010-fake-cuda-runtime.md)：Fake CUDA Runtime 当前实现（将改造）
-- [ADR-0019](./0019-pc-management-extraction.md)：ThreadContext 瘦身（不修改 ThreadState）
+- [ADR-0020](./ADR-0020-cpptlm-injection-points.md)：§3 D1-Full 三段式注入（姊妹 ADR；本 ADR 签署前需先达到 Accepted 状态）
+- [ADR-0010](./ADR-0010-fake-cuda-runtime.md)：Fake CUDA Runtime 当前实现（将改造）
+- [ADR-0019](./ADR-0019-pc-management-extraction.md)：ThreadContext 瘦身（不修改 ThreadState）
 
 ---
 

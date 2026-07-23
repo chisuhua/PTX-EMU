@@ -140,5 +140,5 @@ return -1;  // 没有准备好的 warp
 
 ## 参考
 
-- [ADR-0003: commit_pc / force_set_pc 分离](./0003-commit-pc-pattern.md)
+- [ADR-0003: commit_pc / force_set_pc 分离](./ADR-0003-commit-pc-pattern.md)
 - [GPU Pipeline 调研](../archive/misc/GPU-PIPELINE-RESEARCH.md)
