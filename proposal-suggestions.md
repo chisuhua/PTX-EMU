@@ -63,7 +63,7 @@
     "name": "create-cfg-design-doc",
     "priority": "P2",
     "source": "docs/architecture/README.md — CFG-DESIGN.md ⏳ 待创建",
-    "status": "待创建",
+    "status": "已评估，不需要",
     "phase": "Phase-10",
     "category": "arch-design",
     "description": "## 架构依据\n- docs/architecture/README.md: CFG-DESIGN.md 标记为 ⏳ 待创建\n\n## 范围\n- **In Scope**:\n  - 编写 CFG 分析详细设计文档\n  - 包括 post-dominator 算法说明\n- **Out Scope**:\n  - 不修改代码\n\n## 验收标准\n- CFG-DESIGN.md 创建完成\n- 文档格式与现有架构文档一致",
