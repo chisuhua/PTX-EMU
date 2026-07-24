@@ -73,7 +73,7 @@
     "name": "fix-code-self-contradictions",
     "priority": "P1",
     "source": "Debt Audit P0-D1/D2 — 文档自相矛盾",
-    "status": "待创建",
+    "status": "已完成",
     "phase": "Phase-10",
     "category": "arch-design",
     "description": "## 架构依据\n- Debt Audit §P0-D1: ANTLR 版本号矛盾 (4.13.1 vs 4.11.1)\n- Debt Audit §P0-D2: force_set_pc() vs set_pc() 互相反指\n- Debt Audit §P0-D4: PROJECT-COMPLETION-SUMMARY.md 虚假声明\n\n## 范围\n- **In Scope**:\n  - 同步 AGENTS.md 与 copilot-instructions.md 的 ANTLR 版本号\n  - 统一 force_set_pc/set_pc 推荐策略\n  - 删除或更新 PROJECT-COMPLETION-SUMMARY.md\n\n## 验收标准\n- 版本号一致\n- PC 设置策略文档无矛盾\n- 虚假声明文档修复",
