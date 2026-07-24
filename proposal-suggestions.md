@@ -53,7 +53,7 @@
     "name": "implement-call-function",
     "priority": "P1",
     "source": "Debt Audit P1-A6 — call 用户函数未实现",
-    "status": "待创建",
+    "status": "已评估，不需要",
     "phase": "Phase-10",
     "category": "core-impl",
     "description": "## 架构依据\n- Debt Audit §P1-A6: call.cpp ~20% 完整度, 静默跳过\n\n## 范围\n- **In Scope**:\n  - 实现 PTX call/ret 用户函数调用\n  - 支持参数传递和返回\n- **Out Scope**:\n  - 不涉及递归调用\n\n## 技术约束\n- MUST 保持与现有执行管道兼容\n\n## 验收标准\n- call/ret 基本场景可执行\n- 集成测试覆盖\n- 无回归",
