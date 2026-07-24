@@ -33,7 +33,7 @@
     "name": "fix-wmma-tensor-stubs",
     "priority": "P1",
     "source": "Debt Audit P1-A3/A4 — WMMA/Tensor Core stub 静默无操作",
-    "status": "待创建",
+    "status": "已完成",
     "phase": "Phase-10",
     "category": "core-impl",
     "description": "## 架构依据\n- Debt Audit §P1-A3: wmma.cpp:6-13 遇 WMMA 指令得到未初始化值\n- Debt Audit §P1-A4: tensor.cpp:8-15 Tensor Core stub 静默无操作\n\n## 范围\n- **In Scope**:\n  - WMMA: 将静默无操作改为 `throw UnsupportedInstructionException`\n  - Tensor Core: 同上\n\n## 关键场景\n- GIVEN 执行 WMMA 指令, WHEN 模拟器遇到, THEN 抛出明确异常而非返回未初始化值\n\n## 技术约束\n- MUST 与 pre-Blackwell tcgen05 策略一致 (throw UnsupportedInstructionException)\n- MUST NOT 更改正常执行路径\n\n## 验收标准\n- WMMA/tensor stub 抛出异常\n- 异常信息包含指令名\n- 不影响其他指令执行",
