@@ -23,7 +23,7 @@
     "name": "cleanup-wbar-api",
     "priority": "P1",
     "source": "Debt Audit P1-A1/A2 — BarWarpSyncHandler 仍用 Wbar API",
-    "status": "待创建",
+    "status": "已完成",
     "phase": "Phase-10",
     "category": "arch-design",
     "description": "## 架构依据\n- Debt Audit §P1-A1: BarWarpSyncHandler 仍用 Wbar API (barrier.cpp:161,215 ~30 处)\n- Debt Audit §P1-A2: `current_wbar_id` 11+ 处生产读写\n\n## 范围\n- **In Scope**:\n  - 将 barrier.cpp 中 Wbar API 调用替换为 BarrierModule API\n  - 移除 `current_wbar_id` 的残余使用\n  - 删除遗留的 `wbar.h` include\n\n## 关键场景\n- GIVEN bar.sync 执行, WHEN 通过 BarrierModule, THEN 行为完全一致\n- GIVEN 全量测试, WHEN 运行, THEN 无回归\n\n## 技术约束\n- MUST 保持行为不变\n- MUST 全部 barrier 测试通过\n\n## 验收标准\n- barrier.cpp 零 Wbar API 调用\n- `current_wbar_id` 零生产引用\n- 全部 barrier 测试通过",
