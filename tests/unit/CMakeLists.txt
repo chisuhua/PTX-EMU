@@ -704,6 +704,14 @@ add_catch_test(unit_cudart_stream
 set_tests_properties(unit_cudart_stream PROPERTIES LABELS "unit;cudart;stream")
 
 # ============================================================================
+# CUDA Runtime SIM core API 单元测试 (change: add-cudart-unit-tests)
+# ============================================================================
+add_catch_test(unit_cudart_sim
+    cudart/test_cudart_sim.cpp
+)
+set_tests_properties(unit_cudart_sim PROPERTIES LABELS "unit;cudart;sim")
+
+# ============================================================================
 # Phase 3: CppTLM co-simulation 单元测试 (spec traceability 100%)
 # ============================================================================
 # cpptlm-d1-full: "bridge submit 失败 → 错误码传递"
