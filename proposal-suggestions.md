@@ -83,7 +83,7 @@
     "name": "split-cpptlm-core-minimal",
     "priority": "P2",
     "source": "ADR-0022 §未来 — cpptlm_core_minimal 拆分",
-    "status": "待创建",
+    "status": "暂缓",
     "phase": "Phase-10",
     "category": "infra-setup",
     "description": "## 架构依据\n- ADR-0022 §未来: 拆分 cpptlm_core_minimal 以减小体积\n\n## 范围\n- **In Scope**:\n  - 从 cpptlm_core 拆分出 minimal 子集 (bridge + IPtxEmuDriver + MemoryBridge)\n- **Out Scope**:\n  - 不更改现有链接行为\n\n## 验收标准\n- 拆分后构建通过\n- CppTLM 协同仿真测试通过",
