@@ -18,4 +18,4 @@
 
 - [x] 4.1 运行 `ctest -R unit_cudart_sim -V`，确认 2/2 测试绿色通过
 - [x] 4.2 运行 `./scripts/sanity.sh --quick`，确认无回归
-- [ ] 4.3 更新 `proposal-suggestions.md`：将 `add-cudart-unit-tests` 条目 status 改为 `已完成`
+- [x] 4.3 更新 `proposal-suggestions.md`：将 `add-cudart-unit-tests` 条目 status 改为 `已完成`
