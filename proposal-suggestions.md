@@ -43,7 +43,7 @@
     "name": "add-nested-divergence-tests",
     "priority": "P1",
     "source": "Debt Audit P1-A10 — 嵌套分歧测试缺失",
-    "status": "待创建",
+    "status": "已完成",
     "phase": "Phase-10",
     "category": "core-test",
     "description": "## 架构依据\n- Debt Audit §P1-A10: test_nested_divergence.cpp:106 嵌套分歧测试缺失\n\n## 范围\n- **In Scope**:\n  - 为嵌套分歧场景编写集成测试\n  - 覆盖两级分歧 + 汇聚\n- **Out Scope**:\n  - 不修改调度器实现\n\n## 关键场景\n- GIVEN 两级分歧, WHEN 执行, THEN warp 正确汇聚\n- GIVEN 分歧中分歧, WHEN SIMT stack 管理, THEN depth 正确\n\n## 验收标准\n- 3+ 嵌套分歧测试添加\n- 测试全部通过",
