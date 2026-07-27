@@ -1,6 +1,6 @@
 # refactor-warp-context Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use skill_use("execute") to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use skill_use("execute") to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 将 `src/ptxsim/core/warp_context.cpp`（558 行 god-class）拆分为 3 个职责单一子模块（active_mask / simt / dispatch），API 冻结以保证消费方 sm_context.cpp 零 diff。
 
@@ -40,7 +40,7 @@
 **Files:**
 - Modify: worktree metadata only (no source changes)
 
-- [ ] **Step 1: Verify worktree exists and clean**
+- [x] **Step 1: Verify worktree exists and clean**
 
 ```bash
 cd /workspace/project/PTX-EMU/.rddf/wt/refactor-warp-context
@@ -48,27 +48,27 @@ git status --short | wc -l   # expect 0 (clean)
 git branch --show-current    # expect openspec/refactor-warp-context
 ```
 
-- [ ] **Step 2: Capture baseline line counts**
+- [x] **Step 2: Capture baseline line counts**
 
 ```bash
 wc -l src/ptxsim/core/warp_context.cpp  # expect 558
 ```
 
-- [ ] **Step 3: Capture sync_to_warp_state baseline (§1 4 站点)**
+- [x] **Step 3: Capture sync_to_warp_state baseline (§1 4 站点)**
 
 ```bash
 grep -nc 'sync_to_warp_state' src/ptxsim/core/warp_context.cpp  # expect 4
 grep -n 'sync_to_warp_state' src/ptxsim/core/warp_context.cpp
 ```
 
-- [ ] **Step 4: Capture API freeze baseline (5 站点)**
+- [x] **Step 4: Capture API freeze baseline (5 站点)**
 
 ```bash
 grep -n 'update_active_mask\|check_reconvergence\|get_simt_stack\|get_lanes_by_pc' src/ptxsim/core/sm_context.cpp | head -10
 # expect matches :379/:461/:468/:583/:590
 ```
 
-- [ ] **Step 5: Verify baseline tests pass**
+- [x] **Step 5: Verify baseline tests pass**
 
 ```bash
 . env.sh && cmake --build build -j4 --target ptxsim && cd build && ctest -L "warp;barrier;active_mask;simt;divergence" 2>&1 | grep -E "passed|failed"
@@ -82,7 +82,7 @@ grep -n 'update_active_mask\|check_reconvergence\|get_simt_stack\|get_lanes_by_p
 - Modify: `src/ptxsim/core/warp_context.h` (#include new header)
 - Modify: `src/ptxsim/core/CMakeLists.txt` (add warp_context_active_mask.cpp)
 
-- [ ] **Step 1: Create warp_context_active_mask.h with interface**
+- [x] **Step 1: Create warp_context_active_mask.h with interface**
 
 ```cpp
 #ifndef PTXSIM_CORE_WARP_CONTEXT_ACTIVE_MASK_H
@@ -106,13 +106,13 @@ void update_active_mask(WarpContext* w);  // API 冻结入口
 #endif
 ```
 
-- [ ] **Step 2: Create warp_context_active_mask.cpp with implementation (move verbatim from warp_context.cpp)**
+- [x] **Step 2: Create warp_context_active_mask.cpp with implementation (move verbatim from warp_context.cpp)**
 
 读 warp_context.cpp 中所有 active mask 操作（`set_active_mask`, `get_active_mask`, `update_active_mask`，以及 4 处 `sync_to_warp_state`），原样搬到 warp_context_active_mask.cpp，使用 warp_active_mask:: 命名空间包裹。
 
 **§1 强制**：4 处 sync_to_warp_state 必须保留（grep -c 'sync_to_warp_state' = 4 验证）。
 
-- [ ] **Step 3: Update warp_context.cpp to call helper (preserve API signatures)**
+- [x] **Step 3: Update warp_context.cpp to call helper (preserve API signatures)**
 
 将 warp_context.cpp 中：
 - `void WarpContext::set_active_mask(uint32_t mask)` 改为 `return warp_active_mask::set_active_mask(this, mask);`（API 签名不变）
@@ -120,13 +120,13 @@ void update_active_mask(WarpContext* w);  // API 冻结入口
 
 Public API 签名零变化（消费方 sm_context.cpp:379 仍然调用 `warp->update_active_mask()`，通过 wrapper 转发）。
 
-- [ ] **Step 4: Add #include in warp_context.h**
+- [x] **Step 4: Add #include in warp_context.h**
 
 ```cpp
 #include "warp_context_active_mask.h"
 ```
 
-- [ ] **Step 5: Update CMakeLists.txt**
+- [x] **Step 5: Update CMakeLists.txt**
 
 ```cmake
 target_sources(ptxsim PRIVATE
@@ -136,21 +136,21 @@ target_sources(ptxsim PRIVATE
 )
 ```
 
-- [ ] **Step 6: Build + verify sm_context.cpp zero diff**
+- [x] **Step 6: Build + verify sm_context.cpp zero diff**
 
 ```bash
 . env.sh && cmake --build build -j4 --target ptxsim 2>&1 | tail -3
 diff <(git show HEAD:src/ptxsim/core/sm_context.cpp) src/ptxsim/core/sm_context.cpp  # expect empty
 ```
 
-- [ ] **Step 7: Run active_mask + ret handler tests**
+- [x] **Step 7: Run active_mask + ret handler tests**
 
 ```bash
 cd build && ctest -L "active_mask" -V 2>&1 | grep -E "Passed|Failed"
 ctest -R "ret" -V 2>&1 | grep -E "Passed|Failed"  # ret handler 依赖 set_active_mask
 ```
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/ptxsim/core/warp_context.cpp src/ptxsim/core/warp_context.h src/ptxsim/core/warp_context_active_mask.h src/ptxsim/core/warp_context_active_mask.cpp src/ptxsim/core/CMakeLists.txt
@@ -165,7 +165,7 @@ git commit -m "refactor(warp): extract active mask helper to warp_context_active
 - Modify: `src/ptxsim/core/warp_context.h` (#include new header)
 - Modify: `src/ptxsim/core/CMakeLists.txt`
 
-- [ ] **Step 1: Create warp_context_simt.h with interface**
+- [x] **Step 1: Create warp_context_simt.h with interface**
 
 ```cpp
 #ifndef PTXSIM_CORE_WARP_CONTEXT_SIMT_H
@@ -186,7 +186,7 @@ bool check_reconvergence(WarpContext* w, int target_pc);
 #endif
 ```
 
-- [ ] **Step 2: Create warp_context_simt.cpp by moving warp_context.cpp:64-143 verbatim**
+- [x] **Step 2: Create warp_context_simt.cpp by moving warp_context.cpp:64-143 verbatim**
 
 将 warp_context.cpp:64-143（push/pop/check_reconvergence 编排逻辑）原样搬到 warp_context_simt.cpp，使用 warp_simt:: 命名空间包裹。
 
@@ -194,7 +194,7 @@ bool check_reconvergence(WarpContext* w, int target_pc);
 
 **约束**：simt_stack.cpp/h 数据结构零 diff（已存在独立模块）。
 
-- [ ] **Step 3: Update warp_context.cpp to delegate**
+- [x] **Step 3: Update warp_context.cpp to delegate**
 
 WarpContext::push_simt_stack / pop_simt_stack / check_reconvergence 改为 wrapper：
 ```cpp
@@ -203,19 +203,19 @@ void WarpContext::push_simt_stack(uint32_t mask, int pc, bool uni) { return warp
 
 Public API 签名零变化。
 
-- [ ] **Step 4: Update warp_context.h to #include new module**
+- [x] **Step 4: Update warp_context.h to #include new module**
 
-- [ ] **Step 5: Update CMakeLists.txt**
+- [x] **Step 5: Update CMakeLists.txt**
 
-- [ ] **Step 6: Build + verify sm_context.cpp zero diff**
+- [x] **Step 6: Build + verify sm_context.cpp zero diff**
 
-- [ ] **Step 7: Run barrier + divergence tests**
+- [x] **Step 7: Run barrier + divergence tests**
 
 ```bash
 cd build && ctest -L "barrier;divergence" -V 2>&1 | grep -E "Passed|Failed"
 ```
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git commit -m "refactor(warp): extract SIMT orchestration to warp_context_simt"
@@ -229,7 +229,7 @@ git commit -m "refactor(warp): extract SIMT orchestration to warp_context_simt"
 - Modify: `src/ptxsim/core/warp_context.h` (#include new header)
 - Modify: `src/ptxsim/core/CMakeLists.txt`
 
-- [ ] **Step 1: Create warp_context_dispatch.h with dispatch table interface**
+- [x] **Step 1: Create warp_context_dispatch.h with dispatch table interface**
 
 ```cpp
 #ifndef PTXSIM_CORE_WARP_CONTEXT_DISPATCH_H
@@ -255,21 +255,21 @@ void register_handler(const std::string& stmt_kind, HandlerFunc handler);
 #endif
 ```
 
-- [ ] **Step 2: Create warp_context_dispatch.cpp with strategy table**
+- [x] **Step 2: Create warp_context_dispatch.cpp with strategy table**
 
 将 warp_context.cpp 中 `execute_warp_instruction` 的 switch/if-else 改为基于 `warp_dispatch::HandlerFunc` 的策略表（key 为 statement kind 字符串，value 为 handler）。
 
 **§1 强制**：dispatch 表中的每个 handler 内 4 处 sync_to_warp_state 必须保留（如果原代码中有）。
 
-- [ ] **Step 3: Update warp_context.cpp**
+- [x] **Step 3: Update warp_context.cpp**
 
 `WarpContext::execute_warp_instruction(stmt)` 改为 `return warp_dispatch::execute_warp_instruction(this, stmt);`（API 签名不变）。
 
-- [ ] **Step 4: Update warp_context.h to #include new module**
+- [x] **Step 4: Update warp_context.h to #include new module**
 
-- [ ] **Step 5: Update CMakeLists.txt**
+- [x] **Step 5: Update CMakeLists.txt**
 
-- [ ] **Step 6: Build + verify sm_context.cpp zero diff + test-coverage-enforcer**
+- [x] **Step 6: Build + verify sm_context.cpp zero diff + test-coverage-enforcer**
 
 ```bash
 . env.sh && cmake --build build -j4 --target ptxsim 2>&1 | tail -3
@@ -277,7 +277,7 @@ diff <(git show HEAD:src/ptxsim/core/sm_context.cpp) src/ptxsim/core/sm_context.
 ctest -L "unit;integration" 2>&1 | grep -E "passed|failed"
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git commit -m "refactor(warp): extract instruction dispatch to warp_context_dispatch"
@@ -288,31 +288,31 @@ git commit -m "refactor(warp): extract instruction dispatch to warp_context_disp
 **Files:**
 - Modify: `src/ptxsim/core/AGENTS.md` (document 3 new sub-modules)
 
-- [ ] **Step 1: Verify warp_context.cpp < 300 lines**
+- [x] **Step 1: Verify warp_context.cpp < 300 lines**
 
 ```bash
 wc -l src/ptxsim/core/warp_context.cpp  # expect < 300
 ```
 
-- [ ] **Step 2: Verify sync_to_warp_state count ≥ 4 (across all warp_context_*.cpp)**
+- [x] **Step 2: Verify sync_to_warp_state count ≥ 4 (across all warp_context_*.cpp)**
 
 ```bash
 grep -c 'sync_to_warp_state' src/ptxsim/core/warp_context*.cpp | grep -v ":0"  # expect ≥ 4 total
 ```
 
-- [ ] **Step 3: Verify sm_context.cpp zero diff**
+- [x] **Step 3: Verify sm_context.cpp zero diff**
 
-- [ ] **Step 4: Run full ctest**
+- [x] **Step 4: Run full ctest**
 
 ```bash
 cd build && ctest --output-on-failure 2>&1 | grep -E "passed|failed"
 ```
 
-- [ ] **Step 5: Update AGENTS.md**
+- [x] **Step 5: Update AGENTS.md**
 
 在 src/ptxsim/core/AGENTS.md 添加 WarpContext sub-module layout 表（参考 split-ptx-visitor-god-class 模式）。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git commit -m "docs(warp): document 3 new warp_context sub-modules in AGENTS.md"
@@ -323,19 +323,19 @@ git commit -m "docs(warp): document 3 new warp_context sub-modules in AGENTS.md"
 **Files:**
 - Modify: `openspec/changes/refactor-warp-context/tasks.md` (mark all [x])
 
-- [ ] **Step 1: openspec validate --strict**
+- [x] **Step 1: openspec validate --strict**
 
 ```bash
 openspec validate refactor-warp-context --strict
 ```
 
-- [ ] **Step 2: Archive change**
+- [x] **Step 2: Archive change**
 
 ```bash
 openspec archive refactor-warp-context --yes
 ```
 
-- [ ] **Step 3: Mark remaining tasks done + commit**
+- [x] **Step 3: Mark remaining tasks done + commit**
 
 ```bash
 sed -i 's/^- \[ \] 6\.1/- [x] 6.1/' openspec/changes/refactor-warp-context/tasks.md
