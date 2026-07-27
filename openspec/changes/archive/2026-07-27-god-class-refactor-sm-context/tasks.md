@@ -24,42 +24,42 @@
 
 ## 3. Phase 2: ADR-0020 注入编排提取（3h）
 
-- [ ] 3.1 MUST 提取 step_b_set_blocked_cycles + 3 setter + 3-step 编排至独立模块
-- [ ] 3.2 MUST 新建 src/ptxsim/core/sm_context_cpptlm_inject.{h,cpp}
-- [ ] 3.3 MUST 保持 step_b no-op byte-identical fallback 契约（lessons-learned §14）
-- [ ] 3.4 MUST 保持 4 分支测试锁定（test_step_b_set_blocked_cycles.cpp）
-- [ ] 3.5 MUST NOT 改变 WarpContext public API 调用
-- [ ] 3.6 MUST 更新 src/ptxsim/core/CMakeLists.txt
-- [ ] 3.7 MUST 验证：step_b 4 分支测试全绿
-- [ ] 3.8 MUST 验证：ctest 全绿
-- [ ] 3.9 git commit -m "refactor(sm): extract ADR-0020 cpptlm injection code to sm_context_cpptlm_inject"
+- [x] 3.1 MUST 提取 step_b_set_blocked_cycles + 3 setter + 3-step 编排至独立模块
+- [x] 3.2 MUST 新建 src/ptxsim/core/sm_context_cpptlm_inject.{h,cpp}
+- [x] 3.3 MUST 保持 step_b no-op byte-identical fallback 契约（lessons-learned §14）
+- [x] 3.4 MUST 保持 4 分支测试锁定（test_step_b_set_blocked_cycles.cpp）
+- [x] 3.5 MUST NOT 改变 WarpContext public API 调用
+- [x] 3.6 MUST 更新 src/ptxsim/core/CMakeLists.txt
+- [x] 3.7 MUST 验证：step_b 4 分支测试全绿
+- [x] 3.8 MUST 验证：ctest 全绿
+- [x] 3.9 git commit -m "refactor(sm): extract ADR-0020 cpptlm injection code to sm_context_cpptlm_inject"
 
 ## 4. Phase 3: CTA 调度 + SM barrier 拆分（4h）
 
-- [ ] 4.1 MUST 拆分 CTA 调度逻辑至独立模块
-- [ ] 4.2 MUST 拆分 SM 级 barrier 同步封装至独立模块
-- [ ] 4.3 MUST 拆分 warp 生命周期管理至独立模块
-- [ ] 4.4 MUST NOT 改变 exe_once() 主循环签名
-- [ ] 4.5 MUST NOT 改变 BarrierModule 内部实现
-- [ ] 4.6 MUST 行级随迁 sm_context.cpp:379 update_active_mask() 调用
-- [ ] 4.7 MUST 验证：sm_context.cpp < 250 行
-- [ ] 4.8 MUST 验证：sm_context.cpp 零 diff WarpContext public API 调用点
-- [ ] 4.9 MUST 验证：ctest 全绿
-- [ ] 4.10 git commit -m "refactor(sm): split CTA scheduling + SM barrier into separate modules"
+- [x] 4.1 MUST 拆分 CTA 调度逻辑至独立模块
+- [x] 4.2 MUST 拆分 SM 级 barrier 同步封装至独立模块
+- [x] 4.3 MUST 拆分 warp 生命周期管理至独立模块
+- [x] 4.4 MUST NOT 改变 exe_once() 主循环签名
+- [x] 4.5 MUST NOT 改变 BarrierModule 内部实现
+- [x] 4.6 MUST 行级随迁 sm_context.cpp:379 update_active_mask() 调用
+- [x] 4.7 MUST 验证：sm_context.cpp < 250 行
+- [x] 4.8 MUST 验证：sm_context.cpp 零 diff WarpContext public API 调用点
+- [x] 4.9 MUST 验证：ctest 全绿
+- [x] 4.10 git commit -m "refactor(sm): split CTA scheduling + SM barrier into separate modules"
 
 ## 5. Phase 4: 最终验证（1h）
 
-- [ ] 5.1 MUST 验证：wc -l sm_context.cpp < 250
-- [ ] 5.2 MUST 验证：sm_context.cpp:379 update_active_mask() 仍在（§1 关键项）
-- [ ] 5.3 MUST 验证：sm_context.cpp:374 注释完整
-- [ ] 5.4 MUST 验证：sm_context.cpp WarpContext API 调用点零 diff
-- [ ] 5.5 MUST 验证：ctest --output-on-failure 全绿
-- [ ] 5.6 SHOULD 更新 src/ptxsim/core/AGENTS.md 文档化新子模块
+- [x] 5.1 MUST 验证：wc -l sm_context.cpp < 250
+- [x] 5.2 MUST 验证：sm_context.cpp:379 update_active_mask() 仍在（§1 关键项）
+- [x] 5.3 MUST 验证：sm_context.cpp:374 注释完整
+- [x] 5.4 MUST 验证：sm_context.cpp WarpContext API 调用点零 diff
+- [x] 5.5 MUST 验证：ctest --output-on-failure 全绿
+- [x] 5.6 SHOULD 更新 src/ptxsim/core/AGENTS.md 文档化新子模块
 
 ## 6. 应用阶段
 
-- [ ] 6.1 MUST 运行 openspec validate god-class-refactor-sm-context --strict
-- [ ] 6.2 MUST 通过所有验证后 archive
+- [x] 6.1 MUST 运行 openspec validate god-class-refactor-sm-context --strict
+- [x] 6.2 MUST 通过所有验证后 archive
 
 ## 验收
 
