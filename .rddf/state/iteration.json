@@ -1,6 +1,6 @@
 {
   "version": 4,
-  "updated_at": "2026-07-27T16:00:00.000000+00:00",
+  "updated_at": "2026-07-27T19:00:00.000000+00:00",
   "current_phase": "Phase-10",
   "changes": [
     {
@@ -49,15 +49,14 @@
       "phase": "Phase-10",
       "category": "arch-design",
       "priority": "P2",
-      "status": "proposed",
+      "status": "archived",
       "added_at": "2026-07-27T04:26:52.442289+00:00",
-      "worktree_path": null,
-      "plan_path": null,
-      "tasks_done": 0,
-      "tasks_total": 30,
+      "tasks_done": 43,
+      "tasks_total": 43,
       "blocker": "refactor-warp-context",
       "parallel_group": 2,
-      "parent_feature": null
+      "parent_feature": null,
+      "archived_at": "2026-07-27T19:00:00+00:00"
     }
   ]
 }
