@@ -2,12 +2,12 @@
 
 ## 1. Phase 0: 准备工作
 
-- [ ] 1.1 MUST 验证 C-18（refactor-warp-context）已落地（WarpContext API 冻结）
-- [ ] 1.2 MUST 建立 baseline worktree（Checklist B）
-- [ ] 1.3 MUST 记录基线：wc -l sm_context.cpp = 965
-- [ ] 1.4 MUST 记录基线：ctest 全绿
-- [ ] 1.5 MUST 验证：sm_context.cpp:379 update_active_mask() 存在
-- [ ] 1.6 MUST 验证：sm_context.cpp:455-490 与 :580-623 重复循环存在
+- [x] 1.1 MUST 验证 C-18（refactor-warp-context）已落地（WarpContext API 冻结）
+- [x] 1.2 MUST 建立 baseline worktree（Checklist B）
+- [x] 1.3 MUST 记录基线：wc -l sm_context.cpp = 965
+- [x] 1.4 MUST 记录基线：ctest 全绿
+- [x] 1.5 MUST 验证：sm_context.cpp:379 update_active_mask() 存在
+- [x] 1.6 MUST 验证：sm_context.cpp:455-490 与 :580-623 重复循环存在
 
 ## 2. Phase 1: 去重 reconvergence 编排循环（3h）
 
