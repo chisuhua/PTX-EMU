@@ -2,11 +2,11 @@
 
 ## 1. Phase 0: 准备工作
 
-- [ ] 1.1 建立 baseline worktree（Checklist B：避免污染 main 分支）
-- [ ] 1.2 运行 `wc -l src/ptx_parser/ptx_visitor.cpp` 记录基线行数（应为 1067）
-- [ ] 1.3 运行 `./tests/ptx/test_all_ptx.sh` 记录基线测试结果（应为 47/47）
-- [ ] 1.4 运行 `ctest --output-on-failure` 记录基线 ctest 全绿
-- [ ] 1.5 MUST 验证：grep -c '#include "ptx_visitor_warp.cpp"' = 2（确认 :922 重复 include）
+- [x] 1.1 建立 baseline worktree（Checklist B：避免污染 main 分支）
+- [x] 1.2 运行 `wc -l src/ptx_parser/ptx_visitor.cpp` 记录基线行数（应为 1067）
+- [x] 1.3 运行 `./tests/ptx/test_all_ptx.sh` 记录基线测试结果（应为 47/47）
+- [x] 1.4 运行 `ctest --output-on-failure` 记录基线 ctest 全绿
+- [x] 1.5 MUST 验证：grep -c '#include "ptx_visitor_warp.cpp"' = 2（确认 :922 重复 include）
 
 ## 2. Phase 1: 删除 :922 重复 include（30 min）
 
