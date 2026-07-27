@@ -1,4 +1,5 @@
 #include "ptxsim/warp_context.h"
+#include "warp_context_active_mask.h"
 #include "ptxsim/barrier/barrier_module.h"
 #include "ptxsim/cta_context.h"
 #include "ptxsim/execution_trace.h"
@@ -384,34 +385,11 @@ void WarpContext::execute_warp_instruction(StatementContext &stmt,
 }
 
 void WarpContext::update_active_mask() {
-    active_count = 0;
-    for (int i = 0; i < WARP_SIZE; i++) {
-        if (i < threads.size() && threads[i] != nullptr) {
-            bool active =
-                warp_state.threads[i].is_active &&
-                !warp_state.threads[i].is_exited &&
-                !warp_state.threads[i].is_blocked &&
-                (warp_state.threads[i].status == ptxsim::ThreadStatus::Active);
-            active_mask[i] = active;
-            warp_state.threads[i].is_active = active;
-            if (active)
-                active_count++;
-        }
-    }
+    warp_active_mask::update_active_mask(this);
 }
 
 void WarpContext::set_active_mask(int lane_id, bool active) {
-    if (lane_id >= 0 && lane_id < WARP_SIZE) {
-        bool was_active = active_mask[lane_id];
-        active_mask[lane_id] = active;
-        warp_state.threads[lane_id].is_active = active;
-
-        if (was_active && !active) {
-            active_count--;
-        } else if (!was_active && active) {
-            active_count++;
-        }
-    }
+    warp_active_mask::set_active_mask_lane(this, lane_id, active);
 }
 
 bool WarpContext::is_finished() const {
@@ -467,25 +445,11 @@ void WarpContext::reset() {
 }
 
 uint32_t WarpContext::get_active_mask() const {
-    uint32_t mask = 0;
-    for (int i = 0; i < WARP_SIZE && i < 32; i++) {
-        if (active_mask[i]) {
-            mask |= (1U << i);
-        }
-    }
-    return mask;
+    return warp_active_mask::get_active_mask_u32(this);
 }
 
 void WarpContext::set_active_mask(uint32_t mask) {
-    active_count = 0;
-    for (int i = 0; i < WARP_SIZE && i < 32; i++) {
-        bool active = (mask >> i) & 1;
-        active_mask[i] = active;
-        warp_state.threads[i].is_active = active;
-        if (active) {
-            active_count++;
-        }
-    }
+    warp_active_mask::set_active_mask_u32(this, mask);
 }
 
 std::map<int, std::vector<int>> WarpContext::get_lanes_by_pc() const {
