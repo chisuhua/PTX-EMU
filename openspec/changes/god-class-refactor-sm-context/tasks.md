@@ -11,16 +11,16 @@
 
 ## 2. Phase 1: 去重 reconvergence 编排循环（3h）
 
-- [ ] 2.1 MUST 提取 sm_context.cpp:455-490 与 :580-623 重复循环为共享 helper
-- [ ] 2.2 MUST 新建 src/ptxsim/core/sm_context_reconvergence.{h,cpp}
-- [ ] 2.3 MUST 行级随迁 sm_context.cpp:379 update_active_mask() 调用（§1）
-- [ ] 2.4 MUST 保留 sm_context.cpp:374 注释（active_count sync fix）
-- [ ] 2.5 MUST NOT 改变 WarpContext public API 调用点（:461/:468/:583/:590 等）
-- [ ] 2.6 MUST 更新 src/ptxsim/core/CMakeLists.txt
-- [ ] 2.7 MUST 验证：grep -c 'check_reconvergence' sm_context.cpp ≤ 2
-- [ ] 2.8 MUST 验证：sm_context.cpp 减少 ≥ 65 行
-- [ ] 2.9 MUST 验证：ctest 全绿（barrier/divergence 测试）
-- [ ] 2.10 git commit -m "refactor(sm): dedup reconvergence orchestration loops to shared helper"
+- [x] 2.1 MUST 提取 sm_context.cpp:455-490 与 :580-623 重复循环为共享 helper
+- [x] 2.2 MUST 新建 src/ptxsim/core/sm_context_reconvergence.{h,cpp}
+- [x] 2.3 MUST 行级随迁 sm_context.cpp:379 update_active_mask() 调用（§1）
+- [x] 2.4 MUST 保留 sm_context.cpp:374 注释（active_count sync fix）
+- [x] 2.5 MUST NOT 改变 WarpContext public API 调用点（:461/:468/:583/:590 等）
+- [x] 2.6 MUST 更新 src/ptxsim/core/CMakeLists.txt
+- [x] 2.7 MUST 验证：grep -c 'check_reconvergence' sm_context.cpp ≤ 2
+- [x] 2.8 MUST 验证：sm_context.cpp 减少 ≥ 65 行
+- [x] 2.9 MUST 验证：ctest 全绿（barrier/divergence 测试）
+- [x] 2.10 git commit -m "refactor(sm): dedup reconvergence orchestration loops to shared helper"
 
 ## 3. Phase 2: ADR-0020 注入编排提取（3h）
 
