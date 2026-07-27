@@ -919,8 +919,6 @@ std::any PtxVisitor::visitTcgen05Inst(ptxparser::ptxParser::Tcgen05InstContext *
 // 包含内存相关指令实现
 #include "ptx_visitor_memory.cpp"
 
-#include "ptx_visitor_warp.cpp"
-
 // 包含 ABI 指令实现
 #include "ptx_visitor_abi.cpp"
 
