@@ -1,53 +1,55 @@
-# PTX IR + PTXIR Serialization
-
-**Parent**: [AGENTS.md](../../AGENTS.md)
+# src/ptx_ir — IR Types & PTXIR Serialization
 
 ## OVERVIEW
-PTX intermediate representation types (operand/statement contexts), X-Macro instruction definitions, and PTXIR binary serialization.
+PTX-EMU 中间表示层：PTX 指令 C++ 类型（`StatementContext`/`OperandContext`）、106 条 X-Macro 指令枚举（`ptx_op.def`）、Qualifier 定义（`ptx_qualifier.def`）、PTXIR 二进制序列化。
 
 ## STRUCTURE
 ```
-src/ptx_ir/              # ptxir_writer.cpp, ptxir_reader.cpp
-include/ptx_ir/          # statement_context.h, operand_context.h, ptx_op.def, ptx_qualifier.def
-src/ptxir/               # ptxir_serialization.cpp (public API)
-include/ptxir/           # ptxir_serialization.h (public API header)
+include/ptx_ir/
+├── ptx_op.def               # X-Macro: 106 条目
+├── ptx_qualifier.def        # Qualifier 枚举
+├── statement_context.h       # InstrVariant (std::variant<28>)
+├── operand_context.h         # 6 种操作数类型
+├── ptxir_format.h            # 二进制格式常量
+├── ptx_types.h / ptx_context.h / kernel_context.h
+└── statement_factory.h
+src/ptx_ir/
+├── ptxir_writer.cpp / ptxir_reader.cpp
+├── statement_context.cpp / operand_context.cpp / ptx_types.cpp
+└── instruction_latency_table.cpp
 ```
 
 ## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| Add new PTX instruction | `include/ptx_ir/ptx_op.def` | X-Macro pattern: `X(S_NAME, op_name, ClassName, operands, kind, category)` |
-| Modify statement types | `include/ptx_ir/statement_context.h` | InstrVariant, StatementContext, all instr structs |
-| Operand types | `include/ptx_ir/operand_context.h` | RegOperand, ImmOperand, VariableOperand, etc. |
-| PTXIR serialize | `include/ptxir/ptxir_serialization.h` | `serialize_statements()`, `serialize_to_string()` |
-| PTXIR deserialize | `include/ptxir/ptxir_serialization.h` | `deserialize_statements()`, `deserialize_from_string()` |
-| Binary format spec | `include/ptx_ir/ptxir_format.h` | Header, instruction encoding sizes |
 
-## CONVENTIONS (this dir)
-- **X-Macro pattern**: `#define X(name, ...)` + `#include "ptx_op.def"` + `#undef X` — used for enum generation, string tables, and handler dispatch
-- **InstrVariant**: `std::variant<28 types>` — every statement holds one variant; visitor dispatches by actual type
-- **PTXIR format**: Custom binary (`.ptxir`). Header (32B) → String Table → Kernel Section. Each statement: `type(u16) + type-specific data`
-- When adding a new instruction type to `ptx_op.def`, you MUST also add it to `InstrVariant` in `statement_context.h`
+| 操作 | 文件 |
+|------|------|
+| 注册新指令 | `ptx_op.def` (X-Macro) |
+| 加 struct + variant | `statement_context.h` |
+| Qualifier 枚举 | `ptx_qualifier.def` |
+| 操作数类型 | `operand_context.h` |
+| PTXIR 格式 | `ptxir_format.h` |
+| PTXIR 写入/读取 | `ptxir_writer.cpp` / `ptxir_reader.cpp` |
+
+## CONVENTIONS
+
+- **X-Macro**: `#define X(name) #include "ptx_op.def" #undef X` — 枚举/handler 映射/字符串表
+- **ptx_op.def**: `X(enum, cpp_name, string, op_count, struct_kind, category)` — struct_kind 决定 InstrVariant 类型
+- **InstrVariant**: `std::variant<28>` — 每个 StatementContext 持有；`std::visit` 分发
+- **Qualifier 判断**: 用 `isFloat()` / `isInt()` / `isBit()`，不直接比较 `.u32` 字符串
+- **PTXIR**: little-endian；header 24B + TOC 6B/entry + string table
 
 ## ANTI-PATTERNS
-- DO NOT add a statement type to `ptx_op.def` without adding its struct + variant entry in `InstrVariant`
-- DO NOT modify PTXIR writer format without updating the reader in `ptxir_reader.cpp`
-- DO NOT use `std::get<InstrType>(stmt.data)` without checking `stmt.type` first (use `stmt.type == S_XXX` guard)
 
-## KEY FILES
-| File | Purpose |
-|------|---------|
-| `ptx_op.def` | 202 PTX instruction X-Macro definitions |
-| `ptx_qualifier.def` | Qualifier X-Macro definitions |
-| `statement_context.h` | StatementContext, InstrVariant, all instruction structs |
-| `operand_context.h` | OperandContext variant and operand types |
-| `ptxir_writer.cpp` | PTXIR binary serialization writer |
-| `ptxir_reader.cpp` | PTXIR binary deserialization reader |
-| `ptxir_format.h` | Binary format constants and struct sizes |
+- ❌ `ptx_op.def` 加条目但不加 struct + InstrVariant 条目 → 编译期 variant 错误
+- ❌ 改 PTXIR writer 不更新 reader → 二进制不兼容
+- ❌ `std::get<T>(data)` 前不检查 `stmt.type` → `std::bad_variant_access`
+- ❌ 字符串比较 Qualifier → 用 `Qualifier::isBit()` 等方法
+- ❌ reader 硬编码指令尺寸 → 从 `ptxir_format.h` 常量读取
 
 ## COMMANDS
+
 ```bash
-cmake --build build --target ptx_ir       # IR library
-cmake --build build --target ptxir        # Serialization library (ptxir_writer + ptxir_reader)
-./build/bin/tests/test_ptxir_serialization  # Run PTXIR roundtrip tests
+grep -c '^X(' include/ptx_ir/ptx_op.def          # 统计指令数
+grep 'GENERIC_INSTR' include/ptx_ir/ptx_op.def   # 列通用指令
+ctest -R unit_ptxir                               # PTXIR 格式测试
 ```
