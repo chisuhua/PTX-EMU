@@ -37,29 +37,29 @@
 
 ## 4. Phase 3: 提取指令分发（1.5h）
 
-- [ ] 4.1 MUST 新建 src/ptxsim/core/warp_context_dispatch.{h,cpp}
-- [ ] 4.2 MUST 移动 execute_warp_instruction 分发逻辑至新模块
-- [ ] 4.3 MUST 使用策略表/函数指针替换 switch/if-else
-- [ ] 4.4 MUST 行级保留 4 处 sync_to_warp_state() 调用
-- [ ] 4.5 MUST 在 warp_context.h 包含新模块
-- [ ] 4.6 MUST 更新 src/ptxsim/core/CMakeLists.txt 添加新源
-- [ ] 4.7 MUST 验证：sm_context.cpp 零 diff
-- [ ] 4.8 MUST 验证：cmake --build build 通过
-- [ ] 4.9 MUST 验证：ctest 全绿
-- [ ] 4.10 git commit -m "refactor(warp): extract instruction dispatch to warp_context_dispatch"
+- [x] 4.1 MUST 新建 src/ptxsim/core/warp_context_dispatch.{h,cpp}
+- [x] 4.2 MUST 移动 execute_warp_instruction 分发逻辑至新模块
+- [x] 4.3 MUST 使用策略表/函数指针替换 switch/if-else
+- [x] 4.4 MUST 行级保留 4 处 sync_to_warp_state() 调用
+- [x] 4.5 MUST 在 warp_context.h 包含新模块
+- [x] 4.6 MUST 更新 src/ptxsim/core/CMakeLists.txt 添加新源
+- [x] 4.7 MUST 验证：sm_context.cpp 零 diff
+- [x] 4.8 MUST 验证：cmake --build build 通过
+- [x] 4.9 MUST 验证：ctest 全绿
+- [x] 4.10 git commit -m "refactor(warp): extract instruction dispatch to warp_context_dispatch"
 
 ## 5. Phase 4: 最终验证（1h）
 
-- [ ] 5.1 MUST 验证：wc -l src/ptxsim/core/warp_context.cpp < 300
-- [ ] 5.2 MUST 验证：grep -c 'sync_to_warp_state' src/ptxsim/core/warp_context*.cpp 合计 ≥ 4
-- [ ] 5.3 MUST 验证：sm_context.cpp 零 diff
-- [ ] 5.4 MUST 验证：ctest --output-on-failure 全绿
-- [ ] 5.5 SHOULD 更新 src/ptxsim/core/AGENTS.md 文档化 3 个新子模块
+- [x] 5.1 MUST 验证：wc -l src/ptxsim/core/warp_context.cpp < 300
+- [x] 5.2 MUST 验证：grep -c 'sync_to_warp_state' src/ptxsim/core/warp_context*.cpp 合计 ≥ 4
+- [x] 5.3 MUST 验证：sm_context.cpp 零 diff
+- [x] 5.4 MUST 验证：ctest --output-on-failure 全绿
+- [x] 5.5 SHOULD 更新 src/ptxsim/core/AGENTS.md 文档化 3 个新子模块
 
 ## 6. 应用阶段
 
-- [ ] 6.1 MUST 运行 openspec validate refactor-warp-context --strict
-- [ ] 6.2 MUST 通过所有验证后 archive
+- [x] 6.1 MUST 运行 openspec validate refactor-warp-context --strict
+- [x] 6.2 MUST 通过所有验证后 archive
 
 ## 验收
 
