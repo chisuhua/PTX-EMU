@@ -10,16 +10,16 @@
 
 ## 2. Phase 1: 提取 active mask helper（1.5h）
 
-- [ ] 2.1 MUST 新建 src/ptxsim/core/warp_context_active_mask.{h,cpp}
-- [ ] 2.2 MUST 移动 set_active_mask + 相关 active mask 操作至新模块
-- [ ] 2.3 MUST 保持 set_active_mask overwrite 语义（失败模式速查表 + AGENTS.md ANTI-PATTERNS）
-- [ ] 2.4 MUST 行级保留 4 处 sync_to_warp_state() 调用（§1 SKILL.md:48-77）
-- [ ] 2.5 MUST 在 warp_context.h 包含新模块
-- [ ] 2.6 MUST 更新 src/ptxsim/core/CMakeLists.txt 添加新源
-- [ ] 2.7 MUST 验证：sm_context.cpp 零 diff
-- [ ] 2.8 MUST 验证：cmake --build build 通过
-- [ ] 2.9 MUST 验证：ctest 全绿（特别是 active mask/ret handler 测试）
-- [ ] 2.10 git commit -m "refactor(warp): extract active mask helper to warp_context_active_mask"
+- [x] 2.1 MUST 新建 src/ptxsim/core/warp_context_active_mask.{h,cpp}
+- [x] 2.2 MUST 移动 set_active_mask + 相关 active mask 操作至新模块
+- [x] 2.3 MUST 保持 set_active_mask overwrite 语义（失败模式速查表 + AGENTS.md ANTI-PATTERNS）
+- [x] 2.4 MUST 行级保留 4 处 sync_to_warp_state() 调用（§1 SKILL.md:48-77）
+- [x] 2.5 MUST 在 warp_context.h 包含新模块
+- [x] 2.6 MUST 更新 src/ptxsim/core/CMakeLists.txt 添加新源
+- [x] 2.7 MUST 验证：sm_context.cpp 零 diff
+- [x] 2.8 MUST 验证：cmake --build build 通过
+- [x] 2.9 MUST 验证：ctest 全绿（特别是 active mask/ret handler 测试）
+- [x] 2.10 git commit -m "refactor(warp): extract active mask helper to warp_context_active_mask"
 
 ## 3. Phase 2: 提取 SIMT 编排（2h）
 

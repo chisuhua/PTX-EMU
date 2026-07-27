@@ -1,5 +1,6 @@
 #include "ptxsim/warp_context.h"
 #include "warp_context_active_mask.h"
+#include "warp_context_simt.h"
 #include "ptxsim/barrier/barrier_module.h"
 #include "ptxsim/cta_context.h"
 #include "ptxsim/execution_trace.h"
@@ -106,47 +107,7 @@ void WarpContext::advance_thread_pc(int lane_id, int new_pc) {
 }
 
 bool WarpContext::check_reconvergence() {
-    if (simt_stack.empty())
-        return false;
-
-    size_t depth_before = simt_stack.depth();
-
-    // 检查是否收敛，如果收敛则记录被弹出的条目用于跟踪
-    ptxsim::SIMTStackEntry popped_entry;
-    bool will_pop = simt_stack.top().is_converged(warp_state.threads);
-    if (will_pop) {
-        popped_entry = simt_stack.top();
-    }
-
-    simt_stack.check_reconvergence(warp_state.threads);
-
-    if (simt_stack.depth() < depth_before) {
-        int reconv_pc = popped_entry.reconvergence_pc;
-        for (int i = 0; i < WARP_SIZE; i++) {
-            if (!warp_state.threads[i].is_exited &&
-                (int)warp_state.threads[i].pc == reconv_pc) {
-                warp_state.threads[i].is_blocked = false;
-                warp_state.threads[i].is_active = true;
-            }
-        }
-        update_active_mask();
-        if (simt_stack.empty()) {
-            warp_state.exec_mask = 0xFFFFFFFF;
-        } else {
-            warp_state.exec_mask = simt_stack.top().return_mask;
-        }
-        // SIMT栈pop跟踪
-        if (ptxsim::DebugConfig::get().is_trace_simt_stack_enabled() &&
-            sm_context_) {
-            PTX_DEBUG_EMU("%s",
-                          ptxsim::WarpTraceFormatter::format_simt_pop(
-                              sm_context_->get_cycle_count(),
-                              sm_context_->get_sm_id(), warp_id, popped_entry)
-                              .c_str());
-        }
-        return true;
-    }
-    return false;
+    return warp_simt::check_reconvergence(this);
 }
 
 // BUG-DISPATCH-GATE-LANE0-SKIP (fix): only block lanes that belong to the
