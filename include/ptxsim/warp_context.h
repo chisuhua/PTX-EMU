@@ -20,6 +20,28 @@ class CTAContext;
 class ThreadContext;
 class WarpScheduler;
 
+// Forward declaration of warp_active_mask helper namespace
+// (refactor-warp-context C-18 Phase 1 extraction).
+namespace warp_active_mask {
+    void set_active_mask_lane(WarpContext* w, int lane_id, bool active);
+    void update_active_mask(WarpContext* w);
+    uint32_t get_active_mask_u32(const WarpContext* w);
+    void set_active_mask_u32(WarpContext* w, uint32_t mask);
+}
+
+// Forward declaration of warp_simt helper namespace
+// (refactor-warp-context C-18 Phase 2 extraction).
+namespace warp_simt {
+    bool check_reconvergence(WarpContext* w);
+}  // namespace warp_simt
+
+// Forward declaration of warp_dispatch helper namespace
+// (refactor-warp-context C-18 Phase 3 extraction).
+class StatementContext;
+namespace warp_dispatch {
+    void execute_warp_instruction(WarpContext* w, StatementContext& stmt, int target_pc);
+}  // namespace warp_dispatch
+
 class WarpContext {
 public:
     static constexpr int WARP_SIZE = 32;
@@ -215,6 +237,18 @@ public:
     // 【NEW】SIMT Stack 访问
     ptxsim::SIMTStack &get_simt_stack() { return simt_stack; }
     const ptxsim::SIMTStack &get_simt_stack() const { return simt_stack; }
+
+    // Friend declarations for warp_active_mask helper module (refactor-warp-context
+    // C-18 Phase 1 extraction). The helper functions need direct access to
+    // active_mask[] / warp_state / active_count for performance — wrapping every
+    // access through public getters would add overhead in the per-instruction hot
+    // path (update_active_mask is called at the end of every execute_warp_instruction).
+    friend void warp_active_mask::set_active_mask_lane(WarpContext*, int, bool);
+    friend void warp_active_mask::update_active_mask(WarpContext*);
+    friend uint32_t warp_active_mask::get_active_mask_u32(const WarpContext*);
+    friend void warp_active_mask::set_active_mask_u32(WarpContext*, uint32_t);
+    friend bool warp_simt::check_reconvergence(WarpContext*);
+    friend void warp_dispatch::execute_warp_instruction(WarpContext*, StatementContext&, int);
 
     // 【BARRIER RECONVERGENCE】Force all non-exited threads to reconverge at
     // barrier_pc + 1. This matches hardware behavior per sm90_100.md:294:

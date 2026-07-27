@@ -47,6 +47,27 @@ GPUContext
 - DO NOT use `force_set_pc()` — use `set_pc()` for init/sync/reset, `commit_pc()` for normal advancement
 - `.bak` files in this directory are committed artifacts — do not edit
 
+### WarpContext sub-module layout (refactor-warp-context C-18, 2026-07)
+
+The 558-line `warp_context.cpp` has been split into focused sub-modules via
+the helper namespace pattern. Each helper namespace is friend-declared in
+`WarpContext` for direct member access (avoids per-instruction hot-path overhead).
+
+| Sub-module | Responsibility | Public helper API |
+|------------|----------------|-------------------|
+| `warp_context.cpp` | Parent file: handle_branch, check_and_block_at_reconvergence_point, add_thread, get_lanes_by_pc, is_finished, is_warp_ready_to_fetch, reset, force_reconvergence_at_barrier, decrement_blocked_cycles, set_blocked_cycles_for_active, public API wrappers |
+| `warp_context_active_mask.{h,cpp}` | `warp_active_mask::` — set_active_mask (lane + u32), update_active_mask, get_active_mask_u32 | Active mask management with T2-1 overwrite semantics preserved |
+| `warp_context_simt.{h,cpp}` | `warp_simt::` — check_reconvergence | SIMT stack pop/reconvergence orchestration |
+| `warp_context_dispatch.{h,cpp}` | `warp_dispatch::` — execute_warp_instruction | Per-warp instruction dispatch (124 lines extracted) |
+
+**Friend declarations** in `WarpContext` (include/ptxsim/warp_context.h) grant the
+helper namespaces direct access to private members (`active_mask[]`, `warp_state`,
+`simt_stack`, `cta_context_`, `sm_context_`) without per-access getter overhead.
+This is critical for `update_active_mask()` which is called at the end of every
+`execute_warp_instruction()`.
+
+**API freeze invariant**: WarpContext public API (used by sm_context.cpp:379/:461/:468/:583/:590) is unchanged. The 5+ call sites compile without modification (`sm_context.cpp zero diff` verified).
+
 ## KNOWN ISSUES
 
 ### SINGLE SOURCE OF TRUTH (T2-1, 2026-06)
