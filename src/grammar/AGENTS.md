@@ -1,54 +1,85 @@
-# ANTLR4 PTX Grammar
-
-**Parent**: [AGENTS.md](../../AGENTS.md)
+# src/grammar/ AGENTS.md
 
 ## OVERVIEW
-ANTLR4 grammar files (5 split `.g4` files) — lexer, parser, declarations, instructions, operands. Generated C++ goes to `build/antlr4_generated_src/`.
+
+ANTLR4 语法文件（5 个 .g4 文件）— 将 PTX ISA 文本解析为 AST，供 ptx_parser 和 ptxsim 消费。
 
 ## STRUCTURE
+
 ```
 src/grammar/
-├── ptxLexer.g4            # Token definitions (NAN, INFINITY, etc.)
-├── ptxParser.g4           # Entry point — imports sub-grammars
-├── ptxDeclarations.g4     # PTX declaration rules (.reg, .shared, .entry)
-├── ptxInstructions.g4     # PTX instruction rules (~500 lines)
-└── ptxOperands.g4         # Operand parsing rules (reg, imm, addr)
+├── ptxLexer.g4          # (513行) 词法分析 — 所有 token 定义
+│                        #   标点、关键字、类型、NAN/INFINITY 等
+├── ptxParser.g4         # (11行)  解析入口 — ptxFile → (declaration | functionDecl)* EOF
+│                        #   仅 1 条规则，其余委托给子语法
+├── ptxDeclarations.g4   # (129行) PTX 声明规则 — .version, .target, .reg, .shared, .entry
+├── ptxInstructions.g4   # (597行) 指令规则 — ~200 条 PTX 指令语法
+└── ptxOperands.g4       # (69行)  操作数规则 — register, immediate, address, vectorRegister
 ```
+
+**导入链**: `ptxParser` → `ptxDeclarations` + `ptxInstructions` → `ptxOperands`（所有子语法共用 `tokenVocab=ptxLexer`）
 
 ## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| Token definitions | `ptxLexer.g4` | Lexer tokens: DIGITS, IDENTIFIER, SIGIL, etc. |
-| Parser entry | `ptxParser.g4` | `import ptxDeclarations, ptxInstructions;` |
-| Instruction grammar | `ptxInstructions.g4` | One rule per instruction group |
-| ANTLR aliases | `. env.sh` → `antlr4`, `grun` | CLI tools for grammar debugging |
 
-## GRAMMAR MODIFICATION CHECKLIST
-```
-□ 1. 加载技能：docs/skills/ptx-grammar-modification.md
-□ 2. 阅读 docs/ptx/ 对应章节
-□ 3. 运行基线：./tests/ptx/test_all_ptx.sh（不是 ctest！）
-□ 4. cuobjdump -xptx 提取真实 PTX → 复制到 tests/ptx/
-□ 5. 修改 .g4 → cmake --build build --target GenerateParser
-□ 6. ./tests/ptx/test_all_ptx.sh 全部通过才能交付
-```
+| Task | File |
+|------|------|
+| 新增 token / 关键字 | `ptxLexer.g4` |
+| 新增 PTX 指令语法 | `ptxInstructions.g4` |
+| 新增声明/变量规则 | `ptxDeclarations.g4` |
+| 新增操作数格式 | `ptxOperands.g4` |
+| 解析入口 | `ptxParser.g4` |
+| 语法修改 skill | `.opencode/skills/ptx-grammar-modification/SKILL.md` |
+| PTX 文档参考 | `docs/ptx/README.md` |
+| PTX 语法测试 | `tests/ptx/test_all_ptx.sh` |
+| 生成后源码 | `build/antlr4_generated_src/`（NEVER 手动编辑） |
 
-## CONVENTIONS (this dir)
-- ANTLR4 `import` mechanism — sub-grammars share tokens via main grammar
-- Token names conflict with `<cmath>` macros (`NAN`, `INFINITY`) — resolved by `#undef` before ANTLR includes
-- PTX instruction names: ALL lowercase in grammar (`mov`, `add`, `bra`, `bar.sync`)
-- Generated sources → `build/antlr4_generated_src/` (NEVER edit generated files)
+## CONVENTIONS
+
+- **Token 命名**: 全大写加下划线（`NAN`, `DOT`, `LEFT_BRACE`）
+- **Parser 规则**: 小驼峰（`functionDecl`, `typeSpecifier`）
+- **Token 名冲突**: `NAN`, `INFINITY` 与 `<cmath>` 宏冲突 — 在 `ptxLexer.g4` 头部 `#undef` 解决
+- **子语法隔离**: 各 `ptxInstructions.g4` 规则加 `instruction` 前缀避免导入其他子语法时冲突
+- **循环依赖**: `ptxDeclarations` 只导入 `ptxOperands`（不导入 `ptxInstructions`），`funcBody` 定义在 `ptxInstructions.g4` 中
+- **生成目录**: `build/antlr4_generated_src/ptxparser/` — 由 `GenerateParser` CMake target 触发
 
 ## ANTI-PATTERNS
-- DO NOT modify grammar without loading `ptx-grammar-modification` skill
-- DO NOT use `ctest` for PTX syntax validation — use `./tests/ptx/test_all_ptx.sh`
-- DO NOT skip adding test case in `tests/ptx/` before grammar changes
-- DO NOT declare test "done" unless `test_all_ptx.sh` passes 100%
+
+- ❌ 直接编辑 `build/antlr4_generated_src/` 下的文件（会被覆盖）
+- ❌ 修改 `.g4` 而不加载 `ptx-grammar-modification` skill（缺失强制检查清单）
+- ❌ 用 `ctest` 代替 `./tests/ptx/test_all_ptx.sh` 验证语法修改（ctest 跑的是 C++ 单元测试，非语法解析测试）
+- ❌ 在 `ptxDeclarations.g4` 中导入 `ptxInstructions`（导致循环依赖）
+- ❌ 修改 `.g4` 后忘记运行 `cmake --build build --target GenerateParser`（解析器不更新）
 
 ## COMMANDS
+
 ```bash
-cmake --build build --target GenerateParser  # Regenerate ANTLR C++ from .g4
-./tests/ptx/test_all_ptx.sh                  # Full syntax test suite
-antlr4 src/grammar/ptxParser.g4              # Manual ANTLR invocation (after . env.sh)
-grun ptxparser ptxFile -tree < test.ptx      # Parse tree visualization
+# 改 .g4 后重新生成解析器
+cmake --build build --target GenerateParser
+
+# PTX 语法验证（所有 tests/ptx/*.ptx）
+./tests/ptx/test_all_ptx.sh
+
+# 新增 .ptx 测试文件后验证
+cp my_test.ptx tests/ptx/
+./tests/ptx/test_all_ptx.sh
 ```
+
+### 错误分类（ANTLR 解析错误 vs 运行时错误）
+
+```bash
+# 1. 运行失败的测试获取输出
+cd build && ctest -R <test_name> -V 2>&1 | tail -50
+
+# 2. 用 grep 区分错误类型
+echo <输出> | grep -E "missing|mismatched|no viable|extraneous|ANTLR"
+# → 有输出 = ANTLR 解析错误 → 走语法修复流程（本文件 + ptx-grammar-modification）
+# → 无输出 = 运行时错误   → 走 ptx-debug 流程
+```
+
+**语法修改 checklist**（来自 `ptx-grammar-modification` skill）:
+1. 加载 `ptx-grammar-modification` skill
+2. 阅读 `docs/ptx/` 对应章节
+3. 运行 `./tests/ptx/test_all_ptx.sh` 确认基线
+4. 如有真实 binary，`cuobjdump -xptx` 提取 PTX
+5. 修改 `.g4` → `cmake --build build --target GenerateParser`
+6. `./tests/ptx/test_all_ptx.sh` **全部通过**
