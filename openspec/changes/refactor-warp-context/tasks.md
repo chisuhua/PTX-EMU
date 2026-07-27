@@ -23,17 +23,17 @@
 
 ## 3. Phase 2: 提取 SIMT 编排（2h）
 
-- [ ] 3.1 MUST 新建 src/ptxsim/core/warp_context_simt.{h,cpp}
-- [ ] 3.2 MUST 移动 push/pop/check_reconvergence 编排逻辑（warp_context.cpp:64-143）至新模块
-- [ ] 3.3 MUST NOT 重新抽离 simt_stack.cpp 数据结构（已存在）
-- [ ] 3.4 MUST 保持 simt_stack.cpp/h 零 diff
-- [ ] 3.5 MUST 行级保留 4 处 sync_to_warp_state() 调用
-- [ ] 3.6 MUST 在 warp_context.h 包含新模块
-- [ ] 3.7 MUST 更新 src/ptxsim/core/CMakeLists.txt 添加新源
-- [ ] 3.8 MUST 验证：sm_context.cpp 零 diff
-- [ ] 3.9 MUST 验证：cmake --build build 通过
-- [ ] 3.10 MUST 验证：ctest 全绿（特别是 barrier/divergence 测试）
-- [ ] 3.11 git commit -m "refactor(warp): extract SIMT orchestration to warp_context_simt"
+- [x] 3.1 MUST 新建 src/ptxsim/core/warp_context_simt.{h,cpp}
+- [x] 3.2 MUST 移动 push/pop/check_reconvergence 编排逻辑（warp_context.cpp:64-143）至新模块
+- [x] 3.3 MUST NOT 重新抽离 simt_stack.cpp 数据结构（已存在）
+- [x] 3.4 MUST 保持 simt_stack.cpp/h 零 diff
+- [x] 3.5 MUST 行级保留 4 处 sync_to_warp_state() 调用
+- [x] 3.6 MUST 在 warp_context.h 包含新模块
+- [x] 3.7 MUST 更新 src/ptxsim/core/CMakeLists.txt 添加新源
+- [x] 3.8 MUST 验证：sm_context.cpp 零 diff
+- [x] 3.9 MUST 验证：cmake --build build 通过
+- [x] 3.10 MUST 验证：ctest 全绿（特别是 barrier/divergence 测试）
+- [x] 3.11 git commit -m "refactor(warp): extract SIMT orchestration to warp_context_simt"
 
 ## 4. Phase 3: 提取指令分发（1.5h）
 

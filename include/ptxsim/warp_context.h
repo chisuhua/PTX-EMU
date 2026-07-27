@@ -35,6 +35,13 @@ namespace warp_simt {
     bool check_reconvergence(WarpContext* w);
 }  // namespace warp_simt
 
+// Forward declaration of warp_dispatch helper namespace
+// (refactor-warp-context C-18 Phase 3 extraction).
+class StatementContext;
+namespace warp_dispatch {
+    void execute_warp_instruction(WarpContext* w, StatementContext& stmt, int target_pc);
+}  // namespace warp_dispatch
+
 class WarpContext {
 public:
     static constexpr int WARP_SIZE = 32;
@@ -241,6 +248,7 @@ public:
     friend uint32_t warp_active_mask::get_active_mask_u32(const WarpContext*);
     friend void warp_active_mask::set_active_mask_u32(WarpContext*, uint32_t);
     friend bool warp_simt::check_reconvergence(WarpContext*);
+    friend void warp_dispatch::execute_warp_instruction(WarpContext*, StatementContext&, int);
 
     // 【BARRIER RECONVERGENCE】Force all non-exited threads to reconverge at
     // barrier_pc + 1. This matches hardware behavior per sm90_100.md:294:

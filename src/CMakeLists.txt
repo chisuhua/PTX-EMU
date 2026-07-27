@@ -76,6 +76,7 @@ add_library(ptxsim SHARED
     ptxsim/core/warp_context.cpp
     ptxsim/core/warp_context_active_mask.cpp
     ptxsim/core/warp_context_simt.cpp
+    ptxsim/core/warp_context_dispatch.cpp
     ptxsim/core/execution_tracer.cpp
     ptxsim/core/warp_scheduler.cpp
     ptxsim/core/sm_context.cpp
