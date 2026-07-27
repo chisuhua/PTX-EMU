@@ -452,47 +452,8 @@ EXE_STATE SMContext::exe_once() {
                         // entries on Step A failure)
                         step_c_release_scoreboard(scoreboard_, next_warp,
                                                   *stmt);
-                        // Check SIMT stack reconvergence after every
-                        // instruction (not just branch/barrier, because lanes
-                        // may reach reconvergence point on any instruction,
-                        // e.g., after a label or fallthrough)
-                        {
-                            size_t stack_depth_before =
-                                next_warp->get_simt_stack().depth();
-                            int reconvergence_pc = -1;
-                            if (!next_warp->get_simt_stack().empty()) {
-                                reconvergence_pc = next_warp->get_simt_stack()
-                                                       .top()
-                                                       .reconvergence_pc;
-                            }
-                            while (next_warp->check_reconvergence()) {
-                                // Keep popping until no more convergent entries
-                            }
-                            // 汇聚点调试输出：检测到 SIMT
-                            // 栈弹出（reconvergence）
-                            if (ptxsim::DebugConfig::get()
-                                    .is_trace_convergence_enabled() &&
-                                next_warp->get_simt_stack().depth() <
-                                    stack_depth_before) {
-                                auto current_lanes =
-                                    next_warp->get_lanes_by_pc();
-                                if (current_lanes.size() == 1) {
-                                    uint32_t merged_mask = 0;
-                                    for (int lane :
-                                         current_lanes.begin()->second) {
-                                        merged_mask |= (1u << lane);
-                                    }
-                                    int merged_pc =
-                                        current_lanes.begin()->first;
-                                    PTX_DEBUG_EMU(
-                                        "%s", ptxsim::WarpTraceFormatter::
-                                                  format_reconvergence(
-                                                      reconvergence_pc,
-                                                      merged_pc, merged_mask)
-                                                      .c_str());
-                                }
-                            }
-                        }
+                        sm_reconvergence::drain_simt_and_update_active(
+                            next_warp);
                     }
                 }
             }
@@ -578,55 +539,8 @@ EXE_STATE SMContext::exe_once() {
                     step_c_release_scoreboard(scoreboard_, next_warp, *stmt);
 
                     // Check SIMT stack reconvergence after every instruction
-                    {
-                        size_t stack_depth_before =
-                            next_warp->get_simt_stack().depth();
-                        int reconvergence_pc = -1;
-                        if (!next_warp->get_simt_stack().empty()) {
-                            reconvergence_pc = next_warp->get_simt_stack()
-                                                   .top()
-                                                   .reconvergence_pc;
-                        }
-                        while (next_warp->check_reconvergence()) {
-                            // Keep popping until no more convergent entries
-                        }
-                        // 汇聚点调试输出：检测到 SIMT 栈弹出
-                        if (ptxsim::DebugConfig::get()
-                                .is_trace_convergence_enabled() &&
-                            next_warp->get_simt_stack().depth() <
-                                stack_depth_before) {
-                            auto current_lanes = next_warp->get_lanes_by_pc();
-                            if (current_lanes.size() == 1) {
-                                // 所有路径到达汇聚点（reconvergence）
-                                uint32_t merged_mask = 0;
-                                for (int lane : current_lanes.begin()->second) {
-                                    merged_mask |= (1u << lane);
-                                }
-                                int merged_pc = current_lanes.begin()->first;
-                                PTX_DEBUG_EMU("%s",
-                                              ptxsim::WarpTraceFormatter::
-                                                  format_reconvergence(
-                                                      reconvergence_pc,
-                                                      merged_pc, merged_mask)
-                                                      .c_str());
-                            } else if (current_lanes.size() > 1) {
-                                // 仍有未到达汇聚点的路径
-                                auto it = current_lanes.begin();
-                                int next_pc = it->first;
-                                uint32_t next_mask = 0;
-                                for (int lane : it->second) {
-                                    next_mask |= (1u << lane);
-                                }
-                                PTX_DEBUG_EMU("%s",
-                                              ptxsim::WarpTraceFormatter::
-                                                  format_convergence_remaining(
-                                                      reconvergence_pc,
-                                                      current_lanes, next_pc,
-                                                      next_mask)
-                                                      .c_str());
-                            }
-                        }
-                    }
+                    sm_reconvergence::drain_simt_and_update_active(
+                        next_warp);
                 }
             }
 
