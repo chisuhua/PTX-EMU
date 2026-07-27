@@ -2,7 +2,7 @@
   "plan_complete_at": "2026-07-27T04:27:06.551271+00:00",
   "active_changes": 3,
   "all_artifacts_committed": true,
-  "ship_started_at": null,
+  "ship_started_at": "2026-07-27T06:33:42.980014+00:00",
   "current_change": "god-class-refactor-sm-context",
   "execution_mode_decisions": {}
 }
