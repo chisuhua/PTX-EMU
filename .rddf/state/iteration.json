@@ -19,15 +19,16 @@
       "phase": "Phase-10",
       "category": "arch-design",
       "priority": "P2",
-      "status": "in_worktree",
+      "status": "archived",
       "added_at": "2026-07-27T04:26:52.442289+00:00",
       "worktree_path": ".rddf/wt/split-ptx-visitor-god-class",
       "plan_path": ".rddf/plans/split-ptx-visitor-god-class.md",
-      "tasks_done": 5,
+      "tasks_done": 55,
       "tasks_total": 55,
       "blocker": null,
       "parallel_group": 0,
-      "parent_feature": null
+      "parent_feature": null,
+      "archived_at": "2026-07-28T06:30:00+00:00"
     },
     {
       "name": "refactor-warp-context",
