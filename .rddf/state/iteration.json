@@ -1,0 +1,63 @@
+{
+  "version": 4,
+  "updated_at": "2026-07-27T04:26:52.442289+00:00",
+  "current_phase": "Phase-10",
+  "changes": [
+    {
+      "name": "fix-named-barrier-slots",
+      "status": "archived",
+      "added_at": "2026-07-23T18:02:00+00:00",
+      "archived_at": "2026-07-23T19:14:00+00:00",
+      "phase": "Phase-10",
+      "category": "core-impl",
+      "priority": "P0",
+      "tasks_done": 9,
+      "tasks_total": 9
+    },
+    {
+      "name": "split-ptx-visitor-god-class",
+      "phase": "Phase-10",
+      "category": "arch-design",
+      "priority": "P2",
+      "status": "proposed",
+      "added_at": "2026-07-27T04:26:52.442289+00:00",
+      "worktree_path": null,
+      "plan_path": null,
+      "tasks_done": 0,
+      "tasks_total": 30,
+      "blocker": null,
+      "parallel_group": 0,
+      "parent_feature": null
+    },
+    {
+      "name": "refactor-warp-context",
+      "phase": "Phase-10",
+      "category": "arch-design",
+      "priority": "P2",
+      "status": "proposed",
+      "added_at": "2026-07-27T04:26:52.442289+00:00",
+      "worktree_path": null,
+      "plan_path": null,
+      "tasks_done": 0,
+      "tasks_total": 25,
+      "blocker": null,
+      "parallel_group": 1,
+      "parent_feature": null
+    },
+    {
+      "name": "god-class-refactor-sm-context",
+      "phase": "Phase-10",
+      "category": "arch-design",
+      "priority": "P2",
+      "status": "proposed",
+      "added_at": "2026-07-27T04:26:52.442289+00:00",
+      "worktree_path": null,
+      "plan_path": null,
+      "tasks_done": 0,
+      "tasks_total": 30,
+      "blocker": "refactor-warp-context",
+      "parallel_group": 2,
+      "parent_feature": null
+    }
+  ]
+}
