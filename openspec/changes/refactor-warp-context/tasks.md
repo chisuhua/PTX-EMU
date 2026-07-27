@@ -2,11 +2,11 @@
 
 ## 1. Phase 0: 准备工作
 
-- [ ] 1.1 建立 baseline worktree（Checklist B：避免污染 main 分支）
-- [ ] 1.2 运行 `wc -l src/ptxsim/core/warp_context.cpp` 记录基线（应为 558）
-- [ ] 1.3 运行 ctest 记录基线全绿
-- [ ] 1.4 MUST 验证：grep -c 'sync_to_warp_state' src/ptxsim/core/warp_context.cpp = 4（§1 4 站点）
-- [ ] 1.5 MUST 验证：sm_context.cpp:379/:461/:468/:583/:590 5 站点 API 调用存在（API 冻结基线）
+- [x] 1.1 建立 baseline worktree（Checklist B：避免污染 main 分支）
+- [x] 1.2 运行 `wc -l src/ptxsim/core/warp_context.cpp` 记录基线（应为 558）
+- [x] 1.3 运行 ctest 记录基线全绿
+- [x] 1.4 MUST 验证：grep -c 'sync_to_warp_state' src/ptxsim/core/warp_context.cpp = 4（§1 4 站点）
+- [x] 1.5 MUST 验证：sm_context.cpp:379/:461/:468/:583/:590 5 站点 API 调用存在（API 冻结基线）
 
 ## 2. Phase 1: 提取 active mask helper（1.5h）
 
