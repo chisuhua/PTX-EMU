@@ -68,6 +68,25 @@ This is critical for `update_active_mask()` which is called at the end of every
 
 **API freeze invariant**: WarpContext public API (used by sm_context.cpp:379/:461/:468/:583/:590) is unchanged. The 5+ call sites compile without modification (`sm_context.cpp zero diff` verified).
 
+### SMContext sub-module layout (god-class-refactor-sm-context C-2, 2026-07)
+
+The 965-line `sm_context.cpp` has been partially split into focused sub-modules
+via the helper namespace pattern. Each helper namespace is friend-declared in
+`WarpContext` for direct member access.
+
+| Sub-module | Responsibility |
+|------------|----------------|
+| `sm_context.cpp` | Parent (862 lines vs 965 baseline, -10.7%). Contains: init, add_block, try_admit_pending_blocks, **exe_once (226 lines, monolithic)**, update_state, cleanup_finished_blocks, is_idle, resource stats, print functions |
+| `sm_context_reconvergence.{h,cpp}` | `sm_reconvergence::` — drain_simt_and_update_active (dedup of :455-490 / :580-623) |
+| `sm_context_cpptlm_inject.{h,cpp}` | `sm_cpptlm_inject::` — step_b_set_blocked_cycles (ADR-0020 injection) |
+
+**Friend declarations** in `WarpContext` (include/ptxsim/warp_context.h) grant
+`sm_reconvergence::` direct access to private `simt_stack` / `warp_state` / `update_active_mask()` without per-access getter overhead.
+
+**API freeze invariant**: sm_context.cpp:379 `update_active_mask()` (lessons-learned §1) is preserved.
+
+**Future work**: Reaching the <250 line target requires restructuring `exe_once()` (226 lines) — the per-cycle main loop is highly cohesive and not safely extractable in a single session. Future change should target exe_once() decomposition with explicit ownership transfer for scheduler / barrier / warp_lifecycle.
+
 ## KNOWN ISSUES
 
 ### SINGLE SOURCE OF TRUTH (T2-1, 2026-06)
