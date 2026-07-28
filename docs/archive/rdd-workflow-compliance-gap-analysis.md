@@ -1,7 +1,8 @@
 # PTX-EMU rdd-workflow 合规差距分析
 
 > **日期**: 2026-07-23
-> **状态**: Active
+> **状态**: Closed (Archived 2026-07-28)
+> **关闭原因**: 所有 🔴 阻塞差距（G1-G3）已在 2026-07-28 前全部解决；roadmap.md、.arch-handoff.json、.rddf/ 均已就绪。该分析已过时，归档至 docs/archive/。
 > **触发**: guide-arch Phase 3 (architecture gap analysis)
 > **范围**: rdd-workflow 三阶段流程合规性、目录结构、关键交付物
 
