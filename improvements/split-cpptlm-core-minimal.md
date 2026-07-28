@@ -1,6 +1,6 @@
 # split-cpptlm-core-minimal
 
-**优先级**: P2 | **来源**: ADR-0022 §未来 — cpptlm_core_minimal 拆分评估
+**优先级**: P2 | **来源**: ADR-0022 §未来 — Oracle 评估（2026-07-28）：已评估推迟
 **阶段**: Phase-11 | **分类**: infra-setup
 **类型**: refactor
 
