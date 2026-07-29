@@ -1,6 +1,7 @@
 // statement_context.cpp
 #include "ptx_ir/statement_context.h"
 #include "ptx_ir/ptx_types.h"
+#include "ptxsim/ptx_exceptions.h"
 #include <algorithm>
 #include <cassert>
 #include <cctype> // for tolower (optional)
@@ -16,8 +17,8 @@ std::string S2s(StatementType s) {
     case S_UNKNOWN:
         return "unknown";
     default:
-        assert(false && "Unknown StatementType");
-        return "invalid";
+        throw PtxEmuException(
+            "Unknown StatementType value: " + std::to_string(static_cast<int>(s)));
     }
 }
 std::string qualifiersToString(const std::vector<Qualifier> &quals) {
