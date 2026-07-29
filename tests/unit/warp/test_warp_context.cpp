@@ -28,6 +28,17 @@ void test_warp_active_mask_management() {
     // 测试设置活跃掩码
     warp.set_active_mask(0x0000000F); // 前4个线程活跃
     assert(warp.get_active_count() == 4);
+
+    // Critical regression: set_active_mask() must use OVERWRITE semantics, not OR.
+    // Per AGENTS.md ANTI-PATTERNS: ret handler depends on overwrite semantics.
+    // OR semantics would cause partial-lane divergence to deadlock (lanes 16..31
+    // inherit taken-branch state and never exit barrier.wait).
+    warp.set_active_mask(0xFFFF0000);
+    assert(warp.get_active_mask() == 0xFFFF0000);
+    assert(warp.get_active_count() == 16);
+
+    warp.set_active_mask(0x0);
+    assert(warp.get_active_count() == 0);
     assert(warp.get_active_mask() == 0x0000000F);
 
     // 测试设置单个lane活跃状态
@@ -85,6 +96,25 @@ void test_warp_completion() {
     std::cout << "Warp completion test passed." << std::endl;
 }
 
+void test_warp_active_mask_overwrite_semantics() {
+    std::cout << "Testing WarpContext active mask overwrite semantics..." << std::endl;
+
+    WarpContext warp;
+    warp.set_active_mask(0xFFFFFFFF);
+    assert(warp.get_active_mask() == 0xFFFFFFFF);
+    assert(warp.get_active_count() == 32);
+
+    warp.set_active_mask(0x00000001);
+    assert(warp.get_active_mask() == 0x00000001);
+    assert(warp.get_active_count() == 1);
+
+    warp.set_active_mask(0x80000000);
+    assert(warp.get_active_mask() == 0x80000000);
+    assert(warp.get_active_count() == 1);
+
+    std::cout << "Warp active mask overwrite test passed." << std::endl;
+}
+
 int main() {
     std::cout << "Running WarpContext unit tests..." << std::endl;
 
@@ -92,6 +122,7 @@ int main() {
     test_warp_active_mask_management();
     test_warp_thread_addition();
     test_warp_completion();
+    test_warp_active_mask_overwrite_semantics();
 
     std::cout << "All WarpContext tests PASSED!" << std::endl;
 
