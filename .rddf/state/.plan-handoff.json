@@ -1,8 +1,12 @@
 {
   "plan_complete_at": "2026-07-27T04:27:06.551271+00:00",
-  "active_changes": 2,
+  "active_changes": 0,
   "all_artifacts_committed": true,
   "ship_started_at": "2026-07-27T06:33:42.980014+00:00",
   "current_change": null,
-  "execution_mode_decisions": {}
+  "execution_mode_decisions": {},
+  "deps_analyzed": true,
+  "plan_phase": "complete",
+  "all_changes_archived": true,
+  "cleaned_at": "2026-07-29T19:22:00+08:00"
 }
