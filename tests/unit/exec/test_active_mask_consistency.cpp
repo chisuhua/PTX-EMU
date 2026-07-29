@@ -43,12 +43,14 @@ void init_full_warp(WarpContext &warp) {
 
 TEST_CASE("J1: default active_mask matches exec_mask", "[active_mask]") {
     WarpContext warp;
+    init_full_warp(warp);
     REQUIRE(warp.get_active_mask() == 0xFFFFFFFF);
     REQUIRE(warp.get_exec_mask() == 0xFFFFFFFF);
 }
 
 TEST_CASE("J2: active_mask unchanged during divergence", "[active_mask]") {
     WarpContext warp;
+    init_full_warp(warp);
     SIMTStackEntry entry;
     entry.branch_pc = 10;
     entry.reconvergence_pc = 30;
@@ -81,6 +83,7 @@ TEST_CASE("J3: thread exit updates active_mask", "[active_mask]") {
 
 TEST_CASE("J4: active_mask consistent after convergence", "[active_mask]") {
     WarpContext warp;
+    init_full_warp(warp);
     SIMTStackEntry entry;
     entry.branch_pc = 10;
     entry.reconvergence_pc = 30;

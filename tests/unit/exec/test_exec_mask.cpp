@@ -2,8 +2,42 @@
 #include "ptxsim/warp_context.h"
 #include "ptxsim/warp_state.h"
 #include "ptxsim/simt_stack.h"
+#include "ptxsim/thread_context.h"
+#include "ptx_ir/statement_context.h"
+#include "ptxsim/common_types.h"
+
+#include <map>
+#include <memory>
 
 using namespace ptxsim;
+
+namespace {
+StatementContext make_nop_stmt() {
+    StatementContext stmt;
+    stmt.type = S_MOV;
+    GenericInstr instr;
+    stmt.data = instr;
+    return stmt;
+}
+
+void init_full_warp(WarpContext& warp) {
+    Dim3 blockIdx = {0, 0, 0};
+    Dim3 gridDim = {1, 1, 1};
+    Dim3 blockDim = {32, 1, 1};
+    std::vector<StatementContext> stmts;
+    stmts.push_back(make_nop_stmt());
+    std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
+    std::map<std::string, int> label2pc;
+    for (int i = 0; i < 32; i++) {
+        auto thread = std::make_unique<ThreadContext>();
+        Dim3 threadIdx = {(uint32_t)i, 0, 0};
+        thread->init(blockIdx, threadIdx, gridDim, blockDim, stmts, &name2Sym,
+                     label2pc, nullptr, nullptr);
+        thread->set_state(RUN);
+        warp.add_thread(std::move(thread), i);
+    }
+}
+} // namespace
 
 static void setup_diverged_warp(WarpContext& warp) {
     SIMTStackEntry entry;
@@ -108,6 +142,7 @@ TEST_CASE("F5: nested divergence exec_mask recovery", "[exec_mask][nested]") {
 
 TEST_CASE("F6: exec_mask and active_mask independence", "[exec_mask][concept]") {
     WarpContext warp;
+    init_full_warp(warp);
     REQUIRE(warp.get_exec_mask() == 0xFFFFFFFF);
 
     SIMTStackEntry entry;
