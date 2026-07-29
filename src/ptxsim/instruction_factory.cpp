@@ -43,3 +43,8 @@ void InstructionFactory::cleanup() {
     handler_map.clear();
     initialized = false;
 }
+
+size_t InstructionFactory::handler_count() {
+    initialize();
+    return handler_map.size();
+}
