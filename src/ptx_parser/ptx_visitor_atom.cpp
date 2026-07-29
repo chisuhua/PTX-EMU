@@ -24,8 +24,7 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
      *                                                                                \
      * The previous implementation only collected dst+src via                         \
      * getRuleContexts<OperandContext>() and silently dropped the middle             \
-     * addressExpr, yielding 2 operands instead of the 3 (or 4 for cas)              \
-     * that ptx_op.def (X(S_ATOM, atom, Atom, 3, ATOM_INSTR, atomic)) requires.       \
+     * addressExpr, yielding fewer operands than S_ATOM in ptx_op.def declares.      \
      *                                                                                \
      * Fix: explicitly convert ctx->addressExpr() into an AddrOperand and            \
      * insert it between dst and src so the resulting operands vector                \
