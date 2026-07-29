@@ -28,6 +28,10 @@ public:
     static void initialize();
     static void cleanup();
 
+    // Returns the number of registered handlers. Initializes on first call.
+    // Used by tests to verify X-Macro expansion covers all ptx_op.def entries.
+    static size_t handler_count();
+
 private:
     static bool initialized;
     static std::unordered_map<StatementType, InstructionHandler *> handler_map;
