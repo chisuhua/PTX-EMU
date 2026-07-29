@@ -4,7 +4,7 @@
 #include "ptx_ir/operand_context.h"
 #include "ptx_ir/ptx_types.h"
 #include "ptx_ir/statement_context.h"
-#include "ptxsim/common_types.h" // 包含通用类型定义
+#include "ptxsim/common_types.h"
 #include "ptxsim/contexts/exec_state.h"
 #include "ptxsim/contexts/memory_ref.h"
 #include "ptxsim/contexts/program_ref.h"
@@ -15,6 +15,8 @@
 #include "ptxsim/simt_pc_manager.h"
 #include "ptxsim/warp_state.h"
 
+// Forward declarations for types referenced via pointer/reference in
+// this header. Full type definitions are needed only in thread_context.cpp.
 class PtxInterpreter;
 class WarpContext;
 class SMContext;
