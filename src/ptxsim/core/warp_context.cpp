@@ -176,7 +176,8 @@ WarpContext::WarpContext()
       divergence_detected(false), sm_context_(nullptr), simt_stack() {
     for (int i = 0; i < WARP_SIZE; i++) {
         warp_thread_ids[i] = -1;
-        active_mask[i] = true;
+        // SIMT v2.0: derived cache of warp_state.is_active — starts empty.
+        active_mask[i] = false;
         warp_state.threads[i].pc = 0;
         warp_state.threads[i].next_pc = 0;
         warp_state.threads[i].is_active = false;
