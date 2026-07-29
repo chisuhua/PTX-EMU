@@ -130,6 +130,30 @@ __global__ void divergence_barrier_sync(int* buf) {
     buf[32-lane] = shared_data[lane];
 }
 
+// 9. 三层嵌套分歧 — 验证 deep nesting 的 SIMT 栈行为
+__global__ void divergence_triple_nested(int* buf) {
+    int tid = threadIdx.x;
+    int v = 0;
+    if (tid < 16) {
+        if (tid < 8) {
+            if (tid < 4) {
+                v = 100;
+            } else {
+                v = 200;
+            }
+        } else {
+            if (tid < 12) {
+                v = 300;
+            } else {
+                v = 400;
+            }
+        }
+    } else {
+        v = 500;
+    }
+    buf[tid] = v;
+}
+
 // ====================================================================
 // 测试辅助 — 直接通过类型签名启动 kernel!
 // ====================================================================
@@ -330,4 +354,28 @@ TEST_CASE("Divergence: barrier sync + reconvergence",
     }
 
     cudaFree(dev_buf);
+}
+
+// ---------------------------------------------------------------
+// 9. 三层嵌套分歧 — 验证 SIMT 栈深 nesting 行为
+// ---------------------------------------------------------------
+
+TEST_CASE("Divergence: triple-nested if-else (depth 3)",
+          "[divergence][nested][deep]") {
+    int buf[32] = {0};
+    run_kernel_1warp(divergence_triple_nested, buf);
+
+    for (int tid = 0; tid < 4; tid++)
+        REQUIRE(buf[tid] == 100);
+    for (int tid = 4; tid < 8; tid++)
+        REQUIRE(buf[tid] == 200);
+    for (int tid = 8; tid < 12; tid++)
+        REQUIRE(buf[tid] == 300);
+    for (int tid = 12; tid < 16; tid++)
+        REQUIRE(buf[tid] == 400);
+    for (int tid = 16; tid < 32; tid++)
+        REQUIRE(buf[tid] == 500);
+
+    std::cout << "  Triple-nested divergence completed.\n";
+    print_path_summary(buf);
 }
