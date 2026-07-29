@@ -1,4 +1,5 @@
 # PTX Instruction Handlers
+**SSOT**: Common conventions (build/test/format/conventions/anti-patterns) live in root AGENTS.md; this file only documents ptxsim/instructions-specific content.
 
 ~20 files + cvt/ subdirectory — 每个 handler 通过 `instruction_factory.cpp` 的 X-Macro 分派（`ptx_op.def` → `process_<op>`）。
 

@@ -1,4 +1,5 @@
 # PTX-EMU Barrier Module
+**SSOT**: Common conventions (build/test/format/conventions/anti-patterns) live in root AGENTS.md; this file only documents ptxsim/barrier-specific content.
 
 Per-CTA 统一屏障状态机 — 管理 warp 级 (`bar.warp.sync`) 和 CTA 级 (`bar.sync`) 屏障同步，通过 `BarrierModule` API 路由。
 

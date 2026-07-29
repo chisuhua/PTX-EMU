@@ -1,4 +1,5 @@
 # src/ptx_parser/ AGENTS.md
+**SSOT**: Common conventions (build/test/format/conventions/anti-patterns) live in root AGENTS.md; this file only documents ptx_parser-specific content.
 
 ## OVERVIEW
 

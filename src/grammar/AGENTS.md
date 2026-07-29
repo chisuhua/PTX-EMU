@@ -1,4 +1,5 @@
 # src/grammar/ AGENTS.md
+**SSOT**: Common conventions (build/test/format/conventions/anti-patterns) live in root AGENTS.md; this file only documents grammar-specific content.
 
 ## OVERVIEW
 
