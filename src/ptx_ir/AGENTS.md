@@ -1,4 +1,5 @@
 # src/ptx_ir — IR Types & PTXIR Serialization
+**SSOT**: Common conventions (build/test/format/conventions/anti-patterns) live in root AGENTS.md; this file only documents ptx_ir-specific content.
 
 ## OVERVIEW
 PTX-EMU 中间表示层：PTX 指令 C++ 类型（`StatementContext`/`OperandContext`）、106 条 X-Macro 指令枚举（`ptx_op.def`）、Qualifier 定义（`ptx_qualifier.def`）、PTXIR 二进制序列化。

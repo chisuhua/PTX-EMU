@@ -1,4 +1,5 @@
 # PTX-EMU Execution Engine
+**SSOT**: Common conventions (build/test/format/conventions/anti-patterns) live in root AGENTS.md; this file only documents ptxsim-specific content.
 
 PTX 指令解释执行引擎 — 管理 GPU/SM/CTA/Warp/Thread 层次化上下文，分派指令到 handler，协调屏障同步与内存访问。
 

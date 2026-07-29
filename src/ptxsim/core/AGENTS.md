@@ -1,6 +1,7 @@
 # PTX-SIM Core Contexts
 
-**Parent**: [AGENTS.md](../AGENTS.md)
+**Parent**: [AGENTS.md](../../../AGENTS.md)
+**SSOT**: Common conventions (build/test/format/conventions/anti-patterns) live in root AGENTS.md; this file only documents ptxsim/core-specific content.
 
 ## OVERVIEW
 GPU simulation hierarchy: GPU → SM → CTA → Warp → Thread contexts.
