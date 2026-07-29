@@ -38,16 +38,15 @@ add_custom_target(GenerateParser
 )
 
 # 设置源文件（包含ANTLR生成的源文件）
-set(SOURCES
-    cudart/ptx_interpreter.cpp
-    cudart/cuda_driver.cpp  # 添加新的驱动内存管理器
-    cudart/simple_memory_allocator.cpp
-    cudart/cudart_sim.cpp
-    cudart/cpptlm_bridge/PtxEmuDriverShim.cpp  # CppTLM D1-Full P1
+# Auto-discover cudart sources via GLOB. CONFIGURE_DEPENDS ensures cmake
+# re-runs glob when new files appear.
+file(GLOB SOURCES CONFIGURE_DEPENDS
+    cudart/*.cpp
+    cudart/cpptlm_bridge/*.cpp
     utils/cubin_utils.cpp
     ptxsim/atomic/atomic_mutex.cpp  # Phase 2 of implement-atomic-cas-and-true-atomicity
-    ${ANTLR4_GENERATED_SOURCES}
 )
+set(SOURCES ${SOURCES} ${ANTLR4_GENERATED_SOURCES})
 
 # 头文件目录
 include_directories(${CUDA_PATH}/include)
