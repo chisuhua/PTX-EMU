@@ -31,6 +31,36 @@ private:
     void write_string_table();
     void write_instruction(const StatementContext& stmt);
 
+    void write_qualifiers(const std::vector<Qualifier>& qualifiers);
+    void write_operands(const std::vector<OperandContext>& operands,
+                        bool with_imm);
+    void write_operand(const OperandContext& op, bool with_imm);
+
+    void write_branch(const BranchInstr& instr);
+    void write_label(const LabelInstr& instr);
+    void write_void(const VoidInstr&);
+    void write_barrier(const BarrierInstr& instr);
+    void write_generic(const GenericInstr& instr);
+    void write_declaration(const DeclarationInstr& instr);
+    void write_bar_warp_sync(const BarWarpSyncInstr& instr);
+    void write_pragma(const PragmaInstr& instr);
+    void write_dollar_name(const DollarNameInstr& instr);
+    void write_membar(const MembarInstr& instr);
+    void write_fence(const FenceInstr& instr);
+    void write_redux_sync(const ReduxSyncInstr& instr);
+    void write_mbarrier(const MbarrierInstr& instr);
+    void write_call(const CallInstr& instr);
+    void write_predicate_prefix(const PredicatePrefix& instr);
+    void write_vote(const VoteInstr& instr);
+    void write_shfl(const ShflInstr& instr);
+    void write_atom(const AtomInstr& instr);
+    void write_texture(const TextureInstr& instr);
+    void write_surface(const SurfaceInstr& instr);
+    void write_reduction(const ReductionInstr& instr);
+    void write_prefetch(const PrefetchInstr& instr);
+    void write_cp_async(const CpAsyncInstr& instr);
+    void write_abi_directive(const AbiDirective&);
+
     uint32_t get_reg_id(const std::string& name);
     uint32_t get_string_id(const std::string& str);
     void flush_string_table();

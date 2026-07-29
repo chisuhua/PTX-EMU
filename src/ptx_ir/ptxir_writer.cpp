@@ -130,231 +130,167 @@ void PtxirWriter::write_instruction(const StatementContext& stmt) {
     write_u16(out_, static_cast<uint16_t>(stmt.type));
     stmt.visit([this](const auto& instr) {
         using T = std::decay_t<decltype(instr)>;
-        if constexpr (std::is_same_v<T, BranchInstr>) {
-            write_u32(out_, get_string_id(instr.predicate));
-            write_u32(out_, get_string_id(instr.target));
-            write_u8(out_, instr.predicate_negated ? 1 : 0);
-            write_i32(out_, instr.reconvergence_pc);
-        } else if constexpr (std::is_same_v<T, LabelInstr>) {
-            write_u32(out_, get_string_id(instr.labelName));
-        } else if constexpr (std::is_same_v<T, VoidInstr>) {
-        } else if constexpr (std::is_same_v<T, BarrierInstr>) {
-            write_i32(out_, instr.barId.value_or(-1));
-        } else if constexpr (std::is_same_v<T, GenericInstr>) {
-            write_u8(out_, static_cast<uint8_t>(instr.qualifiers.size()));
-            for (const auto& q : instr.qualifiers) {
-                write_u16(out_, static_cast<uint16_t>(q));
-            }
-            write_u32(out_, 0xFFFFFFFF);
-            write_u8(out_, static_cast<uint8_t>(instr.operands.size()));
-            for (const auto& op : instr.operands) {
-                if (op.kind() == OperandKind::REG) {
-                    const auto& reg = std::get<RegOperand>(op.data);
-                    write_u32(out_, get_reg_id(reg.fullName()));
-                } else if (op.kind() == OperandKind::IMM) {
-                    write_u32(out_, get_string_id(std::get<ImmOperand>(op.data).value));
-                } else {
-                    write_u32(out_, 0xFFFFFFFF);
-                }
-            }
-        } else if constexpr (std::is_same_v<T, DeclarationInstr>) {
-            write_u8(out_, static_cast<uint8_t>(instr.kind));
-            write_u16(out_, static_cast<uint16_t>(instr.dataType));
-            write_u32(out_, get_string_id(instr.name));
-            write_i32(out_, instr.array_size);
-        } else if constexpr (std::is_same_v<T, BarWarpSyncInstr>) {
-            write_u8(out_, static_cast<uint8_t>(instr.qualifiers.size()));
-            for (const auto& q : instr.qualifiers) {
-                write_u16(out_, static_cast<uint16_t>(q));
-            }
-            write_u8(out_, static_cast<uint8_t>(instr.operands.size()));
-            for (const auto& op : instr.operands) {
-                if (op.kind() == OperandKind::IMM) {
-                    write_u32(out_, get_string_id(std::get<ImmOperand>(op.data).value));
-                } else {
-                    write_u32(out_, 0xFFFFFFFF);
-                }
-            }
-        } else if constexpr (std::is_same_v<T, PragmaInstr>) {
-            write_u32(out_, get_string_id(instr.content));
-        } else if constexpr (std::is_same_v<T, DollarNameInstr>) {
-            write_u32(out_, get_string_id(instr.name));
-        } else if constexpr (std::is_same_v<T, MembarInstr>) {
-            write_u8(out_, static_cast<uint8_t>(instr.qualifiers.size()));
-            for (const auto& q : instr.qualifiers) {
-                write_u16(out_, static_cast<uint16_t>(q));
-            }
-        } else if constexpr (std::is_same_v<T, FenceInstr>) {
-            write_u8(out_, static_cast<uint8_t>(instr.qualifiers.size()));
-            for (const auto& q : instr.qualifiers) {
-                write_u16(out_, static_cast<uint16_t>(q));
-            }
-        } else if constexpr (std::is_same_v<T, ReduxSyncInstr>) {
-            write_u8(out_, static_cast<uint8_t>(instr.qualifiers.size()));
-            for (const auto& q : instr.qualifiers) {
-                write_u16(out_, static_cast<uint16_t>(q));
-            }
-            write_u8(out_, static_cast<uint8_t>(instr.operands.size()));
-            for (const auto& op : instr.operands) {
-                if (op.kind() == OperandKind::REG) {
-                    const auto& reg = std::get<RegOperand>(op.data);
-                    write_u32(out_, get_reg_id(reg.fullName()));
-                } else if (op.kind() == OperandKind::IMM) {
-                    write_u32(out_, get_string_id(std::get<ImmOperand>(op.data).value));
-                } else {
-                    write_u32(out_, 0xFFFFFFFF);
-                }
-            }
-        } else if constexpr (std::is_same_v<T, MbarrierInstr>) {
-            write_u8(out_, static_cast<uint8_t>(instr.qualifiers.size()));
-            for (const auto& q : instr.qualifiers) {
-                write_u16(out_, static_cast<uint16_t>(q));
-            }
-            write_u8(out_, static_cast<uint8_t>(instr.operands.size()));
-            for (const auto& op : instr.operands) {
-                if (op.kind() == OperandKind::REG) {
-                    const auto& reg = std::get<RegOperand>(op.data);
-                    write_u32(out_, get_reg_id(reg.fullName()));
-                } else {
-                    write_u32(out_, 0xFFFFFFFF);
-                }
-            }
-        } else if constexpr (std::is_same_v<T, CallInstr>) {
-            write_u8(out_, static_cast<uint8_t>(instr.qualifiers.size()));
-            for (const auto& q : instr.qualifiers) {
-                write_u16(out_, static_cast<uint16_t>(q));
-            }
-            write_u8(out_, static_cast<uint8_t>(instr.operands.size()));
-            for (const auto& op : instr.operands) {
-                if (op.kind() == OperandKind::REG) {
-                    const auto& reg = std::get<RegOperand>(op.data);
-                    write_u32(out_, get_reg_id(reg.fullName()));
-                } else if (op.kind() == OperandKind::IMM) {
-                    write_u32(out_, get_string_id(std::get<ImmOperand>(op.data).value));
-                } else {
-                    write_u32(out_, 0xFFFFFFFF);
-                }
-            }
-        } else if constexpr (std::is_same_v<T, PredicatePrefix>) {
-            write_u8(out_, static_cast<uint8_t>(instr.qualifiers.size()));
-            for (const auto& q : instr.qualifiers) {
-                write_u16(out_, static_cast<uint16_t>(q));
-            }
-        } else if constexpr (std::is_same_v<T, VoteInstr>) {
-            write_u8(out_, static_cast<uint8_t>(instr.qualifiers.size()));
-            for (const auto& q : instr.qualifiers) {
-                write_u16(out_, static_cast<uint16_t>(q));
-            }
-            write_u8(out_, static_cast<uint8_t>(instr.operands.size()));
-            for (const auto& op : instr.operands) {
-                if (op.kind() == OperandKind::REG) {
-                    const auto& reg = std::get<RegOperand>(op.data);
-                    write_u32(out_, get_reg_id(reg.fullName()));
-                } else {
-                    write_u32(out_, 0xFFFFFFFF);
-                }
-            }
-        } else if constexpr (std::is_same_v<T, ShflInstr>) {
-            write_u8(out_, static_cast<uint8_t>(instr.qualifiers.size()));
-            for (const auto& q : instr.qualifiers) {
-                write_u16(out_, static_cast<uint16_t>(q));
-            }
-            write_u8(out_, static_cast<uint8_t>(instr.operands.size()));
-            for (const auto& op : instr.operands) {
-                if (op.kind() == OperandKind::REG) {
-                    const auto& reg = std::get<RegOperand>(op.data);
-                    write_u32(out_, get_reg_id(reg.fullName()));
-                } else {
-                    write_u32(out_, 0xFFFFFFFF);
-                }
-            }
-        } else if constexpr (std::is_same_v<T, AtomInstr>) {
-            write_u8(out_, static_cast<uint8_t>(instr.qualifiers.size()));
-            for (const auto& q : instr.qualifiers) {
-                write_u16(out_, static_cast<uint16_t>(q));
-            }
-            write_u8(out_, static_cast<uint8_t>(instr.operands.size()));
-            for (const auto& op : instr.operands) {
-                if (op.kind() == OperandKind::REG) {
-                    const auto& reg = std::get<RegOperand>(op.data);
-                    write_u32(out_, get_reg_id(reg.fullName()));
-                } else if (op.kind() == OperandKind::IMM) {
-                    write_u32(out_, get_string_id(std::get<ImmOperand>(op.data).value));
-                } else {
-                    write_u32(out_, 0xFFFFFFFF);
-                }
-            }
-        } else if constexpr (std::is_same_v<T, TextureInstr>) {
-            write_u8(out_, static_cast<uint8_t>(instr.qualifiers.size()));
-            for (const auto& q : instr.qualifiers) {
-                write_u16(out_, static_cast<uint16_t>(q));
-            }
-            write_u8(out_, static_cast<uint8_t>(instr.operands.size()));
-            for (const auto& op : instr.operands) {
-                if (op.kind() == OperandKind::REG) {
-                    const auto& reg = std::get<RegOperand>(op.data);
-                    write_u32(out_, get_reg_id(reg.fullName()));
-                } else {
-                    write_u32(out_, 0xFFFFFFFF);
-                }
-            }
-        } else if constexpr (std::is_same_v<T, SurfaceInstr>) {
-            write_u8(out_, static_cast<uint8_t>(instr.qualifiers.size()));
-            for (const auto& q : instr.qualifiers) {
-                write_u16(out_, static_cast<uint16_t>(q));
-            }
-            write_u8(out_, static_cast<uint8_t>(instr.operands.size()));
-            for (const auto& op : instr.operands) {
-                if (op.kind() == OperandKind::REG) {
-                    const auto& reg = std::get<RegOperand>(op.data);
-                    write_u32(out_, get_reg_id(reg.fullName()));
-                } else {
-                    write_u32(out_, 0xFFFFFFFF);
-                }
-            }
-        } else if constexpr (std::is_same_v<T, ReductionInstr>) {
-            write_u8(out_, static_cast<uint8_t>(instr.qualifiers.size()));
-            for (const auto& q : instr.qualifiers) {
-                write_u16(out_, static_cast<uint16_t>(q));
-            }
-            write_u8(out_, static_cast<uint8_t>(instr.operands.size()));
-            for (const auto& op : instr.operands) {
-                if (op.kind() == OperandKind::REG) {
-                    const auto& reg = std::get<RegOperand>(op.data);
-                    write_u32(out_, get_reg_id(reg.fullName()));
-                } else {
-                    write_u32(out_, 0xFFFFFFFF);
-                }
-            }
-        } else if constexpr (std::is_same_v<T, PrefetchInstr>) {
-            write_u8(out_, static_cast<uint8_t>(instr.qualifiers.size()));
-            for (const auto& q : instr.qualifiers) {
-                write_u16(out_, static_cast<uint16_t>(q));
-            }
-            write_u8(out_, static_cast<uint8_t>(instr.operands.size()));
-            for (const auto& op : instr.operands) {
-                if (op.kind() == OperandKind::REG) {
-                    const auto& reg = std::get<RegOperand>(op.data);
-                    write_u32(out_, get_reg_id(reg.fullName()));
-                } else {
-                    write_u32(out_, 0xFFFFFFFF);
-                }
-            }
-        } else if constexpr (std::is_same_v<T, CpAsyncInstr>) {
-            write_u8(out_, static_cast<uint8_t>(instr.qualifiers.size()));
-            for (const auto& q : instr.qualifiers) {
-                write_u16(out_, static_cast<uint16_t>(q));
-            }
-            write_u8(out_, static_cast<uint8_t>(instr.operands.size()));
-            for (const auto& op : instr.operands) {
-                if (op.kind() == OperandKind::REG) {
-                    const auto& reg = std::get<RegOperand>(op.data);
-                    write_u32(out_, get_reg_id(reg.fullName()));
-                } else {
-                    write_u32(out_, 0xFFFFFFFF);
-                }
-            }
-        } else if constexpr (std::is_same_v<T, AbiDirective>) {
-        }
+        if constexpr (std::is_same_v<T, BranchInstr>) { write_branch(instr); }
+        else if constexpr (std::is_same_v<T, LabelInstr>) { write_label(instr); }
+        else if constexpr (std::is_same_v<T, VoidInstr>) { write_void(instr); }
+        else if constexpr (std::is_same_v<T, BarrierInstr>) { write_barrier(instr); }
+        else if constexpr (std::is_same_v<T, GenericInstr>) { write_generic(instr); }
+        else if constexpr (std::is_same_v<T, DeclarationInstr>) { write_declaration(instr); }
+        else if constexpr (std::is_same_v<T, BarWarpSyncInstr>) { write_bar_warp_sync(instr); }
+        else if constexpr (std::is_same_v<T, PragmaInstr>) { write_pragma(instr); }
+        else if constexpr (std::is_same_v<T, DollarNameInstr>) { write_dollar_name(instr); }
+        else if constexpr (std::is_same_v<T, MembarInstr>) { write_membar(instr); }
+        else if constexpr (std::is_same_v<T, FenceInstr>) { write_fence(instr); }
+        else if constexpr (std::is_same_v<T, ReduxSyncInstr>) { write_redux_sync(instr); }
+        else if constexpr (std::is_same_v<T, MbarrierInstr>) { write_mbarrier(instr); }
+        else if constexpr (std::is_same_v<T, CallInstr>) { write_call(instr); }
+        else if constexpr (std::is_same_v<T, PredicatePrefix>) { write_predicate_prefix(instr); }
+        else if constexpr (std::is_same_v<T, VoteInstr>) { write_vote(instr); }
+        else if constexpr (std::is_same_v<T, ShflInstr>) { write_shfl(instr); }
+        else if constexpr (std::is_same_v<T, AtomInstr>) { write_atom(instr); }
+        else if constexpr (std::is_same_v<T, TextureInstr>) { write_texture(instr); }
+        else if constexpr (std::is_same_v<T, SurfaceInstr>) { write_surface(instr); }
+        else if constexpr (std::is_same_v<T, ReductionInstr>) { write_reduction(instr); }
+        else if constexpr (std::is_same_v<T, PrefetchInstr>) { write_prefetch(instr); }
+        else if constexpr (std::is_same_v<T, CpAsyncInstr>) { write_cp_async(instr); }
+        else if constexpr (std::is_same_v<T, AbiDirective>) { write_abi_directive(instr); }
     });
 }
+
+void PtxirWriter::write_qualifiers(const std::vector<Qualifier>& qualifiers) {
+    write_u8(out_, static_cast<uint8_t>(qualifiers.size()));
+    for (const auto& q : qualifiers) {
+        write_u16(out_, static_cast<uint16_t>(q));
+    }
+}
+
+void PtxirWriter::write_operand(const OperandContext& op, bool with_imm) {
+    if (op.kind() == OperandKind::REG) {
+        const auto& reg = std::get<RegOperand>(op.data);
+        write_u32(out_, get_reg_id(reg.fullName()));
+    } else if (with_imm && op.kind() == OperandKind::IMM) {
+        write_u32(out_, get_string_id(std::get<ImmOperand>(op.data).value));
+    } else {
+        write_u32(out_, 0xFFFFFFFF);
+    }
+}
+
+void PtxirWriter::write_operands(const std::vector<OperandContext>& operands,
+                                 bool with_imm) {
+    write_u8(out_, static_cast<uint8_t>(operands.size()));
+    for (const auto& op : operands) {
+        write_operand(op, with_imm);
+    }
+}
+
+void PtxirWriter::write_branch(const BranchInstr& instr) {
+    write_u32(out_, get_string_id(instr.predicate));
+    write_u32(out_, get_string_id(instr.target));
+    write_u8(out_, instr.predicate_negated ? 1 : 0);
+    write_i32(out_, instr.reconvergence_pc);
+}
+
+void PtxirWriter::write_label(const LabelInstr& instr) {
+    write_u32(out_, get_string_id(instr.labelName));
+}
+
+void PtxirWriter::write_void(const VoidInstr&) {}
+
+void PtxirWriter::write_barrier(const BarrierInstr& instr) {
+    write_i32(out_, instr.barId.value_or(-1));
+}
+
+void PtxirWriter::write_generic(const GenericInstr& instr) {
+    write_qualifiers(instr.qualifiers);
+    write_u32(out_, 0xFFFFFFFF);
+    write_operands(instr.operands, true);
+}
+
+void PtxirWriter::write_declaration(const DeclarationInstr& instr) {
+    write_u8(out_, static_cast<uint8_t>(instr.kind));
+    write_u16(out_, static_cast<uint16_t>(instr.dataType));
+    write_u32(out_, get_string_id(instr.name));
+    write_i32(out_, instr.array_size);
+}
+
+void PtxirWriter::write_bar_warp_sync(const BarWarpSyncInstr& instr) {
+    write_qualifiers(instr.qualifiers);
+    write_operands(instr.operands, true);
+}
+
+void PtxirWriter::write_pragma(const PragmaInstr& instr) {
+    write_u32(out_, get_string_id(instr.content));
+}
+
+void PtxirWriter::write_dollar_name(const DollarNameInstr& instr) {
+    write_u32(out_, get_string_id(instr.name));
+}
+
+void PtxirWriter::write_membar(const MembarInstr& instr) {
+    write_qualifiers(instr.qualifiers);
+}
+
+void PtxirWriter::write_fence(const FenceInstr& instr) {
+    write_qualifiers(instr.qualifiers);
+}
+
+void PtxirWriter::write_redux_sync(const ReduxSyncInstr& instr) {
+    write_qualifiers(instr.qualifiers);
+    write_operands(instr.operands, true);
+}
+
+void PtxirWriter::write_mbarrier(const MbarrierInstr& instr) {
+    write_qualifiers(instr.qualifiers);
+    write_operands(instr.operands, false);
+}
+
+void PtxirWriter::write_call(const CallInstr& instr) {
+    write_qualifiers(instr.qualifiers);
+    write_operands(instr.operands, true);
+}
+
+void PtxirWriter::write_predicate_prefix(const PredicatePrefix& instr) {
+    write_qualifiers(instr.qualifiers);
+}
+
+void PtxirWriter::write_vote(const VoteInstr& instr) {
+    write_qualifiers(instr.qualifiers);
+    write_operands(instr.operands, false);
+}
+
+void PtxirWriter::write_shfl(const ShflInstr& instr) {
+    write_qualifiers(instr.qualifiers);
+    write_operands(instr.operands, false);
+}
+
+void PtxirWriter::write_atom(const AtomInstr& instr) {
+    write_qualifiers(instr.qualifiers);
+    write_operands(instr.operands, true);
+}
+
+void PtxirWriter::write_texture(const TextureInstr& instr) {
+    write_qualifiers(instr.qualifiers);
+    write_operands(instr.operands, false);
+}
+
+void PtxirWriter::write_surface(const SurfaceInstr& instr) {
+    write_qualifiers(instr.qualifiers);
+    write_operands(instr.operands, false);
+}
+
+void PtxirWriter::write_reduction(const ReductionInstr& instr) {
+    write_qualifiers(instr.qualifiers);
+    write_operands(instr.operands, false);
+}
+
+void PtxirWriter::write_prefetch(const PrefetchInstr& instr) {
+    write_qualifiers(instr.qualifiers);
+    write_operands(instr.operands, false);
+}
+
+void PtxirWriter::write_cp_async(const CpAsyncInstr& instr) {
+    write_qualifiers(instr.qualifiers);
+    write_operands(instr.operands, false);
+}
+
+void PtxirWriter::write_abi_directive(const AbiDirective&) {}
