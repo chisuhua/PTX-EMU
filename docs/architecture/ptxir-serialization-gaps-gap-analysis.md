@@ -45,7 +45,7 @@
 |------|------|------|
 | 格式定义 | `include/ptx_ir/ptxir_format.h` | ✅ 完整 (header, TOC, section types, encoding constants) |
 | Writer | `src/ptx_ir/ptxir_writer.cpp` + `.h` | ✅ 支持 20+ 指令类型 |
-| Reader | `src/ptx_ir/ptxir_reader.cpp` + `.h` | ✅ 支持 12 种指令类型回读 |
+| Reader | `src/ptx_ir/ptxir_reader.cpp` + `.h` | ✅ 支持 9 种 `InstrVariant` variant（22 个 opcode） |
 | 序列化 API | `src/ptxir/ptxir_serialization.cpp` + `.h` | ✅ `serialize_statements()` / `deserialize_statements()` / `serialize_to_string()` / `deserialize_from_string()` |
 | 构建集成 | `src/ptxir/CMakeLists.txt` + `src/ptx_ir/CMakeLists.txt` | ✅ 静态库 `ptxir` + `ptxir_writer` + `ptxir_reader` |
 | 技能文档 | `.opencode/skills/ptxir-serialization/SKILL.md` | ✅ 完整格式说明 + API 参考 |
@@ -102,7 +102,7 @@
 | CpAsyncInstr | ✅ | ❌ | Reader 缺 |
 | AbiDirective | ✅ | ❌ | Reader 缺 |
 
-**总计**: Writer 支持 24 种指令类型，Reader 仅完整支持 12 种，12 种缺失（Reader 对未知类型走 `default` 分支静默跳过）。
+**总计**: Writer 支持 24 种 `InstrVariant` variant 类型，Reader 仅显式处理 9 种（对应 22 个 opcode，多个 opcode 共享同一 variant 如 S_REG/S_CONST/S_SHARED/S_LOCAL/S_GLOBAL/S_PARAM 共用 DeclarationInstr），**15 种 variant 缺失**（MembarInstr, FenceInstr, ReduxSyncInstr, MbarrierInstr, CallInstr, PredicatePrefix, VoteInstr, ShflInstr, AtomInstr, TextureInstr, SurfaceInstr, ReductionInstr, PrefetchInstr, CpAsyncInstr, AbiDirective），Reader 对未知 variant 走 `default` 分支静默跳过。注：原文档中"12/24"数字为历史不一致表述，正确口径为"9/24 variant 处理、22/xxx opcode 处理、15/24 variant 缺失"。
 
 ## 3. 差距清单
 
@@ -117,7 +117,7 @@
 | G7 | 无 CI/CD `.ptxir` 缓存 Action | 低 | P3 | 基础设施 |
 | G8 | Reader 格式兼容性问题（硬编码偏移） | 高 | P1 | 需修复 reader |
 | D1-D5 | 格式实现偏差（TOC 未写入、顺序错误） | 中 | P2 | 需对齐 writer 实现与设计文档 |
-| G9 | Reader 指令覆盖不足（12/24 种，`default` 静默跳过） | 高 | P1 | 需补全 12 种缺失指令类型 |
+| G9 | Reader variant 覆盖不足（9/24 种 variant 处理，15 种 variant 缺失） | 高 | P1 | 需补全 15 种缺失 variant 类型（MembarInstr 等） |
 
 ## 4. 补齐路径
 
@@ -172,7 +172,7 @@
 
 ```
 Phase 1 (G9, G8, D1-D5, G1)
-  ├── G9: Reader 补充 12 种指令类型
+  ├── G9: Reader 补充 15 种缺失 variant 类型（tasks.md §2.1-2.15）
   ├── G8+D1-D5: Writer/Reader 格式对齐 + TOC 实现
   └── G1: Mode 4 测试文件（roundtrip 验证）
       ↓

@@ -8,10 +8,10 @@
 
 ## 2. Phase 1: Reader Instruction Coverage (G9 修复)
 
-**目标**: 补全 Reader 12 种缺失指令类型 + 移除 default 静默跳过
+**目标**: 补全 Reader 15 种缺失 variant 类型 + 移除 default 静默跳过
 **Commit**: `feat(ptxir): complete reader instruction coverage (24/24)`
 **依赖**: 无
-**回退策略**: `git revert <commit>` → reader 回到 12/24 状态
+**回退策略**: `git revert <commit>` → reader 回到 9/24 variant 状态（22 opcode 不变）
 
 - [ ] 2.1 在 `src/ptx_ir/ptxir_reader.cpp` 中添加 `case S_MEMBAR`: 读取 qualifiers (u8 count + u16[]) → 构造 `MembarInstr` → `stmt.data = instr`
 - [ ] 2.2 添加 `case S_FENCE`: 读取 qualifiers → 构造 `FenceInstr`
@@ -36,28 +36,37 @@
 
 ## 3. Phase 2: Format Contract Alignment (D1-D5 修复)
 
-**目标**: Writer/Reader 实现完全符合 ADR-0023 Decision 1
-**Commit 1**: `refactor(ptxir): align writer with ADR-0023 Section TOC layout`
-**Commit 2**: `refactor(ptxir): align reader with ADR-0023 Section TOC layout`
+**目标**: Writer/Reader 实现完全符合 ADR-0023 Decision 1 + 旧 V1 文件向后兼容
+**前置子阶段 (§3.0)**: bump `PTXIR_VERSION` 1 → 2 in `ptxir_format.h`（必须，消除 V1/V2 解析歧义）
+**Commit 1 (3.1-3.7)**: `refactor(ptxir): align writer with V2 format (TOC + offset backfill)`
+**Commit 2 (3.8-3.14)**: `feat(ptxir): reader supports V1 legacy format (version=1 path)`
+**Commit 3 (3.15-3.20)**: `refactor(ptxir): reader supports V2 format (TOC-driven path)`
 **依赖**: Phase 1 完成
 **回退策略**: 单 commit revert；writer/reader 各一次 revert
+**破损中间态消除**: 3 commit 顺序保证任何中间态可用（详见 design.md §Migration Plan Phase 2）
 
-- [ ] 3.1 (Commit 1) 修改 `PtxirWriter::write_header()`: 在写入 24 字节 header 后，预留 `section_count * 6` 字节 TOC 空间（用 seek + pad），更新 `section_count` 字段
+- [ ] 3.0 (前置) 修改 `include/ptx_ir/ptxir_format.h`: `PTXIR_VERSION` 从 1 → 2
+- [ ] 3.1 (Commit 1) 修改 `PtxirWriter::write_header()`: 写入 `version=2`，预留 `section_count * 6` 字节 TOC 空间，更新 `section_count` 字段
 - [ ] 3.2 (Commit 1) 实现 `PtxirWriter::write_toc_entries()`: 按 section 写入顺序（REGDECL → KERNEL → STRING_TABLE）写入 TOC 条目
 - [ ] 3.3 (Commit 1) 修改 `PtxirWriter::write()` 调用顺序: `pre_pass → write_header → write_toc_entries → write_regdecl_section → write_kernel_section → write_string_table → backfill_header_offsets`
 - [ ] 3.4 (Commit 1) 实现 `PtxirWriter::backfill_header_offsets()`: 回填 `string_table_offset` (offset 12-15) 和 `string_table_size` (offset 16-19)
 - [ ] 3.5 (Commit 1) 实现 `PtxirWriter::write_regdecl_section()`: 写入操作数表（从 `reg2id_` 推导）；如 `reg2id_` 为空则不写入 section，但 TOC 仍占位
 - [ ] 3.6 (Commit 1) 编译验证: `cmake --build .worktrees/ptxir-compliance/build --target ptxir_writer` (应成功)
-- [ ] 3.7 (Commit 1) Commit: `git add src/ptx_ir/ptxir_writer.cpp && git commit -m "refactor(ptxir): align writer with ADR-0023 Section TOC layout"`
-- [ ] 3.8 (Commit 2) 修改 `PtxirReader::read_header()`: 读取 TOC 条目到 `std::vector<PtxirSectionTOC>` 成员
-- [ ] 3.9 (Commit 2) 实现 `PtxirReader::read_toc_entries()`: 从 header 后读取 `section_count` 个 TOC 条目
-- [ ] 3.10 (Commit 2) 修改 `PtxirReader::read()`: 按 TOC 类型分派到 `read_regdecl_section` / `read_kernel_section` / `read_string_table`
-- [ ] 3.11 (Commit 2) 修改 `PtxirReader::read_string_table()`: 改为通过 TOC 定位（不再 seek `sizeof(PtxirHeader)`）
-- [ ] 3.12 (Commit 2) 实现 `PtxirReader::read_regdecl_section()`: 从 REGDECL section 重建操作数表
-- [ ] 3.13 (Commit 2) 在 `read()` 中添加: 检测重复 TOC type → 抛异常；TOC offset 越界 → 抛异常；未知 section type → 抛异常
-- [ ] 3.14 (Commit 2) 编译验证: `cmake --build .worktrees/ptxir-compliance/build --target ptxir_reader` (应成功)
-- [ ] 3.15 (Commit 2) Commit: `git add src/ptx_ir/ptxir_reader.cpp && git commit -m "refactor(ptxir): align reader with ADR-0023 Section TOC layout"`
-- [ ] 3.16 Phase 2 整体验证: 完整 build ptxir 库 + 现有测试（如果存在）通过
+- [ ] 3.7 (Commit 1) Commit: `git add include/ptx_ir/ptxir_format.h src/ptx_ir/ptxir_writer.cpp && git commit -m "refactor(ptxir): align writer with V2 format (TOC + offset backfill)"`
+- [ ] 3.8 (Commit 2) 修改 `PtxirReader::read_header()`: 检测 `version` 字段，version=1 → 走旧路径（保留现有硬编码 `sizeof(PtxirHeader)` 字符串表偏移逻辑）；version=2 → 走新路径（TOC 解析）
+- [ ] 3.9 (Commit 2) 在 reader 中保留现有硬编码偏移路径作为 `read_legacy_v1()`: 不读 TOC，直接 seek `sizeof(PtxirHeader)` 读字符串表，再读 kernel section
+- [ ] 3.10 (Commit 2) 验证 V1 路径: 用现有 V1 文件（手工构造的 mock）测试 `read_legacy_v1()` 仍可正常反序列化
+- [ ] 3.11 (Commit 2) 编译验证: `cmake --build .worktrees/ptxir-compliance/build --target ptxir_reader` (应成功)
+- [ ] 3.12 (Commit 2) 验证 V1 reader 与 V2 writer 共存: V1 旧文件可读 + V2 新文件暂不可读（reader 抛 `version not supported`，预期）
+- [ ] 3.13 (Commit 2) Commit: `git add src/ptx_ir/ptxir_reader.cpp && git commit -m "feat(ptxir): reader supports V1 legacy format (version=1 path)"`
+- [ ] 3.14 (Commit 3) 实现 `PtxirReader::read_v2()`: 读取 TOC 条目到 `std::vector<PtxirSectionTOC>`，按 type 分派到 `read_regdecl_section` / `read_kernel_section` / `read_string_table`
+- [ ] 3.15 (Commit 3) 修改 `PtxirReader::read_string_table()`: V2 路径通过 TOC 定位（不再 seek `sizeof(PtxirHeader)`）
+- [ ] 3.16 (Commit 3) 实现 `PtxirReader::read_regdecl_section()`: 从 REGDECL section 重建操作数表
+- [ ] 3.17 (Commit 3) 在 `read_v2()` 中添加: 检测重复 TOC type → 抛异常；TOC offset 越界 → 抛异常；未知 section type → 抛异常
+- [ ] 3.18 (Commit 3) 编译验证: `cmake --build .worktrees/ptxir-compliance/build --target ptxir_reader` (应成功)
+- [ ] 3.19 (Commit 3) 验证 V2 reader 与 V2 writer roundtrip: 双向可读可写
+- [ ] 3.20 (Commit 3) Commit: `git add src/ptx_ir/ptxir_reader.cpp && git commit -m "refactor(ptxir): reader supports V2 format (TOC-driven path)"`
+- [ ] 3.21 Phase 2 整体验证: 完整 build ptxir 库 + V1 旧文件可读 + V2 新文件可读 + 旧 V1 → 新 reader 路径正确（不破坏现有 .ptxir 文件）
 
 ## 4. Phase 3: Test Suite & Tooling Completion (G1, G3, G4 修复)
 
@@ -92,7 +101,7 @@
 - [ ] 4.22 (Commit 3) Commit: `git add include/ptxir/ptxir_serialization.h src/ptxir/ptxir_serialization.cpp tests/unit/test_ptxir_serialization.cpp && git commit -m "feat(ptxir): complete load_ptxir(apply_cfg=true) path with CFGBuilder integration"`
 - [ ] 4.23 Phase 3 整体验证: 完整运行 `ctest -R "ptxir|ptxir_serialization" -V` (应 100% 通过,除 ANTLR 依赖测试 expected fail)
 
-## 5. Phase 4: Documentation & Protocol (G2 修复)
+## 5. Phase 4: Documentation & Protocol (G6 修复)
 
 **目标**: AGENTS.md 协议 + 测试文档升级
 **Commit 1**: `docs(ptxir): add StatementContext modification protocol to AGENTS.md`

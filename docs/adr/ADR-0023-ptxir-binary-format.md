@@ -8,7 +8,7 @@
 | **关联 OpenSpec change** | [openspec/changes/archive/2026-06-09-ptxir-serialization-architecture/](../../openspec/changes/archive/2026-06-09-ptxir-serialization-architecture/) |
 | **关联差距分析** | [docs/architecture/ptxir-serialization-gaps-gap-analysis.md](../architecture/ptxir-serialization-gaps-gap-analysis.md) |
 | **关联技能** | [.opencode/skills/ptxir-serialization/SKILL.md](../../.opencode/skills/ptxir-serialization/SKILL.md) |
-| **关联 ADR** | [ADR-0011](./ADR-0011-pipeline-architecture.md)（Pipeline 架构，仍为 Proposed，引用本 ADR 决策）|
+| **关联 ADR** | [ADR-0011](./ADR-0011-pipeline-architecture.md)（Pipeline 架构，2026-07-30 升级 Accepted，引用本 ADR 决策）|
 | **作者** | PTX-EMU Architecture Team |
 | **审核人** | Oracle (architecture review), Metis (decision completeness) |
 
@@ -294,12 +294,14 @@ for (auto& stmt : statements) {
 - V1 只支持 sm_50-sm_80 的基本 PTX ISA
 - 未来 V2 增加 wmma/mma、Hopper cluster 时，V1 reader 可跳过未知 block（根据 TOC 里的 block type 字段）
 
-**当前 V1 支持指令**（19 种）:
+**当前 V1 支持指令**（22 个 opcode / 9 种指令 variant 显式处理，详见 [差距分析 §2.4](../architecture/ptxir-serialization-gaps-gap-analysis.md)）:
 - 控制流: S_BRA, S_LABEL, S_EXIT, S_RET, S_PRAGMA, S_DOLLOR
 - 通用算术: S_MOV, S_ADD, S_SUB, S_MUL, S_SETP, S_CVT
 - 访存: S_LD, S_ST
 - 屏障: S_BAR, S_BAR_WARP_SYNC
 - 声明: S_REG, S_CONST, S_SHARED, S_LOCAL, S_GLOBAL, S_PARAM
+
+**注**: 24 种 `InstrVariant` 类型中（BranchInstr, LabelInstr, VoidInstr, BarrierInstr, GenericInstr, DeclarationInstr, BarWarpSyncInstr, PragmaInstr, DollarNameInstr, MembarInstr, FenceInstr, ReduxSyncInstr, MbarrierInstr, CallInstr, PredicatePrefix, VoteInstr, ShflInstr, AtomInstr, TextureInstr, SurfaceInstr, ReductionInstr, PrefetchInstr, CpAsyncInstr, AbiDirective），Reader 显式 case 覆盖 9 种 variant，对应 22 个 opcode（多个 opcode 共享同一 variant，如 S_REG/S_CONST/S_SHARED/S_LOCAL/S_GLOBAL/S_PARAM 共享 DeclarationInstr）。**15 种 variant 缺失 reader case**（MembarInstr, FenceInstr, ReduxSyncInstr, MbarrierInstr, CallInstr, PredicatePrefix, VoteInstr, ShflInstr, AtomInstr, TextureInstr, SurfaceInstr, ReductionInstr, PrefetchInstr, CpAsyncInstr, AbiDirective），走 `default` 静默跳过。详见差距分析 G9 + tasks.md §2.1-2.15。
 
 #### Decision 6: 放置位置 — `include/ptx_ir/` + `src/ptx_ir/` + `src/ptxir/`
 
@@ -376,7 +378,7 @@ src/ptxir/                  # 顶层便捷 API
   - header 中 `string_table_offset` / `string_table_size` 未回填
   - Reader 硬编码偏移（`sizeof(PtxirHeader)`），破坏格式契约
   - Writer 实际写顺序与设计文档不一致
-- **Reader 指令覆盖不足**（12/24，详见差距分析 G9）: 12 种指令类型走 `default` 分支静默跳过
+- **Reader 指令覆盖不足**（15/24 variant 缺失，详见差距分析 G9）: 15 种 `InstrVariant` 类型（MembarInstr, FenceInstr, ReduxSyncInstr, MbarrierInstr, CallInstr, PredicatePrefix, VoteInstr, ShflInstr, AtomInstr, TextureInstr, SurfaceInstr, ReductionInstr, PrefetchInstr, CpAsyncInstr, AbiDirective）走 `default` 分支静默跳过；Writer 写入这 15 种 variant 的字段后，Reader 无法重建为正确的 variant 类型
 - **测试缺失**（G1）: 无 roundtrip 测试，无 Mode 4 测试
 - **工具链缺失**（G3, G4, G5, G6, G7）: `generate_ptxir()` / `load_ptxir(apply_cfg)` / `generate_tests.py` 集成 / 文档更新 / CI Action
 

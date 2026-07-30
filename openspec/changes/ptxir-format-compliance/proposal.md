@@ -1,7 +1,7 @@
 ## Why
 
 PTXIR 二进制序列化的实现与 [ADR-0023](https://github.com/chisuhua/PTX-EMU/blob/main/docs/adr/ADR-0023-ptxir-binary-format.md) 定义的 7 项架构决策存在显著偏差。差距分析（[docs/architecture/ptxir-serialization-gaps-gap-analysis.md](../../../docs/architecture/ptxir-serialization-gaps-gap-analysis.md)）识别出 9 项能力差距（G1-G9）和 5 项格式偏差（D1-D5），其中最关键的是：
-- Reader 指令覆盖仅 12/24（12 种指令类型走 `default` 分支静默跳过，G9）
+- Reader variant 覆盖仅 9/24（15 种 `InstrVariant` 类型走 `default` 分支静默跳过，G9；tasks.md §2.1-2.15 列出 15 个待补 case）
 - Writer/Reader 格式实现未对齐 TOC 契约（D1-D5：TOC 未写入、字符串表偏移未回填、Reader 硬编码偏移）
 - 完整 roundtrip 测试缺失（G1），无任何 PTXIR 单元测试
 
@@ -11,7 +11,7 @@ PTXIR 二进制序列化的实现与 [ADR-0023](https://github.com/chisuhua/PTX-
 
 - **修复 Writer 格式契约**（D1-D4）: 按 ADR-0023 Decision 1 写入 header → TOC entries → REGDECL section → KERNEL section → STRING_TABLE section 顺序；回填 `string_table_offset` / `string_table_size`
 - **修复 Reader 格式契约**（D5）: 从 TOC 条目读取 section 偏移，移除硬编码 `sizeof(PtxirHeader)` 偏移
-- **补全 Reader 指令覆盖**（G9）: 为缺失的 12 种指令类型（MembarInstr, FenceInstr, ReduxSyncInstr, MbarrierInstr, CallInstr, PredicatePrefix, VoteInstr, ShflInstr, AtomInstr, TextureInstr, SurfaceInstr, ReductionInstr, PrefetchInstr, CpAsyncInstr, AbiDirective）添加 `case` 分支；移除 `default` 静默跳过
+- **补全 Reader variant 覆盖**（G9）: 为缺失的 15 种 `InstrVariant` variant 类型（MembarInstr, FenceInstr, ReduxSyncInstr, MbarrierInstr, CallInstr, PredicatePrefix, VoteInstr, ShflInstr, AtomInstr, TextureInstr, SurfaceInstr, ReductionInstr, PrefetchInstr, CpAsyncInstr, AbiDirective）添加 `case` 分支；移除 `default` 静默跳过
 - **创建完整 roundtrip 测试套件**（G1）: `tests/unit/test_ptxir_serialization.cpp` 覆盖所有支持的指令类型
 - **实现 `generate_ptxir()` 工具**（G3）: ANTLR 解析 + 序列化的离线工具
 - **实现 `load_ptxir(apply_cfg)` 中的 `apply_cfg` 路径**（G4）: 集成 `CFGBuilder::build()` 到反序列化后流程
@@ -35,7 +35,7 @@ PTXIR 二进制序列化的实现与 [ADR-0023](https://github.com/chisuhua/PTX-
 - `include/ptx_ir/ptxir_format.h`: 移除未使用的 `header_size` 字段或补全文档；确保 TOC struct 正确
 - `src/ptx_ir/ptxir_writer.cpp`: 重构 `write_header()` / `write_sections()` 以符合 ADR-0023 顺序；回填 offset
 - `src/ptx_ir/ptxir_reader.cpp`: 重构 `read_header()` / `read_sections()` 以从 TOC 读取偏移；删除硬编码 `sizeof(PtxirHeader)`
-- `src/ptx_ir/ptxir_reader.cpp`: 补全 12 种缺失指令类型的 `case` 分支；移除 `default` 静默跳过
+- `src/ptx_ir/ptxir_reader.cpp`: 补全 15 种缺失 `InstrVariant` variant 类型的 `case` 分支；移除 `default` 静默跳过
 - `src/ptxir/ptxir_serialization.cpp`: 新增 `generate_ptxir()` 和 `apply_cfg=true` 支持
 - `include/ptxir/ptxir_serialization.h`: 添加 `generate_ptxir()` / `load_ptxir(apply_cfg)` 签名
 

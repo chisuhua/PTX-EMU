@@ -14,7 +14,7 @@ PTXIR 二进制序列化的当前实现（`src/ptx_ir/ptxir_writer.cpp` / `ptxir
 
 **2. Reader 指令覆盖不足（G9）**
 - Writer 支持 24 种指令类型（BranchInstr, LabelInstr, VoidInstr, BarrierInstr, GenericInstr, DeclarationInstr, BarWarpSyncInstr, PragmaInstr, DollarNameInstr, MembarInstr, FenceInstr, ReduxSyncInstr, MbarrierInstr, CallInstr, PredicatePrefix, VoteInstr, ShflInstr, AtomInstr, TextureInstr, SurfaceInstr, ReductionInstr, PrefetchInstr, CpAsyncInstr, AbiDirective）
-- Reader 仅显式支持 12 种，其余 12 种走 `default` 分支**静默跳过数据**
+- Reader 仅显式支持 9 种 `InstrVariant` variant（22 个 opcode），其余 15 种 variant 走 `default` 分支**静默跳过数据**
 - 后果：roundtrip 测试不通过；指令数据被无声丢弃
 
 **3. 工具链不完整（G1, G3, G4）**
@@ -74,7 +74,7 @@ std::vector<StatementContext> PtxirReader::read() {
 
 #### 3. Reader 指令覆盖与 Writer 对齐（24/24）
 
-补全 12 种缺失指令类型的 `case` 分支；移除 `default` 静默跳过（改为 `throw`）。
+补全 15 种缺失 `InstrVariant` variant 类型的 `case` 分支（MembarInstr, FenceInstr, ReduxSyncInstr, MbarrierInstr, CallInstr, PredicatePrefix, VoteInstr, ShflInstr, AtomInstr, TextureInstr, SurfaceInstr, ReductionInstr, PrefetchInstr, CpAsyncInstr, AbiDirective）；移除 `default` 静默跳过（改为 `throw`）。
 
 #### 4. 完整 roundtrip 测试
 
@@ -103,6 +103,9 @@ std::vector<StatementContext> PtxirReader::read() {
 - 不实现 VBR 编码或压缩（V1 固定宽度）
 - 不实现 CI/CD Action（属 Phase 3 工具链，本 change 只到「可在 CI 运行」级别）
 - 不重新设计 PTXIR 格式（仅实现 ADR-0023 已定义的契约）
+- **G2 (预生成 `.ptxir` 测试数据)** — `tests/ptxir/` 目录已存在但为空。**显式推迟到后续 change**（如 `2026-08-ptxir-test-data-generation`）。本 change 只确保 `generate_ptxir()` API 可用，但不批量预生成现有 PTX 文件
+- **G5 (`generate_tests.py` 集成)** — `--mode mode4` / `--ptxir` 选项不在本 change 范围。**显式推迟到后续 change**（如 `2026-08-three-mode-to-four-mode-migration`）。本 change 完成 Mode 4 手动测试，但自动化生成仍由 `three-mode-testing` 技能所有者推动
+- **PR 模板 + pre-commit hook**（spec §ptxir-statement-context-change-protocol 部分场景）— 显式推迟到后续 change。AGENTS.md 协议已建立，但 PR 模板 hook 涉及 `.github/PULL_REQUEST_TEMPLATE.md` + `.git/hooks/`，属项目级流程改进
 
 ## Decisions
 
@@ -173,11 +176,11 @@ std::vector<StatementContext> PtxirReader::read() {
 
 | 风险 | 概率 | 影响 | 缓解措施 |
 |------|------|------|---------|
-| **Writer 写顺序重构破坏现有 `.ptxir` 文件读取** | 中 | 高 | Phase 1 + Phase 2 严格分步提交：先实现新 writer（写入 `.ptxir.new`），后修改 reader 从 TOC 读取；老 `.ptxir`（硬编码偏移）可被新 reader 通过 `section_count=2` 兼容路径读取（仍读 header 后 24 字节的字符串表） |
+| **Writer 写顺序重构破坏现有 `.ptxir` 文件读取** | 中 | 高 | **bump `PTXIR_VERSION` 从 1 → 2**（在 `ptxir_format.h`）作为前置任务。旧 V1 文件 magic 不变（`"PTXIR"`）但 `version=1` → 新 reader 检测到 `version<2` 走旧读取路径（`read_string_table` 硬编码偏移 + 不读 TOC）；新写入的 V2 文件 `version=2` → 新 reader 走 TOC 解析路径。**不依赖 section_count 区分**（旧 writer 写 2 但无 TOC 条目，新 writer 写 3+ 含 TOC 条目，靠 version 字段区分更可靠）。**实施细节**: tasks.md Phase 2 §3.1 新增 "bump version" 子任务为 §3.2-§3.3 的前置条件 |
 | **Reader 错误处理 throw 改变语义，导致现有测试失败** | 中 | 中 | 在 throw 前记录警告日志（`std::cerr`）；CI 完整跑一次后调整；如需保留向后兼容，提供 `Reader::set_strict(bool)` 开关（Phase 1 不实现，Phase 2+ 视需要添加） |
 | **AGENTS.md checklist 不被遵守，StatementContext 修改再次破坏 PTXIR** | 中 | 高 | 在 PR 模板中添加「是否修改 `StatementContext` / `OperandContext`」checkbox；如选 Yes，必须列出同步的 writer/reader 改动 |
 | **ANTLR 编译阻塞使 generate_ptxir() / load_ptxir(apply_cfg) 集成测试无法运行** | 高 | 中 | 单元测试不依赖 ANTLR（手工构造 StatementContext）；集成测试添加「expected fail in 2-core system」标签；CI 完整系统上运行 |
-| **12 种新 case 分支的解析错误，导致更多静默数据丢失** | 低 | 中 | 每个 case 分支单独单元测试；roundtrip 测试对比所有字段（不仅语句数量） |
+| **15 种新 case 分支的解析错误，导致更多静默数据丢失** | 低 | 中 | 每个 case 分支单独单元测试；roundtrip 测试对比所有字段（不仅语句数量） |
 | **格式版本兼容：未来 V2 增加 section type 时 V1 reader 无法解析** | 低 | 中 | V1 reader 遇到未知 section type → throw 明确错误（已有 catch 路径）；V2 设计时考虑 block-skip 机制 |
 | **4 Phase commit 累积冲突** | 中 | 中 | 每个 Phase 独立 worktree；Phase 1 完成后立即合并到 main；Phase 2/3/4 各自 rebased on main |
 
@@ -189,14 +192,17 @@ std::vector<StatementContext> PtxirReader::read() {
 - Commit: `feat(ptxir): complete reader instruction coverage (24/24)`
 - 范围: 仅 `src/ptx_ir/ptxir_reader.cpp`
 - 不依赖：可独立实施
-- 回退策略: `git revert <commit>` → reader 回到 12/24 状态（不会破坏现有硬编码偏移 reader）
+- 回退策略: `git revert <commit>` → reader 回到 9/24 variant 状态（不会破坏现有硬编码偏移 reader）
 
 **Phase 2: 格式契约对齐（D1-D5 修复）**
-- Commit 1: `refactor(ptxir): align writer with ADR-0023 Section TOC layout`
-- Commit 2: `refactor(ptxir): align reader with ADR-0023 Section TOC layout`
-- 范围: `src/ptx_ir/ptxir_writer.cpp` + `src/ptx_ir/ptxir_reader.cpp`
+- **前置任务 (§3.0)**: bump `PTXIR_VERSION` 1 → 2 in `ptxir_format.h`（必做，消除旧 V1 文件解析歧义）
+- **子阶段 2A (commit 1)**: writer 输出 V2 格式（写入 TOC 条目 + 回填 string_table_offset/size）
+- **子阶段 2B (commit 2)**: reader 支持 V1 旧格式（version=1 走硬编码偏移路径，保持向后兼容）
+- **子阶段 2C (commit 3)**: reader 支持 V2 新格式（version=2 走 TOC 解析路径）
+- 范围: `src/ptx_ir/ptxir_format.h` + `src/ptx_ir/ptxir_writer.cpp` + `src/ptx_ir/ptxir_reader.cpp`
 - 依赖: Phase 1（确保 reader case 完整后再改 reader 主体）
 - 回退策略: 单 commit revert；writer/reader 各一次 revert
+- **破损中间态消除**: 3A/3B/3C 三 commit 顺序保证任意中间态可用 — (a) 仅 writer 写 V2 但 reader 暂不读 V2 → 老 V1 文件照常可读；(b) writer 写 V2 + reader 支持 V1 → 双向兼容；(c) 全切 V2 路径 → 老 V1 仍可读
 
 **Phase 3: 测试 + 工具链（G1, G3, G4 修复）**
 - Commit 1: `test(ptxir): add roundtrip unit tests for all 24 instruction types`
@@ -206,7 +212,7 @@ std::vector<StatementContext> PtxirReader::read() {
 - 依赖: Phase 2（格式契约稳定后才有意义测试）
 - 回退策略: 单 commit revert；如某 commit 引入回归，revert 该 commit 而非整体
 
-**Phase 4: 文档同步 + 协议建立（G2 修复）**
+**Phase 4: 文档同步 + 协议建立（G6 修复，AGENTS.md 协议；G2/G5 推迟到后续 change）**
 - Commit 1: `docs(ptxir): add StatementContext modification protocol to AGENTS.md`
 - Commit 2: `docs(ptxir): update THREE-MODE-TESTING-GUIDE.md to four-mode framework`
 - 范围: `src/ptx_ir/AGENTS.md` + `include/ptxir/AGENTS.md` (如新建) + `docs/developer-guide/THREE-MODE-TESTING-GUIDE.md`
@@ -235,7 +241,7 @@ cmake --build .worktrees/ptxir-baseline/build --target ptxir
 |------|---------|------|
 | `include/ptx_ir/ptxir_format.h` | 修改 | 移除未使用 `header_size` 字段或补全文档 |
 | `src/ptx_ir/ptxir_writer.cpp` | 重构 | 写顺序 + TOC 写入 + offset 回填 |
-| `src/ptx_ir/ptxir_reader.cpp` | 重构 | 从 TOC 解析 + 12 种 case 补全 + 移除 default |
+| `src/ptx_ir/ptxir_reader.cpp` | 重构 | 从 TOC 解析 + 15 种 case 补全 + 移除 default |
 | `src/ptxir/ptxir_serialization.cpp` | 扩展 | 新增 `generate_ptxir()` + 完善 `load_ptxir(apply_cfg=true)` |
 | `include/ptxir/ptxir_serialization.h` | 扩展 | 2 个新 API 签名 |
 | `tests/unit/test_ptxir_serialization.cpp` | 新增 | roundtrip 单元测试 |
