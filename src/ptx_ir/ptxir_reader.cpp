@@ -210,20 +210,221 @@ StatementContext PtxirReader::read_instruction() {
             stmt.data = instr;
             break;
         }
-        default: {
-            GenericInstr instr;
+        case S_MEMBAR: {
+            MembarInstr instr;
             uint8_t qcount = read_u8(in_);
             for (uint8_t i = 0; i < qcount; i++) {
-                (void)read_u16(in_);
-            }
-            read_u32(in_);  // dst_reg_id (unused, skip 0xFFFFFFFF padding)
-            uint8_t ocount = read_u8(in_);
-            for (uint8_t i = 0; i < ocount; i++) {
-                (void)read_u32(in_);
+                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
             }
             stmt.data = instr;
             break;
         }
+        case S_FENCE: {
+            FenceInstr instr;
+            uint8_t qcount = read_u8(in_);
+            for (uint8_t i = 0; i < qcount; i++) {
+                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+            }
+            stmt.data = instr;
+            break;
+        }
+        case S_REDUX_SYNC: {
+            ReduxSyncInstr instr;
+            uint8_t qcount = read_u8(in_);
+            for (uint8_t i = 0; i < qcount; i++) {
+                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+            }
+            uint8_t ocount = read_u8(in_);
+            for (uint8_t i = 0; i < ocount; i++) {
+                uint32_t id = read_u32(in_);
+                if (id < string_table_.size()) {
+                    instr.operands.emplace_back(ImmOperand{string_table_[id]});
+                }
+            }
+            stmt.data = instr;
+            break;
+        }
+        case S_MBARRIER_INIT:
+        case S_MBARRIER_ARRIVE:
+        case S_MBARRIER_TRY_WAIT: {
+            MbarrierInstr instr;
+            uint8_t qcount = read_u8(in_);
+            for (uint8_t i = 0; i < qcount; i++) {
+                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+            }
+            uint8_t ocount = read_u8(in_);
+            for (uint8_t i = 0; i < ocount; i++) {
+                uint32_t id = read_u32(in_);
+                if (id < string_table_.size()) {
+                    instr.operands.emplace_back(RegOperand{string_table_[id], -1});
+                }
+            }
+            stmt.data = instr;
+            break;
+        }
+        case S_CALL: {
+            CallInstr instr;
+            uint8_t qcount = read_u8(in_);
+            for (uint8_t i = 0; i < qcount; i++) {
+                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+            }
+            uint8_t ocount = read_u8(in_);
+            for (uint8_t i = 0; i < ocount; i++) {
+                uint32_t id = read_u32(in_);
+                if (id < string_table_.size()) {
+                    instr.operands.emplace_back(ImmOperand{string_table_[id]});
+                }
+            }
+            stmt.data = instr;
+            break;
+        }
+        case S_VOTE: {
+            VoteInstr instr;
+            uint8_t qcount = read_u8(in_);
+            for (uint8_t i = 0; i < qcount; i++) {
+                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+            }
+            uint8_t ocount = read_u8(in_);
+            for (uint8_t i = 0; i < ocount; i++) {
+                uint32_t id = read_u32(in_);
+                if (id < string_table_.size()) {
+                    instr.operands.emplace_back(RegOperand{string_table_[id], -1});
+                }
+            }
+            stmt.data = instr;
+            break;
+        }
+        case S_SHFL: {
+            ShflInstr instr;
+            uint8_t qcount = read_u8(in_);
+            for (uint8_t i = 0; i < qcount; i++) {
+                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+            }
+            uint8_t ocount = read_u8(in_);
+            for (uint8_t i = 0; i < ocount; i++) {
+                uint32_t id = read_u32(in_);
+                if (id < string_table_.size()) {
+                    instr.operands.emplace_back(RegOperand{string_table_[id], -1});
+                }
+            }
+            stmt.data = instr;
+            break;
+        }
+        case S_ATOM: {
+            AtomInstr instr;
+            uint8_t qcount = read_u8(in_);
+            for (uint8_t i = 0; i < qcount; i++) {
+                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+            }
+            read_u32(in_);  // dst_reg_id (unused, skip 0xFFFFFFFF padding)
+            uint8_t ocount = read_u8(in_);
+            for (uint8_t i = 0; i < ocount; i++) {
+                uint32_t id = read_u32(in_);
+                if (id < string_table_.size()) {
+                    instr.operands.emplace_back(ImmOperand{string_table_[id]});
+                }
+            }
+            stmt.data = instr;
+            break;
+        }
+        case S_TEX:
+        case S_TEX_LDG:
+        case S_TEX_GRAD:
+        case S_TEX_LOD:
+        case S_TXQ: {
+            TextureInstr instr;
+            uint8_t qcount = read_u8(in_);
+            for (uint8_t i = 0; i < qcount; i++) {
+                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+            }
+            uint8_t ocount = read_u8(in_);
+            for (uint8_t i = 0; i < ocount; i++) {
+                uint32_t id = read_u32(in_);
+                if (id < string_table_.size()) {
+                    instr.operands.emplace_back(RegOperand{string_table_[id], -1});
+                }
+            }
+            stmt.data = instr;
+            break;
+        }
+        case S_SURF:
+        case S_SULD:
+        case S_SUST:
+        case S_SUQ: {
+            SurfaceInstr instr;
+            uint8_t qcount = read_u8(in_);
+            for (uint8_t i = 0; i < qcount; i++) {
+                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+            }
+            uint8_t ocount = read_u8(in_);
+            for (uint8_t i = 0; i < ocount; i++) {
+                uint32_t id = read_u32(in_);
+                if (id < string_table_.size()) {
+                    instr.operands.emplace_back(RegOperand{string_table_[id], -1});
+                }
+            }
+            stmt.data = instr;
+            break;
+        }
+        case S_RED: {
+            ReductionInstr instr;
+            uint8_t qcount = read_u8(in_);
+            for (uint8_t i = 0; i < qcount; i++) {
+                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+            }
+            uint8_t ocount = read_u8(in_);
+            for (uint8_t i = 0; i < ocount; i++) {
+                uint32_t id = read_u32(in_);
+                if (id < string_table_.size()) {
+                    instr.operands.emplace_back(RegOperand{string_table_[id], -1});
+                }
+            }
+            stmt.data = instr;
+            break;
+        }
+        case S_PREFETCH:
+        case S_PREFETCHU: {
+            PrefetchInstr instr;
+            uint8_t qcount = read_u8(in_);
+            for (uint8_t i = 0; i < qcount; i++) {
+                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+            }
+            uint8_t ocount = read_u8(in_);
+            for (uint8_t i = 0; i < ocount; i++) {
+                uint32_t id = read_u32(in_);
+                if (id < string_table_.size()) {
+                    instr.operands.emplace_back(RegOperand{string_table_[id], -1});
+                }
+            }
+            stmt.data = instr;
+            break;
+        }
+        case S_CP_ASYNC: {
+            CpAsyncInstr instr;
+            uint8_t qcount = read_u8(in_);
+            for (uint8_t i = 0; i < qcount; i++) {
+                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+            }
+            uint8_t ocount = read_u8(in_);
+            for (uint8_t i = 0; i < ocount; i++) {
+                uint32_t id = read_u32(in_);
+                if (id < string_table_.size()) {
+                    instr.operands.emplace_back(RegOperand{string_table_[id], -1});
+                }
+            }
+            stmt.data = instr;
+            break;
+        }
+        case S_ABI_PRESERVE: {
+            AbiDirective instr;
+            stmt.data = instr;
+            break;
+        }
+        // S_PREDICATE_PREFIX: enum not yet defined; writer uses type 0
+        // (S_REG) via makePredicatePrefix. Will be added in Phase 2.
+        default:
+            throw std::runtime_error("Unknown StatementType: " +
+                                    std::to_string(type));
     }
     return stmt;
 }
