@@ -59,6 +59,7 @@ void PtxirReader::read_header() {
     if (version_ != 1 && version_ != 2) {
         throw std::runtime_error("Unsupported PTXIR version");
     }
+    header_ = hdr;
 }
 
 std::vector<StatementContext> PtxirReader::read_legacy_v1() {
@@ -67,7 +68,68 @@ std::vector<StatementContext> PtxirReader::read_legacy_v1() {
 }
 
 std::vector<StatementContext> PtxirReader::read_v2() {
-    throw std::runtime_error("V2 format not yet supported");
+    // TOC starts right after header (sizeof(PtxirHeader) = 24)
+    in_.seekg(static_cast<std::streamoff>(sizeof(PtxirHeader)));
+
+    std::vector<PtxirSectionTOC> toc;
+    for (uint16_t i = 0; i < header_.section_count; i++) {
+        PtxirSectionTOC entry;
+        entry.type = read_u8(in_);
+        entry.reserved = read_u8(in_);
+        entry.offset = read_u32(in_);
+
+        for (const auto& existing : toc) {
+            if (existing.type == entry.type) {
+                throw std::runtime_error(
+                    "Duplicate section type in TOC: " +
+                    std::to_string(entry.type));
+            }
+        }
+        toc.push_back(entry);
+    }
+
+    std::vector<StatementContext> result;
+    for (const auto& entry : toc) {
+        in_.seekg(static_cast<std::streamoff>(entry.offset));
+        switch (static_cast<PtxirSectionType>(entry.type)) {
+            case PtxirSectionType::REGDECL:
+                read_regdecl_section();
+                break;
+            case PtxirSectionType::KERNEL:
+                result = read_kernel_section();
+                break;
+            case PtxirSectionType::STRING_TABLE:
+                read_string_table_v2();
+                break;
+            default:
+                throw std::runtime_error(
+                    "Unknown section type in TOC: " +
+                    std::to_string(entry.type));
+        }
+    }
+    return result;
+}
+
+void PtxirReader::read_string_table_v2() {
+    uint32_t count = read_u32(in_);
+    for (uint32_t i = 0; i < count; i++) {
+        uint16_t len = read_u16(in_);
+        std::string s(len, '\0');
+        in_.read(s.data(), static_cast<std::streamsize>(len));
+        string_table_.push_back(s);
+    }
+}
+
+void PtxirReader::read_regdecl_section() {
+    uint32_t count = read_u32(in_);
+    for (uint32_t i = 0; i < count; i++) {
+        uint32_t str_id = read_u32(in_);
+        if (str_id >= string_table_.size()) {
+            throw std::runtime_error(
+                "REGDECL string ID out of bounds: " +
+                std::to_string(str_id));
+        }
+    }
 }
 
 void PtxirReader::read_string_table() {
