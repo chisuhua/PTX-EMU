@@ -19,4 +19,8 @@ bool serialize_statements(const std::vector<struct StatementContext>& stmts, con
 
 std::vector<struct StatementContext> deserialize_statements(const std::string& path);
 
+bool generate_ptxir(const std::string& ptx_path,
+                    const std::string& ptxir_path,
+                    const std::string& kernel_name = "");
+
 #endif // PTXIR_SERIALIZATION_H
