@@ -2,9 +2,10 @@
 
 | 属性 | 值 |
 |------|-----|
-| **状态** | Proposed |
-| **日期** | 2026-05-05 |
+| **状态** | Accepted |
+| **日期** | 2026-05-05（初始 Proposed）→ 2026-07-30（升级 Accepted）|
 | **关联任务** | Phase 12.1 (Sprint 12.1) |
+| **关联 ADR** | [ADR-0023](./ADR-0023-ptxir-binary-format.md)（PTXIR 二进制格式与 7 项决策，提供本 ADR Stage 3-4 的格式依据）|
 | **作者** | PTX-EMU Team |
 
 ## 上下文
@@ -153,18 +154,60 @@ struct PipelineConfig {
 
 后续相关开发应检查：
 
+### Pipeline 结构
+
 - [ ] 每个阶段可独立执行
 - [ ] 阶段间通过标准接口通信
 - [ ] 支持配置起点和终点
 - [ ] PTXIR Roundtrip 验证通过
 
+### 与 ADR-0023 的对齐
+
+- [ ] **Stage 3 (PTXIR_SERIALIZE)**: 必须使用 `ptxir_serialization` API（[`include/ptxir/ptxir_serialization.h`](../../include/ptxir/ptxir_serialization.h)）— 不允许绕过 API 直接调用 `PtxirWriter`/`PtxirReader`
+- [ ] **Stage 4 (PTXIR_DESERIALIZE)**: 反序列化产物必须为 `std::vector<StatementContext>`，格式契约遵循 [ADR-0023 §Decision 1](./ADR-0023-ptxir-binary-format.md#decision-1-文件格式--扁平二进制--section-toc非-bitstream)
+- [ ] **Stage 3/4 的 PTXIR 格式**: 遵循 [ADR-0023 §7 项决策](./ADR-0023-ptxir-binary-format.md#决策内容) — 扁平二进制 + TOC + 值枚举 + 字符串表末尾 + Extend-Only 版本 + `include/ptx_ir/` 放置 + CFG 反序列化后应用
+- [ ] **配置可执行路径**（详见 [ADR-0023 §合规检查 - API 契约](./ADR-0023-ptxir-binary-format.md#合规检查)）:
+  - "仅生成 PTXIR" 路径（PTX_EXTRACT → PTXIR_SERIALIZE）必须输出可被 Stage 4 正确解析的 `.ptxir`
+  - "从 PTXIR 执行" 路径（PTXIR_DESERIALIZE → SIMT_EXECUTE）必须通过 `deserialize_statements()` 反序列化
+  - "Roundtrip 验证" 路径（PTX_PARSE → PTXIR_DESERIALIZE）必须 roundtrip 一致（详见 [ADR-0023 §合规检查 - 指令覆盖](./ADR-0023-ptxir-binary-format.md#指令覆盖)）
+
+### 当前实现差距
+
+以下项**已识别但未修复**（参考 [差距分析](../architecture/ptxir-serialization-gaps-gap-analysis.md)），Pipeline 实施时需在 Phase 1 修复：
+
+- [ ] **G9**: Reader 补充 12 种缺失指令类型（Writer 24/Reader 12 不对称）
+- [ ] **G8 + D1-D5**: Writer/Reader 格式对齐（TOC 写入、字符串表偏移回填、Reader 按 TOC 定位 section）
+- [ ] **G1**: Pipeline 集成需要 roundtrip 测试覆盖（当前无任何 PTXIR 测试）
+- [ ] **G3**: Stage 3 实际使用 `serialize_statements()`（✅ 已有），`generate_ptxir()` 工具缺失
+- [ ] **G4**: Stage 4 实际使用 `deserialize_statements()`（✅ 已有），`load_ptxir(apply_cfg)` 中 `apply_cfg=true` 路径需 `CFGBuilder::build()` 集成（未实现）
+
 ## 更新记录
 
 | 日期 | 更新内容 | 作者 |
 |------|---------|------|
-| 2026-05-05 | 初始版本 | PTX-EMU Team |
+| 2026-05-05 | 初始版本（Proposed）| PTX-EMU Team |
+| 2026-07-30 | 升级为 Accepted：引用 [ADR-0023](./ADR-0023-ptxir-binary-format.md) 作为 PTXIR 格式决策依据；补充对齐 checklist；标记当前实现差距（G1/G3/G4/G8/G9/D1-D5）；待 Phase 1 修复 | PTX-EMU Architecture Team |
 
 ## 参考
+
+### 关联 ADR
+
+- [ADR-0023](./ADR-0023-ptxir-binary-format.md) — PTXIR 二进制格式与 7 项决策（本 ADR Stage 3-4 的格式依据）
+- [ADR-0009](./ADR-0009-xmacro-instruction-dispatch.md) — X-Macro 指令分发（Stage 5 SIMT_EXECUTE 通过此机制）
+- [ADR-0010](./ADR-0010-fake-cuda-runtime.md) — Fake CUDA Runtime 拦截（Stage 0-1 的入口点 `__cudaRegisterFatBinary`）
+- [ADR-0012](./ADR-0012-per-thread-pc.md) — Per-Thread PC（Stage 5 SIMT_EXECUTE 的核心数据模型）
+
+### 关联 OpenSpec change
+
+- [`openspec/changes/archive/2026-06-09-ptxir-serialization-architecture/`](../../openspec/changes/archive/2026-06-09-ptxir-serialization-architecture/) — PTXIR 完整设计文档
+- [`openspec/changes/archive/2026-07-29-refactor-ptxir-writer/`](../../openspec/changes/archive/2026-07-29-refactor-ptxir-writer/) — Writer 长函数拆分（C-4 债务修复）
+
+### 关联文档
+
+- [差距分析](../architecture/ptxir-serialization-gaps-gap-analysis.md) — 当前实现与 ADR-0023 决策的差距清单
+- [技能文档](../../.opencode/skills/ptxir-serialization/SKILL.md) — PTXIR 格式规范 + API 参考
+
+### 历史参考
 
 - [架构评审报告 - 第八节 Pipeline 方案](../reports/architecture-review-report.md#八ptx--ptxir-多阶段-pipeline-执行方案)
 - [任务计划 - Sprint 12.1](../reports/task-plan.md#sprint-121-ptxir-pipeline-核心day-11-17)

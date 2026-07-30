@@ -56,15 +56,16 @@ docs/adr/
 | [0016](./ADR-0016-blackwell-only-tcgen05.md) | Skip pre-Blackwell WMMA, only implement Blackwell tcgen05 | Accepted | 2026-07-04 | `openspec/changes/implement-wmma-tensor-core/` |
 | [0018](./ADR-0018-tcgen05-cta-group-restriction.md) | tcgen05 cta_group::2 throws UnsupportedInstructionException | Accepted | 2026-07-12 | `openspec/changes/fix-tcgen05-commit-wait-group/` |
 | [0019](./ADR-0019-pc-management-extraction.md) | ThreadContext 持续瘦身：MemoryAccessor + InstructionPipeline accessor 方案 | Active | 2026-07-14 | `openspec/changes/god-class-refactor-thread-context-phase3/` |
+| [0011](./ADR-0011-pipeline-architecture.md) | PTX→PTXIR 多阶段 Pipeline 架构 | **Accepted** | 2026-05-05 (2026-07-30 升级) | Phase 12.1 |
 | [0020](./ADR-0020-cpptlm-injection-points.md) | 接受 CppTLM Phase 8.B D1-Full 注入（IScoreboard / IPipelineLatencyProvider / ITensorCoreTiming） | Accepted | 2026-07-16 | `openspec/changes/cpptlm-phase8b-injection-points/` |
 | [0021](./ADR-0021-cpptlm-d1-full-integration.md) | CppTLM D1-Full MemoryBridge 集成（D-PTX-1~6 + HSK-1/2/3） | Active | 2026-07-16 | `openspec/changes/cpptlm-d1-full/` |
 | [0022](./ADR-0022-cpptlm-unified-build.md) | CppTLM + PTX-EMU 统一构建链路（`--whole-archive` 替代独立 `.so` + `dlopen`） | Accepted | 2026-07-23 | `openspec/changes/cpptlm-d1-full/` |
+| [0023](./ADR-0023-ptxir-binary-format.md) | PTXIR 二进制序列化格式与 7 项架构决策（扁平二进制 + Section TOC + 值枚举） | Accepted | 2026-07-30 | `openspec/changes/archive/2026-06-09-ptxir-serialization-architecture/` |
 
 ### Proposed (规划中)
 
 | # | 标题 | 状态 | 日期 | 关联任务 |
 |---|------|------|------|---------|
-| [0011](./ADR-0011-pipeline-architecture.md) | PTX→PTXIR 多阶段 Pipeline 架构 | Proposed | 2026-05-05 | Phase 12.1 |
 | [0013](./ADR-0013-statement-factory-test-unification.md) | StatementContext 测试统一模式 — statement_factory + execute_warp_instruction | Proposed | 2026-05-09 | — |
 | [0014](./ADR-0014-independent-thread-scheduling.md) | Independent Thread Scheduling (ITS) 支持 | Proposed | 2026-05-25 | BUG-SIMT-001 |
 
@@ -97,13 +98,14 @@ docs/adr/
 ---
 
 **维护**: PTX-EMU Architecture Team  
-**最后更新**: 2026-07-23  
-**ADR 总数**: 21（其中 Active 14 / Accepted 4 / Proposed 3 / Superseded 0）
+**最后更新**: 2026-07-30  
+**ADR 总数**: 22（其中 Active 14 / Accepted 6 / Proposed 2 / Superseded 0）
 
 ## 最近更新
 
 | 日期 | 更新内容 | 关联 ADR |
 |------|---------|---------|
+| 2026-07-30 | **PTXIR 二进制格式 + Pipeline 架构升级**：新增 ADR-0023 Accepted（PTXIR 7 项决策：扁平二进制+TOC+值枚举+字符串表末尾+Extend-Only 等）；ADR-0011 从 Proposed 升级 Accepted（引用 ADR-0023 作为格式依据） | 0023, 0011 |
 | 2026-07-23 | **CppTLM 统一构建链路**：ADR-0022 Accepted — `--whole-archive` 替代独立 `.so` + `dlopen`；CppTLM Oracle 审查通过，P1/P2/P3/S1 修复已完成 | 0022 |
 | 2026-07-16 | **cpptlm-d1-full 状态推进**：ADR-0021 Proposed → Active；ADR-0020 Proposed → Accepted；2 轮 Metis pre-impl review + 3 阶段 12 commits 修复所有 5 个 BLOCKER（B1 ABI 实现 / B2 sync loop / B3 stream destroy UB / B4 HSK 一致性 / B5 CMake 文档同步）+ sister spec 附录 + Postmortem 沉淀 | 0020, 0021 |
 | 2026-07-15 | 添加 CppTLM D1-Full MemoryBridge 集成 ADR（D-PTX-1~6 决策 + HSK-1/2/3 握手 + cpptlm_bridge.h ABI 真值源） | 0021 |
