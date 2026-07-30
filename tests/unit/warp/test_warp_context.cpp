@@ -39,16 +39,20 @@ void test_warp_active_mask_management() {
 
     warp.set_active_mask(0x0);
     assert(warp.get_active_count() == 0);
-    assert(warp.get_active_mask() == 0x0000000F);
+    // Overwrite semantics: set_active_mask(0x0) clears all lanes.
+    // Per AGENTS.md ANTI-PATTERNS: set_active_mask() must use OVERWRITE,
+    // not OR semantics — ret handler depends on this.
+    assert(warp.get_active_mask() == 0);
 
     // 测试设置单个lane活跃状态
     warp.set_active_mask(5, true); // 激活第5个线程
     assert(warp.is_lane_active(5) == true);
-    assert(warp.get_active_count() == 5);
+    // Overwrite: set_active_mask(0x0) cleared all, so activating lane 5 gives count=1
+    assert(warp.get_active_count() == 1);
 
-    warp.set_active_mask(0, false); // 去激活第0个线程
-    assert(warp.is_lane_active(0) == false);
-    assert(warp.get_active_count() == 4);
+    warp.set_active_mask(5, false);
+    assert(warp.is_lane_active(5) == false);
+    assert(warp.get_active_count() == 0);
 
     std::cout << "Warp active mask management test passed." << std::endl;
 }
