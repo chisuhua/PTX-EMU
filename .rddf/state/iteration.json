@@ -1,6 +1,6 @@
 {
   "version": 4,
-  "updated_at": "2026-07-28T06:30:00.000000+00:00",
+  "updated_at": "2026-07-30T08:52:56.675362+00:00",
   "current_phase": "Phase-10",
   "changes": [
     {
@@ -59,6 +59,17 @@
       "parallel_group": 2,
       "parent_feature": null,
       "archived_at": "2026-07-27T19:00:00+00:00"
+    },
+    {
+      "added_at": "2026-07-30T08:52:39.789382+00:00",
+      "name": "ptxir-format-compliance",
+      "status": "archived",
+      "phase": "Phase-10",
+      "category": "core-impl",
+      "tasks_done": 97,
+      "tasks_total": 97,
+      "merge_commit": "1f7379d1",
+      "archived_at": "2026-07-30T16:48:00+00:00"
     }
   ]
 }
