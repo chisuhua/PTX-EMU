@@ -23,4 +23,7 @@ bool generate_ptxir(const std::string& ptx_path,
                     const std::string& ptxir_path,
                     const std::string& kernel_name = "");
 
+std::vector<struct StatementContext> load_ptxir(const std::string& ptxir_path,
+                                                bool apply_cfg = false);
+
 #endif // PTXIR_SERIALIZATION_H

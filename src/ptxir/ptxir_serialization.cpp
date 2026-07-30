@@ -8,6 +8,7 @@
 #include "ptxLexer.h"
 #include "ptxParser.h"
 #include <fstream>
+#include <map>
 #include <sstream>
 
 std::string serialize_to_string(const std::vector<struct StatementContext>& stmts) {
@@ -81,6 +82,35 @@ bool generate_ptxir(const std::string& ptx_path,
     } catch (...) {
         return false;
     }
+}
+
+std::vector<struct StatementContext> load_ptxir(const std::string& ptxir_path,
+                                                bool apply_cfg) {
+    auto stmts = deserialize_statements(ptxir_path);
+    if (apply_cfg) {
+        std::map<std::string, int> label2pc;
+        for (int i = 0; i < static_cast<int>(stmts.size()); i++) {
+            if (stmts[i].type == S_LABEL) {
+                const auto& label = std::get<LabelInstr>(stmts[i].data);
+                label2pc[label.labelName] = i;
+            }
+        }
+        auto cfg = ptx::cfg::CFGBuilder::build(stmts, label2pc);
+        auto postDoms = ptx::cfg::CFGBuilder::computePostDominators(cfg);
+        for (int i = 0; i < static_cast<int>(stmts.size()); i++) {
+            if (stmts[i].type == S_BRA) {
+                auto& branch = std::get<BranchInstr>(stmts[i].data);
+                auto it = postDoms.find(i);
+                branch.reconvergence_pc = (it != postDoms.end() && it->second >= 0) ? it->second : (i + 1);
+            }
+            if (stmts[i].type == S_BAR) {
+                auto& barrier = std::get<BarrierInstr>(stmts[i].data);
+                auto it = postDoms.find(i);
+                barrier.reconvergence_pc = (it != postDoms.end() && it->second >= 0) ? it->second : (i + 1);
+            }
+        }
+    }
+    return stmts;
 }
 
 
