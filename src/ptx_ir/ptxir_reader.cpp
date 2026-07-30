@@ -42,8 +42,10 @@ PtxirReader::PtxirReader(std::istream& in) : in_(in) {}
 
 std::vector<StatementContext> PtxirReader::read() {
     read_header();
-    read_string_table();
-    return read_kernel_section();
+    if (version_ == 1) {
+        return read_legacy_v1();
+    }
+    return read_v2();
 }
 
 void PtxirReader::read_header() {
@@ -53,9 +55,19 @@ void PtxirReader::read_header() {
     if (std::memcmp(hdr.magic, PTXIR_MAGIC, 4) != 0) {
         throw std::runtime_error("Invalid PTXIR magic");
     }
-    if (hdr.version != PTXIR_VERSION) {
+    version_ = hdr.version;
+    if (version_ != 1 && version_ != 2) {
         throw std::runtime_error("Unsupported PTXIR version");
     }
+}
+
+std::vector<StatementContext> PtxirReader::read_legacy_v1() {
+    read_string_table();
+    return read_kernel_section();
+}
+
+std::vector<StatementContext> PtxirReader::read_v2() {
+    throw std::runtime_error("V2 format not yet supported");
 }
 
 void PtxirReader::read_string_table() {

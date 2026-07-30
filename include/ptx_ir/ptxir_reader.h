@@ -21,10 +21,13 @@ private:
     void read_string_table();
     std::vector<StatementContext> read_kernel_section();
     StatementContext read_instruction();
+    std::vector<StatementContext> read_legacy_v1();
+    std::vector<StatementContext> read_v2();
 
     std::istream& in_;
     std::vector<std::string> string_table_;
     uint32_t statement_count_ = 0;
+    uint16_t version_ = 0;
 };
 
 #endif  // PTXIR_READER_H
