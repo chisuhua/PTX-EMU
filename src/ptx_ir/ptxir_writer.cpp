@@ -36,8 +36,23 @@ void PtxirWriter::write(const std::vector<StatementContext>& statements) {
     stmts_ = statements;
     pre_pass(statements);
     write_header();
-    write_string_table();
+
+    toc_entries_.clear();
+    toc_entries_.push_back({static_cast<uint8_t>(PtxirSectionType::REGDECL), 0, 0});
+    toc_entries_.push_back({static_cast<uint8_t>(PtxirSectionType::KERNEL), 0, 0});
+    toc_entries_.push_back({static_cast<uint8_t>(PtxirSectionType::STRING_TABLE), 0, 0});
+
+    toc_entries_[0].offset = static_cast<uint32_t>(out_.tellp());
+    write_regdecl_section();
+
+    toc_entries_[1].offset = static_cast<uint32_t>(out_.tellp());
     write_kernel_section();
+
+    toc_entries_[2].offset = static_cast<uint32_t>(out_.tellp());
+    write_string_table();
+
+    write_toc_entries();
+    backfill_header_offsets();
 }
 
 void PtxirWriter::pre_pass(const std::vector<StatementContext>& statements) {
@@ -98,12 +113,42 @@ void PtxirWriter::write_header() {
     std::memcpy(hdr.magic, PTXIR_MAGIC, 4);
     hdr.version = PTXIR_VERSION;
     hdr.flags = 0;
-    hdr.section_count = 2;
+    hdr.section_count = 3;
     hdr.reserved = 0;
     hdr.string_table_offset = 0;
     hdr.string_table_size = 0;
     hdr.header_size = sizeof(PtxirHeader);
     out_.write(reinterpret_cast<const char*>(&hdr), sizeof(hdr));
+    for (int i = 0; i < 3; i++) {
+        uint8_t zero[6] = {};
+        out_.write(reinterpret_cast<const char*>(zero), 6);
+    }
+}
+
+void PtxirWriter::write_toc_entries() {
+    auto end_pos = out_.tellp();
+    out_.seekp(sizeof(PtxirHeader), std::ios::beg);
+    for (const auto& entry : toc_entries_) {
+        write_u8(out_, entry.type);
+        write_u8(out_, entry.reserved);
+        write_u32(out_, entry.offset);
+    }
+    out_.seekp(end_pos, std::ios::beg);
+}
+
+void PtxirWriter::write_regdecl_section() {
+    write_u32(out_, static_cast<uint32_t>(reg2id_.size()));
+    for (const auto& [name, id] : reg2id_) {
+        write_u32(out_, get_string_id(name));
+    }
+}
+
+void PtxirWriter::backfill_header_offsets() {
+    auto saved_pos = out_.tellp();
+    out_.seekp(12, std::ios::beg);
+    write_u32(out_, string_table_offset_);
+    write_u32(out_, string_table_size_);
+    out_.seekp(saved_pos, std::ios::beg);
 }
 
 void PtxirWriter::write_kernel_section() {

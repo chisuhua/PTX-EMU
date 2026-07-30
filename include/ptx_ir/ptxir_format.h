@@ -8,12 +8,12 @@
 
 // ============================================================================
 // PTXIR Binary Format
-// Version: 1
+// Version: 2
 // Layout: Header + Section TOC + Section Data + String Table (at end)
 // ============================================================================
 
 static constexpr char PTXIR_MAGIC[4] = {'P', 'T', 'X', 'I'};
-static constexpr uint16_t PTXIR_VERSION = 1;
+static constexpr uint16_t PTXIR_VERSION = 2;
 
 // Section types
 enum class PtxirSectionType : uint8_t {
