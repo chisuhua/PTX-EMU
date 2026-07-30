@@ -47,6 +47,17 @@ src/ptx_ir/
 - ❌ 字符串比较 Qualifier → 用 `Qualifier::isBit()` 等方法
 - ❌ reader 硬编码指令尺寸 → 从 `ptxir_format.h` 常量读取
 
+## StatementContext 修改协议
+
+修改 `StatementContext` / `InstrVariant` 结构体时，必须同步更新以下 4 项：
+
+1. **`src/ptx_ir/ptxir_writer.cpp`** — 添加 `write_<type>()` 方法并在 `write_instruction()` 中注册
+2. **`src/ptx_ir/ptxir_reader.cpp`** — 添加 `case` 分支读取新类型
+3. **`tests/unit/test_ptxir_serialization.cpp`** — 添加 roundtrip 测试用例
+4. **`include/ptx_ir/ptx_op.def`** — 更新 X-Macro dispatch（如 struct_kind 变更）
+
+详见 `include/ptxir/AGENTS.md`。
+
 ## COMMANDS
 
 ```bash

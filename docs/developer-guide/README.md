@@ -18,7 +18,7 @@
 | [DEBUGGING-GUIDE.md](./DEBUGGING-GUIDE.md) | 所有开发者 | ✅ |
 | [REGRESSION-DEBUGGING-GUIDE.md](./REGRESSION-DEBUGGING-GUIDE.md) | 所有开发者 | ✅ 新增 |
 | [PTX-DEBUG-SKILL-USAGE.md](./PTX-DEBUG-SKILL-USAGE.md) | 所有开发者 | ✅ |
-| [THREE-MODE-TESTING-GUIDE.md](./THREE-MODE-TESTING-GUIDE.md) | 测试工程师 | ✅ 四模式 |
+| [THREE-MODE-TESTING-GUIDE.md](./THREE-MODE-TESTING-GUIDE.md) | 测试工程师 | ✅ 四模式（含 Mode 4 PTXIR） |
 | [BARRIER-PROGRAMMING-REFERENCE.md](./BARRIER-PROGRAMMING-REFERENCE.md) | 所有开发者 | ✅ Barrier 参考 |
 
 ### 🛠️ 修复 Postmortem / Open Issue 文档

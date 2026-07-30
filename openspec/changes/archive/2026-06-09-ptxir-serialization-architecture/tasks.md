@@ -68,7 +68,7 @@
 ## 10. Verification
 
 - [x] 10.5 clang-format all new source files before commit (skipped - clang-format not available on 2-core build system)
-- [x] **10.1-10.4 BLOCKED** - Requires full build (≥4 cores, ≥16GB RAM). Current 2-core system OOMs during ANTLR runtime compilation.
+- [x] **10.1-10.4 COMPLETED** via openspec/changes/ptxir-format-compliance/ (commits cf40ab9a..4df18f87, 8 commits, 2026-07-30)
 
 **To verify when build resources are available:**
 ```bash

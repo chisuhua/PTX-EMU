@@ -26,9 +26,11 @@ public:
 private:
     void pre_pass(const std::vector<StatementContext>& statements);
     void write_header();
-    void write_toc();
+    void write_toc_entries();
+    void write_regdecl_section();
     void write_kernel_section();
     void write_string_table();
+    void backfill_header_offsets();
     void write_instruction(const StatementContext& stmt);
 
     void write_qualifiers(const std::vector<Qualifier>& qualifiers);

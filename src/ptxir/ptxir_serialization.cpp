@@ -1,7 +1,14 @@
 #include "ptxir/ptxir_serialization.h"
 #include "ptx_ir/ptxir_writer.h"
 #include "ptx_ir/ptxir_reader.h"
+#include "ptx_parser/ptx_visiter.h"
+#include "ptx_parser/cfg_builder.h"
+#include "ptx_ir/ptx_context.h"
+#include "antlr4-runtime.h"
+#include "ptxLexer.h"
+#include "ptxParser.h"
 #include <fstream>
+#include <map>
 #include <sstream>
 
 std::string serialize_to_string(const std::vector<struct StatementContext>& stmts) {
@@ -33,3 +40,77 @@ std::vector<struct StatementContext> deserialize_statements(const std::string& p
     ::PtxirReader reader(in);
     return reader.read();
 }
+
+bool generate_ptxir(const std::string& ptx_path,
+                    const std::string& ptxir_path,
+                    const std::string& kernel_name) {
+    try {
+        // Read PTX file
+        std::ifstream in(ptx_path);
+        if (!in) return false;
+        std::string ptx_code((std::istreambuf_iterator<char>(in)),
+                              std::istreambuf_iterator<char>());
+
+        // Parse with ANTLR
+        antlr4::ANTLRInputStream input(ptx_code);
+        ptxparser::ptxLexer lexer(&input);
+        antlr4::CommonTokenStream tokens(&lexer);
+        tokens.fill();
+        ptxparser::ptxParser parser(&tokens);
+
+        // Visit parse tree
+        PtxContext ptxContext;
+        PtxVisitor visitor(ptxContext);
+        visitor.visit(parser.ptxFile());
+
+        // Find kernel by name or take first
+        KernelContext* kernel = nullptr;
+        if (!kernel_name.empty()) {
+            for (auto& k : ptxContext.ptxKernels) {
+                if (k.kernelName == kernel_name) {
+                    kernel = &k;
+                    break;
+                }
+            }
+        } else if (!ptxContext.ptxKernels.empty()) {
+            kernel = &ptxContext.ptxKernels[0];
+        }
+        if (!kernel) return false;
+
+        // Serialize
+        return serialize_statements(kernel->kernelStatements, ptxir_path);
+    } catch (...) {
+        return false;
+    }
+}
+
+std::vector<struct StatementContext> load_ptxir(const std::string& ptxir_path,
+                                                bool apply_cfg) {
+    auto stmts = deserialize_statements(ptxir_path);
+    if (apply_cfg) {
+        std::map<std::string, int> label2pc;
+        for (int i = 0; i < static_cast<int>(stmts.size()); i++) {
+            if (stmts[i].type == S_LABEL) {
+                const auto& label = std::get<LabelInstr>(stmts[i].data);
+                label2pc[label.labelName] = i;
+            }
+        }
+        auto cfg = ptx::cfg::CFGBuilder::build(stmts, label2pc);
+        auto postDoms = ptx::cfg::CFGBuilder::computePostDominators(cfg);
+        for (int i = 0; i < static_cast<int>(stmts.size()); i++) {
+            if (stmts[i].type == S_BRA) {
+                auto& branch = std::get<BranchInstr>(stmts[i].data);
+                auto it = postDoms.find(i);
+                branch.reconvergence_pc = (it != postDoms.end() && it->second >= 0) ? it->second : (i + 1);
+            }
+            if (stmts[i].type == S_BAR) {
+                auto& barrier = std::get<BarrierInstr>(stmts[i].data);
+                auto it = postDoms.find(i);
+                barrier.reconvergence_pc = (it != postDoms.end() && it->second >= 0) ? it->second : (i + 1);
+            }
+        }
+    }
+    return stmts;
+}
+
+
