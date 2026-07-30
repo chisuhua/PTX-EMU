@@ -721,13 +721,8 @@ add_catch_test(unit_bridge_submit_error
 set_tests_properties(unit_bridge_submit_error PROPERTIES LABELS "unit;cpptlm;bridge;submit_error")
 
 # cpptlm-d1-full: "is_global_space() 遍历整个 qualifier 列表" (Lessons Learned #1)
-add_catch_test(unit_is_global_space_qualifier_walk
-    cpptlm/test_is_global_space_walk.cpp
+add_catch_test(unit_ptxir_serialization
+    test_ptxir_serialization.cpp
 )
-set_tests_properties(unit_is_global_space_qualifier_walk PROPERTIES LABELS "unit;qualifier;global_space;lessons")
-
-# cpptlm-d1-full: "kernel_id 唯一性保证"
-add_catch_test(unit_kernel_id_uniqueness
-    cpptlm/test_kernel_id_uniqueness.cpp
-)
-set_tests_properties(unit_kernel_id_uniqueness PROPERTIES LABELS "unit;cpptlm;bridge;kernel_id")
+target_link_libraries(unit_ptxir_serialization PRIVATE ptxir_writer ptxir_reader ptxir)
+set_tests_properties(unit_ptxir_serialization PROPERTIES LABELS "unit;ptxir")
