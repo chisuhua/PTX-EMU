@@ -347,6 +347,38 @@ python3 generate_tests.py --benchmark dummy --force
 
 ---
 
+## Mode 4: PTXIR 快速加载
+
+PTXIR 二进制格式绕过 ANTLR 解析，实现 ~5ms 快速加载。生成后的 .ptxir 文件不依赖 ANTLR 运行时。
+
+### API
+
+```cpp
+// 从 PTX 文本生成 .ptxir 文件（需要 ANTLR 运行时）
+bool generate_ptxir(const std::string& ptx_path,
+                    const std::string& ptxir_path,
+                    const std::string& kernel_name = "");
+
+// 从 .ptxir 文件加载（无需 ANTLR）
+std::vector<StatementContext> load_ptxir(const std::string& ptxir_path,
+                                         bool apply_cfg = false);
+```
+
+### 工作流
+
+```bash
+# 生成 .ptxir（ANTLR 解析一次）
+generate_ptxir("kernel.ptx", "kernel.ptxir", "my_kernel");
+
+# 快速加载（多次执行，无需 ANTLR）
+auto stmts = load_ptxir("kernel.ptxir", true);  // apply_cfg=true 自动构建 CFG
+```
+
+### 限制
+
+- `generate_ptxir()` 需要 ANTLR 运行时（2 核系统可能 OOM）
+- CFG 构建后 `reconvergence_pc` 被填充，非幂等调用
+
 ## 相关文档
 
 | 文档 | 路径 |
@@ -354,7 +386,9 @@ python3 generate_tests.py --benchmark dummy --force
 | 测试指南 | [`TESTING-GUIDE.md`](./TESTING-GUIDE.md) |
 | 技能文档 | [`../skills/three-mode-testing/SKILL.md`](../../skills/three-mode-testing/SKILL.md) |
 | 测试生成器 | [`../skills/three-mode-testing/generate_tests.py`](../../skills/three-mode-testing/generate_tests.py) |
+| PTXIR 序列化技能 | [`.opencode/skills/ptxir-serialization/`](../../.opencode/skills/ptxir-serialization/) |
+| PTXIR 格式定义 | `include/ptx_ir/ptxir_format.h` |
 
 ---
 
-**最后更新**: 2026-04-30
+**最后更新**: 2026-07-30
