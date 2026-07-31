@@ -198,6 +198,7 @@ void PtxirWriter::write_instruction(const StatementContext& stmt) {
         else if constexpr (std::is_same_v<T, ReductionInstr>) { write_reduction(instr); }
         else if constexpr (std::is_same_v<T, PrefetchInstr>) { write_prefetch(instr); }
         else if constexpr (std::is_same_v<T, CpAsyncInstr>) { write_cp_async(instr); }
+        else if constexpr (std::is_same_v<T, Tcgen05Instr>) { write_tcgen05(instr); }
         else if constexpr (std::is_same_v<T, AbiDirective>) { write_abi_directive(instr); }
     });
 }
@@ -291,6 +292,11 @@ void PtxirWriter::write_mbarrier(const MbarrierInstr& instr) {
 }
 
 void PtxirWriter::write_call(const CallInstr& instr) {
+    write_qualifiers(instr.qualifiers);
+    write_operands(instr.operands, true);
+}
+
+void PtxirWriter::write_tcgen05(const Tcgen05Instr& instr) {
     write_qualifiers(instr.qualifiers);
     write_operands(instr.operands, true);
 }

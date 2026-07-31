@@ -553,6 +553,47 @@ StatementContext PtxirReader::read_instruction() {
             stmt.data = instr;
             break;
         }
+        case S_TCGEN05_ALLOC:
+        case S_TCGEN05_DEALLOC:
+        case S_TCGEN05_RELINQUISH:
+        case S_TCGEN05_LD:
+        case S_TCGEN05_ST:
+        case S_TCGEN05_CP:
+        case S_TCGEN05_MMA:
+        case S_TCGEN05_MMA_WS:
+        case S_TCGEN05_COMMIT:
+        case S_TCGEN05_WAIT:
+        case S_TCGEN05_FENCE: {
+            Tcgen05Instr instr;
+            switch (type) {
+                case S_TCGEN05_ALLOC:      instr.op_kind = Tcgen05OpKind::ALLOC; break;
+                case S_TCGEN05_DEALLOC:    instr.op_kind = Tcgen05OpKind::DEALLOC; break;
+                case S_TCGEN05_RELINQUISH: instr.op_kind = Tcgen05OpKind::RELINQUISH; break;
+                case S_TCGEN05_LD:         instr.op_kind = Tcgen05OpKind::LD; break;
+                case S_TCGEN05_ST:         instr.op_kind = Tcgen05OpKind::ST; break;
+                case S_TCGEN05_CP:         instr.op_kind = Tcgen05OpKind::CP; break;
+                case S_TCGEN05_MMA:        instr.op_kind = Tcgen05OpKind::MMA; break;
+                case S_TCGEN05_MMA_WS:     instr.op_kind = Tcgen05OpKind::MMA_WS; break;
+                case S_TCGEN05_COMMIT:     instr.op_kind = Tcgen05OpKind::COMMIT; break;
+                case S_TCGEN05_WAIT:       instr.op_kind = Tcgen05OpKind::WAIT; break;
+                case S_TCGEN05_FENCE:      instr.op_kind = Tcgen05OpKind::FENCE; break;
+                default: break;
+            }
+            uint8_t qcount = read_u8(in_);
+            for (uint8_t i = 0; i < qcount; i++) {
+                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+            }
+            uint8_t ocount = read_u8(in_);
+            for (uint8_t i = 0; i < ocount; i++) {
+                uint32_t id = read_u32(in_);
+                if (id != 0xFFFFFFFF) {
+                    std::string name = (id < string_table_.size()) ? string_table_[id] : "";
+                    instr.operands.emplace_back(RegOperand{name, -1});
+                }
+            }
+            stmt.data = instr;
+            break;
+        }
         // S_PREDICATE_PREFIX: enum not yet defined; writer uses type 0
         // (S_REG) via makePredicatePrefix. Will be added in Phase 2.
         default:

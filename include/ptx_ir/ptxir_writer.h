@@ -61,6 +61,7 @@ private:
     void write_reduction(const ReductionInstr& instr);
     void write_prefetch(const PrefetchInstr& instr);
     void write_cp_async(const CpAsyncInstr& instr);
+    void write_tcgen05(const Tcgen05Instr& instr);
     void write_abi_directive(const AbiDirective&);
 
     uint32_t get_reg_id(const std::string& name);

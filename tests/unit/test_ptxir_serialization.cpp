@@ -277,6 +277,51 @@ TEST_CASE("Roundtrip: VoidInstr (S_TRAP / S_BRK / S_BRKPT)") {
     }
 }
 
+TEST_CASE("Roundtrip: Tcgen05Instr (S_TCGEN05_MMA)") {
+    // T2.3: previously silently dropped by writer (no dispatch branch)
+    Tcgen05Instr instr;
+    instr.op_kind = Tcgen05OpKind::MMA;
+    instr.qualifiers = {Qualifier::Q_F16};
+    StatementContext stmt = make_stmt(S_TCGEN05_MMA, instr);
+
+    auto data = serialize_to_string({stmt});
+    auto result = deserialize_from_string(data);
+
+    REQUIRE(result.size() == 1);
+    CHECK(result[0].type == S_TCGEN05_MMA);              // FAILS pre-fix
+    const auto &out = std::get<Tcgen05Instr>(result[0].data);
+    CHECK(out.op_kind == Tcgen05OpKind::MMA);            // FAILS pre-fix
+    CHECK(out.qualifiers == std::vector<Qualifier>{Qualifier::Q_F16});
+}
+
+TEST_CASE("Roundtrip: Tcgen05Instr (S_TCGEN05_MMA_WS) op_kind derivation") {
+    Tcgen05Instr instr;
+    instr.op_kind = Tcgen05OpKind::MMA_WS;
+    StatementContext stmt = make_stmt(S_TCGEN05_MMA_WS, instr);
+
+    auto data = serialize_to_string({stmt});
+    auto result = deserialize_from_string(data);
+
+    REQUIRE(result.size() == 1);
+    CHECK(result[0].type == S_TCGEN05_MMA_WS);
+    const auto &out = std::get<Tcgen05Instr>(result[0].data);
+    CHECK(out.op_kind == Tcgen05OpKind::MMA_WS);         // FAILS pre-fix
+}
+
+TEST_CASE("Roundtrip: Tcgen05Instr (S_TCGEN05_ALLOC)") {
+    Tcgen05Instr instr;
+    instr.op_kind = Tcgen05OpKind::ALLOC;
+    StatementContext stmt = make_stmt(S_TCGEN05_ALLOC, instr);
+
+    auto data = serialize_to_string({stmt});
+    auto result = deserialize_from_string(data);
+
+    REQUIRE(result.size() == 1);
+    CHECK(result[0].type == S_TCGEN05_ALLOC);
+    const auto &out = std::get<Tcgen05Instr>(result[0].data);
+    CHECK(out.op_kind == Tcgen05OpKind::ALLOC);          // FAILS pre-fix
+}
+
 TEST_CASE("Roundtrip: DeclarationInstr (S_REG)") {
     StatementContext stmt =
         make_stmt(S_REG, DeclarationInstr{DeclarationInstr::Kind::REG,
