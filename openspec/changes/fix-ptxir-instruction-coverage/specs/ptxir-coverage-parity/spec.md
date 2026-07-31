@@ -6,8 +6,8 @@ Defines reader/writer coverage parity across the full StatementType enum set: ev
 ## MODIFIED Requirements
 
 ### Requirement: Reader MUST handle all 24 V1 instruction types
-
 The `PtxirReader::read_instruction()` method SHALL contain a `case` for every V1-supported `StatementType` enum value (24 types), matching the set of types handled by `PtxirWriter::write_instruction()`.
+target: ptxir-coverage-parity
 
 #### Scenario: All 24 types have explicit case branches
 - **WHEN** the reader's `switch (type)` statement is inspected
@@ -18,8 +18,8 @@ The `PtxirReader::read_instruction()` method SHALL contain a `case` for every V1
 - **THEN** the deserialized vector MUST have identical length, identical types, and identical data fields per statement (per `ptxir-roundtrip-testing` spec)
 
 ### Requirement: Reader MUST throw on unknown instruction type
-
 The `PtxirReader::read_instruction()` `default` case in the `switch (type)` statement MUST throw a `std::runtime_error` with a message identifying the unknown `StatementType` value, rather than silently constructing a default `GenericInstr` and discarding data.
+target: ptxir-coverage-parity
 
 #### Scenario: Unknown opcode throws
 - **WHEN** the reader encounters a `StatementType` value that is not in the supported set
@@ -30,16 +30,16 @@ The `PtxirReader::read_instruction()` `default` case in the `switch (type)` stat
 - **THEN** the reader MUST throw an exception identifying the unknown opcode, NOT return partially-constructed statements
 
 ### Requirement: Per-instruction case MUST reconstruct correct variant type
-
 For each supported instruction type, the reader's `case` branch MUST reconstruct the corresponding `InstrVariant` type (BranchInstr, LabelInstr, VoidInstr, etc.) with all fields populated from the binary stream.
+target: ptxir-coverage-parity
 
 #### Scenario: MembarInstr reconstructed from binary
 - **WHEN** a `MembarInstr` with qualifiers=[.cta, .sys] is serialized and the binary is deserialized
 - **THEN** the resulting `StatementContext::data` MUST be `std::variant` alternative of `MembarInstr` type (NOT `GenericInstr`), with `qualifiers` field containing the original [.cta, .sys] list
 
 ### Requirement: Reader and writer MUST have symmetric coverage across ALL 106 StatementType enums
-
 The `PtxirReader::read_instruction()` switch SHALL cover every `StatementType` enum value that can be produced by the parser (all 106 enums in `ptx_op.def`), such that the set of enums the writer serializes is exactly the set the reader deserializes. No enum that appears in a kernel's `kernelStatements` MAY hit the reader's `default:` throw path.
+target: ptxir-coverage-parity
 
 #### Scenario: Every ptx_op.def enum has a reader case group
 - **WHEN** the set of `case S_*` labels in `read_instruction()` is compared to the enum values defined in `include/ptx_ir/ptx_op.def`
