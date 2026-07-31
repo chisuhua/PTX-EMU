@@ -449,7 +449,6 @@ StatementContext PtxirReader::read_instruction() {
             for (uint8_t i = 0; i < qcount; i++) {
                 instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
             }
-            read_u32(in_);  // dst_reg_id (unused, skip 0xFFFFFFFF padding)
             uint8_t ocount = read_u8(in_);
             for (uint8_t i = 0; i < ocount; i++) {
                 uint32_t id = read_u32(in_);
