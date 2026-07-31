@@ -89,17 +89,24 @@ std::vector<StatementContext> PtxirReader::read_v2() {
     }
 
     std::vector<StatementContext> result;
+    // First pass: load STRING_TABLE (needed for string ID lookups in other sections)
     for (const auto& entry : toc) {
+        if (static_cast<PtxirSectionType>(entry.type) == PtxirSectionType::STRING_TABLE) {
+            in_.seekg(static_cast<std::streamoff>(entry.offset));
+            read_string_table_v2();
+        }
+    }
+    // Second pass: process remaining sections
+    for (const auto& entry : toc) {
+        auto type = static_cast<PtxirSectionType>(entry.type);
+        if (type == PtxirSectionType::STRING_TABLE) continue;
         in_.seekg(static_cast<std::streamoff>(entry.offset));
-        switch (static_cast<PtxirSectionType>(entry.type)) {
+        switch (type) {
             case PtxirSectionType::REGDECL:
                 read_regdecl_section();
                 break;
             case PtxirSectionType::KERNEL:
                 result = read_kernel_section();
-                break;
-            case PtxirSectionType::STRING_TABLE:
-                read_string_table_v2();
                 break;
             default:
                 throw std::runtime_error(
