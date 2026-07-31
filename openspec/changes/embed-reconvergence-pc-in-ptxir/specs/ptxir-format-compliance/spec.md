@@ -7,6 +7,7 @@ PTXIR binary format specification for section layout, TOC, and instruction encod
 
 ### Requirement: Writer MUST produce Section TOC per ADR-0023 Decision 1
 The `PtxirWriter::write()` method SHALL write a complete Section TOC (Table of Contents) immediately after the 24-byte `PtxirHeader`, with one `PtxirSectionTOC` entry (6 bytes each: type:u8, reserved:u8, offset:u32) per section, and `PtxirHeader::section_count` MUST equal the actual number of TOC entries.
+target: ptxir-format-compliance
 
 #### Scenario: TOC entries present in output
 - **WHEN** `PtxirWriter::write()` serializes a non-empty statement vector
@@ -31,6 +32,7 @@ The `PtxirWriter::write()` method SHALL write a complete Section TOC (Table of C
 
 ### Requirement: Writer MUST backfill header offset/size fields
 After writing all sections, the `PtxirWriter` SHALL backfill `PtxirHeader::string_table_offset` and `PtxirHeader::string_table_size` with the actual values.
+target: ptxir-format-compliance
 
 #### Scenario: string_table_offset backfilled
 - **WHEN** the writer completes the STRING_TABLE section
@@ -46,6 +48,7 @@ After writing all sections, the `PtxirWriter` SHALL backfill `PtxirHeader::strin
 
 ### Requirement: Writer MUST follow prescribed section order
 The `PtxirWriter::write()` method SHALL write sections in the following order: (1) 24-byte header, (2) TOC entries, (3) REGDECL section, (4) KERNEL section, (5) STRING_TABLE section.
+target: ptxir-format-compliance
 
 #### Scenario: Section order verification
 - **WHEN** a `.ptxir` file is parsed by an independent reader
@@ -54,13 +57,14 @@ The `PtxirWriter::write()` method SHALL write sections in the following order: (
 
 ### Requirement: Reader MUST parse via TOC, not hardcoded offsets
 The `PtxirReader` SHALL locate each section by reading its offset from the corresponding TOC entry, rather than using hardcoded offsets.
+target: ptxir-format-compliance
 
 #### Scenario: Reader uses TOC offsets
 - **WHEN** `PtxirReader::read()` parses a `.ptxir` file
 - **THEN** the reader MUST iterate the TOC entries and `seek_to(entry.offset)` before reading each section
 - **AND** the reader MUST NOT assume any fixed offset for section data
 
-### ADDED Requirements
+## ADDED Requirements
 
 ### Requirement: S_BAR instruction encoding MUST include reconvergence_pc in v3 format
 Starting from PTXIR version 3, the `S_BAR` (BarrierInstr) instruction encoding SHALL include a `reconvergence_pc` field (int32_t) after the `barId` field, matching the existing encoding of `S_BRA` (BranchInstr).
