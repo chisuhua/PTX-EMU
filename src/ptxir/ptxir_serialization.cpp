@@ -41,6 +41,36 @@ std::vector<struct StatementContext> deserialize_statements(const std::string& p
     return reader.read();
 }
 
+namespace {
+// Fill reconvergence_pc for all S_BRA and S_BAR from CFG post-dominators.
+// Shared by generate_ptxir() (embed at write time) and load_ptxir(apply_cfg=true).
+void fill_reconvergence_pc(std::vector<StatementContext>& stmts) {
+    std::map<std::string, int> label2pc;
+    for (int i = 0; i < static_cast<int>(stmts.size()); i++) {
+        if (stmts[i].type == S_LABEL) {
+            const auto& label = std::get<LabelInstr>(stmts[i].data);
+            label2pc[label.labelName] = i;
+        }
+    }
+    auto cfg = ptx::cfg::CFGBuilder::build(stmts, label2pc);
+    auto postDoms = ptx::cfg::CFGBuilder::computePostDominators(cfg);
+    for (int i = 0; i < static_cast<int>(stmts.size()); i++) {
+        if (stmts[i].type == S_BRA) {
+            auto& branch = std::get<BranchInstr>(stmts[i].data);
+            auto it = postDoms.find(i);
+            branch.reconvergence_pc =
+                (it != postDoms.end() && it->second >= 0) ? it->second : (i + 1);
+        }
+        if (stmts[i].type == S_BAR) {
+            auto& barrier = std::get<BarrierInstr>(stmts[i].data);
+            auto it = postDoms.find(i);
+            barrier.reconvergence_pc =
+                (it != postDoms.end() && it->second >= 0) ? it->second : (i + 1);
+        }
+    }
+}
+}  // namespace
+
 bool generate_ptxir(const std::string& ptx_path,
                     const std::string& ptxir_path,
                     const std::string& kernel_name) {
@@ -77,38 +107,22 @@ bool generate_ptxir(const std::string& ptx_path,
         }
         if (!kernel) return false;
 
+        // Embed CFG post-dominator results before writing (design D3)
+        auto statements = kernel->kernelStatements;
+        fill_reconvergence_pc(statements);
+
         // Serialize
-        return serialize_statements(kernel->kernelStatements, ptxir_path);
+        return serialize_statements(statements, ptxir_path);
     } catch (...) {
         return false;
     }
 }
 
 std::vector<struct StatementContext> load_ptxir(const std::string& ptxir_path,
-                                                bool apply_cfg) {
+                                                 bool apply_cfg) {
     auto stmts = deserialize_statements(ptxir_path);
     if (apply_cfg) {
-        std::map<std::string, int> label2pc;
-        for (int i = 0; i < static_cast<int>(stmts.size()); i++) {
-            if (stmts[i].type == S_LABEL) {
-                const auto& label = std::get<LabelInstr>(stmts[i].data);
-                label2pc[label.labelName] = i;
-            }
-        }
-        auto cfg = ptx::cfg::CFGBuilder::build(stmts, label2pc);
-        auto postDoms = ptx::cfg::CFGBuilder::computePostDominators(cfg);
-        for (int i = 0; i < static_cast<int>(stmts.size()); i++) {
-            if (stmts[i].type == S_BRA) {
-                auto& branch = std::get<BranchInstr>(stmts[i].data);
-                auto it = postDoms.find(i);
-                branch.reconvergence_pc = (it != postDoms.end() && it->second >= 0) ? it->second : (i + 1);
-            }
-            if (stmts[i].type == S_BAR) {
-                auto& barrier = std::get<BarrierInstr>(stmts[i].data);
-                auto it = postDoms.find(i);
-                barrier.reconvergence_pc = (it != postDoms.end() && it->second >= 0) ? it->second : (i + 1);
-            }
-        }
+        fill_reconvergence_pc(stmts);
     }
     return stmts;
 }

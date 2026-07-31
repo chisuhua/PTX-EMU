@@ -243,6 +243,7 @@ void PtxirWriter::write_void(const VoidInstr&) {}
 
 void PtxirWriter::write_barrier(const BarrierInstr& instr) {
     write_i32(out_, instr.barId.value_or(-1));
+    write_i32(out_, instr.reconvergence_pc);
 }
 
 void PtxirWriter::write_generic(const GenericInstr& instr) {
