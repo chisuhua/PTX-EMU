@@ -726,3 +726,6 @@ add_catch_test(unit_ptxir_serialization
 )
 target_link_libraries(unit_ptxir_serialization PRIVATE ptxir_writer ptxir_reader ptxir ${ANTLR4_LIBRARY})
 set_tests_properties(unit_ptxir_serialization PROPERTIES LABELS "unit;ptxir")
+target_compile_definitions(unit_ptxir_serialization PRIVATE
+    TEST_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+)

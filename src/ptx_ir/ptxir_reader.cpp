@@ -171,7 +171,8 @@ StatementContext PtxirReader::read_instruction() {
     stmt.type = type;
 
     switch (type) {
-        case S_BRA: {
+        case S_BRA:
+        case S_BRX: {
             BranchInstr instr;
             uint32_t pred_id = read_u32(in_);
             if (pred_id < string_table_.size()) {
@@ -197,7 +198,10 @@ StatementContext PtxirReader::read_instruction() {
             break;
         }
         case S_EXIT:
-        case S_RET: {
+        case S_RET:
+        case S_TRAP:
+        case S_BRK:
+        case S_BRKPT: {
             VoidInstr instr;
             stmt.data = instr;
             break;
@@ -222,7 +226,52 @@ StatementContext PtxirReader::read_instruction() {
         case S_LD:
         case S_ST:
         case S_SETP:
-        case S_CVT: {
+        case S_CVT:
+        case S_CVTA:
+        case S_PRMT:
+        case S_ISSPACEP:
+        case S_MAPA:
+        case S_ALLOCA:
+        case S_MUL24:
+        case S_DIV:
+        case S_REM:
+        case S_MIN:
+        case S_MAX:
+        case S_NEG:
+        case S_ABS:
+        case S_MAD:
+        case S_MAD24:
+        case S_FMA:
+        case S_ADDC:
+        case S_SUBC:
+        case S_SAD:
+        case S_COPYSIGN:
+        case S_TESTP:
+        case S_TANH:
+        case S_AND:
+        case S_OR:
+        case S_XOR:
+        case S_NOT:
+        case S_SHL:
+        case S_SHR:
+        case S_SHF:
+        case S_BFE:
+        case S_LOP3:
+        case S_SET:
+        case S_SELP:
+        case S_SLCT:
+        case S_CNOT:
+        case S_SIN:
+        case S_COS:
+        case S_LG2:
+        case S_EX2:
+        case S_RCP:
+        case S_RSQRT:
+        case S_SQRT:
+        case S_POPC:
+        case S_CLZ:
+        case S_ACTIVEMASK:
+        case S_ST_BULK: {
             GenericInstr instr;
             uint8_t qcount = read_u8(in_);
             for (uint8_t i = 0; i < qcount; i++) {
@@ -400,7 +449,6 @@ StatementContext PtxirReader::read_instruction() {
             for (uint8_t i = 0; i < qcount; i++) {
                 instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
             }
-            read_u32(in_);  // dst_reg_id (unused, skip 0xFFFFFFFF padding)
             uint8_t ocount = read_u8(in_);
             for (uint8_t i = 0; i < ocount; i++) {
                 uint32_t id = read_u32(in_);
@@ -501,6 +549,47 @@ StatementContext PtxirReader::read_instruction() {
         }
         case S_ABI_PRESERVE: {
             AbiDirective instr;
+            stmt.data = instr;
+            break;
+        }
+        case S_TCGEN05_ALLOC:
+        case S_TCGEN05_DEALLOC:
+        case S_TCGEN05_RELINQUISH:
+        case S_TCGEN05_LD:
+        case S_TCGEN05_ST:
+        case S_TCGEN05_CP:
+        case S_TCGEN05_MMA:
+        case S_TCGEN05_MMA_WS:
+        case S_TCGEN05_COMMIT:
+        case S_TCGEN05_WAIT:
+        case S_TCGEN05_FENCE: {
+            Tcgen05Instr instr;
+            switch (type) {
+                case S_TCGEN05_ALLOC:      instr.op_kind = Tcgen05OpKind::ALLOC; break;
+                case S_TCGEN05_DEALLOC:    instr.op_kind = Tcgen05OpKind::DEALLOC; break;
+                case S_TCGEN05_RELINQUISH: instr.op_kind = Tcgen05OpKind::RELINQUISH; break;
+                case S_TCGEN05_LD:         instr.op_kind = Tcgen05OpKind::LD; break;
+                case S_TCGEN05_ST:         instr.op_kind = Tcgen05OpKind::ST; break;
+                case S_TCGEN05_CP:         instr.op_kind = Tcgen05OpKind::CP; break;
+                case S_TCGEN05_MMA:        instr.op_kind = Tcgen05OpKind::MMA; break;
+                case S_TCGEN05_MMA_WS:     instr.op_kind = Tcgen05OpKind::MMA_WS; break;
+                case S_TCGEN05_COMMIT:     instr.op_kind = Tcgen05OpKind::COMMIT; break;
+                case S_TCGEN05_WAIT:       instr.op_kind = Tcgen05OpKind::WAIT; break;
+                case S_TCGEN05_FENCE:      instr.op_kind = Tcgen05OpKind::FENCE; break;
+                default: break;
+            }
+            uint8_t qcount = read_u8(in_);
+            for (uint8_t i = 0; i < qcount; i++) {
+                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+            }
+            uint8_t ocount = read_u8(in_);
+            for (uint8_t i = 0; i < ocount; i++) {
+                uint32_t id = read_u32(in_);
+                if (id != 0xFFFFFFFF) {
+                    std::string name = (id < string_table_.size()) ? string_table_[id] : "";
+                    instr.operands.emplace_back(RegOperand{name, -1});
+                }
+            }
             stmt.data = instr;
             break;
         }

@@ -221,6 +221,107 @@ TEST_CASE("Roundtrip: GenericInstr (S_MOV)") {
     CHECK(out.qualifiers == std::vector<Qualifier>{Qualifier::Q_U32});
 }
 
+TEST_CASE("Roundtrip: GenericInstr (S_CVTA)") {
+    // Previously threw "Unknown StatementType: 28" on deserialize
+    StatementContext stmt =
+        make_stmt(S_CVTA, GenericInstr{{Qualifier::Q_U64}, {}});
+
+    auto data = serialize_to_string({stmt});
+    auto result = deserialize_from_string(data);
+
+    REQUIRE(result.size() == 1);
+    CHECK(result[0].type == S_CVTA);   // FAILS pre-fix (reader throws)
+    const auto &out = std::get<GenericInstr>(result[0].data);
+    CHECK(out.qualifiers == std::vector<Qualifier>{Qualifier::Q_U64});
+}
+
+TEST_CASE("Roundtrip: GenericInstr (S_FMA)") {
+    StatementContext stmt =
+        make_stmt(S_FMA, GenericInstr{{Qualifier::Q_F32}, {}});
+
+    auto data = serialize_to_string({stmt});
+    auto result = deserialize_from_string(data);
+
+    REQUIRE(result.size() == 1);
+    CHECK(result[0].type == S_FMA);    // FAILS pre-fix (reader throws)
+}
+
+TEST_CASE("Roundtrip: GenericInstr (S_POPC)") {
+    StatementContext stmt =
+        make_stmt(S_POPC, GenericInstr{{Qualifier::Q_B32}, {}});
+
+    auto data = serialize_to_string({stmt});
+    auto result = deserialize_from_string(data);
+
+    REQUIRE(result.size() == 1);
+    CHECK(result[0].type == S_POPC);   // FAILS pre-fix (reader throws)
+}
+
+TEST_CASE("Roundtrip: BranchInstr (S_BRX)") {
+    StatementContext stmt =
+        make_stmt(S_BRX, BranchInstr{{}, "L1", "%p1", false, -1});
+
+    auto data = serialize_to_string({stmt});
+    auto result = deserialize_from_string(data);
+
+    REQUIRE(result.size() == 1);
+    CHECK(result[0].type == S_BRX);    // FAILS pre-fix (reader throws)
+}
+
+TEST_CASE("Roundtrip: VoidInstr (S_TRAP / S_BRK / S_BRKPT)") {
+    for (StatementType t : {S_TRAP, S_BRK, S_BRKPT}) {
+        auto data = serialize_to_string({make_stmt(t, VoidInstr{})});
+        auto result = deserialize_from_string(data);
+        REQUIRE(result.size() == 1);
+        CHECK(result[0].type == t);    // FAILS pre-fix (reader throws)
+    }
+}
+
+TEST_CASE("Roundtrip: Tcgen05Instr (S_TCGEN05_MMA)") {
+    // T2.3: previously silently dropped by writer (no dispatch branch)
+    Tcgen05Instr instr;
+    instr.op_kind = Tcgen05OpKind::MMA;
+    instr.qualifiers = {Qualifier::Q_F16};
+    StatementContext stmt = make_stmt(S_TCGEN05_MMA, instr);
+
+    auto data = serialize_to_string({stmt});
+    auto result = deserialize_from_string(data);
+
+    REQUIRE(result.size() == 1);
+    CHECK(result[0].type == S_TCGEN05_MMA);              // FAILS pre-fix
+    const auto &out = std::get<Tcgen05Instr>(result[0].data);
+    CHECK(out.op_kind == Tcgen05OpKind::MMA);            // FAILS pre-fix
+    CHECK(out.qualifiers == std::vector<Qualifier>{Qualifier::Q_F16});
+}
+
+TEST_CASE("Roundtrip: Tcgen05Instr (S_TCGEN05_MMA_WS) op_kind derivation") {
+    Tcgen05Instr instr;
+    instr.op_kind = Tcgen05OpKind::MMA_WS;
+    StatementContext stmt = make_stmt(S_TCGEN05_MMA_WS, instr);
+
+    auto data = serialize_to_string({stmt});
+    auto result = deserialize_from_string(data);
+
+    REQUIRE(result.size() == 1);
+    CHECK(result[0].type == S_TCGEN05_MMA_WS);
+    const auto &out = std::get<Tcgen05Instr>(result[0].data);
+    CHECK(out.op_kind == Tcgen05OpKind::MMA_WS);         // FAILS pre-fix
+}
+
+TEST_CASE("Roundtrip: Tcgen05Instr (S_TCGEN05_ALLOC)") {
+    Tcgen05Instr instr;
+    instr.op_kind = Tcgen05OpKind::ALLOC;
+    StatementContext stmt = make_stmt(S_TCGEN05_ALLOC, instr);
+
+    auto data = serialize_to_string({stmt});
+    auto result = deserialize_from_string(data);
+
+    REQUIRE(result.size() == 1);
+    CHECK(result[0].type == S_TCGEN05_ALLOC);
+    const auto &out = std::get<Tcgen05Instr>(result[0].data);
+    CHECK(out.op_kind == Tcgen05OpKind::ALLOC);          // FAILS pre-fix
+}
+
 TEST_CASE("Roundtrip: DeclarationInstr (S_REG)") {
     StatementContext stmt =
         make_stmt(S_REG, DeclarationInstr{DeclarationInstr::Kind::REG,
@@ -535,6 +636,92 @@ TEST_CASE("Roundtrip: mixed 100+ statements") {
     for (size_t i = 100; i < result.size(); ++i) {
         CHECK(result[i].type == stmts[i].type);
     }
+}
+
+// Includes required for this test: <cstdio> (std::remove), <fstream>
+// (already included at top of file)
+
+namespace {
+// Representative constructor per struct_kind (minimal valid payload).
+StatementContext make_representative(StatementType t) {
+    switch (t) {
+        case S_LABEL: return make_stmt(t, LabelInstr{"L0"});
+        case S_BRA: case S_BRX:
+            return make_stmt(t, BranchInstr{{}, "L0", "", false, -1});
+        case S_EXIT: case S_RET: case S_TRAP: case S_BRK: case S_BRKPT:
+            return make_stmt(t, VoidInstr{});
+        case S_BAR: return make_stmt(t, BarrierInstr{{Qualifier::Q_CTA}, "cta", 0, -1});
+        case S_REG: case S_CONST: case S_SHARED: case S_LOCAL: case S_GLOBAL: case S_PARAM:
+            return make_stmt(t, DeclarationInstr{DeclarationInstr::Kind::REG,
+                                                 "%r1", Qualifier::Q_U32,
+                                                 std::nullopt, std::nullopt, 1, {}});
+        case S_PRAGMA: return make_stmt(t, PragmaInstr{"p"});
+        case S_DOLLOR: return make_stmt(t, DollarNameInstr{"$r1"});
+        case S_MEMBAR: return make_stmt(t, MembarInstr{{Qualifier::Q_CTA}, "cta"});
+        case S_FENCE: return make_stmt(t, FenceInstr{{Qualifier::Q_GPU}, "acquire", "gpu"});
+        case S_REDUX_SYNC: return make_stmt(t, ReduxSyncInstr{{}, "add", {}});
+        case S_MBARRIER_INIT: case S_MBARRIER_ARRIVE: case S_MBARRIER_TRY_WAIT:
+            return make_stmt(t, MbarrierInstr{{Qualifier::Q_CTA}, "init", {}});
+        case S_CALL: return make_stmt(t, CallInstr{"foo", "call foo", {Qualifier::Q_UNI}, {}});
+        case S_BAR_WARP_SYNC: return make_stmt(t, BarWarpSyncInstr{{}, {}, ""});
+        case S_VOTE: return make_stmt(t, VoteInstr{{Qualifier::Q_U32}, "ballot", {}});
+        case S_SHFL: return make_stmt(t, ShflInstr{{Qualifier::Q_U32}, "up", {}});
+        case S_ATOM: return make_stmt(t, AtomInstr{{Qualifier::Q_GLOBAL, Qualifier::Q_ADD_ATOM}, {}});
+        case S_TEX: case S_TEX_LDG: case S_TEX_GRAD: case S_TEX_LOD: case S_TXQ:
+            return make_stmt(t, TextureInstr{{}, {}});
+        case S_SURF: case S_SULD: case S_SUST: case S_SUQ:
+            return make_stmt(t, SurfaceInstr{{}, {}});
+        case S_RED: return make_stmt(t, ReductionInstr{{}, "add", {}});
+        case S_PREFETCH: case S_PREFETCHU: return make_stmt(t, PrefetchInstr{{}, {}});
+        case S_CP_ASYNC: return make_stmt(t, CpAsyncInstr{{}, {}});
+        case S_ABI_PRESERVE: return make_stmt(t, AbiDirective{15});
+        case S_TCGEN05_ALLOC: case S_TCGEN05_DEALLOC: case S_TCGEN05_RELINQUISH:
+        case S_TCGEN05_LD: case S_TCGEN05_ST: case S_TCGEN05_CP:
+        case S_TCGEN05_MMA: case S_TCGEN05_MMA_WS: case S_TCGEN05_COMMIT:
+        case S_TCGEN05_WAIT: case S_TCGEN05_FENCE: {
+            Tcgen05Instr instr;
+            instr.qualifiers = {Qualifier::Q_F16};
+            return make_stmt(t, instr);
+        }
+        default:
+            // All remaining GENERIC_INSTR enums
+            return make_stmt(t, GenericInstr{{Qualifier::Q_U32}, {}});
+    }
+}
+}  // namespace
+
+TEST_CASE("Roundtrip: all 106 StatementType enums") {
+    std::vector<StatementContext> stmts;
+    for (int t = 0; t < S_UNKNOWN; ++t) {
+        stmts.push_back(make_representative(static_cast<StatementType>(t)));
+    }
+    REQUIRE(stmts.size() == 106);
+
+    auto data = serialize_to_string(stmts);
+    auto result = deserialize_from_string(data);
+
+    REQUIRE(result.size() == stmts.size());
+    for (size_t i = 0; i < stmts.size(); ++i) {
+        CAPTURE(i, static_cast<int>(stmts[i].type));
+        CHECK(result[i].type == stmts[i].type);   // FAILS for any uncovered enum
+    }
+}
+
+TEST_CASE("generate_ptxir + load_ptxir: real kernel with cvta roundtrips") {
+    // T3.2: previously threw "Unknown StatementType: 28" (S_CVTA)
+    std::string ptx_path = "test_real_kernel.ptx";
+    std::string ptxir_path = "test_real_kernel.ptxir";
+    {
+        std::ifstream in(TEST_SOURCE_DIR "/tests/ptx/test_divergence_sync_standalone.ptx");
+        std::ofstream out(ptx_path);
+        out << in.rdbuf();
+    }
+
+    REQUIRE(generate_ptxir(ptx_path, ptxir_path));
+    auto stmts = load_ptxir(ptxir_path, false);   // FAILS pre-fix (S_CVTA)
+    REQUIRE_FALSE(stmts.empty());
+    std::remove(ptx_path.c_str());
+    std::remove(ptxir_path.c_str());
 }
 
 TEST_CASE("Error: invalid magic") {
