@@ -171,7 +171,8 @@ StatementContext PtxirReader::read_instruction() {
     stmt.type = type;
 
     switch (type) {
-        case S_BRA: {
+        case S_BRA:
+        case S_BRX: {
             BranchInstr instr;
             uint32_t pred_id = read_u32(in_);
             if (pred_id < string_table_.size()) {
@@ -197,7 +198,10 @@ StatementContext PtxirReader::read_instruction() {
             break;
         }
         case S_EXIT:
-        case S_RET: {
+        case S_RET:
+        case S_TRAP:
+        case S_BRK:
+        case S_BRKPT: {
             VoidInstr instr;
             stmt.data = instr;
             break;
@@ -222,7 +226,52 @@ StatementContext PtxirReader::read_instruction() {
         case S_LD:
         case S_ST:
         case S_SETP:
-        case S_CVT: {
+        case S_CVT:
+        case S_CVTA:
+        case S_PRMT:
+        case S_ISSPACEP:
+        case S_MAPA:
+        case S_ALLOCA:
+        case S_MUL24:
+        case S_DIV:
+        case S_REM:
+        case S_MIN:
+        case S_MAX:
+        case S_NEG:
+        case S_ABS:
+        case S_MAD:
+        case S_MAD24:
+        case S_FMA:
+        case S_ADDC:
+        case S_SUBC:
+        case S_SAD:
+        case S_COPYSIGN:
+        case S_TESTP:
+        case S_TANH:
+        case S_AND:
+        case S_OR:
+        case S_XOR:
+        case S_NOT:
+        case S_SHL:
+        case S_SHR:
+        case S_SHF:
+        case S_BFE:
+        case S_LOP3:
+        case S_SET:
+        case S_SELP:
+        case S_SLCT:
+        case S_CNOT:
+        case S_SIN:
+        case S_COS:
+        case S_LG2:
+        case S_EX2:
+        case S_RCP:
+        case S_RSQRT:
+        case S_SQRT:
+        case S_POPC:
+        case S_CLZ:
+        case S_ACTIVEMASK:
+        case S_ST_BULK: {
             GenericInstr instr;
             uint8_t qcount = read_u8(in_);
             for (uint8_t i = 0; i < qcount; i++) {

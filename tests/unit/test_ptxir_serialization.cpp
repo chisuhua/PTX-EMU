@@ -221,6 +221,62 @@ TEST_CASE("Roundtrip: GenericInstr (S_MOV)") {
     CHECK(out.qualifiers == std::vector<Qualifier>{Qualifier::Q_U32});
 }
 
+TEST_CASE("Roundtrip: GenericInstr (S_CVTA)") {
+    // Previously threw "Unknown StatementType: 28" on deserialize
+    StatementContext stmt =
+        make_stmt(S_CVTA, GenericInstr{{Qualifier::Q_U64}, {}});
+
+    auto data = serialize_to_string({stmt});
+    auto result = deserialize_from_string(data);
+
+    REQUIRE(result.size() == 1);
+    CHECK(result[0].type == S_CVTA);   // FAILS pre-fix (reader throws)
+    const auto &out = std::get<GenericInstr>(result[0].data);
+    CHECK(out.qualifiers == std::vector<Qualifier>{Qualifier::Q_U64});
+}
+
+TEST_CASE("Roundtrip: GenericInstr (S_FMA)") {
+    StatementContext stmt =
+        make_stmt(S_FMA, GenericInstr{{Qualifier::Q_F32}, {}});
+
+    auto data = serialize_to_string({stmt});
+    auto result = deserialize_from_string(data);
+
+    REQUIRE(result.size() == 1);
+    CHECK(result[0].type == S_FMA);    // FAILS pre-fix (reader throws)
+}
+
+TEST_CASE("Roundtrip: GenericInstr (S_POPC)") {
+    StatementContext stmt =
+        make_stmt(S_POPC, GenericInstr{{Qualifier::Q_B32}, {}});
+
+    auto data = serialize_to_string({stmt});
+    auto result = deserialize_from_string(data);
+
+    REQUIRE(result.size() == 1);
+    CHECK(result[0].type == S_POPC);   // FAILS pre-fix (reader throws)
+}
+
+TEST_CASE("Roundtrip: BranchInstr (S_BRX)") {
+    StatementContext stmt =
+        make_stmt(S_BRX, BranchInstr{{}, "L1", "%p1", false, -1});
+
+    auto data = serialize_to_string({stmt});
+    auto result = deserialize_from_string(data);
+
+    REQUIRE(result.size() == 1);
+    CHECK(result[0].type == S_BRX);    // FAILS pre-fix (reader throws)
+}
+
+TEST_CASE("Roundtrip: VoidInstr (S_TRAP / S_BRK / S_BRKPT)") {
+    for (StatementType t : {S_TRAP, S_BRK, S_BRKPT}) {
+        auto data = serialize_to_string({make_stmt(t, VoidInstr{})});
+        auto result = deserialize_from_string(data);
+        REQUIRE(result.size() == 1);
+        CHECK(result[0].type == t);    // FAILS pre-fix (reader throws)
+    }
+}
+
 TEST_CASE("Roundtrip: DeclarationInstr (S_REG)") {
     StatementContext stmt =
         make_stmt(S_REG, DeclarationInstr{DeclarationInstr::Kind::REG,
