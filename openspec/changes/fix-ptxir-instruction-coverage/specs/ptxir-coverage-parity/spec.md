@@ -37,9 +37,10 @@ target: ptxir-coverage-parity
 - **WHEN** a `MembarInstr` with qualifiers=[.cta, .sys] is serialized and the binary is deserialized
 - **THEN** the resulting `StatementContext::data` MUST be `std::variant` alternative of `MembarInstr` type (NOT `GenericInstr`), with `qualifiers` field containing the original [.cta, .sys] list
 
+## ADDED Requirements
+
 ### Requirement: Reader and writer MUST have symmetric coverage across ALL 106 StatementType enums
 The `PtxirReader::read_instruction()` switch SHALL cover every `StatementType` enum value that can be produced by the parser (all 106 enums in `ptx_op.def`), such that the set of enums the writer serializes is exactly the set the reader deserializes. No enum that appears in a kernel's `kernelStatements` MAY hit the reader's `default:` throw path.
-target: ptxir-coverage-parity
 
 #### Scenario: Every ptx_op.def enum has a reader case group
 - **WHEN** the set of `case S_*` labels in `read_instruction()` is compared to the enum values defined in `include/ptx_ir/ptx_op.def`
