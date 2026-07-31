@@ -8,12 +8,12 @@
 
 // ============================================================================
 // PTXIR Binary Format
-// Version: 2
+// Version: 3
 // Layout: Header + Section TOC + Section Data + String Table (at end)
 // ============================================================================
 
 static constexpr char PTXIR_MAGIC[4] = {'P', 'T', 'X', 'I'};
-static constexpr uint16_t PTXIR_VERSION = 2;
+static constexpr uint16_t PTXIR_VERSION = 3;
 
 // Section types
 enum class PtxirSectionType : uint8_t {
@@ -61,8 +61,9 @@ constexpr size_t LABEL_ENCODED_SIZE = sizeof(uint16_t) + sizeof(uint32_t);
 // VoidInstr: opcode only
 constexpr size_t VOID_ENCODED_SIZE = sizeof(uint16_t);
 
-// BarrierInstr: opcode + bar_id
-constexpr size_t BARRIER_ENCODED_SIZE = sizeof(uint16_t) + sizeof(int32_t);
+// BarrierInstr: opcode + bar_id + reconvergence_pc
+constexpr size_t BARRIER_ENCODED_SIZE = sizeof(uint16_t) + sizeof(int32_t) +
+                                        sizeof(int32_t);
 
 // DeclarationInstr: opcode + kind + type + name_str_id + array_size
 constexpr size_t DECLARATION_ENCODED_SIZE = sizeof(uint16_t) + sizeof(uint8_t) +

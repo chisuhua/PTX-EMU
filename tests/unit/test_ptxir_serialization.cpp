@@ -81,6 +81,57 @@ TEST_CASE("Roundtrip: BarrierInstr") {
     CHECK(out.barId.value_or(-1) == 0);
 }
 
+TEST_CASE("Roundtrip: BarrierInstr reconvergence_pc") {
+    // T1: non-default reconvergence_pc must survive roundtrip (v3 format)
+    StatementContext stmt =
+        make_stmt(S_BAR, BarrierInstr{{Qualifier::Q_CTA}, "cta", 0, 42});
+
+    auto data = serialize_to_string({stmt});
+    auto result = deserialize_from_string(data);
+
+    REQUIRE(result.size() == 1);
+    CHECK(result[0].type == S_BAR);
+    const auto &out = std::get<BarrierInstr>(result[0].data);
+    CHECK(out.barId.value_or(-1) == 0);
+    CHECK(out.reconvergence_pc == 42);  // FAILS on v2 (reader never reads it)
+}
+
+TEST_CASE("Roundtrip: BarrierInstr barId=nullopt") {
+    // T2: sentinel -1 path - barId nullopt survives roundtrip
+    StatementContext stmt =
+        make_stmt(S_BAR, BarrierInstr{{}, "", std::nullopt, -1});
+
+    auto data = serialize_to_string({stmt});
+    auto result = deserialize_from_string(data);
+
+    REQUIRE(result.size() == 1);
+    const auto &out = std::get<BarrierInstr>(result[0].data);
+    CHECK(!out.barId.has_value());       // FAILS on v2 (writer writes -1, reader sets nullopt only if >= 0)
+    CHECK(out.reconvergence_pc == -1);
+}
+
+TEST_CASE("PTXIR header version=3 accepted") {
+    // T11: read_header() must accept version 3
+    PtxirHeader hdr{};
+    std::memcpy(hdr.magic, PTXIR_MAGIC, 4);
+    hdr.version = 3;
+    hdr.section_count = 0;
+    hdr.header_size = sizeof(PtxirHeader);
+
+    std::ostringstream oss(std::ios::binary);
+    oss.write(reinterpret_cast<const char *>(&hdr), sizeof(hdr));
+
+    std::istringstream iss(oss.str(), std::ios::binary);
+    PtxirReader reader(iss);
+    CHECK_NOTHROW(reader.read());        // FAILS: "Unsupported PTXIR version"
+}
+
+TEST_CASE("BARRIER_ENCODED_SIZE includes reconvergence_pc") {
+    // T12: constant matches v3 S_BAR encoding
+    CHECK(ptxir_encoding::BARRIER_ENCODED_SIZE ==
+          sizeof(uint16_t) + sizeof(int32_t) + sizeof(int32_t));  // FAILS on v2
+}
+
 TEST_CASE("Roundtrip: GenericInstr (S_MOV)") {
     // Note: the current writer stores register operands as placeholder IDs,
     // so we verify the type and qualifier roundtrip here.
