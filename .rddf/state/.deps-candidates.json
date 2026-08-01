@@ -1,5 +1,15 @@
 {
-  "candidates": [],
-  "all_archived": true,
-  "archived_at": "2026-07-29T19:22:00+08:00"
+  "candidates": [
+    {
+      "name": "embed-reconvergence-pc-in-ptxir",
+      "path": "openspec/changes/embed-reconvergence-pc-in-ptxir/",
+      "artifacts": {
+        "proposal.md": true,
+        "design.md": true,
+        "tasks.md": true
+      },
+      "all_artifacts_exist": true
+    }
+  ],
+  "count": 1
 }
