@@ -1,75 +1,15 @@
 {
   "version": 4,
-  "updated_at": "2026-07-30T08:52:56.675362+00:00",
-  "current_phase": "Phase-10",
+  "updated_at": "2026-08-01T00:56:38.940509+00:00",
+  "current_phase": "default",
   "changes": [
     {
-      "name": "fix-named-barrier-slots",
+      "added_at": "2026-07-31T15:29:07.242933+00:00",
+      "name": "fix-ptxir-instruction-coverage",
       "status": "archived",
-      "added_at": "2026-07-23T18:02:00+00:00",
-      "archived_at": "2026-07-23T19:14:00+00:00",
-      "phase": "Phase-10",
-      "category": "core-impl",
-      "priority": "P0",
-      "tasks_done": 9,
-      "tasks_total": 9
-    },
-    {
-      "name": "split-ptx-visitor-god-class",
-      "phase": "Phase-10",
-      "category": "arch-design",
-      "priority": "P2",
-      "status": "archived",
-      "added_at": "2026-07-27T04:26:52.442289+00:00",
-      "worktree_path": ".rddf/wt/split-ptx-visitor-god-class",
-      "plan_path": ".rddf/plans/split-ptx-visitor-god-class.md",
-      "tasks_done": 55,
-      "tasks_total": 55,
-      "blocker": null,
-      "parallel_group": 0,
-      "parent_feature": null,
-      "archived_at": "2026-07-28T06:30:00+00:00"
-    },
-    {
-      "name": "refactor-warp-context",
-      "phase": "Phase-10",
-      "category": "arch-design",
-      "priority": "P2",
-      "status": "archived",
-      "added_at": "2026-07-27T04:26:52.442289+00:00",
-      "worktree_path": ".rddf/wt/refactor-warp-context",
-      "plan_path": ".rddf/plans/refactor-warp-context.md",
-      "tasks_done": 25,
-      "tasks_total": 25,
-      "blocker": null,
-      "parallel_group": 1,
-      "parent_feature": null,
-      "archived_at": "2026-07-28T06:30:00+00:00"
-    },
-    {
-      "name": "god-class-refactor-sm-context",
-      "phase": "Phase-10",
-      "category": "arch-design",
-      "priority": "P2",
-      "status": "archived",
-      "added_at": "2026-07-27T04:26:52.442289+00:00",
-      "tasks_done": 43,
-      "tasks_total": 43,
-      "blocker": "refactor-warp-context",
-      "parallel_group": 2,
-      "parent_feature": null,
-      "archived_at": "2026-07-27T19:00:00+00:00"
-    },
-    {
-      "added_at": "2026-07-30T08:52:39.789382+00:00",
-      "name": "ptxir-format-compliance",
-      "status": "archived",
-      "phase": "Phase-10",
-      "category": "core-impl",
-      "tasks_done": 97,
-      "tasks_total": 97,
-      "merge_commit": "1f7379d1",
-      "archived_at": "2026-07-30T16:48:00+00:00"
+      "plan_path": ".rddf/plans/fix-ptxir-instruction-coverage.md",
+      "tasks_total": 16,
+      "archived_at": "2026-08-01T00:56:38.932572+00:00"
     }
   ]
 }

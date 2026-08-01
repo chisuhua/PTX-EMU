@@ -1,16 +1,8 @@
 {
-  "plan_complete_at": "2026-07-27T04:27:06.551271+00:00",
+  "plan_complete_at": "2026-08-01T15:40:31.629283+00:00",
   "active_changes": 0,
   "all_artifacts_committed": true,
-  "ship_started_at": "2026-07-30T08:48:35.515695+00:00",
-  "current_change": null,
-  "execution_mode_decisions": {},
-  "deps_analyzed": true,
-  "plan_phase": "complete",
-  "all_changes_archived": true,
-  "cleaned_at": "2026-07-31T16:10:00+08:00",
-  "archived_at": "2026-07-31T23:10:28.714958+00:00",
-  "archived_changes": [
-    "fix-ptxir-instruction-coverage"
-  ]
+  "ship_started_at": null,
+  "current_change": "",
+  "execution_mode_decisions": {}
 }
