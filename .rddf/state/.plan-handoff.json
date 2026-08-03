@@ -1,8 +1,59 @@
 {
-  "plan_complete_at": "2026-08-01T15:40:31.629283+00:00",
-  "active_changes": 0,
+  "plan_complete_at": "2026-08-03T14:44:25.165945+00:00",
+  "active_changes": 3,
   "all_artifacts_committed": true,
   "ship_started_at": null,
   "current_change": "",
-  "execution_mode_decisions": {}
+  "execution_mode_decisions": {},
+  "changes": [
+    {
+      "name": "god-class-refactor-sm-context-phase3",
+      "priority": "P2",
+      "parallel_group": 1,
+      "wave": 2,
+      "estimated_hours": "8-10h",
+      "c_debt_ref": "C-2",
+      "baseline": "862 lines",
+      "target": "<=600 lines (this change); <250 deferred to exe-once-decomposition"
+    },
+    {
+      "name": "reduce-thread-context-includes-v2",
+      "priority": "P3",
+      "parallel_group": 0,
+      "wave": 1,
+      "estimated_hours": "3h",
+      "c_debt_ref": "C-7",
+      "baseline": "25 includes",
+      "target": "<=15 includes"
+    },
+    {
+      "name": "reduce-memory-test-utils-includes-v2",
+      "priority": "P3",
+      "parallel_group": 0,
+      "wave": 1,
+      "estimated_hours": "1h",
+      "c_debt_ref": "C-8",
+      "baseline": "18 includes",
+      "target": "<=12 includes"
+    }
+  ],
+  "waves": [
+    {
+      "wave": 1,
+      "parallel": true,
+      "changes": [
+        "reduce-memory-test-utils-includes-v2",
+        "reduce-thread-context-includes-v2"
+      ],
+      "rationale": "文件互斥 quick wins (C-8 1h + C-7 3h)"
+    },
+    {
+      "wave": 2,
+      "parallel": false,
+      "changes": [
+        "god-class-refactor-sm-context-phase3"
+      ],
+      "rationale": "C-2 重型重构，8-10h，多 Phase commit 计划；文件与 Wave 1 互斥但建议单独 Wave 跑以便管理风险"
+    }
+  ]
 }

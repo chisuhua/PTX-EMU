@@ -1,15 +1,52 @@
 {
   "candidates": [
     {
-      "name": "embed-reconvergence-pc-in-ptxir",
-      "path": "openspec/changes/embed-reconvergence-pc-in-ptxir/",
-      "artifacts": {
-        "proposal.md": true,
-        "design.md": true,
-        "tasks.md": true
-      },
-      "all_artifacts_exist": true
+      "name": "god-class-refactor-sm-context-phase3",
+      "change_dir": "openspec/changes/god-class-refactor-sm-context-phase3",
+      "priority": "P2",
+      "status": "proposed",
+      "files": [
+        "proposal.md",
+        "design.md",
+        "tasks.md",
+        "specs/sm-context-component-split/spec.md"
+      ],
+      "arch_context": {
+        "c_debt_ref": "C-2",
+        "summary": "\n`src/ptxsim/core/sm_context.cpp` measured **862 lines** on 2026-08-03 (`wc -l`). Phases 1+2 of `2026-07-27-god-class-refactor-sm-context` are already applied (commits `59df7abf` dedup reconvergence and `01389c18` extract cpptlm injection), reducing the file from 965 → 862 lines. Remaining responsibilities are still mixed:\n"
+      }
+    },
+    {
+      "name": "reduce-memory-test-utils-includes-v2",
+      "change_dir": "openspec/changes/reduce-memory-test-utils-includes-v2",
+      "priority": "P2",
+      "status": "proposed",
+      "files": [
+        "proposal.md",
+        "design.md",
+        "tasks.md"
+      ],
+      "arch_context": {
+        "c_debt_ref": null,
+        "summary": "\n`include/ptxsim/testing/memory_test_utils.h` 当前 18 个 include（与原基线一致，未变）。原 change `2026-07-29-reduce-memory-test-utils-includes` archive 后 tasks.md 全勾选但代码未 apply。本 change 为 1h quick win 重做，目标 ≤12 include。\n"
+      }
+    },
+    {
+      "name": "reduce-thread-context-includes-v2",
+      "change_dir": "openspec/changes/reduce-thread-context-includes-v2",
+      "priority": "P2",
+      "status": "proposed",
+      "files": [
+        "proposal.md",
+        "design.md",
+        "tasks.md"
+      ],
+      "arch_context": {
+        "c_debt_ref": null,
+        "summary": "\n`include/ptxsim/thread_context.h` 当前 25 个 include（含 `<iostream>` 等可前向声明类型），基线 21 个反而恶化。原 change `2026-07-29-reduce-thread-context-includes` archive 后 tasks.md 全勾选但代码未 apply。本 change 重做，目标 ≤15 include。\n"
+      }
     }
   ],
-  "count": 1
+  "generated_at": "2026-08-03",
+  "source": "plan_intake_manual_regen"
 }
