@@ -196,6 +196,11 @@ add_catch_test(unit_memory_manager
 )
 set_tests_properties(unit_memory_manager PROPERTIES LABELS "unit;memory")
 
+add_catch_test(unit_memory_test_utils_compile
+    memory/test_memory_test_utils_compile.cpp
+)
+set_tests_properties(unit_memory_test_utils_compile PROPERTIES LABELS "unit;memory;include_smoke")
+
 add_catch_test(unit_memory_bounds
     memory/test_memory_bounds.cpp
 )
