@@ -34,16 +34,10 @@
 #include "ptx_ir/ptx_types.h"
 #include "ptx_ir/statement_context.h"
 
-#include "memory/resource_manager.h"
 #include "register/register_bank_manager.h"
 
-#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
-#include <map>
-#include <memory>
-#include <string>
-#include <vector>
 
 namespace ptxsim::testing {
 
