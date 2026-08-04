@@ -77,9 +77,11 @@ via the helper namespace pattern. Each helper namespace is friend-declared in
 
 | Sub-module | Responsibility |
 |------------|----------------|
-| `sm_context.cpp` | Parent (862 lines vs 965 baseline, -10.7%). Contains: init, add_block, try_admit_pending_blocks, **exe_once (226 lines, monolithic)**, update_state, cleanup_finished_blocks, is_idle, resource stats, print functions |
+| `sm_context.cpp` | Parent (616 lines vs 862 baseline Phase 1+2, -28.5%; vs 965 pre-Phase 1, -36.2%). Contains: init, **exe_once (226 lines, monolithic)**, is_idle, set_warp_scheduler, print functions, resource stats, divergence mode accessors. Public methods for add_block/try_admit_pending_blocks/cleanup_finished_blocks/free_shared_memory/reserve_resources/release_resources are one-line forwarders to `sm_block_dispatch::Access`; update_state/get_active_warps_count/get_active_threads_count/select_next_group/suspend_and_switch forward to `sm_warp_lifecycle::Access` |
 | `sm_context_reconvergence.{h,cpp}` | `sm_reconvergence::` — drain_simt_and_update_active (dedup of :455-490 / :580-623) |
 | `sm_context_cpptlm_inject.{h,cpp}` | `sm_cpptlm_inject::` — step_b_set_blocked_cycles (ADR-0020 injection) |
+| `sm_block_dispatch.{h,cpp}` | `sm_block_dispatch::Access` — CTA admission / pending-queue / resource-release extraction (C-2 Phase 3, commit `a2e84791`). Friend-declared in SMContext for direct private access |
+| `sm_warp_lifecycle.{h,cpp}` | `sm_warp_lifecycle::Access` — warp registration / retirement / active-count extraction (C-2 Phase 4, commit `7aedda44`). Friend-declared in SMContext for direct private access |
 
 **Friend declarations** in `WarpContext` (include/ptxsim/warp_context.h) grant
 `sm_reconvergence::` direct access to private `simt_stack` / `warp_state` / `update_active_mask()` without per-access getter overhead.

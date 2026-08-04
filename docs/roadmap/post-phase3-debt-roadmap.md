@@ -50,7 +50,7 @@
 | # | 债务 | 优先级 | 推荐 change 名 | 工时 |
 |---|------|--------|---------------|------|
 | C-1 | `thread_context.cpp` **885 行**（parser-completeness 后 -19）22 个 include god class | 🟡 P1 | `god-class-refactor-thread-context` | 10h |
-| C-2 | `sm_context.cpp` 703 行 god class | 🟡 P2 | `god-class-refactor-sm-context` | 6h |
+| C-2 | ✅ **Phase 1+2+3+4 RESOLVED** (commits `59df7abf`, `01389c18`, `a2e84791`, `7aedda44`) — `sm_context.cpp` 862 → **616 行**（-246，-28.5%）；Phase 3 拆分 `sm_block_dispatch::Access`（6 个 helper），Phase 4 拆分 `sm_warp_lifecycle::Access`（5 个 helper），Phase 5 fold-back（0 行 SM barrier glue 剩余，step_b 已在 Phase 2 迁移至 `sm_cpptlm_inject`）。helper cap 由 ≤4 上调至 **≤5**（per .rddf/plans/god-class-refactor-sm-context-phase3.md）。剩余目标 `<250` 需 follow-up `exe-once-decomposition`（226 行 monolithic loop） | ✅ ~~🟡 P2~~ | `god-class-refactor-sm-context` ✅ | ~~6h~~ |
 | C-3 | `arithmetic.cpp` + `arithmetic_ext.cpp` 应合并 | 🟢 P3 | `merge-arithmetic-handlers` | 3h |
 | C-4 | `src/ptx_ir/ptxir_writer.cpp::write_instruction()` **函数 246 行**（文件 374 行）degree 184 | 🟡 P2 | `refactor-ptxir-writer` | 3h |
 | C-5 | 7 个子 AGENTS.md 与根 70%+ 重复 | 🟢 P3 | `consolidate-sub-agents-md` | 2h |
