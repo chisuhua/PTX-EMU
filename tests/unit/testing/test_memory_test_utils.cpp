@@ -13,6 +13,7 @@
 
 #include "catch_amalgamated.hpp"
 
+#include "memory/resource_manager.h"
 #include "ptxsim/testing/memory_test_utils.h"
 #include "ptxsim/utils/qualifier_utils.h"
 

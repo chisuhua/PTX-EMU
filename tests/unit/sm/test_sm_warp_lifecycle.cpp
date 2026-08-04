@@ -19,12 +19,20 @@ using namespace ptxsim;
 
 namespace {
 
+// NOTE: stmts is passed by REFERENCE (not by value) because
+// CTAContext::init() stores a raw pointer to the vector's internal buffer
+// (see src/ptxsim/core/cta_context.cpp:43 — this->init_statements = &statements).
+// The caller MUST keep the stmts vector alive for the lifetime of the
+// CTAContext, otherwise add_block() → build_shared_memory_symbol_table()
+// will dereference a dangling pointer (manifests as Debug-build SIGSEGV
+// at cta_context.cpp:268). Pattern mirrors setup_two_warps() in
+// tests/integration/barrier/test_barrier_full_lifecycle.cpp.
 std::unique_ptr<CTAContext> make_block(Dim3 blockIdx, int threads,
-                                        size_t shared_mem_bytes) {
+                                        size_t shared_mem_bytes,
+                                        std::vector<StatementContext> &stmts) {
     Dim3 gridDim = {1, 1, 1};
-    Dim3 blockDim = {threads, 1, 1};
+    Dim3 blockDim = {static_cast<uint32_t>(threads), 1, 1};
     auto block = std::make_unique<CTAContext>();
-    std::vector<StatementContext> stmts;
     std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
     block->init(gridDim, blockDim, blockIdx, stmts, &name2Sym, label2pc,
@@ -40,9 +48,10 @@ TEST_CASE("sm_warp_lifecycle::Access registers a new warp",
     ResourceManager::instance().initialize(/*num_sms=*/1, /*shared_mem=*/8192);
     SMContext sm(/*max_warps=*/2, /*max_threads=*/64, /*shared_mem=*/8192,
                  /*sm_id=*/0);
+    std::vector<StatementContext> stmts;
 
     Dim3 idx = {0, 0, 0};
-    auto block = make_block(idx, /*threads=*/32, /*shared_mem=*/0);
+    auto block = make_block(idx, /*threads=*/32, /*shared_mem=*/0, stmts);
     REQUIRE(sm.add_block(std::move(block)) == true);  // public forwarder
     REQUIRE(sm.get_num_warps() == 1);
 }
@@ -52,9 +61,10 @@ TEST_CASE("sm_warp_lifecycle::Access::get_active_warps_count matches public API 
     ResourceManager::instance().initialize(/*num_sms=*/1, /*shared_mem=*/8192);
     SMContext sm(/*max_warps=*/2, /*max_threads=*/64, /*shared_mem=*/8192,
                  /*sm_id=*/0);
+    std::vector<StatementContext> stmts;
 
     Dim3 idx = {0, 0, 0};
-    auto block = make_block(idx, /*threads=*/32, /*shared_mem=*/0);
+    auto block = make_block(idx, /*threads=*/32, /*shared_mem=*/0, stmts);
     REQUIRE(sm.add_block(std::move(block)) == true);
 
     // After add_block, warp_scheduler->add_warp + update_state activate the
