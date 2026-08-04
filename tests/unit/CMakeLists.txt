@@ -378,6 +378,14 @@ add_catch_test(unit_sm_block_dispatch
 )
 set_tests_properties(unit_sm_block_dispatch PROPERTIES LABELS "unit;sm;block_dispatch")
 
+# PTX-6: sm_warp_lifecycle::Access direct unit test
+# Locks warp registration / active-count ground truth / update_state EXIT
+# transition (C-2 Phase 4).
+add_catch_test(unit_sm_warp_lifecycle
+    sm/test_sm_warp_lifecycle.cpp
+)
+set_tests_properties(unit_sm_warp_lifecycle PROPERTIES LABELS "unit;sm;warp_lifecycle")
+
 # ============================================================================
 # Sync 单元测试
 # ============================================================================

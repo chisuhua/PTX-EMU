@@ -1,5 +1,6 @@
 #include "ptxsim/core/sm_block_dispatch.h"
 
+#include "ptxsim/core/sm_warp_lifecycle.h"
 #include "ptxsim/cta_context.h"
 #include "ptxsim/sm_context.h"
 #include "ptxsim/warp_scheduler.h"
@@ -92,7 +93,7 @@ bool Access::add_block(SMContext &ctx, std::unique_ptr<CTAContext> block) {
     }
 
     // 更新状态
-    ctx.update_state();
+    sm_warp_lifecycle::Access::update_state(ctx);
 
     PTX_DEBUG_EMU("Successfully added block with %zu shared memory bytes, "
                   "%d warps to SM %d",

@@ -33,8 +33,17 @@ namespace sm_block_dispatch {
 class Access;
 }
 
+// Forward declaration for sm_warp_lifecycle::Access friend (C-2 Phase 4).
+// Defined in src/ptxsim/core/sm_warp_lifecycle.h; friend-declared below to
+// grant the helper class direct access to SMContext's private members for
+// warp registration / retirement / active-count extraction.
+namespace sm_warp_lifecycle {
+class Access;
+}
+
 class SMContext {
     friend class sm_block_dispatch::Access;
+    friend class sm_warp_lifecycle::Access;
 public:
     SMContext(int max_warps, int max_threads_per_sm, size_t shared_mem_size,
               int sm_id);

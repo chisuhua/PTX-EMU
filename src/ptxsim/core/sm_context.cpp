@@ -2,6 +2,7 @@
 #include "sm_context_reconvergence.h"
 #include "sm_context_cpptlm_inject.h"
 #include "sm_block_dispatch.h"
+#include "sm_warp_lifecycle.h"
 // #include "memory/memory_manager.h"        // 添加MemoryManager头文件
 #include "memory/resource_manager.h"          // 添加ResourceManager头文件
 #include "memory/shared_memory_manager.h"     // 添加SharedMemoryManager头文件
@@ -439,23 +440,11 @@ EXE_STATE SMContext::exe_once() {
 bool SMContext::is_idle() const { return warp_scheduler->all_warps_finished(); }
 
 int SMContext::get_active_warps_count() const {
-    int count = 0;
-    for (const auto &warp : warps) {
-        if (warp && warp->is_active()) {
-            count++;
-        }
-    }
-    return count;
+    return sm_warp_lifecycle::Access::get_active_warps_count(*this);
 }
 
 int SMContext::get_active_threads_count() const {
-    int count = 0;
-    for (const auto &warp : warps) {
-        if (warp) {
-            count += warp->get_active_count();
-        }
-    }
-    return count;
+    return sm_warp_lifecycle::Access::get_active_threads_count(*this);
 }
 
 void SMContext::set_warp_scheduler(std::unique_ptr<WarpScheduler> scheduler) {
@@ -463,45 +452,7 @@ void SMContext::set_warp_scheduler(std::unique_ptr<WarpScheduler> scheduler) {
 }
 
 void SMContext::update_state() {
-    // 更新warp调度器状态
-    warp_scheduler->update_state();
-
-    // 检查整体SM状态
-    bool has_active_warps = false;
-    auto it = warps.begin();
-    while (it != warps.end()) {
-        auto warp = it->get();
-        if (warp && !warp->is_finished()) {
-            has_active_warps = true;
-            it++;
-        } else {
-            // 从warp调度器中移除warp
-            warp_scheduler->remove_warp(warp);
-
-            auto physical_block_id = warp->get_physical_block_id();
-            physical_block_warp_counts[physical_block_id]--;
-            it = warps.erase(it);
-        }
-    }
-
-    // 清理已完成的blocks（释放共享内存）
-    cleanup_finished_blocks();
-
-    // 检查是否有正在管理的blocks
-    bool has_managed_blocks = !managed_blocks.empty();
-
-    if (!has_active_warps && !has_managed_blocks) {
-        sm_state = EXIT;
-    } else {
-        sm_state = RUN;
-    }
-
-    // 更新统计信息
-    stats_.active_warps = warps.size();
-    stats_.active_threads = get_active_threads_count();
-    if (shared_mem_manager_) {
-        stats_.allocated_shared_mem = shared_mem_manager_->get_allocated_size();
-    }
+    sm_warp_lifecycle::Access::update_state(*this);
 }
 
 void SMContext::cleanup_finished_blocks() {
@@ -656,34 +607,10 @@ SMContext::get_divergence_execution_mode() const {
 }
 
 int SMContext::select_next_group(const std::vector<int> &active_lanes) {
-    // With multiple active paths, select based on divergence mode
-    if (active_lanes.size() <= 1) {
-        return 0; // No divergence, use first group
-    }
-
-    switch (divergence_mode_) {
-    case ptxsim::DivergenceExecutionMode::Sequential:
-        // Execute groups in order - just return first for now
-        return 0;
-
-    case ptxsim::DivergenceExecutionMode::Interleaved:
-        // Use round-robin or similar to switch dynamically
-        return 0; // Could implement round-robin counter per warp
-
-    case ptxsim::DivergenceExecutionMode::ShortestFirst:
-        // Estimate path length and execute shortest first
-        // For now, fall through to sequential
-        return 0;
-
-    default:
-        return 0;
-    }
+    return sm_warp_lifecycle::Access::select_next_group(*this, active_lanes);
 }
 
 void SMContext::suspend_and_switch(int current_group, int next_group) {
-    // Suspend current group and switch to next_group
-    // This is a placeholder for future blocking implementation (Phase 3)
-    // For now, we just proceed with the next group selection
-    PTX_DEBUG_EMU("SM %d: Suspend group %d, switch to group %d", sm_id_,
-                  current_group, next_group);
+    sm_warp_lifecycle::Access::suspend_and_switch(*this, current_group,
+                                                 next_group);
 }
