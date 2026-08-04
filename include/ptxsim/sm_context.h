@@ -23,7 +23,18 @@ class CTAContext;
 class SharedMemoryManager;
 class ThreadContext; // 添加ThreadContext前向声明
 
+// Forward declaration for sm_block_dispatch::Access friend (C-2 Phase 3).
+// Defined in src/ptxsim/core/sm_block_dispatch.h; friend-declared below to
+// grant the helper class direct access to SMContext's private members for
+// CTA admission / pending-queue / resource-release extraction. See
+// src/ptxsim/core/AGENTS.md (sub-module layout) and the WarpContext
+// sub-module pattern for the established helper-namespace convention.
+namespace sm_block_dispatch {
+class Access;
+}
+
 class SMContext {
+    friend class sm_block_dispatch::Access;
 public:
     SMContext(int max_warps, int max_threads_per_sm, size_t shared_mem_size,
               int sm_id);

@@ -371,6 +371,13 @@ add_catch_test(unit_sm_step_b_set_blocked_cycles
 )
 set_tests_properties(unit_sm_step_b_set_blocked_cycles PROPERTIES LABELS "unit;sm;ptx6;step_b;injection")
 
+# PTX-6: sm_block_dispatch::Access direct unit test
+# Locks CTA admission / pending queue / cleanup preservation (C-2 Phase 3).
+add_catch_test(unit_sm_block_dispatch
+    sm/test_sm_block_dispatch.cpp
+)
+set_tests_properties(unit_sm_block_dispatch PROPERTIES LABELS "unit;sm;block_dispatch")
+
 # ============================================================================
 # Sync 单元测试
 # ============================================================================

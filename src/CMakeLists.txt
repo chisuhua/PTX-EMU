@@ -81,6 +81,7 @@ add_library(ptxsim SHARED
     ptxsim/core/sm_context.cpp
     ptxsim/core/sm_context_reconvergence.cpp
     ptxsim/core/sm_context_cpptlm_inject.cpp
+    ptxsim/core/sm_block_dispatch.cpp
     ptxsim/core/gpu_context.cpp
     register/condition_code_register.cpp
     register/register_bank_manager.cpp
