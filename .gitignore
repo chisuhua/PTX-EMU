@@ -82,3 +82,4 @@ build_off/
 .rddf/state/.arch-handoff.json
 .rddf/state/.plan-handoff.json
 .rddf/state/.design-handoff.json
+.rddf/state/.env-cache.json
