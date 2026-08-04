@@ -1,6 +1,6 @@
 {
   "version": 4,
-  "updated_at": "2026-08-03T09:30:00.000000+00:00",
+  "updated_at": "2026-08-04T16:43:05.415412+00:00",
   "current_phase": "default",
   "changes": [
     {
@@ -14,32 +14,23 @@
     {
       "added_at": "2026-08-03T09:30:00.000000+00:00",
       "name": "god-class-refactor-sm-context-phase3",
-      "status": "proposed",
-      "priority": "P2",
-      "blocker": null,
-      "parallel_group": 1,
+      "status": "archived",
       "tasks_total": 30,
-      "archived_at": null
+      "archived_at": "2026-08-04T07:53:33.000000+00:00"
     },
     {
       "added_at": "2026-08-03T08:42:36.458290+00:00",
       "name": "reduce-thread-context-includes-v2",
-      "status": "proposed",
-      "priority": "P3",
-      "blocker": null,
-      "parallel_group": 0,
+      "status": "archived",
       "tasks_total": 22,
-      "archived_at": null
+      "archived_at": "2026-08-04T04:03:48.000000+00:00"
     },
     {
       "added_at": "2026-08-03T08:42:36.458290+00:00",
       "name": "reduce-memory-test-utils-includes-v2",
-      "status": "proposed",
-      "priority": "P3",
-      "blocker": null,
-      "parallel_group": 0,
+      "status": "archived",
       "tasks_total": 22,
-      "archived_at": null
+      "archived_at": "2026-08-04T04:02:33.000000+00:00"
     }
   ]
 }
