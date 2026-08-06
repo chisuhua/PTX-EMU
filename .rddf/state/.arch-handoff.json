@@ -1,6 +1,6 @@
 {
   "arch_complete_at": "2026-07-29T07:21:12.848322+00:00",
-  "adr_count": 21,
+  "adr_count": 23,
   "completed_adr_ids": [
     "0001",
     "0002",
@@ -22,7 +22,9 @@
     "0019",
     "0020",
     "0021",
-    "0022"
+    "0022",
+    "0023",
+    "0024"
   ],
   "roadmap_exists": true,
   "current_phase": "Phase 10 \u2014 Documentation & Release\uff08\u03b2 \u5b8c\u6210\u4e2d\uff09+ Phase 3 \u7ed3\u6784\u503a\u52a1\u4fee\u590d",

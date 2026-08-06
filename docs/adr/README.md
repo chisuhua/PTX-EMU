@@ -61,6 +61,7 @@ docs/adr/
 | [0021](./ADR-0021-cpptlm-d1-full-integration.md) | CppTLM D1-Full MemoryBridge 集成（D-PTX-1~6 + HSK-1/2/3） | Active | 2026-07-16 | `openspec/changes/cpptlm-d1-full/` |
 | [0022](./ADR-0022-cpptlm-unified-build.md) | CppTLM + PTX-EMU 统一构建链路（`--whole-archive` 替代独立 `.so` + `dlopen`） | Accepted | 2026-07-23 | `openspec/changes/cpptlm-d1-full/` |
 | [0023](./ADR-0023-ptxir-binary-format.md) | PTXIR 二进制序列化格式与 7 项架构决策（扁平二进制 + Section TOC + 值枚举） | Accepted | 2026-07-30 | `openspec/changes/archive/2026-06-09-ptxir-serialization-architecture/` |
+| [0024](./ADR-0024-ptxir-cubin-embed-extension.md) | Cubin 嵌入 PTXIR 的混合二进制格式（PTXIR-Embedded CUBIN，loader 决策 + extract 工具） | Accepted | 2026-08-06 | TBD（待 design 阶段创建 proposal） |
 
 ### Proposed (规划中)
 
@@ -98,13 +99,14 @@ docs/adr/
 ---
 
 **维护**: PTX-EMU Architecture Team  
-**最后更新**: 2026-07-30  
-**ADR 总数**: 22（其中 Active 14 / Accepted 6 / Proposed 2 / Superseded 0）
+**最后更新**: 2026-08-06  
+**ADR 总数**: 23（其中 Active 14 / Accepted 7 / Proposed 2 / Superseded 0）
 
 ## 最近更新
 
 | 日期 | 更新内容 | 关联 ADR |
 |------|---------|---------|
+| 2026-08-06 | **CUBIN 嵌入 PTXIR 混合二进制格式**：新增 ADR-0024 Accepted — 作为 ADR-0023 sibling 决策，在 cubin 末尾追加 `.ptxir.section` + `.ptxir.magic`，loader 决策 + extract 工具复原纯 cubin + 复用现有 PTXIR 反序列化路径 | 0024 |
 | 2026-07-30 | **PTXIR 二进制格式 + Pipeline 架构升级**：新增 ADR-0023 Accepted（PTXIR 7 项决策：扁平二进制+TOC+值枚举+字符串表末尾+Extend-Only 等）；ADR-0011 从 Proposed 升级 Accepted（引用 ADR-0023 作为格式依据） | 0023, 0011 |
 | 2026-07-23 | **CppTLM 统一构建链路**：ADR-0022 Accepted — `--whole-archive` 替代独立 `.so` + `dlopen`；CppTLM Oracle 审查通过，P1/P2/P3/S1 修复已完成 | 0022 |
 | 2026-07-16 | **cpptlm-d1-full 状态推进**：ADR-0021 Proposed → Active；ADR-0020 Proposed → Accepted；2 轮 Metis pre-impl review + 3 阶段 12 commits 修复所有 5 个 BLOCKER（B1 ABI 实现 / B2 sync loop / B3 stream destroy UB / B4 HSK 一致性 / B5 CMake 文档同步）+ sister spec 附录 + Postmortem 沉淀 | 0020, 0021 |
