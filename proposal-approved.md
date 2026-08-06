@@ -11,6 +11,7 @@
 
 | 提案 | 优先级 | 来源 | 批准日期 | 批准人 |
 |------|--------|------|----------|--------|
+| [implement-ptxir-cubin-embed-extension](improvements/implement-ptxir-cubin-embed-extension.md) | P1 | ADR-0024 (Accepted 2026-08-06, commit `18ad58cb`) | 2026-08-06 | Oracle (architecture review 2nd-pass APPROVED) |
 
 ## 已实施
 
