@@ -1,6 +1,6 @@
 {
   "version": 4,
-  "updated_at": "2026-08-04T16:43:05.415412+00:00",
+  "updated_at": "2026-08-05T07:03:36.282368+00:00",
   "current_phase": "default",
   "changes": [
     {
@@ -32,5 +32,33 @@
       "tasks_total": 22,
       "archived_at": "2026-08-04T04:02:33.000000+00:00"
     }
-  ]
+  ],
+  "feature_view": {
+    "schema_version": 1,
+    "updated_at": "2026-08-05T07:03:36.274361+00:00",
+    "features": {
+      "__ungrouped__": {
+        "name": "__ungrouped__",
+        "status": "done",
+        "change_names": [
+          "fix-ptxir-instruction-coverage",
+          "god-class-refactor-sm-context-phase3",
+          "reduce-memory-test-utils-includes-v2",
+          "reduce-thread-context-includes-v2"
+        ],
+        "change_count": 4,
+        "archived_count": 4,
+        "rollup_basis": "name_prefix",
+        "depends_on": [],
+        "blocks": [],
+        "parallel_group": 0,
+        "conflicts_with": []
+      }
+    },
+    "execution_order": [
+      [
+        "__ungrouped__"
+      ]
+    ]
+  }
 }
