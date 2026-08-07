@@ -6,8 +6,11 @@
 #include "ptx_ir/statement_context.h"
 #include <iosfwd>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
+
+void write_manifest_section(std::vector<uint8_t>& buf, const ManifestSection& m);
 
 // ============================================================================
 // PtxirWriter - Serialize StatementContext vector → PTXIR binary format
@@ -22,6 +25,7 @@ public:
     explicit PtxirWriter(std::ostream& out);
 
     void write(const std::vector<StatementContext>& statements);
+    void set_manifest(const ManifestSection& manifest);
 
 private:
     void pre_pass(const std::vector<StatementContext>& statements);
@@ -75,6 +79,8 @@ private:
     std::map<std::string, uint32_t> str2id_;
     std::vector<std::string> strings_;
     std::vector<PtxirSectionTOC> toc_entries_;
+    std::optional<ManifestSection> manifest_;
+    std::vector<uint8_t> manifest_buffer_;
     uint32_t kernel_section_offset_ = 0;
     uint32_t string_table_offset_ = 0;
     uint32_t string_table_size_ = 0;

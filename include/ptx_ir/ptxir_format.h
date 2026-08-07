@@ -21,7 +21,23 @@ enum class PtxirSectionType : uint8_t {
     TYPE = 2,
     KERNEL = 3,
     CONSTANT = 4,
-    STRING_TABLE = 5
+    STRING_TABLE = 5,
+    MANIFEST = 6   // NEW: PTXIR-Embedded CUBIN manifest (cubin_hash + kernel_name + params)
+};
+
+enum class ParamKind : uint8_t { U8 = 1, U16 = 2, U32 = 4, U64 = 8, F32 = 9, F64 = 10 };
+
+struct ManifestParam {
+    std::string name;
+    uint16_t size;
+    ParamKind kind;
+};
+
+struct ManifestSection {
+    std::vector<uint8_t> cubin_hash;   // SHA-256 (32 bytes)
+    std::string kernel_name;
+    uint8_t ptx_address_size = 64;       // 32 or 64
+    std::vector<ManifestParam> params;
 };
 
 // Header: 24 bytes (little-endian)

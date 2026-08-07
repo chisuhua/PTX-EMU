@@ -668,8 +668,58 @@ add_catch_test(unit_ptx_ir_tcgen05_extended_opkind
     ptx_ir/test_tcgen05_extended_opkind.cpp
 )
 set_tests_properties(unit_ptx_ir_tcgen05_extended_opkind PROPERTIES
-    LABELS "unit;tcgen05;fence;handler;audit")
+    LABELS "unit;ptx_ir;tcgen05;fence;handler;audit")
 
+# ============================================================================
+# PTXIR MANIFEST section (PTXIR-Embedded CUBIN change)
+# ============================================================================
+add_catch_test(unit_ptxir_manifest_section
+    ptx_ir/test_ptxir_manifest_section.cpp
+)
+set_tests_properties(unit_ptxir_manifest_section PROPERTIES
+    LABELS "unit;ptx_ir;manifest")
+target_link_libraries(unit_ptxir_manifest_section PRIVATE ptxir_writer ptxir_reader)
+
+# ============================================================================
+# PTXIR-Embedded CUBIN loader unit tests
+# ============================================================================
+add_catch_test(unit_ptxir_loader
+    cudart/test_ptxir_loader.cpp
+)
+set_tests_properties(unit_ptxir_loader PROPERTIES LABELS "unit;cudart;ptxir_loader")
+target_link_libraries(unit_ptxir_loader PRIVATE ptxir_writer ptxir_reader OpenSSL::Crypto)
+
+add_catch_test(unit_ptx_context_adapter
+    cudart/test_ptx_context_adapter.cpp
+)
+set_tests_properties(unit_ptx_context_adapter PROPERTIES LABELS "unit;cudart;ptx_context_adapter")
+
+add_catch_test(unit_ptxir_config
+    cudart/test_ptxir_config.cpp
+)
+set_tests_properties(unit_ptxir_config PROPERTIES LABELS "unit;cudart;ptxir_config")
+
+# ============================================================================
+# PTXIR-Embedded CUBIN tool unit tests
+# ============================================================================
+add_catch_test(unit_ptxir_embed
+    tools/test_ptxir_embed.cpp
+)
+set_tests_properties(unit_ptxir_embed PROPERTIES
+    LABELS "unit;tools;ptxir_embed"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+target_link_libraries(unit_ptxir_embed PRIVATE ptxir_writer ptxir_reader)
+
+add_catch_test(unit_ptxir_extract
+    tools/test_ptxir_extract.cpp
+)
+set_tests_properties(unit_ptxir_extract PROPERTIES
+    LABELS "unit;tools;ptxir_extract"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+target_link_libraries(unit_ptxir_extract PRIVATE ptxir_writer ptxir_reader)
+
+# ============================================================================
+# CppTLM Bridge 单元测试 (cpptlm-d1-full change, ADR-0021)
 # ============================================================================
 # CppTLM Bridge 单元测试 (cpptlm-d1-full change, ADR-0021)
 # ============================================================================

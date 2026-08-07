@@ -10,11 +10,14 @@
 #include <string>
 #include <vector>
 
+ManifestSection read_manifest_section(const std::vector<uint8_t>& buf);
+
 class PtxirReader {
 public:
     explicit PtxirReader(std::istream& in);
 
     std::vector<StatementContext> read();
+    const ManifestSection& get_manifest() const;
 
 private:
     void read_header();
@@ -31,6 +34,7 @@ private:
     uint32_t statement_count_ = 0;
     uint16_t version_ = 0;
     PtxirHeader header_{};
+    ManifestSection manifest_;
 };
 
 #endif  // PTXIR_READER_H

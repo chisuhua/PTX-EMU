@@ -152,8 +152,10 @@ set_tests_properties(e2e_cosim_infinite_loop_ceiling PROPERTIES
     LABELS "e2e;cosim;ceiling")
 
 # auto-co-sim: "repeated cudaDeviceSynchronize drains all pending kernels"
-add_catch_test(e2e_cosim_multi_kernel_drain
-    cosim/test_cosim_multi_kernel_drain.cu
+add_catch_test(e2e_ptxir_cubin_embed
+    kernel/test_ptxir_cubin_embed.cpp
 )
-set_tests_properties(e2e_cosim_multi_kernel_drain PROPERTIES
-    LABELS "e2e;cosim;drain")
+set_tests_properties(e2e_ptxir_cubin_embed PROPERTIES
+    LABELS "e2e;ptxir;tools;nvcc;cuobjdump"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+

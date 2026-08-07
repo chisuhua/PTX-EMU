@@ -10,6 +10,9 @@
 #include "cudart/cuda_driver.h"       // 替换为新的驱动内存管理器
 #include "cudart/cudart_intrinsics.h" // 添加缺失的CUDA类型定义
 #include "cudart/ptx_interpreter.h"
+#include "cudart/ptx_context_adapter.h"
+#include "cudart/ptxir_config.h"
+#include "cudart/ptxir_loader.h"
 
 using namespace antlr4;
 using namespace ptxparser;
@@ -273,6 +276,11 @@ void initialize_environment() {
         auto gpu_section = ini.sections["gpu"];
         inipp::get_value(gpu_section, "gpu_config_file", gpu_config_filename);
 
+        std::string ptxir_mode_str;
+        auto ptxir_section = ini.sections["ptxir"];
+        inipp::get_value(ptxir_section, "mode", ptxir_mode_str);
+        config::setPTXIRModeFromIni(ptxir_mode_str == "auto");
+
         // 检查环境变量覆盖
         const char* env_config = std::getenv("PTX_EMU_GPU_CONFIG");
         if (env_config != nullptr && strlen(env_config) > 0) {
@@ -381,6 +389,40 @@ void **__cudaRegisterFatBinary(void **fatCubinHandle, void *fat_bin,
         throw std::runtime_error("cudart: could not read /proc/self/exe");
     }
     self_exe_path[size] = '\0';
+
+    if (config::isPTXIRModeEnabled()) {
+        std::ifstream exe(self_exe_path, std::ios::binary | std::ios::ate);
+        if (exe.good()) {
+            auto exe_size = static_cast<size_t>(exe.tellg());
+            if (exe_size >= 12) {
+                exe.seekg(0, std::ios::beg);
+                std::vector<uint8_t> contents(exe_size);
+                exe.read(reinterpret_cast<char*>(contents.data()),
+                         static_cast<std::streamsize>(exe_size));
+                size_t section_size = 0;
+                auto section = cudart::PTXIRLoader::extractPTXIR(
+                    contents.data(), exe_size, &section_size);
+                if (section) {
+                    auto stmts = cudart::PTXIRLoader::deserializeForCubin(
+                        section.get(), section_size);
+                    if (!stmts.empty()) {
+                        auto manifest = cudart::read_manifest_from_ptxir_section(
+                            section.get(), section_size);
+                        cudart::EmbeddedKernelManifest em;
+                        em.kernelName = manifest.kernel_name;
+                        em.ptxAddressSize = manifest.ptx_address_size;
+                        em.params = manifest.params;
+                        auto ctx = cudart::PtxContextAdapter::fromEmbedded(
+                            std::move(stmts), em);
+                        g_ptx_interpreter->set_ptx_context(ctx);
+                        static int dummy_handle = 0;
+                        *fatCubinHandle = &dummy_handle;
+                        return fatCubinHandle;
+                    }
+                }
+            }
+        }
+    }
 
     // 2. 从当前进程提取PTX代码
     std::string ptx_code = extract_ptx_with_cuobjdump(self_exe_path);
