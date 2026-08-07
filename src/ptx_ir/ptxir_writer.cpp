@@ -30,6 +30,28 @@ static void write_u8(std::ostream& out, uint8_t v) {
     out.write(reinterpret_cast<const char*>(&v), sizeof(v));
 }
 
+void write_manifest_section(std::vector<uint8_t>& buf, const ManifestSection& m) {
+    buf.insert(buf.end(), m.cubin_hash.begin(), m.cubin_hash.end());
+    if (m.cubin_hash.size() < 32) {
+        buf.insert(buf.end(), 32 - m.cubin_hash.size(), 0);
+    }
+    buf.insert(buf.end(), m.kernel_name.begin(), m.kernel_name.end());
+    buf.push_back(0);
+    buf.push_back(m.ptx_address_size);
+    uint16_t param_count = static_cast<uint16_t>(m.params.size());
+    uint8_t lo = static_cast<uint8_t>(param_count & 0xFF);
+    uint8_t hi = static_cast<uint8_t>((param_count >> 8) & 0xFF);
+    buf.push_back(lo);
+    buf.push_back(hi);
+    for (const auto& p : m.params) {
+        buf.insert(buf.end(), p.name.begin(), p.name.end());
+        buf.push_back(0);
+        buf.push_back(static_cast<uint8_t>(p.size & 0xFF));
+        buf.push_back(static_cast<uint8_t>((p.size >> 8) & 0xFF));
+        buf.push_back(static_cast<uint8_t>(p.kind));
+    }
+}
+
 PtxirWriter::PtxirWriter(std::ostream& out) : out_(out) {}
 
 void PtxirWriter::write(const std::vector<StatementContext>& statements) {
@@ -40,6 +62,9 @@ void PtxirWriter::write(const std::vector<StatementContext>& statements) {
     toc_entries_.clear();
     toc_entries_.push_back({static_cast<uint8_t>(PtxirSectionType::REGDECL), 0, 0});
     toc_entries_.push_back({static_cast<uint8_t>(PtxirSectionType::KERNEL), 0, 0});
+    if (manifest_.has_value()) {
+        toc_entries_.push_back({static_cast<uint8_t>(PtxirSectionType::MANIFEST), 0, 0});
+    }
     toc_entries_.push_back({static_cast<uint8_t>(PtxirSectionType::STRING_TABLE), 0, 0});
 
     toc_entries_[0].offset = static_cast<uint32_t>(out_.tellp());
@@ -48,12 +73,21 @@ void PtxirWriter::write(const std::vector<StatementContext>& statements) {
     toc_entries_[1].offset = static_cast<uint32_t>(out_.tellp());
     write_kernel_section();
 
-    toc_entries_[2].offset = static_cast<uint32_t>(out_.tellp());
+    if (manifest_.has_value()) {
+        toc_entries_[2].offset = static_cast<uint32_t>(out_.tellp());
+        write_manifest_section(manifest_buffer_, manifest_.value());
+        out_.write(reinterpret_cast<const char*>(manifest_buffer_.data()),
+                   static_cast<std::streamsize>(manifest_buffer_.size()));
+    }
+
+    toc_entries_.back().offset = static_cast<uint32_t>(out_.tellp());
     write_string_table();
 
     write_toc_entries();
     backfill_header_offsets();
 }
+
+void PtxirWriter::set_manifest(const ManifestSection& manifest) { manifest_ = manifest; }
 
 void PtxirWriter::pre_pass(const std::vector<StatementContext>& statements) {
     for (const auto& stmt : statements) {
@@ -113,13 +147,13 @@ void PtxirWriter::write_header() {
     std::memcpy(hdr.magic, PTXIR_MAGIC, 4);
     hdr.version = PTXIR_VERSION;
     hdr.flags = 0;
-    hdr.section_count = 3;
+    hdr.section_count = manifest_.has_value() ? 4 : 3;
     hdr.reserved = 0;
     hdr.string_table_offset = 0;
     hdr.string_table_size = 0;
     hdr.header_size = sizeof(PtxirHeader);
     out_.write(reinterpret_cast<const char*>(&hdr), sizeof(hdr));
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < hdr.section_count; i++) {
         uint8_t zero[6] = {};
         out_.write(reinterpret_cast<const char*>(zero), 6);
     }

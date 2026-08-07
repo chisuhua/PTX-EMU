@@ -1,0 +1,5 @@
+add_catch_test(integration_ptxir_cubin_loader
+    test_ptxir_cubin_loader.cpp
+)
+set_tests_properties(integration_ptxir_cubin_loader PROPERTIES LABELS "integration;cudart;ptxir_dispatch")
+target_link_libraries(integration_ptxir_cubin_loader PRIVATE ptxir_writer ptxir_reader)

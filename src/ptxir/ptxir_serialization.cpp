@@ -9,6 +9,7 @@
 #include "ptxParser.h"
 #include <fstream>
 #include <map>
+#include <optional>
 #include <sstream>
 
 std::string serialize_to_string(const std::vector<struct StatementContext>& stmts) {
@@ -73,7 +74,8 @@ void fill_reconvergence_pc(std::vector<StatementContext>& stmts) {
 
 bool generate_ptxir(const std::string& ptx_path,
                     const std::string& ptxir_path,
-                    const std::string& kernel_name) {
+                    const std::string& kernel_name,
+                    const std::optional<ManifestSection>& manifest) {
     try {
         // Read PTX file
         std::ifstream in(ptx_path);
@@ -112,10 +114,65 @@ bool generate_ptxir(const std::string& ptx_path,
         fill_reconvergence_pc(statements);
 
         // Serialize
-        return serialize_statements(statements, ptxir_path);
+        std::ofstream out(ptxir_path, std::ios::binary);
+        if (!out) return false;
+        PtxirWriter writer(out);
+        if (manifest.has_value()) {
+            writer.set_manifest(manifest.value());
+        } else if (!kernel_name.empty()) {
+            ManifestSection m;
+            m.kernel_name = kernel->kernelName;
+            if (kernel->addressSize.has_value()) {
+                m.ptx_address_size = static_cast<uint8_t>(*kernel->addressSize);
+            } else if (ptxContext.ptxAddressSize != 0) {
+                m.ptx_address_size = static_cast<uint8_t>(ptxContext.ptxAddressSize);
+            }
+            for (const auto& p : kernel->kernelParams) {
+                ManifestParam mp;
+                mp.name = p.paramName;
+                mp.size = static_cast<uint16_t>(p.byteSize);
+                mp.kind = ParamKind::U32;
+                for (const auto& q : p.paramTypes) {
+                    if (q == Qualifier::Q_U64 || q == Qualifier::Q_PTR) {
+                        mp.kind = ParamKind::U64;
+                        break;
+                    }
+                    if (q == Qualifier::Q_U32 || q == Qualifier::Q_S32) {
+                        mp.kind = ParamKind::U32;
+                        break;
+                    }
+                    if (q == Qualifier::Q_F32) {
+                        mp.kind = ParamKind::F32;
+                        break;
+                    }
+                    if (q == Qualifier::Q_F64) {
+                        mp.kind = ParamKind::F64;
+                        break;
+                    }
+                    if (q == Qualifier::Q_U16) {
+                        mp.kind = ParamKind::U16;
+                        break;
+                    }
+                    if (q == Qualifier::Q_U8) {
+                        mp.kind = ParamKind::U8;
+                        break;
+                    }
+                }
+                m.params.push_back(mp);
+            }
+            writer.set_manifest(m);
+        }
+        writer.write(statements);
+        return out.good();
     } catch (...) {
         return false;
     }
+}
+
+bool generate_ptxir(const std::string& ptx_path,
+                    const std::string& ptxir_path,
+                    const std::string& kernel_name) {
+    return generate_ptxir(ptx_path, ptxir_path, kernel_name, std::nullopt);
 }
 
 std::vector<struct StatementContext> load_ptxir(const std::string& ptxir_path,

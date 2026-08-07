@@ -157,3 +157,12 @@ add_catch_test(e2e_cosim_multi_kernel_drain
 )
 set_tests_properties(e2e_cosim_multi_kernel_drain PROPERTIES
     LABELS "e2e;cosim;drain")
+
+# PTXIR-Embedded CUBIN: end-to-end embed+extract roundtrip via tools
+add_catch_test(e2e_ptxir_cubin_embed
+    kernel/test_ptxir_cubin_embed.cpp
+)
+set_tests_properties(e2e_ptxir_cubin_embed PROPERTIES
+    LABELS "e2e;ptxir;tools;nvcc;cuobjdump"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+

@@ -417,6 +417,62 @@ int main(int argc, char** argv) {
 |------|---------|------|
 | 2026-08-06 | 初始版本（架构决策与 5 项 factor + 4 方案对比） | PTX-EMU Architecture Team |
 | 2026-08-07 | **Layout reorder (size-after-section, ZIP-EOCD style) + Magic literal 变更**：`PTXIR_EMBED_MAGIC` 从 `{'P','T','X','I','R','\x00','\x01','\x00'}` 改为 `{'P','T','X','E','M','B','\x01','\x00'}`；`ptxir_section_size` 从 section 之前移至 section 之后 + magic 之前；loader 检测改为真 O(1)（仅读末尾 12 字节）；§影响范围 扩充：新增 `PtxContextAdapter` / `EmbeddedKernelManifest` / `ptxir_config.cpp` / `tools/` 目录；§前置依赖 澄清 `config::` 命名空间实际不存在需新建；触发 §合规检查 #6 magic 变更 governance check。Oracle 调研结论（PTX-EMU 当前架构不接收 cubin 字节，fat_bin 为 dead parameter） | PTX-EMU Architecture Team (Metis audit + Oracle investigation) |
+| 2026-08-07 | **Postmortem 追加**（`commits dc76218d` + `56452614`）：实施期间发现并修复 pre-existing `RoundRobinWarpScheduler` 越界索引 bug（`src/ptxsim/core/warp_scheduler.cpp`），新测试 + 恢复 `e2e_cosim_multi_kernel_drain`（commit `56452614`）。详见 §2026-08-07 Postmortem | PTX-EMU Implementation Team |
+
+---
+
+## 2026-08-07 Postmortem：implement-ptxir-cubin-embed-extension 实施回顾
+
+### 实施回顾
+
+| Phase | 内容 | Commit | 状态 |
+|-------|------|--------|------|
+| 1 | `fix(warp_scheduler): prevent out-of-bounds current_warp_idx after warp removal`（实施期间暴露的 pre-existing UAF） | `dc76218d` | ✅ |
+| 2 | `plan(ptxir_embed): add implementation plan` | `fe2501f8` | ✅ |
+| 3 | `feat(ptxir-cubin-embed): implement PTXIR-embedded CUBIN loader, dispatch, and tools`（含 8 个新增文件 + CMake + config INI） | `40fa1423` | ✅ |
+| 4 | `docs(adr,readme): document PTXIR-embedded CUBIN feature and update ADR index` | `8cae3888` | ✅ |
+| 5 | `fix(cudart,ptxir_loader): add null guards in PTXIR dispatch path` | `4d953152` | ✅ |
+| 6 | `test(ptxir): cover null-guard paths and restore cosim drain e2e`（恢复被误删的 `e2e_cosim_multi_kernel_drain`） | `56452614` | ✅ |
+
+### 同期发现的独立 bug
+
+#### Bug: `RoundRobinWarpScheduler::schedule_next` 越界读取 + `remove_warp` 不更新索引
+
+- **位置**: `src/ptxsim/core/warp_scheduler.cpp:17-35, 10-15`
+- **症状**: `test_syncthreads` `e2e_ldglobal_simple`（parallel）等 5 个 e2e 测试 `SEGFAULT`，栈顶 `WarpContext::is_active(this=0x555555bbfbc0)`
+- **根因**: `RoundRobinWarpScheduler::remove_warp` 用 `std::find` + `erase` 删除已完成的 warp，但 `current_warp_idx` 成员未随之调整。当 `update_state`（`sm_warp_lifecycle.cpp:36`）连续移除多个 warp 时，`current_warp_idx` 可能 ≥ `warps.size()`，下一次 `schedule_next` 读取 `warps[current_warp_idx]` 直接越界进入 `std::vector` 的 capacity 区，那里残留上一次 erase 后的野指针 `WarpContext*`。`active_count > 0` 读越界指针 → segfault。
+- **修复**（`dc76218d`）:
+  - `remove_warp`：删除后若被删位置 < `current_warp_idx` 则 `--current_warp_idx`；若 `current_warp_idx >= warps.size()` 且非空则归 0
+  - `schedule_next`：开头若 `current_warp_idx >= warps.size()` 归 0（防御性）
+- **教训**: "vector erase 不调整关联索引" 是 `std::vector` + 显式索引循环的经典陷阱；类似 `i--` 风格的反向遍历可以避免，但 forward 遍历必须显式 clamp。详见 [`docs/dev-process/lessons-learned.md`](../dev-process/lessons-learned.md) §N
+- **暴露原因**: 本次实施期间的 clean rebuild 让 `libptxsim.so` 重新链接，进程堆布局改变，`vector capacity` 区的地址从原来的 mapped 区域变为 guard page —— 基线（main 分支老 binary）heap 布局恰好让越界读落入合法映射区而 silently 通过。这是 "rebuild 暴露 layout-sensitive UAF" 的典型表现
+- **测试**: `test_syncthreads` serial run (CLK 287 ms → Overall PASS)
+
+#### Bug: `e2e_cosim_multi_kernel_drain` 被误删
+
+- **位置**: `tests/e2e/CMakeLists.txt`（feat commit `40fa1423` diff）
+- **症状**: 单次 `ctest -R e2e_cosim_multi_kernel_drain` 报 `No tests were found!!!`
+- **根因**: 实施 `add_catch_test(e2e_ptxir_cubin_embed ...)` 时直接 `replace` 而非 `add alongside`，把原有的 `e2e_cosim_multi_kernel_drain` 覆盖掉了
+- **修复**（`56452614`）: 重新追加 `add_catch_test(e2e_cosim_multi_kernel_drain cosim/test_cosim_multi_kernel_drain.cu)` + `set_tests_properties`
+- **教训**: 任何 `add_catch_test` 改 CMakeLists.txt 都应 `grep` 一次确认是 "新增" 而非 "覆盖"；CI 缺失 pre-merge ctest count diff check 是流程债
+
+### 验证结果（最终 commit `56452614`）
+
+| 类别 | 通过 | 失败（基线也失败）|
+|------|------|------------------|
+| unit | 100/100 | 0 |
+| integration | 19/19 | 0 |
+| e2e | 14/14 | 0 |
+| `unit_tmem::concurrent_reads_from_same_slot_safe` | — | 1（pre-existing Catch2 输出重定向断言，在 fresh main build 同样失败） |
+| **本次引入的回归** | **0** | — |
+| **PTXIR_MODE=auto 全套 PTXIR 新增测试** | 8/8 | 0 |
+
+### 相关链接
+
+- [docs/dev-process/lessons-learned.md](../dev-process/lessons-learned.md) — 完整经验沉淀（待追加 §N）
+- [.opencode/skills/ptx-lessons-learned/SKILL.md](../../.opencode/skills/ptx-lessons-learned/) — 待追加失败模式速查表
+- [openspec/changes/archive/2026-08-07-implement-ptxir-cubin-embed-extension/](../../openspec/changes/archive/2026-08-07-implement-ptxir-cubin-embed-extension/) — 归档后 change 路径
+- [ADR-0008 §2026-06-18 Postmortem](./ADR-0008-barrier-semantics.md) — Postmortem 段落模板参照
 
 ---
 

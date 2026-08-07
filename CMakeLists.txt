@@ -64,6 +64,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 # ==============================
 find_package(Java COMPONENTS Runtime REQUIRED)
 find_package(CUDAToolkit REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 # 查找 cuobjdump 工具路径
 find_program(CUOBJDUMP_EXECUTABLE cuobjdump HINTS ${CUDAToolkit_BIN_DIR} ${CUDAToolkit_BIN_DIRS} ENV CUDA_PATH ENV PATH)
@@ -115,6 +116,7 @@ set(ANTLR4_LIBRARY antlr4_shared)
 # 📁 子目录
 # ==============================
 add_subdirectory(src)
+add_subdirectory(tools)
 
 # 启用测试（但确保 tests/CMakeLists.txt 不再 enable_language(CUDA)）
 enable_testing()

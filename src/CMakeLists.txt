@@ -169,11 +169,11 @@ add_subdirectory(ptx_ir)
 
 # 创建共享库
 add_library(cudart SHARED ${SOURCES})
-target_link_libraries(cudart ptx_ir ptx_parser ptxsim)
-target_link_libraries(cudart ptx_ir ptxsim)
+target_link_libraries(cudart ptx_ir ptx_parser ptxsim ptxir)
 add_dependencies(cudart GenerateParser)
 add_dependencies(cudart ptx_parser)
 add_dependencies(cudart ptxsim)
+add_dependencies(cudart ptxir)
 
 # 标记ANTLR生成的源文件为生成文件
 set_source_files_properties(${ANTLR4_GENERATED_SOURCES} PROPERTIES GENERATED TRUE)
@@ -186,9 +186,7 @@ set_target_properties(cudart PROPERTIES
 )
 
 # 链接库
-target_link_libraries(cudart ${ANTLR4_LIBRARY} pthread)
-
-# 确保CUDA包含目录正确设置
+target_link_libraries(cudart ${ANTLR4_LIBRARY} pthread OpenSSL::Crypto)
 target_include_directories(cudart PRIVATE ${CUDA_PATH}/include ${CUDAToolkit_INCLUDE_DIRS})
 
 # 创建版本脚本

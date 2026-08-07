@@ -38,6 +38,52 @@ static uint8_t read_u8(std::istream& in) {
     return v;
 }
 
+ManifestSection read_manifest_section(const std::vector<uint8_t>& buf) {
+    ManifestSection m;
+    if (buf.size() < 32) {
+        return m;
+    }
+    m.cubin_hash.assign(buf.begin(), buf.begin() + 32);
+    size_t pos = 32;
+    while (pos < buf.size() && buf[pos] != 0) {
+        m.kernel_name += static_cast<char>(buf[pos]);
+        ++pos;
+    }
+    if (pos >= buf.size()) {
+        return ManifestSection();
+    }
+    ++pos;
+    if (pos >= buf.size()) {
+        return ManifestSection();
+    }
+    m.ptx_address_size = buf[pos];
+    ++pos;
+    if (pos + 2 > buf.size()) {
+        return ManifestSection();
+    }
+    uint16_t param_count = static_cast<uint16_t>(buf[pos] | (buf[pos + 1] << 8));
+    pos += 2;
+    for (uint16_t i = 0; i < param_count; ++i) {
+        ManifestParam p;
+        while (pos < buf.size() && buf[pos] != 0) {
+            p.name += static_cast<char>(buf[pos]);
+            ++pos;
+        }
+        if (pos >= buf.size()) {
+            return ManifestSection();
+        }
+        ++pos;
+        if (pos + 3 > buf.size()) {
+            return ManifestSection();
+        }
+        p.size = static_cast<uint16_t>(buf[pos] | (buf[pos + 1] << 8));
+        p.kind = static_cast<ParamKind>(buf[pos + 2]);
+        pos += 3;
+        m.params.push_back(p);
+    }
+    return m;
+}
+
 PtxirReader::PtxirReader(std::istream& in) : in_(in) {}
 
 std::vector<StatementContext> PtxirReader::read() {
@@ -47,6 +93,8 @@ std::vector<StatementContext> PtxirReader::read() {
     }
     return read_v2();
 }
+
+const ManifestSection& PtxirReader::get_manifest() const { return manifest_; }
 
 void PtxirReader::read_header() {
     PtxirHeader hdr;
@@ -88,6 +136,18 @@ std::vector<StatementContext> PtxirReader::read_v2() {
         toc.push_back(entry);
     }
 
+    auto cur_pos = in_.tellg();
+    in_.seekg(0, std::ios::end);
+    auto end_pos = in_.tellg();
+    in_.seekg(cur_pos);
+
+    auto section_size = [&](size_t idx) -> size_t {
+        uint32_t start = toc[idx].offset;
+        uint32_t stop = (idx + 1 < toc.size()) ? toc[idx + 1].offset
+                                                : static_cast<uint32_t>(end_pos);
+        return (stop > start) ? (stop - start) : 0;
+    };
+
     std::vector<StatementContext> result;
     // First pass: load STRING_TABLE (needed for string ID lookups in other sections)
     for (const auto& entry : toc) {
@@ -97,7 +157,8 @@ std::vector<StatementContext> PtxirReader::read_v2() {
         }
     }
     // Second pass: process remaining sections
-    for (const auto& entry : toc) {
+    for (size_t i = 0; i < toc.size(); ++i) {
+        const auto& entry = toc[i];
         auto type = static_cast<PtxirSectionType>(entry.type);
         if (type == PtxirSectionType::STRING_TABLE) continue;
         in_.seekg(static_cast<std::streamoff>(entry.offset));
@@ -108,6 +169,15 @@ std::vector<StatementContext> PtxirReader::read_v2() {
             case PtxirSectionType::KERNEL:
                 result = read_kernel_section();
                 break;
+            case PtxirSectionType::MANIFEST: {
+                std::vector<uint8_t> section(section_size(i));
+                if (!section.empty()) {
+                    in_.read(reinterpret_cast<char*>(section.data()),
+                             static_cast<std::streamsize>(section.size()));
+                }
+                manifest_ = read_manifest_section(section);
+                break;
+            }
             default:
                 throw std::runtime_error(
                     "Unknown section type in TOC: " +

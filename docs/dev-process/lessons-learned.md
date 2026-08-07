@@ -1923,3 +1923,93 @@ echo $PTX_EMU_MAX_ADVANCE_CYCLES
 - **change**: `openspec/changes/auto-co-sim-standalone/`
 - **commit**: `10e8ad38`
 - **ADR**: ADR-0021 §2026-07-21 Fix Record
+
+## 43. `std::vector::erase` 不会调整关联的索引成员（2026-08-07）
+
+### 现象
+
+实施 `implement-ptxir-cubin-embed-extension` 期间的 clean rebuild 让 5 个 e2e 测试 (`test_syncthreads`、`e2e_ldglobal_simple` 等) 出现 `SEGFAULT`，栈顶：
+
+```
+WarpContext::is_active(this=0x555555bbfbc0) at include/ptxsim/warp_context.h:78
+RoundRobinWarpScheduler::schedule_next at src/ptxsim/core/warp_scheduler.cpp:26
+SMContext::exe_once at src/ptxsim/core/sm_context.cpp:246
+GPUContext::exe_once
+cudaLaunchKernel
+```
+
+`this=0x555555bbfbc0` 落在 `std::vector<WarpContext*>` 的 capacity 区——那里残留上一次 `erase` 后的野指针，`active_count > 0` 读越界 → segfault。基线（老 `libptxsim.so` + `main` 分支）同样代码路径**不崩**，因为老 binary 的堆布局恰好让 capacity 区落入合法映射区，silently 把野指针当成正常值；rebuild 改变进程 layout 后越界读到 guard page 立刻 segfault。
+
+### 教训
+
+- `std::vector::erase(it)` **只**把 `[it+1, end)` 整体前移并 `--size_`，**不会**调整任何外部索引。
+- forward-遍历容器时，如果同时维护一个 `size_t current_idx` 索引，**每次 erase 必须显式判断并 clamp**：
+  - 若 `removed_idx < current_idx` → `--current_idx`
+  - 若 `current_idx >= size` 且非空 → `current_idx = 0`
+- 反向遍历（`it--`）天然安全但语义不一致；forward 循环的陷阱必须用显式 clamp 或改用 `std::deque` / `std::list`（插入/删除不失效）。
+- **"rebuild 暴露 layout-sensitive UAF"** 是 UAF 的隐蔽形态：基线 binary 跑 1000 次都 OK，加载顺序 / .so 顺序 / 编译器版本变化后 100% 崩。任何"老 binary 通过、新 binary 崩"的回归，根因几乎都是这种指针 aliasing。
+
+### 真实案例
+
+- **bug 表现**: `test_syncthreads` Test 3 (`nested sync`) serial run → `Overall: PASS` in 基线, `SEGFAULT` in worktree clean rebuild
+- **修复**: `src/ptxsim/core/warp_scheduler.cpp` `RoundRobinWarpScheduler::remove_warp` + `schedule_next` 显式 clamp `current_warp_idx`
+- **commit**: `dc76218d`（fix(warp_scheduler) ...）— 与 PTXIR-Embedded CUBIN 实施 commit `40fa1423` 同 branch
+- **ADR**: [ADR-0024 §2026-08-07 Postmortem](../adr/ADR-0024-ptxir-cubin-embed-extension.md#2026-08-07-postmortemimplement-ptxir-cubin-embed-extension-实施回顾)
+
+### 诊断命令
+
+```bash
+# 1. 找出所有维护外部索引成员的 vector 操作
+grep -rn "current_warp_idx\|current_idx" src/ptxsim/core/warp_scheduler.cpp
+grep -rn "std::find.*->erase" src/ptxsim/ src/cudart/
+
+# 2. 基线对比验证（Checklist 4 基线 worktree）
+git worktree add .worktrees/baseline-check <baseline-commit>
+cd .worktrees/baseline-check && cmake -S . -B build && cmake --build build -j$(nproc)
+ctest -R test_syncthreads --output-on-failure  # PASS in baseline
+cd <worktree> && ctest -R test_syncthreads --output-on-failure  # SEGFAULT in worktree
+
+# 3. ASLR off 验证是否依赖 heap layout（如果 ASLR off 也稳定崩 → 真 bug；ASLR off 偶发 → race）
+setarch $(uname -m) -R <binary>
+```
+
+### 修复模板
+
+```cpp
+// BEFORE (buggy): erase 后索引未调整，forward 循环越界
+void remove_warp(WarpContext* warp) {
+    auto it = std::find(warps.begin(), warps.end(), warp);
+    if (it != warps.end()) {
+        warps.erase(it);  // 索引不变，下次循环越界
+    }
+}
+
+// AFTER (fixed): clamp 外部索引
+void remove_warp(WarpContext* warp) {
+    auto it = std::find(warps.begin(), warps.end(), warp);
+    if (it != warps.end()) {
+        size_t removed_idx = static_cast<size_t>(it - warps.begin());
+        warps.erase(it);
+        if (removed_idx < current_warp_idx && current_warp_idx > 0) {
+            --current_warp_idx;
+        }
+        if (current_warp_idx >= warps.size() && !warps.empty()) {
+            current_warp_idx = 0;
+        }
+    }
+}
+
+// AND: schedule_next 防御性 guard
+WarpContext* schedule_next() {
+    if (warps.empty()) return nullptr;
+    if (current_warp_idx >= warps.size()) current_warp_idx = 0;  // 兜底
+    // ...
+}
+```
+
+### 关联
+
+- **change**: `openspec/changes/implement-ptxir-cubin-embed-extension/`
+- **commits**: `dc76218d` (fix) + `40fa1423` (feat) + `56452614` (debt fixes)
+- **ADR**: [ADR-0024 §2026-08-07 Postmortem](../adr/ADR-0024-ptxir-cubin-embed-extension.md)
+- **skill 同步**: [`.opencode/skills/ptx-lessons-learned/SKILL.md`](../../.opencode/skills/ptx-lessons-learned/) 失败模式速查表追加 + Checklist 追加 E: container-erase-index-trap
