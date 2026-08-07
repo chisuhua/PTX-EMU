@@ -380,6 +380,11 @@ void **__cudaRegisterFatBinary(void **fatCubinHandle, void *fat_bin,
     PTX_DEBUG_EMU("Called __cudaRegisterFatBinary(%p, %p, %llu, %u)",
                   fatCubinHandle, fat_bin, fat_bin_size, version);
 
+    if (!fatCubinHandle) {
+        PTX_ERROR_CUDART("__cudaRegisterFatBinary called with null fatCubinHandle");
+        return nullptr;
+    }
+
     // 1. 获取当前进程路径
     char self_exe_path[1025] = "";
     long size = readlink("/proc/self/exe", self_exe_path, 1024);

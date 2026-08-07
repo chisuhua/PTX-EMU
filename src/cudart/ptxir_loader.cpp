@@ -11,6 +11,9 @@
 namespace cudart {
 
 ManifestSection read_manifest_from_ptxir_section(const uint8_t* data, size_t size) {
+    if (!data || size == 0) {
+        return ManifestSection();
+    }
     try {
         std::string s(reinterpret_cast<const char*>(data), size);
         std::istringstream iss(s, std::ios::binary);
@@ -33,7 +36,9 @@ uint32_t read_le32(const uint8_t* data) {
 
 std::vector<uint8_t> sha256(const uint8_t* data, size_t size) {
     std::vector<uint8_t> hash(32);
-    SHA256(data, size, hash.data());
+    if (data && size > 0) {
+        SHA256(data, size, hash.data());
+    }
     return hash;
 }
 
