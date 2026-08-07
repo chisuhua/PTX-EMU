@@ -181,3 +181,20 @@ TEST_CASE("extractPTXIR_nullptr_returnsNullptr", "[ptxir_loader]") {
     REQUIRE(section == nullptr);
     REQUIRE(out_size == 0);
 }
+
+TEST_CASE("read_manifest_from_ptxir_section_nullptr_returnsEmpty", "[ptxir_loader]") {
+    auto m = cudart::read_manifest_from_ptxir_section(nullptr, 0);
+    REQUIRE(m.kernel_name.empty());
+    REQUIRE(m.cubin_hash.empty());
+    REQUIRE(m.params.empty());
+}
+
+TEST_CASE("read_manifest_from_ptxir_section_emptyData_returnsEmpty", "[ptxir_loader]") {
+    auto m = cudart::read_manifest_from_ptxir_section(nullptr, 0);
+    REQUIRE(m.kernel_name.empty());
+}
+
+TEST_CASE("extractPureCubin_nullptr_passthroughOrEmpty", "[ptxir_loader]") {
+    auto pure = cudart::PTXIRLoader::extractPureCubin(nullptr, 0);
+    REQUIRE(pure.has_value() == false);
+}
