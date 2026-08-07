@@ -615,6 +615,25 @@ inline void step_b(IPipeline* p, ITc* tc, Warp* w, const Stmt& s) {
 □ Commit message 引用 ad808e3（引入回归 commit）+ ADR-0016（架构依据）+ §25（lesson）
 ```
 
+### Checklist M: container-erase-index-trap（2026-08 新增）
+
+```
+□ 任何维护外部索引成员（如 `size_t current_idx`）的容器操作：
+  □ forward 遍历 + `erase(it)` 时，显式 clamp：
+    if (removed_idx < current_idx) --current_idx;
+    if (current_idx >= container.size() && !container.empty()) current_idx = 0;
+  □ `schedule_next` / `get_next` 等入口加防御性 guard：if (idx >= size) idx = 0;
+  □ 考虑反向遍历（`it--`）或换 `std::deque`/`std::list`（插入/删除不失效）
+□ 检测 layout-sensitive UAF：
+  □ 基线 binary PASS，clean rebuild 后 FAIL → 几乎必是此 trap
+  □ 基线 ASLR off vs on 表现不一致 → 强信号
+  □ 栈顶 `T::method(this=heap_capacity_addr)` 或 `T*` 越界 → 立即 grep 关联索引成员
+□ 诊断命令：
+  grep -rn "current_warp_idx\|current_idx" src/ptxsim/core/warp_scheduler.cpp
+  grep -rn "std::find.*->erase\|erase(it)" src/ptxsim/ src/cudart/
+□ 修复后必跑 clean rebuild ctest（不能只跑 incremental）确认 100% pass
+```
+
 ---
 
 ## 🔍 失败模式速查表
@@ -646,6 +665,7 @@ inline void step_b(IPipeline* p, ITc* tc, Warp* w, const Stmt& s) {
 | `tc_queue().pending_count() == 0` 在 commit→wait 后失败 | wait() push 顺序问题 | `grep -n "pending_waiters_.push" src/ptxsim/async/tc_queue.cpp` |
 | Helper 改 f32 storage 后 readback 返回 garbage | readback 仍是 f16 pattern | `grep "f16_to_f32\|c_buf\[idx \* 2\]" tests/` |
 | `instr.cta_group` 永远是 default 1 | visitor 不提取 IMMEDIATE | `grep "extractQualifiersFromContext" src/` |
+| **基线 e2e PASS，clean rebuild 后 e2e SEGFAULT，栈顶 `WarpContext::is_active(this=heap_capacity_addr)` 或类似越界 `T*` 指针** | **`std::vector<T*>::erase(it)` 不会调整维护的 `current_idx` 索引成员；rebuild 改变 heap layout 后野指针越界进入 guard page → segfault**（基线 binary 的 capacity 区落在合法映射内 silently 通过） | **`grep -rn "current_warp_idx\|current_idx" src/ptxsim/core/warp_scheduler.cpp`** → forward 遍历且 `remove_warp` 未 clamp 索引；按 Checklist M 修复（erase 后 clamp `current_idx`，schedule_next 防御性 guard）；参考 [`docs/dev-process/lessons-learned.md` §43](../../docs/dev-process/lessons-learned.md) |
 
 ---
 
