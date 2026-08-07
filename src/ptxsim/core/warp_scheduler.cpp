@@ -10,13 +10,25 @@ void RoundRobinWarpScheduler::add_warp(WarpContext* warp) {
 void RoundRobinWarpScheduler::remove_warp(WarpContext* warp) {
     auto it = std::find(warps.begin(), warps.end(), warp);
     if (it != warps.end()) {
+        size_t removed_idx = static_cast<size_t>(it - warps.begin());
         warps.erase(it);
+        if (removed_idx < current_warp_idx) {
+            if (current_warp_idx > 0) {
+                --current_warp_idx;
+            }
+        }
+        if (current_warp_idx >= warps.size() && !warps.empty()) {
+            current_warp_idx = 0;
+        }
     }
 }
 
 WarpContext* RoundRobinWarpScheduler::schedule_next() {
     if (warps.empty()) {
         return nullptr;
+    }
+    if (current_warp_idx >= warps.size()) {
+        current_warp_idx = 0;
     }
 
     // 寻找下一个活跃的warp
