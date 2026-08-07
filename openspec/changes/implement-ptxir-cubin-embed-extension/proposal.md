@@ -2,31 +2,36 @@
 
 ## Why
 
-PTX-EMU 当前无法直接加载标准 NVIDIA cubin（cuModuleLoadData 链路），而 PTXIR 仅在内部 pipeline 中可用。本提案依据 ADR-0024（PTXIR-Embedded CUBIN 格式），将 PTXIR section 追加到 cubin 末尾，使 PTX-EMU 既能执行标准 cubin 又保留 PTXIR 快速加载优势，同时不破坏 NVIDIA 工具链兼容性。
+PTX-EMU 当前架构 (`__cudaRegisterFatBinary` @ `src/cudart/cudart_sim.cpp:354-386`) 不接收 cubin 字节 — `fat_bin` 参数仅出现在 debug print (line 372)，未解引用。实际执行 payload 来自 `/proc/self/exe` 经外部 `cuobjdump` 子进程提取的 PTX 文本。本提案依据 ADR-0024 v1.1（2026-08-07 amendment），将 PTXIR section 追加到最终可执行文件末尾（ELF 容忍尾部 overlay data），使 PTX-EMU 能从 embed 段反序列化 PTXIR 并复用 `set_ptx_context()` 主路径，同时保留 NVIDIA 工具链兼容性（cub level 工具独立支持）。
 
-触发事件：`ptxir-format-compliance` 提案 2026-08-01 被拒绝（与 ADR-0023 7 决策不完全一致），但 cubin + PTXIR 兼容路径缺失需填补 — 本提案填补该缺口，遵循 ADR-0024 已审批的设计。
+触发事件：`ptxir-format-compliance` 提案 2026-08-01 被拒绝（与 ADR-0023 7 决策不完全一致），但 cubin + PTXIR 兼容路径缺失需填补 — 本提案填补该缺口，遵循 ADR-0024 v1.1 已审批的设计（含 footer layout + magic literal 变更 + PtxContextAdapter 引入）。
 
 ## What Changes
 
-- **新增** `src/cudart/ptxir_loader.{h,cpp}` — PTXIRLoader 类，提供 magic 检测 / PTXIR 提取 / 纯 cubin 提取 / 反序列化四个 static 方法
-- **新增** `include/cudart/ptxir_loader.h` — PTXIRLoader 公开 API
-- **新增** `tools/ptxir_extract.cpp` — CLI 工具，从 embedded cubin 提取纯 cubin + PTXIR section
-- **新增** `tools/ptxir_embed.cpp` — CLI 工具，将 PTXIR 追加到 cubin 末尾生成 embedded cubin
-- **修改** `src/cudart/cudart_sim.cpp` — `__cudaRegisterFatBinary` 增加 PTXIR 检测分支（约 +30-40 行）
-- **新增** `config::isPTXIRModeEnabled()` — 读取 `PTXIR_MODE` env var + `configs/*.ini`（MUST 级，loader dispatch 依赖）
-- **新增** `PTXIR_EMBED_MAGIC` 8 字节 magic 后缀（loader O(1) 末尾检测，magic 字面值变更触发 ADR-0024 重新审视 — governance check）
-- **修改** `src/cudart/CMakeLists.txt` — 注册 `ptxir_loader.cpp` 子目标
-- **修改** `tools/CMakeLists.txt` — 注册两个工具目标
-- **新增** `tests/unit/test_ptxir_loader.cpp` — 4 个 public static 方法全覆盖（覆盖率 ≥ 90%）
-- **新增** `tests/integration/test_ptxir_cubin_loader.cpp` — `__cudaRegisterFatBinary` dispatch 全场景（≥5 场景）
-- **新增** `tests/e2e/test_ptxir_cubin_embed.cu` — nvcc + ptxir_embed + PTX-EMU + ptxir_extract → cuobjdump 双向验证（≥5 真实 kernel）
+- **新增** `src/cudart/ptxir_loader.{h,cpp}` — PTXIRLoader 类，提供 footer-layout magic 检测 / PTXIR 提取 / 纯 cubin 提取 / 反序列化四个 static 方法
+- **新增** `src/cudart/ptx_context_adapter.{h,cpp}` — `PtxContextAdapter::fromEmbedded(StatementContext[], EmbeddedKernelManifest)` + `EmbeddedKernelManifest` 结构（kernelName 来源 CLI flag，params 从 manifest，addressSize 默认 64）
+- **新增** `src/cudart/ptxir_config.{h,cpp}` — `config::isPTXIRModeEnabled()` 函数（env var `PTXIR_MODE` 静态缓存 + `[ptxir]` INI section 加载，env 覆盖 INI 遵循 `PTX_EMU_GPU_CONFIG` 模式 cudart_sim.cpp:277-281）
+- **新增** `include/cudart/ptxir_loader.h` / `ptx_context_adapter.h` / `ptxir_config.h` — 公开 API
+- **新增** `tools/` 目录（当前不存在）+ `tools/CMakeLists.txt` — 注册 CLI 工具目标，并在根 `CMakeLists.txt` 添加 `add_subdirectory(tools)`
+- **新增** `tools/ptxir_extract.cpp` — CLI 工具，从 embedded exe/cubin 提取纯 cubin + PTXIR section
+- **新增** `tools/ptxir_embed.cpp` — CLI 工具，将 PTXIR 追加到 exe/cubin 末尾生成 embedded payload（支持 `--in-exe` 与 `--in-cubin` 两种 target，必填 `--kernel-name`）
+- **修改** `src/cudart/cudart_sim.cpp` — `__cudaRegisterFatBinary` 在 `readlink("/proc/self/exe")` (line 377) 之后立即增加 PTXIR dispatch（约 +30-40 行；**byte source = `/proc/self/exe` 末尾 12 字节**，非 `fat_bin`）
+- **新增** `PTXIR_EMBED_MAGIC` 8 字节 magic 后缀 = `{'P','T','X','E','M','B','\x01','\x00'}`（loader O(1) 末尾检测；2026-08-07 ADR-0024 amendment 变更；触发 §合规检查 #6 governance check 已解决）
+- **修改** `configs/*.ini` — 新增 `[ptxir] mode=off` 段（默认值 = off 保证行为字节级兼容现状）
+- **新增** `tests/integration/cudart/` 目录 + `CMakeLists.txt`（新集成测试子目录）
+- **新增** `tests/unit/cudart/test_ptxir_config.cpp` — `config::isPTXIRModeEnabled()` 双源配置测试
+- **新增** `tests/unit/cudart/test_ptxir_loader.cpp` — PTXIRLoader 4 方法单元测试（覆盖率 ≥ 90%）
+- **新增** `tests/unit/cudart/test_ptx_context_adapter.cpp` — PtxContextAdapter 含 kernelName/params/addressSize 字段填充验证
+- **新增** `tests/integration/test_ptxir_cubin_loader.cpp` — `__cudaRegisterFatBinary` dispatch 集成测试（≥ 5 场景）
+- **新增** `tests/e2e/test_ptxir_cubin_embed.cu` — nvcc + ptxir_embed + PTX-EMU 加载 + ptxir_extract → cuobjdump 双向验证（≥ 5 真实 kernel，含 Oracle review 新增 2 个直接对 embedded 解析场景）
+- **修改** `roadmap.md` — 新增 Phase 12.2 (PTXIR Cubin 集成) 条目
 
 ## Capabilities
 
 ### New Capabilities
 
-- `ptxir-cubin-embed`: PTXIR-Embedded CUBIN 二进制格式与 PTXIRLoader 类。定义 magic 字节、Section TOC 中 `cubin_hash` 字段约束、`hasEmbeddedPTXIR()`/`extractPTXIR()`/`extractPureCubin()`/`deserializeForCubin()` API 契约、`config::isPTXIRModeEnabled()` 行为契约、loader dispatch 行为（`PTXIR_MODE=auto`/`off` 两路）。
-- `ptxir-cubin-tools`: ptxir_extract / ptxir_embed CLI 工具契约。定义 CLI 参数（`--in-cubin`/`--in-ptxir`/`--in`/`--out`/`--out-cubin`/`--out-ptxir`）、退出码、字节级等价性保证（提取后纯 cubin 与原始 cubin hash 相等）、`--help` 与 `--version` 输出格式。
+- `ptxir-cubin-embed`: PTXIR-Embedded CUBIN/EXE 二进制格式与 PTXIRLoader 类。定义 footer-layout magic 字节（`PTXEMB\x01\x00`）、Section TOC 中 `cubin_hash` 字段约束、`hasEmbeddedPTXIR()`/`extractPTXIR()`/`extractPureCubin()`/`deserializeForCubin()` API 契约、`config::isPTXIRModeEnabled()` 行为契约（env var 优先于 INI）、loader dispatch 行为（`PTXIR_MODE=auto`/`off` 两路）、**PtxContextAdapter** 契约（`fromEmbedded(stmts, manifest) → PtxContext` 必须填充 `kernelName`/`kernelParams`/`ptxAddressSize`）。
+- `ptxir-cubin-tools`: ptxir_extract / ptxir_embed CLI 工具契约。定义 CLI 参数（`--in-exe`/`--in-cubin` 二选一 + `--in-ptxir` + `--out` + `--kernel-name` 必填 / `--out-cubin` / `--out-ptxir`）、退出码、字节级等价性保证（提取后纯 cubin 与原始 cubin hash 相等）、`--help` 与 `--version` 输出格式。
 
 ### Modified Capabilities
 
@@ -35,13 +40,15 @@ _None._ ANTLR 解析路径、NVIDIA cubin 格式前缀、GPU registry / WarpCont
 ## Impact
 
 - **受影响代码**：
-  - `src/cudart/cudart_sim.cpp` — `__cudaRegisterFatBinary` 增加 dispatch 分支（**ABI 不变**，仅新增分支）
-  - `src/cudart/CMakeLists.txt` — 注册新子目标
-  - `tools/CMakeLists.txt` — 注册两个工具目标
-  - `configs/` — 新增 `PTXIR_MODE` INI 字段
-- **新增依赖**：无（PTXIRLoader 复用 ADR-0023 Section TOC 与 PTXIRHeader 格式）
-- **ABI 影响**：**无破坏性变更**。`__cudaRegisterFatBinary` 签名不变，新 dispatch 分支由 `config::isPTXIRModeEnabled()` 控制（默认 OFF 完全等价现状）
-- **治理约束**：`PTXIR_EMBED_MAGIC` 字面值变更必须触发 ADR-0024 重新审视（不可在 proposal 层面单方面修改 — governance check）
+  - `src/cudart/cudart_sim.cpp` — `__cudaRegisterFatBinary` 在 `readlink` + `cuobjdump` 之间增加 dispatch（**ABI 不变**：4 参签名 `void** __cudaRegisterFatBinary(void**, void*, unsigned long long, unsigned int)` 保持，仅新增分支）
+  - `configs/config.ini` 等 — 新增 `[ptxir]` 段
+  - `roadmap.md` — 新增 Phase 12.2
+- **新增依赖**：无（PTXIRLoader 复用 ADR-0023 Section TOC + PTXIRHeader 格式）
+- **ABI 影响**：**无破坏性变更**。`__cudaRegisterFatBinary` 4 参签名不变，新 dispatch 分支由 `config::isPTXIRModeEnabled()` 控制（默认 OFF 完全等价现状）
+- **治理约束**：`PTXIR_EMBED_MAGIC` 字面值变更触发 ADR-0024 §合规检查 #6（已 2026-08-07 通过 amendment 解决）
+- **byte source 架构决策**：dispatch 读取 `/proc/self/exe` 末尾 12 字节（非 `fat_bin` 参数 — 该参数在当前架构中为 dead parameter，仅 debug print @ cudart_sim.cpp:372）
 - **文档影响**：
-  - `docs/adr/ADR-0024-ptxir-embedded-cubin-format.md` §合规检查 6 项全部通过
+  - `docs/adr/ADR-0024-ptxir-cubin-embed-extension.md` v1.1 amendment（已 2026-08-07 提交）
   - `tools/README.md` 新增（说明用法与限制）
+  - `roadmap.md` 新增 Phase 12.2
+  - 根 `README.md` §已实现功能 / §已知限制 同步更新（参考 ptx-lessons-learned §8）

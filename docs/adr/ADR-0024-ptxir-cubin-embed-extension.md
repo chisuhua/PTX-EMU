@@ -169,19 +169,29 @@ PTX-EMU 当前 fake libcudart.so 提供两条独立的执行路径：
 #### 1. PTXIR Section 嵌入格式
 
 ```cpp
-// PTXIR-Embedded CUBIN 文件结构
+// PTXIR-Embedded CUBIN 文件结构（v1.1 — footer layout, ZIP-EOCD style）
+// 关键变更: ptxir_section_size 从 section 之前移至 section 之后 + magic 之前，
+// 实现真正的 O(1) tail 检测（loader 仅读末尾 12 字节即可定位 section 边界），
+// 无需解析 ELF 或扫描 cubin 内部。详见 §更新记录 (2026-08-07)。
 struct EmbeddedCubinLayout {
     uint8_t  cubin_prefix[N];        // NVIDIA cubin (cuModuleLoadData 可见)
-    uint32_t ptxir_section_size;     // sizeof(.ptxir.section)
     uint8_t  ptxir_section[M];       // .ptxir.section = PTXIRHeader + TOC + sections
-    uint8_t  ptxir_magic[8];         // = "PTXIR\x00\x01\x00" (8 bytes, 唯一标识)
+    uint32_t ptxir_section_size_le;  // sizeof(.ptxir.section), little-endian
+    uint8_t  ptxir_magic[8];         // = "PTXEMB\x01\x00" (8 bytes, 唯一标识)
 };
 
 // 嵌入段末尾 magic 后缀的目的:
-// 1. loader 可以 O(1) 检测末尾，避免扫描整个 cubin
+// 1. loader 可以 O(1) 检测末尾，仅读取末尾 12 字节 (8 magic + 4 size) 即可定位 section
 // 2. 校验完整，避免 cubin 末尾恰好匹配部分前缀的伪阳性
-// 3. 8 字节 magic 与 NVIDIA 已用 magic 不冲突
-constexpr uint8_t PTXIR_EMBED_MAGIC[8] = {'P','T','X','I','R','\x00','\x01','\x00'};
+// 3. 8 字节 magic "PTXEMB" 与 NVIDIA 已用 magic + PTXIR 文件 magic (4 字节 "PTXI") 不冲突
+// 4. 魔数字面值变更触发 §合规检查 #6 — 任何修改必须先 amend ADR-0024
+constexpr uint8_t PTXIR_EMBED_MAGIC[8] = {'P','T','X','E','M','B','\x01','\x00'};
+
+// Loader 检测算法 (O(1)):
+// 1. 检查末尾 8 字节 == PTXIR_EMBED_MAGIC
+// 2. 读取 end-12 处的 uint32_le ptxir_section_size_le
+// 3. section 起始 = end - 12 - ptxir_section_size_le
+// 4. cubin_prefix 起始 = 0, 长度 = section 起始
 ```
 
 #### 2. Loader 决策逻辑
@@ -210,17 +220,38 @@ public:
 
 // src/cudart/cudart_sim.cpp 修改点:
 // 在 __cudaRegisterFatBinary 入口增加 dispatch
-extern "C" void __cudaRegisterFatBinary(void* fatCubin) {
-    auto data = reinterpret_cast<uint8_t*>(fatCubin);
+// 关键变更 (2026-08-07): PTX-EMU 当前架构不接收 cubin 字节，fat_bin 参数未被解引用
+// （仅 debug print, cudart_sim.cpp:372）。实际 payload 来自 /proc/self/exe 通过 cuobjdump
+// 提取的 PTX 文本。因此 embed 目标必须选 executable-tail overlay（详见 §影响范围）：
+//  - ptxir_embed --in-exe  将 PTXIR 追加到最终链接的可执行文件末尾
+//  - __cudaRegisterFatBinary 在 readlink("/proc/self/exe") 后立即读取 exe 末尾 12 字节
+extern "C" void **__cudaRegisterFatBinary(void **fatCubinHandle, void *fat_bin,
+                                         unsigned long long fat_bin_size,
+                                         unsigned int version) {
+    // 1. 现有路径: readlink + cuobjdump 提取 PTX
+    char self_exe_path[1025] = "";
+    long size = readlink("/proc/self/exe", self_exe_path, 1024);
+    self_exe_path[size] = '\0';
 
-    if (PTXIRLoader::hasEmbeddedPTXIR(data, size) &&
-        config::isPTXIRModeEnabled()) {  // env PTXIR_MODE / config 字段
-        // 提取 PTXIR → 反序列化 → 注册到 GPU registry
-        // 注意: 仍走现有 gpu.registerFatBinary() 主路径
-    } else {
-        // 现有路径不变
-        gpu.registerFatBinary(fatCubin);
+    // 2. 新增 dispatch: 检查 exe 末尾是否含 PTXIR_EMBED_MAGIC
+    if (config::isPTXIRModeEnabled()) {
+        std::ifstream exe(self_exe_path, std::ios::binary | std::ios::ate);
+        auto exe_size = exe.tellg();
+        exe.seekg(exe_size - 8);
+        char magic_buf[8];
+        exe.read(magic_buf, 8);
+        if (memcmp(magic_buf, PTXIR_EMBED_MAGIC, 8) == 0) {
+            // 3. 检测到嵌入段 → 提取 PTXIR → 反序列化 → PtxContextAdapter → set_ptx_context
+            auto section = PTXIRLoader::extractPTXIRFromExeTail(exe_path, exe_size);
+            auto stmts = PTXIRLoader::deserializeForCubin(section);
+            auto ctx = PtxContextAdapter::fromEmbedded(stmts, /*manifest*/);
+            g_ptx_interpreter->set_ptx_context(*ctx);
+            return fatCubinHandle;
+        }
     }
+    // 4. 现有路径不变: cuobjdump + ANTLR parse → set_ptx_context
+    std::string ptx_code = extract_ptx_with_cuobjdump(self_exe_path);
+    // ... (existing path)
 }
 ```
 
@@ -255,20 +286,31 @@ int main(int argc, char** argv) {
 
 ```cpp
 // tools/ptxir_embed.cpp (与 extract 对偶)
-// CLI: ptxir_embed <input.cubin> <input.ptxir> [--out <X>]
-// 读取已有 cubin 和 .ptxir, 拼成 embedding
+// CLI: ptxir_embed --in-exe <exe> --in-ptxir <ptxir> [--kernel-name <name>] --out <X>
+// CLI: ptxir_embed --in-cubin <cubin> --in-ptxir <ptxir> [--out <X>]  // NVIDIA-compat
+// 必填: --kernel-name (manifest source, 见 §影响范围 PtxContextAdapter)
+// 读取已有 exe/cubin 和 .ptxir, 拼成 embedding (footer layout)
 
 int main(int argc, char** argv) {
-    auto cubin = read_file(cubin_path);
-    auto ptxir = read_file(ptxir_path);
+    auto prefix = read_file(args.in_exe_or_cubin);
+    auto ptxir = read_file(args.in_ptxir);
+    EmbeddedKernelManifest manifest;
+    manifest.kernelName = args.kernel_name;  // 必填
+    manifest.ptxAddressSize = 64;
 
-    EmbeddedCubinLayout layout;
-    layout.cubin_prefix = cubin;
-    layout.ptxir_section_size = ptxir.size();
-    layout.ptxir_section = ptxir;
-    layout.ptxir_magic = PTXIR_EMBED_MAGIC;
+    // 序列化 manifest 到 section header (PTXIR extend-only 区域)
+    auto section = serialize_ptxir_with_manifest(ptxir, manifest);
 
-    write_file(out_path, layout);
+    // 拼装 footer layout (zip-EOCD 风格)
+    std::vector<uint8_t> out(prefix.size() + section.size() + 4 + 8);
+    std::memcpy(out.data(),                          prefix.data(),    prefix.size());
+    std::memcpy(out.data() + prefix.size(),          section.data(),   section.size());
+    uint32_t size_le = htole32(static_cast<uint32_t>(section.size()));
+    std::memcpy(out.data() + prefix.size() + section.size(), &size_le, 4);
+    std::memcpy(out.data() + prefix.size() + section.size() + 4,
+                PTXIR_EMBED_MAGIC, 8);
+
+    write_file(args.out, out);
 }
 ```
 
@@ -293,24 +335,34 @@ int main(int argc, char** argv) {
 
 | 组件 | 影响类型 | 说明 |
 |------|---------|------|
-| `src/cudart/cudart_sim.cpp` | **修改** | `__cudaRegisterFatBinary` 增加 PTXIR 检测分支（30 行） |
-| `src/cudart/cudart_sim.cpp` | **修改** | 新增 `config::isPTXIRModeEnabled()` 函数（10 行） |
-| `src/cudart/CMakeLists.txt` | **修改** | 添加 `ptxir_loader.cpp` 子目标 |
-| `src/cudart/ptxir_loader.{h,cpp}` | **新增** | PTXIRLoader 类（检测/提取/反序列化，约 250 行） |
-| `tools/ptxir_extract.cpp` | **新增** | CLI 提取工具（约 80 行） |
-| `tools/ptxir_embed.cpp` | **新增** | CLI 嵌入工具（约 60 行） |
-| `tools/CMakeLists.txt` | **修改** | 注册两个工具目标 |
+| `src/cudart/cudart_sim.cpp` | **修改** | `__cudaRegisterFatBinary` 在 readlink + cuobjdump 之间增加 PTXIR 检测分支（30 行）。**byte source** = `/proc/self/exe` 末尾（fat_bin 参数不解引用，cudart_sim.cpp:372 仅为 debug print） |
+| `src/cudart/ptxir_config.{h,cpp}` | **新增** | `config::isPTXIRModeEnabled()` 函数（10 行）+ `[ptxir]` INI section 加载 + env-var 静态缓存（参照 `PTX_EMU_GPU_CONFIG` 模式 cudart_sim.cpp:277-281） |
+| `src/cudart/ptxir_loader.{h,cpp}` | **新增** | PTXIRLoader 类（4 个 public static 方法: 检测/提取/反序列化，约 250 行） |
+| `src/cudart/ptx_context_adapter.{h,cpp}` | **新增** | PtxContextAdapter::fromEmbedded()（StatementContext[] + EmbeddedKernelManifest → PtxContext）+ EmbeddedKernelManifest 结构 |
 | `include/cudart/ptxir_loader.h` | **新增** | PTXIRLoader 公开 API |
-| ADR-0023 (PTXIR 格式) | **依赖** | 复用 Section TOC + PTXIRHeader 格式 |
+| `include/cudart/ptx_context_adapter.h` | **新增** | PtxContextAdapter + EmbeddedKernelManifest 公开 API |
+| `include/cudart/ptxir_config.h` | **新增** | config::isPTXIRModeEnabled() 公开 API |
+| `configs/config.ini` 等 | **修改** | 新增 `[ptxir] mode=off` 段（默认值 = off 保证行为字节级兼容现状） |
+| `tools/` 目录 | **新增** | 整个目录当前不存在；需新建 `tools/CMakeLists.txt` 注册 ptxir_embed / ptxir_extract 两个工具目标，并在根 `CMakeLists.txt` 添加 `add_subdirectory(tools)` |
+| `tools/ptxir_embed.cpp` | **新增** | CLI 嵌入工具（支持 `--in-exe` 与 `--in-cubin` 两种 target，约 80 行） |
+| `tools/ptxir_extract.cpp` | **新增** | CLI 提取工具（约 80 行） |
+| `tests/integration/cudart/CMakeLists.txt` | **新增** | 新建 integration 测试目录（当前不存在） |
+| `tests/unit/cudart/test_ptxir_config.cpp` | **新增** | config::isPTXIRModeEnabled 单元测试（env var + INI 双源） |
+| `tests/unit/cudart/test_ptxir_loader.cpp` | **新增** | PTXIRLoader 4 方法单元测试（≥ 90% 覆盖率） |
+| `tests/unit/cudart/test_ptx_context_adapter.cpp` | **新增** | PtxContextAdapter 单元测试（含 kernelName/params/addressSize 字段填充验证） |
+| `tests/integration/test_ptxir_cubin_loader.cpp` | **新增** | `__cudaRegisterFatBinary` dispatch 集成测试（≥ 5 场景） |
+| `tests/e2e/test_ptxir_cubin_embed.cu` | **新增** | nvcc + ptxir_embed + PTX-EMU 加载 + ptxir_extract → cuobjdump 双向验证（≥ 5 真实 kernel） |
+| ADR-0023 (PTXIR 格式) | **依赖** | 复用 Section TOC + PTXIRHeader 格式；本 ADR 在 embed section header 中追加 EmbeddedKernelManifest（Extend-Only 兼容） |
 | ADR-0010 (Fake CUDA Runtime) | **依赖** | 修改 `__cudaRegisterFatBinary` 入口 |
 | ADR-0011 (Pipeline 架构) | **依赖** | 复用 PTXIR 反序列化路径 |
+| `roadmap.md` | **修改** | 新增 Phase 12.2 (PTXIR Cubin 集成) 条目（当前缺失，详情见 §更新记录） |
 
 ### 前置依赖
 
 - **ADR-0023** 必须为 Accepted（✅ 已于 2026-07-30 Accepted）
 - **ADR-0010** 必须为 Active（✅ 当前 Active）
 - **`ptxir_serialization.cpp` 已实现**（✅ `src/ptxir/ptxir_serialization.cpp` 存在）
-- **`config::isPTXIRModeEnabled()` 全局配置函数**：依赖 configs/ 的全局 config 机制（✅ 已存在）
+- **`config::isPTXIRModeEnabled()` 全局配置函数**：当前依赖 configs/ 的全局 config 机制（`inipp::Ini<char>` 已存在 @ cudart_sim.cpp:247）。**2026-08-07 修正**：原描述"已存在"为误 — `config::` 命名空间当前不存在，需新建 `src/cudart/ptxir_config.{h,cpp}` 适配层，复用 `inipp` 解析 + `PTX_EMU_GPU_CONFIG` env-var-overrides-INI 模式 (cudart_sim.cpp:277-281)
 
 ### 后续依赖
 
@@ -340,7 +392,7 @@ int main(int argc, char** argv) {
 
 | 风险 | 概率 | 影响 | 缓解措施 |
 |------|------|------|---------|
-| NVIDIA driver 不识别 magic 后缀并报错 | 低 | 高 | 用真实 cubin + 标准 driver 跑 e2e 测试；magic 选择 `.ptxir\x00\x01\x00` (尾部非 NVIDIA 已知 magic) |
+| NVIDIA driver 不识别 magic 后缀并报错 | 低 | 高 | 用真实 cubin + 标准 driver 跑 e2e 测试；magic 选择 `PTXEMB\x01\x00`（尾部非 NVIDIA 已知 magic） |
 | 嵌入段位置错误导致 cuModuleLoadData 失败 | 中 | 高 | 通过 `ptxir_extract → cuobjdump` 双向测试 |
 | PTXIR 反序列化与嵌入 cubin 携带的 cubin 不一致 | 中 | 中 | 在 Section TOC 中显式嵌入 `cubin_hash`，loader 校验 |
 | PTXIR section v1 → v2 兼容性破坏 | 低 | 中 | Section TOC header 已含 `version` 字段 (ADR-0023 Decision 6) |
@@ -364,6 +416,7 @@ int main(int argc, char** argv) {
 | 日期 | 更新内容 | 作者 |
 |------|---------|------|
 | 2026-08-06 | 初始版本（架构决策与 5 项 factor + 4 方案对比） | PTX-EMU Architecture Team |
+| 2026-08-07 | **Layout reorder (size-after-section, ZIP-EOCD style) + Magic literal 变更**：`PTXIR_EMBED_MAGIC` 从 `{'P','T','X','I','R','\x00','\x01','\x00'}` 改为 `{'P','T','X','E','M','B','\x01','\x00'}`；`ptxir_section_size` 从 section 之前移至 section 之后 + magic 之前；loader 检测改为真 O(1)（仅读末尾 12 字节）；§影响范围 扩充：新增 `PtxContextAdapter` / `EmbeddedKernelManifest` / `ptxir_config.cpp` / `tools/` 目录；§前置依赖 澄清 `config::` 命名空间实际不存在需新建；触发 §合规检查 #6 magic 变更 governance check。Oracle 调研结论（PTX-EMU 当前架构不接收 cubin 字节，fat_bin 为 dead parameter） | PTX-EMU Architecture Team (Metis audit + Oracle investigation) |
 
 ---
 

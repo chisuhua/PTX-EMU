@@ -1,0 +1,26 @@
+{
+  "items": [
+    {
+      "id": "implement-ptxir-cubin-embed-extension",
+      "type": "change",
+      "valid": true,
+      "issues": [],
+      "durationMs": 12
+    }
+  ],
+  "summary": {
+    "totals": {
+      "items": 1,
+      "passed": 1,
+      "failed": 0
+    },
+    "byType": {
+      "change": {
+        "items": 1,
+        "passed": 1,
+        "failed": 0
+      }
+    }
+  },
+  "version": "1.0"
+}
