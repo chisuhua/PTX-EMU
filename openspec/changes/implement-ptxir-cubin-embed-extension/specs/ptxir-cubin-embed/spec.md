@@ -4,13 +4,14 @@
 
 ### Requirement: PTXIR-Embedded CUBIN/EXE binary format (footer layout v1.1)
 
-The system SHALL define an append-only PTXIR-Embedded binary format with footer-layout (ZIP-EOCD style). The format SHALL preserve the original cubin/exe prefix verbatim and append a PTXIR section, a 4-byte `ptxir_section_size_le` (little-endian), and an 8-byte `PTXIR_EMBED_MAGIC` suffix. The format SHALL reuse the ADR-0023 Section TOC and PTXIRHeader structures with an additional `cubin_hash` field.
+The system SHALL define an append-only PTXIR-Embedded binary format with footer-layout (ZIP-EOCD style). The format SHALL preserve the original cubin/exe prefix verbatim and append a PTXIR section, a 4-byte `ptxir_section_size_le` (little-endian), and an 8-byte `PTXIR_EMBED_MAGIC` suffix. The format SHALL reuse the ADR-0023 Section TOC and PTXIRHeader structures with an additional `PtxirSectionType::MANIFEST = 6` section (Extend-Only compatible per ADR-0023 Decision 6).
 
 #### Scenario: Embedded binary byte layout
 
 - **WHEN** a binary (cubin or final executable) is processed by `ptxir_embed`
 - **THEN** the output is `prefix_bytes || ptxir_section_bytes || uint32_le ptxir_section_size || PTXIR_EMBED_MAGIC_8bytes`
-- **AND** the original prefix is byte-identical to the input (verified by `cubin_hash` SHA-256 match)
+- **AND** `ptxir_section_bytes` contains PTXIRHeader + Section TOC + standard sections (REGDECL/TYPE/KERNEL/CONSTANT/STRING_TABLE) + a new MANIFEST section (type=6) holding `cubin_hash[32]`, `kernel_name[]`, `ptx_address_size`, `params[]`
+- **AND** the original prefix is byte-identical to the input (verified by `cubin_hash` SHA-256 match against MANIFEST section)
 - **AND** `PTXIR_EMBED_MAGIC` equals `{'P','T','X','E','M','B','\x01','\x00'}` (8 bytes)
 
 #### Scenario: O(1) magic suffix detection
@@ -32,6 +33,13 @@ The system SHALL define an append-only PTXIR-Embedded binary format with footer-
 - **THEN** the change MUST trigger an amendment to ADR-0024 §更新记录 (governance check)
 - **AND** MUST NOT be merged via a single OpenSpec change without ADR-0024 update
 - **NOTE**: The 2026-08-07 amendment changed magic from `{'P','T','X','I','R','\x00','\x01','\x00'}` to `{'P','T','X','E','M','B','\x01','\x00'}` (governance check passed)
+
+#### Scenario: MANIFEST section (type=6) Extend-Only backward compatibility
+
+- **WHEN** an old PTXIR reader (pre-MANIFEST) consumes an embedded binary with section type 6
+- **THEN** the reader SHALL skip the MANIFEST section (Extend-Only protocol per ADR-0023 Decision 6)
+- **AND** the reader SHALL still correctly process KERNEL/REGDECL/TYPE/CONSTANT/STRING_TABLE sections
+- **NOTE**: New readers SHALL additionally consume MANIFEST for kernelName/params/ptxAddressSize lookup; old readers fall back to requiring these via separate channels (out of scope for v1)
 
 ### Requirement: PTXIRLoader API contract
 

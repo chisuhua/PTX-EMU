@@ -101,7 +101,7 @@
 
 ### 1.8 Commit 1
 
-- [ ] 1.8.1 `git add include/cudart/ptxir_loader.h include/cudart/ptx_context_adapter.h include/cudart/ptxir_config.h src/cudart/ptxir_loader.cpp src/cudart/ptx_context_adapter.cpp src/cudart/ptxir_config.cpp src/cudart/cudart_sim.cpp configs/*.ini tests/unit/cudart/test_ptxir_loader.cpp tests/unit/cudart/test_ptx_context_adapter.cpp tests/unit/cudart/test_ptxir_config.cpp`
+- [ ] 1.8.1 `git add openspec/changes/implement-ptxir-cubin-embed-extension/ include/cudart/ptxir_loader.h include/cudart/ptx_context_adapter.h include/cudart/ptxir_config.h src/cudart/ptxir_loader.cpp src/cudart/ptx_context_adapter.cpp src/cudart/ptxir_config.cpp src/cudart/cudart_sim.cpp configs/*.ini tests/unit/cudart/test_ptxir_loader.cpp tests/unit/cudart/test_ptx_context_adapter.cpp tests/unit/cudart/test_ptxir_config.cpp`（NEW-5: per ptx-lessons-learned §6 — 显式 stage openspec artifacts 以保证后续 spec/design/tasks 修订被跟踪）
 - [ ] 1.8.2 `git commit -m "feat(cudart): PTXIRLoader + PtxContextAdapter + config + unit tests (default PTXIR_MODE=off)"`（独立可合并，无运行时影响）
 
 ## 2. Phase 12.2 Commit 2 — cudart dispatch 集成 + Integration 测试
@@ -111,6 +111,7 @@
 
 ### 2.1 __cudaRegisterFatBinary dispatch — Integration 测试
 
+- [ ] 2.1.0 **NEW-3 fix**：在根 `tests/CMakeLists.txt` 添加 `add_subdirectory(integration/cudart)`（与现有 `add_subdirectory(integration/memory)` 等并列）— **必须先于此小节任何 task 完成**
 - [ ] 2.1.1 创建 `tests/integration/cudart/` 目录 + `CMakeLists.txt`（新集成测试子目录）
 - [ ] 2.1.2 创建 `tests/integration/cudart/test_ptxir_cubin_loader.cpp` 骨架
 - [ ] 2.1.3 失败测试 `dispatch_embeddedExe_PTXIR_MODE_auto_loadsViaPTXIR`（需用 self_exe tail overlay fixture）
@@ -127,17 +128,20 @@
 - [ ] 2.2.1 修改 `src/cudart/cudart_sim.cpp`：`__cudaRegisterFatBinary` 在 `readlink("/proc/self/exe")` (line 377) 之后立即增加 dispatch
 - [ ] 2.2.2 在 dispatch 中检查 `config::isPTXIRModeEnabled()`，OFF 时直接走现有路径
 - [ ] 2.2.3 调用 `PTXIRLoader::hasEmbeddedPTXIR()` 检测嵌入段（读取 `/proc/self/exe` 末尾 12 字节）
-- [ ] 2.2.4 true → 调用 `extractPTXIR()` + `deserializeForCubin()` + 构造 `EmbeddedKernelManifest` (kernelName 来自 __cudaRegisterFunction 调用捕获) + `PtxContextAdapter::fromEmbedded()` → `g_ptx_interpreter->set_ptx_context(*ctx)`
+- [ ] 2.2.4 true → 调用 `extractPTXIR()` + `deserializeForCubin()` + 构造 `EmbeddedKernelManifest` (kernelName 来自 PTXIR section 中的 MANIFEST 段，由 CLI `--kernel-name` flag 在 ptxir_embed 阶段写入 — 详见 §3.1.1) + `PtxContextAdapter::fromEmbedded()` → `g_ptx_interpreter->set_ptx_context(*ctx)`
 - [ ] 2.2.5 false / 任意失败 → 走现有标准 cubin 路径（优雅降级，无 log spam）
 - [ ] 2.2.6 **MUST**：dispatch 不修改 `__cudaRegisterFatBinary` 4 参签名（cudart_sim.cpp:354），不修改 fatbin 句柄，不解引用 `fat_bin`
 - [ ] 2.2.7 **MUST**：`PTXIR_MODE=off` 时 dispatch 调用成本 O(1)（Meyers singleton 静态缓存，遵循 §1.6.7）
 - [ ] 2.2.8 **MUST**：byte source = `/proc/self/exe` 末尾（非 `fat_bin`）
 - [ ] 2.2.9 验证 6 个 integration 测试通过
-- [ ] 2.2.10 ABI stability test：`nm -D lib/libcudart.so | grep cudaRegisterFatBinary` — 前后 symbol size delta == 0（验证"ABI 不变"承诺）
+- [ ] 2.2.10 ABI stability test (NEW-4 修正)：
+  - `nm -D lib/libcudart.so | grep cudaRegisterFatBinary` — 前后 unmangled symbol 名 `cudaRegisterFatBinary` 必须 unchanged（extern "C" linkage preserved）
+  - 跑一个 nvcc 编译的 CUDA program 调用 `__cudaRegisterFatBinary(...)` — 必须 link 成功无 undefined reference
+  - (rationale: `nm -D` 的 "size" 字段对 extern "C" 函数不直接有意义；真正 ABI 契约是 mangled/unmangled name 一致 + 调用约定匹配)
 
 ### 2.3 Commit 2
 
-- [ ] 2.3.1 `git add src/cudart/cudart_sim.cpp tests/integration/cudart/CMakeLists.txt tests/integration/cudart/test_ptxir_cubin_loader.cpp`
+- [ ] 2.3.1 `git add openspec/changes/implement-ptxir-cubin-embed-extension/ src/cudart/cudart_sim.cpp tests/integration/cudart/CMakeLists.txt tests/integration/cudart/test_ptxir_cubin_loader.cpp tests/CMakeLists.txt`
 - [ ] 2.3.2 `git commit -m "feat(cudart): wire PTXIRLoader dispatch into __cudaRegisterFatBinary (PTXIR_MODE=auto only, byte source = /proc/self/exe)"`（默认 OFF，运行时行为不变）
 
 ## 3. Phase 12.2 Commit 3 — tools/ CLI + E2E 测试
@@ -199,7 +203,7 @@
 
 ### 3.5 Commit 3
 
-- [ ] 3.5.1 `git add tools/ptxir_embed.cpp tools/ptxir_extract.cpp tools/CMakeLists.txt tools/README.md CMakeLists.txt tests/e2e/test_ptxir_cubin_embed.cu`
+- [ ] 3.5.1 `git add openspec/changes/implement-ptxir-cubin-embed-extension/ tools/ptxir_embed.cpp tools/ptxir_extract.cpp tools/CMakeLists.txt tools/README.md CMakeLists.txt tests/e2e/test_ptxir_cubin_embed.cu`
 - [ ] 3.5.2 `git commit -m "feat(tools): ptxir_embed/extract CLI + e2e tests with nvcc/cuobjdump verification"`
 
 ## 4. Phase 12.2 Commit 4 — 文档同步
@@ -208,7 +212,7 @@
 - [ ] 4.2 修改根 `README.md` §已实现功能：添加 PTXIR-Embedded CUBIN 支持
 - [ ] 4.3 修改根 `README.md` §已知限制：移除"PTXIR 仅在内部 pipeline 中可用"项
 - [ ] 4.4 更新 `docs/adr/README.md` 索引：ADR-0024 v1.1 更新条目
-- [ ] 4.5 `git commit -m "docs: Phase 12.2 (PTXIR Cubin 集成) roadmap + README sync"`
+- [ ] 4.5 `git add openspec/changes/implement-ptxir-cubin-embed-extension/ roadmap.md README.md docs/adr/README.md` && `git commit -m "docs: Phase 12.2 (PTXIR Cubin 集成) roadmap + README sync"`
 
 ## 5. ADR-0024 合规检查（最终）
 

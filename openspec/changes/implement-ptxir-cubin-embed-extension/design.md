@@ -115,18 +115,25 @@ Loader O(1) 检测算法：
 - ❌ 单例模式：增加生命周期管理成本，cudart 入口无状态需求
 - ❌ 实例方法：测试 setup 成本增加，无状态需求场景冗余
 
-### 决策 4：复用 ADR-0023 Section TOC + PTXIRHeader（不重新发明格式）
+### 决策 4：复用 ADR-0023 Section TOC + 扩展 PTXIR Section Type（NEW-2 修复）
 
-**选择**：嵌入段使用 ADR-0023 已定义的 Section TOC 格式，PTXIRHeader 在 Section TOC 中追加 `cubin_hash` 字段 + `EmbeddedKernelManifest` 扩展块（Extend-Only 兼容）。
+**选择**：嵌入段使用 ADR-0023 已定义的 Section TOC 格式，**新增** `PtxirSectionType::MANIFEST = 6`（Extend-Only 兼容 — ADR-0023 决策 6 允许新 section type，旧 reader 跳过未知 section）。MANIFEST section 包含：
+- `cubin_hash[32]` — SHA-256 of the embedded prefix (loader validates integrity)
+- `kernel_name[]` — null-terminated UTF-8 kernel name (manifest source for PtxContextAdapter::kernelName)
+- `ptx_address_size` — u8 (32 or 64; default 64)
+- `params[]` — variable-length list of `{size:u16, kind:u8, name[]}` for PtxContextAdapter::params
 
 **理由**：
-- ADR-0023 7 决策已通过 sibling 决策固化（ADR-0024 引用）
-- PTXIR 反序列化逻辑无需修改（仅添加 `cubin_hash` 字段解析）
+- ADR-0023 7 决策 Extend-Only 约束：reader 必须先读 `header_size` (PtxirHeader byte 20-23) 再按 TOC 消费 sections；新 section type 6 由旧 reader 跳过 → 向后兼容
+- PTXIR 反序列化路径无需修改（`deserialize_statements` 只关心 KERNEL section）
 - 工具链（`ptx-serializer` 等）无需适配
+- 单一权威位置（MANIFEST section）便于 reader 检测完整性
 
 **备选**：
 - ❌ 自定义嵌入格式：违反 ADR-0023 复用约束
-- ❌ 修改 Section TOC v1 → v2：超出本 change 范围
+- ❌ 修改 PtxirHeader 固定 24 字节布局：破坏旧 reader
+- ❌ Pre-pend manifest 在 PTXIRHeader 之前：reader 期望 `magic[4]='PTXI'` @ offset 0
+- ❌ 嵌入在 KERNEL section 内部：污染 section 语义
 
 ### 决策 5：`config::isPTXIRModeEnabled()` 必须实现 + env-var-overrides-INI 优先级
 
