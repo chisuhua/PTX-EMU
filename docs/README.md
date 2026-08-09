@@ -13,8 +13,8 @@
 
 | 目录 | 文档数 | 用途 |
 |------|--------|------|
-| [`adr/`](./adr/) | 22 | 架构决策记录（ADR-0001~0021，0017 缺失）— 重大设计选择的上下文与决策 |
-| [`architecture/`](./architecture/) | 4 | 系统架构设计（SIMT v2、GPGPU-SIM 对比、sm_90/100） |
+| [`adr/`](./adr/) | 26 | 架构决策记录（ADR-0001~0027，ADR-0017 缺失）— 重大设计选择的上下文与决策 |
+| [`architecture/`](./architecture/) | 6 | 系统架构设计与分析（SIMT v2、GPGPU-SIM、sm_90/100、PTXIR 工具链与序列化差距分析） |
 | [`technical_design/`](./technical_design/) | 2 | 详细技术设计（barrier module、implicit reconvergence） |
 
 ### 2. 开发与测试
@@ -194,5 +194,5 @@ ctest -R unit_barrier_module -V
 
 ---
 
-**最后更新**: 2026-07-03 (C4 docs-readme-rebuild Fix #1)
+**最后更新**: 2026-08-08 (PTXIR toolchain documentation revision)
 **维护者**: PTX-EMU Architecture Team

@@ -1,14 +1,17 @@
 # 架构文档目录
 
-本目录包含 PTX-EMU SIMT v2.0 的核心架构设计文档。
+本目录包含 PTX-EMU 的 SIMT、GPU 架构分析，以及 PTXIR 工具链与序列化设计文档。
 
 ## 📁 文档列表
 
 | 文档 | 行数 | 状态 | 用途 |
 |------|------|------|------|
 | [SIMT-ARCHITECTURE-V2.md](./SIMT-ARCHITECTURE-V2.md) | 1134 | ✅ 最新 | SIMT v2.0 完整架构设计 |
-| [sm90_100.md](./sm90_100.md) | ~300 | ✅ 新增 | Hopper/Blackwell 分歧路径执行顺序详解 |
-| [CFG-DESIGN.md](./CFG-DESIGN.md) | TBD | ⏳ 待创建 | CFG 分析详细设计 |
+| [sm90_100.md](./sm90_100.md) | ~300 | ✅ 维护中 | Hopper/Blackwell 分歧路径执行顺序详解 |
+| [GPGPU-SIM-SIMT-ANALYSIS.md](./GPGPU-SIM-SIMT-ANALYSIS.md) | 717 | ✅ 参考 | GPGPU-Sim SIMT 实现详细分析 |
+| [ptxir-toolchain-stack.md](./ptxir-toolchain-stack.md) | — | 📝 Proposed | PTXIR 工具链组件、构建与运行时数据流 |
+| [ptxir-serialization-gaps-gap-analysis.md](./ptxir-serialization-gaps-gap-analysis.md) | — | ✅ 正式 | PTXIR 序列化目标与当前实现的差距分析 |
+| CFG-DESIGN.md | — | ⏳ 待创建 | CFG 分析详细设计（文件尚不存在） |
 
 ## 🏗️ 架构版本
 
@@ -19,21 +22,18 @@
 
 ## 📖 阅读顺序
 
-1. **入门**: SIMT-ARCHITECTURE-V2.md 执行摘要
-2. **深入**: SIMT-ARCHITECTURE-V2.md 架构设计章节
-3. **Hopper/Blackwell 专篇**: sm90_100.md (分歧路径执行顺序)
-4. **参考**: CFG-DESIGN.md (待创建)
+1. **入门**: [SIMT-ARCHITECTURE-V2.md](./SIMT-ARCHITECTURE-V2.md) 执行摘要
+2. **执行专题**: [sm90_100.md](./sm90_100.md) 与 [GPGPU-SIM-SIMT-ANALYSIS.md](./GPGPU-SIM-SIMT-ANALYSIS.md)
+3. **PTXIR 背景**: [ptxir-serialization-gaps-gap-analysis.md](./ptxir-serialization-gaps-gap-analysis.md)
+4. **PTXIR 工具链**: [ptxir-toolchain-stack.md](./ptxir-toolchain-stack.md)
+5. **参考**: CFG-DESIGN.md（文件尚不存在，待创建）
 
 ---
 
-**维护**: 只保留最新架构文档，旧版本归档到 `../archive/`  
-**最后更新**: 2026-05-25
+**维护**: 架构文档保留当前设计、分析与差距文档，历史版本归档到 `../archive/`
+**最后更新**: 2026-08-08
 
 ## 📊 GPGPU-Sim Analysis
-
-| 文档 | 行数 | 说明 |
-|------|------|------|
-| [GPGPU-SIM-SIMT-ANALYSIS.md](./GPGPU-SIM-SIMT-ANALYSIS.md) | 717 | GPGPU-Sim SIMT 实现详细分析 |
 
 ### 分析内容
 
