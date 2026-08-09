@@ -211,7 +211,7 @@ int ptxemu_module_version(void);
 | 不缓存 PtxContext | 不预存 `unique_ptr<PtxContext>`；每次 `ptxemu_image_execute` 重新调 `PTXIRLoader::deserializeForCubin(image_bytes_)` + `PtxContextAdapter::fromEmbedded()` |
 | Deserialize 成本 | PTXIR 二进制解码 O(bytes)，不是 ANTLR parse；Oracle 建议对 `cute_rmsnorm` benchmark < 10% 执行时间 |
 | 副作用 | Image 真正不可变（每次 launch 都是 fresh `PtxContext`），符合"image memory"心智模型 |
-| 多 launch 串行 | 同一 handle 的并发 launch 由 executor mutex 串行化（D6 SINGLE-LAUNCH 假设） |
+| 多 launch 串行 | 同一 handle 的并发 launch 由 executor mutex 串行化（D6 SINGLE-GPU-INSTANCE 假设） |
 
 **为什么不选其他修复**：
 - **A1（launch 时 deep-copy kernelStatements）**：O(N) per launch, N 大时不可忽略
@@ -282,9 +282,11 @@ int ptxemu_module_version(void);
 
 **独立 commit（跨 repo，PTX-EMU 端零影响）**,失败可 revert
 
-### D6: [SINGLE-LAUNCH ASSUMPTION] 显式标注
+### D6: [SINGLE-GPU-INSTANCE ASSUMPTION] 显式标注
 
-`ptx-lessons-learned.md` §10 模板强制：helper 的 single-instance 假设必须显式注释。本决策要求 `PtxEmuImageExecutor` 类头注释包含 7 个 [SINGLE-LAUNCH / SINGLE-INSTANCE] 标记：
+> **命名变更（2026-08-09 修订）**：原标签 [SINGLE-LAUNCH] 改名 [SINGLE-GPU-INSTANCE]，更准确反映假设边界。原标签描述的是 "进程内一个 GPU 仿真器"，而非 "一个 kernel launch"。两者的并发含义截然不同。
+
+`ptx-lessons-learned.md` §10 模板强制：helper 的 single-instance 假设必须显式注释。本决策要求 `PtxEmuImageExecutor` 类头注释包含 7 个 [SINGLE-GPU-INSTANCE] 标记：
 
 1. **`g_gpu_context` 全局唯一**: 同进程内所有 image 共享一个 `GPUContext`（一个模拟 GPU）
 2. **`CudaDriver::instance()` 单例**: 共享全局内存池（所有 image 的 global/local/param memory 同池）
@@ -294,7 +296,24 @@ int ptxemu_module_version(void);
 6. **`PtxInterpreter` 状态非重入**: `src/cudart/ptx_interpreter.cpp:19-36` 缓存 `ptxContext/kernelContext/kernelArgs/param_space` 为成员；每 launch 构造一个新 `PtxInterpreter`（D3 A2 通过 deserialize 路径自然实现）
 7. **不接 SingletonGuard**: `__cudaRegisterFatBinary` 的 FATAL guard 不影响 image executor 路径（device lib 不调 `__cudaRegisterFatBinary`）
 
-**Falsification 测试**: 构造两个 `PtxEmuImageExecutor` 实例必须显式失败（不是 silent corruption）；同 handle 并发 launch 必须由 mutex 串行（性能正确性正确性均可验证）
+**对 TaskRunner 并发模型的隐含影响**（HAL 方案 D8 后已缓解，但本节仍记录 standalone 路径下行为）：
+
+TaskRunner 的 `CmdProcessor` worker pool 采用 work-stealing 并发模型，多 worker 可同时调 `cuLaunchKernel`。**在原 D8 直链方案下**：
+- 同一 handle 的并发 launch 由 executor mutex 串行（标记 #5）
+- **跨 handle 的并发 launch 也会因 `g_gpu_context`（标记 #1）和 `CudaDriver::instance()`（标记 #2）的全局单例状态被间接互斥**，实际退化为串行执行
+- 这意味着 TaskRunner 的并发优势在 PTX-EMU standalone 路径下被完全抹平
+- 即使采用 D3 per-launch re-deserialize 策略，每个 worker 仍需获取 executor mutex，wall-clock cost ≈ N × (deserialize + execute)
+
+**HAL 方案（D8 采纳）下缓解**：
+- 所有 launch 经由 UsrLinuxEmu GpgpuDevice ioctl 派发表 → `HardwarePullerEmu::submitBatch()` → `GlobalScheduler::enqueue()`
+- GlobalScheduler 已有 fence_id 异步跟踪 + 命令队列并发处理（Stage 4 ✅ ship 阶段）
+- PTX-EMU 作为 HAL backend，仅在 `hal_user.cpp` 单入口被调用，并发由 UsrLinuxEmu 上层调度处理
+- SINGLE-GPU-INSTANCE 假设在 HAL 边界外不直接暴露给 TaskRunner
+
+**Falsification 测试**（standalone 路径适用，HAL 路径下不适用）：
+- 构造两个 `PtxEmuImageExecutor` 实例必须显式失败（不是 silent corruption）
+- 同 handle 并发 launch 必须由 mutex 串行（性能正确性均可验证）
+- 跨 handle 并发 launch **预期**互斥（标记 #1/#2 全局状态），不应作为性能假设
 
 ### D7: byte-identical fallback 5 gates（Lesson §14）
 
@@ -312,7 +331,215 @@ Phase 0 完成后必须 5 个 gate 全部通过,默认 LD_PRELOAD 路径才算"�
 
 **Lesson §4 强制**：Phase 0 前建立基线 worktree，monolithic 跑一次全量 ctest，存档为 oracle
 
-### D8: TaskRunner 集成约定
+### D8: CP 端集成约定 — **HAL 扩展方案**（UsrLinuxEmu ↔ PTX-EMU 跨仓契约）
+
+> **方向变更（2026-08-09 修订）**：原 D8 提议 TaskRunner `libcuda_shim` 直链 `libptxemu_device.so`。该方案虽然技术上正确，但会绕过 UsrLinuxEmu HAL 边界（ADR-036 三区分架构硬约束：HAL 是 drv ↔ sim 唯一桥），导致两个并行 GPU 仿真器实例（PTX-EMU `GPUContext` + UsrLinuxEmu `HardwarePullerEmu`）无同步竞争。**经跨仓评审**，采用 HAL 扩展方案作为 v1 集成路径；原直接 link 提案保留为 **D8-Alt**（见末尾）作为技术对照。
+
+#### D8.1 集成拓扑
+
+```
+TaskRunner UMD (cu_module.cpp / cu_launch.cpp)
+    │ (现状 zero change)
+    ▼ cuModuleLoadData / cuLaunchKernel / cuModuleUnload
+TaskRunner CudaRuntimeApi
+    │ (新增 IGpuDriver 方法, 无需 shim 改动)
+    ▼ IGpuDriver::load_kernel_module / launch_kernel_module / unload_kernel_module
+GpuDriverClient
+    │ (新增 System C ioctl, 不改现有 38 个)
+    ▼ GPU_IOCTL_LOAD_KERNEL_MODULE / LAUNCH_KERNEL_MODULE / UNLOAD_KERNEL_MODULE
+UsrLinuxEmu GpgpuDevice (ioctl 派发表新增 3 行)
+    │ (新增 HAL fn-ptr, append-only per ADR-023 §D4)
+    ▼ hal_user.cpp → ptxemu_image_load / execute / unload (via dlsym)
+libptxemu_device.so (PTX-EMU 作为 HAL implementation detail)
+```
+
+**关键不变量**：
+- TaskRunner 仓**零改动**（`cu_module.cpp`/`cu_launch.cpp`/`CMakeLists.txt` 无需 link PTX-EMU）
+- UsrLinuxEmu 仓改动：1 个新 ioctl + 1 个新 HAL fn-ptr + `hal_user.cpp` 实现
+- PTX-EMU 仓改动：实现 `libptxemu_device.so` + `cpptlm_module.h`，**作为 HAL backend**（类似 `hal_user.cpp` vs `hal_mock.cpp` 二选一关系）
+- 单一 GPU 状态来源：所有 kernel 状态、device memory、module handle 都在 UsrLinuxEmu 的 `HardwarePullerEmu` + `GpgpuDevice` 内；PTX-EMU 仅作为 ISA 执行后端
+- PTX-EMU 与 TaskRunner 不直接通信；所有跨边界调用走 UsrLinuxEmu IOCTL 通道
+
+#### D8.2 新增 IGpuDriver / GpuDriverClient 接口
+
+```cpp
+// include/shared/igpu_driver.hpp (TaskRunner 端)
+class IGpuDriver {
+  // ... 现有 47 方法 ...
+  virtual int load_kernel_module(const void* image, size_t size,
+                                 uint64_t* out_module_handle) = 0;
+  virtual int launch_kernel_module(uint64_t module_handle,
+                                   uint32_t grid_x, uint32_t grid_y, uint32_t grid_z,
+                                   uint32_t block_x, uint32_t block_y, uint32_t block_z,
+                                   size_t shared_mem_bytes,
+                                   void** kernel_args, size_t args_count) = 0;
+  virtual int unload_kernel_module(uint64_t module_handle) = 0;
+};
+```
+
+#### D8.3 新增 System C ioctl
+
+> **canonical source**: UsrLinuxEmu [adr-076 §D1](../../../../../UsrLinuxEmu/docs/00_adr/adr-076-gpgpu-kernel-module-ioctl.md) `plugins/gpu_driver/shared/gpu_ioctl.h`(TaskRunner 通过 symlink 访问)。
+> 本节代码片段**镜像** ADR-076 §D1 canonical 定义,自包含性保留;任何分歧必须先 amend ADR-076 后同步此处(per ADR-035 §R5.1 mirror 协议)。
+
+```c
+// plugins/gpu_driver/shared/gpu_ioctl.h (UsrLinuxEmu canonical source, TaskRunner 通过 symlink 访问)
+enum {
+  // ... 现有 38 个 GPU_IOCTL_* ...
+  GPU_IOCTL_LOAD_KERNEL_MODULE   = _IOWR('G', 0x27, gpu_load_kernel_module_args),
+  GPU_IOCTL_LAUNCH_KERNEL_MODULE = _IOWR('G', 0x28, gpu_launch_kernel_module_args),
+  GPU_IOCTL_UNLOAD_KERNEL_MODULE = _IOWR('G', 0x29, gpu_unload_kernel_module_args),
+};
+
+struct gpu_load_kernel_module_args {
+  uint64_t image_ptr;            // 用户态 image buffer (PTXIR 或 PTXIR-Embedded CUBIN)
+  uint64_t image_size;
+  uint64_t out_module_handle;    // 输出:image executor 返回的 handle
+  char     kernel_name[256];     // 输出:image 内 kernel 名(PTXIR v1 single-kernel 限制,per ADR-0029 D4)
+};
+
+struct gpu_launch_kernel_module_args {
+  uint64_t module_handle;
+  uint32_t grid_x, grid_y, grid_z;
+  uint32_t block_x, block_y, block_z;
+  uint64_t shared_mem_bytes;
+  uint64_t args_ptr;             // 用户态 void** kernel_args
+  uint64_t args_count;
+  int32_t  launch_status;        // 输出:0 成功;-EINVAL/-EBUSY 等 cudaError_t 转换后 errno
+};
+
+struct gpu_unload_kernel_module_args {
+  uint64_t module_handle;
+  int32_t  unload_status;        // 输出:0 成功;-EBUSY (in-flight kernel);其他错误码
+};
+```
+
+#### D8.4 新增 HAL fn-ptr + 实现
+
+> **canonical source**: UsrLinuxEmu [adr-076 §D2](../../../../../UsrLinuxEmu/docs/00_adr/adr-076-gpgpu-kernel-module-ioctl.md) `plugins/gpu_driver/hal/gpu_hal.h`(HAL fn-ptr 65→68 append-only per ADR-023 §D4)。
+> 本节代码片段**镜像** ADR-076 §D2 canonical 定义;`void *ctx` first param 与 ADR-023 HAL 约定一致。
+> `kernel_module_load` 合并 PTX-EMU `ptxemu_image_load` + `ptxemu_image_kernel_name` 两次 ABI 调用为 1 次 HAL 调用(在 `hal_user.cpp` 内部分别调两次 cpptlm_module.h 函数)。
+
+```c
+// plugins/gpu_driver/hal/gpu_hal.h (append-only per ADR-023 §D4)
+struct gpu_hal_ops {
+  void *ctx;  // HAL ctx,per ADR-023 HAL 约定(现有 65 fn-ptrs 共享此字段)
+
+  // ... 现有 65 个 fn-ptrs ...
+
+  /* --- ADR-076 扩展(2026-08-09, PTX-EMU Image Executor HAL backend)--- */
+  int (*kernel_module_load)(void *ctx,
+                            const uint8_t* image_bytes, size_t image_size,
+                            uint64_t* out_module_handle,
+                            char* out_kernel_name, size_t kernel_name_buf_size);   // 新增 #66
+  int (*kernel_module_execute)(void *ctx,
+                               uint64_t module_handle,
+                               uint32_t grid_x, uint32_t grid_y, uint32_t grid_z,
+                               uint32_t block_x, uint32_t block_y, uint32_t block_z,
+                               size_t shared_mem_bytes,
+                               void** kernel_args, size_t args_count);                   // 新增 #67
+  int (*kernel_module_unload)(void *ctx, uint64_t module_handle);                   // 新增 #68
+};
+
+// plugins/gpu_driver/hal/hal_user.cpp (真机/仿真实现)
+// 仅展示 kernel_module_load_via_ptxemu 核心逻辑;完整实现见 ADR-076 §D4
+static int kernel_module_load_via_ptxemu(void *ctx,
+                                          const uint8_t* image_bytes, size_t image_size,
+                                          uint64_t* out_module_handle,
+                                          char* out_kernel_name, size_t kernel_name_buf_size) {
+  (void)ctx;
+  // dlsym libptxemu_device.so (dlopen 一次,缓存句柄;三级 fallback: PTXEMU_ROOT -> /opt/ptxemu -> RTLD_DEFAULT)
+  static uint64_t (*image_load)(const uint8_t*, size_t) =
+      (uint64_t(*)(const uint8_t*, size_t))dlsym(RTLD_DEFAULT, "ptxemu_image_load");
+  static int (*image_kernel_name)(uint64_t, char*, size_t) =
+      (int(*)(uint64_t, char*, size_t))dlsym(RTLD_DEFAULT, "ptxemu_image_kernel_name");
+  if (!image_load || !image_kernel_name) {
+    // dlsym 三级 fallback 全失败
+    return -ENOSYS;
+  }
+  // ABI version 检查(per ADR-0029 D1 governance)
+  int (*module_version)(void) = (int(*)(void))dlsym(RTLD_DEFAULT, "ptxemu_module_version");
+  if (module_version && module_version() != CPPTLM_MODULE_VERSION) return -EPROTO;
+
+  uint64_t handle = image_load(image_bytes, image_size);
+  if (handle == 0) return -EINVAL;
+  *out_module_handle = handle;
+  // kernel_name 读取失败回滚(handle 仍分配但 kernel name 不可用 -> caller 决定是否 unload)
+  if (image_kernel_name(handle, out_kernel_name, kernel_name_buf_size) < 0) {
+    // ADR-076 §D4 选择:handle 已分配但 kernel name 失败 -> 返回 -EINVAL 让 caller 调 unload
+    return -EINVAL;
+  }
+  return 0;
+}
+```
+
+#### D8.5 TaskRunner 集成约定（按 HAL 方案）
+
+| TaskRunner 端 | 行为 |
+|---|---|
+| `cuModuleLoadData(module, image)` | 通过 `runtime()->load_kernel_module(image, ...)` → `IGpuDriver` → UsrLinuxEmu ioctl；**无需 link `libptxemu_device.so`** |
+| `cuModuleGetFunction(func, mod, name)` | 维持现状：纯 handle 表 + 名字查询 |
+| `cuLaunchKernel(f, grid, block, args, ...)` | 通过 `runtime()->launch_kernel_module(handle, ...)` → `IGpuDriver` → UsrLinuxEmu ioctl |
+| `cuModuleUnload(m)` | 通过 `runtime()->unload_kernel_module(handle)`；in-flight kernel 时返回 `CUDA_ERROR_INVALID_HANDLE`（busy） |
+| TaskRunner `CMakeLists.txt` | **零 PTX-EMU 依赖**（仅依赖 UsrLinuxEmu canonical System C header） |
+| TaskRunner CI 构建 | 不需要 PTX-EMU build artifact；构建解耦 |
+
+#### D8.6 优势（HAL 方案 vs 原 D8 直链方案）
+
+| 维度 | D8-Alt 直链 | **D8 HAL 扩展（采纳）** |
+|------|------------|------------------------|
+| 符合 PTX-EMU 边界 | ✅ | ✅（PTX-EMU 仍独立） |
+| 符合 UsrLinuxEmu 3 区分 | ❌ 破坏 ADR-036 | ✅ HAL 仍是唯一桥 |
+| TaskRunner 改动 | 中（CMake + shim） | **零**（IGpuDriver 自动扩展） |
+| GPU 状态来源 | 双（UsrLinuxEmu + PTX-EMU） | **单**（UsrLinuxEmu 唯一） |
+| PTXIR 复用 System C ioctl 基础设施 | ❌ 需新建 | ✅ 复用 fence_id/va_space |
+| 跨仓构建依赖 | 强（TaskRunner 需 link PTX-EMU） | 弱（PTX-EMU 是 UsrLinuxEmu HAL 的 impl detail） |
+| TaskRunner 并发 launch 与 PTX-EMU SINGLE-GPU-INSTANCE 假设冲突 | 高（D8-Alt 多 worker 触发 mutex 序列化） | 低（HAL 单入口，UsrLinuxEmu 已有 fence/queue 调度） |
+| 测试隔离 | 需 mock libptxemu_device.so | 需 mock libptxemu_device.so（同等） |
+
+#### D8.7 实施分解（替换原 D5 Phase 2 — 概要，详细见各仓 ADR）
+
+> **详细设计分散到跨仓 ADR**（per ADR-035 §R3 治理 + 用户审查可并行）：
+>
+> - **canonical source**：[UsrLinuxEmu adr-076-gpgpu-kernel-module-ioctl.md](../../../../../UsrLinuxEmu/docs/00_adr/adr-076-gpgpu-kernel-module-ioctl.md)
+>   System C ioctl 编号（0x27/0x28/0x29）+ 结构体字段 + HAL fn-ptr #66/#67/#68 完整定义 + 跨仓 commit 顺序协议
+> - **consumer-side 对偶**：[TaskRunner tadr-307-igpu-driver-kernel-module-extension.md](../../../../../UsrLinuxEmu/external/TaskRunner/docs/shared/adr/tadr-307-igpu-driver-kernel-module-extension.md)
+>   IGpuDriver 扩展契约 + shim 调用链改动 + MockGpuDriver 更新 + e2e 测试要求
+>
+> 本 ADR 仅保留概要，详细实施归各仓 ADR owner。
+
+**概要**：
+
+| 仓 | 范围 | 工时估算 |
+|----|------|---------|
+| **PTX-EMU**（本仓） | 实现 `libptxemu_device.so` + `cpptlm_module.h`（D1, D3），**不变** | 已计入 ADR-0029 Phase 1 |
+| **UsrLinuxEmu** | 新 Phase 5.x：`gpu_ioctl.h` 新增 3 个 ioctl + `GpgpuDevice::ioctl` 派发表新增 3 行 + `gpu_hal.h` 新增 3 个 fn-ptr + `hal_user.cpp` 新增 3 个 fn-ptr 实现（dlsym 加载 `libptxemu_device.so`）+ 单元测试 + e2e 测试（mock libptxemu_device.so） | ~200 行 |
+| **TaskRunner** | 新 Phase x：`IGpuDriver` 新增 3 个纯虚方法（#48-#50）+ `GpuDriverClient` 新增 3 个 wrapper + `CudaRuntimeApi` 新增 3 个方法 + `cu_module.cpp::cuModuleLoadData` 替换 `CUDA_ERROR_NOT_IMPLEMENTED` + `cu_module.cpp::cuModuleUnload` 新增 busy 检查 + `cu_launch.cpp::cuLaunchKernel` 新增 image-executor fast-path + 测试：mock IGpuDriver，验证 IOCTL 调用契约 | ~150 行 |
+
+**跨仓 commit 顺序**（canonical in [UsrLinuxEmu adr-076 §Migration](../../../../../UsrLinuxEmu/docs/00_adr/adr-076-gpgpu-kernel-module-ioctl.md#migration--实施步骤--跨仓-commit-顺序)，per ADR-035 §R5.1）：
+```
+i. PTX-EMU 仓 ship libptxemu_device.so + cpptlm_module.h (Phase 1) + tag v0.1.0+
+ii. UsrLinuxEmu 仓 ship HAL extension (per adr-076) + bump external/TaskRunner submodule pointer
+iii. TaskRunner 仓 ship IGpuDriver extension (per tadr-307) + push
+iv. UsrLinuxEmu 仓 bump external/TaskRunner submodule pointer + final integration + adr-076 status 升 Accepted
+```
+
+#### D8.8 风险与缓解（HAL 方案特有）
+
+| 风险 | 概率 | 影响 | 缓解措施 |
+|------|------|------|---------|
+| HAL fn-ptr 增加破坏 append-only 原则 | 极低 | 中 | 按 ADR-023 §D4 编号续 #66/#67/#68；不修改现有 65 fn-ptrs（详见 adr-076 §D2）|
+| ioctl 编号冲突（TaskRunner 未来需求） | 低 | 中 | 新增 0x27/0x28/0x29 预留（System C magic 'G' 8-bit 范围，与现有 0x01~0x26 连续）；0x2A~0x3F 给未来扩展；CI 加 ioctl 编号唯一性测试 |
+| dlsym `libptxemu_device.so` 失败 | 中 | 中 | HAL 实现三级 fallback：`PTXEMU_ROOT` env → `/opt/ptxemu` 默认路径 → `cuobjdump` 路径（与 legacy front door 一致，详见 adr-076 §D4.1）|
+| 跨仓版本错位（PTX-EMU ABI v2 升级 vs UsrLinuxEmu HAL v1） | 中 | 中 | HAL 实现内部 `static_assert(CPPTLM_MODULE_VERSION == ptxemu_module_version())`（详见 adr-076 §D4 + cpptlm_module.h 治理规则）|
+| Phase 5.x 工时与原 D5 Phase 2 估算偏差 | 中 | 低 | HAL 方案对 PTX-EMU 仓 0 工时；UsrLinuxEmu 仓 ~200 行；TaskRunner 仓 ~150 行（详见 adr-076 §Migration + tadr-307 §Acceptance Items）|
+| TaskRunner `cuModuleLoadData` 缺 image_size 参数 | 中 | 低 | tadr-307 §D4.1 调研：从 PTXIR header magic 前 4 字节推断 size 或保留 0；建议 task list 包含此调研 |
+
+---
+
+### D8-Alt: 直接 link `libptxemu_device.so` 方案（**原提案，记录备查**）
+
+> 以下为 6 轮 Oracle 评审通过的原 D8 提案。本次修订保留作为技术对照记录。**该方案不作为 v1 集成路径**。
 
 **约束**：
 - TaskRunner `libcuda_shim` link `libptxemu_device.so`（**非** libcudart.so；避免命名冲突）
@@ -321,6 +548,12 @@ Phase 0 完成后必须 5 个 gate 全部通过,默认 LD_PRELOAD 路径才算"�
 - `cuModuleUnload(m)` → `ptxemu_image_unload(handle)`；in-flight kernel 时返回 `CUDA_ERROR_INVALID_HANDLE`（busy）
 - KMD/CP 集成不在本 ADR 范围（属于 UsrLinuxEmu 端架构）
 
+**不采用理由**（2026-08-09 修订）：
+1. 绕过 UsrLinuxEmu HAL 边界（破坏 ADR-036 三区分架构）
+2. 两个并行 GPU 仿真器实例（PTX-EMU `GPUContext` + UsrLinuxEmu `HardwarePullerEmu`），无同步机制
+3. TaskRunner CMake 必须 link PTX-EMU，跨仓构建依赖
+4. TaskRunner `CmdProcessor` 并发模型与 PTX-EMU D6 SINGLE-GPU-INSTANCE 假设直接冲突
+
 ---
 
 ## 后果
@@ -328,16 +561,23 @@ Phase 0 完成后必须 5 个 gate 全部通过,默认 LD_PRELOAD 路径才算"�
 ### 正面影响
 
 1. **TBD 缺口填平**：`ptxir-toolchain-stack.md` §11 "ADR-XXXX (TBD)" 解析为 ADR-0029
-2. **CP 端可集成**：UsrLinuxEmu/TaskRunner 可通过标准 C-API 加载 PTXIR 并执行 kernel
+2. **CP 端可集成**（HAL 方案，按 D8）：UsrLinuxEmu 通过新增 3 个 ioctl + 3 个 HAL fn-ptr 集成 PTX-EMU；TaskRunner 通过现有 System C ioctl 链路 **零改动** 获得 PTXIR execution 能力
 3. **Mutation bug 修复**：D3（A2）通过 image bytes 重 deserialize 真正实现 image 不可变
 4. **ABI 零变化**：`cpptlm_bridge.h` 不修改，CppTLM 端零 rebuild
 5. **Phase 化解耦**：D5 三 Phase 各自独立可回退，per Lesson §3
+6. **HAL 方案架构正确性**（2026-08-09 修订）：
+   - PTX-EMU 作为 HAL backend（impl detail），符合 UsrLinuxEmu ADR-036 三区分架构
+   - 单一 GPU 状态来源（UsrLinuxEmu 唯一），无 PTX-EMU / UsrLinuxEmu 双仿真器分裂
+   - 跨仓构建依赖降低：TaskRunner 不再直接 link PTX-EMU
+   - TaskRunner 并发模型与 PTX-EMU SINGLE-GPU-INSTANCE 假设的冲突被 HAL 边界隔离
 
 ### 负面影响
 
-1. **3 Phase 工期**：估算 2-3 周（与 Oracle Round 1 估算一致）
+1. **3 Phase 工期**（PTX-EMU 仓）：估算 2-3 周（与 Oracle Round 1 估算一致）；HAL 方案额外引入 UsrLinuxEmu 仓 Phase 5.x 工作量（~200 行 + 1 个 ADR）
 2. **PtxContextAdapter 等命名空间迁移**：从 `cudart` 命名空间到 `ptxemu`（语义更准确，但需要改名）
-3. **新 ABI 表面维护**：`cpptlm_module.h` 需独立 governance（类似 ADR-0023 PTXIR 版本治理）
+3. **新 ABI 表面维护**：`cpptlm_module.h` 需独立 governance（类似 ADR-0023 PTXIR 版本治理；治理规则同 `cpptlm_bridge.h:18-21`，2026-08-09 修订）
+4. **HAL 方案的跨仓协调成本**（2026-08-09 修订）：需要 UsrLinuxEmu 仓 owner 评审 HAL fn-ptr 编号续 #66/#67/#68 + 3 个新 ioctl 编号 **0x27/0x28/0x29** 的可接受性；若被拒绝则退回 D8-Alt 直链方案
+5. **HAL 方案的并行实现负担**：`hal_user.cpp` 需新增 `dlsym` 加载 `libptxemu_device.so` 的运行时解析逻辑（含 fallback 路径）
 
 ### 风险与缓解
 
@@ -347,28 +587,36 @@ Phase 0 完成后必须 5 个 gate 全部通过,默认 LD_PRELOAD 路径才算"�
 | D3 重 deserialize 性能开销 > 10% 执行时间 | 中 | 中 | Phase 1 对真实 kernel（`bench/cute/cute_rmsnorm.ptx`）benchmark（**实测非估算**）作为 acceptance gate；超标触发 A1 fallback 决策点 |
 | Phase 0 搬迁破坏默认 LD_PRELOAD 路径 | 低 | 高 | 5 gates (D7) 全部通过才允许 merge |
 | `ptxir-toolchain-stack.md` 文档与本 ADR 长期漂移 | 中 | 中 | 归档本 ADR 时同步更新 v1.2 → v1.3（如有） |
-| `PtxInterpreter` statefulness 引入并发 launch 之外的 corruption | 低 | 中 | D6 SINGLE-LAUNCH 假设 + 单元测试覆盖 |
+| `PtxInterpreter` statefulness 引入并发 launch 之外的 corruption | 低 | 中 | D6 SINGLE-GPU-INSTANCE 假设 + 单元测试覆盖 |
 | UsrLinuxEmu 端 C-API 调用习惯与 `cudaLaunchKernel` 不同 | 中 | 低 | D8 集成约定 + Phase 2 TaskRunner 端 e2e 测试 |
 
 ---
 
 ## 合规检查
 
+> **Acceptance gate 关系（2026-08-09 修订）**：本 ADR 由 Proposed → Accepted 必须满足两个前置 gate：
+>
+> 1. **Phase 0 Step 0 gate**（**HARD gate**，未通过 → ADR 退回 Proposed 并重设计）：
+>    ADR-0021 v1.1 amendment merged，解除 D-PTX-1:76 同 TU 约束
+> 2. **D8 HAL 方案接受 gate**（**SOFT gate**，未通过 → ADR 仍可 Accepted，但 D8 退回 D8-Alt）：
+>    UsrLinuxEmu 仓评审确认 HAL 扩展方案可实施（HAL 65→68 fn-ptrs append-only + 3 个新 ioctl 编号预留无冲突）
+>
+> 两个 gate 各自独立，但都必须在 ship 任意 Phase 前完成。如 Phase 0 Step 0 gate 与 ADR-0029 Accepted 同时段评审，**建议 Phase 0 Step 0 先通过**，避免 Accepted 后 D2 方案无法执行。
+
 后续相关开发应检查：
 
-- [ ] **Phase 0 Step 0**: ADR-0021 amendment merged（解除 D-PTX-1:76 同 TU 约束）— 这是 **hard gate**，未通过不得搬迁任何符号
+- [ ] **Phase 0 Step 0**（**HARD GATE，未通过不得进入 Phase 1**）：ADR-0021 v1.1 amendment merged（解除 D-PTX-1:76 同 TU 约束）
 - [ ] **Phase 0 Step 1**: 4 个全局符号（`g_cpptlm_bridge` + `cpptlm_attach_bridge` + `cpptlm_detach_bridge` + `g_bridge_user_override`）一起从 `cudart_sim.cpp` 搬到 `PtxEmuDriverShim.cpp`；`g_gpu_context` 从 `cudart_sim.cpp` 搬到 `ptx_interpreter.cpp`
 - [ ] **Phase 0 完成**: 5 gates (D7) 全部通过: `nm -D` diff = 空, SONAME/symlink 保持, e2e stdout 字节 diff = 空, g_cpptlm_bridge==nullptr 单元测试通过, logger→g_gpu_context 单元测试通过
 - [ ] **Phase 1 完成 (perf)**: cute_rmsnorm D3 deserialize cost 实测 < 10%（D7 gate 6）
 - [ ] **Phase 1 完成**: `cpptlm_bridge.h` `git diff` 为空（governance 验证）
 - [ ] **Phase 1 完成**: `tests/unit/cudart/test_cpptlm_module.cpp` 覆盖 5 个 ABI 入口的 roundtrip + invalid handle + concurrent serialization
 - [ ] **Phase 1 完成**: `tests/unit/cudart/test_image_executor_mutation.cpp` 验证 D3 修复（同一 image 并发 launch 无 corruption）
-- [ ] **Phase 1 完成**: `PtxEmuImageExecutor` 类头包含 7 个 [SINGLE-LAUNCH / SINGLE-INSTANCE] 标记（D6）
-- [ ] **Phase 2 完成**: TaskRunner `libcuda_shim` link `libptxemu_device.so` 不冲突
-- [ ] **Phase 2 完成**: `cuModuleLoadData`/`cuLaunchKernel`/`cuModuleUnload` 端到端 e2e 测试通过
-- [ ] **Phase 2 完成**: `cuModuleUnload` in-flight kernel 返回 `CUDA_ERROR_INVALID_HANDLE` (busy)
-- [ ] **后续**: 任何 `cpptlm_module.h` 接口签名变更必须先 bump `CPPTLM_MODULE_VERSION`
-- [ ] **后续**: multi-kernel 支持必须新 ADR（ADR-0028 预留，本 ADR 不承诺）
+- [ ] **Phase 1 完成**: `PtxEmuImageExecutor` 类头包含 7 个 [SINGLE-GPU-INSTANCE] 标记（D6，**2026-08-09 修订**：原标签 [SINGLE-LAUNCH] 改名）
+- [ ] **Phase 2 完成**（HAL 方案，按 D8.7）：UsrLinuxEmu 仓新增 3 个 ioctl + 3 个 HAL fn-ptr + `hal_user.cpp` dlsym 实现 + e2e 测试通过；TaskRunner `libcuda_shim` **零 PTX-EMU link 依赖**
+- [ ] **Phase 2 完成**（D8-Alt 备选，若 UsrLinuxEmu 仓拒绝 HAL 方案）：TaskRunner `libcuda_shim` link `libptxemu_device.so` 不冲突 + D6 SINGLE-GPU-INSTANCE 对 TaskRunner 并发影响文档化
+- [ ] **后续**: 任何 `cpptlm_module.h` 接口签名变更必须先 bump `CPPTLM_MODULE_VERSION`；治理规则同 `cpptlm_bridge.h:18-21`
+- [ ] **后续**: multi-kernel 支持必须新 ADR（**[ADR-0028]** 升 BLOCKING DEPENDENCY，本 ADR 不承诺）
 
 ---
 
@@ -376,10 +624,12 @@ Phase 0 完成后必须 5 个 gate 全部通过,默认 LD_PRELOAD 路径才算"�
 
 | 日期 | 更新内容 | 作者 |
 |------|---------|------|
-| 2026-08-09 | 初始版本（A2+B1+C1 决策固化 + 3 Phase 分解 + 4 gates + 7 SINGLE-LAUNCH 标记） | PTX-EMU Architecture Team |
+| 2026-08-09 | 初始版本（A2+B1+C1 决策固化 + 3 Phase 分解 + 4 gates + 7 [SINGLE-LAUNCH] 标记） | PTX-EMU Architecture Team |
 | 2026-08-09 | **F1 hardening（Oracle Round 3 review）**: D2 retitled "2 反向依赖符号搬迁 + CudaDriver 保留理由" + 4-symbol 一起搬 (attach/detach/override) + Phase 0 Step 0 = amend ADR-0021 hard gate + D7 升 5 gates (加 logger→`g_gpu_context`) + D3 perf gate 6 (cute_rmsnorm < 1.10 实测) + §10.5 item 18 重写 3 子项 + 全 doc 引用路径统一 (`src/cudart/ptx_interpreter.cpp`) | PTX-EMU Architecture Team |
 | 2026-08-09 | **F1+1 hardening（Oracle Round 4 review）**: 数字漂移清扫 — 利益相关方 + Phase 0 目标 + 风险表 + 本行所有 "3 符号"/"4 gates" stale hits 统一为 "2 组 5 个全局符号" / "5 gates"；本行追加 | PTX-EMU Architecture Team |
 | 2026-08-09 | **F1+2 hardening（Oracle Round 5 review）**: D2 preamble "2 个全局符号" 字面歧义修正为 "2 组共 5 个全局符号"（含 4 bridge + g_gpu_context）；本行追加 | PTX-EMU Architecture Team |
+| 2026-08-09 | **F2 跨仓评审修订（PTX-EMU Architecture Team + UsrLinuxEmu/TaskRunner review）**: (a) D8 替换为 HAL 扩展方案，新增 D8.1-D8.8 子节 + ioctl 编号预留 **0x27/0x28/0x29** + HAL fn-ptr #66/#67/#68 + `hal_user.cpp` dlsym 设计；原 D8 直链方案保留为 **D8-Alt** 记录备查。(b) D6 标签 [SINGLE-LAUNCH] → [SINGLE-GPU-INSTANCE]，新增 TaskRunner 并发影响段落。(c) §合规 检查新增两个 Acceptance gate（Phase 0 Step 0 HARD gate + D8 HAL 方案 SOFT gate）。(d) §后果 + §负面影响 反映 HAL 方案后调整。(e) ADR-0028 multi-kernel manifest 升 BLOCKING DEPENDENCY。**(f) F3 跨仓文档契约化（2026-08-09）**：§D8.7 概要化 + 跨仓 ADR 引用分工；canonical source 落地到 UsrLinuxEmu [adr-076](../../../../../UsrLinuxEmu/docs/00_adr/adr-076-gpgpu-kernel-module-ioctl.md)；consumer-side 对偶到 TaskRunner [tadr-307](../../../../../UsrLinuxEmu/external/TaskRunner/docs/shared/adr/tadr-307-igpu-driver-kernel-module-extension.md)。ioctl 编号 39/40/41 → **0x27/0x28/0x29**（System C magic 'G' 8-bit 范围修正）| PTX-EMU Architecture Team |
+| 2026-08-09 | **F4 D8.3/D8.4 canonical 同步（Oracle Round 7 review）**: D8.3 ioctl struct 镜像 ADR-076 §D1 canonical — `gpu_load_kernel_module_args` 新增 `char kernel_name[256]` 输出字段；`gpu_launch_kernel_module_args` 新增 `int32_t launch_status` 输出字段；`gpu_unload_kernel_module_args` 新增 `int32_t unload_status` 输出字段；修正 `_IOWR ('G'` trailing-space typo。D8.4 HAL fn-ptr 镜像 ADR-076 §D2 canonical — `struct gpu_hal_ops` 新增 `void *ctx` first field（per ADR-023 HAL 约定）；3 个 fn-ptr 全部加 `void *ctx` first param；`kernel_module_load` 新增 `out_kernel_name` + `kernel_name_buf_size` 参数；参数命名统一（`image_bytes`/`image_size`/`out_module_handle`/`kernel_args`/`module_handle`）。新增 `kernel_module_load_via_ptxemu` inline 实现展示合并 2 ABI call 为 1 HAL call + 版本检查 + rollback 语义。两条 canonical 标注均正确链接到 `../../../../../UsrLinuxEmu/docs/00_adr/adr-076-...`（修正 Round 7 G1 hyperlink drift）| PTX-EMU Architecture Team |
 
 ---
 
