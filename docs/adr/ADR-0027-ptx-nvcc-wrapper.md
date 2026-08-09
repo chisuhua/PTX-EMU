@@ -213,10 +213,25 @@ The wrapper must create the temporary directory and the three named files explic
 
 ### v1 限制（明示在 `--help`）
 
-- **单 kernel per binary**：自动检测到的 `.entry` 必须只有一个；显式 `--kernel-name` 也不能绕过 v1 的单 kernel 限制。ADR-0028 文件目前不存在，相关 manifest/runtime selection 语义延期。
+- **单 kernel per binary**：自动检测到的 `.entry` 必须只有一个；显式 `--kernel-name` 也不能绕过 v1 的单 kernel 限制。**[ADR-0028]**（**[BLOCKING DEPENDENCY]**）待 ship 后解除；解除时需 bump `PTXIR_VERSION` per ADR-0023 Extend-Only 原则。
 - **DT_RUNPATH 绝对路径**：默认 `<wrapper_dir>/../build/lib`；可用 `--ptxemu-root` 为新构建 binary 覆盖
 - **nvcc 透传**：所有非自定义参数透传；wrapper 不解析 nvcc 输出
 - **Linux only**：POSIX ELF 与 DT_RUNPATH；macOS / Windows 需后续适配
+
+### 与 ADR-0029 in-memory 路径的边界（**互斥关系**）
+
+> **2026-08-09 修订**：本 wrapper 路径（DT_RUNPATH + libcudart.so）与 ADR-0029 in-memory 路径（`cuModuleLoadData` + `libptxemu_device.so`）是 **两条互斥的运行时集成路径**，分别面向不同使用场景。
+
+| 场景 | 推荐路径 | 原因 |
+|------|---------|------|
+| 用户直接编译 `.cu` → 运行 `./myapp`（无 KMD/CP 介入） | **本 wrapper**（ADR-0027） | DT_RUNPATH 注入 libcudart.so 即可；最简用户体验 |
+| UsrLinuxEmu/TaskRunner CP 端集成（KMD/CP 调度） | **HAL 扩展方案**（ADR-0029 D8） | 单一 GPU 状态来源；TaskRunner 不直接 link PTX-EMU；符合 UsrLinuxEmu 三区分架构 |
+| Standalone PTX-EMU 用户直接调 `cuModuleLoadData` | **D8-Alt 直链**（ADR-0029 记录备查） | 仅在无 UsrLinuxEmu 介入的极简 PTX 仿真场景使用 |
+
+**互斥约束**：
+- 同一 binary **不能同时**（a）DT_RUNPATH 依赖 PTX-EMU `libcudart.so.12` **且**（b）通过 `libptxemu_device.so` link 加载 in-memory module——会出现两个 GPU 仿真器实例（PTX-EMU `GPUContext` ×2）并互相覆盖全局状态
+- 如需切换路径，必须重新编译 binary 并移除对侧的依赖
+- 检测方法：`ldd <binary>` 若同时输出 `libcudart.so.12 → <ptxemu>` 与 `libptxemu_device.so → <ptxemu>` 则配置错误
 
 ### 影响范围
 
@@ -280,6 +295,7 @@ The wrapper must create the temporary directory and the three named files explic
 | 日期 | 更新内容 | 作者 |
 |------|---------|------|
 | 2026-08-08 | 初始版本（Python wrapper + subprocess 编排 + DT_RUNPATH 注入） | PTX-EMU Architecture Team |
+| 2026-08-09 | **跨仓评审修订**: §v1 限制明示 ADR-0028 BLOCKING DEPENDENCY 标注；新增 §互斥关系段，clarify 本 wrapper 路径与 ADR-0029 in-memory 路径是两条互斥的运行时集成路径（同一 binary 不能同时 DT_RUNPATH libcudart.so + link libptxemu_device.so，会导致双 GPUContext 冲突） | PTX-EMU Architecture Team |
 
 ---
 

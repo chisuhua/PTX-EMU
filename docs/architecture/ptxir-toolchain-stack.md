@@ -1,10 +1,15 @@
 # PTXIR Toolchain Stack Architecture
 
-> **版本**: 1.2
+> **版本**: 1.3
 > **日期**: 2026-08-09
 > **状态**: Proposed
 > **作者**: PTX-EMU Architecture Team
-> **关联 ADRs**: [ADR-0024](../adr/ADR-0024-ptxir-cubin-embed-extension.md), [ADR-0025](../adr/ADR-0025-ptxir-build-cli.md), [ADR-0026](../adr/ADR-0026-ptxir-default-mode-auto.md), [ADR-0027](../adr/ADR-0027-ptx-nvcc-wrapper.md), [**ADR-0029**](../adr/ADR-0029-ptxemu-image-executor.md) — in-memory Driver API 与 image executor
+> **关联 ADRs**: [ADR-0024](../adr/ADR-0024-ptxir-cubin-embed-extension.md), [ADR-0025](../adr/ADR-0025-ptxir-build-cli.md), [ADR-0026](../adr/ADR-0026-ptxir-default-mode-auto.md), [ADR-0027](../adr/ADR-0027-ptx-nvcc-wrapper.md), [**ADR-0029**](../adr/ADR-0029-ptxemu-image-executor.md) — in-memory Driver API 与 image executor (HAL 方案 D8 修订)
+
+**v1.3 修订摘要**（2026-08-09 跨仓评审）：
+- §2 Components 新增 **CP 端跨仓集成节点表**（UsrLinuxEmu GpgpuDevice + hal_user.cpp + gpu_hal.h + TaskRunner libcuda_shim + IGpuDriver），明示 HAL 方案 D8 集成路径
+- §11 Related ADRs：**ADR-0028 升级为 BLOCKING DEPENDENCY**（从 "预留占位" 升级），新增下游 ADR 须遵守的契约
+- §12 Future work：新增 "UsrLinuxEmu ↔ PTX-EMU HAL extension" 高优先级条目；ADR-0029 实施进度跟踪更新为 HAL 方案 Phase 分解
 
 **v1.2 修订摘要**:
 - 新增 §5.4 *Image Bytes Ownership & Per-launch Re-deserialization* — 填平 ADR-0029 的 D3 决策（image bytes 私有保存 + launch 重 deserialize 修复 `ptx_interpreter.cpp:100-140` mutation bug）
@@ -42,8 +47,20 @@
 | `cuLaunchKernel` | 使用 function record 提交 in-memory module kernel | `src/cudart/cudart_sim.cpp` | ADR-0029 |
 | `cuModuleUnload` | 释放 module record，并使其 function handles 失效 | `src/cudart/cudart_sim.cpp` | ADR-0029 |
 | `PTXIRLoader` | 从 byte buffer 检测、提取、反序列化 PTXIR | `include/cudart/ptxir_loader.h` | ADR-0024 |
-| `libptxemu_device.so` | device-side executor 库（CP 端可直接 dlopen / link） | `build/lib/` | ADR-0029 |
+| `libptxemu_device.so` | device-side executor 库（CP 端可直接 dlopen / link，或作为 UsrLinuxEmu HAL backend） | `build/lib/` | ADR-0029 |
 | `cpptlm_module.h` | image executor C-API ABI header（与 `cpptlm_bridge.h` 独立） | `include/cudart/cpptlm_module.h` | ADR-0029 |
+
+> **CP 端跨仓集成节点**（2026-08-09 增补，HAL 方案 D8）：
+>
+> | 节点 | 角色 | 位置（外部仓） | 关联 |
+> |---|---|---|---|
+> | `UsrLinuxEmu GpgpuDevice` | 模拟 GPU 驱动入口；通过 System C ioctl 接收 TaskRunner 请求；HAL 65→68 fn-ptrs append-only 集成 `kernel_module_load/execute/unload` | `UsrLinuxEmu/plugins/gpu_driver/drv/gpgpu_device.cpp` | UsrLinuxEmu AGENTS.md ADR-036 |
+> | `UsrLinuxEmu hal_user.cpp` | HAL 真机/仿真实现；新增 dlsym `libptxemu_device.so` 的 `ptxemu_image_*` 函数 | `UsrLinuxEmu/plugins/gpu_driver/hal/hal_user.cpp` | UsrLinuxEmu AGENTS.md ADR-023 |
+> | `UsrLinuxEmu gpu_hal.h` | HAL 接口契约；新增 fn-ptr #66/#67/#68（kernel_module_load/execute/unload） | `UsrLinuxEmu/plugins/gpu_driver/hal/gpu_hal.h` | UsrLinuxEmu ADR-023 §D4 |
+> | `TaskRunner libcuda_shim` | CUDA driver LD_PRELOAD shim；`cuModuleLoadData`/`cuLaunchKernel`/`cuModuleUnload` 通过 `IGpuDriver` → `GpuDriverClient` → System C ioctl 间接调 PTX-EMU | `TaskRunner/src/umd/libcuda_shim/cu_module.cpp` + `cu_launch.cpp` | TaskRunner ADR-035 |
+> | `TaskRunner IGpuDriver` | 抽象 GPU 驱动接口；新增 3 个纯虚方法 `load_kernel_module` / `launch_kernel_module` / `unload_kernel_module` | `TaskRunner/include/shared/igpu_driver.hpp` | TaskRunner TADR-301 |
+>
+> **重要约束**（HAL 方案 D8.1）：**TaskRunner 仓零 PTX-EMU 链接依赖**。所有 PTX-EMU 调用经 UsrLinuxEmu HAL 边界封装。这维持 UsrLinuxEmu 三区分架构（ADR-036）的硬约束——HAL 是 drv ↔ sim 唯一桥。
 
 ## 3. Build-time data flow
 
@@ -278,18 +295,25 @@ in-memory module path 具有独立的 image compatibility matrix，不受 legacy
 - [ADR-0025](../adr/ADR-0025-ptxir-build-cli.md) — `ptxir_build` CLI
 - [ADR-0026](../adr/ADR-0026-ptxir-default-mode-auto.md) — default auto 与 fallback/error 契约
 - [ADR-0027](../adr/ADR-0027-ptx-nvcc-wrapper.md) — wrapper 编排和 passthrough 契约
-- [**ADR-0029**](../adr/ADR-0029-ptxemu-image-executor.md) — in-memory Driver API（image executor）、2 反向依赖符号搬迁（CudaDriver 保留）、image bytes 重 deserialize 修复 mutation bug、3-Phase 实施分解与 5 byte-identical gates
-- *ADR-0028 文件目前不存在，相关多 kernel 设计 deferred，待 manifest/runtime selection 语义明确*
+- [**ADR-0029**](../adr/ADR-0029-ptxemu-image-executor.md) — in-memory Driver API（image executor）、2 反向依赖符号搬迁（CudaDriver 保留）、image bytes 重 deserialize 修复 mutation bug、3-Phase 实施分解与 5 byte-identical gates、CP 端 HAL 扩展集成方案（2026-08-09 修订）
+- **ADR-0028（**[BLOCKING DEPENDENCY]**）**：多 kernel manifest + runtime selection 设计
+  > **状态升级（2026-08-09）**：从 "预留占位" 升级为 **BLOCKING DEPENDENCY**。原因：ADR-0025 §v1 单 kernel 限制、ADR-0027 §v1 单 kernel 限制、ADR-0029 D4 v1 单 kernel per image 限制，三者的根因都是 `ptxir_format.h:36-41` 的 `ManifestSection` 只有单 `kernel_name` 字段。在 ADR-0028 未 ship 前，所有相关 ADR 都受 v1 单 kernel 限制拖累。
+  >
+  > **下游 ADR 必须遵守的契约**：
+  > 1. ADR-0025/0027/0029 §v1 限制段落须明示 "等待 ADR-0028 解除"
+  > 2. ADR-0028 ship 时必须 bump `PTXIR_VERSION`（继承 ADR-0023 Extend-Only 原则）
+  > 3. backward-compat 策略：旧 v1 单 kernel binary 在 ADR-0028 后运行时仍可加载（manifest 格式向后可读）
 
 ## 12. Future work
 
 | 主题 | 说明 | 优先级 |
 |---|---|---|
-| **ADR-0029 实施进度跟踪** | Phase 0（**Step 0 = amend ADR-0021** + 2 反向依赖符号搬迁 + 5 byte-identical gates）→ Phase 1（`libptxemu_device.so` + `cpptlm_module.h` + image executor + D3 perf 验证）→ Phase 2（TaskRunner 集成）。每个 Phase 独立 commit，失败可 revert。<br>**进度 SSOT**：实施 detail 与 tasks checklist 由 `openspec/changes/<TBD>/tasks.md` 维护（per OpenSpec lifecycle, Lesson §6），本文 §12 仅作 orientation 不作追踪 | 高 |
-| 多 kernel manifest | ADR-0028 文件目前不存在，待 manifest/runtime selection 语义明确后再提出 | 高 |
-| `$ORIGIN` 相对路径 | 减少安装路径限制 | 中 |
-| CMake wrapper 集成 | 提供 `ptxemu_add_executable()` | 中 |
-| macOS / Windows 支持 | 适配各平台动态库搜索路径 | 低 |
+| **ADR-0029 实施进度跟踪** | Phase 0（**Step 0 = amend ADR-0021** + 2 反向依赖符号搬迁 + 5 byte-identical gates）→ Phase 1（`libptxemu_device.so` + `cpptlm_module.h` + image executor + D3 perf 验证）→ Phase 2（**HAL 方案 D8** UsrLinuxEmu 仓 Phase 5.x + TaskRunner 仓 IGpuDriver 扩展）。每个 Phase 独立 commit，失败可 revert。<br>**进度 SSOT**：实施 detail 与 tasks checklist 由 `openspec/changes/<TBD>/tasks.md` 维护（per OpenSpec lifecycle, Lesson §6），本文 §12 仅作 orientation 不作追踪 | 高 |
+| **UsrLinuxEmu ↔ PTX-EMU HAL extension**（HAL 方案 D8 跨仓协作） | UsrLinuxEmu 仓新增 3 个 ioctl（GPU_IOCTL_LOAD_KERNEL_MODULE/LAUNCH_KERNEL_MODULE/UNLOAD_KERNEL_MODULE 编号 39/40/41）+ 3 个 HAL fn-ptr（#66/#67/#68 kernel_module_load/execute/unload）+ `hal_user.cpp` 新增 dlsym `libptxemu_device.so` 的 `ptxemu_image_*` 实现 + TaskRunner 仓 `IGpuDriver` 新增 3 个纯虚方法 + 跨仓 commit 顺序 per ADR-035 R5.1。详见 ADR-0029 §D8.1-D8.8 | 高 |
+| **ADR-0028 多 kernel manifest**（**[BLOCKING DEPENDENCY]**，详见 §11） | 多个 `.entry` binary 支持；`ManifestSection` 扩展为 `vector<kernel_entry>`；bump `PTXIR_VERSION` per ADR-0023 Extend-Only 原则。解除 ADR-0025/0027/0029 的 v1 单 kernel 限制 | 高 |
+| `$ORIGIN` 相对路径 | 减少安装路径限制（ADR-0027 §v1 限制 DT_RUNPATH 绝对路径缓解未根本解决） | 中 |
+| CMake wrapper 集成 | 提供 `ptxemu_add_executable()` (per ADR-0027 方案 C) | 中 |
+| macOS / Windows 支持 | 适配各平台动态库搜索路径；ADR-0027 现状 Linux-only | 低 |
 | `cuInit` / `cuCtx*` context management | 当前架构把 current-context 作为前置条件；full context 管理需后续 | 中 |
 | Packed `extra` argument buffer | 当前 `cuLaunchKernel` 接受 packed 参数，完整 packed `extra` argument buffer 支持待定 | 中 |
 
@@ -313,5 +337,5 @@ in-memory module path 具有独立的 image compatibility matrix，不受 legacy
 
 ---
 
-**最后更新**: 2026-08-09（v1.2: 新增 ADR-0029 关联 + §5.4 image bytes ownership + §10.5 image executor acceptance items + §11 ADR-0029 替换 TBD 占位 + §12 Phase 跟踪）
+**最后更新**: 2026-08-09（v1.3: §2 CP 端跨仓集成节点表 + §11 ADR-0028 BLOCKING DEPENDENCY 升级 + §12 HAL extension future work；v1.2: 新增 ADR-0029 关联 + §5.4 image bytes ownership + §10.5 image executor acceptance items + §11 ADR-0029 替换 TBD 占位 + §12 Phase 跟踪）
 **维护者**: PTX-EMU Architecture Team

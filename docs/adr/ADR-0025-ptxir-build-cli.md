@@ -33,7 +33,7 @@
 
 - **不重复造轮子**：直接调用已存在的 `ptxir::generate_ptxir()` 库函数
 - **保持 PTXIR 格式兼容**：不修改 ADR-0023 §PTXIRHeader / §Section TOC
-- **单 kernel v1**：当前 `ManifestSection` 仅 `kernel_name` 单值（ADR-0024 §决策内容 §决策 §1）；`generate_ptxir` 按单 kernel 处理
+- **单 kernel v1**：当前 `ManifestSection` 仅 `kernel_name` 单值（ADR-0024 §决策内容 §决策 §1）；`generate_ptxir` 按单 kernel 处理。**[ADR-0028]**（**[BLOCKING DEPENDENCY]**，详见 `docs/architecture/ptxir-toolchain-stack.md §11`）待 ship 后解除；解除时需 bump `PTXIR_VERSION` per ADR-0023 Extend-Only 原则，backward-compat 策略：旧 v1 单 kernel binary 仍可被新 loader 读取。
 - **POSIX CLI 习惯**：GNU-style `--option value`，使用明确且稳定的退出码契约：0 成功，1 用法或参数错误，2 PTX/kernel 数据错误，3 I/O、内部或工具失败。
 
 ---
@@ -211,6 +211,7 @@ int main(int argc, char** argv) {
 | 日期 | 更新内容 | 作者 |
 |------|---------|------|
 | 2026-08-08 | 初始版本（端到端工具链债务补齐 + SRP） | PTX-EMU Architecture Team |
+| 2026-08-09 | **跨仓评审修订**: §技术约束 v1 单 kernel 限制明示 ADR-0028 BLOCKING DEPENDENCY 标注 + backward-compat 策略 | PTX-EMU Architecture Team |
 
 ---
 

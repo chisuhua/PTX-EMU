@@ -106,13 +106,15 @@ docs/adr/
 **维护**: PTX-EMU Architecture Team
 **最后更新**: 2026-08-09
 **ADR 总数**: 27（当前有效 21：Active 14 / Accepted 7；Proposed 6；Superseded 0）
-**预留编号**: ADR-0028 预留为 multi-kernel manifest 设计（多文件引用中；当前未 propose；引用文件数会随时间漂移，不在此处硬编码具体数字 per Lesson §8）
+**预留编号**: ADR-0028 **[BLOCKING DEPENDENCY, 2026-08-09 升级]** — multi-kernel manifest + runtime selection 设计。详见 [docs/architecture/ptxir-toolchain-stack.md §11](../architecture/ptxir-toolchain-stack.md#11-related-adrs)。状态从 "预留占位" 升级为 BLOCKING，因 ADR-0025/0027/0029 的 v1 单 kernel 限制都依赖此 ADR 解除。引用文件数会随时间漂移，不在此处硬编码具体数字 per Lesson §8
 
 ## 最近更新
 
 | 日期 | 更新内容 | 关联 ADR |
 |------|---------|---------|
 | 2026-08-09 | **Image Executor + 2 反向依赖搬迁**：新增 ADR-0029 Proposed（`ptxemu_image_*` C-API + `libptxemu_device.so` + `cpptlm_module.h`）— 填平 ptxir-toolchain-stack.md §11 TBD 缺口；image bytes 重 deserialize 修复 `src/cudart/ptx_interpreter.cpp:100-140` mutation bug；3-Phase 实施 + 5 byte-identical gates（含 logger→g_gpu_context 新 gate）+ D3 perf acceptance（< 10% deserialize cost 实测）；不 bump cpptlm_bridge.h ABI v2；Phase 0 Step 0 = amend ADR-0021 D-PTX-1 硬约束 | 0029 |
+| 2026-08-09 | **ADR-0029 F2 跨仓评审修订 + ADR-0028 BLOCKING DEPENDENCY 升级 + 工具链栈 v1.3**：(a) ADR-0029 D8 替换为 HAL 扩展方案（UsrLinuxEmu HAL 65→68 fn-ptrs + 3 新 ioctl 编号 39/40/41 + TaskRunner `IGpuDriver` 3 方法），原 D8 直链方案保留为 D8-Alt；(b) ADR-0029 D6 标签 [SINGLE-LAUNCH] → [SINGLE-GPU-INSTANCE]；(c) §合规检查 新增 2 个 Acceptance gate（Phase 0 Step 0 HARD + D8 HAL SOFT）；(d) ADR-0028 从预留占位升 BLOCKING DEPENDENCY（影响 ADR-0025/0027/0029 三个 v1 单 kernel 限制）；(e) ADR-0027 §互斥关系 段新增 wrapper 与 in-memory 路径互斥约束；(f) `docs/architecture/ptxir-toolchain-stack.md` v1.2 → v1.3：§2 CP 端跨仓集成节点表 + §11 BLOCKING DEPENDENCY + §12 HAL extension future work | 0025, 0027, 0029, 工具链栈 |
+| 2026-08-09 | **ADR-0029 F3 跨仓文档契约化**：ADR-0029 §D8.7 概要化 + 跨仓 ADR 引用分工；canonical source 落地到 UsrLinuxEmu [adr-076](../../../UsrLinuxEmu/docs/00_adr/adr-076-gpgpu-kernel-module-ioctl.md)（System C ioctl 0x27/0x28/0x29 + 结构体 + HAL fn-ptr #66/#67/#68 完整定义 + 跨仓 commit 顺序协议）；consumer-side 对偶到 TaskRunner [tadr-307](../../../UsrLinuxEmu/external/TaskRunner/docs/shared/adr/tadr-307-igpu-driver-kernel-module-extension.md)（IGpuDriver 扩展契约 + shim 改动 + MockGpuDriver 更新 + e2e 测试要求）；ioctl 编号 39/40/41 → **0x27/0x28/0x29**（System C magic 'G' 8-bit 范围修正，与现有 0x01~0x26 连续）| 0029 |
 | 2026-08-08 | **PTXIR nvcc 兼容工具链**：新增 ADR-0025/0026/0027 Proposed — `ptxir_build` CLI 补齐 PTX→PTXIR、`PTXIR_MODE` default=auto 实现零配置、`ptx-nvcc` wrapper 提供端到端 NVIDIA SDK 兼容体验 | 0025, 0026, 0027 |
 | 2026-08-08 | **新增架构文档** `docs/architecture/ptxir-toolchain-stack.md`：工具链栈总览（组件、build-time/runtime data flow、配置优先级、兼容性矩阵、v1 限制、v2 路线） | 0025, 0026, 0027 |
 | 2026-08-07 | **ADR-0024 v1.1 amendment**: footer layout (size-after-section, ZIP-EOCD style) + magic literal `{'P','T','X','E','M','B','\x01','\x00'}` + PtxContextAdapter + tools/ 目录 + MANIFEST section | 0024 |
