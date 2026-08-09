@@ -37,7 +37,7 @@ docs/adr/
 
 ## ADR 索引
 
-### Active (当前有效)
+### Active / Accepted（当前有效）
 
 | # | 标题 | 状态 | 日期 | 关联任务 |
 |---|------|------|------|---------|
@@ -51,12 +51,13 @@ docs/adr/
 | [0008](./ADR-0008-barrier-semantics.md) | Barrier 语义增强 - Convergence + Memory Fence | Active | 2026-05-05 | Phase 4 |
 | [0009](./ADR-0009-xmacro-instruction-dispatch.md) | X-Macro + Weak Symbol 指令分发模式 | Active | 2026-05-05 | Phase 0-9 |
 | [0010](./ADR-0010-fake-cuda-runtime.md) | Fake CUDA Runtime 拦截机制 | Active | 2026-05-05 | Phase 0 |
+| [0011](./ADR-0011-pipeline-architecture.md) | PTX→PTXIR 多阶段 Pipeline 架构 | **Accepted** | 2026-05-05 (2026-07-30 升级) | Phase 12.1 |
 | [0012](./ADR-0012-per-thread-pc.md) | Per-Thread PC 设计（Volta+ SIMT 模型） | Active | 2026-05-05 | Phase 3 |
+
 | [0015](./ADR-0015-cvt-strategy-pattern.md) | CVT 指令策略模式重构 (Composition over Inheritance) | Active | 2026-06-23 | T2-6 (Phase 3) |
 | [0016](./ADR-0016-blackwell-only-tcgen05.md) | Skip pre-Blackwell WMMA, only implement Blackwell tcgen05 | Accepted | 2026-07-04 | `openspec/changes/implement-wmma-tensor-core/` |
 | [0018](./ADR-0018-tcgen05-cta-group-restriction.md) | tcgen05 cta_group::2 throws UnsupportedInstructionException | Accepted | 2026-07-12 | `openspec/changes/fix-tcgen05-commit-wait-group/` |
 | [0019](./ADR-0019-pc-management-extraction.md) | ThreadContext 持续瘦身：MemoryAccessor + InstructionPipeline accessor 方案 | Active | 2026-07-14 | `openspec/changes/god-class-refactor-thread-context-phase3/` |
-| [0011](./ADR-0011-pipeline-architecture.md) | PTX→PTXIR 多阶段 Pipeline 架构 | **Accepted** | 2026-05-05 (2026-07-30 升级) | Phase 12.1 |
 | [0020](./ADR-0020-cpptlm-injection-points.md) | 接受 CppTLM Phase 8.B D1-Full 注入（IScoreboard / IPipelineLatencyProvider / ITensorCoreTiming） | Accepted | 2026-07-16 | `openspec/changes/cpptlm-phase8b-injection-points/` |
 | [0021](./ADR-0021-cpptlm-d1-full-integration.md) | CppTLM D1-Full MemoryBridge 集成（D-PTX-1~6 + HSK-1/2/3） | Active | 2026-07-16 | `openspec/changes/cpptlm-d1-full/` |
 | [0022](./ADR-0022-cpptlm-unified-build.md) | CppTLM + PTX-EMU 统一构建链路（`--whole-archive` 替代独立 `.so` + `dlopen`） | Accepted | 2026-07-23 | `openspec/changes/cpptlm-d1-full/` |
@@ -69,6 +70,10 @@ docs/adr/
 |---|------|------|------|---------|
 | [0013](./ADR-0013-statement-factory-test-unification.md) | StatementContext 测试统一模式 — statement_factory + execute_warp_instruction | Proposed | 2026-05-09 | — |
 | [0014](./ADR-0014-independent-thread-scheduling.md) | Independent Thread Scheduling (ITS) 支持 | Proposed | 2026-05-25 | BUG-SIMT-001 |
+| [0025](./ADR-0025-ptxir-build-cli.md) | `ptxir_build` CLI（PTX → PTXIR 序列化命令行） | Proposed | 2026-08-08 | `openspec/changes/feat-ptxir-nvcc-toolchain/` T13.1 |
+| [0026](./ADR-0026-ptxir-default-mode-auto.md) | PTXIR 调度默认模式 = auto（零配置嵌入 binary） | Proposed | 2026-08-08 | `openspec/changes/feat-ptxir-nvcc-toolchain/` T13.2 |
+| [0027](./ADR-0027-ptx-nvcc-wrapper.md) | `ptx-nvcc` nvcc 兼容 wrapper 工具链 | Proposed | 2026-08-08 | `openspec/changes/feat-ptxir-nvcc-toolchain/` T13.3 |
+| [0029](./ADR-0029-ptxemu-image-executor.md) | PTX-EMU Image Executor（in-memory Driver API + 2 反向依赖符号搬迁 + CudaDriver 保留理由） | Proposed | 2026-08-09 | TBD（待 propose 阶段确定） |
 
 ### Superseded (已被替代)
 
@@ -98,14 +103,18 @@ docs/adr/
 
 ---
 
-**维护**: PTX-EMU Architecture Team  
-**最后更新**: 2026-08-06  
-**ADR 总数**: 23（其中 Active 14 / Accepted 7 / Proposed 2 / Superseded 0）
+**维护**: PTX-EMU Architecture Team
+**最后更新**: 2026-08-09
+**ADR 总数**: 27（当前有效 21：Active 14 / Accepted 7；Proposed 6；Superseded 0）
+**预留编号**: ADR-0028 预留为 multi-kernel manifest 设计（多文件引用中；当前未 propose；引用文件数会随时间漂移，不在此处硬编码具体数字 per Lesson §8）
 
 ## 最近更新
 
 | 日期 | 更新内容 | 关联 ADR |
 |------|---------|---------|
+| 2026-08-09 | **Image Executor + 2 反向依赖搬迁**：新增 ADR-0029 Proposed（`ptxemu_image_*` C-API + `libptxemu_device.so` + `cpptlm_module.h`）— 填平 ptxir-toolchain-stack.md §11 TBD 缺口；image bytes 重 deserialize 修复 `src/cudart/ptx_interpreter.cpp:100-140` mutation bug；3-Phase 实施 + 5 byte-identical gates（含 logger→g_gpu_context 新 gate）+ D3 perf acceptance（< 10% deserialize cost 实测）；不 bump cpptlm_bridge.h ABI v2；Phase 0 Step 0 = amend ADR-0021 D-PTX-1 硬约束 | 0029 |
+| 2026-08-08 | **PTXIR nvcc 兼容工具链**：新增 ADR-0025/0026/0027 Proposed — `ptxir_build` CLI 补齐 PTX→PTXIR、`PTXIR_MODE` default=auto 实现零配置、`ptx-nvcc` wrapper 提供端到端 NVIDIA SDK 兼容体验 | 0025, 0026, 0027 |
+| 2026-08-08 | **新增架构文档** `docs/architecture/ptxir-toolchain-stack.md`：工具链栈总览（组件、build-time/runtime data flow、配置优先级、兼容性矩阵、v1 限制、v2 路线） | 0025, 0026, 0027 |
 | 2026-08-07 | **ADR-0024 v1.1 amendment**: footer layout (size-after-section, ZIP-EOCD style) + magic literal `{'P','T','X','E','M','B','\x01','\x00'}` + PtxContextAdapter + tools/ 目录 + MANIFEST section | 0024 |
 | 2026-08-06 | **CUBIN 嵌入 PTXIR 混合二进制格式**：新增 ADR-0024 Accepted — 作为 ADR-0023 sibling 决策，在 cubin 末尾追加 `.ptxir.section` + `.ptxir.magic`，loader 决策 + extract 工具复原纯 cubin + 复用现有 PTXIR 反序列化路径 | 0024 |
 | 2026-07-30 | **PTXIR 二进制格式 + Pipeline 架构升级**：新增 ADR-0023 Accepted（PTXIR 7 项决策：扁平二进制+TOC+值枚举+字符串表末尾+Extend-Only 等）；ADR-0011 从 Proposed 升级 Accepted（引用 ADR-0023 作为格式依据） | 0023, 0011 |

@@ -2,8 +2,8 @@
 
 | 属性 | 值 |
 |------|-----|
-| **状态** | Active |
-| **日期** | 2026-07-15（Active: 2026-07-16） |
+| **状态** | Active (v1.1 2026-08-09 amendment — D-PTX-1 定义 TU 放宽,详见文末 Amendment 段) |
+| **日期** | 2026-07-15（Active: 2026-07-16;v1.1 amendment: 2026-08-09） |
 | **关联任务** | D-PTX-1, D-PTX-2, D-PTX-3, D-PTX-4, D-PTX-5, D-PTX-6（详见 PTX-EMU-README §10.1）|
 | **关联 OpenSpec change** | [openspec/changes/cpptlm-d1-full/](../../openspec/changes/cpptlm-d1-full/) |
 | **关联 CppTLM 文档** | [PTX-EMU-README.md §10](https://github.com/chisuhua/CppTLM/blob/main/docs/superpowers/specs/PTX-EMU-README.md)（6 项决策 + 3 个 handshake）<br>[综合任务书 §2 + §10](https://github.com/chisuhua/CppTLM/blob/main/docs/superpowers/specs/2026-07-14-ptxemu-comprehensive-modification-plan.md)<br>[协作同步 §4 + §5](https://github.com/chisuhua/CppTLM/blob/main/docs/superpowers/specs/2026-07-01-f12b-ld-ptxemu-collaboration-sync.md) |
@@ -58,6 +58,8 @@ extern CppTLMBridge* g_cpptlm_bridge;
 CppTLMBridge* g_cpptlm_bridge = nullptr;  // 默认 nullptr = 独立模式
 ```
 
+> **v1.1 amendment 标注**:详细方案示例展示了 v1.0 时的定义位置;v1.1 (2026-08-09) 起 `g_cpptlm_bridge` + `cpptlm_attach_bridge` + `cpptlm_detach_bridge` + `g_bridge_user_override` 必须同 TU 定义在 `src/cudart/cpptlm_bridge/PtxEmuDriverShim.cpp`(同 TU as `PtxEmuDriverShim` 类),理由见文末 Amendment 段。`extern` 声明仍在 `cpptlm_bridge.h` 不变。
+
 **初始化流程**：
 1. 默认 `nullptr`（保留字节级回退）
 2. 加载 `libcpptlm_cudart.so` 后通过 `extern "C"` 入口函数 `cpptlm_attach_bridge()` 赋值
@@ -73,7 +75,7 @@ CppTLMBridge* g_cpptlm_bridge = nullptr;  // 默认 nullptr = 独立模式
 | D. first-cuda-call hook | 强制初始化 | 增加 entry-point overhead；与 SingletonGuard 路径重复 | ❌ |
 
 **约束**：
-- `extern` 声明必须在 `cpptlm_bridge.h` 内，定义必须在单个 TU（`cudart_sim.cpp`）
+- `extern` 声明必须在 `cpptlm_bridge.h` 内，定义必须在单个 TU（`cudart_sim.cpp`）(*v1.1: 放宽为"必须在同一 TU, 该 TU 可以是任意非 cudart TU" — 见文末 Amendment 段*)
 - 全局指针的 `nullptr` 默认值**必须在编译期**确认（避免 TLS / thread-local 误用）
 
 ---
@@ -103,7 +105,7 @@ public:
 ```
 
 **保护的 4 个全局单例**：
-1. `g_gpu_context` (`unique_ptr<GPUContext>`, `cudart_sim.cpp:111` / `:123`)
+1. `g_gpu_context` (`unique_ptr<GPUContext>`, `cudart_sim.cpp:111` / `:123`) *v1.1: 迁出 `cudart_sim.cpp`,新位置 `ptx_interpreter.cpp`(同 TU as `PtxInterpreter`),但仍由 `__cudaRegisterFatBinary` 入口的 SingletonGuard 保护*
 2. `g_ptx_interpreter` (`unique_ptr<PtxInterpreter>`, `cudart_sim.cpp:114` / `:125`)
 3. `CudaDriver::instance()` (Driver singleton)
 4. `HardwareMemoryManager::instance()` (Memory singleton)
@@ -294,12 +296,85 @@ if (__builtin_expect(g_cpptlm_bridge != nullptr, 0)) {
 
 | # | 决策 | 结论 | 实施位置 |
 |---|------|------|---------|
-| **D-PTX-1** | `g_cpptlm_bridge` 全局指针位置 | 静态全局 + 懒初始化 | `include/cudart/cpptlm_bridge.h` (extern) + `src/cudart/cudart_sim.cpp` (定义) |
+| **D-PTX-1** | `g_cpptlm_bridge` 全局指针位置 | 静态全局 + 懒初始化 | `include/cudart/cpptlm_bridge.h` (extern) + `src/cudart/cudart_sim.cpp` (定义) *v1.1: 放宽为 `src/cudart/cpptlm_bridge/PtxEmuDriverShim.cpp`(同 TU as `cpptlm_attach_bridge`/`cpptlm_detach_bridge`/`g_bridge_user_override`)* |
 | **D-PTX-2** | 全局单例共存策略 | SingletonGuard + FATAL 中止 | `src/cudart/cudart_sim.cpp` (4 个 init 入口前) |
 | **D-PTX-3** | `exe_once()` 注入代码定位 | sm_context.cpp:222 + 253/338 | `src/ptxsim/core/sm_context.cpp` (姊妹 change `cpptlm-phase8b-injection-points`) |
 | **D-PTX-4** | ANTLR4 版本策略 | Pin 4.13.2 + 修复文档 | `.github/copilot-instructions.md` (4.13.1 → 4.13.2) |
 | **D-PTX-5** | 错误码映射表 | 5 类条件 + 返回值 + 日志级别 | `src/cudart/cudart_sim.cpp` + `src/ptxsim/instructions/memory.cpp` |
 | **D-PTX-6** | 性能预算策略 | vtable + LTO + null hoisting | `CMakeLists.txt` (-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON) |
+
+---
+
+## 2026-08-09 v1.1 Amendment: D-PTX-1 定义 TU 放宽(为 ADR-0029 image executor 解锁)
+
+### 触发事件
+
+[ADR-0029](../adr/ADR-0029-ptxemu-image-executor.md) §D2 BLOCKER 段(`:196-202`)揭示:`Oracle Round 3` 实地核实确认 ADR-0021:75-77 "定义必须在单个 TU（cudart_sim.cpp）" 是 **已确认约束(不是 SPECULATIVE)**,而 ADR-0029 D2 Phase 0 Step 0 hard gate 要求把 `g_cpptlm_bridge` 从 `cudart_sim.cpp` 迁出以启用 `libptxemu_device.so` 抽取(image executor 路径)。
+
+按 OpenSpec Checklist G:Active ADR 可 amend,本 v1.1 amendment 解除 D-PTX-1:76 约束以解锁 Phase 0 实施。
+
+### 修订内容
+
+#### D-PTX-1 约束修订(line 75-77)
+
+原约束:
+> "`extern` 声明必须在 `cpptlm_bridge.h` 内，定义必须在单个 TU（`cudart_sim.cpp`）"
+
+修订为:
+> "`extern` 声明必须在 `cpptlm_bridge.h` 内(ABI 真值源 governance 不变);**定义 TU 放宽为"任意单 TU"**,但 `g_cpptlm_bridge` + `cpptlm_attach_bridge` + `cpptlm_detach_bridge` + `g_bridge_user_override` 必须 **same-TU** 共置(维持"指针只能通过 ABI 入口 mutate"的不变量)。"
+
+**v1.1 实施位置**:`src/cudart/cpptlm_bridge/PtxEmuDriverShim.cpp`(同 TU as `PtxEmuDriverShim` 类;与 `cpptlm_set_driver` 弱符号同 TU)。
+
+#### D-PTX-2 保护列表补充
+
+`g_gpu_context` 从 `cudart_sim.cpp:111/:123` 迁出,新位置 `src/cudart/ptx_interpreter.cpp`(同 TU as `PtxInterpreter` 类,理由见 ADR-0029 D2 行 3)。仍由 `__cudaRegisterFatBinary` 入口的 SingletonGuard 运行时检测(搬迁不改变检测点)。
+
+### 不变声明(本次 amendment 严格不触碰)
+
+| 不变项 | 不变理由 |
+|---|---|
+| `include/cudart/cpptlm_bridge.h` ABI 头 | `include/cudart/AGENTS.md` 反模式:不污染 ABI 真值源 |
+| `CPPTLMBRIDGE_VERSION = 2` | governance 不允许静默 bump |
+| `g_cpptlm_bridge` nullptr 编译期默认 | D-PTX-1 约束 line 77(本次未改) |
+| 初始化流程 1/2/3 | 行为不变,只换 attach/detach 实现 TU |
+| D-PTX-2/3/4/5/6 全部决策 | 与本次 amendment 无关 |
+| `g_cpptlm_bridge` 不需要 SingletonGuard(line 122) | attach/detach 可多次调用的语义保留 |
+| CudaDriver::instance()(D2 行 1 保留理由) | 不迁出 cudart/(依赖仅为 `SimpleMemory` + `SimpleMemoryAllocator`,无 cudart 内部耦合,但搬迁收益微薄,保持原位) |
+| `__cudaRegisterFatBinary` 的 SingletonGuard | 不动 |
+| Postmortem 章节(line 469-614) | 历史记录,不可修改 |
+
+### 影响范围
+
+| 文件 | v1.1 变更 |
+|---|---|
+| `src/cudart/cudart_sim.cpp` | 移除 4 个 bridge 符号定义(line 104, 126-134) + `g_gpu_context` 定义(line 92)。**不修改** 任何调用 `g_cpptlm_bridge` / `g_gpu_context` 的逻辑(line-level diff 锁) |
+| `src/cudart/cpptlm_bridge/PtxEmuDriverShim.cpp` | **新增** 4 个 bridge 符号定义(`g_cpptlm_bridge` + `cpptlm_attach_bridge` + `cpptlm_detach_bridge` + `g_bridge_user_override`) |
+| `src/cudart/ptx_interpreter.cpp` | **新增** `g_gpu_context` 定义 |
+| `include/cudart/cpptlm_bridge.h` | **零修改**(governance 严守) |
+| ADR-0029 | D2 BLOCKER 段引用本 v1.1 amendment 作为约束源解除依据 |
+| `ptxir-toolchain-stack.md` v1.2 | §4.2/§11 cross-ref 同步为 v1.1 amendment |
+
+### 关联
+
+- [ADR-0029](../adr/ADR-0029-ptxemu-image-executor.md) §上下文触发事件 #4(Oracle Round 2)
+- [ADR-0029](../adr/ADR-0029-ptxemu-image-executor.md) §D2 BLOCKER 段(已确认约束源)
+- [ADR-0029](../adr/ADR-0029-ptxemu-image-executor.md) §D2 行 2(4 个 bridge 符号必须一起搬)
+- [ADR-0029](../adr/ADR-0029-ptxemu-image-executor.md) §D2 行 3(`g_gpu_context` 搬迁)
+- [ADR-0029](../adr/ADR-0029-ptxemu-image-executor.md) §D5 Phase 0 Step 0 hard gate("ADR-0021 amendment merged" 才能动符号搬迁)
+- [ptxir-toolchain-stack.md v1.2 §4.2](../architecture/ptxir-toolchain-stack.md) cross-ref
+- [ptxir-toolchain-stack.md v1.2 §11](../architecture/ptxir-toolchain-stack.md) ADR-0029 entry
+
+### 合规检查
+
+后续相关开发应检查:
+
+- [ ] `cpptlm_bridge.h` `git diff` 为空(governance 验证)
+- [ ] `CPPTLMBRIDGE_VERSION` 仍 = 2
+- [ ] 搬迁后 `nm -D --defined-only libcudart.so` 4 个 bridge 符号表面不变(对外可见符号不变)
+- [ ] 搬迁后 `nm -D --defined-only libptxemu_device.so`(Phase 1 新增)可见 4 个 bridge 符号定义
+- [ ] attach/detach 在新 TU 中的实现与 v1.0 字节级一致(同一函数实现,只换 TU)
+- [ ] `g_cpptlm_bridge==nullptr` 单元测试通过(行为不变,只换 TU)
+- [ ] 后续任何 ABI 变更仍走 `CPPTLMBRIDGE_VERSION` bump 流程,不绕过 governance
 
 ---
 
@@ -373,7 +448,7 @@ if (__builtin_expect(g_cpptlm_bridge != nullptr, 0)) {
 
 后续相关开发应检查：
 
-- [ ] `g_cpptlm_bridge == nullptr` 时现有 600+ 测试字节级一致（通过 baseline worktree 对照）
+- [ ] `g_cpptlm_bridge == nullptr` 时现有 600+ 测试字节级一致（通过 baseline worktree 对照）(*v1.1 amendment 后:搬迁不改变 nullptr 默认行为,验证仍适用*)
 - [ ] SingletonGuard 4 个入口都加检测（`grep -n "SingletonGuard" src/cudart/cudart_sim.cpp` ≥ 4）
 - [ ] `exe_once()` 三段式注入覆盖 fast-path + slow-path 双分支
 - [ ] ANTLR4 版本一致性：`grep -nE "antlr4|ANTLR" AGENTS.md README.md .github/copilot-instructions.md` 全为 4.13.2
@@ -390,7 +465,8 @@ if (__builtin_expect(g_cpptlm_bridge != nullptr, 0)) {
 | 日期 | 更新内容 | 作者 |
 |------|---------|------|
 | 2026-07-15 | 初始版本（Proposed） | PTX-EMU Architecture Team |
-| 2026-07-16 | **Active 转换**：3 轮 Metis pre-impl review 完成；7 Phase commits 修复所有 5 个 BLOCKER（B1 ABI 实现 / B2 sync loop / B3 stream destroy UB / B4 HSK 一致性 / B5 CMake 文档）+ sister spec 附录；205 tests PASS（1 pre-existing failure out of scope）；ABI 符号已导出（`nm -D` 验证 `T cpptlm_attach_bridge` + `T cpptlm_detach_bridge`）| PTX-EMU Architecture Team |
+| 2026-07-16 | **Active 转换**:3 轮 Metis pre-impl review 完成;7 Phase commits 修复所有 5 个 BLOCKER(B1 ABI 实现 / B2 sync loop / B3 stream destroy UB / B4 HSK 一致性 / B5 CMake 文档)+ sister spec 附录;205 tests PASS(1 pre-existing failure out of scope);ABI 符号已导出(`nm -D` 验证 `T cpptlm_attach_bridge` + `T cpptlm_detach_bridge`) | PTX-EMU Architecture Team |
+| 2026-08-09 | **v1.1 Amendment(为 ADR-0029 image executor 解锁)**:D-PTX-1 定义 TU 放宽 — 4 个 bridge 符号(`g_cpptlm_bridge` + `cpptlm_attach_bridge` + `cpptlm_detach_bridge` + `g_bridge_user_override`)同 TU 迁出 `cudart_sim.cpp` 到 `PtxEmuDriverShim.cpp`(维持 same-TU 不变量);`g_gpu_context` 同 TU 迁出到 `ptx_interpreter.cpp`(per D-PTX-2 保护列表补充)。`cpptlm_bridge.h` ABI 头零修改,`CPPTLMBRIDGE_VERSION=2` 不变。详见文末 "## 2026-08-09 v1.1 Amendment" 段 | PTX-EMU Architecture Team |
 
 ---
 
