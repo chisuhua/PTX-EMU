@@ -1,4 +1,5 @@
 #include "cudart/ptxir_loader.h"
+#include "cudart/ptx_context_adapter.h"
 #include "ptxir/ptxir_serialization.h"
 #include "ptx_ir/ptxir_format.h"
 #include "ptx_ir/ptxir_reader.h"
@@ -23,6 +24,47 @@ ManifestSection read_manifest_from_ptxir_section(const uint8_t* data, size_t siz
     } catch (...) {
         return ManifestSection();
     }
+}
+
+// Phase 12.2 R3: testable dispatch helper that distinguishes "no footer"
+// (caller may fallback to cuobjdump) from "footer present + malformed"
+// (caller MUST NOT fallback — explicit error per 架构 §4.1 + ADR-0024 #6).
+PtxirDispatchStatus try_ptxir_dispatch_from_memory(
+    const uint8_t* exe_data, size_t exe_size,
+    PtxContext* out_ctx) {
+
+    // Step 1: detect PTXIR footer presence (cheap O(1) magic check).
+    if (!PTXIRLoader::hasEmbeddedPTXIR(exe_data, exe_size)) {
+        return PtxirDispatchStatus::kNoFooter;
+    }
+
+    // Step 2: extract PTXIR section. Footer is present but extract may fail
+    // (e.g. size_le field points outside the buffer). Return explicit error.
+    size_t section_size = 0;
+    auto section = PTXIRLoader::extractPTXIR(exe_data, exe_size, &section_size);
+    if (!section) {
+        return PtxirDispatchStatus::kMalformedPtxir;
+    }
+
+    // Step 3: deserialize. Empty result = corrupted PTXIR section.
+    auto stmts = PTXIRLoader::deserializeForCubin(section.get(), section_size);
+    if (stmts.empty()) {
+        return PtxirDispatchStatus::kMalformedPtxir;
+    }
+
+    // Step 4: validate manifest. Empty kernel_name is invalid per ADR-0024 §1.
+    auto manifest = read_manifest_from_ptxir_section(section.get(), section_size);
+    if (manifest.kernel_name.empty()) {
+        return PtxirDispatchStatus::kMalformedManifest;
+    }
+
+    // Step 5: build PtxContext. Caller takes ownership via set_ptx_context.
+    EmbeddedKernelManifest em;
+    em.kernelName = manifest.kernel_name;
+    em.ptxAddressSize = manifest.ptx_address_size;
+    em.params = manifest.params;
+    *out_ctx = PtxContextAdapter::fromEmbedded(std::move(stmts), em);
+    return PtxirDispatchStatus::kSuccess;
 }
 
 namespace {

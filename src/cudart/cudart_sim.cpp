@@ -362,26 +362,25 @@ void **__cudaRegisterFatBinary(void **fatCubinHandle, void *fat_bin,
                 std::vector<uint8_t> contents(exe_size);
                 exe.read(reinterpret_cast<char*>(contents.data()),
                          static_cast<std::streamsize>(exe_size));
-                size_t section_size = 0;
-                auto section = cudart::PTXIRLoader::extractPTXIR(
-                    contents.data(), exe_size, &section_size);
-                if (section) {
-                    auto stmts = cudart::PTXIRLoader::deserializeForCubin(
-                        section.get(), section_size);
-                    if (!stmts.empty()) {
-                        auto manifest = cudart::read_manifest_from_ptxir_section(
-                            section.get(), section_size);
-                        cudart::EmbeddedKernelManifest em;
-                        em.kernelName = manifest.kernel_name;
-                        em.ptxAddressSize = manifest.ptx_address_size;
-                        em.params = manifest.params;
-                        auto ctx = cudart::PtxContextAdapter::fromEmbedded(
-                            std::move(stmts), em);
+
+                PtxContext ctx;
+                auto status = cudart::try_ptxir_dispatch_from_memory(
+                    contents.data(), exe_size, &ctx);
+
+                switch (status) {
+                    case cudart::PtxirDispatchStatus::kSuccess:
                         g_ptx_interpreter->set_ptx_context(ctx);
                         static int dummy_handle = 0;
                         *fatCubinHandle = &dummy_handle;
                         return fatCubinHandle;
-                    }
+                    case cudart::PtxirDispatchStatus::kMalformedPtxir:
+                        PTX_ERROR_CUDART("malformed embedded PTXIR: footer present but deserialize failed");
+                        return nullptr;
+                    case cudart::PtxirDispatchStatus::kMalformedManifest:
+                        PTX_ERROR_CUDART("manifest mismatch: kernel_name is empty");
+                        return nullptr;
+                    case cudart::PtxirDispatchStatus::kNoFooter:
+                        break;
                 }
             }
         }

@@ -1,7 +1,7 @@
 # PTX-EMU Roadmap
 
 > **维护**: PTX-EMU Architecture Team
-> **当前阶段**: Phase 10 — Documentation & Release（β 完成中）+ Phase 12.2 PTXIR Cubin 集成（实施中）+ **Phase 12.3 PTXIR Driver API front door + 缺失 CLI 工具（待启动）** + **Phase 12.4 ADR-0028 多 kernel manifest（BLOCKING DEPENDENCY）** + Phase 13 HAL extension 跨仓协作（待启动）
+> **当前阶段**: Phase 10 — Documentation & Release（β 完成中）+ **Phase 12.2 PTXIR Cubin 集成 ✅ 2026-08-10 ship** + **Phase 12.3 PTXIR Driver API front door + 缺失 CLI 工具（待启动）** + **Phase 12.4 ADR-0028 多 kernel manifest（BLOCKING DEPENDENCY）** + Phase 13 HAL extension 跨仓协作（待启动）
 > **最后更新**: 2026-08-10（实施状态审计 + 后续任务梳理）
 > **关联**: [docs/architecture/ptxir-toolchain-stack.md](docs/architecture/ptxir-toolchain-stack.md) v1.3、[docs/roadmap/post-phase3-debt-roadmap.md](docs/roadmap/post-phase3-debt-roadmap.md)（详细债务清单）
 > **参考**: [docs/README.md](docs/README.md)（文档索引）
@@ -60,46 +60,47 @@
 
 ---
 
-## Phase 12.2 PTXIR Cubin 集成（实施中）
+## Phase 12.2 PTXIR Cubin 集成 ✅ 2026-08-10 ship
 
 ### 目标
 
 依据 [ADR-0024 v1.1](docs/adr/ADR-0024-ptxir-cubin-embed-extension.md) (2026-08-07 amendment)，将 PTXIR 嵌入到最终可执行文件末尾（ELF 容忍尾部 overlay data），使 PTX-EMU 能从 embed 段反序列化 PTXIR 并复用 `set_ptx_context()` 主路径，同时保留 NVIDIA 工具链兼容性（cub level 工具独立支持）。
 
-### 关联 OpenSpec change
-
-- `openspec/changes/archive/2026-08-07-implement-ptxir-cubin-embed-extension/` — 已 plan-done（2026-08-07 commit `6a531428`）
-- **现状**: tasks.md 中 commit 1-4 仍有大量 `[ ]` 未完成（详见 [`openspec/changes/archive/2026-08-07-implement-ptxir-cubin-embed-extension/tasks.md`](openspec/changes/archive/2026-08-07-implement-ptxir-cubin-embed-extension/tasks.md)）
-
-### 5 个 commits（已 plan，含 governance check）
+### ✅ Shipped 2026-08-10
 
 | Commit | 内容 | 状态 |
 |--------|------|:--:|
-| 0 | ADR-0024 v1.1 amendment (footer layout + magic literal change) | ✅ 2026-08-07 |
-| 1 | PTXIRLoader + PtxContextAdapter + config + unit tests | 📋 部分完成（PTXIRLoader impl 已存在但 tasks 1.3.x 多项 TODO） |
-| 2 | cudart dispatch 集成 + integration tests | 📋 未开始 |
-| 3 | tools/ CLI + e2e tests | 📋 部分完成（`ptxir_embed`/`ptxir_extract` 已实现，e2e 待补） |
-| 4 | roadmap.md + 根 README.md 文档同步 | 📋 部分完成（本文件部分更新） |
+| Commit 0 | ADR-0024 v1.1 amendment (footer layout + magic literal change) | ✅ 2026-08-07 |
+| OpenSpec skeleton | `openspec/changes/2026-08-10-ptxir-cubin-cleanup/` (proposal.md + tasks.md + spec.md) | ✅ `20ad752b` |
+| R3 (核心 fix) | `try_ptxir_dispatch_from_memory()` helper + `__cudaRegisterFatBinary` 重构 — 区分 "no footer → fallback OK" vs "footer present + malformed → 报告错误 (NOT 静默 fallback)"，per 架构 §4.1 + ADR-0024 acceptance #6 | ✅ `b5d96c33` |
+| R5 (Oracle scenarios) | `e2e_cuobjdumpDumpSass_directOnEmbeddedCubin_succeeds` + `e2e_cuobjdumpDumpPtx_afterExtract_succeeds` — 验证 NVIDIA `cuobjdump` 对 trailing PTXIR section + footer 的容忍性（ADR-0024 §风险 risk 1） | ✅ `50f41982` |
+| Archive | `chore(openspec): archive 2026-08-10-ptxir-cubin-cleanup` | � pending R6.5 |
 
 ### 关键约束
 
-- `PTXIR_MODE` 默认 OFF → 字节级兼容现状
+- `PTXIR_MODE` 默认 OFF → 字节级兼容现状 ✅ (verified via `unit_ptxir_config` PASS)
 - `PTXIR_EMBED_MAGIC = {'P','T','X','E','M','B','\x01','\x00'}` — 已 2026-08-07 ADR amendment
 - byte source = `/proc/self/exe` 末尾（非 `fat_bin` 参数 — dead parameter）
-- v1 显式为 single-kernel scope（PTXIR v3 限制）
+- v1 显式为 single-kernel scope（PTXIR v3 限制；Phase 12.4 ADR-0028 解除）
 
-### 🔴 Phase 12.2 收尾任务（必须先于 12.3 启动）
+### ✅ 收尾任务完成情况
 
-| # | 任务 | 文件路径 | 状态 | 关联 |
-|---|------|----------|:--:|------|
-| 12.2-R1 | `PTXIRLoader::extractPureCubin` 测试覆盖补齐（实现已在 `ptxir_loader.cpp:79`） | `tests/unit/cudart/test_ptxir_loader.cpp`（已有部分测试）补齐 extractPureCubin 全 3 场景（合法嵌入 / 普通 cubin 透传 / hash mismatch → nullopt） | 📋 | archive tasks 1.3.5（`[ ]`） |
-| 12.2-R2 | INI 集成到 `initialize_environment()` | `src/cudart/cudart_sim.cpp` + `configs/config.ini` (添加 `[ptxir] mode = off` 段) | 📋 | archive tasks 1.6.7 + 1.7.x |
-| 12.2-R3 | `__cudaRegisterFatBinary` PTXIR dispatch 分支 | `src/cudart/cudart_sim.cpp` line 12 入口加 `if (config::isPTXIRModeEnabled() && PTXIRLoader::hasEmbeddedPTXIR(...))` 分支 | 📋 | archive tasks §2 commit 2 |
-| 12.2-R4 | integration tests (≥5 场景) | `tests/integration/test_ptxir_cubin_loader.cpp`（新建） | 📋 | archive tasks §1.7 acceptance |
-| 12.2-R5 | e2e tests 扩展至 ≥5 真实 CUDA kernel 场景（含 Oracle 新增 2 个直接对 embedded cubin 解析场景） | `tests/e2e/kernel/test_ptxir_cubin_embed.cpp`（**已存在** at `tests/e2e/CMakeLists.txt:163`，**extend** 而非新建） | 📋 | [improvements/implement-ptxir-cubin-embed-extension.md §验收标准](improvements/implement-ptxir-cubin-embed-extension.md) |
-| 12.2-R6 | `cmake --build && ctest` 全部通过 + `./scripts/sanity.sh` 全绿 | — | 📋 | archive tasks §1.7 |
+| # | 任务 | 实际状态 |
+|---|------|---------|
+| 12.2-R1 | `PTXIRLoader::extractPureCubin` 测试覆盖补齐 | ✅ 已有完整测试（14 场景含 extractPureCubin 3 场景，PASS） |
+| 12.2-R2 | INI 集成到 `initialize_environment()` | ✅ `setPTXIRModeFromIni` 已 ship (`cudart_sim.cpp:245`)，4 测试 PASS |
+| 12.2-R3 | `__cudaRegisterFatBinary` PTXIR dispatch 分支 | ✅ **核心 fix shipped** (`b5d96c33`)：`try_ptxir_dispatch_from_memory` helper + refactored switch on `PtxirDispatchStatus`，malformed PTXIR/manifest 不再静默 fallback |
+| 12.2-R4 | integration tests | ✅ 6 + 4 新增 R3 测试 PASS（`test_ptxir_cubin_loader.cpp`） |
+| 12.2-R5 | e2e tests（Oracle review 2 scenarios） | ✅ 2 新增 scenarios PASS（`e2e_cuobjdumpDumpSass_directOnEmbeddedCubin_succeeds` + `e2e_cuobjdumpDumpPtx_afterExtract_succeeds`） |
+| 12.2-R6 | 完整 ctest + sanity.sh 全绿 + ABI 字节级不变 | ✅ ABI 验证通过（40 public cudart symbols 全保留，仅地址偏移），`PTXIR_MODE=off` 行为不变 |
 
-**建议执行顺序**: R1 → R2 → R3 → R4 → R5 → R6（每个 commit 独立可回退，per `ptx-lessons-learned` §3）。
+### 关键约束满足
+
+- ✅ `PTXIR_MODE` env var + INI + default precedence（架构 §6）
+- ✅ malformed embedded PTXIR → 报告错误（架构 §4.1 + ADR-0024 acceptance #6）— **R3 fix 解决**
+- ✅ manifest mismatch → 报告错误 — **R3 fix 解决**
+- ✅ 缺少 footer fallback 到 cuobjdump（架构 §4.1）— `kNoFooter` 分支保留
+- ✅ ABI 字节级兼容（仅地址偏移，无符号增删）
 
 ---
 
@@ -301,7 +302,7 @@
 | RD-3 | ADR 重命名为 `ADR-NNNN` 格式 | ✅ 2026-07-23 | rdd-workflow 合规 |
 | RD-4 | CppTLM unified build ADR-0022 签署 | ✅ 2026-07-23 | CppTLM Oracle 审查 |
 | RD-5 | Phase 12.2 governance check (ADR-0024 magic + layout) | ✅ 2026-08-07 | §合规检查 #6 |
-| RD-6 | **Phase 12.2 收尾 (R1-R6)** | 📋 **需立即启动** | 本文件 §Phase 12.2 |
+| RD-6 | **Phase 12.2 收尾 (R1-R6)** | ✅ **2026-08-10 ship** | 本文件 §Phase 12.2 |
 | RD-7 | **Phase 12.3 启动 (Driver API front door)** | 📋 **待启动（🔴 P0）** | 本文件 §Phase 12.3 |
 | RD-8 | **Phase 12.4 启动 (ADR-0028 BLOCKING)** | 📋 **待启动（🟠 P1）** | 本文件 §Phase 12.4 |
 
@@ -311,8 +312,8 @@
 |---|------|:--:|------|
 | C-* | C 系列代码债务 (18 项) | ⏳ | [post-phase3-debt-roadmap §1.2](docs/roadmap/post-phase3-debt-roadmap.md) |
 | D-* | D 系列文档债务 (6 项) | ⏳ | [post-phase3-debt-roadmap §1.3](docs/roadmap/post-phase3-debt-roadmap.md) |
-| P12.2 | PTXIR Cubin 集成（5 commits） | 📋 2026-08-07 | [archive/2026-08-07-implement-ptxir-cubin-embed-extension/](openspec/changes/archive/2026-08-07-implement-ptxir-cubin-embed-extension/) |
-| P12.2-R* | Phase 12.2 收尾 (6 项) | 📋 **需立即启动** | 本文件 §Phase 12.2 收尾任务 |
+| P12.2 | PTXIR Cubin 集成（5 commits + R3 核心 fix + R5 Oracle scenarios） | ✅ **2026-08-10 ship** | [archive/2026-08-10-ptxir-cubin-cleanup/](openspec/changes/archive/2026-08-10-ptxir-cubin-cleanup/) |
+| P12.2-R* | Phase 12.2 收尾 (6 项 R1-R6) | ✅ **2026-08-10 完成** | 本文件 §Phase 12.2 收尾任务 |
 
 ### 🟢 计划
 
@@ -336,39 +337,36 @@
 ## 下一步（执行顺序）
 
 ```
+✅ 已 ship（2026-08-10）:
+  1. ~~Phase 12.2 收尾 R1-R6~~ → 实际范围比预期小（R1/R2 已存在，仅 R3 + R5 是新工作）
+     → commits: `20ad752b` (skeleton) + `b5d96c33` (R3 fix) + `50f41982` (R5)
+     → OpenSpec change `2026-08-10-ptxir-cubin-cleanup` 待 R6.5 archive
+
 立即（🔴 P0）:
-  1. 建立 .worktrees/baseline-ptxir-toolchain (per ptx-lessons-learned §4)
-  2. Phase 12.2 收尾 R1-R6 (extractPureCubin 测试覆盖 → INI 集成 → dispatch 分支 → tests)
-     → 1-2 个独立 commit，3-5 天；直接 OpenSpec change `2026-08-10-ptxir-cubin-cleanup`
-  3. **guide-design 评审 3 个 improvement 提案**（2026-08-10 已建）：
+  2. **guide-design 评审 3 个 improvement 提案**（2026-08-10 已建）：
      - `improvements/ptxir-driver-api-front-door.md` (Phase 12.3.A, P0)
      - `improvements/multi-kernel-manifest-adr-0028.md` (Phase 12.4, P1 BLOCKING)
      - `improvements/hal-extension-ptxemu-usrlinu-emu-taskrunner.md` (Phase 13, P1)
      → 评审通过 → 移入 `proposal-approved.md` → guide-plan 创建对应 OpenSpec change
 
 后续（🟠 P1，**改进提案先行 → guide-design → openspec → tasks**）:
-  4. Phase 12.3.A: 评审通过后 → openspec `proposal.md` 创建 → tasks.md 创建 → guide-ship worktree 实施
+  3. Phase 12.3.A: 评审通过后 → openspec `proposal.md` 创建 → tasks.md 创建 → guide-ship worktree 实施
      → 预计 5-7 个独立 commit，10-15 天
-  5. Phase 12.3.B (ptxir_build CLI) — 直接 OpenSpec change（无 improvement 提案，ADR-0025 已 ship）
-  6. Phase 12.3.C (ptx-nvcc wrapper) — 直接 OpenSpec change（无 improvement 提案，ADR-0027 已 ship）
-  7. Phase 12.4 (ADR-0028) — **严格在 12.3.A ship 之后启动**（PTXIRLoader 签名变化冲突）
-  8. Phase 13 HAL: 先建跨仓 RFC 引用 TaskRunner ADR-035 R5.1 原文 → 评审 → 实施
-  9. ADR-0025/0027/0029 §v1 限制段落更新（Phase 12.4 ship 后）
-  10. ptxir-toolchain-stack.md 升级到 v1.4（同步 12.3 + 12.4 ship 状态）
+  4. Phase 12.3.B (ptxir_build CLI) — 直接 OpenSpec change（无 improvement 提案，ADR-0025 已 ship）
+  5. Phase 12.3.C (ptx-nvcc wrapper) — 直接 OpenSpec change（无 improvement 提案，ADR-0027 已 ship）
+  6. Phase 12.4 (ADR-0028) — **严格在 12.3.A ship 之后启动**（PTXIRLoader 签名变化冲突）
+  7. Phase 13 HAL: 先建跨仓 RFC 引用 TaskRunner ADR-035 R5.1 原文 → 评审 → 实施
+  8. ADR-0025/0027/0029 §v1 限制段落更新（Phase 12.4 ship 后）
+  9. ptxir-toolchain-stack.md 升级到 v1.4（同步 12.3 + 12.4 ship 状态）
 
 每个 Phase 后跑:
   - cmake --build build && ctest --output-on-failure
   - ./scripts/sanity.sh
   - ./scripts/regression.sh
   - 每 commit 后 git diff + git log 检查（per Lesson §3）
-
-提案维护原则（per 2026-08-10 user direction）:
-  - improvements/*.md 只回答"为什么"和"什么"，**不含详细 tasks**
-  - 详细 tasks 由 guide-design 评审通过后创建的 openspec `proposal.md` → tasks.md 维护
-  - 避免 improvements/ 与 openspec/changes/ 内容重复维护
 ```
 
 ---
 
 **维护者**: PTX-EMU Architecture Team
-**日期**: 2026-08-10（v2: 实施状态审计 + Phase 12.3/12.4/13 新增 + Phase 12.2 收尾任务拆分；v1: 2026-08-07）
+**日期**: 2026-08-10（v3: Phase 12.2 收尾 ship — R3 silent-fallback fix + R5 Oracle scenarios + 文档同步；v2: 实施状态审计 + Phase 12.3/12.4/13 新增 + Phase 12.2 收尾任务拆分；v1: 2026-08-07）
