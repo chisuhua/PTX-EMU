@@ -3,6 +3,29 @@
 #include "ptxsim/sm_context.h"
 #include "utils/logger.h"
 
+#include "cudart/cpptlm_bridge.h"
+#include "cudart/cpptlm_bridge/PtxEmuDriverShim.h"
+#include "cudart/stub_bridge.h"
+
+CppTLMBridge* g_cpptlm_bridge = nullptr;
+
+namespace {
+bool g_bridge_user_override = false;
+}
+
+bool ptxemu_is_bridge_user_override() { return g_bridge_user_override; }
+void ptxemu_set_bridge_user_override(bool v) { g_bridge_user_override = v; }
+
+extern "C" PTXEMU_BRIDGE_API void cpptlm_attach_bridge(CppTLMBridge* bridge) {
+    g_cpptlm_bridge = bridge;
+    ptxemu_set_bridge_user_override(bridge != nullptr);
+}
+
+extern "C" PTXEMU_BRIDGE_API void cpptlm_detach_bridge() {
+    g_cpptlm_bridge = nullptr;
+    ptxemu_set_bridge_user_override(false);
+}
+
 PtxEmuDriverShim::PtxEmuDriverShim(GPUContext* ctx) : ctx_(ctx) {
     PTX_DEBUG_EMU("PtxEmuDriverShim created (ctx=%p)", static_cast<void*>(ctx_));
 }

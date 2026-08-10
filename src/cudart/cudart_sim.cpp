@@ -89,53 +89,16 @@ dim3 _gridDim, _blockDim;
 size_t _sharedMem;
 
 // 全局GPUContext和PtxInterpreter实例
-std::unique_ptr<GPUContext> g_gpu_context;
+// g_gpu_context 已搬迁到 ptx_interpreter.cpp per ADR-0021 v1.1 amendment
+extern std::unique_ptr<GPUContext> g_gpu_context;
 std::unique_ptr<PtxInterpreter> g_ptx_interpreter;
 
-// ============================================================================
-// CppTLM Bridge 全局指针 (D-PTX-1)
-// ============================================================================
-// 默认 nullptr，加载 libcpptlm_cudart.so 后赋值。
-// nullptr 时所有操作走原有同步路径（字节级相同）。
-// ============================================================================
+// g_bridge_user_override 已搬迁到 PtxEmuDriverShim.cpp per ADR-0021 v1.1 amendment
+extern bool ptxemu_is_bridge_user_override();
+
 #include "cudart/cpptlm_bridge.h"
 #include "cudart/cpptlm_bridge/PtxEmuDriverShim.h"
 #include "cudart/stub_bridge.h"
-CppTLMBridge* g_cpptlm_bridge = nullptr;
-
-// g_bridge_user_override: 当用户通过 cpptlm_attach_bridge() 显式注入
-// mock bridge 时设为 true，阻止 initialize_environment() 的 StubBridge
-// auto-attach 覆盖用户的 mock。cpptlm_detach_bridge() 重置为 false。
-// 见 auto-co-sim-standalone design.md D1。
-static bool g_bridge_user_override = false;
-
-// ============================================================================
-// cpptlm_attach_bridge / cpptlm_detach_bridge ABI entry points (B1)
-// ============================================================================
-// Per ADR-0021 (D-PTX-1): CppTLM's libcpptlm_cudart.so calls these on
-// load/unload to install/uninstall the bridge pointer. Both are idempotent:
-//   - attach: overwrite is allowed (last-call-wins); nullptr bridges call to
-//     detach semantics per cpptlm_bridge.h:160 documentation contract.
-//   - detach: safe to call when already nullptr (no-op).
-//
-// Metis second-pass review B1: declarations in cpptlm_bridge.h:161,168 were
-// symbols without definitions, causing link errors. Implementations live
-// here (same TU as g_cpptlm_bridge per D-PTX-1) to ensure the global pointer
-// is mutated only through these ABI entry points.
-// ============================================================================
-extern "C" PTXEMU_BRIDGE_API void cpptlm_attach_bridge(CppTLMBridge* bridge) {
-    PTX_DEBUG_EMU("cpptlm_attach_bridge: bridge=%p (was %p)",
-                  (void*)bridge, (void*)g_cpptlm_bridge);
-    // nullptr bridge ≡ detach (per cpptlm_bridge.h:160 contract).
-    g_cpptlm_bridge = bridge;
-    g_bridge_user_override = (bridge != nullptr);
-}
-
-extern "C" PTXEMU_BRIDGE_API void cpptlm_detach_bridge() {
-    PTX_DEBUG_EMU("cpptlm_detach_bridge (was %p)", (void*)g_cpptlm_bridge);
-    g_cpptlm_bridge = nullptr;
-    g_bridge_user_override = false;
-}
 
 // ============================================================================
 // CppTLM D1-Full P1: cpptlm_set_driver ABI (PTX-EMU → CppTLM)
@@ -338,7 +301,7 @@ PTX_INFO_EMU("PtxEmuDriverShim registered (ctx=%p, shim=%p)",
                      (void*)g_gpu_context.get(), (void*)shim);
 
         // auto-co-sim-standalone: 默认同步模式，EMU_COSIM=1 激活协同仿真
-        if (!g_bridge_user_override
+        if (!ptxemu_is_bridge_user_override()
             && std::getenv("EMU_COSIM")) {
             static StubBridge stub_bridge;
             g_cpptlm_bridge = &stub_bridge;
@@ -352,12 +315,7 @@ PTX_INFO_EMU("PtxEmuDriverShim registered (ctx=%p, shim=%p)",
 extern "C" {
 #endif
 
-size_t get_gpu_clock_from_context() {
-    if (g_gpu_context) {
-        return g_gpu_context->get_clock();
-    }
-    return 0;
-}
+// get_gpu_clock_from_context 已搬迁到 ptx_interpreter.cpp per ADR-0021 v1.1 amendment
 
 void **__cudaRegisterFatBinary(void **fatCubinHandle, void *fat_bin,
                                unsigned long long fat_bin_size,

@@ -175,6 +175,26 @@ add_dependencies(cudart ptx_parser)
 add_dependencies(cudart ptxsim)
 add_dependencies(cudart ptxir)
 
+# Phase 1: PTX-EMU Image Executor shared library (ADR-0029 §D5)
+add_library(ptxemu_device SHARED
+    cudart/cpptlm_module.cpp
+)
+target_link_libraries(ptxemu_device PUBLIC ptxsim ptx_ir ptxir)
+target_include_directories(ptxemu_device PUBLIC ${PROJECT_SOURCE_DIR}/include)
+set_target_properties(ptxemu_device PROPERTIES
+    VERSION 12.0
+    SOVERSION 12
+    POSITION_INDEPENDENT_CODE ON
+)
+install(TARGETS ptxemu_device LIBRARY DESTINATION lib)
+
+add_custom_command(TARGET ptxemu_device POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
+        ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libptxemu_device.so
+        ${CMAKE_SOURCE_DIR}/lib/libptxemu_device.so
+    COMMENT "Creating symlink to libptxemu_device.so in project root lib directory"
+)
+
 # 标记ANTLR生成的源文件为生成文件
 set_source_files_properties(${ANTLR4_GENERATED_SOURCES} PROPERTIES GENERATED TRUE)
 
