@@ -68,6 +68,14 @@
 - **`docs/adr/README.md` 索引同步**：新增 ADR-0028 条目
 - **不为 silent failure**：所有失败路径返回明确错误
 
+### MUST NOT（per improvements 头部 §MUST NOT）
+
+- **必须 bump version 才扩展 schema**（per ADR-0023 Extend-Only）：不可在不变更 `PTXIR_VERSION` 的情况下改 `ManifestSection` 结构
+- **必须保持 v1 binary 字节级可读**：不允许"v1 binary 不再支持"的破坏性变更
+- **必须继承现有 section TOC 布局**：不重新发明二进制格式
+- **不为 silent failure**（per archive change `2026-08-07-implement-ptxir-cubin-embed-extension` 约束）：所有失败路径返回明确错误
+- **不修改 ANTLR 解析路径**：新格式演进只动 `ptxir_format.h` + reader/writer，不动 ANTLR .g4 文件
+
 ## Impact
 
 - **PTXIR_VERSION bump**（per ADR-0023 Extend-Only）：v1 reader 不识别新 version 但能跳过未知 section
@@ -87,3 +95,23 @@
 - [ ] **`PTXIR_VERSION` bump**
 - [ ] **multi-kernel acceptance**：multi-entry binary fixture 可被 `cuModuleLoadData` 加载 + `cuModuleGetFunction` 按名选择 3 个 entry 成功
 - [ ] **下游 ADR §v1 段落更新**：ADR-0025/0027/0029 三份 ADR 在 ADR-0028 ship 后均更新
+
+### 测试枚举（覆盖 A8-style 拆分）
+
+**M1 - v1 backward-compat 回归**（Oracle C3，对应 `tests/integration/ptxir/`）：
+- [ ] v1 single-kernel binary fixture（如 `tests/ptxir/fixtures/cute_rmsnorm.ptxir`）加载成功且执行结果不变
+- [ ] v1 reader 跳过未知 section 不报错（per ADR-0023 Extend-Only）
+- [ ] v1 binary 字节级校验：`xxd tests/ptxir/fixtures/cute_rmsnorm.ptxir` 与 archive baseline 一致
+
+**M2 - multi-kernel fixture 测试**（roadmap.md:234）：
+- [ ] 3-entry PTXIR fixture（kernel A/B/C）被 `cuModuleLoadData` 加载成功
+- [ ] `cuModuleGetFunction(func, module, "kernel_A"/"_B"/"_C")` 3 次按名查找全部成功
+- [ ] 每个 CUfunction handle launch 时执行对应 entry 的 `kernelStatements`（独立 dispatch，无串扰）
+
+**M3 - unit 测试**（roadmap.md:234）：
+- [ ] `PTXIRLoader::deserializeForCubin()` 返回 `vector<kernel_entry>` 类型测试
+- [ ] `PtxEmuImageExecutor::load_image` 多 entry handle 解析测试
+- [ ] `ptxir_build` / `ptxir_embed` / `ptxir_extract` 三工具多 kernel 支持测试
+
+**M4 - e2e 测试**（roadmap.md:234）：
+- [ ] `tests/e2e/test_multi_kernel.cu`：nvcc 编译多 entry PTX → embed → 加载 → 按名 launch 全部 entry
