@@ -605,3 +605,30 @@ add_catch_test(integration_mock_injection_slow_path
 )
 set_tests_properties(integration_mock_injection_slow_path PROPERTIES
     LABELS "integration;cpptlm;g4;mock;slow_path")
+
+# =============================================================================
+# Phase 0 Step 1 byte-identical fallback gates (per ADR-0029 §D7)
+# =============================================================================
+add_catch_test(integration_phase0_byte_identical_gates
+    test_phase0_byte_identical_gates.cpp
+)
+set_tests_properties(integration_phase0_byte_identical_gates PROPERTIES
+    LABELS "integration;phase0;gate")
+
+add_catch_test(integration_cpptlm_module_dlopen
+    test_cpptlm_module_dlopen.cpp
+)
+target_link_libraries(integration_cpptlm_module_dlopen PRIVATE ptxemu_device ${CMAKE_DL_LIBS})
+set_tests_properties(integration_cpptlm_module_dlopen PROPERTIES LABELS "integration;cpptlm_module;dlopen")
+
+add_catch_test(integration_cpptlm_module_inflight
+    test_cpptlm_module_inflight.cpp
+)
+target_link_libraries(integration_cpptlm_module_inflight PRIVATE ptxemu_device pthread)
+set_tests_properties(integration_cpptlm_module_inflight PROPERTIES LABELS "integration;cpptlm_module;inflight")
+
+add_catch_test(integration_ptxir_deserialize_cost
+    test_ptxir_deserialize_cost.cpp
+)
+target_link_libraries(integration_ptxir_deserialize_cost PRIVATE ptxemu_device)
+set_tests_properties(integration_ptxir_deserialize_cost PROPERTIES LABELS "integration;cpptlm_module;perf")

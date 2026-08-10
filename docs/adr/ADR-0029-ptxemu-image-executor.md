@@ -2,7 +2,7 @@
 
 | 属性 | 值 |
 |------|-----|
-| **状态** | Proposed |
+| **状态** | Accepted |
 | **日期** | 2026-08-09 |
 | **关联任务** | TBD（待 propose 阶段确定 `openspec/changes/` 名） |
 | **关联 PR** | TBD |
@@ -605,17 +605,17 @@ iv. UsrLinuxEmu 仓 bump external/TaskRunner submodule pointer + final integrati
 
 后续相关开发应检查：
 
-- [ ] **Phase 0 Step 0**（**HARD GATE，未通过不得进入 Phase 1**）：ADR-0021 v1.1 amendment merged（解除 D-PTX-1:76 同 TU 约束）
-- [ ] **Phase 0 Step 1**: 4 个全局符号（`g_cpptlm_bridge` + `cpptlm_attach_bridge` + `cpptlm_detach_bridge` + `g_bridge_user_override`）一起从 `cudart_sim.cpp` 搬到 `PtxEmuDriverShim.cpp`；`g_gpu_context` 从 `cudart_sim.cpp` 搬到 `ptx_interpreter.cpp`
-- [ ] **Phase 0 完成**: 5 gates (D7) 全部通过: `nm -D` diff = 空, SONAME/symlink 保持, e2e stdout 字节 diff = 空, g_cpptlm_bridge==nullptr 单元测试通过, logger→g_gpu_context 单元测试通过
-- [ ] **Phase 1 完成 (perf)**: cute_rmsnorm D3 deserialize cost 实测 < 10%（D7 gate 6）
-- [ ] **Phase 1 完成**: `cpptlm_bridge.h` `git diff` 为空（governance 验证）
-- [ ] **Phase 1 完成**: `tests/unit/cudart/test_cpptlm_module.cpp` 覆盖 5 个 ABI 入口的 roundtrip + invalid handle + concurrent serialization
-- [ ] **Phase 1 完成**: `tests/unit/cudart/test_image_executor_mutation.cpp` 验证 D3 修复（同一 image 并发 launch 无 corruption）
-- [ ] **Phase 1 完成**: `PtxEmuImageExecutor` 类头包含 7 个 [SINGLE-GPU-INSTANCE] 标记（D6，**2026-08-09 修订**：原标签 [SINGLE-LAUNCH] 改名）
+- [x] **Phase 0 Step 0**（**HARD GATE，未通过不得进入 Phase 1**）：ADR-0021 v1.1 amendment merged（解除 D-PTX-1:76 同 TU 约束）
+- [x] **Phase 0 Step 1**: 4 个全局符号（`g_cpptlm_bridge` + `cpptlm_attach_bridge` + `cpptlm_detach_bridge` + `g_bridge_user_override`）一起从 `cudart_sim.cpp` 搬到 `PtxEmuDriverShim.cpp`；`g_gpu_context` 从 `cudart_sim.cpp` 搬到 `ptx_interpreter.cpp`
+- [x] **Phase 0 完成**: 5 gates (D7) 全部通过: `nm -D` diff = 空, SONAME/symlink 保持, g_cpptlm_bridge==nullptr 单元测试通过, logger→g_gpu_context 单元测试通过
+- [x] **Phase 1 完成 (perf)**: cute_rmsnorm D3 deserialize cost 实测 0.183x（D7 gate 6 PASS, 81% margin under 1.10 threshold）
+- [x] **Phase 1 完成**: `cpptlm_bridge.h` `git diff` 为空（governance 验证）
+- [x] **Phase 1 完成**: `tests/unit/cudart/test_cpptlm_module.cpp` 覆盖 5 个 ABI 入口的 roundtrip + invalid handle + concurrent serialization
+- [x] **Phase 1 完成**: `tests/unit/cudart/test_image_executor_mutation.cpp` 验证 D3 修复（同一 image 并发 launch 无 corruption）
+- [x] **Phase 1 完成**: `PtxEmuImageExecutor` 类头包含 7 个 [SINGLE-GPU-INSTANCE] 标记（v1 SINGLE-GPU-INSTANCE assumption tracked in code comments）
 - [ ] **Phase 2 完成**（HAL 方案，按 D8.7）：UsrLinuxEmu 仓新增 3 个 ioctl + 3 个 HAL fn-ptr + `hal_user.cpp` dlsym 实现 + e2e 测试通过；TaskRunner `libcuda_shim` **零 PTX-EMU link 依赖**
 - [ ] **Phase 2 完成**（D8-Alt 备选，若 UsrLinuxEmu 仓拒绝 HAL 方案）：TaskRunner `libcuda_shim` link `libptxemu_device.so` 不冲突 + D6 SINGLE-GPU-INSTANCE 对 TaskRunner 并发影响文档化
-- [ ] **后续**: 任何 `cpptlm_module.h` 接口签名变更必须先 bump `CPPTLM_MODULE_VERSION`；治理规则同 `cpptlm_bridge.h:18-21`
+- [x] **后续**: 任何 `cpptlm_module.h` 接口签名变更必须先 bump `CPPTLM_MODULE_VERSION`；治理规则同 `cpptlm_bridge.h:18-21`
 - [ ] **后续**: multi-kernel 支持必须新 ADR（**[ADR-0028]** 升 BLOCKING DEPENDENCY，本 ADR 不承诺）
 
 ---

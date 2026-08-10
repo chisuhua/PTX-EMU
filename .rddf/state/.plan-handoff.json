@@ -1,27 +1,45 @@
 {
-  "plan_complete_at": "2026-08-07T01:05:00Z",
+  "plan_complete_at": "2026-08-09T23:30:00Z",
   "plan_handoff_version": 2,
   "created_changes": [
     {
-      "name": "implement-ptxir-cubin-embed-extension",
+      "name": "feat-ptxemu-image-executor",
       "priority": "P1",
-      "source": "ADR-0024 (Accepted 2026-08-06, commit 18ad58cb)",
-      "approver": "Oracle (architecture review 2nd-pass APPROVED)",
-      "change_dir": "openspec/changes/implement-ptxir-cubin-embed-extension",
+      "source": "ADR-0029 (Proposed, D8 HAL 方案), ADR-0021 v1.1 amendment (8d05f35f)",
+      "approver": "Oracle (10 rounds: Round 1-6 + Round 7 D8 canonical sync + F1/F2/F3 hardening)",
+      "change_dir": "openspec/changes/feat-ptxemu-image-executor",
       "artifacts": [
         "proposal.md",
-        "design.md",
         "tasks.md",
-        "specs/ptxir-cubin-embed/spec.md",
-        "specs/ptxir-cubin-tools/spec.md"
+        "specs/ptxemu-image-executor/spec.md"
       ],
-      "commit": "6a531428",
+      "design_convention": "design content folded into proposal.md (newer OpenSpec convention; openspec validate passes)",
+      "commit": "4c6305f6",
       "openspec_validate": "passed (0 failures)",
-      "execution_strategy": "3 sequential commits (PTXIRLoader → dispatch → CLI+e2e)"
+      "execution_strategy": "4 sequential commits (Phase 0 Step 1 + 5 gates → Phase 1 cpptlm_module + image executor → D3 perf acceptance → v0.1.0 tag)",
+      "prerequisites_shipped": [
+        "8d05f35f (ADR-0021 v1.1 amendment)",
+        "100afdc4 (ADR-0029 D8 expansion + canonical sync)",
+        "cd277e13 (cross-repo review revisions + toolchain-stack v1.3)",
+        "40fa1423 (PTXIR-Embedded CUBIN implementation)"
+      ],
+      "cross_repo_adrs": [
+        "UsrLinuxEmu adr-076 (canonical, 已就绪)",
+        "TaskRunner tadr-307 (consumer-side, 已就绪)",
+        "TaskRunner ADR-035 §R5.1 (mirror 协议, 已就绪)"
+      ],
+      "blocking_dependencies": [
+        "ADR-0028 (multi-kernel manifest) — BLOCKING for v2, NOT blocking v1 single-kernel implementation"
+      ]
     }
   ],
   "dependency_analysis": ".rddf/state/.deps-output.md",
-  "roadmap_phase": "Phase 12.2 (PTXIR Cubin 集成)",
+  "roadmap_phase": "Phase H5 (PTX-EMU Image Executor per ADR-0029)",
   "next_stage": "guide-ship",
-  "ready_for_ship": true
+  "ready_for_ship": true,
+  "notes": [
+    "Change committed via direct OpenSpec artifacts path (not via standard rdd-workflow propose flow)",
+    "proposal.md absorbs design content per newer OpenSpec convention; openspec validate confirms valid",
+    "Implementation will require Metis pre-impl review per ptx-lessons-learned §7 before openspec-apply-change"
+  ]
 }

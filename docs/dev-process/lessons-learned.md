@@ -2013,3 +2013,30 @@ WarpContext* schedule_next() {
 - **commits**: `dc76218d` (fix) + `40fa1423` (feat) + `56452614` (debt fixes)
 - **ADR**: [ADR-0024 §2026-08-07 Postmortem](../adr/ADR-0024-ptxir-cubin-embed-extension.md)
 - **skill 同步**: [`.opencode/skills/ptx-lessons-learned/SKILL.md`](../../.opencode/skills/ptx-lessons-learned/) 失败模式速查表追加 + Checklist 追加 E: container-erase-index-trap
+
+## 44. PTX-EMU Image Executor: per-launch re-deserialize vs cached PtxContext (2026-08-10)
+
+**问题模式**: `src/cudart/ptx_interpreter.cpp:100-140` (pre-ADR-0029) 在 launch 时 mutate stored `KernelContext`:
+- S_SHARED 全局声明插入到 `kernelContext->kernelStatements` (guarded by `already_inserted`)
+- barrier 参与 mask 被 launch 时 blockDim **覆盖** (`kernelContext` 内 `S_BAR_WARP_SYNC` operands[0])
+
+顺序 launch self-heal（每次重新覆盖），但**并发 launch 同一 image → data race + corruption**。这是 `ptx-lessons-learned.md §1` 跨模块状态 mutation 的具体实例。
+
+**修复方案**（per [ADR-0029 §D3](../adr/ADR-0029-ptxemu-image-executor.md#d3) A2）：
+| 行为 | 实现 |
+|---|---|
+| Image bytes 私有保存 | `PtxEmuImageExecutor` 持有 `std::vector<uint8_t> image_bytes_` (来自 `ptxemu_image_load` 的 deep copy) |
+| 不缓存 PtxContext | 不预存 `unique_ptr<PtxContext>`；每次 `ptxemu_image_execute` 重新调 `PTXIRLoader::deserializeForCubin(image_bytes_)` + `PtxContextAdapter::fromEmbedded()` |
+| Deserialize 成本 | PTXIR 二进制解码 O(bytes)，不是 ANTLR parse；`cute_rmsnorm` 实测 0.183x wall time (Gate 6 PASS, 81% margin under 1.10 threshold) |
+| 多 launch 串行 | 同一 handle 的并发 launch 由 executor mutex (`exec_mu_`) 串行化 ([SINGLE-GPU-INSTANCE] #5, D6) |
+
+**为什么不选其他修复**（per ADR-0029 §D3 行 215-218）：
+- **A1 (launch 时 deep-copy kernelStatements)**: O(N) per launch，N 大时不可忽略；保留为 A1 fallback (per ADR-0029 §D7 gate 6 FAIL 路径)
+- **A3 (executor mutex 串行化)**: 弱方案，stored state 仍会被 mutate，只是 non-concurrent — 不解决 root cause
+
+**关键经验**:
+- Image executor 路径 mutation 必须从源头阻断（per-launch re-deserialize），不能依赖调用约定（"调用方保证不会并发"）
+- [SINGLE-GPU-INSTANCE] #5 mutex + [SINGLE-GPU-INSTANCE] #6 fresh PtxInterpreter per launch 是 D3 修复的两道护栏，缺一不可
+- Mutation test 必须显式覆盖：(a) 同 bytes 两次 deserialize 字段一致，(b) N=100 sequential launches 全部成功，(c) image bytes SHA-256 invariance
+
+**真实案例**: `feat-ptxemu-image-executor` change (commit `feat: Phase 0 + Phase 1 - PTX-EMU Image Executor`, 2026-08-10)

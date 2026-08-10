@@ -46,6 +46,7 @@ cd build && ctest --output-on-failure
 
 ## 已实现功能
 
+- **PTX-EMU Image Executor** (`libptxemu_device.so` + `cpptlm_module.h`): 5 `extern "C"` ABI entry (`ptxemu_image_load`/`execute`/`unload`/`kernel_name`/`module_version`) for in-memory PTXIR module loading and execution. D3 mutation bug fix via per-launch re-deserialize. 7 [SINGLE-GPU-INSTANCE] assumptions documented. 5 byte-identical fallback gates verified + D3 perf acceptance (`cute_rmsnorm` 0.183x wall-time ratio, well below 1.10 threshold). See [ADR-0029](./docs/adr/ADR-0029-ptxemu-image-executor.md).
 - **PTXIR-Embedded CUBIN/EXE**: 标准可执行文件末尾追加 PTXIR section，PTX-EMU 通过 O(1) tail detection 加载（ADR-0024 v1.1）。提供 `ptxir_embed`/`ptxir_extract` 工具，`PTXIR_MODE=auto` 控制 `__cudaRegisterFatBinary` 分发。
 - **Blackwell tcgen05**：完整实现 `.mma` / `.ld` / `.st` / `.commit` / `.wait`（commit `4151268` Fix #14）— 详见 [docs/adr/ADR-0016-blackwell-only-tcgen05.md](./docs/adr/ADR-0016-blackwell-only-tcgen05.md)
 - **TMA descriptors**：异步拷贝 descriptor 解析（commit `ad527f5` Fix #5）

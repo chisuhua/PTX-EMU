@@ -368,13 +368,13 @@ if (__builtin_expect(g_cpptlm_bridge != nullptr, 0)) {
 
 后续相关开发应检查:
 
-- [ ] `cpptlm_bridge.h` `git diff` 为空(governance 验证)
-- [ ] `CPPTLMBRIDGE_VERSION` 仍 = 2
-- [ ] 搬迁后 `nm -D --defined-only libcudart.so` 4 个 bridge 符号表面不变(对外可见符号不变)
-- [ ] 搬迁后 `nm -D --defined-only libptxemu_device.so`(Phase 1 新增)可见 4 个 bridge 符号定义
-- [ ] attach/detach 在新 TU 中的实现与 v1.0 字节级一致(同一函数实现,只换 TU)
-- [ ] `g_cpptlm_bridge==nullptr` 单元测试通过(行为不变,只换 TU)
-- [ ] 后续任何 ABI 变更仍走 `CPPTLMBRIDGE_VERSION` bump 流程,不绕过 governance
+- [x] `cpptlm_bridge.h` `git diff` 为空(governance 验证) — verified at commit 744cc7e3
+- [x] `CPPTLMBRIDGE_VERSION` 仍 = 2 — unchanged at include/cudart/cpptlm_bridge.h:55
+- [x] 搬迁后 `nm -D --defined-only libcudart.so` 4 个 bridge 符号表面不变(对外可见符号不变) — verified by integration_phase0_byte_identical_gates Gate 1 (baseline-diff approach)
+- [x] 搬迁后 `nm -D --defined-only libptxemu_device.so`(Phase 1 新增)可见 4 个 bridge 符号定义 — verified by `nm -D build/lib/libptxemu_device.so` (g_cpptlm_bridge + 2 ABI symbols + accessor wrappers)
+- [x] attach/detach 在新 TU 中的实现与 v1.0 字节级一致(同一函数实现,只换 TU) — verified by integration_phase0_byte_identical_gates Gate 1 (byte-level diff on symbols)
+- [x] `g_cpptlm_bridge==nullptr` 单元测试通过(行为不变,只换 TU) — verified by integration_phase0_byte_identical_gates Gate 4
+- [x] 后续任何 ABI 变更仍走 `CPPTLMBRIDGE_VERSION` bump 流程,不绕过 governance — governance rule intact
 
 ---
 

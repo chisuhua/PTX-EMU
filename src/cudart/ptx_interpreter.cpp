@@ -14,7 +14,15 @@
 #include <map>
 #include <memory>
 
-// 不再需要在这里声明g_gpu_context，已在头文件中声明
+// g_gpu_context 定义搬迁自 cudart_sim.cpp:92 per ADR-0021 v1.1 amendment
+std::unique_ptr<GPUContext> g_gpu_context;
+
+extern "C" size_t get_gpu_clock_from_context() {
+    if (g_gpu_context) {
+        return g_gpu_context->get_clock();
+    }
+    return 0;
+}
 
 PtxInterpreter::PtxInterpreter()
     : ptxContext(nullptr), kernelContext(nullptr), kernelArgs(nullptr),

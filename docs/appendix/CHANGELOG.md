@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.1.0] - 2026-08-10
+
+### Added
+- **PTX-EMU Image Executor** (`libptxemu_device.so` + `cpptlm_module.h`) — 5 ABI entry for in-memory PTXIR module loading and execution. Cross-repo unblock for UsrLinuxEmu ADR-076 §Migration Step 1 and TaskRunner `tadr-307`.
+- **5 global symbol relocation** per [ADR-0021 v1.1 amendment](../adr/ADR-0021-cpptlm-d1-full-integration.md) — `g_cpptlm_bridge` + 3 ABI symbols moved to `PtxEmuDriverShim.cpp`; `g_gpu_context` moved to `ptx_interpreter.cpp`.
+- **D3 mutation bug fix** via per-launch re-deserialize (per [ADR-0029 §D3](../adr/ADR-0029-ptxemu-image-executor.md)).
+
+### Changed
+- **Default LD_PRELOAD path: byte-level unchanged** — 5 byte-identical fallback gates verified (per ADR-0029 §D7).
+
+### Migration
+- **Cross-repo**: UsrLinuxEmu ADR-076 §Migration Step 1 complete; TaskRunner `tadr-307` consumer-side unblocked.
+- **Local**: zero migration required. `libptxemu_device.so` is additive.
+
+---
+
 ## [2.0.0] - 2026-04-11
 
 ### 🎉 Added
