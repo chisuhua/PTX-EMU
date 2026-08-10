@@ -13,6 +13,12 @@
 |------|--------|------|----------|--------|
 | [implement-ptxir-cubin-embed-extension](improvements/implement-ptxir-cubin-embed-extension.md) | P1 | ADR-0024 (Accepted 2026-08-06, commit `18ad58cb`) | 2026-08-06 | Oracle (architecture review 2nd-pass APPROVED) |
 
+| [ptxir-driver-api-front-door](improvements/ptxir-driver-api-front-door.md) | P0 | 2026-08-10 | guide-arch |
+
+| [multi-kernel-manifest-adr-0028](improvements/multi-kernel-manifest-adr-0028.md) | P1 | 2026-08-10 | guide-arch |
+
+| [hal-extension-ptxemu-usrlinu-emu-taskrunner](improvements/hal-extension-ptxemu-usrlinu-emu-taskrunner.md) | P1 | 2026-08-10 | guide-arch |
+
 ## 已实施
 
 | 提案 | 优先级 | 完成时间 |
