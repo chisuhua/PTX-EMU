@@ -69,7 +69,7 @@ ADR-0029 §D8 描述 HAL 方案 D8 的 CP 端跨仓集成路径：TaskRunner 仓
 
 ### Oracle 评审通过条件
 - [ ] **C1**: grep 验证 `CMakeLists.txt` / `src/` / `include/` 无 TaskRunner/UsrLinuxEmu include 路径（archive 前 re-verify）
-- [ ] **C2**: RFC 引用 ADR-0029 §D8 和 TaskRunner ADR-035 R5.1 作为**外部依赖**，非 in-scope 工作
+- [ ] **C2**: RFC 引用 ADR-0029 §D8、TaskRunner ADR-035 R5.1 和 UsrLinuxEmu ADR-036 作为**外部依赖**，非 in-scope 工作
 - [ ] **C3**: RFC 与 proposal 含显式 **"PTX-EMU 仓不拥有跨仓协调责任；commit 顺序是 integrator 责任"** 一行
 
 ### PTX-EMU 仓交付物
