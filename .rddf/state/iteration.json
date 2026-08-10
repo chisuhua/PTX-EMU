@@ -31,6 +31,27 @@
       "status": "archived",
       "tasks_total": 22,
       "archived_at": "2026-08-04T04:02:33.000000+00:00"
+    },
+    {
+      "name": "ptxir-driver-api-front-door",
+      "status": "planned",
+      "phase": "Phase 12.3",
+      "category": "arch-design",
+      "added_at": "2026-08-10T15:49:49+0800"
+    },
+    {
+      "name": "multi-kernel-manifest-adr-0028",
+      "status": "planned",
+      "phase": "Phase 12.4",
+      "category": "arch-design",
+      "added_at": "2026-08-10T15:49:54+0800"
+    },
+    {
+      "name": "hal-extension-ptxemu-usrlinu-emu-taskrunner",
+      "status": "planned",
+      "phase": "Phase 13",
+      "category": "arch-design",
+      "added_at": "2026-08-10T15:49:58+0800"
     }
   ],
   "feature_view": {
