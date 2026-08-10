@@ -805,7 +805,18 @@ add_catch_test(unit_ptxir_fixture
     test_ptxir_fixture.cpp
 )
 target_link_libraries(unit_ptxir_fixture PRIVATE ptxir_writer ptxir_reader ptxir ${ANTLR4_LIBRARY})
-set_tests_properties(unit_ptxir_fixture PROPERTIES LABELS "unit;ptxir;fixture")
+set_tests_properties(unit_ptxir_fixture PROPERTIES
+    LABELS "unit;ptxir;fixture"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+add_catch_test(unit_ptxir_manifest_debug
+    test_ptxir_manifest_debug.cpp
+)
+target_link_libraries(unit_ptxir_manifest_debug PRIVATE ptxir_writer ptxir_reader ptxir ${ANTLR4_LIBRARY})
+set_tests_properties(unit_ptxir_manifest_debug PROPERTIES
+    LABELS "unit;ptxir;debug"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # Phase 1 ABI tests (per ADR-0029 §D1)
 add_catch_test(unit_cpptlm_module
@@ -814,12 +825,6 @@ add_catch_test(unit_cpptlm_module
 target_link_libraries(unit_cpptlm_module PRIVATE ptxemu_device)
 target_compile_definitions(unit_cpptlm_module PRIVATE PTXIR_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/ptxir/fixtures")
 set_tests_properties(unit_cpptlm_module PROPERTIES LABELS "unit;cpptlm_module")
-
-add_catch_test(unit_ptxir_manifest_debug
-    test_ptxir_manifest_debug.cpp
-)
-target_link_libraries(unit_ptxir_manifest_debug PRIVATE ptxir_writer ptxir_reader ptxir ${ANTLR4_LIBRARY})
-set_tests_properties(unit_ptxir_manifest_debug PROPERTIES LABELS "unit;ptxir;debug")
 
 add_catch_test(unit_image_executor_mutation
     cudart/test_image_executor_mutation.cpp

@@ -18,6 +18,23 @@
 
 namespace cudart {
 
+// PtxEmuImageExecutor 7 SINGLE-GPU-INSTANCE assumptions (per ADR-0029 §D6
+// + ptx-lessons-learned §10):
+//   #1 g_gpu_context: global unique — all images share one simulated GPU
+//       (defined in ptx_interpreter.cpp, extern-declared in ptx_interpreter.h)
+//   #2 CudaDriver::instance(): singleton — all images share one memory pool
+//       (CudaDriver::instance().malloc/free used in PtxContext lifecycle)
+//   #3 g_cpptlm_bridge: standalone mode (nullptr) — CppTLM orthogonal
+//       (separate library; image executor path does not interact)
+//   #4 g_image_executor: this singleton — process-global pointer
+//       (static PtxEmuImageExecutor* g_image_executor = &instance();)
+//   #5 exec_mu_: mutex — serializes concurrent same-handle launches (D3 fix)
+//   #6 PtxInterpreter: stateful non-reentrant — fresh instance per launch
+//       (PtxInterpreter interpreter; declared in execute() local scope)
+//   #7 No SingletonGuard coupling — image executor path is orthogonal to
+//       legacy LD_PRELOAD __cudaRegisterFatBinary registration
+//       (g_image_executor constructed independently; __cudaRegisterFatBinary
+//        SingletonGuard applies only to the legacy path)
 class PtxEmuImageExecutor {
 public:
     static PtxEmuImageExecutor& instance() {

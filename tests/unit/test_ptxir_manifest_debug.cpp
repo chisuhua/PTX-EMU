@@ -1,12 +1,29 @@
 #include <catch_amalgamated.hpp>
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <vector>
 #include "cudart/ptxir_loader.h"
 #include "ptx_ir/ptxir_format.h"
 
+namespace fs = std::filesystem;
+
 TEST_CASE("Debug: read manifest from PTXIR fixture", "[unit][ptxir][debug]") {
-    std::ifstream f("tests/ptxir/fixtures/cute_rmsnorm.ptxir", std::ios::binary);
+    fs::path p = fs::path(std::getenv("PROJECT_SOURCE_DIR") ? std::getenv("PROJECT_SOURCE_DIR") : ".")
+                 / "tests" / "ptxir" / "fixtures" / "cute_rmsnorm.ptxir";
+    if (!fs::exists(p)) {
+        fs::path cwd = fs::current_path();
+        while (!cwd.empty()) {
+            if (fs::exists(cwd / "tests" / "ptxir" / "fixtures" / "cute_rmsnorm.ptxir")) {
+                p = cwd / "tests" / "ptxir" / "fixtures" / "cute_rmsnorm.ptxir";
+                break;
+            }
+            if (cwd == cwd.parent_path()) break;
+            cwd = cwd.parent_path();
+        }
+    }
+    REQUIRE(fs::exists(p));
+    std::ifstream f(p, std::ios::binary);
     f.seekg(0, std::ios::end);
     size_t sz = f.tellg();
     f.seekg(0);
