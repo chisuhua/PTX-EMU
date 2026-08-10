@@ -60,6 +60,7 @@
 - **不读 `/proc/self/exe`**、**不调 `cuobjdump`**、**不读 `PTXIR_MODE`**
 - **不修改 `cpptlm_bridge.h` ABI**
 - **不修改 `libptxemu_device.so` 5 ABI**
+- **不在 WarpContext / ThreadContext / GPUContext 核心执行路径添加新依赖**（per `improvements/implement-ptxir-cubin-embed-extension.md` 约束，避免污染 SIMT 调度热路径）
 
 ## Impact
 
@@ -77,9 +78,30 @@
 - [ ] **C4**: grep 回归检查：`grep -r "deserializeForCubin\|deserialize" src/cudart/` 仅 1 处 `deserializeForCubin` 调用，无其他反序列化路径
 - [ ] **C5**: 新建 follow-up proposal task（记入 `openspec/changes/` 或 issues）：`cuInit` / `cuCtx*` context management 与 packed-extra buffer
 
+### A8 单元测试枚举（roadmap.md:135，≥13 测试 = 6 + 5 + 2）
+
+**A8-1 至 A8-6**（image classifier 6 类，对应 Oracle C2）：
+- [ ] PTX text → SUPPORTED
+- [ ] standalone PTXIR → SUPPORTED
+- [ ] executable-tail PTXIR suffix → REJECTED (defer legacy)
+- [ ] NVIDIA cubin → `CUDA_ERROR_INVALID_IMAGE`
+- [ ] NVIDIA fatbin → `CUDA_ERROR_INVALID_IMAGE`
+- [ ] Tile IR → `CUDA_ERROR_INVALID_IMAGE`
+
+**A8-7 至 A8-11**（架构 §10 item 11，5 类 error mapping 端到端）：
+- [ ] cubin 输入 → `CUDA_ERROR_INVALID_IMAGE`
+- [ ] malformed PTX → `CUDA_ERROR_INVALID_PTX`
+- [ ] unknown module handle → `CUDA_ERROR_INVALID_HANDLE`
+- [ ] missing kernel symbol → `CUDA_ERROR_NOT_FOUND`
+- [ ] stale handle → `CUDA_ERROR_INVALID_HANDLE`
+
+**A8-12 至 A8-13**（stale handle 边界 2 类）：
+- [ ] stale module handle after `cuModuleUnload` → `CUDA_ERROR_INVALID_HANDLE`
+- [ ] stale function handle after parent module unload → `CUDA_ERROR_INVALID_HANDLE`
+
 ### 标准交付物
 - [ ] **`libcudart.so` 导出 4 个新 Driver API T 符号**（架构 §10 item 8）
-- [ ] **in-memory 与 legacy front door 行为字节级独立**（架构 §4.1 §4.2）
+- [ ] **in-memory 与 legacy front door 行为字节级独立**（架构 §4.1 §4.2；验证：A8b 的 `PTXIR_MODE=off` 不影响 in-memory 路径测试 + 场景 2 的同进程双路径共存）
 - [ ] **mutation bug 不再发生**：per-launch fresh `PtxContext` 经 1000 次 launch 后 image bytes SHA-256 不变
 - [ ] **`cpptlm_bridge.h` ABI 5 byte-identical gates 继续 PASS**：`git diff cpptlm_bridge.h` 为空 + `CPPTLMBRIDGE_VERSION` 保持 2 + SONAME 不变
-- [ ] **与 `libptxemu_device.so` 边界清晰**：两条路径可独立调用，互不依赖；可同进程共存
+- [ ] **与 `libptxemu_device.so` 边界清晰**：两条路径可独立调用，互不依赖；可同进程共存（验证：场景 2 的 legacy/in-memory 共存测试 + A8b 的 `PTXIR_MODE=off` 独立性测试共同保证此属性；两条路径无任何符号依赖）
