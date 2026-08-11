@@ -1,6 +1,6 @@
 {
   "version": 6,
-  "updated_at": "2026-08-11T04:47:08.102860+00:00",
+  "updated_at": "2026-08-11T06:03:49.876587+00:00",
   "current_phase": "default",
   "changes": [
     {
@@ -57,13 +57,15 @@
     },
     {
       "name": "multi-kernel-manifest-adr-0028",
-      "status": "planned",
+      "status": "in_worktree",
       "phase": "Phase 12.4",
       "category": "arch-design",
       "added_at": "2026-08-10T15:49:54+0800",
       "l2_violation_count_after": null,
       "l2_violation_kind": null,
-      "filled_at": null
+      "filled_at": null,
+      "plan_path": ".rddf/plans/multi-kernel-manifest-adr-0028.md",
+      "tasks_total": 16
     },
     {
       "name": "hal-extension-ptxemu-usrlinu-emu-taskrunner",
