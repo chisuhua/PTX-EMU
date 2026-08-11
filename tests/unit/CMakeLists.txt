@@ -681,6 +681,15 @@ set_tests_properties(unit_ptxir_manifest_section PROPERTIES
 target_link_libraries(unit_ptxir_manifest_section PRIVATE ptxir_writer ptxir_reader)
 
 # ============================================================================
+# Phase C1: multi-entry PTXIR writer round-trip tests
+add_catch_test(unit_ptxir_multi_entry_roundtrip
+    ptx_ir/test_multi_entry_roundtrip.cpp
+)
+set_tests_properties(unit_ptxir_multi_entry_roundtrip PROPERTIES
+    LABELS "unit;ptxir;multi-entry")
+target_link_libraries(unit_ptxir_multi_entry_roundtrip PRIVATE ptxir_writer ptxir_reader)
+
+# ============================================================================
 # PTXIR-Embedded CUBIN loader unit tests
 # ============================================================================
 add_catch_test(unit_ptxir_loader

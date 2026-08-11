@@ -81,6 +81,56 @@ ManifestSection read_manifest_section(const std::vector<uint8_t>& buf) {
         pos += 3;
         m.params.push_back(p);
     }
+
+    // v2 kernels vector (extend-only, backward-compat with v1 that has no kernels field)
+    if (pos + 2 > buf.size()) {
+        // Legacy v1: no kernels vector, synthesize from kernel_name
+        if (!m.kernel_name.empty()) {
+            KernelEntry ke;
+            ke.name = m.kernel_name;
+            ke.arg_count = static_cast<uint32_t>(m.params.size());
+            for (const auto& p : m.params) ke.arg_byte_size += p.size;
+            m.kernels.push_back(ke);
+        }
+        return m;
+    }
+    uint16_t kernel_count = static_cast<uint16_t>(buf[pos] | (buf[pos + 1] << 8));
+    pos += 2;
+    for (uint16_t i = 0; i < kernel_count; ++i) {
+        KernelEntry ke;
+        while (pos < buf.size() && buf[pos] != 0) {
+            ke.name += static_cast<char>(buf[pos]);
+            ++pos;
+        }
+        if (pos >= buf.size()) {
+            return ManifestSection();
+        }
+        ++pos;
+        if (pos + 8 > buf.size()) {
+            return ManifestSection();
+        }
+        ke.arg_count = static_cast<uint32_t>(buf[pos]) |
+                       (static_cast<uint32_t>(buf[pos + 1]) << 8) |
+                       (static_cast<uint32_t>(buf[pos + 2]) << 16) |
+                       (static_cast<uint32_t>(buf[pos + 3]) << 24);
+        pos += 4;
+        ke.arg_byte_size = static_cast<uint32_t>(buf[pos]) |
+                           (static_cast<uint32_t>(buf[pos + 1]) << 8) |
+                           (static_cast<uint32_t>(buf[pos + 2]) << 16) |
+                           (static_cast<uint32_t>(buf[pos + 3]) << 24);
+        pos += 4;
+        m.kernels.push_back(ke);
+    }
+
+    // Backward-compat synthesis: if kernels empty but kernel_name non-empty,
+    // synthesize single entry
+    if (m.kernels.empty() && !m.kernel_name.empty()) {
+        KernelEntry ke;
+        ke.name = m.kernel_name;
+        ke.arg_count = static_cast<uint32_t>(m.params.size());
+        for (const auto& p : m.params) ke.arg_byte_size += p.size;
+        m.kernels.push_back(ke);
+    }
     return m;
 }
 

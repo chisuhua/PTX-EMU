@@ -31,24 +31,53 @@ static void write_u8(std::ostream& out, uint8_t v) {
 }
 
 void write_manifest_section(std::vector<uint8_t>& buf, const ManifestSection& m) {
-    buf.insert(buf.end(), m.cubin_hash.begin(), m.cubin_hash.end());
-    if (m.cubin_hash.size() < 32) {
-        buf.insert(buf.end(), 32 - m.cubin_hash.size(), 0);
+    // Auto-sync: if kernel_name empty but kernels non-empty,
+    // set kernel_name = kernels[0].name
+    ManifestSection normalized = m;
+    if (normalized.kernel_name.empty() && !normalized.kernels.empty()) {
+        normalized.kernel_name = normalized.kernels[0].name;
     }
-    buf.insert(buf.end(), m.kernel_name.begin(), m.kernel_name.end());
+
+    // cubin_hash (32 bytes, zero-padded)
+    buf.insert(buf.end(), normalized.cubin_hash.begin(), normalized.cubin_hash.end());
+    if (normalized.cubin_hash.size() < 32) {
+        buf.insert(buf.end(), 32 - normalized.cubin_hash.size(), 0);
+    }
+
+    // kernel_name (NUL-terminated, backward-compat field)
+    buf.insert(buf.end(), normalized.kernel_name.begin(), normalized.kernel_name.end());
     buf.push_back(0);
-    buf.push_back(m.ptx_address_size);
-    uint16_t param_count = static_cast<uint16_t>(m.params.size());
-    uint8_t lo = static_cast<uint8_t>(param_count & 0xFF);
-    uint8_t hi = static_cast<uint8_t>((param_count >> 8) & 0xFF);
-    buf.push_back(lo);
-    buf.push_back(hi);
-    for (const auto& p : m.params) {
+
+    // ptx_address_size
+    buf.push_back(normalized.ptx_address_size);
+
+    // params (backward-compat)
+    uint16_t param_count = static_cast<uint16_t>(normalized.params.size());
+    buf.push_back(static_cast<uint8_t>(param_count & 0xFF));
+    buf.push_back(static_cast<uint8_t>((param_count >> 8) & 0xFF));
+    for (const auto& p : normalized.params) {
         buf.insert(buf.end(), p.name.begin(), p.name.end());
         buf.push_back(0);
         buf.push_back(static_cast<uint8_t>(p.size & 0xFF));
         buf.push_back(static_cast<uint8_t>((p.size >> 8) & 0xFF));
         buf.push_back(static_cast<uint8_t>(p.kind));
+    }
+
+    // v2 kernels vector (extend-only)
+    uint16_t kernel_count = static_cast<uint16_t>(normalized.kernels.size());
+    buf.push_back(static_cast<uint8_t>(kernel_count & 0xFF));
+    buf.push_back(static_cast<uint8_t>((kernel_count >> 8) & 0xFF));
+    for (const auto& ke : normalized.kernels) {
+        buf.insert(buf.end(), ke.name.begin(), ke.name.end());
+        buf.push_back(0);
+        buf.push_back(static_cast<uint8_t>(ke.arg_count & 0xFF));
+        buf.push_back(static_cast<uint8_t>((ke.arg_count >> 8) & 0xFF));
+        buf.push_back(static_cast<uint8_t>((ke.arg_count >> 16) & 0xFF));
+        buf.push_back(static_cast<uint8_t>((ke.arg_count >> 24) & 0xFF));
+        buf.push_back(static_cast<uint8_t>(ke.arg_byte_size & 0xFF));
+        buf.push_back(static_cast<uint8_t>((ke.arg_byte_size >> 8) & 0xFF));
+        buf.push_back(static_cast<uint8_t>((ke.arg_byte_size >> 16) & 0xFF));
+        buf.push_back(static_cast<uint8_t>((ke.arg_byte_size >> 24) & 0xFF));
     }
 }
 

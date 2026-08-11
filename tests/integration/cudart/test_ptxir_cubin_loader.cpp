@@ -39,6 +39,15 @@ std::vector<uint8_t> build_minimal_section(const std::string& kernel_name) {
     return std::vector<uint8_t>(s.begin(), s.end());
 }
 
+// Returns empty vector if writer throws (e.g., invalid manifest: both kernels and kernel_name empty).
+std::vector<uint8_t> build_minimal_section_allow_invalid(const std::string& kernel_name) {
+    try {
+        return build_minimal_section(kernel_name);
+    } catch (...) {
+        return {};
+    }
+}
+
 }  // namespace
 
 TEST_CASE("dispatch_embeddedExe_PTXIR_MODE_auto_detectsMagic", "[ptxir_dispatch]") {
@@ -124,12 +133,11 @@ TEST_CASE("dispatch_corruptedPtxirSection_returnsMalformedPtxir_notNoFooter",
 
 TEST_CASE("dispatch_emptyKernelName_returnsMalformedManifest_notSuccess",
           "[ptxir_dispatch][regression;PHASE12.2-R3]") {
-    // Footer + section + stmts OK, but manifest.kernel_name="" (invalid).
-    //
-    // Current cudart_sim.cpp:374-380 does NOT validate kernel_name
-    // and registers anyway. Per 架构 §4.1 + ADR-0024 §1: MUST return
-    // explicit error.
-    auto bin = make_embedded({0x01, 0x02}, build_minimal_section(""));
+    // Manifest with kernel_name="" is invalid. Writer throws on construction,
+    // so we use build_minimal_section_allow_invalid to test dispatch behavior.
+    auto section = build_minimal_section_allow_invalid("");
+    REQUIRE_FALSE(section.empty());  // writer throws on empty both, but we got raw v1 bytes
+    auto bin = make_embedded({0x01, 0x02}, section);
     PtxContext ctx;
     auto status = cudart::try_ptxir_dispatch_from_memory(
         bin.data(), bin.size(), &ctx);
