@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "updated_at": "2026-08-11T11:40:00.000000+00:00",
+  "fallback": true,
+  "changes": {
+    "multi-entry-handle-api": {
+      "name": "multi-entry-handle-api",
+      "phase": "Phase 12.5",
+      "category": "arch-design",
+      "status": "ready",
+      "blocker": null,
+      "blocks": [],
+      "parallel_group": 0,
+      "conflicts": [],
+      "confidence": "high",
+      "recommendation": "Wave 0 — single candidate, no deps. Execute 6 Phase commits C1-C6 sequentially per tasks.md."
+    }
+  },
+  "execution_order": [
+    "multi-entry-handle-api"
+  ]
+}

@@ -1,12 +1,5 @@
 {
-  "project_root": "/workspace/project/PTX-EMU",
-  "generated_at": "2026-08-09T23:30:00Z",
-  "candidate_count": 1,
   "candidates": [
-    {
-      "name": "feat-ptxemu-image-executor",
-      "path": "openspec/changes/feat-ptxemu-image-executor",
-      "status": "proposed"
-    }
+    "multi-entry-handle-api"
   ]
 }

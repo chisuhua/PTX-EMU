@@ -1,6 +1,6 @@
 {
   "version": 6,
-  "updated_at": "2026-08-11T06:03:49.876587+00:00",
+  "updated_at": "2026-08-11T11:37:08.781590+00:00",
   "current_phase": "default",
   "changes": [
     {
@@ -76,6 +76,14 @@
       "l2_violation_kind": null,
       "filled_at": null,
       "archived_at": "2026-08-11T06:02:04.932302+00:00"
+    },
+    {
+      "name": "multi-entry-handle-api",
+      "status": "proposed",
+      "phase": "Phase 12.5",
+      "category": "arch-design",
+      "added_at": "2026-08-11T18:50:28+0800",
+      "filled_at": "2026-08-11T11:37:08.781574+00:00"
     }
   ],
   "feature_view": {
