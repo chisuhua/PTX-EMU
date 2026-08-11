@@ -198,3 +198,30 @@ TEST_CASE("extractPureCubin_nullptr_passthroughOrEmpty", "[ptxir_loader]") {
     auto pure = cudart::PTXIRLoader::extractPureCubin(nullptr, 0);
     REQUIRE(pure.has_value() == false);
 }
+
+TEST_CASE("PTXIR_VERSION bumped after ADR-0028", "[ptxir_loader][version]") {
+    // PTXIR_VERSION is bumped to 4 per ADR-0028 + ADR-0023 Extend-Only.
+    REQUIRE(PTXIR_VERSION >= 4);
+}
+
+TEST_CASE("KernelEntry struct accessible after ADR-0028", "[ptxir_loader][version]") {
+    // ADR-0028 adds KernelEntry struct to ptxir_format.h.
+    KernelEntry entry;
+    entry.name = "test_kernel";
+    entry.arg_count = 1;
+    entry.arg_byte_size = 8;
+    REQUIRE(entry.name == "test_kernel");
+    REQUIRE(entry.arg_count == 1);
+    REQUIRE(entry.arg_byte_size == 8);
+}
+
+TEST_CASE("ManifestSection v2 has kernels vector after ADR-0028", "[ptxir_loader][version]") {
+    ManifestSection ms;
+    ms.kernel_name = "v1_legacy";  // v1 backward-compat field
+    REQUIRE(ms.kernels.empty());    // v2 vector field
+    KernelEntry e;
+    e.name = "v2_kernel";
+    ms.kernels.push_back(e);
+    REQUIRE(ms.kernels.size() == 1);
+    REQUIRE(ms.kernels[0].name == "v2_kernel");
+}

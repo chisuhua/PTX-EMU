@@ -104,7 +104,7 @@ void PtxirReader::read_header() {
         throw std::runtime_error("Invalid PTXIR magic");
     }
     version_ = hdr.version;
-    if (version_ != 1 && version_ != 2 && version_ != 3) {
+    if (version_ != 1 && version_ != 2 && version_ != 3 && version_ != 4) {
         throw std::runtime_error("Unsupported PTXIR version");
     }
     header_ = hdr;

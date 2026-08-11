@@ -13,7 +13,7 @@
 // ============================================================================
 
 static constexpr char PTXIR_MAGIC[4] = {'P', 'T', 'X', 'I'};
-static constexpr uint16_t PTXIR_VERSION = 3;
+static constexpr uint16_t PTXIR_VERSION = 4;  // ADR-0028: bumped from 3
 
 // Section types
 enum class PtxirSectionType : uint8_t {
@@ -33,11 +33,20 @@ struct ManifestParam {
     ParamKind kind;
 };
 
+// ADR-0028 v2: per-kernel metadata entry.
+struct KernelEntry {
+    std::string name;          // kernel symbol name
+    uint32_t arg_count = 0;    // number of parameters
+    uint32_t arg_byte_size = 0; // total argument bytes
+    // (extend-only: future fields like ptx_version, sm_target)
+};
+
 struct ManifestSection {
     std::vector<uint8_t> cubin_hash;   // SHA-256 (32 bytes)
-    std::string kernel_name;
-    uint8_t ptx_address_size = 64;       // 32 or 64
+    std::string kernel_name;           // v1 backward-compat field
+    uint8_t ptx_address_size = 64;    // 32 or 64
     std::vector<ManifestParam> params;
+    std::vector<KernelEntry> kernels;  // v2: multi-kernel (backward-compat: empty = use kernel_name)
 };
 
 // Header: 24 bytes (little-endian)
