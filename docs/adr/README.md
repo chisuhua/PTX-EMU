@@ -63,6 +63,7 @@ docs/adr/
 | [0022](./ADR-0022-cpptlm-unified-build.md) | CppTLM + PTX-EMU 统一构建链路（`--whole-archive` 替代独立 `.so` + `dlopen`） | Accepted | 2026-07-23 | `openspec/changes/cpptlm-d1-full/` |
 | [0023](./ADR-0023-ptxir-binary-format.md) | PTXIR 二进制序列化格式与 7 项架构决策（扁平二进制 + Section TOC + 值枚举） | Accepted | 2026-07-30 | `openspec/changes/archive/2026-06-09-ptxir-serialization-architecture/` |
 | [0024](./ADR-0024-ptxir-cubin-embed-extension.md) | Cubin 嵌入 PTXIR 的混合二进制格式（PTXIR-Embedded CUBIN，loader 决策 + extract 工具） | Accepted (v1.1 2026-08-07) | `openspec/changes/implement-ptxir-cubin-embed-extension/` |
+| [0028](./ADR-0028-multi-kernel-manifest.md) | Multi-Kernel Manifest（`ManifestSection` 扩展为 `vector<kernel_entry>`，解除 ADR-0025/0027/0029 v1 单 kernel 限制） | **Accepted** | `openspec/changes/multi-kernel-manifest-adr-0028/` |
 
 ### Proposed (规划中)
 
@@ -105,8 +106,7 @@ docs/adr/
 
 **维护**: PTX-EMU Architecture Team
 **最后更新**: 2026-08-09
-**ADR 总数**: 27（当前有效 21：Active 14 / Accepted 7；Proposed 6；Superseded 0）
-**预留编号**: ADR-0028 **[BLOCKING DEPENDENCY, 2026-08-09 升级]** — multi-kernel manifest + runtime selection 设计。详见 [docs/architecture/ptxir-toolchain-stack.md §11](../architecture/ptxir-toolchain-stack.md#11-related-adrs)。状态从 "预留占位" 升级为 BLOCKING，因 ADR-0025/0027/0029 的 v1 单 kernel 限制都依赖此 ADR 解除。引用文件数会随时间漂移，不在此处硬编码具体数字 per Lesson §8
+**ADR 总数**: 28（当前有效 22：Active 14 / Accepted 8；Proposed 6；Superseded 0）
 
 ## 最近更新
 
