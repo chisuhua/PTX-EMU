@@ -34,10 +34,11 @@
     },
     {
       "name": "ptxir-driver-api-front-door",
-      "status": "planned",
+      "status": "archived",
       "phase": "Phase 12.3",
       "category": "arch-design",
-      "added_at": "2026-08-10T15:49:49+0800"
+      "added_at": "2026-08-10T15:49:49+0800",
+      "archived_at": "2026-08-11T04:43:37.611549+00:00"
     },
     {
       "name": "multi-kernel-manifest-adr-0028",
