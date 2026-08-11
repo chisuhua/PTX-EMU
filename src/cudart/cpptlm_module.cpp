@@ -68,18 +68,20 @@ public:
     }
 
     int get_kernel_name(uint64_t handle, char* buf, size_t buf_size) {
-        std::vector<uint8_t> bytes_copy;
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            auto it = images_.find(handle);
-            if (it == images_.end()) return -EINVAL;
-            bytes_copy = it->second;
-        }
-        auto manifest = read_manifest_from_ptxir_section(bytes_copy.data(), bytes_copy.size());
-        if (manifest.kernel_name.empty()) return -EINVAL;
         if (buf_size == 0) return -EINVAL;
-        size_t copy_len = std::min(manifest.kernel_name.size(), buf_size - 1);
-        std::memcpy(buf, manifest.kernel_name.data(), copy_len);
+        std::lock_guard<std::mutex> lock(mu_);
+        auto it = images_.find(handle);
+        if (it == images_.end()) return -EINVAL;
+        auto bytes_copy = it->second;
+        auto manifest = read_manifest_from_ptxir_section(bytes_copy.data(), bytes_copy.size());
+        // v2 multi-kernel: select first entry from kernels vector
+        // v1 backward-compat: if kernels empty, fall back to kernel_name
+        const std::string& name = manifest.kernels.empty()
+            ? manifest.kernel_name
+            : manifest.kernels[0].name;
+        if (name.empty()) return -EINVAL;
+        size_t copy_len = std::min(name.size(), buf_size - 1);
+        std::memcpy(buf, name.data(), copy_len);
         buf[copy_len] = '\0';
         return 0;
     }

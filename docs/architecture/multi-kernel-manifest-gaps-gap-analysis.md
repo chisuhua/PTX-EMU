@@ -187,3 +187,22 @@
 4. 确认 §5 参考资料的 commit hashes 仍在 git history 中
 
 **下次更新**: Phase 12.5 启动时（更新 §2.3 显式延后项 → 已实施）
+
+## §8 KernelEntry 数据冗余 - Source of Truth (Post-C6)
+
+After multi-entry handle API ship (commit `multi-entry-handle-api` C6), the
+canonical sources of truth for kernel metadata are:
+
+| Field | Source of Truth | Rationale |
+|-------|-----------------|-----------|
+| kernel name | `ManifestSection.kernels[i].name` | Multi-kernel primary |
+| arg count | `ManifestSection.params.size()` (= `ManifestParam` count) | Single source for arg count, mirrored into `KernelEntry.arg_count` for reader convenience |
+| arg byte size | `sum(ManifestParam.size for p in params)` | Sum of param sizes, mirrored into `KernelEntry.arg_byte_size` |
+
+**Contract**: `KernelEntry.arg_count == ManifestParam.size()` and
+`KernelEntry.arg_byte_size == sum(ManifestParam.size)`. The mirror fields are
+**derived** and must not be set independently. Reader (Phase 12.4
+backward-compat synthesis) must always recompute from `ManifestParam` to
+ensure consistency.
+
+This section closes gap #8 from §3.
