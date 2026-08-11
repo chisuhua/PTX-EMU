@@ -20,7 +20,15 @@ ManifestSection read_manifest_from_ptxir_section(const uint8_t* data, size_t siz
         std::istringstream iss(s, std::ios::binary);
         PtxirReader reader(iss);
         reader.read();
-        return reader.get_manifest();
+        ManifestSection manifest = reader.get_manifest();
+        // Backward-compat: if kernels vector is empty but kernel_name is set,
+        // synthesize a single-entry vector (per ADR-0028 + ADR-0023 Extend-Only).
+        if (manifest.kernels.empty() && !manifest.kernel_name.empty()) {
+            KernelEntry entry;
+            entry.name = manifest.kernel_name;
+            manifest.kernels.push_back(entry);
+        }
+        return manifest;
     } catch (...) {
         return ManifestSection();
     }

@@ -108,8 +108,14 @@ public:
         if (stmts.empty()) return -EINVAL;
 
         auto manifest = read_manifest_from_ptxir_section(bytes_copy.data(), bytes_copy.size());
+        // TODO Phase 12.5: full multi-entry handle API — for now, use kernels[0].
+        if (manifest.kernels.empty()) {
+            // v1 backward-compat: read_manifest_from_ptxir_section already
+            // synthesizes from kernel_name if kernels is empty.
+            return -EINVAL;
+        }
         EmbeddedKernelManifest em;
-        em.kernelName = manifest.kernel_name;
+        em.kernelName = manifest.kernels[0].name;
         em.ptxAddressSize = manifest.ptx_address_size;
         em.params = manifest.params;
 
