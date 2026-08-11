@@ -150,6 +150,8 @@ TEST_CASE("D3 mutation: two loads produce two independent deep copies",
 namespace {
 
 // Build a multi-kernel PTXIR image with 3 kernels: vec_add, mat_mul, reduce_sum
+// Returns a standalone PTXIR binary (magic "PTXI" + content) that ptxemu_image_load
+// accepts directly. Uses PtxirWriter for format compatibility with the reader.
 std::vector<uint8_t> build_multi_kernel_ptxir() {
     StatementContext stmt;
     stmt.type = S_LABEL;
@@ -170,15 +172,7 @@ std::vector<uint8_t> build_multi_kernel_ptxir() {
     writer.write({stmt});
 
     std::string body = oss.str();
-    std::vector<uint8_t> image;
-    image.insert(image.end(), {'P','T','X','I','R'});
-    uint32_t sz = static_cast<uint32_t>(body.size());
-    image.push_back(static_cast<uint8_t>(sz & 0xFF));
-    image.push_back(static_cast<uint8_t>((sz >> 8) & 0xFF));
-    image.push_back(static_cast<uint8_t>((sz >> 16) & 0xFF));
-    image.push_back(static_cast<uint8_t>((sz >> 24) & 0xFF));
-    image.insert(image.end(), body.begin(), body.end());
-    return image;
+    return std::vector<uint8_t>(body.begin(), body.end());
 }
 
 }  // anonymous namespace
