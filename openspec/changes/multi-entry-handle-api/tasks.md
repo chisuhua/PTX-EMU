@@ -16,14 +16,14 @@
 
 ## 2. Phase C2: Multi-entry fixture (P0)
 
-- [ ] 2.1 创建 `tests/fixtures/ptx/multi_kernel_basic.ptx`: ≥3 kernel (vec_add + mat_mul + reduce_sum)
-- [ ] 2.2 创建 `tests/scripts/gen_multi_kernel_ptxir.py`: 从 PTX 生成 multi-entry PTXIR (复用 `ptxir_loader.cpp` 路径)
-- [ ] 2.3 在 `tests/CMakeLists.txt` 添加 fixture 注册 (确保 fixture 在 ctest 中可访问)
-- [ ] 2.4 **测试先行 (TDD Red)**: `tests/unit/ptxir/test_fixture_load.cpp` 验证 fixture 加载 ≥3 kernel
-- [ ] 2.5 **验证失败 (Red)**: fixture 不存在导致测试失败
-- [ ] 2.6 **实现 + 验证 (Green)**: fixture 创建 + test 通过
-- [ ] 2.7 **Commit C2**: `test(fixture): multi_kernel_basic.ptx + generator script (commit C2)`
-- [ ] 2.8 **回退验证**: `git revert HEAD` 后 fixture 测试 skip (CMake fixture 引用更新)
+- [x] 2.1 创建 `tests/fixtures/ptx/multi_kernel_basic.ptx`: ≥3 kernel (vec_add + mat_mul + reduce_sum)
+- [x] 2.2 创建 `tests/scripts/gen_multi_kernel_ptxir.py`: 从 PTX 生成 multi-entry PTXIR (复用 `ptxir_loader.cpp` 路径)
+- [x] 2.3 在 `tests/CMakeLists.txt` 添加 fixture 注册 (确保 fixture 在 ctest 中可访问)
+- [x] 2.4 **测试先行 (TDD Red)**: `tests/unit/ptxir/test_fixture_load.cpp` 验证 fixture 加载 ≥3 kernel
+- [x] 2.5 **验证失败 (Red)**: fixture 不存在导致测试失败
+- [x] 2.6 **实现 + 验证 (Green)**: fixture 创建 + test 通过
+- [x] 2.7 **Commit C2**: `test(fixture): multi_kernel_basic.ptx + generator script (commit C2)`
+- [x] 2.8 **回退验证**: `git revert HEAD` 后 fixture 测试 skip (CMake fixture 引用更新)
 
 ## 3. Phase C3: cuModuleGetFunction handle 映射 (P0)
 

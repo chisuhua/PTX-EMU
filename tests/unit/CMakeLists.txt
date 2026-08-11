@@ -690,6 +690,18 @@ set_tests_properties(unit_ptxir_multi_entry_roundtrip PROPERTIES
 target_link_libraries(unit_ptxir_multi_entry_roundtrip PRIVATE ptxir_writer ptxir_reader)
 
 # ============================================================================
+# Phase C2: multi-entry fixture load tests
+add_catch_test(unit_ptxir_fixture_load
+    ptx_ir/test_fixture_load.cpp
+)
+set_tests_properties(unit_ptxir_fixture_load PROPERTIES
+    LABELS "unit;ptxir;fixture"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+target_link_libraries(unit_ptxir_fixture_load PRIVATE ptxir_writer ptxir_reader)
+target_compile_definitions(unit_ptxir_fixture_load PRIVATE
+    TEST_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/ptxir/fixtures")
+
+# ============================================================================
 # PTXIR-Embedded CUBIN loader unit tests
 # ============================================================================
 add_catch_test(unit_ptxir_loader
