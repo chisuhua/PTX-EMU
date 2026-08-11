@@ -801,6 +801,12 @@ add_catch_test(unit_cudart_sim
 )
 set_tests_properties(unit_cudart_sim PROPERTIES LABELS "unit;cudart;sim")
 
+# Phase 12.4: multi-kernel selection placeholder (ADR-0028)
+add_catch_test(unit_multi_kernel_selection
+    cudart/test_multi_kernel_selection.cpp
+)
+set_tests_properties(unit_multi_kernel_selection PROPERTIES LABELS "unit;cudart;multi-kernel")
+
 # ============================================================================
 # Phase 3: CppTLM co-simulation 单元测试 (spec traceability 100%)
 # ============================================================================
