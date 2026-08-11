@@ -548,7 +548,6 @@ CUresult cuModuleLoadData(CUmodule *module, const void *image) {
         reg.remove(mod);
         return ptxemu::cudart::CUDA_ERROR_INVALID_PTX;
     }
-    rec->manifest = cudart::read_manifest_from_ptxir_section(bytes + 9, size);
 
     *module = mod;
     return CUDA_SUCCESS;

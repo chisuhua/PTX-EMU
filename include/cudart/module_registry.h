@@ -7,7 +7,6 @@
 #include <vector>
 #include "cudart/cudart_intrinsics.h"  // CUmodule/CUfunction/CUresult
 #include "ptx_ir/statement_context.h"  // StatementContext (complete type for std::vector)
-#include "ptx_ir/ptxir_format.h"
 
 namespace ptxemu::cudart {
 
@@ -29,8 +28,6 @@ public:
     std::unique_ptr<uint8_t[]> image_bytes;
     size_t image_size = 0;
     std::vector<StatementContext> parsed_statements;
-    ManifestSection manifest;
-    std::unordered_map<std::string, CUfunction> name_to_function;
 };
 
 class FunctionRecord {

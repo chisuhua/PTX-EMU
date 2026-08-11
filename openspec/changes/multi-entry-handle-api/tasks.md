@@ -27,14 +27,14 @@
 
 ## 3. Phase C3: cuModuleGetFunction handle 映射 (P0)
 
-- [x] 3.1 **测试先行 (TDD Red)**: 在 `tests/integration/cudart/test_cuda_driver_api.cpp` 添加 3 测试场景 (name 查找 / 重名 / 不存在)
-- [x] 3.2 **验证失败 (Red)**: stub 返回 invalid handle, 测试失败
-- [x] 3.3 在 `include/cudart/module_registry.h` 添加 per-module `std::unordered_map<std::string, CUfunction>` 字段
-- [x] 3.4 在 `src/cudart/cuda_driver.cpp` 实现 `insert_function()` 真实逻辑 (替换 stub): name lookup → insert → 返回 handle
-- [x] 3.5 修改 `src/cudart/cudart_sim.cpp:556-570` `cuModuleGetFunction`: 替换 stub → 调用真实 `ModuleRegistry::insert_function`
-- [x] 3.6 线程安全: `std::lock_guard<std::mutex>` 保护 per-module registry (复用既有 mutex)
-- [x] 3.7 **实现 + 验证 (Green)**: ctest 3 场景通过
-- [x] 3.8 **Commit C3**: `feat(cudart): cuModuleGetFunction multi-kernel name→handle 映射 (commit C3)`
+- [ ] 3.1 **测试先行 (TDD Red)**: 在 `tests/integration/cudart/test_cuda_driver_api.cpp` 添加 3 测试场景 (name 查找 / 重名 / 不存在)
+- [ ] 3.2 **验证失败 (Red)**: stub 返回 invalid handle, 测试失败
+- [ ] 3.3 在 `include/cudart/module_registry.h` 添加 per-module `std::unordered_map<std::string, CUfunction>` 字段
+- [ ] 3.4 在 `src/cudart/cuda_driver.cpp` 实现 `insert_function()` 真实逻辑 (替换 stub): name lookup → insert → 返回 handle
+- [ ] 3.5 修改 `src/cudart/cudart_sim.cpp:556-570` `cuModuleGetFunction`: 替换 stub → 调用真实 `ModuleRegistry::insert_function`
+- [ ] 3.6 线程安全: `std::lock_guard<std::mutex>` 保护 per-module registry (复用既有 mutex)
+- [ ] 3.7 **实现 + 验证 (Green)**: ctest 3 场景通过
+- [ ] 3.8 **Commit C3**: `feat(cudart): cuModuleGetFunction multi-kernel name→handle 映射 (commit C3)`
 - [ ] 3.9 **回退验证**: `git revert HEAD` 后 stub 行为恢复, cudart_sim.cpp 编译通过
 
 ## 4. Phase C4: cpptlm_module multi-entry handle (P0)
