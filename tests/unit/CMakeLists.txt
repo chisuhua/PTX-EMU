@@ -689,6 +689,11 @@ add_catch_test(unit_ptxir_loader
 set_tests_properties(unit_ptxir_loader PROPERTIES LABELS "unit;cudart;ptxir_loader")
 target_link_libraries(unit_ptxir_loader PRIVATE ptxir_writer ptxir_reader OpenSSL::Crypto)
 
+add_catch_test(unit_module_registry
+    cudart/test_module_registry.cpp
+)
+set_tests_properties(unit_module_registry PROPERTIES LABELS "unit;cudart;module_registry")
+
 add_catch_test(unit_ptx_context_adapter
     cudart/test_ptx_context_adapter.cpp
 )
