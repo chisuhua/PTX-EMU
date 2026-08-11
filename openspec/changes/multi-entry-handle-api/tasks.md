@@ -5,36 +5,36 @@
 
 ## 1. Phase C1: v2 PTXIR writer (P0)
 
-- [x] 1.1 在 `src/ptx_ir/ptxir_writer.cpp` 添加 `writeMultiKernels(const ManifestSection&)` 函数
-- [x] 1.2 修改 `writeManifestSection()` 同时写 `kernels` vector + 保留 `kernel_name` 字段
-- [x] 1.3 添加 `ManifestSection` validation: `kernels.empty() && kernel_name.empty()` 抛 `std::invalid_argument`
-- [x] 1.4 **测试先行 (TDD Red)**: 新建 `tests/unit/ptxir/test_multi_entry_roundtrip.cpp`，含 6 测试用例 (单 entry / 多 entry / 空 vector / 大端 / 异常 / fixture)
-- [x] 1.5 **验证失败 (Red)**: `./build.sh && ctest -R multi_entry_roundtrip` 预期失败 (handler 未实现)
-- [x] 1.6 **实现 + 验证 (Green)**: 运行 ctest, 6 测试通过
-- [x] 1.7 **Commit C1**: `feat(ptxir): v2 writer multi-entry 完整实现 (commit C1, ref: openspec multi-entry-handle-api)`
-- [x] 1.8 **回退验证**: `git revert HEAD` 后 reader backward-compat synthesis 仍可用 (跑 `test_multi_kernel_selection.cpp` 验证)
+- [ ] 1.1 在 `src/ptx_ir/ptxir_writer.cpp` 添加 `writeMultiKernels(const ManifestSection&)` 函数
+- [ ] 1.2 修改 `writeManifestSection()` 同时写 `kernels` vector + 保留 `kernel_name` 字段
+- [ ] 1.3 添加 `ManifestSection` validation: `kernels.empty() && kernel_name.empty()` 抛 `std::invalid_argument`
+- [ ] 1.4 **测试先行 (TDD Red)**: 新建 `tests/unit/ptxir/test_multi_entry_roundtrip.cpp`，含 6 测试用例 (单 entry / 多 entry / 空 vector / 大端 / 异常 / fixture)
+- [ ] 1.5 **验证失败 (Red)**: `./build.sh && ctest -R multi_entry_roundtrip` 预期失败 (handler 未实现)
+- [ ] 1.6 **实现 + 验证 (Green)**: 运行 ctest, 6 测试通过
+- [ ] 1.7 **Commit C1**: `feat(ptxir): v2 writer multi-entry 完整实现 (commit C1, ref: openspec multi-entry-handle-api)`
+- [ ] 1.8 **回退验证**: `git revert HEAD` 后 reader backward-compat synthesis 仍可用 (跑 `test_multi_kernel_selection.cpp` 验证)
 
 ## 2. Phase C2: Multi-entry fixture (P0)
 
-- [x] 2.1 创建 `tests/fixtures/ptx/multi_kernel_basic.ptx`: ≥3 kernel (vec_add + mat_mul + reduce_sum)
-- [x] 2.2 创建 `tests/scripts/gen_multi_kernel_ptxir.py`: 从 PTX 生成 multi-entry PTXIR (复用 `ptxir_loader.cpp` 路径)
-- [x] 2.3 在 `tests/CMakeLists.txt` 添加 fixture 注册 (确保 fixture 在 ctest 中可访问)
-- [x] 2.4 **测试先行 (TDD Red)**: `tests/unit/ptxir/test_fixture_load.cpp` 验证 fixture 加载 ≥3 kernel
-- [x] 2.5 **验证失败 (Red)**: fixture 不存在导致测试失败
-- [x] 2.6 **实现 + 验证 (Green)**: fixture 创建 + test 通过
-- [x] 2.7 **Commit C2**: `test(fixture): multi_kernel_basic.ptx + generator script (commit C2)`
-- [x] 2.8 **回退验证**: `git revert HEAD` 后 fixture 测试 skip (CMake fixture 引用更新)
+- [ ] 2.1 创建 `tests/fixtures/ptx/multi_kernel_basic.ptx`: ≥3 kernel (vec_add + mat_mul + reduce_sum)
+- [ ] 2.2 创建 `tests/scripts/gen_multi_kernel_ptxir.py`: 从 PTX 生成 multi-entry PTXIR (复用 `ptxir_loader.cpp` 路径)
+- [ ] 2.3 在 `tests/CMakeLists.txt` 添加 fixture 注册 (确保 fixture 在 ctest 中可访问)
+- [ ] 2.4 **测试先行 (TDD Red)**: `tests/unit/ptxir/test_fixture_load.cpp` 验证 fixture 加载 ≥3 kernel
+- [ ] 2.5 **验证失败 (Red)**: fixture 不存在导致测试失败
+- [ ] 2.6 **实现 + 验证 (Green)**: fixture 创建 + test 通过
+- [ ] 2.7 **Commit C2**: `test(fixture): multi_kernel_basic.ptx + generator script (commit C2)`
+- [ ] 2.8 **回退验证**: `git revert HEAD` 后 fixture 测试 skip (CMake fixture 引用更新)
 
 ## 3. Phase C3: cuModuleGetFunction handle 映射 (P0)
 
-- [ ] 3.1 **测试先行 (TDD Red)**: 在 `tests/integration/cudart/test_cuda_driver_api.cpp` 添加 3 测试场景 (name 查找 / 重名 / 不存在)
-- [ ] 3.2 **验证失败 (Red)**: stub 返回 invalid handle, 测试失败
-- [ ] 3.3 在 `include/cudart/module_registry.h` 添加 per-module `std::unordered_map<std::string, CUfunction>` 字段
-- [ ] 3.4 在 `src/cudart/cuda_driver.cpp` 实现 `insert_function()` 真实逻辑 (替换 stub): name lookup → insert → 返回 handle
-- [ ] 3.5 修改 `src/cudart/cudart_sim.cpp:556-570` `cuModuleGetFunction`: 替换 stub → 调用真实 `ModuleRegistry::insert_function`
-- [ ] 3.6 线程安全: `std::lock_guard<std::mutex>` 保护 per-module registry (复用既有 mutex)
-- [ ] 3.7 **实现 + 验证 (Green)**: ctest 3 场景通过
-- [ ] 3.8 **Commit C3**: `feat(cudart): cuModuleGetFunction multi-kernel name→handle 映射 (commit C3)`
+- [x] 3.1 **测试先行 (TDD Red)**: 在 `tests/integration/cudart/test_cuda_driver_api.cpp` 添加 3 测试场景 (name 查找 / 重名 / 不存在)
+- [x] 3.2 **验证失败 (Red)**: stub 返回 invalid handle, 测试失败
+- [x] 3.3 在 `include/cudart/module_registry.h` 添加 per-module `std::unordered_map<std::string, CUfunction>` 字段
+- [x] 3.4 在 `src/cudart/cuda_driver.cpp` 实现 `insert_function()` 真实逻辑 (替换 stub): name lookup → insert → 返回 handle
+- [x] 3.5 修改 `src/cudart/cudart_sim.cpp:556-570` `cuModuleGetFunction`: 替换 stub → 调用真实 `ModuleRegistry::insert_function`
+- [x] 3.6 线程安全: `std::lock_guard<std::mutex>` 保护 per-module registry (复用既有 mutex)
+- [x] 3.7 **实现 + 验证 (Green)**: ctest 3 场景通过
+- [x] 3.8 **Commit C3**: `feat(cudart): cuModuleGetFunction multi-kernel name→handle 映射 (commit C3)`
 - [ ] 3.9 **回退验证**: `git revert HEAD` 后 stub 行为恢复, cudart_sim.cpp 编译通过
 
 ## 4. Phase C4: cpptlm_module multi-entry handle (P0)
