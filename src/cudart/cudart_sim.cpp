@@ -13,6 +13,12 @@
 #include "cudart/ptx_context_adapter.h"
 #include "cudart/ptxir_config.h"
 #include "cudart/ptxir_loader.h"
+#include "cudart/module_registry.h"
+#include "cudart/image_classifier.h"
+
+using ptxemu::cudart::global_registry;
+using ptxemu::cudart::classifyImage;
+using ptxemu::cudart::ImageKind;
 
 using namespace antlr4;
 using namespace ptxparser;
@@ -510,12 +516,61 @@ CUresult cuModuleLoad(CUmodule *module, const char *fname) {
     return CUDA_SUCCESS;
 }
 
+CUresult cuModuleLoadData(CUmodule *module, const void *image) {
+    PTX_DEBUG_EMU("Called cuModuleLoadData(%p, %p)", module, image);
+    if (!module || !image) return ptxemu::cudart::CUDA_ERROR_INVALID_VALUE;
+
+    const uint8_t* bytes = static_cast<const uint8_t*>(image);
+    if (std::memcmp(bytes, "PTXIR", 5) != 0) {
+        return ptxemu::cudart::CUDA_ERROR_INVALID_IMAGE;
+    }
+
+    uint32_t size;
+    std::memcpy(&size, bytes + 5, sizeof(size));
+
+    auto kind = classifyImage(bytes, 9 + size);
+    if (kind == ImageKind::kCubin ||
+        kind == ImageKind::kFatbin ||
+        kind == ImageKind::kTileIR ||
+        kind == ImageKind::kExecutableTailPtxir) {
+        return ptxemu::cudart::CUDA_ERROR_INVALID_IMAGE;
+    }
+
+    auto& reg = global_registry();
+    CUmodule mod = nullptr;
+    CUresult rc = reg.insert(bytes, 9 + size, &mod);
+    if (rc != CUDA_SUCCESS) return rc;
+
+    auto* rec = reg.lookup(mod);
+    // Skip 9-byte PTXIR header (magic + u32 size); deserialize only the body.
+    rec->parsed_statements = cudart::PTXIRLoader::deserializeForCubin(bytes + 9, size);
+    if (rec->parsed_statements.empty()) {
+        reg.remove(mod);
+        return ptxemu::cudart::CUDA_ERROR_INVALID_PTX;
+    }
+
+    *module = mod;
+    return CUDA_SUCCESS;
+}
+
 CUresult cuModuleGetFunction(CUfunction *hfunc, CUmodule hmod,
                              const char *name) {
     PTX_DEBUG_EMU("Called cuModuleGetFunction(%p, %p, %s)", hfunc, hmod, name);
+    if (!hfunc || !hmod || !name) return ptxemu::cudart::CUDA_ERROR_INVALID_VALUE;
 
-    // 在仿真环境中，我们将函数名存储在句柄中
-    *hfunc = reinterpret_cast<CUfunction>(const_cast<char *>(name));
+    auto& reg = global_registry();
+    auto* mod = reg.lookup(hmod);
+    if (!mod) return ptxemu::cudart::CUDA_ERROR_INVALID_HANDLE;
+
+    return reg.insert_function(hmod, name, hfunc);
+}
+
+CUresult cuModuleUnload(CUmodule hmod) {
+    PTX_DEBUG_EMU("Called cuModuleUnload(%p)", hmod);
+    if (!hmod) return ptxemu::cudart::CUDA_ERROR_INVALID_VALUE;
+    auto& reg = global_registry();
+    if (!reg.lookup(hmod)) return ptxemu::cudart::CUDA_ERROR_INVALID_HANDLE;
+    reg.remove(hmod);
     return CUDA_SUCCESS;
 }
 

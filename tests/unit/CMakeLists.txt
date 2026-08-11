@@ -694,6 +694,16 @@ add_catch_test(unit_module_registry
 )
 set_tests_properties(unit_module_registry PROPERTIES LABELS "unit;cudart;module_registry")
 
+add_catch_test(unit_image_classifier
+    cudart/test_image_classifier.cpp
+)
+set_tests_properties(unit_image_classifier PROPERTIES LABELS "unit;cudart;classifier")
+
+add_catch_test(unit_cuda_driver_api
+    cudart/test_cuda_driver_api.cpp
+)
+set_tests_properties(unit_cuda_driver_api PROPERTIES LABELS "unit;cudart;driver")
+
 add_catch_test(unit_ptx_context_adapter
     cudart/test_ptx_context_adapter.cpp
 )
