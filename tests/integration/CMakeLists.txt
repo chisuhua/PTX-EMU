@@ -621,6 +621,11 @@ add_catch_test(integration_cpptlm_module_dlopen
 target_link_libraries(integration_cpptlm_module_dlopen PRIVATE ptxemu_device ${CMAKE_DL_LIBS})
 set_tests_properties(integration_cpptlm_module_dlopen PROPERTIES LABELS "integration;cpptlm_module;dlopen")
 
+add_catch_test(integration_libptxemu_abi_baseline
+    cpptlm/test_libptxemu_abi_baseline.cpp
+)
+set_tests_properties(integration_libptxemu_abi_baseline PROPERTIES LABELS "integration;cpptlm;abi-baseline")
+
 add_catch_test(integration_cpptlm_module_inflight
     test_cpptlm_module_inflight.cpp
 )
