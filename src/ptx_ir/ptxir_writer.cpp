@@ -50,6 +50,23 @@ void write_manifest_section(std::vector<uint8_t>& buf, const ManifestSection& m)
         buf.push_back(static_cast<uint8_t>((p.size >> 8) & 0xFF));
         buf.push_back(static_cast<uint8_t>(p.kind));
     }
+    uint32_t kernel_count = static_cast<uint32_t>(m.kernels.size());
+    buf.push_back(static_cast<uint8_t>(kernel_count & 0xFF));
+    buf.push_back(static_cast<uint8_t>((kernel_count >> 8) & 0xFF));
+    buf.push_back(static_cast<uint8_t>((kernel_count >> 16) & 0xFF));
+    buf.push_back(static_cast<uint8_t>((kernel_count >> 24) & 0xFF));
+    for (const auto& k : m.kernels) {
+        buf.insert(buf.end(), k.name.begin(), k.name.end());
+        buf.push_back(0);
+        buf.push_back(static_cast<uint8_t>(k.arg_count & 0xFF));
+        buf.push_back(static_cast<uint8_t>((k.arg_count >> 8) & 0xFF));
+        buf.push_back(static_cast<uint8_t>((k.arg_count >> 16) & 0xFF));
+        buf.push_back(static_cast<uint8_t>((k.arg_count >> 24) & 0xFF));
+        buf.push_back(static_cast<uint8_t>(k.arg_byte_size & 0xFF));
+        buf.push_back(static_cast<uint8_t>((k.arg_byte_size >> 8) & 0xFF));
+        buf.push_back(static_cast<uint8_t>((k.arg_byte_size >> 16) & 0xFF));
+        buf.push_back(static_cast<uint8_t>((k.arg_byte_size >> 24) & 0xFF));
+    }
 }
 
 PtxirWriter::PtxirWriter(std::ostream& out) : out_(out) {}

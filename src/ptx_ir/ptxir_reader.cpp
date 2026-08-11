@@ -81,6 +81,39 @@ ManifestSection read_manifest_section(const std::vector<uint8_t>& buf) {
         pos += 3;
         m.params.push_back(p);
     }
+    if (pos + 4 > buf.size()) {
+        return m;
+    }
+    uint32_t kernel_count = static_cast<uint32_t>(buf[pos]) |
+        (static_cast<uint32_t>(buf[pos + 1]) << 8) |
+        (static_cast<uint32_t>(buf[pos + 2]) << 16) |
+        (static_cast<uint32_t>(buf[pos + 3]) << 24);
+    pos += 4;
+    for (uint32_t i = 0; i < kernel_count; ++i) {
+        KernelEntry k;
+        while (pos < buf.size() && buf[pos] != 0) {
+            k.name += static_cast<char>(buf[pos]);
+            ++pos;
+        }
+        if (pos >= buf.size()) {
+            return ManifestSection();
+        }
+        ++pos;
+        if (pos + 8 > buf.size()) {
+            return ManifestSection();
+        }
+        k.arg_count = static_cast<uint32_t>(buf[pos]) |
+            (static_cast<uint32_t>(buf[pos + 1]) << 8) |
+            (static_cast<uint32_t>(buf[pos + 2]) << 16) |
+            (static_cast<uint32_t>(buf[pos + 3]) << 24);
+        pos += 4;
+        k.arg_byte_size = static_cast<uint32_t>(buf[pos]) |
+            (static_cast<uint32_t>(buf[pos + 1]) << 8) |
+            (static_cast<uint32_t>(buf[pos + 2]) << 16) |
+            (static_cast<uint32_t>(buf[pos + 3]) << 24);
+        pos += 4;
+        m.kernels.push_back(k);
+    }
     return m;
 }
 
