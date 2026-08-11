@@ -704,6 +704,11 @@ add_catch_test(unit_cuda_driver_api
 )
 set_tests_properties(unit_cuda_driver_api PROPERTIES LABELS "unit;cudart;driver")
 
+add_catch_test(unit_error_mapping
+    cudart/test_error_mapping.cpp
+)
+set_tests_properties(unit_error_mapping PROPERTIES LABELS "unit;cudart;error")
+
 add_catch_test(unit_ptx_context_adapter
     cudart/test_ptx_context_adapter.cpp
 )

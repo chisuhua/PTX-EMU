@@ -562,7 +562,11 @@ CUresult cuModuleGetFunction(CUfunction *hfunc, CUmodule hmod,
     auto* mod = reg.lookup(hmod);
     if (!mod) return ptxemu::cudart::CUDA_ERROR_INVALID_HANDLE;
 
-    return reg.insert_function(hmod, name, hfunc);
+    CUresult rc = reg.insert_function(hmod, name, hfunc);
+    if (rc != CUDA_SUCCESS) return rc;
+
+    func2name[(uint64_t)*hfunc] = name;
+    return CUDA_SUCCESS;
 }
 
 CUresult cuModuleUnload(CUmodule hmod) {
@@ -570,8 +574,50 @@ CUresult cuModuleUnload(CUmodule hmod) {
     if (!hmod) return ptxemu::cudart::CUDA_ERROR_INVALID_VALUE;
     auto& reg = global_registry();
     if (!reg.lookup(hmod)) return ptxemu::cudart::CUDA_ERROR_INVALID_HANDLE;
+
+    std::vector<uint64_t> child_func_ids;
+    for (auto& [func_id, fn_rec] : reg.snapshot_functions_for(hmod)) {
+        (void)fn_rec;
+        child_func_ids.push_back((uint64_t)func_id);
+    }
+
     reg.remove(hmod);
+
+    for (auto fid : child_func_ids) {
+        func2name.erase(fid);
+    }
+
     return CUDA_SUCCESS;
+}
+
+// Forward decl: existing cudaLaunchKernel (Runtime API) — distinguished from
+// cuLaunchKernel (Driver API) by the cu- prefix.
+extern cudaError_t cudaLaunchKernel(const void*, dim3, dim3,
+                                    void**, size_t, cudaStream_t);
+
+CUresult cuLaunchKernel(CUfunction f,
+                        unsigned gx, unsigned gy, unsigned gz,
+                        unsigned bx, unsigned by, unsigned bz,
+                        unsigned smem, CUstream stream,
+                        void **params, void **extra) {
+    PTX_DEBUG_EMU("Called cuLaunchKernel(CUfunction=%p, grid=(%u,%u,%u), block=(%u,%u,%u))",
+                  f, gx, gy, gz, bx, by, bz);
+    (void)extra;
+    if (!f || !params) return ptxemu::cudart::CUDA_ERROR_INVALID_VALUE;
+
+    auto& reg = global_registry();
+    auto* fn = reg.lookup_function(f);
+    if (!fn) return ptxemu::cudart::CUDA_ERROR_INVALID_HANDLE;
+    auto* mod = reg.lookup(fn->parent);
+    if (!mod) return ptxemu::cudart::CUDA_ERROR_INVALID_HANDLE;
+
+    auto it = func2name.find((uint64_t)f);
+    if (it == func2name.end()) return ptxemu::cudart::CUDA_ERROR_NOT_FOUND;
+
+    return (CUresult)cudaLaunchKernel(reinterpret_cast<const void*>(f),
+                                      dim3{gx, gy, gz}, dim3{bx, by, bz},
+                                      params, smem,
+                                      reinterpret_cast<cudaStream_t>(stream));
 }
 
 // 补充缺失的 __cudaPushCallConfiguration 函数

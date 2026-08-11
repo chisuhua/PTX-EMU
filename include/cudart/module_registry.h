@@ -43,6 +43,9 @@ public:
     void remove(CUmodule mod);
     CUresult insert_function(CUmodule parent, const char* name, CUfunction* out);
     FunctionRecord* lookup_function(CUfunction func);
+    // Snapshot child functions of a module under registry lock (safe for cleanup).
+    std::vector<std::pair<CUfunction, FunctionRecord*>>
+    snapshot_functions_for(CUmodule parent);
 private:
     void invalidate_functions_of(CUmodule parent);  // private, caller holds mutex
     std::mutex mutex_;

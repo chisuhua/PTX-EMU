@@ -81,6 +81,18 @@ void ModuleRegistry::invalidate_functions_of(CUmodule parent) {
     }
 }
 
+std::vector<std::pair<CUfunction, FunctionRecord*>>
+ModuleRegistry::snapshot_functions_for(CUfunction parent) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<std::pair<CUfunction, FunctionRecord*>> out;
+    for (auto& kv : funcs_) {
+        if (kv.second->parent == parent) {
+            out.emplace_back(kv.first, kv.second.get());
+        }
+    }
+    return out;
+}
+
 // -----------------------------------------------------------------------------
 // global_registry
 // -----------------------------------------------------------------------------
