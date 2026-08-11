@@ -822,10 +822,13 @@ add_catch_test(unit_cudart_sim
 )
 set_tests_properties(unit_cudart_sim PROPERTIES LABELS "unit;cudart;sim")
 
-# Phase 12.4: multi-kernel selection placeholder (ADR-0028)
+# Phase C5: multi-kernel selection real tests (ADR-0028)
 add_catch_test(unit_multi_kernel_selection
     cudart/test_multi_kernel_selection.cpp
 )
+target_link_libraries(unit_multi_kernel_selection PRIVATE ptxemu_device)
+target_compile_definitions(unit_multi_kernel_selection PRIVATE
+    TEST_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/ptxir/fixtures")
 set_tests_properties(unit_multi_kernel_selection PROPERTIES LABELS "unit;cudart;multi-kernel")
 
 # ============================================================================

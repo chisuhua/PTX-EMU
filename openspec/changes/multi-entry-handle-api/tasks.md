@@ -51,12 +51,12 @@
 
 ## 5. Phase C5: test_multi_kernel_selection 升级 (P1)
 
-- [ ] 5.1 **测试先行 (TDD Red)**: 在 `tests/unit/cudart/test_multi_kernel_selection.cpp` 添加 ≥3 真实测试 (替换 `SUCCEED("placeholder")`)
-- [ ] 5.2 **验证失败 (Red)**: placeholder 仍存在, 测试覆盖度不足
-- [ ] 5.3 真实测试: cuModuleGetFunction 多 kernel handle / `ptxemu_image_kernel_count` 验证 / `ptxemu_image_kernel_name_at` 截断契约
-- [ ] 5.4 **实现 + 验证 (Green)**: 全部 placeholder 替换, 测试通过
-- [ ] 5.5 **Commit C5**: `test(cudart): multi_kernel_selection 升级 (placeholder → 真实测试, commit C5)`
-- [ ] 5.6 **回退验证**: `git revert HEAD` 后 placeholder 恢复 (可接受临时回退)
+- [x] 5.1 **测试先行 (TDD Red)**: 在 `tests/unit/cudart/test_multi_kernel_selection.cpp` 添加 ≥3 真实测试 (替换 `SUCCEED("placeholder")`)
+- [x] 5.2 **验证失败 (Red)**: placeholder 仍存在, 测试覆盖度不足
+- [x] 5.3 真实测试: cuModuleGetFunction 多 kernel handle / `ptxemu_image_kernel_count` 验证 / `ptxemu_image_kernel_name_at` 截断契约
+- [x] 5.4 **实现 + 验证 (Green)**: 全部 placeholder 替换, 测试通过
+- [x] 5.5 **Commit C5**: `test(cudart): multi_kernel_selection 升级 (placeholder → 真实测试, commit C5)`
+- [x] 5.6 **回退验证**: `git revert HEAD` 后 placeholder 恢复 (可接受临时回退)
 
 ## 6. Phase C6: ptxemu_image_kernel_name 多 kernel + ABI baseline (P1+P2)
 
