@@ -19,6 +19,8 @@
 
 | [hal-extension-ptxemu-usrlinu-emu-taskrunner](improvements/hal-extension-ptxemu-usrlinu-emu-taskrunner.md) | P1 | 2026-08-10 | guide-arch |
 
+| [multi-entry-handle-api](improvements/multi-entry-handle-api.md) | P1 | 2026-08-11 | guide-arch |
+
 ## 已实施
 
 | 提案 | 优先级 | 完成时间 |
