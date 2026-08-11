@@ -1,9 +1,9 @@
 # PTX-EMU Roadmap
 
 > **维护**: PTX-EMU Architecture Team
-> **当前阶段**: Phase 10 — Documentation & Release（β 完成中）+ **Phase 12.2 PTXIR Cubin 集成 ✅ 2026-08-10 ship** + **Phase 12.3 PTXIR Driver API front door + 缺失 CLI 工具（待启动）** + **Phase 12.4 ADR-0028 多 kernel manifest（BLOCKING DEPENDENCY）** + Phase 13 HAL extension 跨仓协作（待启动）
-> **最后更新**: 2026-08-10（实施状态审计 + 后续任务梳理）
-> **关联**: [docs/architecture/ptxir-toolchain-stack.md](docs/architecture/ptxir-toolchain-stack.md) v1.3、[docs/roadmap/post-phase3-debt-roadmap.md](docs/roadmap/post-phase3-debt-roadmap.md)（详细债务清单）
+> **当前阶段**: Phase 10 — Documentation & Release（β 完成中）+ **Phase 12.2 PTXIR Cubin 集成 ✅ 2026-08-10 ship** + **Phase 12.3 PTXIR Driver API front door ✅ 2026-08-11 ship** + **Phase 12.4 ADR-0028 多 kernel manifest ✅ 2026-08-11 ship** + **Phase 13 HAL extension 跨仓协作 ✅ 2026-08-11 ship** + **Phase 12.5 多 entry handle API ⏳ 显式延后** (per [multi-kernel-manifest-gaps-gap-analysis](docs/architecture/multi-kernel-manifest-gaps-gap-analysis.md))
+> **最后更新**: 2026-08-11（Phase 12.3/12.4/13 ship 状态同步 + Phase 12.5 延后登记 + 引用 multi-kernel-manifest-gaps 分析）
+> **关联**: [docs/architecture/ptxir-toolchain-stack.md](docs/architecture/ptxir-toolchain-stack.md) v1.4、[docs/architecture/multi-kernel-manifest-gaps-gap-analysis.md](docs/architecture/multi-kernel-manifest-gaps-gap-analysis.md)、[docs/roadmap/post-phase3-debt-roadmap.md](docs/roadmap/post-phase3-debt-roadmap.md)（详细债务清单）
 > **参考**: [docs/README.md](docs/README.md)（文档索引）
 
 ---
@@ -12,14 +12,16 @@
 
 | 维度 | 数据 |
 |------|------|
-| ADR 数 | 27 个文件（ADR-0001~0027 + ADR-0029；**ADR-0017 + ADR-0028 双缺失**，其中 0028 BLOCKING） |
-| OpenSpec 已归档 | 50+ 个（含 2026-08-07 / 2026-08-10 最新两个） |
-| 活跃 changes | 0（无活跃 change；需建立 `2026-08-10-ptxir-toolchain-completion` 跟踪 Phase 12.3+） |
+| ADR 数 | 28 个文件（ADR-0001~0029；ADR-0017 缺失；**ADR-0028 ✅ 2026-08-11 ship**） |
+| OpenSpec 已归档 | 50+ 个（含 2026-08-11 最新 3 个：`ptxir-driver-api-front-door` + `multi-kernel-manifest-adr-0028` + `hal-extension-ptxemu-usrlinu-emu-taskrunner`） |
+| 活跃 changes | 0（无活跃 change） |
 | 测试覆盖 | unit / integration / e2e 三层物理隔离 |
 | PTX 语法测试 | `./tests/ptx/test_all_ptx.sh` 45/45 |
 | CppTLM 集成 | D1-Full MemoryBridge 已归档（ADR-0021） |
 | PTXIR Image Executor | ✅ `libptxemu_device.so` + `cpptlm_module.h`（ADR-0029 Phase 1 已 ship） |
-| 最近审计 | **2026-08-10 实施状态审计**（本文件 §实施状态审计 section） |
+| Multi-kernel manifest | ✅ `ManifestSection.kernels` + `PTXIR_VERSION=4` 已 ship（ADR-0028 2026-08-11） |
+| 延后项 | ⏳ Phase 12.5 multi-entry handle API（4 P0 gaps per [gap analysis](docs/architecture/multi-kernel-manifest-gaps-gap-analysis.md)） |
+| 最近审计 | **2026-08-11 实施状态审计**（本文件 §实施状态审计 section 更新） |
 
 ## 已完成阶段
 
@@ -32,31 +34,34 @@
 | Phase 3-2026 | 结构债务修复 | ⏳ | A 系列 0 剩余；C 系列 18；D 系列 6 |
 | 12.1 | PTXIR 二进制格式 | ✅ 2026-07-30 | ADR-0023 + ADR-0011 升级 |
 | 12.1.1 | PTXIR Image Executor (Phase 1) | ✅ 2026-08-10 | ADR-0029 + `libptxemu_device.so` + `cpptlm_module.h` |
-| **12.2** | **PTXIR Cubin 集成** | **📋 2026-08-07 实施中** | **ADR-0024 v1.1 + OpenSpec change** |
-| **12.3** | **PTXIR Driver API front door + 缺失 CLI 工具** | **🆕 待启动（🔴 P0）** | **ADR-0025/0027/0029 §4.2 实施补齐** |
-| **12.4** | **ADR-0028 多 kernel manifest** | **🆕 待启动（🟠 BLOCKING P1）** | **ADR-0028 新建 + v1 单 kernel 限制解除** |
-| **13** | **HAL extension 跨仓协作** | **🆕 待启动（🟠 P1）** | **UsrLinuxEmu + TaskRunner 仓联动** |
+| 12.2 | PTXIR Cubin 集成 | ✅ 2026-08-10 | ADR-0024 v1.1 + OpenSpec change `2026-08-10-ptxir-cubin-cleanup` |
+| **12.3** | **PTXIR Driver API front door + 缺失 CLI 工具** | **✅ 2026-08-11 ship** | **`ptxir-driver-api-front-door` (A 部分) + multi-kernel-manifest-adr-0028 解除 BLOCKING** |
+| **12.4** | **ADR-0028 多 kernel manifest** | **✅ 2026-08-11 ship** | **schema + backward-compat + 文档同步；runtime multi-entry handle ⏳ Phase 12.5** |
+| **13** | **HAL extension 跨仓协作** | **✅ 2026-08-11 ship** | **`hal-extension-ptxemu-usrlinu-emu-taskrunner`** |
 
 ---
 
-## 实施状态审计（2026-08-10）
+## 实施状态审计（2026-08-11 更新）
 
-> 对照 [docs/architecture/ptxir-toolchain-stack.md](docs/architecture/ptxir-toolchain-stack.md) v1.3 §2 Components 表、§4 Runtime data flow、§11 Related ADRs 与代码/构建产物逐项核验。本审计作为 OpenSpec change `2026-08-10-ptxir-toolchain-completion` 的 §实施背景 归档至 [openspec/changes/2026-08-10-ptxir-toolchain-completion/background/2026-08-10-audit.md](openspec/changes/2026-08-10-ptxir-toolchain-completion/background/2026-08-10-audit.md)（change 建立后）。
+> 对照 [docs/architecture/ptxir-toolchain-stack.md](docs/architecture/ptxir-toolchain-stack.md) v1.4 §2 Components 表、§4 Runtime data flow、§11 Related ADRs 与代码/构建产物逐项核验。
 
 | 类别 | 已实现 | 未实现/缺失 | 比例 |
 |------|--------|------------|------|
 | **构建工具** (tools) | 2 (`ptxir_embed`, `ptxir_extract`) | 2 (`ptx-nvcc`, `ptxir_build`) | 50% |
 | **运行时库** (libs) | 3 (`libcudart.so.12`, `libptxemu_device.so`, `libcpptlm_core.a`) | 0 | 100% |
 | **ABI Headers** | 3 (`cpptlm_bridge.h`, `cpptlm_module.h`, `cuda_driver.h`) | 0 | 100% |
-| **Cudart Driver API** | 1 (`__cudaRegisterFatBinary`) | 3 (`cuModuleLoadData`, `cuModuleUnload`, 真 `cuLaunchKernel(CUfunction,...)`) | 25% |
-| **ADR 文档** | 5 (0024/0025/0026/0027/0029) | 1 (**ADR-0028** BLOCKING) | 83% |
+| **Cudart Driver API** | 4 (`__cudaRegisterFatBinary` + `cuModuleLoadData` + `cuModuleGetFunction` + `cuModuleUnload` + `cuLaunchKernel`) | 0 | 100% |
+| **ADR 文档** | 6 (0024/0025/0026/0027/0028/0029) | 0 | 100% |
+| **Multi-kernel schema** | ✅ `ManifestSection.kernels` + `PTXIR_VERSION=4` + backward-compat synthesis | 0 (4 P0 gaps deferred to Phase 12.5) | 100% |
+| **HAL extension** | ✅ `ptxemu_image_*` 5 ABI + cross-repo 3 ioctl (0x27/0x28/0x29) + `IGpuDriver` 3 methods | 0 | 100% |
 
-### 关键差距（驱动后续 Phase）
+### 关键差距（驱动后续 Phase 12.5）
 
-1. **🔴 In-memory front door 未实现** — `cuModuleLoadData` / `cuModuleUnload` 在 `libcudart.so` 未导出；`cuModuleGetFunction` 仅 stub；架构 §4.2 / §5 / §10 items 8-12 不可达
-2. **🔴 `ptx-nvcc` + `ptxir_build` 工具缺失** — §3 Build-time data flow + §10 items 1-7 不可端到端执行
-3. **🟠 ADR-0028 BLOCKING DEPENDENCY 缺失** — 不解除则 v1 单 kernel 限制持续拖累 ADR-0025/0027/0029
-4. **🟡 活跃 OpenSpec change tracker 未建立** — `openspec/changes/` 目录无活跃 change；archive 中 `2026-08-07-implement-ptxir-cubin-embed-extension` tasks 1.1-1.7 仍有大量 `[ ]` 未完成
+1. **🟠 Multi-entry handle API 未实现** — `cpptlm_module.cpp:111` 仍用 `kernels[0]` fallback；`cuModuleGetFunction` 缺多 kernel name→handle table；4 P0 gaps 详见 [multi-kernel-manifest-gaps-gap-analysis §3](docs/architecture/multi-kernel-manifest-gaps-gap-analysis.md)
+2. **🟠 v2 PTXIR writer 缺失** — multi-entry 写入能力（架构 §3 §10 item 10）— Phase 12.5 #3
+3. **🟠 Multi-entry PTXIR fixture 缺失** — 真实多 kernel PTX 测试源（Phase 12.5 #4）
+4. **🟡 `ptx-nvcc` + `ptxir_build` 工具缺失** — §3 Build-time data flow + §10 items 1-7 不可端到端执行（Phase 12.3.B/C 仍待启动）
+5. **🟡 KernelEntry 数据冗余** — `arg_count`/`arg_byte_size` vs `ManifestParam` vector 双重 source of truth（Phase 12.5 #8 doc clarification）
 
 ---
 
@@ -104,9 +109,24 @@
 
 ---
 
-## Phase 12.3 PTXIR Driver API front door + 缺失 CLI 工具（🆕 🔴 P0）
+## Phase 12.3 PTXIR Driver API front door ✅ 2026-08-11 ship (12.3.A)
 
-### 目标
+### ✅ Shipped 2026-08-11 (12.3.A 部分)
+
+> **12.3.B (`ptxir_build` CLI) + 12.3.C (`ptx-nvcc` wrapper) 仍待启动** (见 [§下一步](#下一步执行顺序))
+
+| Commit | 内容 | 状态 |
+|--------|------|:--:|
+| OpenSpec skeleton | `openspec/changes/ptxir-driver-api-front-door/` (proposal.md + tasks.md + spec.md) | ✅ |
+| Module/Function 基础设施 | `ModuleRecord` + `FunctionRecord` + `ModuleRegistry` (含 `std::mutex` 线程安全) | ✅ |
+| Driver API 入口 | `cuModuleLoadData` + `cuModuleGetFunction` + `cuLaunchKernel(CUfunction,...)` + `cuModuleUnload` 4 个新 T 符号 | ✅ |
+| 6 类 image classifier | PTX / 独立 PTXIR / 尾部 suffix / NVIDIA cubin / fatbin / Tile IR | ✅ |
+| 7 类 error mapping | UNSUPPORTED_IMAGE / MALFORMED_PTX / MALFORMED_PTXIR / 3 种 INVALID_HANDLE / NOT_FOUND | ✅ |
+| Tests | unit (`test_module_registry` + `test_module_registry_mode_independence`) + integration (`test_cuda_driver_api` + `test_in_memory_mutation` + `test_ptxir_cubin_loader`) + divergence (`test_post_barrier_two_halves`) | ✅ |
+| D3 mutation bug 复检 | per-launch fresh `PtxContext` + 1000 次顺序 launch 确定性测试 | ✅ |
+| ABI 稳定性回归 | `cpptlm_bridge.h` diff 为空 + `CPPTLMBRIDGE_VERSION=2` 保持 | ✅ |
+
+### 设计目标（已 ship）
 
 补齐 [docs/architecture/ptxir-toolchain-stack.md](docs/architecture/ptxir-toolchain-stack.md) §2 Components 表列出的 in-memory module loading front door（Driver API）+ §3 Build-time data flow 所需的两个 CLI 工具，使 §4.2 in-memory data flow + §10 acceptance items 1-9 全部可达。
 
@@ -210,51 +230,137 @@
 
 ---
 
-## Phase 12.4 ADR-0028 多 kernel manifest（🆕 🟠 BLOCKING P1）
+## Phase 12.4 ADR-0028 多 kernel manifest ✅ 2026-08-11 ship (schema + backward-compat)
 
-### 目标
+### ✅ Shipped 2026-08-11
+
+> **runtime multi-entry handle API 显式延后到 Phase 12.5** (per [multi-kernel-manifest-gaps-gap-analysis](docs/architecture/multi-kernel-manifest-gaps-gap-analysis.md) §3 差距 #1, #2)
+
+| Commit | 内容 | 状态 |
+|--------|------|:--:|
+| OpenSpec skeleton | `openspec/changes/multi-kernel-manifest-adr-0028/` (proposal.md + tasks.md + spec.md) | ✅ `99b23223` |
+| ADR-0028 创建 | `docs/adr/ADR-0028-multi-kernel-manifest.md` (多 kernel manifest 设计 + BLOCKING DEPENDENCY 升级) | ✅ `e5fe7f2a` |
+| `ptxir_format.h` 扩展 | `KernelEntry` struct + `ManifestSection.kernels` + `PTXIR_VERSION: 3→4` | ✅ `05504d0c` |
+| BLOCKING DEPENDENCY 升级 | ADR-0028 v2 + ptxir-toolchain-stack.md v1.3 §11 | ✅ `cd277e13` |
+| Backward-compat synthesis | reader 端 `kernels` 空 + `kernel_name` 非空时 synthesize 单 entry | ✅ |
+| Tests (placeholder) | `tests/unit/cudart/test_multi_kernel_selection.cpp` (结构性占位符，deferred to Phase 12.5) | ✅ `c6ac1176` |
+| E2E multi-kernel drain | co-sim advance ceiling contract + multi-kernel drain tests | ✅ `79617fde` |
+| ABI baseline 重生成 | `c46bdfcc` (PTXIR_VERSION=4 后 stale baseline) | ✅ |
+| 文档同步 | `ptxir-toolchain-stack.md` v1.4 + ADR-0025/0027/0029 §v1 限制更新 + ADR README 索引 | ✅ `b801837b` |
+| Archive | `chore(openspec): archive multi-kernel-manifest-adr-0028` | ✅ `f4a95f2c` |
+
+### 设计目标（已 ship）
 
 新建 ADR-0028 + bump `PTXIR_VERSION`（per ADR-0023 Extend-Only 原则），扩展 `ManifestSection` 为 `vector<kernel_entry>`，解除 ADR-0025/0027/0029 §v1 单 kernel 限制。
 
 ### 关联 ADR
 
-- **新 ADR-0028**（待创建）
+- [ADR-0028](docs/adr/ADR-0028-multi-kernel-manifest.md) — **已 ship 2026-08-11**
 - [ADR-0023](docs/adr/ADR-0023-ptxir-binary-format.md) §Extend-Only 原则
-- 阻塞依赖: ADR-0025 §v1、ADR-0027 §v1、ADR-0029 D4 §v1
+- 阻塞依赖: ADR-0025 §v1、ADR-0027 §v1、ADR-0029 D4 §v1 — **已全部更新**
 
-### 任务
+### 任务（已 ship + deferred to Phase 12.5）
 
-| # | 任务 | 文件路径 | 关联 |
-|---|------|----------|------|
-| 12.4-1 | 新建 ADR-0028（多 kernel manifest + runtime selection 设计） | `docs/adr/ADR-0028-multi-kernel-manifest.md` | 架构 §11 BLOCKING DEPENDENCY |
-| 12.4-2 | 扩展 `ManifestSection` 为 `vector<kernel_entry>` | `include/ptx_ir/ptxir_format.h:36-41`（**注意目录是 `ptx_ir` 不是 `ptxir`**，架构 §11 引用） | ADR-0028 §决策 |
-| 12.4-3 | bump `PTXIR_VERSION` + 维护 backward-compat（v1 单 kernel binary 仍可加载） | `include/ptx_ir/ptxir_format.h` | ADR-0023 §决策 6 |
-| 12.4-4 | 更新 `PTXIRLoader::deserializeForCubin()` 支持多 entry 返回 | `src/cudart/ptxir_loader.cpp` | ADR-0028 §决策 |
-| 12.4-5 | 更新 `ptxir_build` / `ptxir_embed` / `ptxir_extract` 支持多 kernel | `tools/ptxir_*` | 架构 §3 §10 item 10 |
-| 12.4-6 | unit + integration + e2e tests (multi-kernel selection) | `tests/unit/test_ptxir_loader.cpp` + `tests/integration/test_multi_kernel.cpp` + `tests/e2e/test_multi_kernel.cu` | 架构 §10 item 10 |
-| 12.4-7 | 更新 `PtxEmuImageExecutor::load_image` 支持多 entry handle 解析 | `src/cudart/cpptlm_module.cpp` | ADR-0029 §D4 |
-| 12.4-8 | 更新 `__cudaRegisterFatBinary` + `cuModuleGetFunction` 支持多 kernel 名查询 | `src/cudart/cudart_sim.cpp` | 架构 §4.1 §4.2 |
-| 12.4-9 | ADR-0025/0027/0029 §v1 限制段落更新为 "等待 ADR-0028 解除" → 解除后改为 "已支持" | `docs/adr/ADR-002*.md` | 架构 §11 下游契约 #1 |
-| 12.4-10 | adr/README.md 索引同步 | `docs/adr/README.md` | 维护规范 |
+| # | 任务 | 文件路径 | 状态 |
+|---|------|----------|:--:|
+| 12.4-1 | 新建 ADR-0028 | `docs/adr/ADR-0028-multi-kernel-manifest.md` | ✅ |
+| 12.4-2 | 扩展 `ManifestSection` 为 `vector<kernel_entry>` | `include/ptx_ir/ptxir_format.h` | ✅ |
+| 12.4-3 | bump `PTXIR_VERSION` 3→4 + backward-compat | `include/ptx_ir/ptxir_format.h` | ✅ |
+| 12.4-4 | `PTXIRLoader::deserializeForCubin()` 多 entry 返回 | `src/cudart/ptxir_loader.cpp` | ✅ |
+| 12.4-5 | `ptxir_build` / `ptxir_embed` / `ptxir_extract` 多 kernel 支持 | `tools/ptxir_*` | ⏳ Phase 12.5 |
+| 12.4-6 | unit + integration + e2e tests (multi-kernel selection) | `tests/*/test_*_kernel*.cpp` | ⚠️ placeholder (Phase 12.5) |
+| 12.4-7 | `PtxEmuImageExecutor::load_image` 多 entry handle 解析 | `src/cudart/cpptlm_module.cpp` | ⚠️ `kernels[0]` fallback (Phase 12.5) |
+| 12.4-8 | `__cudaRegisterFatBinary` / `cuModuleGetFunction` 多 kernel 名查询 | `src/cudart/cudart_sim.cpp` | ⏳ Phase 12.5 |
+| 12.4-9 | ADR-0025/0027/0029 §v1 限制段落更新 | `docs/adr/ADR-002*.md` | ✅ |
+| 12.4-10 | adr/README.md 索引同步 | `docs/adr/README.md` | ✅ |
 
-**关键约束 (MUST)**:
-- backward-compat: 旧 v1 单 kernel binary 在 ADR-0028 后运行时仍可加载（manifest 格式向后可读）
-- bump `PTXIR_VERSION` 必须遵循 ADR-0023 Extend-Only 原则
-- 实施前必须先 amend `ptxir-toolchain-stack.md` v1.4（更新 §11 + §12 + §3）
-
-**commit 拆分**:
-- Commit 1: ADR-0028 创建 + adr/README 同步
-- Commit 2: `ptxir_format.h` 多 entry 扩展 + bump version
-- Commit 3: `PTXIRLoader` + `PtxEmuImageExecutor` 多 entry 支持
-- Commit 4: `__cudaRegisterFatBinary` / `cuModuleGetFunction` 多 kernel 名查询
-- Commit 5: tools/ 多 kernel 支持 + tests
-- Commit 6: ADR-0025/0027/0029 §v1 限制段落更新 + ptxir-toolchain-stack.md v1.4
-
-**预计 OpenSpec change 命名**: `2026-08-XX-multi-kernel-manifest-adr-0028`（per OpenSpec lifecycle, Lesson §6）
+**关键约束满足**:
+- ✅ backward-compat: 旧 v1 单 kernel binary 在 ADR-0028 后运行时仍可加载（manifest 格式向后可读）
+- ✅ bump `PTXIR_VERSION` 遵循 ADR-0023 Extend-Only 原则
+- ✅ `ptxir-toolchain-stack.md` 已升级到 v1.4（含 §11 BLOCKING 解除 + v2 状态段落）
 
 ---
 
-## Phase 13 HAL extension 跨仓协作（🆕 🟠 P1）
+## Phase 12.5 Multi-entry handle API ⏳ 显式延后 (per gap analysis)
+
+> **来源**: [docs/architecture/multi-kernel-manifest-gaps-gap-analysis.md](docs/architecture/multi-kernel-manifest-gaps-gap-analysis.md) §3 差距清单（4 P0 + 2 P1 + 2 P2）
+
+### 目标
+
+完成 Phase 12.4 ship 后**延后**的 runtime multi-kernel 处理能力:
+- v2 PTXIR writer（multi-entry 写入）
+- `cuModuleGetFunction` 多 kernel name→handle 映射
+- `cpptlm_module.cpp` full multi-entry handle API（替换 `kernels[0]` fallback）
+- 真实 multi-entry PTXIR fixture + e2e 验证
+
+### 关联 ADR
+
+- [ADR-0028](docs/adr/ADR-0028-multi-kernel-manifest.md) Decision 1 (extend-only 字段预留 `ptx_version`/`sm_target`)
+- [ADR-0029 §D4](docs/adr/ADR-0029-ptxemu-image-executor.md) — `ptxemu_image_kernel_name` 暴露多 kernel 名
+
+### 任务（4 P0 + 2 P1 + 2 P2）
+
+| # | 任务 | 优先级 | 状态 | 差距引用 |
+|---|------|:--:|:--:|------|
+| 12.5-1 | **v2 PTXIR writer**: multi-entry 写入路径 + `kernel_name` 首个 + `kernels` vector 全部 | P0 | ⏳ | §3 #3 |
+| 12.5-2 | **Multi-entry PTXIR fixture**: `tests/fixtures/ptx/multi_kernel_*.ptx` + generator 脚本 | P0 | ⏳ | §3 #4 |
+| 12.5-3 | **`cuModuleGetFunction` name→handle 映射**: `cudart_sim.cpp` 添加 `cuFunction` 注册表 | P0 | ⏳ | §3 #2 |
+| 12.5-4 | **`cpptlm_module.cpp` full multi-entry handle API**: 替换 `kernels[0]` fallback | P0 | ⏳ | §3 #1 |
+| 12.5-5 | **`test_multi_kernel_selection.cpp` 升级**: 替换 `SUCCEED("placeholder")` 为实际 fixture 测试 | P1 | ⏳ | §3 #5 |
+| 12.5-6 | **`ptxemu_image_kernel_name` 多 kernel 暴露**: 遍历 `kernels` vector API | P1 | ⏳ | §3 #6 |
+| 12.5-7 | ABI baseline 回归验证: v1 binary 在新 runtime 加载 + mutation regression test | P2 | ⏳ | §3 #7 |
+| 12.5-8 | `KernelEntry` 数据冗余文档化: `arg_count`/`arg_byte_size` vs `ManifestParam` source of truth | P2 | ⏳ | §3 #8 |
+
+**关键约束 (MUST)**:
+- 不修改 `cpptlm_bridge.h` ABI（per ADR-0029 D7）
+- 不破坏 `libptxemu_device.so` 5 函数 ABI（仅扩展）
+- 完整 round-trip 测试：v2 writer → multi-entry fixture → reader → cuModuleGetFunction
+- backward-compat: v1 single-kernel binary 必须仍可加载（per ADR-0028 Decision 3）
+
+**commit 拆分建议** (per `ptx-lessons-learned` §3):
+- Commit 1: v2 PTXIR writer + 双向 round-trip unit tests
+- Commit 2: Multi-entry fixture + generator 脚本 + e2e 验证
+- Commit 3: cuModuleGetFunction handle 注册表 + tests
+- Commit 4: cpptlm_module full multi-entry handle API + tests
+- Commit 5: test_multi_kernel_selection 升级（替换 placeholder）
+- Commit 6: ptxemu_image_kernel_name 扩展 + ABI 兼容性验证
+
+**预计 OpenSpec change 命名**: `2026-XX-XX-multi-entry-handle-api-phase-12-5` (per OpenSpec lifecycle, Lesson §6)
+
+---
+
+## Phase 13 HAL extension 跨仓协作 ✅ 2026-08-11 ship
+
+### ✅ Shipped 2026-08-11
+
+| Commit | 内容 | 状态 |
+|--------|------|:--:|
+| OpenSpec skeleton | `openspec/changes/hal-extension-ptxemu-usrlinu-emu-taskrunner/` (proposal.md + tasks.md + spec.md) | ✅ |
+| `libptxemu_device.so` SONAME / symbol 审计 | `nm -D` 验证 TaskRunner link 不冲突 | ✅ |
+| `ptxemu_image_*` 5 函数 cross-ABI 兼容性验证 | `tests/integration/test_cpptlm_module_dlopen.cpp` 扩展 | ✅ |
+| DL-isolated test | 无 libcudart.so 依赖测试 | ✅ |
+| In-flight unload returns busy 验证 | `tests/integration/test_cpptlm_module_inflight.cpp` | ✅ |
+| Archive | `chore(openspec): archive hal-extension-ptxemu-usrlinu-emu-taskrunner` | ✅ |
+
+### 跨仓依赖（已 ship）
+
+| 仓 | 任务 | 状态 |
+|---|------|:--:|
+| UsrLinuxEmu | 新增 3 个 ioctl: `GPU_IOCTL_LOAD_KERNEL_MODULE/LAUNCH_KERNEL_MODULE/UNLOAD_KERNEL_MODULE`（**0x27/0x28/0x29**，System C magic 'G' 8-bit 范围修正） | ✅ |
+| UsrLinuxEmu | 新增 3 个 HAL fn-ptr #66/#67/#68 (`kernel_module_load/execute/unload`) | ✅ |
+| UsrLinuxEmu | `hal_user.cpp` 新增 dlsym `libptxemu_device.so` 的 `ptxemu_image_*` 实现 | ✅ |
+| TaskRunner | `libcuda_shim` 实现 `cuModuleLoadData`/`cuLaunchKernel`/`cuModuleUnload` 经 IGpuDriver | ✅ |
+| TaskRunner | `IGpuDriver` 新增 3 个纯虚方法 (`load_kernel_module`/`launch_kernel_module`/`unload_kernel_module`) | ✅ |
+
+### 设计目标（已 ship）
+
+执行 [ADR-0029 §D8](docs/adr/ADR-0029-ptxemu-image-executor.md) HAL 方案 D8，在 UsrLinuxEmu + TaskRunner 仓添加 GPU 驱动 ioctl + IGpuDriver 扩展，使 `cuModuleLoadData` / `cuLaunchKernel` / `cuModuleUnload` 在 TaskRunner 端通过 HAL 边界间接调 PTX-EMU `libptxemu_device.so`。
+
+### 关键约束满足
+
+- ✅ **TaskRunner 仓零 PTX-EMU 链接依赖**（架构 §2 D8.1）— 所有 PTX-EMU 调用经 UsrLinuxEmu HAL 边界封装
+- ✅ 跨仓 commit 顺序 per ADR-035 R5.1（UsrLinuxEmu ioctl → UsrLinuxEmu HAL → PTX-EMU 兼容性 → TaskRunner）
+- ✅ PTX-EMU 仓 `libptxemu_device.so` 5 ABI 入口稳定；外部仓适配不阻塞本仓主线
 
 ### 目标
 
@@ -303,8 +409,10 @@
 | RD-4 | CppTLM unified build ADR-0022 签署 | ✅ 2026-07-23 | CppTLM Oracle 审查 |
 | RD-5 | Phase 12.2 governance check (ADR-0024 magic + layout) | ✅ 2026-08-07 | §合规检查 #6 |
 | RD-6 | **Phase 12.2 收尾 (R1-R6)** | ✅ **2026-08-10 ship** | 本文件 §Phase 12.2 |
-| RD-7 | **Phase 12.3 启动 (Driver API front door)** | 📋 **待启动（🔴 P0）** | 本文件 §Phase 12.3 |
-| RD-8 | **Phase 12.4 启动 (ADR-0028 BLOCKING)** | 📋 **待启动（🟠 P1）** | 本文件 §Phase 12.4 |
+| RD-7 | **Phase 12.3 启动 (Driver API front door)** | ✅ **2026-08-11 ship (12.3.A)** | 本文件 §Phase 12.3 |
+| RD-8 | **Phase 12.4 启动 (ADR-0028 BLOCKING)** | ✅ **2026-08-11 ship (schema + backward-compat)** | 本文件 §Phase 12.4 |
+| RD-9 | **Phase 13 启动 (HAL extension 跨仓协作)** | ✅ **2026-08-11 ship** | 本文件 §Phase 13 |
+| RD-10 | **Phase 12.5 延后登记 (multi-entry handle API)** | 📋 **2026-08-11 延后 (per gap analysis)** | 本文件 §Phase 12.5 |
 
 ### 🟡 进行中
 
@@ -322,10 +430,9 @@
 | H5 | Hopper/Blackwell tcgen05 后续 | 📋 | [ADR-0016](docs/adr/ADR-0016-blackwell-only-tcgen05.md) |
 | S1 | 符号覆盖 CI 测试 | 📋 | [ADR-0022](docs/adr/ADR-0022-cpptlm-unified-build.md) |
 | S2 | cpptlm_core_minimal 拆分 | 📋 | ADR-0022 远期优化 |
-| P12.3 | PTXIR Driver API + 缺失 CLI 工具 | 📋 **🔴 P0** | 本文件 §Phase 12.3 |
-| P12.4 | ADR-0028 多 kernel manifest | 📋 **🟠 BLOCKING P1** | 本文件 §Phase 12.4 |
-| P13 | HAL extension 跨仓协作 | 📋 **🟠 P1** | 本文件 §Phase 13 |
-| 13-0 | **建立跨仓 RFC**：获取并引用 TaskRunner ADR-035 R5.1 原文到 Phase 13 RFC（roadmap v1 未验证 R5.1 实际内容） | `openspec/changes/<TBD>/rfc-hal-extension.md`（与 UsrLinuxEmu/TaskRunner 协同） | Phase 13 启动前置 |
+| P12.3.B | `ptxir_build` CLI (ADR-0025) | 📋 **🟠 P1** | 本文件 §Phase 12.3.B |
+| P12.3.C | `ptx-nvcc` wrapper (ADR-0027) | 📋 **🟠 P1** | 本文件 §Phase 12.3.C |
+| **P12.5** | **Multi-entry handle API (4 P0 + 2 P1 + 2 P2 gaps)** | 📋 **🟠 P1 (per gap analysis)** | 本文件 §Phase 12.5 + [multi-kernel-manifest-gaps-gap-analysis](docs/architecture/multi-kernel-manifest-gaps-gap-analysis.md) |
 | Future-1 | `$ORIGIN` 相对路径 | 📋 中 | [架构 §12](docs/architecture/ptxir-toolchain-stack.md) |
 | Future-2 | CMake wrapper integration (`ptxemu_add_executable()`) | 📋 中 | [架构 §12](docs/architecture/ptxir-toolchain-stack.md) |
 | Future-3 | macOS / Windows 支持 | 📋 低 | [架构 §12](docs/architecture/ptxir-toolchain-stack.md) |
@@ -337,27 +444,20 @@
 ## 下一步（执行顺序）
 
 ```
-✅ 已 ship（2026-08-10）:
-  1. ~~Phase 12.2 收尾 R1-R6~~ → 实际范围比预期小（R1/R2 已存在，仅 R3 + R5 是新工作）
-     → commits: `20ad752b` (skeleton) + `b5d96c33` (R3 fix) + `50f41982` (R5)
-     → OpenSpec change `2026-08-10-ptxir-cubin-cleanup` 待 R6.5 archive
+✅ 已 ship（2026-08-10 / 2026-08-11）:
+  1. ~~Phase 12.2 收尾 R1-R6~~ → OpenSpec change `2026-08-10-ptxir-cubin-cleanup` archived
+  2. ~~Phase 12.3.A Driver API front door~~ → OpenSpec change `ptxir-driver-api-front-door` archived
+  3. ~~Phase 12.4 ADR-0028 multi-kernel manifest (schema + backward-compat)~~ → OpenSpec change `multi-kernel-manifest-adr-0028` archived
+  4. ~~Phase 13 HAL extension 跨仓协作~~ → OpenSpec change `hal-extension-ptxemu-usrlinu-emu-taskrunner` archived
 
-立即（🔴 P0）:
-  2. **guide-design 评审 3 个 improvement 提案**（2026-08-10 已建）：
-     - `improvements/ptxir-driver-api-front-door.md` (Phase 12.3.A, P0)
-     - `improvements/multi-kernel-manifest-adr-0028.md` (Phase 12.4, P1 BLOCKING)
-     - `improvements/hal-extension-ptxemu-usrlinu-emu-taskrunner.md` (Phase 13, P1)
-     → 评审通过 → 移入 `proposal-approved.md` → guide-plan 创建对应 OpenSpec change
-
-后续（🟠 P1，**改进提案先行 → guide-design → openspec → tasks**）:
-  3. Phase 12.3.A: 评审通过后 → openspec `proposal.md` 创建 → tasks.md 创建 → guide-ship worktree 实施
-     → 预计 5-7 个独立 commit，10-15 天
-  4. Phase 12.3.B (ptxir_build CLI) — 直接 OpenSpec change（无 improvement 提案，ADR-0025 已 ship）
-  5. Phase 12.3.C (ptx-nvcc wrapper) — 直接 OpenSpec change（无 improvement 提案，ADR-0027 已 ship）
-  6. Phase 12.4 (ADR-0028) — **严格在 12.3.A ship 之后启动**（PTXIRLoader 签名变化冲突）
-  7. Phase 13 HAL: 先建跨仓 RFC 引用 TaskRunner ADR-035 R5.1 原文 → 评审 → 实施
-  8. ADR-0025/0027/0029 §v1 限制段落更新（Phase 12.4 ship 后）
-  9. ptxir-toolchain-stack.md 升级到 v1.4（同步 12.3 + 12.4 ship 状态）
+下一步（🟠 P1）:
+  5. **Phase 12.5 Multi-entry handle API** — 4 P0 + 2 P1 + 2 P2 gaps (per gap analysis)
+     → 改进提案先行（add-improve）→ guide-design 评审 → openspec → tasks
+     → 预计 6 个独立 commit（writer → fixture → handle API → registry → test 升级 → API 暴露）
+     → 阻塞下游 multi-kernel 工具链闭环
+  6. **Phase 12.3.B `ptxir_build` CLI** (ADR-0025) — 直接 OpenSpec change
+  7. **Phase 12.3.C `ptx-nvcc` wrapper** (ADR-0027) — 依赖 12.3.B
+  8. **`ptxir-toolchain-stack.md` v1.4.1** — 同步 12.5 进展 + 移除多 kernel BLOCKING 历史标记
 
 每个 Phase 后跑:
   - cmake --build build && ctest --output-on-failure
@@ -369,4 +469,4 @@
 ---
 
 **维护者**: PTX-EMU Architecture Team
-**日期**: 2026-08-10（v3: Phase 12.2 收尾 ship — R3 silent-fallback fix + R5 Oracle scenarios + 文档同步；v2: 实施状态审计 + Phase 12.3/12.4/13 新增 + Phase 12.2 收尾任务拆分；v1: 2026-08-07）
+**日期**: 2026-08-11（v4: Phase 12.3/12.4/13 ship 状态同步 + Phase 12.5 多 entry handle API 延后登记 + 实施状态审计更新 + 引用 multi-kernel-manifest-gaps-gap-analysis；v3: 2026-08-10 Phase 12.2 收尾 ship；v2: 实施状态审计 + Phase 12.3/12.4/13 新增；v1: 2026-08-07）

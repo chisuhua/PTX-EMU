@@ -1,0 +1,37 @@
+[
+  {
+    "doc_hash": "3092db45455500d4",
+    "timestamp": "2026-08-11T10:50:27.759088+00:00",
+    "warnings": [
+      {
+        "signal": "file_list",
+        "section": "架构依据",
+        "action": "review manually (multi-signal fire)",
+        "weighted_score": 3.0,
+        "threshold_high": 3
+      },
+      {
+        "signal": "file_list",
+        "section": "验收标准",
+        "action": "review manually (multi-signal fire)",
+        "weighted_score": 3.0,
+        "threshold_high": 3
+      },
+      {
+        "signal": "step_density",
+        "section": "技术约束",
+        "action": "review manually (multi-signal fire)",
+        "weighted_score": 3.2,
+        "threshold_high": 3
+      },
+      {
+        "signal": "step_density",
+        "section": "验收标准",
+        "action": "review manually (multi-signal fire)",
+        "weighted_score": 4.8,
+        "threshold_high": 3
+      }
+    ],
+    "multi_signal_threshold": 2
+  }
+]

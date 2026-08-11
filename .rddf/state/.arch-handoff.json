@@ -1,6 +1,6 @@
 {
-  "arch_complete_at": "2026-07-29T07:21:12.848322+00:00",
-  "adr_count": 23,
+  "arch_complete_at": "2026-08-11T08:41:22.987172+00:00",
+  "adr_count": 28,
   "completed_adr_ids": [
     "0001",
     "0002",
@@ -24,10 +24,15 @@
     "0021",
     "0022",
     "0023",
-    "0024"
+    "0024",
+    "0025",
+    "0026",
+    "0027",
+    "0028",
+    "0029"
   ],
   "roadmap_exists": true,
-  "current_phase": "Phase 10 \u2014 Documentation & Release\uff08\u03b2 \u5b8c\u6210\u4e2d\uff09+ Phase 3 \u7ed3\u6784\u503a\u52a1\u4fee\u590d",
+  "current_phase": "Phase 10 \u2014 Documentation & Release\uff08\u03b2 \u5b8c\u6210\u4e2d\uff09+ **Phase 12.2 PTXIR Cubin \u96c6\u6210 \u2705 2026-08-10 ship** + **Phase 12.3 PTXIR Driver API front door \u2705 2026-08-11 ship** + **Phase 12.4 ADR-0028 \u591a kernel manifest \u2705 2026-08-11 ship** + **Phase 13 HAL extension \u8de8\u4ed3\u534f\u4f5c \u2705 2026-08-11 ship** + **Phase 12.5 \u591a entry handle API \u23f3 \u663e\u5f0f\u5ef6\u540e** (per [multi-kernel-manifest-gaps-gap-analysis](docs/architecture/multi-kernel-manifest-gaps-gap-analysis.md))",
   "plan_started_at": null,
   "adr_dir": "docs/adr",
   "roadmap_path": "roadmap.md",
