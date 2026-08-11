@@ -33,7 +33,7 @@
 
 - **不重复造轮子**：直接调用已存在的 `ptxir::generate_ptxir()` 库函数
 - **保持 PTXIR 格式兼容**：不修改 ADR-0023 §PTXIRHeader / §Section TOC
-- **单 kernel v1**：当前 `ManifestSection` 仅 `kernel_name` 单值（ADR-0024 §决策内容 §决策 §1）；`generate_ptxir` 按单 kernel 处理。**[ADR-0028]**（**[BLOCKING DEPENDENCY]**，详见 `docs/architecture/ptxir-toolchain-stack.md §11`）待 ship 后解除；解除时需 bump `PTXIR_VERSION` per ADR-0023 Extend-Only 原则，backward-compat 策略：旧 v1 单 kernel binary 仍可被新 loader 读取。
+- **单 kernel v1**：当前 `ManifestSection` 仅 `kernel_name` 单值（ADR-0024 §决策内容 §决策 §1）；`generate_ptxir` 按单 kernel 处理。**v2 状态 (2026-08-11)**: 已由 ADR-0028 解除；详见 ADR-0028 §Decision 1。backward-compat 策略：旧 v1 单 kernel binary 仍可被新 loader 读取。
 - **POSIX CLI 习惯**：GNU-style `--option value`，使用明确且稳定的退出码契约：0 成功，1 用法或参数错误，2 PTX/kernel 数据错误，3 I/O、内部或工具失败。
 
 ---
@@ -44,7 +44,7 @@
 2. **factor 2 — 与 `ptx-nvcc` 解耦**：CLI 必须独立可调用，不强制依赖 wrapper
 3. **factor 3 — 库函数复用**：避免在 CLI 中重写 ANTLR parse + manifest 序列化逻辑
 4. **factor 4 — 单 SRP**：CLI 只做 PTX→PTXIR 转换，不做 embed/extract（后者已独立）
-5. **可演进**：v1 保持单 kernel。未来多 kernel 语义另行决策，ADR-0028 文件目前不存在，相关设计延期，待 manifest 与 runtime selection 语义明确后再提出。
+5. **可演进**：v1 保持单 kernel。多 kernel 语义见 ADR-0028 §Decision 1（已 ship）。
 
 ---
 
@@ -102,7 +102,7 @@
 1. **薄 wrapper**：CLI 仅做参数解析 + 错误信息友好化 + 库函数调用
 2. **POSIX 兼容**：GNU-style long options，退出码固定为 0 成功，1 用法或参数错误，2 PTX/kernel 数据错误，3 I/O、内部或工具失败。
 3. **错误定位**：解析失败时打印 PTX file path + 行号（如可定位）
-4. **v1 单 kernel**：显式接受 `--kernel-name <K>`。未来多 kernel 选项延期，ADR-0028 文件目前不存在，待 manifest 与 runtime selection 语义明确后再提出。
+4. **v1 单 kernel**：显式接受 `--kernel-name <K>`。多 kernel 选项见 ADR-0028 §Decision 1（已 ship）。
 
 ### 实现要点
 
@@ -181,7 +181,7 @@ int main(int argc, char** argv) {
 ### 负面影响
 
 1. **工具数 +1**：但这是补缺，不是新增 surface
-2. **v1 单 kernel**：`generate_ptxir` 一次处理一个 kernel。多 kernel binary 不在本 ADR 范围内，ADR-0028 文件目前不存在，相关 manifest/runtime selection 语义延期确定。
+2. **v1 单 kernel**：`generate_ptxir` 一次处理一个 kernel。多 kernel 支持见 ADR-0028 §Decision 1（已 ship，backward-compat 保留）。
 
 ### 风险与缓解
 

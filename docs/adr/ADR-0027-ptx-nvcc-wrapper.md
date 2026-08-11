@@ -50,7 +50,7 @@ ptx-nvcc -arch=sm_100 myapp.cu -o myapp
 - **不修改 libcudart ABI**：DT_RUNPATH 解决新构建 binary 的 runtime 加载，不引入新 API
 - **PATH 可执行**：wrapper 放在 `build/bin/` 或 `tools/`，用户 `export PATH=...`
 - **POSIX shell 兼容**：Python 3 实现，无 bash 专有语法
-- **单 kernel v1**：wrapper 只接受恰好一个 `.entry`；显式 `--kernel-name` 仅选择该唯一 entry，不绕过多 kernel 校验。多 kernel 行为延后，ADR-0028 文件目前不存在，待 manifest 与 runtime selection 语义明确后再提出
+- **单 kernel v1**：wrapper 只接受恰好一个 `.entry`；显式 `--kernel-name` 仅选择该唯一 entry，不绕过多 kernel 校验。**v2 状态 (2026-08-11)**: 已由 ADR-0028 解除；详见 ADR-0028 §Decision 1。
 
 ---
 
@@ -213,7 +213,7 @@ The wrapper must create the temporary directory and the three named files explic
 
 ### v1 限制（明示在 `--help`）
 
-- **单 kernel per binary**：自动检测到的 `.entry` 必须只有一个；显式 `--kernel-name` 也不能绕过 v1 的单 kernel 限制。**[ADR-0028]**（**[BLOCKING DEPENDENCY]**）待 ship 后解除；解除时需 bump `PTXIR_VERSION` per ADR-0023 Extend-Only 原则。
+- **单 kernel per binary**：自动检测到的 `.entry` 必须只有一个；显式 `--kernel-name` 也不能绕过 v1 的单 kernel 限制。**v2 状态 (2026-08-11)**: 已由 ADR-0028 解除；详见 ADR-0028 §Decision 1。
 - **DT_RUNPATH 绝对路径**：默认 `<wrapper_dir>/../build/lib`；可用 `--ptxemu-root` 为新构建 binary 覆盖
 - **nvcc 透传**：所有非自定义参数透传；wrapper 不解析 nvcc 输出
 - **Linux only**：POSIX ELF 与 DT_RUNPATH；macOS / Windows 需后续适配
@@ -259,7 +259,7 @@ The wrapper must create the temporary directory and the three named files explic
 ### 负面影响
 
 1. **Python 依赖**：wrapper 需 Python 3（系统默认有）
-2. **v1 单 kernel**：多 kernel binary 失败
+2. **v1 单 kernel**：多 kernel binary 支持见 ADR-0028 §Decision 1（已 ship）。
 3. **DT_RUNPATH 绝对路径**：可移植性受限（用户 `--ptxemu-root` 缓解）
 4. **wrapper 启动延迟 ~30ms**：可忽略
 
@@ -271,7 +271,7 @@ The wrapper must create the temporary directory and the three named files explic
 | 自动检测 kernel 名失败（PTX 内无 `.entry`） | 低 | 高 | 报错 "no .entry found in <ptx>; specify --kernel-name" |
 | DT_RUNPATH 硬编码绝对路径限制 install 到 `/opt/ptxemu` 等 | 中 | 中 | `--ptxemu-root` 仅影响新构建 binary；v2 再评估 `$ORIGIN` |
 | 用户系统 nvcc 与 PTX-EMU build 不同步（如 arch 9.0 vs 10.0） | 中 | 低 | DT_RUNPATH 指向的库不依赖 nvcc 版本；embed 后 PTX 走 PTX-EMU 解析，与 nvcc 编译参数无关 |
-| 单 kernel 限制让多 kernel app 失败 | 低 | 中 | v1 报错明示；v2 多 kernel 设计延期，ADR-0028 文件目前不存在 |
+| 单 kernel 限制让多 kernel app 失败 | 低 | 中 | v2 多 kernel 支持见 ADR-0028 §Decision 1（已 ship） |
 | wrapper Python 与系统 Python 不兼容 | 极低 | 中 | shebang `#!/usr/bin/env python3`；无 Python 3 专属语法 |
 
 ---
@@ -286,7 +286,7 @@ The wrapper must create the temporary directory and the three named files explic
 - [ ] README.md "快速开始" 加 wrapper 用法
 - [ ] 不影响现有 `bench/` 直接 nvcc 编译路径（保留两条路径）
 - [ ] `--ptxemu-root` 默认值在 wrapper 路径异常时（pip install / 移动位置）报错并 exit 1
-- [ ] v2: 多 kernel manifest，ADR-0028 文件目前不存在+ `$ORIGIN` DT_RUNPATH + CMake `ptxemu_add_executable()`
+- [ ] v2: 多 kernel manifest，ADR-0028 已 ship（§Decision 1）+ `$ORIGIN` DT_RUNPATH + CMake `ptxemu_add_executable()`
 
 ---
 

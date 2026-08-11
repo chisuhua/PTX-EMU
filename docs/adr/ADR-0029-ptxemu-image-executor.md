@@ -41,7 +41,7 @@
 - **默认 LD_PRELOAD 路径字节级不变**: 任何迁移必须按 `ptx-lessons-learned.md` §14 "byte-identical fallback 必须由直接单元测试锁定"。
 - **cpptlm_bridge.h 零外部依赖**: `include/cudart/AGENTS.md` 反模式 #1 "不要向 cpptlm_bridge.h 添加 CppTLM 头文件 include"；新 ABI 必须独立 header。
 - **in-memory 路径 PTXIR dispatch 始终 ON**: 与 `PTXIR_MODE` 配置无关（已在 `ptxir-toolchain-stack.md` §4.2 定义）。
-- **MANIFEST 单 kernel v1**: `ptxir_format.h:36-41` 的 `ManifestSection` 只有单 `kernel_name`，multi-kernel 仍 defer（ADR-0028 预留）。
+- **MANIFEST 单 kernel v1**: `ptxir_format.h:36-41` 的 `ManifestSection` 只有单 `kernel_name`，multi-kernel 仍 defer（ADR-0028 预留）。**v2 状态 (2026-08-11)**: 已由 ADR-0028 解除；详见 ADR-0028 §Decision 1。
 
 ### 利益相关方
 
@@ -227,8 +227,7 @@ int ptxemu_module_version(void);
 **Multi-kernel 延期**：
 - `ptxir_format.h:36-41` 的 `ManifestSection` 当前为单 `kernel_name`
 - multi-kernel 需要扩展 `ManifestSection` 为 `vector<kernel_entry>`，bump `PTXIR_VERSION`
-- 预留 ADR-0028（multi-kernel manifest + runtime selection），本决策明确 defer
-- `ptxir-toolchain-stack.md` §11 现有 ADR-0028 引用保留
+- ADR-0028 已 ship（§Decision 1）；本 D4 限制已解除。
 
 ### D5: 3-Phase 实施分解
 
@@ -395,7 +394,7 @@ struct gpu_load_kernel_module_args {
   uint64_t image_ptr;            // 用户态 image buffer (PTXIR 或 PTXIR-Embedded CUBIN)
   uint64_t image_size;
   uint64_t out_module_handle;    // 输出:image executor 返回的 handle
-  char     kernel_name[256];     // 输出:image 内 kernel 名(PTXIR v1 single-kernel 限制,per ADR-0029 D4)
+  char     kernel_name[256];     // 输出:image 内 kernel 名(ADR-0028 已解除 v1 限制)
 };
 
 struct gpu_launch_kernel_module_args {
@@ -616,7 +615,7 @@ iv. UsrLinuxEmu 仓 bump external/TaskRunner submodule pointer + final integrati
 - [ ] **Phase 2 完成**（HAL 方案，按 D8.7）：UsrLinuxEmu 仓新增 3 个 ioctl + 3 个 HAL fn-ptr + `hal_user.cpp` dlsym 实现 + e2e 测试通过；TaskRunner `libcuda_shim` **零 PTX-EMU link 依赖**
 - [ ] **Phase 2 完成**（D8-Alt 备选，若 UsrLinuxEmu 仓拒绝 HAL 方案）：TaskRunner `libcuda_shim` link `libptxemu_device.so` 不冲突 + D6 SINGLE-GPU-INSTANCE 对 TaskRunner 并发影响文档化
 - [x] **后续**: 任何 `cpptlm_module.h` 接口签名变更必须先 bump `CPPTLM_MODULE_VERSION`；治理规则同 `cpptlm_bridge.h:18-21`
-- [ ] **后续**: multi-kernel 支持必须新 ADR（**[ADR-0028]** 升 BLOCKING DEPENDENCY，本 ADR 不承诺）
+- [ ] **后续**: multi-kernel 支持见 ADR-0028 §Decision 1（已 ship）
 
 ---
 
@@ -640,7 +639,7 @@ iv. UsrLinuxEmu 仓 bump external/TaskRunner submodule pointer + final integrati
 - [ADR-0025 ptxir_build CLI](./ADR-0025-ptxir-build-cli.md) — build-time 工具，与本 ADR 正交
 - [ADR-0026 PTXIR dispatch default auto](./ADR-0026-ptxir-default-mode-auto.md) — legacy front door 配置；本 ADR 的 in-memory 路径 PTXIR dispatch 始终 ON 独立于此
 - [ADR-0027 ptx-nvcc wrapper](./ADR-0027-ptx-nvcc-wrapper.md) — build-time wrapper，Phase 2 TaskRunner 集成对照参考
-- [ADR-0028 (预留) 多 kernel manifest + runtime selection](./README.md) — 本 ADR 的 D4 明确 defer
+- [ADR-0028 多 kernel manifest + runtime selection](./ADR-0028-multi-kernel-manifest.md) — 本 ADR 的 D4 已解除
 - [docs/architecture/ptxir-toolchain-stack.md](../architecture/ptxir-toolchain-stack.md) v1.1 §4.2/§5/§11 — 本 ADR 是 §11 "TBD Driver API path" 的填平
 - [include/cudart/cpptlm_bridge.h](../../include/cudart/cpptlm_bridge.h) — ABI v2 governance 真值源；本 ADR 不修改
 - [include/cudart/AGENTS.md](../../include/cudart/AGENTS.md) — ABI governance anti-patterns（"不要静默 bump CPPTLMBRIDGE_VERSION"）
