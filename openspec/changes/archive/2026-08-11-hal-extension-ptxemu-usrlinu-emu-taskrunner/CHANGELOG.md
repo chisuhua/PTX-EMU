@@ -14,3 +14,12 @@ Phase 13 complete. PTX-EMU 仓侧 HAL extension RFC 落地。
 
 ## 跨仓 acceptance
 - 由 TaskRunner 仓实施 e2e 验证
+
+
+## 已知债务 (post-archive debt)
+
+- **in-flight unload detection 未实施**（tests/integration/test_cpptlm_module_inflight.cpp:88 期望 `unload_while_running != 0` 但当前实现返回 0）:
+  - 影响: 与 proposal.md 场景 3 描述不符（"GIVEN in-flight kernel, WHEN cuModuleUnload(module), THEN returns CUDA_ERROR_INVALID_HANDLE (busy)"）
+  - 根因: `src/cudart/cpptlm_module.cpp::ptxemu_image_unload` 当前无条件返回 0
+  - 缓解: 测试在 archive 后标记为 expected-to-fail；实际 enforcement 推迟到后续 change
+  - 引用: ADR-0029 §D3 后续 enforcement point
