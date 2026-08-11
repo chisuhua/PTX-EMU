@@ -39,15 +39,15 @@
 
 ## 4. Phase C4: cpptlm_module multi-entry handle (P0)
 
-- [ ] 4.1 **测试先行 (TDD Red)**: 在 `tests/integration/cudart/test_in_memory_mutation.cpp` 添加 4 测试场景 (load + get_handle + execute + unload per kernel)
-- [ ] 4.2 **验证失败 (Red)**: 3 新 API 未定义, 编译失败
-- [ ] 4.3 修改 `include/cudart/cpptlm_module.h`: 添加 3 `extern "C"` 函数 (`ptxemu_image_kernel_count` / `_kernel_name_at` / `_execute_named`) + `CPPTLM_MODULE_VERSION 1→2` bump
-- [ ] 4.4 在 `src/cudart/cpptlm_module.cpp` 实现 3 函数 + 替换 `kernels[0]` fallback (`src/cudart/cpptlm_module.cpp:120-127`)
-- [ ] 4.5 锁顺序契约: `execute_named` 保持 `exec_mu_` → `mu_` 顺序 (per `ptx-lessons-learned` §3)
-- [ ] 4.6 截断契约: `_kernel_name_at` buf_size=0 返回 -1, buf_size 不足截断但不溢出
-- [ ] 4.7 **实现 + 验证 (Green)**: ctest 4 场景通过 + SC-5 stale handle 测试
-- [ ] 4.8 **Commit C4**: `feat(cpptlm): multi-entry handle API + VERSION 1→2 (commit C4)`
-- [ ] 4.9 **回退验证**: `git revert HEAD` 后 `CPPTLM_MODULE_VERSION` 同步回退到 1, 旧 binary 仍兼容
+- [x] 4.1 **测试先行 (TDD Red)**: 在 `tests/integration/cudart/test_in_memory_mutation.cpp` 添加 4 测试场景 (load + get_handle + execute + unload per kernel)
+- [x] 4.2 **验证失败 (Red)**: 3 新 API 未定义, 编译失败
+- [x] 4.3 修改 `include/cudart/cpptlm_module.h`: 添加 3 `extern "C"` 函数 (`ptxemu_image_kernel_count` / `_kernel_name_at` / `_execute_named`) + `CPPTLM_MODULE_VERSION 1→2` bump
+- [x] 4.4 在 `src/cudart/cpptlm_module.cpp` 实现 3 函数 + 替换 `kernels[0]` fallback (`src/cudart/cpptlm_module.cpp:120-127`)
+- [x] 4.5 锁顺序契约: `execute_named` 保持 `exec_mu_` → `mu_` 顺序 (per `ptx-lessons-learned` §3)
+- [x] 4.6 截断契约: `_kernel_name_at` buf_size=0 返回 -1, buf_size 不足截断但不溢出
+- [x] 4.7 **实现 + 验证 (Green)**: ctest 4 场景通过 + SC-5 stale handle 测试
+- [x] 4.8 **Commit C4**: `feat(cpptlm): multi-entry handle API + VERSION 1→2 (commit C4)`
+- [x] 4.9 **回退验证**: `git revert HEAD` 后 `CPPTLM_MODULE_VERSION` 同步回退到 1, 旧 binary 仍兼容
 
 ## 5. Phase C5: test_multi_kernel_selection 升级 (P1)
 

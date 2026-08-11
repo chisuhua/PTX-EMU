@@ -90,6 +90,7 @@ public:
                 size_t shared_mem_bytes,
                 void** kernel_args, size_t args_count) {
         (void)args_count;
+        std::lock_guard<std::mutex> exec_lock(exec_mu_);
         std::vector<uint8_t> bytes_copy;
         {
             std::lock_guard<std::mutex> lock(mu_);
@@ -97,7 +98,6 @@ public:
             if (it == images_.end()) return -EINVAL;
             bytes_copy = it->second;
         }
-        std::lock_guard<std::mutex> exec_lock(exec_mu_);
 
         std::vector<StatementContext> stmts;
         try {
@@ -108,10 +108,7 @@ public:
         if (stmts.empty()) return -EINVAL;
 
         auto manifest = read_manifest_from_ptxir_section(bytes_copy.data(), bytes_copy.size());
-        // TODO Phase 12.5: full multi-entry handle API — for now, use kernels[0].
         if (manifest.kernels.empty()) {
-            // v1 backward-compat: read_manifest_from_ptxir_section already
-            // synthesizes from kernel_name if kernels is empty.
             return -EINVAL;
         }
         EmbeddedKernelManifest em;
@@ -128,7 +125,7 @@ public:
         Dim3 block_dim(block_x, block_y, block_z);
 
         interpreter.launchPtxInterpreter(ctx, kernel_name, kernel_args,
-                                          grid_dim, block_dim, shared_mem_bytes);
+                                         grid_dim, block_dim, shared_mem_bytes);
         return 0;
     }
 
@@ -144,6 +141,75 @@ public:
     }
 
     int version() const { return CPPTLM_MODULE_VERSION; }
+
+    int kernel_count(uint64_t handle) {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto it = images_.find(handle);
+        if (it == images_.end()) return -1;
+        auto manifest = read_manifest_from_ptxir_section(it->second.data(), it->second.size());
+        return static_cast<int>(manifest.kernels.size());
+    }
+
+    int kernel_name_at(uint64_t handle, uint32_t idx, char* buf, size_t buf_size) {
+        if (buf_size == 0) return -1;
+        std::lock_guard<std::mutex> lock(mu_);
+        auto it = images_.find(handle);
+        if (it == images_.end()) return -1;
+        auto manifest = read_manifest_from_ptxir_section(it->second.data(), it->second.size());
+        if (idx >= manifest.kernels.size()) return -1;
+        const std::string& name = manifest.kernels[idx].name;
+        size_t copy_len = std::min(name.size(), buf_size - 1);
+        std::memcpy(buf, name.data(), copy_len);
+        buf[copy_len] = '\0';
+        return static_cast<int>(name.size());
+    }
+
+    int execute_named(uint64_t handle, const char* kernel_name,
+                      uint32_t grid_x, uint32_t grid_y, uint32_t grid_z,
+                      uint32_t block_x, uint32_t block_y, uint32_t block_z,
+                      size_t shared_mem_bytes,
+                      void** kernel_args, size_t args_count) {
+        (void)args_count;
+        if (kernel_name == nullptr) return -EINVAL;
+        std::lock_guard<std::mutex> exec_lock(exec_mu_);
+        std::vector<uint8_t> bytes_copy;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            auto it = images_.find(handle);
+            if (it == images_.end()) return -1;
+            bytes_copy = it->second;
+        }
+
+        std::vector<StatementContext> stmts;
+        try {
+            stmts = PTXIRLoader::deserializeForCubin(bytes_copy.data(), bytes_copy.size());
+        } catch (...) {
+            return -EINVAL;
+        }
+        if (stmts.empty()) return -EINVAL;
+
+        auto manifest = read_manifest_from_ptxir_section(bytes_copy.data(), bytes_copy.size());
+        auto kernel_it = std::find_if(manifest.kernels.begin(), manifest.kernels.end(),
+            [&](const KernelEntry& ke) { return ke.name == kernel_name; });
+        if (kernel_it == manifest.kernels.end()) return -1;
+
+        EmbeddedKernelManifest em;
+        em.kernelName = kernel_it->name;
+        em.ptxAddressSize = manifest.ptx_address_size;
+        em.params = manifest.params;
+
+        auto ctx = PtxContextAdapter::fromEmbedded(std::move(stmts), em);
+
+        PtxInterpreter interpreter;
+        std::string kn = kernel_name;
+
+        Dim3 grid_dim(grid_x, grid_y, grid_z);
+        Dim3 block_dim(block_x, block_y, block_z);
+
+        interpreter.launchPtxInterpreter(ctx, kn, kernel_args,
+                                        grid_dim, block_dim, shared_mem_bytes);
+        return 0;
+    }
 
 private:
     PtxEmuImageExecutor() = default;
@@ -180,6 +246,27 @@ extern "C" int ptxemu_image_unload(uint64_t handle) {
 
 extern "C" int ptxemu_module_version(void) {
     return g_image_executor->version();
+}
+
+extern "C" int ptxemu_image_kernel_count(uint64_t handle) {
+    return g_image_executor->kernel_count(handle);
+}
+
+extern "C" int ptxemu_image_kernel_name_at(uint64_t handle, uint32_t idx,
+                                           char* buf, size_t buf_size) {
+    return g_image_executor->kernel_name_at(handle, idx, buf, buf_size);
+}
+
+extern "C" int ptxemu_image_execute_named(uint64_t handle, const char* kernel_name,
+                                           uint32_t grid_x, uint32_t grid_y, uint32_t grid_z,
+                                           uint32_t block_x, uint32_t block_y, uint32_t block_z,
+                                           size_t shared_mem_bytes,
+                                           void** kernel_args, size_t args_count) {
+    return g_image_executor->execute_named(handle, kernel_name,
+                                          grid_x, grid_y, grid_z,
+                                          block_x, block_y, block_z,
+                                          shared_mem_bytes,
+                                          kernel_args, args_count);
 }
 
 }  // namespace cudart

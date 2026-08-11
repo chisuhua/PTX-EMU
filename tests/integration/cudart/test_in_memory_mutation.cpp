@@ -3,6 +3,7 @@
 #include "ptx_ir/ptxir_format.h"
 #include "ptx_ir/ptxir_writer.h"
 #include "ptx_ir/statement_context.h"
+#include "cudart/cpptlm_module.h"
 #include <cstring>
 #include <sstream>
 #include <vector>
@@ -140,4 +141,107 @@ TEST_CASE("D3 mutation: two loads produce two independent deep copies",
 
     REQUIRE(cuModuleUnload(m1) == CUDA_SUCCESS);
     REQUIRE(cuModuleUnload(m2) == CUDA_SUCCESS);
+}
+
+// ============================================================================
+// Phase C4: Multi-entry handle API tests
+// ============================================================================
+
+namespace {
+
+// Build a multi-kernel PTXIR image with 3 kernels: vec_add, mat_mul, reduce_sum
+std::vector<uint8_t> build_multi_kernel_ptxir() {
+    StatementContext stmt;
+    stmt.type = S_LABEL;
+    stmt.data = LabelInstr{"L0"};
+
+    std::ostringstream oss(std::ios::binary);
+    PtxirWriter writer(oss);
+    ManifestSection manifest;
+    manifest.kernel_name = "vec_add";
+    manifest.ptx_address_size = 64;
+    manifest.cubin_hash = std::vector<uint8_t>(32, 0);
+
+    manifest.kernels.push_back(KernelEntry{"vec_add", 0, 0});
+    manifest.kernels.push_back(KernelEntry{"mat_mul", 0, 0});
+    manifest.kernels.push_back(KernelEntry{"reduce_sum", 0, 0});
+
+    writer.set_manifest(manifest);
+    writer.write({stmt});
+
+    std::string body = oss.str();
+    std::vector<uint8_t> image;
+    image.insert(image.end(), {'P','T','X','I','R'});
+    uint32_t sz = static_cast<uint32_t>(body.size());
+    image.push_back(static_cast<uint8_t>(sz & 0xFF));
+    image.push_back(static_cast<uint8_t>((sz >> 8) & 0xFF));
+    image.push_back(static_cast<uint8_t>((sz >> 16) & 0xFF));
+    image.push_back(static_cast<uint8_t>((sz >> 24) & 0xFF));
+    image.insert(image.end(), body.begin(), body.end());
+    return image;
+}
+
+}  // anonymous namespace
+
+TEST_CASE("cpptlm: ptxemu_image_kernel_count returns N for multi-kernel",
+          "[integration][cpptlm][multi_kernel]") {
+    auto fixture = build_multi_kernel_ptxir();
+    uint64_t h = ptxemu_image_load(fixture.data(), fixture.size());
+    REQUIRE(h != 0);
+    REQUIRE(ptxemu_image_kernel_count(h) == 3);
+    REQUIRE(ptxemu_image_unload(h) == 0);
+}
+
+TEST_CASE("cpptlm: ptxemu_image_kernel_name_at enumerates by index",
+          "[integration][cpptlm][multi_kernel]") {
+    auto fixture = build_multi_kernel_ptxir();
+    uint64_t h = ptxemu_image_load(fixture.data(), fixture.size());
+    REQUIRE(h != 0);
+
+    char buf[64];
+    REQUIRE(ptxemu_image_kernel_name_at(h, 0, buf, sizeof(buf)) == 7);
+    REQUIRE(std::string(buf) == "vec_add");
+    REQUIRE(ptxemu_image_kernel_name_at(h, 1, buf, sizeof(buf)) == 7);
+    REQUIRE(std::string(buf) == "mat_mul");
+    REQUIRE(ptxemu_image_kernel_name_at(h, 2, buf, sizeof(buf)) == 10);
+    REQUIRE(std::string(buf) == "reduce_sum");
+
+    REQUIRE(ptxemu_image_kernel_name_at(h, 0, buf, 0) == -1);
+    char tiny[4];
+    int rc = ptxemu_image_kernel_name_at(h, 0, tiny, sizeof(tiny));
+    REQUIRE(rc == 7);
+    REQUIRE(tiny[3] == 0);
+
+    REQUIRE(ptxemu_image_unload(h) == 0);
+}
+
+TEST_CASE("cpptlm: ptxemu_image_execute_named routes by kernel name",
+          "[integration][cpptlm][multi_kernel]") {
+    auto fixture = build_multi_kernel_ptxir();
+    uint64_t h = ptxemu_image_load(fixture.data(), fixture.size());
+    REQUIRE(h != 0);
+
+    void* args[] = {nullptr};
+    REQUIRE(ptxemu_image_execute_named(h, "vec_add",
+        1, 1, 1, 32, 1, 1, 0, args, 0) == 0);
+    REQUIRE(ptxemu_image_execute_named(h, "mat_mul",
+        1, 1, 1, 32, 1, 1, 0, args, 0) == 0);
+    REQUIRE(ptxemu_image_execute_named(h, "reduce_sum",
+        1, 1, 1, 32, 1, 1, 0, args, 0) == 0);
+
+    REQUIRE(ptxemu_image_unload(h) == 0);
+}
+
+TEST_CASE("cpptlm: stale handle returns -1 (SC-5)",
+          "[integration][cpptlm][multi_kernel]") {
+    auto fixture = build_multi_kernel_ptxir();
+    uint64_t h = ptxemu_image_load(fixture.data(), fixture.size());
+    REQUIRE(h != 0);
+    REQUIRE(ptxemu_image_unload(h) == 0);
+
+    void* args[] = {nullptr};
+    REQUIRE(ptxemu_image_execute_named(h, "vec_add",
+        1, 1, 1, 32, 1, 1, 0, args, 0) == -1);
+    REQUIRE(ptxemu_image_kernel_count(h) == -1);
+    REQUIRE(ptxemu_image_kernel_name_at(h, 0, nullptr, 0) == -1);
 }
