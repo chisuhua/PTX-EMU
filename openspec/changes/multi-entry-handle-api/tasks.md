@@ -5,14 +5,14 @@
 
 ## 1. Phase C1: v2 PTXIR writer (P0)
 
-- [ ] 1.1 在 `src/ptx_ir/ptxir_writer.cpp` 添加 `writeMultiKernels(const ManifestSection&)` 函数
-- [ ] 1.2 修改 `writeManifestSection()` 同时写 `kernels` vector + 保留 `kernel_name` 字段
-- [ ] 1.3 添加 `ManifestSection` validation: `kernels.empty() && kernel_name.empty()` 抛 `std::invalid_argument`
-- [ ] 1.4 **测试先行 (TDD Red)**: 新建 `tests/unit/ptxir/test_multi_entry_roundtrip.cpp`，含 6 测试用例 (单 entry / 多 entry / 空 vector / 大端 / 异常 / fixture)
-- [ ] 1.5 **验证失败 (Red)**: `./build.sh && ctest -R multi_entry_roundtrip` 预期失败 (handler 未实现)
-- [ ] 1.6 **实现 + 验证 (Green)**: 运行 ctest, 6 测试通过
-- [ ] 1.7 **Commit C1**: `feat(ptxir): v2 writer multi-entry 完整实现 (commit C1, ref: openspec multi-entry-handle-api)`
-- [ ] 1.8 **回退验证**: `git revert HEAD` 后 reader backward-compat synthesis 仍可用 (跑 `test_multi_kernel_selection.cpp` 验证)
+- [x] 1.1 在 `src/ptx_ir/ptxir_writer.cpp` 添加 `writeMultiKernels(const ManifestSection&)` 函数
+- [x] 1.2 修改 `writeManifestSection()` 同时写 `kernels` vector + 保留 `kernel_name` 字段
+- [x] 1.3 添加 `ManifestSection` validation: `kernels.empty() && kernel_name.empty()` 抛 `std::invalid_argument`
+- [x] 1.4 **测试先行 (TDD Red)**: 新建 `tests/unit/ptxir/test_multi_entry_roundtrip.cpp`，含 6 测试用例 (单 entry / 多 entry / 空 vector / 大端 / 异常 / fixture)
+- [x] 1.5 **验证失败 (Red)**: `./build.sh && ctest -R multi_entry_roundtrip` 预期失败 (handler 未实现)
+- [x] 1.6 **实现 + 验证 (Green)**: 运行 ctest, 6 测试通过
+- [x] 1.7 **Commit C1**: `feat(ptxir): v2 writer multi-entry 完整实现 (commit C1, ref: openspec multi-entry-handle-api)`
+- [x] 1.8 **回退验证**: `git revert HEAD` 后 reader backward-compat synthesis 仍可用 (跑 `test_multi_kernel_selection.cpp` 验证)
 
 ## 2. Phase C2: Multi-entry fixture (P0)
 
