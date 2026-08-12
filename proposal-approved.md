@@ -16,6 +16,7 @@
 | [multi-kernel-manifest-adr-0028](.rddf/improvements/multi-kernel-manifest-adr-0028.md) | P1 | guide-arch | 2026-08-10 |
 | [hal-extension-ptxemu-usrlinu-emu-taskrunner](.rddf/improvements/hal-extension-ptxemu-usrlinu-emu-taskrunner.md) | P1 | guide-arch | 2026-08-10 |
 | [multi-entry-handle-api](.rddf/improvements/multi-entry-handle-api.md) | P1 | guide-arch | 2026-08-11 |
+| [fix-path-coverage-gaps](.rddf/improvements/fix-path-coverage-gaps.md) | P0 | Oracle review (5-section, 23 edits applied; 5-Phase 4-path e2e + 重组织 + Proposal 修正) | 2026-08-12 |
 
 ## 已实施
 

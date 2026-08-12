@@ -1,19 +1,20 @@
 #include <cstdio>
+#include <string>
 #include <vector>
 #include <numeric>
 
-__global__ void vector_add(const int* a, const int* b, int* c, int n) {
+extern "C" __global__ void vector_add(const int* a, const int* b, int* c, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < n) c[i] = a[i] + b[i];
 }
 
-__global__ void matmul(const float* A, const float* B, float* C, int N) {
+extern "C" __global__ void matmul(const float* A, const float* B, float* C, int N) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
     if (i<N && j<N) { float s=0; for (int k=0;k<N;k++) s+=A[i*N+k]*B[k*N+j]; C[i*N+j]=s; }
 }
 
-__global__ void reduction(const int* in, int* out, int n) {
+extern "C" __global__ void reduction(const int* in, int* out, int n) {
     extern __shared__ int sdata[];
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     sdata[threadIdx.x] = (i<n) ? in[i] : 0;

@@ -5,7 +5,7 @@ set_tests_properties(e2e_ptxir_fatbinary_exec PROPERTIES
     LABELS "e2e;path_1B"
     TIMEOUT 60
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    ENVIRONMENT "PTXIR_MODE=auto;PATH="
+    ENVIRONMENT "PTXIR_MODE=auto"
 )
 add_custom_command(TARGET e2e_ptxir_fatbinary_exec PRE_BUILD
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/build_standalone.sh
