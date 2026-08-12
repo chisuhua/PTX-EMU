@@ -28,6 +28,15 @@ ptx_emu*.log
 *.ptx
 !tests/ptx/*.ptx
 
+# fix-path-coverage-gaps: Path 1B PTXIR fat-binary e2e artifacts
+!tests/e2e/path_1B_ptxir_fatbinary/**/*.ptx
+!tests/e2e/path_1B_ptxir_fatbinary/**/*.cubin
+!tests/e2e/path_1C_driver_api/**
+!tests/e2e/path_2D_image_executor/**
+!tests/ptxir/baselines/*.bin
+!tests/ptxir/baselines/*.md
+!tests/ptxir/baselines/.gitkeep
+
 # 缓存目录
 .cache/
 
