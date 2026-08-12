@@ -60,12 +60,12 @@
 
 ## 6. Phase C6: ptxemu_image_kernel_name 多 kernel + ABI baseline (P1+P2)
 
-- [ ] 6.1 **测试先行 (TDD Red)**: 在 `tests/integration/cudart/test_libptxemu_device.cpp` 添加 ABI baseline 测试 (v1 binary 加载 + mutation regression)
-- [ ] 6.2 **验证失败 (Red)**: kernel_name 仅返回首个, 多 kernel 测试失败
-- [ ] 6.3 修改 `src/cudart/cpptlm_module.cpp::get_kernel_name`: 遍历 `manifest.kernels` + 索引访问 (per SC-4)
-- [ ] 6.4 单元测试: ABI baseline (v1 binary 加载触发 backward-compat synthesis) + mutation regression
-- [ ] 6.5 文档: 在 `docs/architecture/multi-kernel-manifest-gaps-gap-analysis.md` §8 添加 "Data Redundancy" 段落 (声明 `ManifestParam` 为 source of truth)
-- [ ] 6.6 **实现 + 验证 (Green)**: ctest ABI baseline 通过
+- [x] 6.1 **测试先行 (TDD Red)**: 在 `tests/integration/cudart/test_libptxemu_device.cpp` 添加 ABI baseline 测试 (v1 binary 加载 + mutation regression)
+- [x] 6.2 **验证失败 (Red)**: kernel_name 仅返回首个, 多 kernel 测试失败
+- [x] 6.3 修改 `src/cudart/cpptlm_module.cpp::get_kernel_name`: 遍历 `manifest.kernels` + 索引访问 (per SC-4)
+- [x] 6.4 单元测试: ABI baseline (v1 binary 加载触发 backward-compat synthesis) + mutation regression
+- [x] 6.5 文档: 在 `docs/architecture/multi-kernel-manifest-gaps-gap-analysis.md` §8 添加 "Data Redundancy" 段落 (声明 `ManifestParam` 为 source of truth)
+- [x] 6.6 **实现 + 验证 (Green)**: ctest ABI baseline 通过
 - [ ] 6.7 **Commit C6**: `feat(cpptlm): kernel_name 遍历 + ABI baseline + 文档 (commit C6)`
 - [ ] 6.8 **回退验证**: `git revert HEAD` 后 kernel_name 行为恢复 v1 单 kernel
 
