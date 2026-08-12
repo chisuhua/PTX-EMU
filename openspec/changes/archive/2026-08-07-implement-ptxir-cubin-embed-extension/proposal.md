@@ -24,6 +24,7 @@ PTX-EMU 当前架构 (`__cudaRegisterFatBinary` @ `src/cudart/cudart_sim.cpp:354
 - **新增** `tests/unit/cudart/test_ptx_context_adapter.cpp` — PtxContextAdapter 含 kernelName/params/addressSize 字段填充验证
 - **新增** `tests/integration/test_ptxir_cubin_loader.cpp` — `__cudaRegisterFatBinary` dispatch 集成测试（≥ 5 场景）
 - **新增** `tests/e2e/test_ptxir_cubin_embed.cu` — nvcc + ptxir_embed + PTX-EMU 加载 + ptxir_extract → cuobjdump 双向验证（≥ 5 真实 kernel，含 Oracle review 新增 2 个直接对 embedded 解析场景）
+  <br>**[勘误: 2026-08-12, see fix-path-coverage-gaps]** — 原 archived proposal line 26 声称此 e2e 文件后缀为 `.cu`，**实际交付为 `.cpp`**（silent descoping 证据，见 `.rddf/improvements/fix-path-coverage-gaps.md` §3 Oracle review 真实阻断历史）。本 e2e 验证 PTXIR-Embedded CUBIN 格式兼容性（Phase 12.2 R5 / ADR-0024 Risk 1），**不验证 PTX-EMU 真实加载执行**。真实加载执行验证见 `tests/e2e/path_1B_ptxir_fatbinary/test_ptxir_fatbinary_exec.cpp`（D-PTX-7，关闭于 `docs/audits/D-PTX-debt-registry-ERRATA.md`）。
 - **修改** `roadmap.md` — 新增 Phase 12.2 (PTXIR Cubin 集成) 条目
 
 ## Capabilities
