@@ -1,6 +1,6 @@
 {
   "version": 6,
-  "updated_at": "2026-08-11T11:37:08.781590+00:00",
+  "updated_at": "2026-08-12T11:48:39.051614+00:00",
   "current_phase": "default",
   "changes": [
     {
@@ -87,6 +87,14 @@
       "archived_at": "2026-08-12T00:00:00+00:00",
       "plan_path": ".rddf/plans/multi-entry-handle-api.md",
       "tasks_total": 72
+    },
+    {
+      "added_at": "2026-08-12T11:48:39.043357+00:00",
+      "name": "fix-path-coverage-gaps",
+      "status": "proposed",
+      "phase": "Phase 14",
+      "category": "core-test",
+      "priority": "P0"
     }
   ],
   "feature_view": {
