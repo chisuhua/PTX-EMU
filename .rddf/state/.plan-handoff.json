@@ -1,8 +1,23 @@
 {
-  "plan_complete_at": "2026-08-11T11:40:38.155479+00:00",
+  "plan_complete_at": "2026-08-12T11:55:44.643114+00:00",
   "active_changes": 1,
   "all_artifacts_committed": true,
   "ship_started_at": null,
-  "current_change": "multi-entry-handle-api",
-  "execution_mode_decisions": {}
+  "current_change": "fix-path-coverage-gaps",
+  "execution_mode_decisions": {
+    "fix-path-coverage-gaps": {
+      "mode": "worktree",
+      "reason": "\u5927\u6539\u52a8 + \u9700\u8981\u9694\u79bb (5 Phase, 57 tasks, multi-path)",
+      "confidence": "high",
+      "details": {
+        "file_count": 0,
+        "task_count": 57,
+        "is_risky": false,
+        "change_size": "large",
+        "has_conflicts": false,
+        "has_dependencies": false,
+        "is_independent": true
+      }
+    }
+  }
 }

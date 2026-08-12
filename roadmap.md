@@ -1,8 +1,8 @@
 # PTX-EMU Roadmap
 
 > **维护**: PTX-EMU Architecture Team
-> **当前阶段**: Phase 10 — Documentation & Release（β 完成中）+ **Phase 12.2 PTXIR Cubin 集成 ✅ 2026-08-10 ship** + **Phase 12.3 PTXIR Driver API front door ✅ 2026-08-11 ship** + **Phase 12.4 ADR-0028 多 kernel manifest ✅ 2026-08-11 ship** + **Phase 13 HAL extension 跨仓协作 ✅ 2026-08-11 ship** + **Phase 12.5 多 entry handle API ⏳ 显式延后** (per [multi-kernel-manifest-gaps-gap-analysis](docs/architecture/multi-kernel-manifest-gaps-gap-analysis.md))
-> **最后更新**: 2026-08-11（Phase 12.3/12.4/13 ship 状态同步 + Phase 12.5 延后登记 + 引用 multi-kernel-manifest-gaps 分析）
+> **当前阶段**: Phase 10 — Documentation & Release（β 完成中）+ **Phase 12.2 PTXIR Cubin 集成 ✅ 2026-08-10 ship** + **Phase 12.3 PTXIR Driver API front door ✅ 2026-08-11 ship** + **Phase 12.4 ADR-0028 多 kernel manifest ✅ 2026-08-11 ship** + **Phase 13 HAL extension 跨仓协作 ✅ 2026-08-11 ship** + **Phase 12.5 多 entry handle API ⏳ 显式延后** (per [multi-kernel-manifest-gaps-gap-analysis](docs/architecture/multi-kernel-manifest-gaps-gap-analysis.md)) + **Phase 14 fix-path-coverage-gaps 📋 in progress** (P0 Oracle review 2026-08-12, 4-path cudart e2e coverage gaps)
+> **最后更新**: 2026-08-12（Phase 14 fix-path-coverage-gaps P0 Oracle review 加入执行队列 + Phase 12.5 顺延到第 6 位）
 > **关联**: [docs/architecture/ptxir-toolchain-stack.md](docs/architecture/ptxir-toolchain-stack.md) v1.4、[docs/architecture/multi-kernel-manifest-gaps-gap-analysis.md](docs/architecture/multi-kernel-manifest-gaps-gap-analysis.md)、[docs/roadmap/post-phase3-debt-roadmap.md](docs/roadmap/post-phase3-debt-roadmap.md)（详细债务清单）
 > **参考**: [docs/README.md](docs/README.md)（文档索引）
 
@@ -450,14 +450,20 @@
   3. ~~Phase 12.4 ADR-0028 multi-kernel manifest (schema + backward-compat)~~ → OpenSpec change `multi-kernel-manifest-adr-0028` archived
   4. ~~Phase 13 HAL extension 跨仓协作~~ → OpenSpec change `hal-extension-ptxemu-usrlinu-emu-taskrunner` archived
 
-下一步（🟠 P1）:
-  5. **Phase 12.5 Multi-entry handle API** — 4 P0 + 2 P1 + 2 P2 gaps (per gap analysis)
+下一步:
+  5. **Phase 14 fix-path-coverage-gaps** (🔴 P0 Oracle review) — 4-path cudart e2e coverage gaps
+     → 改进提案已批 (2026-08-12 Oracle review, 5-section, 23 edits)
+     → OpenSpec change `fix-path-coverage-gaps` 已创建 (P0, Phase 14, core-test, debt)
+     → 7 task groups / 57 tasks / 5 Phases (Path 1B fatbinary e2e / Path 1C driver API / Path 2D image executor baseline / tests/e2e 重组织 / proposal 修正)
+     → worktree 隔离执行，预计 5-7 个独立 commit (Phase 1/2/3/4/5 + 验收 + 归档)
+     → 补齐 4-path cudart 测试覆盖率 3/4 → 4/4 (100%) + output-correctness 1/4 → 4/4 (100%)
+  6. **Phase 12.5 Multi-entry handle API** (🟠 P1) — 4 P0 + 2 P1 + 2 P2 gaps (per gap analysis)
      → 改进提案先行（add-improve）→ guide-design 评审 → openspec → tasks
      → 预计 6 个独立 commit（writer → fixture → handle API → registry → test 升级 → API 暴露）
      → 阻塞下游 multi-kernel 工具链闭环
-  6. **Phase 12.3.B `ptxir_build` CLI** (ADR-0025) — 直接 OpenSpec change
-  7. **Phase 12.3.C `ptx-nvcc` wrapper** (ADR-0027) — 依赖 12.3.B
-  8. **`ptxir-toolchain-stack.md` v1.4.1** — 同步 12.5 进展 + 移除多 kernel BLOCKING 历史标记
+  7. **Phase 12.3.B `ptxir_build` CLI** (ADR-0025) — 直接 OpenSpec change
+  8. **Phase 12.3.C `ptx-nvcc` wrapper** (ADR-0027) — 依赖 12.3.B
+  9. **`ptxir-toolchain-stack.md` v1.4.1** — 同步 12.5 进展 + 移除多 kernel BLOCKING 历史标记
 
 每个 Phase 后跑:
   - cmake --build build && ctest --output-on-failure
@@ -468,5 +474,32 @@
 
 ---
 
+## Phase 14 fix-path-coverage-gaps (P0 Oracle review, in progress)
+
+**目标**：补齐 4-path cudart e2e 测试覆盖率从 3/4 (75%) → 4/4 (100%)，修复 silent descoping。
+
+**架构依据**：
+- ADR-0024 (PTXIR-Embedded CUBIN) — Risk 1 验证未覆盖真实加载执行
+- ADR-0029 (PTX-EMU Image Executor) — D6 SINGLE-GPU-INSTANCE 假设，无 output baseline
+- ADR-0021 (CppTLM D1-Full MemoryBridge) — D-PTX-7/D-PTX-8 新债务
+- `multi-kernel-manifest-gaps-gap-analysis` — 隐含测试覆盖债务
+
+**5 Phase 工作**：
+| Phase | 任务 | 状态 |
+|-------|------|------|
+| 1 | Path 1B PTXIR fat-binary 真实 e2e (`tests/e2e/path_1B_ptxir_fatbinary/`) | 📋 pending |
+| 2 | Path 1C Driver API 真实 e2e (`tests/e2e/path_1C_driver_api/`) | 📋 pending |
+| 3 | Path 2D Image Executor output baseline (`tests/e2e/path_2D_image_executor/`, `tests/ptxir/baselines/`) | 📋 pending |
+| 4 | `tests/e2e/` 重组织为 4 个 path_X/ 子目录 | 📋 pending |
+| 5 | 归档 `implement-ptxir-cubin-embed-extension` proposal disclaimer 修正 | 📋 pending |
+
+**验收标准**：
+- AC-M1: cudart 路径测试覆盖率 3/4 → 4/4 (100%)
+- AC-M2: e2e output correctness 覆盖率 1/4 → 4/4 (100%)
+- AC-M3: openspec 文档一致性修复 1 处
+- AC-M4: `ctest -L path_1X` 可作为单路径回归命令
+
+---
+
 **维护者**: PTX-EMU Architecture Team
-**日期**: 2026-08-11（v4: Phase 12.3/12.4/13 ship 状态同步 + Phase 12.5 多 entry handle API 延后登记 + 实施状态审计更新 + 引用 multi-kernel-manifest-gaps-gap-analysis；v3: 2026-08-10 Phase 12.2 收尾 ship；v2: 实施状态审计 + Phase 12.3/12.4/13 新增；v1: 2026-08-07）
+**日期**: 2026-08-12（v5: Phase 14 fix-path-coverage-gaps P0 Oracle review 加入 + Phase 12.5 顺延到第 6 位；v4: Phase 12.3/12.4/13 ship 状态同步 + Phase 12.5 多 entry handle API 延后登记 + 实施状态审计更新 + 引用 multi-kernel-manifest-gaps-gap-analysis；v3: 2026-08-10 Phase 12.2 收尾 ship；v2: 实施状态审计 + Phase 12.3/12.4/13 新增；v1: 2026-08-07）
