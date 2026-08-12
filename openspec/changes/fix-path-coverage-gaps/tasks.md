@@ -4,6 +4,7 @@
 - [ ] 1.2 编写 `tests/e2e/path_1B_ptxir_fatbinary/CMakeLists.txt`（新模式，含 `add_catch_test(e2e_ptxir_fatbinary_exec ...)` + `LABELS "e2e;path_1B"` + `TIMEOUT 60`）
 - [ ] 1.3 编写 `tests/e2e/path_1B_ptxir_fatbinary/path_1B_kernels.cu`（≥3 kernels: vector_add, matmul, reduction）
 - [ ] 1.4 编写 `tests/e2e/path_1B_ptxir_fatbinary/build_standalone.sh`（nvcc 编译 .cu → cubin + `ptxir_embed` 多次追加 + link PTX-EMU `lib/libcudart.so`）
+- [ ] 1.4a **降级路径（Oracle Scenario 1.1 GIVEN）**: 验证 `ptxir_embed` 多段追加能力；若 `generate_ptxir` 不支持多 entry PTX 序列化（manifest.kernel_name 为空触发 `kMalformedManifest`），task 1.3 改为单 kernel binary，AC-1.5 调整为 ≥1 kernel；`build_standalone.sh` 改为单次 `ptxir_embed` 调用
 - [ ] 1.5 编写 `tests/e2e/path_1B_ptxir_fatbinary/test_ptxir_fatbinary_exec.cpp`（fork+exec standalone binary + 验证 stdout + Scenario 1.1/1.2/1.3/1.5 全部覆盖）
 - [ ] 1.6 实现 Anti-fallback guard（PATH="" + unset CUDA_BIN_PATH 在 test fixture）
 - [ ] 1.7 验证 Scenario 1.4 字节级一致性（与 Path 1A 编译对比 binary stdout）
@@ -51,7 +52,7 @@
 ## 5. Phase 5 — Proposal 描述修正（一致性）
 
 - [ ] 5.1 修改 `openspec/changes/archive/2026-08-07-implement-ptxir-cubin-embed-extension/proposal.md` §Capabilities 中 `tests/e2e/test_ptxir_cubin_embed.cu` 描述
-- [ ] 5.2 添加 disclaimer：**Note [修正: 2026-08-12, see fix-path-coverage-gaps]** — 此 e2e 验证 PTXIR-Embedded CUBIN 格式兼容性（Phase 12.2 R5 / ADR-0024 Risk 1），**不验证 PTX-EMU 真实加载执行**
+- [ ] 5.2 添加 disclaimer：**Note [修正: 2026-08-12, see fix-path-coverage-gaps]** — 原 archived proposal §Capabilities line 26 声称此 e2e 文件后缀为 `.cu`，**实际交付为 `.cpp`**（silent descoping 证据，见 `.rddf/improvements/fix-path-coverage-gaps.md` §3 Oracle review 真实阻断历史）。本 e2e 验证 PTXIR-Embedded CUBIN 格式兼容性（Phase 12.2 R5 / ADR-0024 Risk 1），**不验证 PTX-EMU 真实加载执行**
 - [ ] 5.3 disclaimer 交叉引用 Phase 1 新测试位置（`tests/e2e/path_1B_ptxir_fatbinary/test_ptxir_fatbinary_exec.cpp`）
 - [ ] 5.4 验证 tasks.md 不变（AC-5.6）
 - [ ] 5.5 验证 archive 目录名 `2026-08-07-implement-ptxir-cubin-embed-extension` 不变（AC-5.5）
@@ -68,6 +69,7 @@
 - [ ] 6.7 验证 AC-M1/M2 cudart 路径覆盖率 3/4 → 4/4 + output-correctness 1/4 → 4/4
 - [ ] 6.8 验证 AC-M3 openspec 文档一致性修复 1 处（Phase 5）
 - [ ] 6.9 验证 AC-M4 `ctest -L path_1X` 可作为单路径回归命令
+- [ ] 6.10 登记新增债务编号：更新 `docs/adr/ADR-0021-cpptlm-d1-full-integration.md`（或独立 ERRATA 文档 `docs/audits/D-PTX-debt-registry-ERRATA.md`），登记 D-PTX-7（PTXIR fat-binary 端到端未验证）+ D-PTX-8（Driver API 真实成功 kernel 执行未验证）定义，引用本 change 作为来源，避免与 D-PTX-1 ~ D-PTX-6 编号冲突
 
 ## 7. 归档
 

@@ -18,7 +18,7 @@ PTX-EMU 当前 cudart 加载路径覆盖矩阵（实测 grep + Oracle 验证）�
 
 **结构性约束（Oracle 补充）**：`cuModuleLoadData` 显式拒绝 `kExecutableTailPtxir`（`cudart_sim.cpp:532-537`）— driver API 路径拒绝恰好是 Path 1B 接受的 fat-binary 形式。意味着 Path 1C coverage 无法用作 Path 1B 的覆盖替身，3 个缺口是结构性独立问题，必须各自补齐。
 
-**dofld 债务编号**：ADR-0021 已定义 D-PTX-1 至 D-PTX-6，新债务须编号 D-PTX-7/D-PTX-8 避免冲突：
+**新增债务编号**：ADR-0021 已定义 D-PTX-1 至 D-PTX-6，本改进新增 D-PTX-7（PTXIR fat-binary 端到端未验证）+ D-PTX-8（Driver API 真实成功 kernel 执行未验证），须登记到 ADR-0021 附录避免与 D-PTX-1 ~ D-PTX-6 编号冲突：
 - D-PTX-7（proposed）：PTXIR fat-binary 端到端未验证
 - D-PTX-8（proposed）：Driver API 真实成功 kernel 执行未验证
 
