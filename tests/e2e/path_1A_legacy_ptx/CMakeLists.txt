@@ -19,4 +19,4 @@ set_tests_properties(e2e_tcgen05_alloc PROPERTIES LABELS "e2e;path_1A;tcgen05;al
 
 # Standalone binary for Path 1A vs 1B byte-diff (Scenario 1.4)
 add_executable(test_legacy_vector_add_standalone test_legacy_vector_add.cu)
-target_link_libraries(test_legacy_vector_add_standalone cudart_stub)
+target_link_libraries(test_legacy_vector_add_standalone cudart)
