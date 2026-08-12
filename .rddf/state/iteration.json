@@ -79,11 +79,14 @@
     },
     {
       "name": "multi-entry-handle-api",
-      "status": "proposed",
+      "status": "archived",
       "phase": "Phase 12.5",
       "category": "arch-design",
       "added_at": "2026-08-11T18:50:28+0800",
-      "filled_at": "2026-08-11T11:37:08.781574+00:00"
+      "filled_at": "2026-08-11T11:37:08.781574+00:00",
+      "archived_at": "2026-08-12T00:00:00+00:00",
+      "plan_path": ".rddf/plans/multi-entry-handle-api.md",
+      "tasks_total": 72
     }
   ],
   "feature_view": {
