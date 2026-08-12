@@ -34,7 +34,8 @@ static fs::path lib_path() {
 
 namespace {
 std::string run_nm(const fs::path& lib) {
-    std::string cmd = "nm -D " + lib.string() + " 2>/dev/null | grep ptxemu_ | sort";
+    std::string cmd = "nm -D " + lib.string() +
+                      " 2>/dev/null | awk '{print $2, $3}' | grep ptxemu_ | sort -u";
     FILE* pipe = popen(cmd.c_str(), "r");
     if (!pipe) return "";
     char buf[4096];

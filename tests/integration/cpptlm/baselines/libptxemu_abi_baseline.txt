@@ -1,5 +1,8 @@
-0000000000008060 T ptxemu_image_kernel_name
-0000000000008320 T ptxemu_image_unload
-0000000000008470 T ptxemu_module_version
-00000000000095e0 T ptxemu_image_execute
-0000000000009620 T ptxemu_image_load
+T ptxemu_image_execute
+T ptxemu_image_execute_named
+T ptxemu_image_kernel_count
+T ptxemu_image_kernel_name
+T ptxemu_image_kernel_name_at
+T ptxemu_image_load
+T ptxemu_image_unload
+T ptxemu_module_version

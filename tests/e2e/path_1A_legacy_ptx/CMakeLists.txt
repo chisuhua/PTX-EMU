@@ -1,0 +1,22 @@
+# Path 1A: Legacy PTX (kernel directly compiled, no PTXIR)
+add_catch_test(e2e_divergence test_divergence.cu)
+set_tests_properties(e2e_divergence PROPERTIES LABELS "e2e;path_1A;divergence;warp")
+add_catch_test(e2e_divergence_sync test_divergence_sync.cu)
+set_tests_properties(e2e_divergence_sync PROPERTIES LABELS "e2e;path_1A;divergence;barrier_sync")
+add_catch_test(e2e_blackwell_gemm test_blackwell_gemm.cu)
+set_tests_properties(e2e_blackwell_gemm PROPERTIES LABELS "e2e;path_1A;tcgen05;gemm;sm100")
+target_include_directories(e2e_blackwell_gemm PRIVATE
+    ${PROJECT_SOURCE_DIR}/bench/cute/include
+)
+add_catch_test(e2e_tcgen05_mma_gemm test_tcgen05_mma_gemm.cu)
+set_tests_properties(e2e_tcgen05_mma_gemm PROPERTIES LABELS "e2e;path_1A;tcgen05;mma;sm100")
+add_catch_test(e2e_tcgen05_cp test_tcgen05_cp.cu)
+set_tests_properties(e2e_tcgen05_cp PROPERTIES LABELS "e2e;path_1A;tcgen05;cp;sm100")
+add_catch_test(e2e_tcgen05_mma_ws test_tcgen05_mma_ws.cu)
+set_tests_properties(e2e_tcgen05_mma_ws PROPERTIES LABELS "e2e;path_1A;tcgen05;mma_ws;sm100")
+add_catch_test(e2e_tcgen05_alloc test_tcgen05_alloc.cu)
+set_tests_properties(e2e_tcgen05_alloc PROPERTIES LABELS "e2e;path_1A;tcgen05;alloc;sm100")
+
+# Standalone binary for Path 1A vs 1B byte-diff (Scenario 1.4)
+add_executable(test_legacy_vector_add_standalone test_legacy_vector_add.cu)
+target_link_libraries(test_legacy_vector_add_standalone cudart)

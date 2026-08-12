@@ -11,7 +11,7 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -keep --no-compress")
 set(CATCH_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/tests)
 
 # ============================================================================
-# Kernel E2E 测试 - 完整 kernel 通过 cudaLaunchKernel 触发
+# Kernel E2E 测试 - 完整 kernel 通过 cudaLaunchKernel 触发 (kept at root per tasks.md 4.11)
 # ============================================================================
 add_catch_test(e2e_test3_cfg_full
     kernel/test_test3_cfg_full.cpp
@@ -29,20 +29,7 @@ add_catch_test(e2e_ldglobal_simple
 set_tests_properties(e2e_ldglobal_simple PROPERTIES LABELS "e2e;ldglobal")
 
 # ============================================================================
-# Divergence E2E 测试 - 完整 warp divergence kernel 验证
-# ============================================================================
-add_catch_test(e2e_divergence
-    divergence/test_divergence.cu
-)
-set_tests_properties(e2e_divergence PROPERTIES LABELS "e2e;divergence;warp")
-
-add_catch_test(e2e_divergence_sync
-    divergence/test_divergence_sync.cu
-)
-set_tests_properties(e2e_divergence_sync PROPERTIES LABELS "e2e;divergence;barrier_sync")
-
-# ============================================================================
-# Shared Memory E2E 测试 - 共享内存 kernel 验证
+# Shared Memory E2E 测试 - 共享内存 kernel 验证 (kept at root per tasks.md 4.11)
 # ============================================================================
 add_catch_test(e2e_shared_memory_dynamic
     kernel/test_shared_memory_dynamic.cu
@@ -60,72 +47,7 @@ add_catch_test(e2e_shared_memory_divergence_visibility
 set_tests_properties(e2e_shared_memory_divergence_visibility PROPERTIES LABELS "e2e;shared_memory;divergence;visibility")
 
 # ============================================================================
-# Blackwell tcgen05 GEMM E2E 测试 - 16x16 float kernel (sm_100)
-# ============================================================================
-add_catch_test(e2e_blackwell_gemm
-    kernel/test_blackwell_gemm.cu
-)
-set_tests_properties(e2e_blackwell_gemm PROPERTIES LABELS "e2e;tcgen05;gemm;sm100")
-target_include_directories(e2e_blackwell_gemm PRIVATE
-    ${PROJECT_SOURCE_DIR}/bench/cute/include
-)
-
-# ============================================================================
-# tcgen05.mma GEMM E2E — explicit 5 tcgen05 instructions + f32 fallback
-# (ADR-0016, fix-tcgen05-test-coverage-gaps, Priority 3 fallback path)
-# ============================================================================
-add_catch_test(e2e_tcgen05_mma_gemm
-    kernel/test_tcgen05_mma_gemm.cu
-)
-set_tests_properties(e2e_tcgen05_mma_gemm PROPERTIES
-    LABELS "e2e;kernel;tcgen05;gemm;mma;sm100")
-
-# ============================================================================
-# tcgen05.cp SMEM → TMEM E2E — Priority 3 f32 fallback
-# (ADR-0016, tcgen05-cp-test-coverage-and-exception-cleanup, Phase 3)
-# ptxas 13.0 does NOT support `tcgen05.cp` on .target sm_100
-# (same constraint as e2e_tcgen05_mma_gemm). Mirrors the Priority 3
-# fallback: pure CUDA C++ that performs the same logical SMEM → "TMEM"
-# copy via __shared__ memory, source-grep oracle on `tcgen05.cp`.
-# ============================================================================
-add_catch_test(e2e_tcgen05_cp
-    kernel/test_tcgen05_cp.cu
-)
-set_tests_properties(e2e_tcgen05_cp PROPERTIES
-    LABELS "e2e;kernel;tcgen05;cp;sm100")
-
-# ============================================================================
-# Phase 3 of implement-tcgen05-handlers-extended (Oracle 2026-07-08 A-path):
-# Priority 3 fallback for tcgen05.mma.ws (ptxas 13.0 lacks sm_100 mma.ws
-# support, same constraint as e2e_tcgen05_cp + e2e_tcgen05_mma_gemm).
-# Mirrors the simulator's processTcgen05Mma + tcgen05_fragment_mma_f16
-# 32-lane × 8×4 f16 matmul. Source-grep oracle on `tcgen05.mma.ws`.
-# Full handler execution is verified by integration_tcgen05_mma_ws.
-# ============================================================================
-add_catch_test(e2e_tcgen05_mma_ws
-    kernel/test_tcgen05_mma_ws.cu
-)
-set_tests_properties(e2e_tcgen05_mma_ws PROPERTIES
-    LABELS "e2e;kernel;tcgen05;mma_ws;sm100")
-
-# ============================================================================
-# Phase 4 of implement-tcgen05-handlers-extended (ADR-0016, Oracle Q5-C):
-# Priority 3 fallback for tcgen05.alloc (ptxas 13.0 lacks sm_100 alloc
-# support, same constraint as e2e_tcgen05_cp + e2e_tcgen05_mma_ws).
-# Source-grep oracle on `tcgen05.alloc`. Full handler execution verified
-# by integration_tcgen05_alloc_dealloc_relinquish + unit_tcgen05_extended_opkind.
-# ============================================================================
-add_catch_test(e2e_tcgen05_alloc
-    kernel/test_tcgen05_alloc.cu
-)
-set_tests_properties(e2e_tcgen05_alloc PROPERTIES
-    LABELS "e2e;kernel;tcgen05;alloc;sm100")
-
-# ============================================================================
-# FU-5: FlashAttention mini-kernel E2E test
-# Priority 3 fallback: ptxas 13.0 does NOT support tcgen05.* on sm_100
-# (same constraint as e2e_tcgen05_mma_gemm). Pure CUDA C++ FA kernel
-# with source-grep oracle on tcgen05 operations for coverage attribution.
+# FU-5: FlashAttention mini-kernel E2E test (kept at root per tasks.md 4.11)
 # ============================================================================
 add_catch_test(e2e_flashattention_mini
     kernel/test_flashattention_mini.cu
@@ -144,25 +66,22 @@ set_tests_properties(e2e_cosim_vector_add PROPERTIES LABELS "e2e;cosim")
 # ============================================================================
 # Phase 3: CppTLM Co-Simulation E2E 测试 (auto-co-sim spec traceability)
 # ============================================================================
-# auto-co-sim: "advance ceiling prevents hang"
 add_catch_test(e2e_cosim_infinite_loop_ceiling
     cosim/test_cosim_infinite_loop_ceiling.cu
 )
 set_tests_properties(e2e_cosim_infinite_loop_ceiling PROPERTIES
     LABELS "e2e;cosim;ceiling")
 
-# auto-co-sim: "repeated cudaDeviceSynchronize drains all pending kernels"
 add_catch_test(e2e_cosim_multi_kernel_drain
     cosim/test_cosim_multi_kernel_drain.cu
 )
 set_tests_properties(e2e_cosim_multi_kernel_drain PROPERTIES
     LABELS "e2e;cosim;drain")
 
-# PTXIR-Embedded CUBIN: end-to-end embed+extract roundtrip via tools
-add_catch_test(e2e_ptxir_cubin_embed
-    kernel/test_ptxir_cubin_embed.cpp
-)
-set_tests_properties(e2e_ptxir_cubin_embed PROPERTIES
-    LABELS "e2e;ptxir;tools;nvcc;cuobjdump"
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-
+# ============================================================================
+# Path-organized e2e subdirectories (fix-path-coverage-gaps Phase 4)
+# ============================================================================
+add_subdirectory(path_1A_legacy_ptx)
+add_subdirectory(path_1B_ptxir_fatbinary)
+add_subdirectory(path_1C_driver_api)
+add_subdirectory(path_2D_image_executor)

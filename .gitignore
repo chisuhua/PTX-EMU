@@ -28,6 +28,32 @@ ptx_emu*.log
 *.ptx
 !tests/ptx/*.ptx
 
+# fix-path-coverage-gaps: Path 1B PTXIR fat-binary e2e artifacts
+!tests/e2e/path_1B_ptxir_fatbinary/**/*.ptx
+!tests/e2e/path_1B_ptxir_fatbinary/**/*.cubin
+!tests/e2e/path_1B_ptxir_fatbinary/**/*.raw.ptx
+!tests/e2e/path_1C_driver_api/vec_add.cu
+!tests/e2e/path_1C_driver_api/build_ptxir_blob.py
+!tests/e2e/path_1C_driver_api/test_cuda_driver_exec.cpp
+!tests/e2e/path_1C_driver_api/CMakeLists.txt
+!tests/e2e/path_2D_image_executor/**
+!tests/ptxir/baselines/*.bin
+!tests/ptxir/baselines/*.md
+!tests/ptxir/baselines/.gitkeep
+
+# Build artifacts in test dirs (generated at build time)
+tests/**/*.o
+tests/**/*.cubin
+tests/**/path_1B_standalone
+tests/**/path_1B_standalone.cubin
+tests/**/path_1B_nofooter.cubin
+tests/**/path_1B_corrupt.cubin
+tests/**/vec_add.o
+tests/**/vec_add.cubin
+tests/**/vec_add.embedded.cubin
+tests/**/vec_add.ptxir_blob
+tests/**/vec_add.raw.ptx
+
 # 缓存目录
 .cache/
 
