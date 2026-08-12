@@ -1,22 +1,38 @@
 {
   "version": 1,
-  "updated_at": "2026-08-11T11:40:00.000000+00:00",
+  "updated_at": "2026-08-12T11:53:03.969162+00:00",
   "fallback": true,
   "changes": {
-    "multi-entry-handle-api": {
-      "name": "multi-entry-handle-api",
-      "phase": "Phase 12.5",
-      "category": "arch-design",
+    "fix-path-coverage-gaps": {
+      "name": "fix-path-coverage-gaps",
+      "phase": "Phase 14",
+      "category": "core-test",
       "status": "ready",
       "blocker": null,
       "blocks": [],
       "parallel_group": 0,
       "conflicts": [],
       "confidence": "high",
-      "recommendation": "Wave 0 — single candidate, no deps. Execute 6 Phase commits C1-C6 sequentially per tasks.md."
+      "recommendation": "Wave 0 — single candidate, no deps. Execute 7 task groups (5 Phases + 验收 + 归档) sequentially per tasks.md."
     }
   },
   "execution_order": [
-    "multi-entry-handle-api"
-  ]
+    "fix-path-coverage-gaps"
+  ],
+  "execution_mode_recommendations": {
+    "fix-path-coverage-gaps": {
+      "mode": "worktree",
+      "reason": "大改动 + 需要隔离 (5 Phase, 57 tasks, multi-path)",
+      "confidence": "high",
+      "details": {
+        "file_count": 0,
+        "task_count": 57,
+        "is_risky": false,
+        "change_size": "large",
+        "has_conflicts": false,
+        "has_dependencies": false,
+        "is_independent": true
+      }
+    }
+  }
 }

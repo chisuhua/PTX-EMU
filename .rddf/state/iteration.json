@@ -1,6 +1,6 @@
 {
   "version": 6,
-  "updated_at": "2026-08-12T11:48:39.051614+00:00",
+  "updated_at": "2026-08-12T11:53:03.995704+00:00",
   "current_phase": "default",
   "changes": [
     {
@@ -86,7 +86,11 @@
       "filled_at": "2026-08-11T11:37:08.781574+00:00",
       "archived_at": "2026-08-12T00:00:00+00:00",
       "plan_path": ".rddf/plans/multi-entry-handle-api.md",
-      "tasks_total": 72
+      "tasks_total": 72,
+      "last_deps_at": "2026-08-12T11:52:07.458168+00:00",
+      "blocker": null,
+      "parallel_group": 0,
+      "conflicts": []
     },
     {
       "added_at": "2026-08-12T11:48:39.043357+00:00",
@@ -94,7 +98,11 @@
       "status": "proposed",
       "phase": "Phase 14",
       "category": "core-test",
-      "priority": "P0"
+      "priority": "P0",
+      "last_deps_at": "2026-08-12T11:53:03.983488+00:00",
+      "blocker": null,
+      "parallel_group": 0,
+      "conflicts": []
     }
   ],
   "feature_view": {
