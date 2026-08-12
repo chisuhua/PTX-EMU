@@ -187,7 +187,7 @@ cmake --build build && ctest --test-dir build -R unit_ptxir_multi_entry_roundtri
 
 Expected: FAIL with compilation error (functions/methods not defined) or "kernel_name != auto_synced_kernel".
 
-- [ ] **Step 3: Modify `write_manifest_section` to handle multi-entry**
+- [ ] **Step 3: Write minimal implementation** — Modify `write_manifest_section` to handle multi-entry
 
 In `src/ptx_ir/ptxir_writer.cpp`, replace the function `write_manifest_section` (lines 33-53):
 
@@ -324,6 +324,8 @@ cmake --build build && ctest --test-dir build --output-on-failure
 # Expect PASS (revert restores v1-only behavior, synthesis still works)
 git revert --abort
 ```
+
+- [ ] **Step 7: Defer commit** — per multi-phase plan, aggregate commit at archive time (Phase 2.7)
 
 ---
 

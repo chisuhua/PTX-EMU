@@ -5,4 +5,3 @@
 | 提案 | 优先级 | 来源 | 添加时间 | 状态 |
 |------|--------|------|----------|------|
 | [ptxir-format-compliance](openspec/changes/ptxir-format-compliance/) | P1 | 差距分析 G1-G9/D1-D5 + ADR-0023 7 决策实施 | 2026-07-30 | ❌ 已拒绝 (2026-08-01) |
-| [split-cpptlm-core-minimal](improvements/split-cpptlm-core-minimal.md) | P2 | ADR-0022 §未来 — Oracle 评估（2026-07-28）：已评估推迟；触发条件未满足 | 2026-08-10 | ⏸️ 延迟 (2026-08-10, Oracle DEFER；触发条件见 proposal) |

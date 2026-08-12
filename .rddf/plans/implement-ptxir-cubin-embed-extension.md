@@ -166,6 +166,8 @@ TEST_CASE("Old reader skips MANIFEST section (Extend-Only)", "[ptxir][manifest][
 Run: `ctest -R test_ptxir_manifest_section -V`
 Expected: PASS
 
+- [ ] **Step 6: Defer commit** — per 4-commit architecture, aggregate at archive (Phase 2.7)
+
 ---
 
 ## Task 2: PTXIRLoader class — magic constant + 4 public static methods (footer layout)

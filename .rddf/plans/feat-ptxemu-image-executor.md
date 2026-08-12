@@ -43,7 +43,7 @@
 ## Commit 1 — Phase 0 Step 1: 5 Global Symbol Relocation + 5 Byte-Identical Gates
 
 > **Prerequisites:** Commit 0 (ADR-0021 v1.1 amendment) already shipped (`8d05f35f` + `100afdc4`). `g_cpptlm_bridge` may now be defined outside `cudart_sim.cpp`. Hard gate per ADR-0029 §合规检查.
-> **Strategy:** TDD 5-step — write 5 failing gates → verify fail → relocate 5 symbols → verify pass → defer commit (aggregated at archive per Phase 2.7).
+> **Strategy:** TDD 5-step — Write the failing test → Run test to verify it fails → Write minimal implementation → Run test to verify it passes → Defer commit (aggregated at archive per Phase 2.7).
 > **Lessons applied:** §1 cross-module state translation (no call-site changes); §3 Phase commit granularity; §4 baseline worktree (establish `baseline-build` archive before any change); §14 byte-identical fallback must be test-locked.
 
 ### Task 1: Establish baseline worktree + archive build

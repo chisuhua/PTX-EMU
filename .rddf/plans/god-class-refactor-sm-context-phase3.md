@@ -46,6 +46,13 @@
 | `tests/unit/sm/test_streaming_admission.cpp` | **Preserved unchanged** — admission oracle for the block_dispatch extraction |
 | `tests/integration/barrier/*`, `tests/integration/divergence/*` | Regression-only — must stay 100% green |
 
+**TDD 5-Step Structure (canonical):** Each Task follows the discipline:
+1. **Write the failing test** — create new test file with REAL assertions (per file-structure table)
+2. **Run test to verify it fails** — confirm compilation failure or assertion failure (not a false pass)
+3. **Write minimal implementation** — extract one cohesive helper namespace per Task; bodies call Access:: methods
+4. **Run test to verify it passes** — confirm new test passes; regression suite stays 100% green
+5. **Defer commit** — per Phase commit granularity (Lesson §3), aggregate commits at archive time
+
 ---
 
 ### Task 1: Phase 0 — Verify preconditions and lock baseline (read-only)

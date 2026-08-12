@@ -15,6 +15,13 @@
 
 **Tech Stack:** C++20 / Catch2 / CMake / PTXIR binary format / Extend-Only versioning
 
+**TDD 5-Step Structure (canonical):** Each Task follows the discipline:
+1. **Write the failing test** — create new test file with REAL assertions (round-trip, backward-compat, e2e)
+2. **Run test to verify it fails** — confirm compilation failure or assertion failure (not a false pass)
+3. **Write minimal implementation** — minimal code change satisfying the test; no speculative features
+4. **Run test to verify it passes** — confirm new test passes; v1 backward-compat regression stays green
+5. **Defer commit** — per Phase commit granularity (Lesson §3), aggregate commits at archive time
+
 ---
 
 ## File Structure
