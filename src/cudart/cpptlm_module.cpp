@@ -68,18 +68,20 @@ public:
     }
 
     int get_kernel_name(uint64_t handle, char* buf, size_t buf_size) {
-        std::vector<uint8_t> bytes_copy;
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            auto it = images_.find(handle);
-            if (it == images_.end()) return -EINVAL;
-            bytes_copy = it->second;
-        }
-        auto manifest = read_manifest_from_ptxir_section(bytes_copy.data(), bytes_copy.size());
-        if (manifest.kernel_name.empty()) return -EINVAL;
         if (buf_size == 0) return -EINVAL;
-        size_t copy_len = std::min(manifest.kernel_name.size(), buf_size - 1);
-        std::memcpy(buf, manifest.kernel_name.data(), copy_len);
+        std::lock_guard<std::mutex> lock(mu_);
+        auto it = images_.find(handle);
+        if (it == images_.end()) return -EINVAL;
+        auto bytes_copy = it->second;
+        auto manifest = read_manifest_from_ptxir_section(bytes_copy.data(), bytes_copy.size());
+        // v2 multi-kernel: select first entry from kernels vector
+        // v1 backward-compat: if kernels empty, fall back to kernel_name
+        const std::string& name = manifest.kernels.empty()
+            ? manifest.kernel_name
+            : manifest.kernels[0].name;
+        if (name.empty()) return -EINVAL;
+        size_t copy_len = std::min(name.size(), buf_size - 1);
+        std::memcpy(buf, name.data(), copy_len);
         buf[copy_len] = '\0';
         return 0;
     }
@@ -90,12 +92,6 @@ public:
                 size_t shared_mem_bytes,
                 void** kernel_args, size_t args_count) {
         (void)args_count;
-        // LOCK ORDER CONTRACT (ptx-lessons-learned §3):
-        // exec_mu_ MUST be acquired before mu_ so unload()'s try_lock(exec_mu_)
-        // reliably detects in-flight execute() for the entire duration (including
-        // the bytes_copy window). Otherwise a kernel observed between mu_ release
-        // and exec_mu_ acquire lets unload() erase the handle while the kernel
-        // is about to run.
         std::lock_guard<std::mutex> exec_lock(exec_mu_);
         std::vector<uint8_t> bytes_copy;
         {
@@ -115,11 +111,8 @@ public:
 
         auto manifest = read_manifest_from_ptxir_section(bytes_copy.data(), bytes_copy.size());
         if (manifest.kernels.empty()) {
-            // v1 backward-compat: read_manifest_from_ptxir_section already
-            // synthesizes from kernel_name if kernels is empty.
             return -EINVAL;
         }
-        // Backward-compat: legacy ptxemu_image_execute() selects first kernel
         EmbeddedKernelManifest em;
         em.kernelName = manifest.kernels[0].name;
         em.ptxAddressSize = manifest.ptx_address_size;
@@ -160,7 +153,7 @@ public:
     }
 
     int kernel_name_at(uint64_t handle, uint32_t idx, char* buf, size_t buf_size) {
-        if (buf_size == 0) return -1;  // query-length contract
+        if (buf_size == 0) return -1;
         std::lock_guard<std::mutex> lock(mu_);
         auto it = images_.find(handle);
         if (it == images_.end()) return -1;
@@ -180,7 +173,6 @@ public:
                       void** kernel_args, size_t args_count) {
         (void)args_count;
         if (kernel_name == nullptr) return -EINVAL;
-        // Same lock order: exec_mu_ → mu_
         std::lock_guard<std::mutex> exec_lock(exec_mu_);
         std::vector<uint8_t> bytes_copy;
         {
@@ -199,9 +191,8 @@ public:
         if (stmts.empty()) return -EINVAL;
 
         auto manifest = read_manifest_from_ptxir_section(bytes_copy.data(), bytes_copy.size());
-        // SC-8: within-module duplicate name → first-match wins
         auto kernel_it = std::find_if(manifest.kernels.begin(), manifest.kernels.end(),
-            [&](const ptx_ir::KernelEntry& ke) { return ke.name == kernel_name; });
+            [&](const KernelEntry& ke) { return ke.name == kernel_name; });
         if (kernel_it == manifest.kernels.end()) return -1;
 
         EmbeddedKernelManifest em;

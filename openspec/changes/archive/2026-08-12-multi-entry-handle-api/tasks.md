@@ -27,36 +27,36 @@
 
 ## 3. Phase C3: cuModuleGetFunction handle 映射 (P0)
 
-- [ ] 3.1 **测试先行 (TDD Red)**: 在 `tests/integration/cudart/test_cuda_driver_api.cpp` 添加 3 测试场景 (name 查找 / 重名 / 不存在)
-- [ ] 3.2 **验证失败 (Red)**: stub 返回 invalid handle, 测试失败
-- [ ] 3.3 在 `include/cudart/module_registry.h` 添加 per-module `std::unordered_map<std::string, CUfunction>` 字段
-- [ ] 3.4 在 `src/cudart/cuda_driver.cpp` 实现 `insert_function()` 真实逻辑 (替换 stub): name lookup → insert → 返回 handle
-- [ ] 3.5 修改 `src/cudart/cudart_sim.cpp:556-570` `cuModuleGetFunction`: 替换 stub → 调用真实 `ModuleRegistry::insert_function`
-- [ ] 3.6 线程安全: `std::lock_guard<std::mutex>` 保护 per-module registry (复用既有 mutex)
-- [ ] 3.7 **实现 + 验证 (Green)**: ctest 3 场景通过
-- [ ] 3.8 **Commit C3**: `feat(cudart): cuModuleGetFunction multi-kernel name→handle 映射 (commit C3)`
+- [x] 3.1 **测试先行 (TDD Red)**: 在 `tests/integration/cudart/test_cuda_driver_api.cpp` 添加 3 测试场景 (name 查找 / 重名 / 不存在)
+- [x] 3.2 **验证失败 (Red)**: stub 返回 invalid handle, 测试失败
+- [x] 3.3 在 `include/cudart/module_registry.h` 添加 per-module `std::unordered_map<std::string, CUfunction>` 字段
+- [x] 3.4 在 `src/cudart/cuda_driver.cpp` 实现 `insert_function()` 真实逻辑 (替换 stub): name lookup → insert → 返回 handle
+- [x] 3.5 修改 `src/cudart/cudart_sim.cpp:556-570` `cuModuleGetFunction`: 替换 stub → 调用真实 `ModuleRegistry::insert_function`
+- [x] 3.6 线程安全: `std::lock_guard<std::mutex>` 保护 per-module registry (复用既有 mutex)
+- [x] 3.7 **实现 + 验证 (Green)**: ctest 3 场景通过
+- [x] 3.8 **Commit C3**: `feat(cudart): cuModuleGetFunction multi-kernel name→handle 映射 (commit C3)`
 - [ ] 3.9 **回退验证**: `git revert HEAD` 后 stub 行为恢复, cudart_sim.cpp 编译通过
 
 ## 4. Phase C4: cpptlm_module multi-entry handle (P0)
 
-- [ ] 4.1 **测试先行 (TDD Red)**: 在 `tests/integration/cudart/test_in_memory_mutation.cpp` 添加 4 测试场景 (load + get_handle + execute + unload per kernel)
-- [ ] 4.2 **验证失败 (Red)**: 3 新 API 未定义, 编译失败
-- [ ] 4.3 修改 `include/cudart/cpptlm_module.h`: 添加 3 `extern "C"` 函数 (`ptxemu_image_kernel_count` / `_kernel_name_at` / `_execute_named`) + `CPPTLM_MODULE_VERSION 1→2` bump
-- [ ] 4.4 在 `src/cudart/cpptlm_module.cpp` 实现 3 函数 + 替换 `kernels[0]` fallback (`src/cudart/cpptlm_module.cpp:120-127`)
-- [ ] 4.5 锁顺序契约: `execute_named` 保持 `exec_mu_` → `mu_` 顺序 (per `ptx-lessons-learned` §3)
-- [ ] 4.6 截断契约: `_kernel_name_at` buf_size=0 返回 -1, buf_size 不足截断但不溢出
-- [ ] 4.7 **实现 + 验证 (Green)**: ctest 4 场景通过 + SC-5 stale handle 测试
-- [ ] 4.8 **Commit C4**: `feat(cpptlm): multi-entry handle API + VERSION 1→2 (commit C4)`
-- [ ] 4.9 **回退验证**: `git revert HEAD` 后 `CPPTLM_MODULE_VERSION` 同步回退到 1, 旧 binary 仍兼容
+- [x] 4.1 **测试先行 (TDD Red)**: 在 `tests/integration/cudart/test_in_memory_mutation.cpp` 添加 4 测试场景 (load + get_handle + execute + unload per kernel)
+- [x] 4.2 **验证失败 (Red)**: 3 新 API 未定义, 编译失败
+- [x] 4.3 修改 `include/cudart/cpptlm_module.h`: 添加 3 `extern "C"` 函数 (`ptxemu_image_kernel_count` / `_kernel_name_at` / `_execute_named`) + `CPPTLM_MODULE_VERSION 1→2` bump
+- [x] 4.4 在 `src/cudart/cpptlm_module.cpp` 实现 3 函数 + 替换 `kernels[0]` fallback (`src/cudart/cpptlm_module.cpp:120-127`)
+- [x] 4.5 锁顺序契约: `execute_named` 保持 `exec_mu_` → `mu_` 顺序 (per `ptx-lessons-learned` §3)
+- [x] 4.6 截断契约: `_kernel_name_at` buf_size=0 返回 -1, buf_size 不足截断但不溢出
+- [x] 4.7 **实现 + 验证 (Green)**: ctest 4 场景通过 + SC-5 stale handle 测试
+- [x] 4.8 **Commit C4**: `feat(cpptlm): multi-entry handle API + VERSION 1→2 (commit C4)`
+- [x] 4.9 **回退验证**: `git revert HEAD` 后 `CPPTLM_MODULE_VERSION` 同步回退到 1, 旧 binary 仍兼容
 
 ## 5. Phase C5: test_multi_kernel_selection 升级 (P1)
 
-- [ ] 5.1 **测试先行 (TDD Red)**: 在 `tests/unit/cudart/test_multi_kernel_selection.cpp` 添加 ≥3 真实测试 (替换 `SUCCEED("placeholder")`)
-- [ ] 5.2 **验证失败 (Red)**: placeholder 仍存在, 测试覆盖度不足
-- [ ] 5.3 真实测试: cuModuleGetFunction 多 kernel handle / `ptxemu_image_kernel_count` 验证 / `ptxemu_image_kernel_name_at` 截断契约
-- [ ] 5.4 **实现 + 验证 (Green)**: 全部 placeholder 替换, 测试通过
-- [ ] 5.5 **Commit C5**: `test(cudart): multi_kernel_selection 升级 (placeholder → 真实测试, commit C5)`
-- [ ] 5.6 **回退验证**: `git revert HEAD` 后 placeholder 恢复 (可接受临时回退)
+- [x] 5.1 **测试先行 (TDD Red)**: 在 `tests/unit/cudart/test_multi_kernel_selection.cpp` 添加 ≥3 真实测试 (替换 `SUCCEED("placeholder")`)
+- [x] 5.2 **验证失败 (Red)**: placeholder 仍存在, 测试覆盖度不足
+- [x] 5.3 真实测试: cuModuleGetFunction 多 kernel handle / `ptxemu_image_kernel_count` 验证 / `ptxemu_image_kernel_name_at` 截断契约
+- [x] 5.4 **实现 + 验证 (Green)**: 全部 placeholder 替换, 测试通过
+- [x] 5.5 **Commit C5**: `test(cudart): multi_kernel_selection 升级 (placeholder → 真实测试, commit C5)`
+- [x] 5.6 **回退验证**: `git revert HEAD` 后 placeholder 恢复 (可接受临时回退)
 
 ## 6. Phase C6: ptxemu_image_kernel_name 多 kernel + ABI baseline (P1+P2)
 
@@ -66,8 +66,8 @@
 - [x] 6.4 单元测试: ABI baseline (v1 binary 加载触发 backward-compat synthesis) + mutation regression
 - [x] 6.5 文档: 在 `docs/architecture/multi-kernel-manifest-gaps-gap-analysis.md` §8 添加 "Data Redundancy" 段落 (声明 `ManifestParam` 为 source of truth)
 - [x] 6.6 **实现 + 验证 (Green)**: ctest ABI baseline 通过
-- [ ] 6.7 **Commit C6**: `feat(cpptlm): kernel_name 遍历 + ABI baseline + 文档 (commit C6)`
-- [ ] 6.8 **回退验证**: `git revert HEAD` 后 kernel_name 行为恢复 v1 单 kernel
+- [x] 6.7 **Commit C6**: `feat(cpptlm): kernel_name 遍历 + ABI baseline + 文档 (commit C6)`
+- [x] 6.8 **回退验证**: `git revert HEAD` 后 kernel_name 行为恢复 v1 单 kernel
 
 ## 7. 跨 Phase 验证门 (所有 commit 后)
 

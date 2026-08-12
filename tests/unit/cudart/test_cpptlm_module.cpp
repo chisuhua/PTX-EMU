@@ -38,7 +38,7 @@ static std::vector<uint8_t> read_fixture() {
 
 TEST_CASE("ptxemu_module_version: returns CPPTLM_MODULE_VERSION", "[unit][cpptlm_module]") {
     REQUIRE(ptxemu_module_version() == CPPTLM_MODULE_VERSION);
-    REQUIRE(CPPTLM_MODULE_VERSION == 1);
+    REQUIRE(CPPTLM_MODULE_VERSION == 2);
 }
 
 TEST_CASE("ptxemu_image_load: standalone PTXIR returns valid handle", "[unit][cpptlm_module]") {

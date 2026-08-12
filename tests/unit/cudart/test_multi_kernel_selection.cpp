@@ -1,12 +1,26 @@
 #include "catch_amalgamated.hpp"
 #include "cudart/cpptlm_module.h"
+#include "cudart/cudart_intrinsics.h"
 #include "ptx_ir/ptxir_format.h"
 
-// Phase 12.4: this test is a STRUCTURAL PLACEHOLDER.
-// Real validation requires a multi-entry PTXIR fixture, which requires
-// v2 writer (out of Phase 12.4 scope; deferred to Phase 12.5).
-// For now, verify that the KernelEntry struct and ManifestSection.kernels
-// field are accessible and functional.
+#include <filesystem>
+#include <fstream>
+#include <vector>
+
+// Phase C5: Real multi-kernel selection tests using existing C2 fixture.
+// Keep struct tests as-is (valid structural coverage).
+// Replace placeholder with 4 real tests validating C3/C4 APIs.
+
+namespace {
+std::vector<uint8_t> load_fixture(const char* filename) {
+    auto path = std::filesystem::path(TEST_FIXTURE_DIR) / filename;
+    std::ifstream ifs(path, std::ios::binary);
+    REQUIRE(ifs.good());
+    std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(ifs)),
+                                 std::istreambuf_iterator<char>());
+    return bytes;
+}
+}  // namespace
 
 TEST_CASE("KernelEntry struct is constructible and accessible", "[unit][cudart][multi-kernel]") {
     KernelEntry entry;
@@ -32,10 +46,38 @@ TEST_CASE("ManifestSection kernels vector supports push_back", "[unit][cudart][m
     REQUIRE(ms.kernels[1].name == "kernel_b");
 }
 
-TEST_CASE("Multi-kernel: cuModuleGetFunction distinct-handle contract deferred to Phase 12.5",
+// ========================================================================
+// Phase C5: Real multi-kernel selection tests
+// ========================================================================
+
+TEST_CASE("Multi-kernel selection: ptxemu_image_kernel_count returns ≥3",
           "[unit][cudart][multi-kernel]") {
-    // Phase 12.4 scope = schema + backward-compat infrastructure.
-    // Full cuModuleGetFunction multi-kernel name→handle mapping validation
-    // requires v2 PTXIR writer + multi-entry fixture (Phase 12.5).
-    SUCCEED("placeholder — full multi-kernel validation deferred to Phase 12.5");
+    auto fixture = load_fixture("multi_kernel_basic.ptxir");
+    uint64_t h = ptxemu_image_load(fixture.data(), fixture.size());
+    REQUIRE(h != 0);
+    REQUIRE(ptxemu_image_kernel_count(h) >= 3);
+    REQUIRE(ptxemu_image_unload(h) == 0);
+}
+
+TEST_CASE("Multi-kernel selection: ptxemu_image_kernel_name_at truncation contract",
+          "[unit][cudart][multi-kernel]") {
+    auto fixture = load_fixture("multi_kernel_basic.ptxir");
+    uint64_t h = ptxemu_image_load(fixture.data(), fixture.size());
+    REQUIRE(h != 0);
+
+    char buf[64];
+    REQUIRE(ptxemu_image_kernel_name_at(h, 0, buf, sizeof(buf)) == 7);
+    REQUIRE(std::string(buf) == "vec_add");
+
+    char tiny[4];
+    int rc = ptxemu_image_kernel_name_at(h, 0, tiny, sizeof(tiny));
+    REQUIRE(rc == 7);
+    REQUIRE(tiny[3] == 0);
+
+    REQUIRE(ptxemu_image_unload(h) == 0);
+}
+
+TEST_CASE("Multi-kernel selection: ptxemu_module_version gate enforces 1→2 bump",
+          "[unit][cudart][multi-kernel]") {
+    REQUIRE(ptxemu_module_version() == 2);
 }

@@ -20,3 +20,11 @@ add_catch_test(integration_cuda_driver_api
 )
 set_tests_properties(integration_cuda_driver_api PROPERTIES LABELS "integration;cudart;driver")
 target_link_libraries(integration_cuda_driver_api PRIVATE ptxir_writer ptxir_reader)
+
+add_catch_test(integration_libptxemu_device
+    test_libptxemu_device.cpp
+)
+set_tests_properties(integration_libptxemu_device PROPERTIES LABELS "integration;cudart;abi")
+target_link_libraries(integration_libptxemu_device PRIVATE ptxemu_device ptxir_writer ptxir_reader)
+target_compile_definitions(integration_libptxemu_device PRIVATE
+    TEST_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/ptxir/fixtures")

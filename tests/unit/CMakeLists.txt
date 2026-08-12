@@ -681,6 +681,27 @@ set_tests_properties(unit_ptxir_manifest_section PROPERTIES
 target_link_libraries(unit_ptxir_manifest_section PRIVATE ptxir_writer ptxir_reader)
 
 # ============================================================================
+# Phase C1: multi-entry PTXIR writer round-trip tests
+add_catch_test(unit_ptxir_multi_entry_roundtrip
+    ptx_ir/test_multi_entry_roundtrip.cpp
+)
+set_tests_properties(unit_ptxir_multi_entry_roundtrip PROPERTIES
+    LABELS "unit;ptxir;multi-entry")
+target_link_libraries(unit_ptxir_multi_entry_roundtrip PRIVATE ptxir_writer ptxir_reader)
+
+# ============================================================================
+# Phase C2: multi-entry fixture load tests
+add_catch_test(unit_ptxir_fixture_load
+    ptx_ir/test_fixture_load.cpp
+)
+set_tests_properties(unit_ptxir_fixture_load PROPERTIES
+    LABELS "unit;ptxir;fixture"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+target_link_libraries(unit_ptxir_fixture_load PRIVATE ptxir_writer ptxir_reader)
+target_compile_definitions(unit_ptxir_fixture_load PRIVATE
+    TEST_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/ptxir/fixtures")
+
+# ============================================================================
 # PTXIR-Embedded CUBIN loader unit tests
 # ============================================================================
 add_catch_test(unit_ptxir_loader
@@ -801,10 +822,13 @@ add_catch_test(unit_cudart_sim
 )
 set_tests_properties(unit_cudart_sim PROPERTIES LABELS "unit;cudart;sim")
 
-# Phase 12.4: multi-kernel selection placeholder (ADR-0028)
+# Phase C5: multi-kernel selection real tests (ADR-0028)
 add_catch_test(unit_multi_kernel_selection
     cudart/test_multi_kernel_selection.cpp
 )
+target_link_libraries(unit_multi_kernel_selection PRIVATE ptxemu_device)
+target_compile_definitions(unit_multi_kernel_selection PRIVATE
+    TEST_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/ptxir/fixtures")
 set_tests_properties(unit_multi_kernel_selection PROPERTIES LABELS "unit;cudart;multi-kernel")
 
 # ============================================================================
