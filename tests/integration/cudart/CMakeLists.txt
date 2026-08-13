@@ -8,7 +8,7 @@ add_catch_test(integration_in_memory_mutation
     test_in_memory_mutation.cpp
 )
 set_tests_properties(integration_in_memory_mutation PROPERTIES LABELS "integration;cudart;mutation")
-target_link_libraries(integration_in_memory_mutation PRIVATE ptxir_writer ptxir_reader)
+target_link_libraries(integration_in_memory_mutation PRIVATE ptxir_writer ptxir_reader ptxemu_device)
 
 add_catch_test(integration_abi_stability
     test_abi_stability.cpp

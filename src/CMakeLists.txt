@@ -46,6 +46,12 @@ file(GLOB SOURCES CONFIGURE_DEPENDS
     utils/cubin_utils.cpp
     ptxsim/atomic/atomic_mutex.cpp  # Phase 2 of implement-atomic-cas-and-true-atomicity
 )
+# ADR-0029 §D5: ptxemu_image_* ABI lives ONLY in libptxemu_device.so.
+# Remove cpptlm_module.cpp from the cudart library GLOB so it does not leak
+# into libcudart.so (verified via integration_phase0_byte_identical_gates Gate 1).
+# All consumers (tests/unit/cudart/* + tests/integration/cpptlm/*) explicitly
+# link ptxemu_device per openspec/specs/libptxemu-abi-freeze/spec.md.
+list(REMOVE_ITEM SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/cudart/cpptlm_module.cpp")
 set(SOURCES ${SOURCES} ${ANTLR4_GENERATED_SOURCES})
 
 # 头文件目录
