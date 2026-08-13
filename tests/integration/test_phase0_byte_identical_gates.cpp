@@ -40,6 +40,18 @@ static std::string run_cmd(const std::string& cmd) {
     return out;
 }
 
+// Symbol types that are NOT ABI commitments (template instantiation noise):
+//   W — weak symbol       (dynamic linker coalesces with strong defs)
+//   V — weak object       (same semantics as W for data)
+// These appear/disappear with any TU-level template instantiation change
+// (e.g. when a header stops being ODR-used by a particular TU), tracking
+// compiler state rather than ABI. They MUST NOT trigger the byte-identical
+// gate — see Oracle H3 (chore(test): harden phase0_gate1 against
+// weak-symbol drift) for diagnosis.
+static bool is_template_instantiation_noise(const std::string& sym_type) {
+    return sym_type == "W" || sym_type == "V";
+}
+
 static std::string extract_symbols(const std::string& nm_output) {
     std::set<std::string> syms;
     std::istringstream iss(nm_output);
@@ -56,6 +68,7 @@ static std::string extract_symbols(const std::string& nm_output) {
                 start = 1;
             }
             if (start + 1 < toks.size()) {
+                if (is_template_instantiation_noise(toks[start])) continue;
                 syms.insert(toks[start] + " " + toks[start + 1]);
             }
         }
@@ -97,6 +110,32 @@ static fs::path baseline_nm_path() {
     return "/tmp/baseline-artifacts/libcudart-nm-before.txt";
 }
 
+// ADR-citation manifest: T-type symbols explicitly authorized as stable
+// ABI commitments to libcudart.so. Each entry MUST reference the ADR
+// (and section) that authorizes the export. Empty after ADR-0029 §D5
+// (cpptlm_module.cpp removed from cudart library — ptxemu_image_* now
+// lives exclusively in libptxemu_device.so).
+//
+// Future Phase ABI additions: append the T symbol here with the ADR
+// reference. Without a manifest entry, the gate fails with a clear
+// message naming the undeclared symbol.
+static const std::set<std::string> kAllowedAdditions = {
+};
+
+static std::set<std::string> diff_set(const std::string& current,
+                                      const std::string& baseline) {
+    std::set<std::string> cur, base;
+    std::istringstream cs(current), bs(baseline);
+    std::string line;
+    while (std::getline(cs, line)) if (!line.empty()) cur.insert(line);
+    while (std::getline(bs, line)) if (!line.empty()) base.insert(line);
+    std::set<std::string> added;
+    std::set_difference(cur.begin(), cur.end(),
+                        base.begin(), base.end(),
+                        std::inserter(added, added.begin()));
+    return added;
+}
+
 // ---------------------------------------------------------------------------
 // Gate 1: nm -D --defined-only libcudart.so symbol surface unchanged
 // ---------------------------------------------------------------------------
@@ -115,6 +154,20 @@ TEST_CASE("Gate 1: nm -D --defined-only libcudart.so symbol surface unchanged",
                                   std::istreambuf_iterator<char>());
         std::string baseline = extract_symbols(baseline_raw);
         REQUIRE(current == baseline);
+
+        // Focused secondary check: when the diff above has new T-type
+        // symbols not declared in kAllowedAdditions, surface them as a
+        // distinct failure so the maintainer sees exactly which symbol
+        // needs an ADR citation (rather than wading through the full dump).
+        std::set<std::string> added = diff_set(current, baseline);
+        std::set<std::string> undeclared;
+        std::set_difference(added.begin(), added.end(),
+                            kAllowedAdditions.begin(),
+                            kAllowedAdditions.end(),
+                            std::inserter(undeclared, undeclared.begin()));
+        INFO("Undeclared T-type additions (add to kAllowedAdditions "
+             "with an ADR citation):");
+        REQUIRE(undeclared.empty());
     } else {
         fs::create_directories("/tmp/baseline-artifacts");
         std::ofstream f(baseline_nm);
