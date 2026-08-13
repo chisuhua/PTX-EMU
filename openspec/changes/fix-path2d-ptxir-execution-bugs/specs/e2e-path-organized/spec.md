@@ -3,6 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: tests/e2e/ 路径化目录结构
+modifies: e2e-path-organized
 
 PTX-EMU SHALL keep `tests/e2e/` organized into four `path_X/` subdirectories, each with its own `CMakeLists.txt`. Existing test files SHALL be moved using `git mv` so that file history is preserved. The re-organization SHALL NOT change the existing `e2e` ctest label and SHALL keep ctest names with the `e2e_` prefix.
 
@@ -19,6 +20,7 @@ The re-organization SHALL apply only to `tests/e2e/`. The `tests/unit/` and `tes
 - **THEN** 该子目录独立编译，不依赖其他 path_X/
 
 ### Requirement: ctest label 路径过滤
+modifies: e2e-path-organized
 
 PTX-EMU SHALL keep all path-related E2E tests labeled with `LABELS "e2e;path_1X;..."`, including a new `e2e;path_2D;cuda_samples` label for the third-party CUDA Samples harness. The label system SHALL NOT replace the existing labels and SHALL NOT rename archived test files.
 
@@ -38,6 +40,7 @@ PTX-EMU SHALL keep all path-related E2E tests labeled with `LABELS "e2e;path_1X;
 - **THEN** 覆盖所有 path_X/ 子目录内测试，包括新增的 CUDA Samples path_2D harness，不静默 skip
 
 ### Requirement: 重组织后全量回归通过
+modifies: e2e-path-organized
 
 PTX-EMU SHALL keep the existing kernel/cosim tests in place and SHALL ensure `ctest --output-on-failure` passes after the image-executor fix and the new CUDA Samples harness are added.
 

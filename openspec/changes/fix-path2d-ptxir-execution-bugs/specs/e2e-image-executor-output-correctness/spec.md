@@ -3,6 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: cute_rmsnorm output baseline 验证
+modifies: e2e-image-executor-output-correctness
 
 PTX-EMU SHALL provide an E2E test under `tests/e2e/path_2D_image_executor/` that validates Image Executor output against the byte-level baseline format defined by `tests/ptxir/baselines/baseline_format.md`. The test SHALL load the PTXIR fixture through the path_2D image-executor API, execute the kernel synchronously, and compare the output buffer with `tests/ptxir/baselines/cute_rmsnorm_output_baseline.bin` using `memcmp == 0`. A missing baseline SHALL be an explicit test failure, not an automatic generation or skip.
 
@@ -12,6 +13,7 @@ PTX-EMU SHALL provide an E2E test under `tests/e2e/path_2D_image_executor/` that
 - **THEN** the output buffer is byte-identical to the baseline
 
 ### Requirement: D3 mutation 回归测试
+modifies: e2e-image-executor-output-correctness
 
 PTX-EMU SHALL test that loading and executing the same image twice produces independent handles and byte-identical outputs. The test SHALL verify that synchronous execution does not mutate the stored image bytes and that both handles can be unloaded successfully. The test SHALL preserve the existing ABI and `[SINGLE-GPU-INSTANCE]` assumptions documented by ADR-0029.
 
@@ -21,6 +23,7 @@ PTX-EMU SHALL test that loading and executing the same image twice produces inde
 - **THEN** the handles differ, both executions complete, outputs are byte-identical, and both unloads succeed
 
 ### Requirement: ABI baseline 回归
+modifies: e2e-image-executor-output-correctness
 
 PTX-EMU SHALL verify that the exported `libptxemu_device.so` ABI symbols remain byte-identical to the checked-in baseline after the image-executor fix.
 
@@ -30,6 +33,7 @@ PTX-EMU SHALL verify that the exported `libptxemu_device.so` ABI symbols remain 
 - **THEN** the diff between the exported symbol list and `libptxemu_abi_baseline.txt` is empty
 
 ### Requirement: Error path coverage
+modifies: e2e-image-executor-output-correctness
 
 PTX-EMU SHALL include at least four error-path tests for the image executor. The tests SHALL cover loading a garbage or non-PTXIR payload, executing an invalid handle, unloading an invalid handle, and querying a kernel name that does not exist in the embedded or standalone image manifest.
 
