@@ -302,13 +302,6 @@ extern "C" int ptxemu_module_version(void) {
     return g_image_executor->version();
 }
 
-extern "C" int ptxemu_mem_register(uint64_t base, size_t size) {
-    if (base == 0 || size == 0) return -EINVAL;
-    if ((base & 0xFFF) != 0 || (size & 0xFFF) != 0) return -EINVAL;
-    if (base + size < base) return -EOVERFLOW;
-    return CudaDriver::instance().register_external_region(base, size);
-}
-
 extern "C" int ptxemu_image_kernel_count(uint64_t handle) {
     return g_image_executor->kernel_count(handle);
 }

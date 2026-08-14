@@ -41,14 +41,6 @@ public:
     uint8_t *get_global_pool() const;
     size_t get_global_size() const;
 
-    // Phase R (audit Defect 3): register an external memory region
-    // accessible to PTX-EMU (e.g., UsrLinuxEmu HAL heap at 0x100000000).
-    // Stub implementation — Phase 1 will replace with real MemoryBackend.
-    // @param base Base address (page-aligned)
-    // @param size Size in bytes (page-aligned)
-    // @return 0 on success, -EINVAL on bad params
-    int register_external_region(uint64_t base, size_t size);
-
     size_t global_size_;
 
 private:

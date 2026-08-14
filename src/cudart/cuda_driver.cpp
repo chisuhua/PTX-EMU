@@ -127,11 +127,3 @@ size_t CudaDriver::get_global_size() const { return global_size_; }
 //         param_allocations_.erase(it);
 //     }
 // }
-int CudaDriver::register_external_region(uint64_t base, size_t size) {
-  if (base == 0 || size == 0) return -EINVAL;
-  // Phase R stub — does not yet wire SimpleMemory to external region.
-  // Real implementation in Phase 1+ via MemoryBackend abstraction.
-  // Returns 0 (success) so audit Defect 3 ABI shape is in place;
-  // memory domain semantics deferred to Phase 1.
-  return 0;
-}
