@@ -74,13 +74,19 @@ TEST_CASE("ptxemu_image_kernel_name: invalid handle returns -EINVAL", "[unit][cp
     REQUIRE(ptxemu_image_kernel_name(0xDEADBEEF, buf, sizeof(buf)) == -EINVAL);
 }
 
-TEST_CASE("ptxemu_image_execute: valid handle returns 0", "[unit][cpptlm_module]") {
+TEST_CASE("ptxemu_image_execute: valid handle returns -EINVAL without g_gpu_context",
+          "[unit][cpptlm_module]") {
+    // Plan task 3.4: when g_gpu_context is not initialized, execute() must
+    // return -EINVAL instead of silently reporting success. Unit tests do
+    // not set up g_gpu_context, so the synchronous-completion path is not
+    // exercised here — see e2e/path_2D_image_executor/test_image_executor_synchronous.cpp
+    // for the end-to-end "sentinel write observable" contract.
     auto bytes = read_fixture();
     uint64_t handle = ptxemu_image_load(bytes.data(), bytes.size());
     REQUIRE(handle != 0);
     void* args[] = {nullptr};
     int rc = ptxemu_image_execute(handle, 1, 1, 1, 32, 1, 1, 0, args, 0);
-    REQUIRE(rc == 0);
+    REQUIRE(rc == -EINVAL);
     REQUIRE(ptxemu_image_unload(handle) == 0);
 }
 

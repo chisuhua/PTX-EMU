@@ -92,6 +92,9 @@ public:
                 size_t shared_mem_bytes,
                 void** kernel_args, size_t args_count) {
         (void)args_count;
+        // Plan task 3.4: explicit missing-context branch — must not report
+        // successful execution when the shared GPU context is unavailable.
+        if (g_gpu_context == nullptr) return -EINVAL;
         std::lock_guard<std::mutex> exec_lock(exec_mu_);
         std::vector<uint8_t> bytes_copy;
         {
@@ -128,6 +131,10 @@ public:
 
         interpreter.launchPtxInterpreter(ctx, kernel_name, kernel_args,
                                          grid_dim, block_dim, shared_mem_bytes);
+        // Plan task 3.3: synchronous completion — drive exe_once() until the
+        // kernel marks itself complete. The call stays inside exec_mu_ so
+        // concurrent same-handle launches remain serialized.
+        g_gpu_context->wait_for_completion();
         return 0;
     }
 
@@ -181,6 +188,10 @@ public:
             if (it == images_.end()) return -1;
             bytes_copy = it->second;
         }
+        // Plan task 3.4: explicit missing-context branch (must not report
+        // success). Placed AFTER the handle lookup so that a stale handle
+        // still returns -1 (pre-existing contract for invalid handle).
+        if (g_gpu_context == nullptr) return -EINVAL;
 
         std::vector<StatementContext> stmts;
         try {
@@ -210,6 +221,8 @@ public:
 
         interpreter.launchPtxInterpreter(ctx, kn, kernel_args,
                                         grid_dim, block_dim, shared_mem_bytes);
+        // Plan task 3.3: synchronous completion (see execute() for rationale).
+        g_gpu_context->wait_for_completion();
         return 0;
     }
 

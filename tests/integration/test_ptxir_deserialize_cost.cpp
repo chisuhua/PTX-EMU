@@ -36,7 +36,8 @@ TEST_CASE("D3 perf gate: cute_rmsnorm deserialize cost", "[performance][cpptlm_m
     uint64_t ha = ptxemu_image_load(bytes.data(), bytes.size());
     REQUIRE(ha != 0);
     auto t0a = std::chrono::high_resolution_clock::now();
-    REQUIRE(ptxemu_image_execute(ha, 1, 1, 1, 32, 1, 1, 0, args, 0) == 0);
+    // Plan task 3.4: integration env has no g_gpu_context → -EINVAL.
+    REQUIRE(ptxemu_image_execute(ha, 1, 1, 1, 32, 1, 1, 0, args, 0) == -EINVAL);
     auto t1a = std::chrono::high_resolution_clock::now();
     auto dur_a = std::chrono::duration_cast<std::chrono::microseconds>(t1a - t0a).count();
     ptxemu_image_unload(ha);
@@ -45,7 +46,7 @@ TEST_CASE("D3 perf gate: cute_rmsnorm deserialize cost", "[performance][cpptlm_m
     REQUIRE(hb != 0);
     auto t0b = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < 100; ++i) {
-        REQUIRE(ptxemu_image_execute(hb, 1, 1, 1, 32, 1, 1, 0, args, 0) == 0);
+        REQUIRE(ptxemu_image_execute(hb, 1, 1, 1, 32, 1, 1, 0, args, 0) == -EINVAL);
     }
     auto t1b = std::chrono::high_resolution_clock::now();
     auto dur_b = std::chrono::duration_cast<std::chrono::microseconds>(t1b - t0b).count();

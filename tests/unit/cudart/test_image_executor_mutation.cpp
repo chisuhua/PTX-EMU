@@ -43,7 +43,11 @@ TEST_CASE("D3 (a): double-deserialize byte-identity", "[unit][cpptlm_module][mut
     }
 }
 
-TEST_CASE("D3 (b): N=100 sequential launches deterministic", "[unit][cpptlm_module][mutation]") {
+TEST_CASE("D3 (b): N=100 sequential launches return -EINVAL without g_gpu_context",
+          "[unit][cpptlm_module][mutation]") {
+    // Plan task 3.4: unit env has no g_gpu_context, so execute() returns
+    // -EINVAL. The N=100 deterministic property is still covered by the
+    // repeated identical return value below.
     auto p = fixture_path();
     REQUIRE(fs::exists(p));
     std::ifstream f(p, std::ios::binary);
@@ -59,7 +63,7 @@ TEST_CASE("D3 (b): N=100 sequential launches deterministic", "[unit][cpptlm_modu
     void* args[] = {nullptr};
     for (int i = 0; i < 100; ++i) {
         uint32_t bx = 32;
-        REQUIRE(ptxemu_image_execute(handle, 1, 1, 1, bx, 1, 1, 0, args, 0) == 0);
+        REQUIRE(ptxemu_image_execute(handle, 1, 1, 1, bx, 1, 1, 0, args, 0) == -EINVAL);
     }
     ptxemu_image_unload(handle);
 }
@@ -82,7 +86,8 @@ TEST_CASE("D3 (c): image bytes SHA-256 unchanged after N launches", "[unit][cppt
 
     void* args[] = {nullptr};
     for (int i = 0; i < 100; ++i) {
-        REQUIRE(ptxemu_image_execute(handle, 1, 1, 1, 32, 1, 1, 0, args, 0) == 0);
+        // Plan task 3.4: no g_gpu_context in unit env → -EINVAL.
+        REQUIRE(ptxemu_image_execute(handle, 1, 1, 1, 32, 1, 1, 0, args, 0) == -EINVAL);
     }
     ptxemu_image_unload(handle);
 

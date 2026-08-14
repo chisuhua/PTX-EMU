@@ -70,9 +70,13 @@ TEST_CASE("DL-isolated: dlopen libptxemu_device.so without libcudart.so dependen
     uint64_t h = sym_load(bytes.data(), bytes.size());
     REQUIRE(h != 0);
 
+    // Plan task 3.4: DL-isolated path has no g_gpu_context (no __cudaRegisterFatBinary
+    // call happens before execute). The new contract returns -EINVAL rather than
+    // silently reporting success. See e2e/path_2D_image_executor/test_image_executor_synchronous.cpp
+    // for the end-to-end "kernel actually runs" contract.
     void* args[] = {nullptr};
     int rc = sym_execute(h, 1, 1, 1, 32, 1, 1, 0, args, 0);
-    REQUIRE(rc == 0);
+    REQUIRE(rc == -EINVAL);
 
     REQUIRE(sym_unload(h) == 0);
 
