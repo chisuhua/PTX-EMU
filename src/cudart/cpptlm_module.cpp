@@ -143,27 +143,7 @@ public:
 
         interpreter.launchPtxInterpreter(ctx, kernel_name, kernel_args,
                                          grid_dim, block_dim, shared_mem_bytes);
-
-        // Phase R: drive-to-completion in-call. Without this, kernel enqueues
-        // but never runs (audit §4.2 chain 8-11). 100k cycle cap prevents
-        // infinite loop on hung kernels.
-        wait_for_kernel_completion(handle);
-
         return 0;
-    }
-
-    // Phase R: in-call drive-to-completion (audit §10.2 design choice)
-    // Avoids cross-.so threading by calling g_gpu_context->exe_once()
-    // in a loop until kernel marked complete. CppTLM IPtxEmuDriver::advance
-    // seam remains for future tick-driven integration.
-    void wait_for_kernel_completion(uint64_t /*kernel_id*/, int max_cycles = 100000) {
-        if (g_gpu_context == nullptr) return;
-        int cycles = 0;
-        while (cycles++ < max_cycles) {
-            EXE_STATE state = g_gpu_context->get_state();
-            if (state == EXIT && !g_gpu_context->has_pending_tasks()) break;
-            g_gpu_context->exe_once();
-        }
     }
 
     int unload(uint64_t handle) {
@@ -245,7 +225,6 @@ public:
 
         interpreter.launchPtxInterpreter(ctx, kn, kernel_args,
                                         grid_dim, block_dim, shared_mem_bytes);
-        wait_for_kernel_completion(handle);
         return 0;
     }
 
