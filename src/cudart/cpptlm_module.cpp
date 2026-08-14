@@ -6,7 +6,6 @@
 #include "cudart/ptxir_loader.h"
 #include "ptx_ir/ptx_context.h"
 #include "ptx_ir/ptxir_format.h"
-#include "ptxsim/gpu_context.h"  // Phase R: lazy-init g_gpu_context (audit Defect 2)
 #include "utils/logger.h"
 
 #include <atomic>
@@ -37,15 +36,6 @@ namespace cudart {
 //       (g_image_executor constructed independently; __cudaRegisterFatBinary
 //        SingletonGuard applies only to the legacy path)
 class PtxEmuImageExecutor {
-private:
-    // Phase R: lazy-init GPUContext lifecycle (audit fix)
-    // Audit §4.3: g_gpu_context must be created + init() called before any
-    // image_execute(). Constructor does NOT call set_simple_memory — that
-    // happens in init(). Skipping init() leaves CudaDriver::simple_memory_
-    // nullptr (Defect 2 root cause).
-    static std::once_flag g_init_flag;
-    static void EnsureGpuContextReady();
-
 public:
     static PtxEmuImageExecutor& instance() {
         static PtxEmuImageExecutor inst;
@@ -57,11 +47,6 @@ public:
 
     uint64_t load_image(const uint8_t* bytes, size_t size) {
         if (bytes == nullptr || size == 0) return 0;
-
-        // Phase R audit fix: ensure GPUContext + CudaDriver backend ready
-        // BEFORE any image bytes processing. Without this, execute() would
-        // silently succeed (rc=0) but kernel wouldn't run (Defect 2).
-        EnsureGpuContextReady();
 
         bool is_standalone_ptxir = (size >= 4 &&
             std::memcmp(bytes, "PTXI", 4) == 0);
@@ -236,22 +221,6 @@ private:
     std::unordered_map<uint64_t, std::vector<uint8_t>> images_;
     std::atomic<uint64_t> next_handle_{1};
 };
-
-// Phase R: g_gpu_context lazy-init implementation
-std::once_flag PtxEmuImageExecutor::g_init_flag;
-
-void PtxEmuImageExecutor::EnsureGpuContextReady() {
-    std::call_once(g_init_flag, []() {
-        if (g_gpu_context == nullptr) {
-            // Use default config (empty path); PTX-EMU allows runtime default
-            g_gpu_context = std::make_unique<GPUContext>("");
-            g_gpu_context->init();  // CRITICAL: init() calls set_simple_memory
-                                    // (gpu_context.cpp:34-46). Constructor alone
-                                    // does NOT — see audit §4.3 risk.
-            PTX_INFO_EMU("Phase R: g_gpu_context lazy-initialized for dlsym path");
-        }
-    });
-}
 
 static PtxEmuImageExecutor* g_image_executor = &PtxEmuImageExecutor::instance();
 
