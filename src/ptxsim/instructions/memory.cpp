@@ -5,7 +5,6 @@
 #include "ptxsim/warp_context.h"
 #include "ptxsim/warp_state.h"
 #include "ptxsim/utils/qualifier_utils.h"
-#include "cudart/cpptlm_bridge.h"  // D-PTX-3: CppTLM bridge for GLOBAL LD/ST timing
 #include <iostream>
 
 void LdHandler::processOperation(ThreadContext *context, void *op[2],
@@ -23,37 +22,6 @@ void LdHandler::processOperation(ThreadContext *context, void *op[2],
 
   MemorySpace space = getAddressSpace(qualifier);
   size_t data_size = getBytes(qualifier);
-
-  // ========================================================================
-  // Bridge 路径 (D-PTX-3 + Task #4): GLOBAL LD 走 CppTLM NoC timing
-  // ========================================================================
-  // 当 g_cpptlm_bridge != nullptr 且 space == GLOBAL 时：
-  // 1. 调用 bridge->global_access(device_addr, 0, /*LD=*/0) 获取 latency
-  // 2. latency 非 UINT64_MAX：设置 blocked_cycles + HardwareMemoryManager::access
-  // 3. UINT64_MAX 或 nullptr：fallback 到原有路径
-  // ========================================================================
-  if (g_cpptlm_bridge && space == MemorySpace::GLOBAL) {
-    uint64_t device_addr = reinterpret_cast<uint64_t>(host_ptr);
-    uint64_t latency = g_cpptlm_bridge->global_access(device_addr, 0, /*LD=*/0);
-
-    if (latency != UINT64_MAX) {
-      // timing-only 预计算：数据仍在 SimpleMemory 完成
-      WarpContext *warp_ctx = context->warp_context_;
-      if (warp_ctx != nullptr && latency > 0) {
-        auto &ws = warp_ctx->get_warp_state();
-        for (auto &thread : ws.threads) {
-          if (thread.is_active && !thread.is_exited) {
-            thread.is_blocked = true;
-            thread.blocked_cycles_remaining = static_cast<uint64_t>(latency);
-          }
-        }
-      }
-      HardwareMemoryManager::instance().access(host_ptr, dst, data_size,
-                                               false, space);
-      return;
-    }
-    // UINT64_MAX: fallback 到原有路径
-  }
 
   if (!QvecHasQ(qualifier, Qualifier::Q_V2) &&
       !QvecHasQ(qualifier, Qualifier::Q_V4)) {
@@ -120,32 +88,6 @@ void StHandler::processOperation(ThreadContext *context, void *op[2],
   size_t data_size = getBytes(qualifiers);
   uint64_t src_val = 0;
   memcpy(&src_val, src, data_size);
-
-  // ========================================================================
-  // Bridge 路径 (D-PTX-3 + Task #4): GLOBAL ST 走 CppTLM NoC timing
-  // ========================================================================
-  if (g_cpptlm_bridge && space == MemorySpace::GLOBAL) {
-    uint64_t device_addr = reinterpret_cast<uint64_t>(host_ptr);
-    uint64_t latency = g_cpptlm_bridge->global_access(device_addr, src_val, /*ST=*/1);
-
-    if (latency != UINT64_MAX) {
-      // timing-only 预计算：数据仍在 SimpleMemory 完成
-      WarpContext *warp_ctx = context->warp_context_;
-      if (warp_ctx != nullptr && latency > 0) {
-        auto &ws = warp_ctx->get_warp_state();
-        for (auto &thread : ws.threads) {
-          if (thread.is_active && !thread.is_exited) {
-            thread.is_blocked = true;
-            thread.blocked_cycles_remaining = static_cast<uint64_t>(latency);
-          }
-        }
-      }
-      HardwareMemoryManager::instance().access(host_ptr, src, data_size,
-                                               /*is_write=*/true, space);
-      return;
-    }
-    // UINT64_MAX: fallback 到原有路径
-  }
 
   // ========================
   // 1. 标量 ST（无向量）
