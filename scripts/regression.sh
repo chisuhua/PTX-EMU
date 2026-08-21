@@ -1,9 +1,7 @@
 #!/bin/bash
 # PTX-EMU 回归测试 — 标准同步模式（默认）
 #
-# 同一份 binary，默认走同步路径（g_cpptlm_bridge == nullptr）
-# EMU_COSIM=1 激活协同仿真 → 见 scripts/regression-cosim.sh
-#
+# 同一份 binary 走同步路径（libcudart.so 是 sync-only runtime）
 # 用法:
 #   ./scripts/regression.sh              # 自动构建 + 全量回归
 #   ./scripts/regression.sh --no-build   # 跳过构建
@@ -33,7 +31,7 @@ while [[ $# -gt 0 ]]; do
 
 说明:
   默认同步模式 — 不设置任何环境变量
-  g_cpptlm_bridge == nullptr → cudaLaunchKernel 走同步执行路径
+  cudaLaunchKernel 走同步执行路径（launch 内 wait_for_completion）
 HELP
             exit 0 ;;
         *) echo "未知选项: $1"; exit 1 ;;
@@ -73,7 +71,7 @@ run_test() {
     fi
 }
 
-echo -e "${CYAN}[TEST] 单元测试 (88)${NC}"
+echo -e "${CYAN}[TEST] 单元测试 (106)${NC}"
 run_test "unit" -L unit
 
 echo -e "\n${CYAN}[TEST] 集成测试${NC}"

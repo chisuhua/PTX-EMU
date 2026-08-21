@@ -107,7 +107,7 @@ cd build && ctest                                           # 全量测试
 | File | Coverage |
 |------|----------|
 | `configs/AGENTS.md` | GPU arch JSON + debug INI schema |
-| `include/cudart/AGENTS.md` | cpptlm_bridge ABI + public headers |
+| `include/cudart/AGENTS.md` | ABI guards + public headers (abi_guards.h, cuda_driver.h, cudart_intrinsics.h) |
 | `src/cudart/AGENTS.md` | CUDA runtime interception |
 | `src/grammar/AGENTS.md` | ANTLR4 grammar modification |
 | `src/ptx_ir/AGENTS.md` | IR types + X-Macro + PTXIR |

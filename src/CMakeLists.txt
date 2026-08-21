@@ -42,7 +42,6 @@ add_custom_target(GenerateParser
 # re-runs glob when new files appear.
 file(GLOB SOURCES CONFIGURE_DEPENDS
     cudart/*.cpp
-    cudart/cpptlm_bridge/*.cpp
     utils/cubin_utils.cpp
     ptxsim/atomic/atomic_mutex.cpp  # Phase 2 of implement-atomic-cas-and-true-atomicity
 )
