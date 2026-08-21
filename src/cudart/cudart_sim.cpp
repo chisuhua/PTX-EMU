@@ -99,108 +99,16 @@ size_t _sharedMem;
 extern std::unique_ptr<GPUContext> g_gpu_context;
 std::unique_ptr<PtxInterpreter> g_ptx_interpreter;
 
-// g_bridge_user_override 已搬迁到 PtxEmuDriverShim.cpp per ADR-0021 v1.1 amendment
-extern bool ptxemu_is_bridge_user_override();
-
-#include "cudart/cpptlm_bridge.h"
-#include "cudart/cpptlm_bridge/PtxEmuDriverShim.h"
-#include "cudart/stub_bridge.h"
-
-// ============================================================================
-// CppTLM D1-Full P1: cpptlm_set_driver ABI (PTX-EMU → CppTLM)
-// ============================================================================
-// 方向: PTX-EMU 向 CppTLM 注册 PtxEmuDriverShim 实例 + 方法 vtable。
-// CppTLM 侧的 DriverWrapper 通过此 vtable 调用 shim 的 advance() 等。
-//
-// 弱符号: 本文件提供空实现（无 CppTLM 时 no-op）。CppTLM 的
-// libcpptlm_cudart.so 加载后其强定义覆盖此弱符号。
-// ============================================================================
-static PtxEmuDriverShim* g_ptx_emu_driver_shim = nullptr;
-
-// ── Vtable 包装函数 ──
-static int shim_advance(void* shim, uint32_t max, uint32_t* actual) {
-    return static_cast<PtxEmuDriverShim*>(shim)->advance(max, *actual);
-}
-static void shim_inject_scoreboard(void* shim, uint32_t sm_id, void* sb_ptr) {
-    // CppTLM passes unique_ptr via void*; PTX-EMU takes ownership
-    auto sb = std::unique_ptr<IScoreboard>(static_cast<IScoreboard*>(sb_ptr));
-    static_cast<PtxEmuDriverShim*>(shim)->inject_scoreboard(sm_id, std::move(sb));
-}
-static void shim_inject_pipeline(void* shim, uint32_t sm_id, void* pp_ptr) {
-    auto pp = std::unique_ptr<IPipelineLatencyProvider>(
-        static_cast<IPipelineLatencyProvider*>(pp_ptr));
-    static_cast<PtxEmuDriverShim*>(shim)->inject_pipeline(sm_id, std::move(pp));
-}
-static void shim_inject_tensor_core(void* shim, uint32_t sm_id, void* tc_ptr) {
-    auto tc = std::unique_ptr<ITensorCoreTiming>(
-        static_cast<ITensorCoreTiming*>(tc_ptr));
-    static_cast<PtxEmuDriverShim*>(shim)->inject_tensor_core(sm_id, std::move(tc));
-}
-static int shim_is_kernel_complete(void* shim, uint64_t kid) {
-    return static_cast<PtxEmuDriverShim*>(shim)->is_kernel_complete(kid) ? 1 : 0;
-}
-static void shim_mark_complete(void* shim, uint64_t kid) {
-    static_cast<PtxEmuDriverShim*>(shim)->mark_complete(kid);
-}
-static uint32_t shim_num_sms(void* shim) {
-    return static_cast<PtxEmuDriverShim*>(shim)->num_sms();
-}
-static void shim_destroy(void* shim) {
-    delete static_cast<PtxEmuDriverShim*>(shim);
-}
-
-// CppTLM D1-Full P1 weak no-op: 无 CppTLM 时安全 fallback。
-// CppTLM 的 cpptlm_core（通过 --whole-archive 链接）提供强定义覆盖此弱符号。
-extern "C" __attribute__((weak)) void cpptlm_set_driver(void* shim, PtxEmuDriverApi api) {
-    PTX_DEBUG_EMU("cpptlm_set_driver (weak no-op): shim=%p", shim);
-    (void)shim;
-    (void)api;
-}
-
 // ============================================================================
 // 异步 kernel 注册表 (D-PTX-1 + Task #2)
 // ============================================================================
-// PendingKernel: 记录已提交但未完成的 kernel
-// g_pending_kernels: kernel_id → PendingKernel 映射
 // g_active_streams: 活跃 stream ID 集合（含默认 stream 0）
 // ============================================================================
-struct PendingKernel {
-    uint64_t kernel_id;
-    std::string kernel_name;
-    uint64_t stream_id;
-    Dim3 grid_dim;
-    Dim3 block_dim;
-    size_t shared_mem;
-    std::vector<std::vector<uint8_t>> args_copy;  // deep-copy 的参数
-    bool completed = false;
-};
-
 static std::atomic<uint64_t> next_kernel_id{1};
-static std::unordered_map<uint64_t, PendingKernel> g_pending_kernels;
 static std::unordered_set<uint64_t> g_active_streams{0};  // 默认包含 stream 0
-static std::mutex g_pending_kernels_mutex;
 
 static uint64_t generate_kernel_id() {
     return next_kernel_id.fetch_add(1);
-}
-
-static size_t count_kernel_args(void** args) {
-    if (!args) return 0;
-    size_t count = 0;
-    while (args[count] != nullptr) ++count;
-    return count;
-}
-
-// auto-co-sim-standalone D2: 读取 PTX_EMU_MAX_ADVANCE_CYCLES 环境变量
-// 返回 advance ceiling 上限（默认 10,000,000）。
-// 每次 sync 调用独立计算（不跨调用累计）。
-static uint32_t get_max_advance_cycles() {
-    const char* env = std::getenv("PTX_EMU_MAX_ADVANCE_CYCLES");
-    if (env && env[0] != '\0') {
-        long val = std::atol(env);
-        if (val > 0) return static_cast<uint32_t>(val);
-    }
-    return 10'000'000;  // 默认 10M cycles
 }
 
 // 配置文件路径
@@ -277,43 +185,6 @@ void initialize_environment() {
         g_gpu_context = std::make_unique<GPUContext>();
         g_gpu_context->init();
         g_ptx_interpreter = std::make_unique<PtxInterpreter>();
-    }
-
-    // =====================================================================
-    // CppTLM D1-Full P1: 创建 PtxEmuDriverShim + vtable + 注册到 CppTLM
-    // g_gpu_context 已初始化完成，构建 PtxEmuDriverApi vtable 并通过
-    // cpptlm_set_driver() 传递给 CppTLM。
-    //
-    // Weak symbol: 无 CppTLM 时 cpptlm_set_driver 是 no-op（安全）。
-    // CppTLM 的 cpptlm_set_driver 强定义（通过 --whole-archive 在 libcudart.so 中覆盖弱符号）。
-    // =====================================================================
-    {
-        auto* shim = new PtxEmuDriverShim(g_gpu_context.get());
-        g_ptx_emu_driver_shim = shim;
-
-        PtxEmuDriverApi api{};
-        api.advance             = shim_advance;
-        api.inject_scoreboard   = shim_inject_scoreboard;
-        api.inject_pipeline     = shim_inject_pipeline;
-        api.inject_tensor_core  = shim_inject_tensor_core;
-        api.is_kernel_complete  = shim_is_kernel_complete;
-        api.mark_complete       = shim_mark_complete;
-        api.num_sms             = shim_num_sms;
-        api.destroy             = shim_destroy;
-
-        cpptlm_set_driver(shim, api);
-
-PTX_INFO_EMU("PtxEmuDriverShim registered (ctx=%p, shim=%p)",
-                     (void*)g_gpu_context.get(), (void*)shim);
-
-        // auto-co-sim-standalone: 默认同步模式，EMU_COSIM=1 激活协同仿真
-        if (!ptxemu_is_bridge_user_override()
-            && std::getenv("EMU_COSIM")) {
-            static StubBridge stub_bridge;
-            g_cpptlm_bridge = &stub_bridge;
-            PTX_INFO_EMU("StubBridge auto-attached at %p (EMU_COSIM=1)",
-                         (void*)&stub_bridge);
-        }
     }
 }
 
@@ -694,137 +565,6 @@ cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim, dim3 blockDim,
     }
 
     // ========================================================================
-    // Bridge 异步路径 (D-PTX-1 + Task #2)
-    // ========================================================================
-    // 当 g_cpptlm_bridge != nullptr 时，走异步提交路径：
-    // 1. 生成唯一 kernel_id
-    // 2. deep-copy kernel args（bridge 调用后 host 端 args 可能失效）
-    // 3. 调用 bridge->submit_kernel() 异步提交
-    // 4. 注册到 g_pending_kernels 等待 poll
-    // 5. 立即返回 cudaSuccess
-    // ========================================================================
-    if (g_cpptlm_bridge) {
-        uint64_t kernel_id = generate_kernel_id();
-        uint64_t stream_id = reinterpret_cast<uintptr_t>(stream);
-
-        // deep-copy kernel args
-        std::vector<std::vector<uint8_t>> args_copy;
-        if (args) {
-            // D3: 从 PTX context kernelParams.size() 获取权威参数计数，
-            // SIZE_MAX 哨兵区分"无参 kernel"和"PTX context 未找到"。
-            size_t arg_count = SIZE_MAX;
-            std::vector<size_t> param_byte_sizes_from_ptx;
-            const char* kernel_name = func2name[(uint64_t)func].c_str();
-            if (g_ptx_interpreter) {
-                auto& ptx = g_ptx_interpreter->get_ptx_context();
-                for (auto& kc : ptx.ptxKernels) {
-                    if (kc.kernelName == kernel_name) {
-                        arg_count = kc.kernelParams.size();
-                        param_byte_sizes_from_ptx.reserve(arg_count);
-                        for (auto& p : kc.kernelParams)
-                            param_byte_sizes_from_ptx.push_back(p.byteSize);
-                        break;
-                    }
-                }
-            }
-            if (arg_count == SIZE_MAX) {
-                arg_count = count_kernel_args(args);
-            }
-            args_copy.reserve(arg_count);
-            for (size_t i = 0; i < arg_count; ++i) {
-                if (args[i]) {
-                    size_t param_size = 8;
-                    if (i < param_byte_sizes_from_ptx.size() && param_byte_sizes_from_ptx[i] > 0)
-                        param_size = param_byte_sizes_from_ptx[i];
-                    std::vector<uint8_t> arg_data(param_size);
-                    std::memcpy(arg_data.data(), args[i], param_size);
-                    args_copy.push_back(std::move(arg_data));
-                }
-            }
-        }
-
-        // 准备 bridge 调用参数
-        std::vector<const void*> bridge_args;
-        bridge_args.reserve(args_copy.size());
-        for (const auto& arg : args_copy) {
-            bridge_args.push_back(arg.data());
-        }
-
-        // 调用 bridge 异步提交
-        const char* kernel_name = func2name[(uint64_t)func].c_str();
-        int submit_result = g_cpptlm_bridge->submit_kernel(
-            kernel_id, kernel_name,
-            gridDim.x, gridDim.y, gridDim.z,
-            blockDim.x, blockDim.y, blockDim.z,
-            bridge_args.data(), bridge_args.size(),
-            sharedMem, stream_id);
-
-        if (submit_result != 0) {
-            std::cerr << "Error: CppTLM bridge submit_kernel failed with code " 
-                      << submit_result << std::endl;
-            return (cudaError_t)submit_result;
-        }
-
-        // 注册到 pending_kernels
-        {
-            std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
-            PendingKernel pk;
-            pk.kernel_id = kernel_id;
-            pk.kernel_name = kernel_name;
-            pk.stream_id = stream_id;
-            pk.grid_dim = gridDim3;
-            pk.block_dim = blockDim3;
-            pk.shared_mem = sharedMem;
-            pk.args_copy = std::move(args_copy);
-            pk.completed = false;
-            g_pending_kernels[kernel_id] = std::move(pk);
-        }
-
-        // 确保 stream 在 active_streams 中
-        g_active_streams.insert(stream_id);
-
-        // ====================================================================
-        // CppTLM D1-Full P1: 双路径 enqueue — 同时提交到 GPUContext
-        // 驱动真实 PTX 指令执行（H1 fix + M1 fix + NEW-M1 fix）
-        // ====================================================================
-        // 此前 bridge 路径仅提交到 CppTLM 但不 enqueue 到 GPUContext，
-        // 导致 poll_kernel 立即返回 0（完成）。现在通过
-        // prepareKernelLaunchRequest() 获取完整 IR（statements/name2Sym/
-        // label2pc），追加 mark_complete 回调后提交到 GPUContext::task_queue。
-        //
-        // Null checks: g_ptx_interpreter 可能未初始化（测试场景），
-        // 此时跳过 PTX enqueue，仅走 bridge 提交路径。
-        // ====================================================================
-        if (g_ptx_interpreter && g_gpu_context) {
-            try {
-                auto req = g_ptx_interpreter->prepareKernelLaunchRequest(
-                    g_ptx_interpreter->get_ptx_context(),
-                    func2name[(uint64_t)func], args,
-                    gridDim3, blockDim3, sharedMem);
-
-                // Chain on_complete: first free memory (original callback),
-                // then mark kernel complete (for CppTLM is_kernel_complete)
-                auto orig_cb = std::move(req.on_complete);
-                req.on_complete = [kernel_id,
-                                   orig_cb = std::move(orig_cb)]() {
-                    if (orig_cb) orig_cb();       // free param/global/local memory
-                    if (g_ptx_emu_driver_shim)    // notify CppTLM
-                        g_ptx_emu_driver_shim->mark_complete(kernel_id);
-                };
-
-                g_gpu_context->submit_kernel_request(std::move(req));
-                PTX_DEBUG_EMU("cudaLaunchKernel: enqueued kernel_id=%lu to GPUContext for PTX execution", kernel_id);
-            } catch (const std::exception& e) {
-                PTX_ERROR_EMU("cudaLaunchKernel bridge path: prepareKernelLaunchRequest failed: %s", e.what());
-                // Bridge submit already succeeded; don't fail the launch
-            }
-        }
-
-        PTX_DEBUG_EMU("cudaLaunchKernel: async submit kernel_id=%lu to CppTLM bridge", kernel_id);
-        return cudaSuccess;
-    }
-
-    // ========================================================================
     // 原有同步路径（bridge == nullptr 时字节级相同）
     // ========================================================================
     // 调用 PtxInterpreter 的 launch 函数，传递 sharedMem 参数
@@ -885,14 +625,6 @@ cudaError_t cudaMemcpy(void *dst, const void *src, size_t count,
 
     // per CUDA spec, cudaMemcpy is synchronous - ensure all pending
     // kernels complete before any data transfer.
-    // Guard: only auto-sync for D2H/D2D (reading from device requires
-    // all kernels complete); H2D is non-blocking.
-    if ((kind == cudaMemcpyDeviceToHost || kind == cudaMemcpyDeviceToDevice) &&
-        g_cpptlm_bridge && g_ptx_emu_driver_shim) {
-        cudaError_t sync_err = cudaDeviceSynchronize();
-        if (sync_err != cudaSuccess) return sync_err;
-    }
-
     // 获取CudaDriver的全局内存池地址
     uint64_t global_pool = (uint64_t)CudaDriver::instance().get_global_pool();
     uint64_t global_size = (uint64_t)CudaDriver::instance().get_global_size();
@@ -1093,78 +825,6 @@ cudaError_t cudaMallocHost(void **ptr, size_t size) {
 cudaError_t cudaDeviceSynchronize() {
     PTX_DEBUG_EMU("Called cudaDeviceSynchronize()");
 
-    // ========================================================================
-    // Bridge 路径 (D-PTX-1 + Task #3): poll ALL pending kernels until complete
-    // ========================================================================
-    // B2 (Metis second-pass review): previously single-pass poll returned
-    // cudaSuccess even when kernels were still pending. Per CUDA spec,
-    // cudaDeviceSynchronize blocks until ALL work on ALL streams completes.
-    // Fix: while-loop that polls until g_pending_kernels is empty, erasing
-    // completed kernels (remaining == 0) or unknown ones (UINT64_MAX).
-    // ========================================================================
-    if (g_cpptlm_bridge) {
-        // D2: auto-advance — 驱动 PTX 执行后再轮询
-        if (g_ptx_emu_driver_shim) {
-            uint32_t actual = 0;
-            uint32_t max_cycles = get_max_advance_cycles();
-            int result = g_ptx_emu_driver_shim->advance(max_cycles, actual);
-            if (result < 0) {
-                PTX_ERROR_EMU("cudaDeviceSynchronize: advance failed (err=%d)", result);
-                return (cudaError_t)999;
-            }
-            // advance 耗尽上限且 GPUContext 仍非 EXIT → 清理并返回错误
-            if (g_gpu_context && g_gpu_context->get_state() != EXIT) {
-                PTX_ERROR_EMU("cudaDeviceSynchronize: advance ceiling exhausted "
-                              "(max_cycles=%u, actual=%u). "
-                              "Set PTX_EMU_MAX_ADVANCE_CYCLES to increase limit.",
-                              max_cycles, actual);
-                // 清理执行状态
-                g_gpu_context->clear_requests();
-                {
-                    std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
-                    g_pending_kernels.clear();
-                }
-                return (cudaError_t)999;
-            }
-        }
-
-        while (true) {
-            std::vector<uint64_t> completed_ids;
-            {
-                std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
-                if (g_pending_kernels.empty()) {
-                    break;  // all kernels drained - sync complete
-                }
-                for (const auto& [id, pk] : g_pending_kernels) {
-                    if (!pk.completed) {
-                        uint64_t remaining = g_cpptlm_bridge->poll_kernel(id);
-                        if (remaining == 0 || remaining == UINT64_MAX) {
-                            completed_ids.push_back(id);
-                        }
-                    }
-                }
-            }
-
-            if (!completed_ids.empty()) {
-                std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
-                for (uint64_t id : completed_ids) {
-                    g_pending_kernels.erase(id);
-                }
-            }
-
-            // Re-check: if no progress this iteration and kernels remain,
-            // yield to avoid busy-spinning, then loop again.
-            {
-                std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
-                if (g_pending_kernels.empty()) {
-                    break;
-                }
-            }
-            std::this_thread::yield();
-        }
-        return cudaSuccess;
-    }
-
     // nullptr fallback: 同步是立即完成的
     return cudaSuccess;
 }
@@ -1248,15 +908,12 @@ cudaError_t cudaStreamDestroy(cudaStream_t stream) {
     //   `delete reinterpret_cast<int *>(stream)` — UB because stream is a
     //   uint64_t encoded as void* (never heap-allocated; see cudaStreamCreate
     //   at line ~905). The fake runtime tracks streams in g_active_streams,
-    //   so destruction = erase the ID. Reuses g_pending_kernels_mutex per
-    //   state-modification-audit (lessons-learned §2): create/destroy
-    //   mutate the same set and must be symmetric under the same lock.
+    //   so destruction = erase the ID. g_active_streams insert (cudaStreamCreate)
+    //   is also lock-free, so erase here is symmetric — no mutex needed
+    //   (g_pending_kernels_mutex removed with CppTLM bridge in Phase 2a).
     if (stream) {  // non-default stream (default stream is nullptr/0)
         uint64_t stream_id = reinterpret_cast<uintptr_t>(stream);
-        {
-            std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
-            g_active_streams.erase(stream_id);
-        }
+        g_active_streams.erase(stream_id);
         PTX_DEBUG_EMU("cudaStreamDestroy: removed stream_id=%lu", stream_id);
     }
     // Default stream (nullptr/0): no-op per CUDA spec.
@@ -1267,82 +924,6 @@ cudaError_t cudaStreamSynchronize(cudaStream_t stream) {
     PTX_DEBUG_EMU("Called cudaStreamSynchronize(%p)", stream);
 
     uint64_t stream_id = reinterpret_cast<uintptr_t>(stream);
-
-    // ========================================================================
-    // Bridge 路径 (D-PTX-1 + Task #3): 按 stream_id 过滤 + poll_kernel
-    // ========================================================================
-    // B2 (Metis second-pass review): previously single-pass poll returned
-    // cudaSuccess even when kernels on this stream were still pending. Per
-    // CUDA spec, cudaStreamSynchronize blocks until ALL work on the stream
-    // completes. Fix: while-loop that polls until no pending kernels remain
-    // for stream_id, erasing completed (remaining == 0) or unknown
-    // (UINT64_MAX) kernel IDs.
-    // 迭代器失效修复：先收集 completed_ids，循环外统一 erase
-    // （避免 range-for 中 unordered_map::erase 触发 UB）
-    // ========================================================================
-    if (g_cpptlm_bridge) {
-        // D2: auto-advance only for default stream (0)
-        // per design.md: non-zero stream sync not supported — user should use
-        // cudaDeviceSynchronize for non-default streams.
-        if (stream_id == 0 && g_ptx_emu_driver_shim) {
-            uint32_t actual = 0;
-            uint32_t max_cycles = get_max_advance_cycles();
-            int result = g_ptx_emu_driver_shim->advance(max_cycles, actual);
-            if (result < 0) {
-                PTX_ERROR_EMU("cudaStreamSynchronize: advance failed (err=%d)", result);
-                return (cudaError_t)999;
-            }
-        }
-
-        while (true) {
-            std::vector<uint64_t> completed_ids;
-            {
-                std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
-                bool stream_has_pending = false;
-                for (const auto& [id, pk] : g_pending_kernels) {
-                    if (pk.stream_id == stream_id) {
-                        stream_has_pending = true;
-                        if (!pk.completed) {
-                            uint64_t remaining = g_cpptlm_bridge->poll_kernel(id);
-                            if (remaining == 0 || remaining == UINT64_MAX) {
-                                completed_ids.push_back(id);
-                            }
-                        }
-                    }
-                }
-                if (!stream_has_pending) {
-                    break;  // no pending kernels for this stream - sync done
-                }
-            }
-
-            if (!completed_ids.empty()) {
-                std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
-                for (uint64_t id : completed_ids) {
-                    g_pending_kernels.erase(id);
-                }
-            }
-
-            // Re-check after erase: if the stream still has pending kernels,
-            // yield and loop again to poll them.
-            {
-                std::lock_guard<std::mutex> lock(g_pending_kernels_mutex);
-                bool still_pending = false;
-                for (const auto& [id, pk] : g_pending_kernels) {
-                    if (pk.stream_id == stream_id) {
-                        still_pending = true;
-                        break;
-                    }
-                }
-                if (!still_pending) {
-                    break;
-                }
-            }
-            std::this_thread::yield();
-        }
-
-        PTX_DEBUG_EMU("cudaStreamSynchronize: stream_id=%lu completed", stream_id);
-        return cudaSuccess;
-    }
 
     // nullptr fallback: 同步是立即完成的
     return cudaSuccess;

@@ -23,3 +23,13 @@ set_tests_properties(integration_libptxemu_device PROPERTIES LABELS "integration
 target_link_libraries(integration_libptxemu_device PRIVATE ptxemu_device ptxir_writer ptxir_reader)
 target_compile_definitions(integration_libptxemu_device PRIVATE
     TEST_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/ptxir/fixtures")
+
+# Sync-only runtime contract: cudaStreamSynchronize(nullptr) returns cudaSuccess
+# immediately (per cudart-sync-only-runtime/spec.md Stream lifecycle scenario).
+# Created per Metis 2026-08-21 MUST-RESOLVE #5 (Phase 2a replacement for
+# test_stream_sync_loop.cpp).
+add_catch_test(integration_sync_only_immediate
+    test_sync_only_immediate.cpp
+)
+set_tests_properties(integration_sync_only_immediate PROPERTIES
+    LABELS "integration;cudart;sync")
