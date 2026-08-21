@@ -474,17 +474,24 @@ void RemHandler::processOperation(ThreadContext *context, void **operands,
 
     // 使用模板函数执行取模操作
     process_binary_arithmetic(
-        context, dst, src1, src2, bytes, is_float, is_signed, update_cc, [](auto a, auto b) {
-            if constexpr (std::is_floating_point_v<std::decay_t<decltype(a)>>) {
-                return std::fmod(a, b); // 对于浮点数使用fmod
-            } else if constexpr (std::is_signed_v<std::decay_t<decltype(a)>>) {
-                return a % b; // 有符号整数取模
+        context, dst, src1, src2, bytes, is_float, is_signed, update_cc, [](auto a, auto b) -> std::decay_t<decltype(a)> {
+            // PTX 标量无 128-bit rem 操作 (max s64/u64); libstdc++ 至今未特化
+            // make_unsigned_t<__uint128_t>, GCC 14 同样未修; 整段用
+            // if constexpr (sizeof <= 8) 包围让编译器跳过实例化
+            if constexpr (sizeof(a) <= 8) {
+                if constexpr (std::is_floating_point_v<std::decay_t<decltype(a)>>) {
+                    return std::fmod(a, b);
+                } else if constexpr (std::is_signed_v<std::decay_t<decltype(a)>>) {
+                    return a % b;
+                } else {
+                    return static_cast<
+                               std::make_unsigned_t<std::decay_t<decltype(a)>>>(a) %
+                           static_cast<
+                               std::make_unsigned_t<std::decay_t<decltype(b)>>>(
+                               b);
+                }
             } else {
-                return static_cast<
-                           std::make_unsigned_t<std::decay_t<decltype(a)>>>(a) %
-                       static_cast<
-                           std::make_unsigned_t<std::decay_t<decltype(b)>>>(
-                           b); // 无符号整数取模
+                return a;
             }
         });
 }
