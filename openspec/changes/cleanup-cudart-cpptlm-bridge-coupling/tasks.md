@@ -16,6 +16,7 @@
 - [ ] 2.5 Delete Gate 4 only from `tests/integration/test_phase0_byte_identical_gates.cpp` (L204-209). **ALSO** remove L26 `#include "cudart/cpptlm_bridge.h"` (will be deleted in Phase 3, causing compile error) and update L5-10 gate-list comment to remove Gate 4 reference. Keep Gate 1, 2, 3, 5.
 - [ ] 2.6 Delete `tests/e2e/cosim/*` (3 .cu files): `test_cosim_vector_add.cu`, `test_cosim_infinite_loop_ceiling.cu`, `test_cosim_multi_kernel_drain.cu`.
 - [ ] 2.7 **Delete test CMakeLists registrations FIRST (before build) per Oracle CRITICAL Round-2 finding**: `tests/unit/CMakeLists.txt:767,774,786,838` (4 entries: `unit_cpptlm_bridge`, `unit_cpptlm_attach_bridge`, `unit_cpptlm_cosim_smoke`, `unit_bridge_submit_error`) + `tests/unit/CMakeLists.txt:572-577` (1 entry: `unit_stream_sync_loop` block + comment lines — paired with task 2.3 deletion; include comment lines to avoid orphan comment) + `tests/integration/CMakeLists.txt:573,578,583` (3 entries: `integration_cpptlm_singleton_guard`, `integration_cpptlm_async_launchkernel`, `integration_cpptlm_ld_st_bridge`) + `tests/integration/cudart/CMakeLists.txt:13-16` (1 entry: `integration_abi_stability` block — paired with task 2.4 deletion; CORRECTED per Oracle HIGH Round-2 from previous wrong "15-18") + `tests/e2e/CMakeLists.txt:61,69,75` (3 entries: 3 cosim tests). **MUST**: without these deletions, CMake configure will FAIL with "No rule to make target" or "Cannot find source file" (per Oracle Round-2 CRITICAL: order matters — files 2.1-2.6 deleted first leave dangling CMake refs; must delete CMake refs BEFORE next build). **NOTE**: KEEP `tests/unit/CMakeLists.txt:872` (`unit_cpptlm_module` → `cudart/test_cpptlm_module.cpp`) and `tests/integration/CMakeLists.txt:618` (`integration_cpptlm_module_dlopen` → `test_cpptlm_module_dlopen.cpp`) and `tests/integration/CMakeLists.txt:629` (`integration_cpptlm_module_inflight` → `test_cpptlm_module_inflight.cpp`) — these are `libptxemu_device.so` ABI tests, NOT bridge-specific, MUST be preserved for the future reversal direction.
+- [ ] 2.7b **Reconfigure CMake before build (Metis 2026-08-21 MUST-RESOLVE #3)**: `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release`. **MUST**: run before `cmake --build` to ensure stale CMakeLists refs are removed from the build tree. `cmake --build` auto-reconfigure may not trigger on all generators (e.g., Ninja); explicit reconfigure guarantees consistency.
 - [ ] 2.8 Build: `cmake --build build -j$(nproc)`. Expected: 100% build success. Any compile error indicates a test file references removed symbols.
 - [ ] 2.9 Run regression: `ctest --test-dir build -L unit -L integration -L e2e`. Expected: counts drop, all remaining tests pass.
 - [ ] 2.10 Verify Gate 1 still PASS: `ctest --test-dir build -R integration_phase0_byte_identical_gates`. Expected: Gate 1/2/3/5 pass (Gate 4 deleted, so test count is now 4 instead of 5).
@@ -42,6 +43,7 @@
   - Modify `cudaDeviceSynchronize` (L1105-1160): remove entire `if (g_cpptlm_bridge) { ... }` block including while loop
   - Modify `cudaStreamSynchronize` (L1283-1335): remove entire `if (g_cpptlm_bridge) { ... }` block including while loop (after removal: `cudaStreamSynchronize` returns immediately because sync-mode `cudaLaunchKernel` already completed via `wait_for_completion()`)
   - Modify `cudaStreamDestroy` (L1240-1260): remove `std::lock_guard<std::mutex> lock(g_pending_kernels_mutex)` (no longer needed; `g_active_streams` was already insert-unlocked / erase-locked-asymmetric — both ops become unlocked after `g_pending_kernels_mutex` deletion)
+- [ ] 3.1b **Create sync-only integration test (Metis 2026-08-21 MUST-RESOLVE #5)**: create `tests/integration/cudart/test_sync_only_immediate.cpp` with a Catch2 test case asserting that `cudaStreamSynchronize(nullptr)` returns `cudaSuccess` immediately (locking `cudart-sync-only-runtime/spec.md` scenario). **Rationale**: `test_stream_sync_loop.cpp` (deleted in Phase 1 task 2.3) previously tested the same contract via `g_cpptlm_bridge == nullptr` path; replacement ensures sync-only behavior is regression-tested. Add registration: `add_catch_test(integration_sync_only_immediate cudart/test_sync_only_immediate.cpp)` to `tests/integration/cudart/CMakeLists.txt`.
 - [ ] 3.2 Build: `cmake --build build -j$(nproc)`. Expected: 100% build success.
 - [ ] 3.3 Run regression: `ctest --test-dir build -L unit -L integration -L e2e`. Expected: all remaining tests pass.
 - [ ] 3.4 Verify Gate 1: `ctest --test-dir build -R integration_phase0_byte_identical_gates`. Expected: Gate 1/2/3/5 pass.
@@ -77,28 +79,25 @@
 - [ ] 5.11 Reconfigure + rebuild: `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j$(nproc)`. Expected: 100% build success.
 - [ ] 5.12 Verify no CppTLM symbols in libcudart.so: `nm -D build/lib/libcudart.so | grep -E "cpptlm_|g_cpptlm_bridge"`. Expected: empty.
 - [ ] 5.13 Capture NEW baseline: `nm -D --defined-only build/lib/libcudart.so.12.0 | sort > /tmp/baseline-artifacts/libcudart-nm-before.txt`.
-- [ ] 5.14 Generate audit artifact: `diff /tmp/baseline-artifacts/libcudart-nm-before-PRE-cleanup.txt /tmp/baseline-artifacts/libcudart-nm-before.txt > docs/adr/ADR-0029-appendix-baseline-regen-2026-08-21-cleanup.txt`. **MUST**: diff contains ONLY `<` lines (removed symbols from old baseline). **Expected removed set (Oracle MEDIUM Round-2)**: `{cpptlm_attach_bridge, cpptlm_detach_bridge, g_cpptlm_bridge, ptxemu_is_bridge_user_override, ptxemu_set_bridge_user_override}` (5 externs/globals) + `{7 PtxEmuDriverShim methods (advance, inject_scoreboard, inject_pipeline, inject_tensor_core, is_kernel_complete, mark_complete, num_sms)}` + `{ctor, dtor}` ≈ **14 symbols**. **NOTE**: `cpptlm_set_driver` does NOT appear in this diff — already hidden by Change 1's `--exclude-libs=ALL` (its strong definition lives in cpptlm_core archive, never in the PRE-cleanup baseline captured at task 1.2). `g_bridge_user_override` is local-anonymous-namespace at `PtxEmuDriverShim.cpp:12-14`, never exported → excluded from count.
+- [ ] 5.14 Generate audit artifact: `diff /tmp/baseline-artifacts/libcudart-nm-before-PRE-cleanup.txt /tmp/baseline-artifacts/libcudart-nm-before.txt > docs/adr/ADR-0029-appendix-baseline-regen-2026-08-21-cleanup.txt`. **MUST**: diff contains ONLY `<` lines (removed symbols from old baseline). **Expected removed set (Metis 2026-08-21 verified against PRE-cleanup baseline, count = 16)**: `{cpptlm_attach_bridge, cpptlm_detach_bridge, g_cpptlm_bridge, ptxemu_is_bridge_user_override, ptxemu_set_bridge_user_override}` (5 externs/globals) + **11 PtxEmuDriverShim symbols** (GCC emits duplicated ctor/dtor: `C1`, `C2`, `D1`, `D2` + 7 methods: advance, inject_scoreboard, inject_pipeline, inject_tensor_core, is_kernel_complete, mark_complete, num_sms) = **16 symbols**. **NOTE**: `cpptlm_set_driver` does NOT appear in this diff — already hidden by Change 1's `--exclude-libs=libcpptlm_core.a` (its strong definition lives in cpptlm_core archive, never in the PRE-cleanup baseline captured at task 1.2). `g_bridge_user_override` is local-anonymous-namespace at `PtxEmuDriverShim.cpp:12-14`, never exported → excluded from count.
 - [ ] 5.15 Delete `scripts/regression-cosim.sh` (depends on `EMU_COSIM` env var + `e2e_cosim_*` tests, both deleted).
 - [ ] 5.16 Update `scripts/regression.sh` L76: remove the stale "单元测试 (88)" comment.
 - [ ] 5.17 Run full regression: `./scripts/regression.sh`. Expected: all categories green.
-- [ ] 5.18 Verify Gate 1 with new baseline: `ctest --test-dir build -R integration_phase0_byte_identical_gates`. Expected: Gate 1/2/3/5 pass (4 tests, Gate 4 deleted).
-- [ ] 5.19 [USER ACTION] Commit Phase 3: `git add -A && git commit -m "refactor(cudart): remove cpptlm linkage + bridge files (Phase 3 of 4, libcudart.so is sync-only)"`.
+- [ ] 5.18 Verify all 16 expected symbols removed: `comm -23 /tmp/baseline-artifacts/libcudart-nm-before-PRE-cleanup.txt /tmp/baseline-artifacts/libcudart-nm-before.txt | wc -l`. Expected: 16 (5 externs/globals + 11 PtxEmuDriverShim symbols, verified against PRE-cleanup baseline).
+- [ ] 5.19 Verify no new symbols added: `comm -13 /tmp/baseline-artifacts/libcudart-nm-before-PRE-cleanup.txt /tmp/baseline-artifacts/libcudart-nm-before.txt | wc -l`. Expected: 0.
+- [ ] 5.20 Verify `libptxemu_device.so` still builds and exports 8 ABI symbols: `nm -D build/lib/libptxemu_device.so | grep ptxemu_ | wc -l`. Expected: 8.
+- [ ] 5.21 Verify AGENTS.md updates don't have dead links: `grep -rn "cpptlm_bridge\|g_cpptlm_bridge\|cpptlm_set_driver" src/ include/ scripts/`. Expected: empty (no remaining references in source/script code). NOTE: scanned only `src/ include/ scripts/`, not `docs/` (historical docs may legitimately reference removed mechanisms).
+- [ ] 5.22 Verify Gate 1 with new baseline: `ctest --test-dir build -R integration_phase0_byte_identical_gates`. Expected: Gate 1/2/3/5 pass (4 tests, Gate 4 deleted).
+- [ ] 5.23 [USER ACTION] Commit Phase 3: `git add -A && git commit -m "refactor(cudart): remove cpptlm linkage + bridge files (Phase 3 of 4, libcudart.so is sync-only)"`.
 
-## 6. Verification (Post-Phase 3)
+## 6. Commit (DO NOT COMMIT — user instruction)
 
-- [ ] 6.1 Verify all ~14 expected symbols removed: `comm -23 /tmp/baseline-artifacts/libcudart-nm-before-PRE-cleanup.txt /tmp/baseline-artifacts/libcudart-nm-before.txt | wc -l`. Expected: ~14.
-- [ ] 6.2 Verify no new symbols added: `comm -13 /tmp/baseline-artifacts/libcudart-nm-before-PRE-cleanup.txt /tmp/baseline-artifacts/libcudart-nm-before.txt | wc -l`. Expected: 0.
-- [ ] 6.3 Verify `libptxemu_device.so` still builds and exports 8 ABI symbols: `nm -D build/lib/libptxemu_device.so | grep ptxemu_ | wc -l`. Expected: 8.
-- [ ] 6.4 Verify AGENTS.md updates don't have dead links: `grep -rn "cpptlm_bridge\|g_cpptlm_bridge\|cpptlm_set_driver" src/ include/ scripts/`. Expected: empty (no remaining references in source/script code). NOTE: scanned only `src/ include/ scripts/`, not `docs/` (historical docs may legitimately reference removed mechanisms).
+NOTE: Per task management rules, do NOT run `git commit`. Stop after §5.23 (Phase 3 verification + commit) and report success.
 
-## 7. Commit (DO NOT COMMIT — user instruction)
+## 7. Rollback (if Phase fails)
 
-NOTE: Per task management rules, do NOT run `git commit`. Stop after Phase 3 task 5.17 (which is the user action) and report success.
-
-## 8. Rollback (if Phase fails)
-
-- [ ] 8.1 Phase 1 fails: `git revert <phase-1-commit-hash>`. No impact on other Phases.
-- [ ] 8.2 Phase 2a fails: `git revert <phase-2a-commit-hash>`. Reapply Phase 1 commit.
-- [ ] 8.3 Phase 2b fails: `git revert <phase-2b-commit-hash>`. Reapply Phase 1 + Phase 2a commits.
-- [ ] 8.4 Phase 3 fails: `git revert <phase-3-commit-hash>`. Reapply Phase 1 + Phase 2a + Phase 2b commits.
-- [ ] 8.5 Full rollback: `git worktree remove .worktrees/baseline-pre-cleanup && git checkout <pre-change-commit-hash>`. Restores to Change 1 post-state.
+- [ ] 7.1 Phase 1 fails: `git revert <phase-1-commit-hash>`. No impact on other Phases.
+- [ ] 7.2 Phase 2a fails: `git revert <phase-2a-commit-hash>`. Reapply Phase 1 commit.
+- [ ] 7.3 Phase 2b fails: `git revert <phase-2b-commit-hash>`. Reapply Phase 1 + Phase 2a commits.
+- [ ] 7.4 Phase 3 fails: `git revert <phase-3-commit-hash>`. Reapply Phase 1 + Phase 2a + Phase 2b commits.
+- [ ] 7.5 Full rollback: `git worktree remove .worktrees/baseline-pre-cleanup && git checkout <pre-change-commit-hash>`. Restores to Change 1 post-state.

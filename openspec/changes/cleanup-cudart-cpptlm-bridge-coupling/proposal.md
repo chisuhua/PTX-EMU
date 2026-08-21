@@ -2,7 +2,7 @@
 
 PTX-EMU's `libcudart.so` currently contains ~130 lines of bridge coupling to CppTLM (reverse ABI registration via `cpptlm_set_driver` + `g_cpptlm_bridge` async path + `StubBridge` auto-attach + `PendingKernel` state machine + GLOBAL LD/ST bridge in `memory.cpp`). This coupling:
 - Causes Gate 1 baseline leak (handled separately by `fix-phase0-gate1-dgpu-bar-leak`)
-- Adds 8 test files in `tests/{unit,integration}/cpptlm/` (15 files total, of which 7 are bridge-specific and 8 are independent ADR-0020 injection-point tests) and 3 e2e cosim `.cu` files that depend on the bridge
+- Adds 8 test files in `tests/{unit,integration}/cpptlm/` (15 files total, of which 8 are bridge-specific and 7 are independent ADR-0020 injection-point tests) and 3 e2e cosim `.cu` files that depend on the bridge
 - Binds PTX-EMU to CppTLM at link time, blocking standalone deployment scenarios (e.g., when only the `libptxemu_device.so` consumer path is desired)
 - Introduces fragile state: `g_cpptlm_bridge` consumer checks at 7 sites in `cudart_sim.cpp` that branch between sync/async paths
 
@@ -115,7 +115,7 @@ Revised list:
 
 **Source code**: ~300 lines removed across 4 files (cudart_sim.cpp, memory.cpp, CMakeLists.txt, src/CMakeLists.txt) + 3 files deleted (PtxEmuDriverShim.h/cpp, stub_bridge.h) + 1 header deleted (cpptlm_bridge.h).
 
-**Build artifact**: `libcudart.so.12.0` symbol count drops further (after Change 1's `--exclude-libs`): ~3153 (Change 1 baseline) → ~3138 (Change 2 result, removing cpptlm_* symbols + g_cpptlm_bridge + ptxemu_*_override + PtxEmuDriverShim methods). Symbol reduction = ~15 symbols.
+**Build artifact**: `libcudart.so.12.0` symbol count drops further (after Change 1's `--exclude-libs`): ~3153 (Change 1 baseline) → ~3137 (Change 2 result, removing 16 symbols: 5 externs/globals + 11 PtxEmuDriverShim symbols).
 
 **Test impact**: 8 test files deleted (5 unit/cpptlm + 3 integration/cpptlm + 1 unit/cudart + 1 integration/cudart + 3 e2e/cosim + Gate 4 test case = 14 files/parts, but 7 test files kept from cpptlm/ dirs). Regression script adjusted to exclude deleted cosim e2e labels + delete `regression-cosim.sh`.
 
