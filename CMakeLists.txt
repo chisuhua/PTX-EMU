@@ -164,7 +164,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ${_prev_pic})
 #       链接器不会搜 archive 找强定义），必须用 --whole-archive
 add_dependencies(cudart cpptlm_core)
 target_link_libraries(cudart
-    -Wl,--whole-archive cpptlm_core -Wl,--no-whole-archive)
+    -Wl,--whole-archive,--exclude-libs=libcpptlm_core.a cpptlm_core -Wl,--no-whole-archive)
 include_directories(${CPPTLM_SOURCE_DIR}/include)
 target_compile_definitions(cudart PRIVATE BUILD_LIB_CPPTLM_CUDART)
 
