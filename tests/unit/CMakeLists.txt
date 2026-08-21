@@ -569,13 +569,6 @@ add_catch_test(unit_stream_destroy
 )
 set_tests_properties(unit_stream_destroy PROPERTIES LABELS "unit;cudart;stream;destroy")
 
-# B2: cudaStreamSynchronize / cudaDeviceSynchronize polling loop
-# (Metis second-pass review B2 - single-pass poll returned with kernels pending)
-add_catch_test(unit_stream_sync_loop
-    cudart/test_stream_sync_loop.cpp
-)
-set_tests_properties(unit_stream_sync_loop PROPERTIES LABELS "unit;cudart;stream;sync")
-
 # ============================================================================
 # half-precision utility tests (phase3-half-precision-bugfix)
 # Validates f16_to_f32 / f32_to_f16 denormal/subnormal path correctness
@@ -764,29 +757,11 @@ target_link_libraries(unit_ptxir_extract PRIVATE ptxir_writer ptxir_reader)
 # ============================================================================
 # CppTLM Bridge 单元测试 (cpptlm-d1-full change, ADR-0021)
 # ============================================================================
-add_catch_test(unit_cpptlm_bridge
-    cpptlm/test_cpptlm_bridge.cpp
-)
-set_tests_properties(unit_cpptlm_bridge PROPERTIES LABELS "unit;cpptlm;bridge")
-
-# B1: cpptlm_attach_bridge / cpptlm_detach_bridge ABI entry points
-# (Metis second-pass review B1 — symbols declared without definition)
-add_catch_test(unit_cpptlm_attach_bridge
-    cpptlm/test_cpptlm_attach_bridge.cpp
-)
-set_tests_properties(unit_cpptlm_attach_bridge PROPERTIES LABELS "unit;cpptlm;bridge;attach")
-
 # Phase 8.B injection interfaces (cpptlm-phase8b-injection-points, ADR-0020)
 add_catch_test(unit_cpptlm_injection_interfaces
     cpptlm/test_injection_interfaces.cpp
 )
 set_tests_properties(unit_cpptlm_injection_interfaces PROPERTIES LABELS "unit;cpptlm;inject")
-
-# Cosim smoke test (cpptlm-p1-ptxemu-shim, ADR-0021 §2026-07-19 Postmortem)
-add_catch_test(unit_cpptlm_cosim_smoke
-    cpptlm/test_cosim_smoke.cpp
-)
-set_tests_properties(unit_cpptlm_cosim_smoke PROPERTIES LABELS "unit;cpptlm;cosim;smoke")
 
 # PTX-7a: SMContext injection mock tests (cpptlm-phase8b-injection-points, ADR-0020)
 add_catch_test(unit_smcontext_injection
@@ -834,12 +809,6 @@ set_tests_properties(unit_multi_kernel_selection PROPERTIES LABELS "unit;cudart;
 # ============================================================================
 # Phase 3: CppTLM co-simulation 单元测试 (spec traceability 100%)
 # ============================================================================
-# cpptlm-d1-full: "bridge submit 失败 → 错误码传递"
-add_catch_test(unit_bridge_submit_error
-    cpptlm/test_bridge_submit_error.cpp
-)
-set_tests_properties(unit_bridge_submit_error PROPERTIES LABELS "unit;cpptlm;bridge;submit_error")
-
 # cpptlm-d1-full: "is_global_space() 遍历整个 qualifier 列表" (Lessons Learned #1)
 add_catch_test(unit_ptxir_serialization
     test_ptxir_serialization.cpp

@@ -6,8 +6,8 @@
 //   1. nm -D --defined-only libcudart.so 前后 diff 为空
 //   2. SONAME libcudart.so.12 保持
 //   3. POST_BUILD symlinks (.12 + 主符号链接) 保持
-//   4. g_cpptlm_bridge == nullptr 单元测试
 //   5. logger → g_gpu_context 单元测试 (get_gpu_clock_from_context)
+//   Gate 4 (g_cpptlm_bridge == nullptr) REMOVED per cleanup-cudart-cpptlm-bridge-coupling Phase 1
 
 #include <cstdio>
 #include <cstdlib>
@@ -23,7 +23,6 @@
 
 #include <catch_amalgamated.hpp>
 
-#include "cudart/cpptlm_bridge.h"
 #include "cudart/ptx_interpreter.h"
 
 extern "C" size_t get_gpu_clock_from_context();
@@ -198,14 +197,6 @@ TEST_CASE("Gate 3: POST_BUILD symlinks preserved (.12 + main)",
     std::string out = run_cmd("ls -la " + libdir.string() + "/libcudart.so*");
     REQUIRE(out.find("libcudart.so.12") != std::string::npos);
     REQUIRE(out.find("libcudart.so ") != std::string::npos);
-}
-
-// ---------------------------------------------------------------------------
-// Gate 4: g_cpptlm_bridge == nullptr standalone mode
-// ---------------------------------------------------------------------------
-TEST_CASE("Gate 4: g_cpptlm_bridge == nullptr standalone mode contract",
-          "[integration][phase0][gate]") {
-    REQUIRE(g_cpptlm_bridge == nullptr);
 }
 
 // ---------------------------------------------------------------------------

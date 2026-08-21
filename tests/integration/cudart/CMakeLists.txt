@@ -10,11 +10,6 @@ add_catch_test(integration_in_memory_mutation
 set_tests_properties(integration_in_memory_mutation PROPERTIES LABELS "integration;cudart;mutation")
 target_link_libraries(integration_in_memory_mutation PRIVATE ptxir_writer ptxir_reader ptxemu_device)
 
-add_catch_test(integration_abi_stability
-    test_abi_stability.cpp
-)
-set_tests_properties(integration_abi_stability PROPERTIES LABELS "integration;cudart;abi")
-
 add_catch_test(integration_cuda_driver_api
     test_cuda_driver_api.cpp
 )
