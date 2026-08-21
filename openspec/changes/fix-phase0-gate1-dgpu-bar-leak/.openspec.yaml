@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-08-21
+goal: Make integration_phase0_byte_identical_gates Gate 1 PASS without breaking
+  any other test
