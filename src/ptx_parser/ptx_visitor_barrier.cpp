@@ -115,9 +115,6 @@ std::any PtxVisitor::visitBarWarpSyncInst(ptxparser::ptxParser::BarWarpSyncInstC
     }
 
     auto stmtCtx = makeBarWarpSyncInstr(qualifiers, operands, ctx->getText());
-    if (ctx->labelOperand()) {
-        stmtCtx.get<BarWarpSyncInstr>().reconvergenceLabel = ctx->labelOperand()->ID()->getText();
-    }
     currentKernel->kernelStatements.push_back(stmtCtx);
 
     return nullptr;

@@ -223,10 +223,6 @@ struct ActivemaskInstr {
 struct BarWarpSyncInstr {
     std::vector<Qualifier> qualifiers;
     std::vector<OperandContext> operands;
-    // NOTE: This field is DEAD CODE. It is set by the parser but never read.
-    // The actual reconvergence PC is stored in operands[1] as an ImmOperand.
-    // Kept for ABI compatibility; consider removing in next major version.
-    std::string reconvergenceLabel;
 };
 
 // Stage 2b: NEW - Warp-level synchronization
