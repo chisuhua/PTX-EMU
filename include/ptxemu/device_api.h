@@ -97,16 +97,12 @@ public:
                                                      // WarpContext::exe_once()
 
     // Memory (S1 facade set_scoreboard 1:1 映射)
-    virtual bool set_scoreboard(uint32_t sm_id, uint32_t warp_id,
-                                 uint64_t mask) = 0;
+    virtual bool set_scoreboard(uint32_t sm_id, uint32_t warp_id, uint64_t mask) = 0;
 
     // Thread control (S1 facade thread 状态/控制 1:1 映射)
-    virtual ThreadState get_thread_state(uint32_t sm_id, uint32_t warp_id,
-                                         uint32_t lane_id) = 0;
-    virtual bool set_active_mask(uint32_t sm_id, uint32_t warp_id,
-                                  uint64_t mask) = 0;  // overwrite 语义
-    virtual bool set_next_pc(uint32_t sm_id, uint32_t warp_id,
-                              uint32_t lane_id, uint32_t pc) = 0;
+    virtual ThreadState get_thread_state(uint32_t sm_id, uint32_t warp_id, uint32_t lane_id) = 0;
+    virtual bool set_active_mask(uint32_t sm_id, uint32_t warp_id, uint64_t mask) = 0;
+    virtual bool set_next_pc(uint32_t sm_id, uint32_t warp_id, uint32_t lane_id, uint32_t pc) = 0;
 
     // Status query
     virtual WarpStatus get_warp_status(uint32_t sm_id, uint32_t warp_id) = 0;
@@ -114,9 +110,7 @@ public:
 
     // HSK-4 vendored interfaces injection (HSK-8 spec §6 HSK-4 复用)
     // — attach_timing() 接收 HSK-4 已 vendored 3 接口, 不重复定义。
-    virtual void attach_timing(IScoreboard* sb,
-                                IPipelineLatencyProvider* pl,
-                                ITensorCoreTiming* tc) = 0;
+    virtual void attach_timing(IScoreboard* sb, IPipelineLatencyProvider* pl, ITensorCoreTiming* tc) = 0;
 
     // Static assert: PTXEMU_API_VERSION frozen at 1.
     // HSK-8 spec §Decision 3: 公共签名变更须签发 HSK-9 bump VERSION。
