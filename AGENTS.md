@@ -12,6 +12,35 @@ PTX ISA 指令级模拟器 — C++20/CUDA, ANTLR4 解析, fake libcudart.so 拦�
 - **复杂迁移分 Phase commit**: 每个 Phase 独立可回退. 测试回归 → revert 该 Phase, 不混入后续 commit
 - **基线 worktree**: 重大重构前 1 分钟建立 `.worktrees/`, 节省数小时争论
 
+## HSK Cross-Repo Protocol Chain (2026)
+
+PTX-EMU 通过 HSK (HandShake) protocol 与 CppTLM / UsrLinuxEmu 协同. 跨仓契约 14 天窗口, 超时 = 默认 ack.
+
+| HSK | 状态 | 关键 commit | 文档 |
+|-----|------|-------------|------|
+| HSK-6 | ✅ ACCEPTED | PTX-EMU `25e36f60` + CppTLM `369cf71` | `docs/superpowers/specs/2026-08-18-hsk-6-cpptlm-bridge-deprecation.md` |
+| HSK-7 | 🔵 预留 (未签发) — 仅 ABI 解冻 CPPTLMBRIDGE_VERSION 触发 | — | — |
+| **HSK-8** | 🔄 **PTX-EMU ACK 已发送** (738b412c, ack body 250+ 行) | PTX-EMU `738b412c` + Phase 2 PR `feat/ptxemu-public-device-api` (11 commits ahead) | `docs/superpowers/specs/2026-08-22-hsk-8-ptxemu-public-api-ack.md` |
+| HSK-9 | 🔵 预留 — 仅 PTXEMU_API_VERSION bump 触发 | — | — |
+
+HSK-8 实施进度 (per OpenSpec `openspec/changes/ptxemu-public-device-api/`):
+- ✅ Phase 0: 2 污染点净化 (4 commits: 0.6 + 0.8/0.8b + 0.3a-d)
+- ✅ Phase 1: `include/ptxemu/ir/` 头文件 scaffolding (commit 564174f7)
+- ✅ Phase 2: `device_api.h` + `device_api_impl.cc` + `ptxemu_core` 静态库 (commit d281a21e)
+- ✅ Phase 3: `PROJECT_IS_TOP_LEVEL` 隔离 + `PTXEMU_BUILD_TESTING` option + install rules (commit c225780e)
+- ✅ Phase 4: `.github/workflows/drift_check.yml` 5 invariants 验证 (commit ae86c816)
+- 🔄 Phase 5: 文档同步 (本 phase)
+- ⏳ CppTLM bump PR (待 HSK-8 Phase 2 PR 合入后由 CppTLM 触发)
+
+跨仓协调顺序 (HSK-8 spec §"跨仓协调顺序"):
+1. ✅ PTX-EMU HSK-8 ack commit (738b412c) + issue #22 评论 #5381166580
+2. 🔄 PTX-EMU Phase 2 PR (当前 feat/ptxemu-public-device-api 分支, 11 commits ahead)
+3. ⏳ PTX-EMU CI 全绿 (drift_check + ctest 全部 PASS)
+4. ⏳ PTX-EMU Phase 2 PR 合入 main (目标 2026-09-19 前, per HSK-8 ack 决策点 4)
+5. ⏳ CppTLM bump PR (submodule pin + add_subdirectory + 桥接残留簇删除)
+
+HSK protocol 文档: `docs/superpowers/specs/HSK-PROTOCOL-NOTES.md`
+
 ## STRUCTURE
 
 ```
