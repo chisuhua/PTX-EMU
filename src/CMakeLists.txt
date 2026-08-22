@@ -200,6 +200,26 @@ add_custom_command(TARGET ptxemu_device POST_BUILD
     COMMENT "Creating symlink to libptxemu_device.so in project root lib directory"
 )
 
+# Phase 2: PTX-EMU public device API core library (HSK-8 ack 738b412c,
+# OpenSpec design.md Decision 2 + spec/ptxemu-core-library).
+# Static library so CppTLM can add_subdirectory(external/PTX-EMU) and link.
+# PUBLIC include/ptxemu/ (consumers see only IPtxEmuDevice etc).
+# PRIVATE include/ptx_ir/ + include/ptxir/ + include/ptxsim/ + src/ptxsim/
+# (PTX-EMU internal implementation details hidden from consumers).
+# g_gpu_context extern resolved at link time when linked with cudart.
+add_library(ptxemu_core STATIC
+    ptxemu/device_api_impl.cc
+)
+target_include_directories(ptxemu_core
+    PUBLIC  ${PROJECT_SOURCE_DIR}/include/ptxemu
+    PRIVATE ${PROJECT_SOURCE_DIR}/include/ptx_ir
+            ${PROJECT_SOURCE_DIR}/include/ptxir
+            ${PROJECT_SOURCE_DIR}/include/ptxsim
+            ${PROJECT_SOURCE_DIR}/src/ptxsim
+            ${PROJECT_SOURCE_DIR}/src/cudart
+)
+target_link_libraries(ptxemu_core PUBLIC ptxsim ptx_ir ptxir)
+
 # 标记ANTLR生成的源文件为生成文件
 set_source_files_properties(${ANTLR4_GENERATED_SOURCES} PROPERTIES GENERATED TRUE)
 
