@@ -359,7 +359,7 @@ void *ThreadContext::acquire_operand(const OperandContext &operand,
                 buffer.clear();
                 return nullptr;
             }
-            elem.operand_phy_addr = addr;
+            // Phase 0.3d: elem.operand_phy_addr = addr removed (field gone).
             buffer.push_back(addr);
         }
 
@@ -404,7 +404,7 @@ void ThreadContext::collect_operands(
         // bypass the dual-write WRITE sites (e.g., ptx_interpreter invalidate).
         operand_collected[i] = (i < static_cast<int>(operand_phy_cache_.size()))
                                    ? operand_phy_cache_[i]
-                                   : operands[i].operand_phy_addr;
+                                   : nullptr;
     }
     // Design Decision (lessons-learned §6 template): instr.qualifiers 是
     // operand qualifier 的 canonical source。stmt.qualifier 在 CFGBuilder

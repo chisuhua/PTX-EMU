@@ -56,7 +56,8 @@ public:
                               VecOperand, AddrOperand, Predicate>;
 
     Data data;
-    mutable void *operand_phy_addr = nullptr;
+    // Phase 0.3d (HSK-8 ack 738b412c): operand_phy_addr field removed.
+    // Use ThreadContext::operand_phy_cache_[i] for physical addresses.
 
     // Constructors
     template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, OperandContext>>>
@@ -65,8 +66,6 @@ public:
     OperandContext &operator=(const OperandContext &) = default;
     OperandContext(OperandContext &&) = default;
     OperandContext &operator=(OperandContext &&) = default;
-    void setPhyAddr(void *addr) { operand_phy_addr = addr; }
-    void invalidatePhyAddr() { operand_phy_addr = nullptr; }
 
     [[nodiscard]] OperandKind kind() const {
         return std::visit(

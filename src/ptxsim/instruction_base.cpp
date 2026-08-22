@@ -142,9 +142,7 @@ bool PipelineHandler::acquireAllOperands(ThreadContext *context,
             }
             return false;
         }
-        operands[i].setPhyAddr(result);
-        // Phase 0.3b dual-write: mirror operand_phy_addr into ThreadContext-local
-        // operand_phy_cache_[i] (parallel to operand_collected).
+        // Phase 0.3d: setPhyAddr removed. Write directly to operand_phy_cache_.
         if (i >= static_cast<int>(context->operand_phy_cache_.size())) {
             context->operand_phy_cache_.resize(operands.size(), nullptr);
         }
@@ -156,8 +154,7 @@ bool PipelineHandler::acquireAllOperands(ThreadContext *context,
 void PipelineHandler::releaseAllOperands(ThreadContext *context,
                                         std::vector<OperandContext> &operands, int opCount) {
     for (int i = 0; i < opCount && i < static_cast<int>(operands.size()); i++) {
-        operands[i].setPhyAddr(nullptr);
-        // Phase 0.3b dual-write: clear cache slot alongside operand_phy_addr.
+        // Phase 0.3d: setPhyAddr(nullptr) removed. Clear cache slot only.
         if (i < static_cast<int>(context->operand_phy_cache_.size())) {
             context->operand_phy_cache_[i] = nullptr;
         }
