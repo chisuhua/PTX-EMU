@@ -303,7 +303,6 @@ public:
     StatementType type;
     std::vector<Qualifier> qualifier; // e.g., {.u32, .sat, .rn}
     InstrVariant data;
-    InstructionState state = InstructionState::READY;
 
     // Original PTX source line (for debugging/printing)
     std::string instructionText;
