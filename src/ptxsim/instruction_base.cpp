@@ -115,9 +115,9 @@ void PipelineHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
     }
 }
 
-bool PipelineHandler::acquireAllOperands(ThreadContext *context, 
-                                       std::vector<OperandContext> &operands, 
-                                       const std::vector<Qualifier> &qualifiers, 
+bool PipelineHandler::acquireAllOperands(ThreadContext *context,
+                                       std::vector<OperandContext> &operands,
+                                       const std::vector<Qualifier> &qualifiers,
                                        int opCount) {
     for (int i = 0; i < opCount && i < static_cast<int>(operands.size()); i++) {
         void *result = context->acquire_operand(operands[i], qualifiers);
@@ -143,13 +143,24 @@ bool PipelineHandler::acquireAllOperands(ThreadContext *context,
             return false;
         }
         operands[i].setPhyAddr(result);
+        // Phase 0.3b dual-write: mirror operand_phy_addr into ThreadContext-local
+        // operand_phy_cache_[i] (parallel to operand_collected).
+        if (i >= static_cast<int>(context->operand_phy_cache_.size())) {
+            context->operand_phy_cache_.resize(operands.size(), nullptr);
+        }
+        context->operand_phy_cache_[i] = result;
     }
     return true;
 }
 
-void PipelineHandler::releaseAllOperands(std::vector<OperandContext> &operands, int opCount) {
+void PipelineHandler::releaseAllOperands(ThreadContext *context,
+                                        std::vector<OperandContext> &operands, int opCount) {
     for (int i = 0; i < opCount && i < static_cast<int>(operands.size()); i++) {
         operands[i].setPhyAddr(nullptr);
+        // Phase 0.3b dual-write: clear cache slot alongside operand_phy_addr.
+        if (i < static_cast<int>(context->operand_phy_cache_.size())) {
+            context->operand_phy_cache_[i] = nullptr;
+        }
     }
 }
 
@@ -180,7 +191,7 @@ bool GenericPipelineHandler::commitResults(ThreadContext *context, StatementCont
     if (!instr.operands.empty()) {
         context->commit_operand(stmt, instr.operands[0], instr.qualifiers);
     }
-    releaseAllOperands(instr.operands, static_cast<int>(instr.operands.size()));
+    releaseAllOperands(context, instr.operands, static_cast<int>(instr.operands.size()));
     return true;
 }
 
@@ -206,7 +217,7 @@ bool AtomicPipelineHandler::commitResults(ThreadContext *context, StatementConte
     if (!instr.operands.empty()) {
         context->commit_operand(stmt, instr.operands[0], instr.qualifiers);
     }
-    releaseAllOperands(instr.operands, static_cast<int>(instr.operands.size()));
+    releaseAllOperands(context, instr.operands, static_cast<int>(instr.operands.size()));
     return true;
 }
 
@@ -239,7 +250,7 @@ bool Tcgen05PipelineHandler::commitResults(ThreadContext *context, StatementCont
     if (!instr.operands.empty()) {
         context->commit_operand(stmt, instr.operands[0], instr.qualifiers);
     }
-    releaseAllOperands(instr.operands, static_cast<int>(instr.operands.size()));
+    releaseAllOperands(context, instr.operands, static_cast<int>(instr.operands.size()));
     return true;
 }
 
