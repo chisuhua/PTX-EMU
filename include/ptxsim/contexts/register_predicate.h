@@ -37,6 +37,12 @@ struct RegisterPredicatePod {
     std::vector<char> operand_is_immediate_;
     std::vector<std::vector<void *>> vecOp_phy_addrs;
 
+    // Phase 0.3a (HSK-8 ack 738b412c): ThreadContext-local index-keyed cache
+    // for operand physical addresses, parallel to operand_collected above.
+    // Currently UNUSED — populated in Phase 0.3b, read in Phase 0.3c,
+    // operand_phy_addr field removed in Phase 0.3d.
+    std::vector<void *> operand_phy_cache_;
+
     // Cached destination register name (set during collect_operands,
     // consumed by setp handler to write the predicate)
     std::string dst_operand_reg_name_;

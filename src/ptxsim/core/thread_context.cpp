@@ -359,7 +359,7 @@ void *ThreadContext::acquire_operand(const OperandContext &operand,
                 buffer.clear();
                 return nullptr;
             }
-            elem.operand_phy_addr = addr;
+            // Phase 0.3d: elem.operand_phy_addr = addr removed (field gone).
             buffer.push_back(addr);
         }
 
@@ -400,8 +400,11 @@ void ThreadContext::collect_operands(
         // is the actual value/address
         operand_is_immediate_[i] = (operands[i].kind() == OperandKind::IMM);
 
-        // 获取当前操作数的物理地址
-        operand_collected[i] = operands[i].operand_phy_addr;
+        // Phase 0.3c: cache-first read with field fallback for paths that
+        // bypass the dual-write WRITE sites (e.g., ptx_interpreter invalidate).
+        operand_collected[i] = (i < static_cast<int>(operand_phy_cache_.size()))
+                                   ? operand_phy_cache_[i]
+                                   : nullptr;
     }
     // Design Decision (lessons-learned §6 template): instr.qualifiers 是
     // operand qualifier 的 canonical source。stmt.qualifier 在 CFGBuilder

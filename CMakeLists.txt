@@ -40,6 +40,13 @@ option(ENABLE_ASAN "Enable AddressSanitizer" OFF)
 option(ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" OFF)
 option(ENABLE_WERROR "Treat compiler warnings as errors" OFF)
 
+# Phase 3 (HSK-8 ack 738b412c, design.md Decision 2): tests/ isolation.
+# Default OFF — CppTLM (consuming via add_subdirectory) skips PTX-EMU
+# tests build, avoids ctest gate conflicts. PTX-EMU top-level build
+# (PROJECT_IS_TOP_LEVEL=TRUE) auto-enables tests; -DPTXEMU_BUILD_TESTING=ON
+# forces tests in any consumer context.
+option(PTXEMU_BUILD_TESTING "Build PTX-EMU tests when not top-level" OFF)
+
 if(ENABLE_ASAN)
     add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
     add_link_options(-fsanitize=address)
@@ -119,8 +126,13 @@ add_subdirectory(src)
 add_subdirectory(tools)
 
 # 启用测试（但确保 tests/CMakeLists.txt 不再 enable_language(CUDA)）
-enable_testing()
-add_subdirectory(tests)
+# Phase 3 (HSK-8): gated by PROJECT_IS_TOP_LEVEL (PTX-EMU standalone) or
+# explicit -DPTXEMU_BUILD_TESTING=ON (consumer override). Default OFF
+# avoids contaminating CppTLM ctest gate with PTX-EMU tests.
+if(PROJECT_IS_TOP_LEVEL OR PTXEMU_BUILD_TESTING)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
 
 # 可选 benchmark
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/bench/cute/CMakeLists.txt)
@@ -135,7 +147,20 @@ install(DIRECTORY lib/
         FILES_MATCHING PATTERN "*.so*")
 
 install(DIRECTORY bin/
-        DESTINATION bin
-        FILES_MATCHING PATTERN "*")
+        DESTINATION bin)
+
+# Phase 3 (HSK-8 spec §3 Risk 4 Mitigation): install ptxemu_core +
+# public headers for CppTLM add_subdirectory(external/PTX-EMU) consumers.
+# ARCHIVE = static lib archive; INCLUDES = header path for downstream
+# target_link_libraries(... ptxemu_core) INTERFACE propagation.
+install(TARGETS ptxemu_core
+    EXPORT ptxemu_core_targets
+    ARCHIVE DESTINATION lib
+    INCLUDES DESTINATION include
+)
+install(DIRECTORY include/ptxemu/
+        DESTINATION include/ptxemu
+        FILES_MATCHING PATTERN "*.h"
+)
 
 

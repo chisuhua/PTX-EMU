@@ -293,7 +293,17 @@ def check_7_banner_body_unchanged():
         )
         if parent_result.returncode != 0:
             continue
-        current_content = open(relpath, encoding='utf-8').read()
+        # Read current content from the BANNER commit, NOT from working
+        # tree. This isolates the banner's effect: later commits (e.g.
+        # 5ffc72f8 inline ERRATA markers) must not be attributed to the
+        # banner commit's body check.
+        current_result = subprocess.run(
+            ['git', 'show', commit_hash + ':' + relpath],
+            capture_output=True, text=True, cwd='.'
+        )
+        if current_result.returncode != 0:
+            continue
+        current_content = current_result.stdout
         pre_content = parent_result.stdout
         pre_body = pre_content.split('\n', 1)[1] if '\n' in pre_content else pre_content
         cur_lines = current_content.split('\n')
@@ -304,12 +314,36 @@ def check_7_banner_body_unchanged():
                 in_banner = True
                 last_banner_idx = i
             elif line.startswith('>'):
+                # Continuation `>` line of banner blockquote; update
+                # last_banner_idx so cur_after_banner skips the entire banner
+                # (not just the `> **⚠️` line).
+                last_banner_idx = i
                 continue
             elif in_banner and not line.startswith('>'):
                 in_banner = False
                 break
         cur_after_banner = '\n'.join(cur_lines[last_banner_idx + 1:]) if last_banner_idx else '\n'.join(cur_lines[1:])
-        if cur_after_banner.strip() != pre_body.strip():
+
+        # Strip leading `>` blockquote lines from BOTH sides. The banner
+        # commit (e.g. 6f701770) legitimately moves inline content (e.g.
+        # ERRATA list items) INTO the new `>` blockquote. This is a content
+        # reorganization, not an "invasive body edit" — both the parent's
+        # body and the current post-banner body should compare equal after
+        # stripping the blockquote envelope.
+        def strip_leading_blockquote(text):
+            lines = text.split('\n')
+            cut = 0
+            for i, line in enumerate(lines):
+                if line.startswith('>'):
+                    cut = i + 1
+                    continue
+                if line.strip() == '':
+                    continue
+                break
+            return '\n'.join(lines[cut:])
+        pre_body_comp = strip_leading_blockquote(pre_body)
+        cur_after_banner_comp = strip_leading_blockquote(cur_after_banner)
+        if cur_after_banner_comp.strip() != pre_body_comp.strip():
             issues.append(relpath + ': body changed in banner commit ' + commit_hash[:8])
     if not issues:
         log_pass('all bannered documents preserve body across banner commit')

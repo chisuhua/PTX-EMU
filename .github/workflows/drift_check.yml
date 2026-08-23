@@ -1,0 +1,96 @@
+name: drift-check
+
+# Phase 4 (HSK-8 ack 738b412c, spec/ci-drift-check).
+# Local-only header invariants check. Does NOT depend on CppTLM submodule
+# or full PTX-EMU build chain — verifies the public device API surface
+# stays within its frozen contract.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'include/ptxemu/**'
+      - 'include/ptx_ir/**'
+      - 'include/ptxsim/execution_types.h'
+  push:
+    branches: [main]
+    paths:
+      - 'include/ptxemu/**'
+      - 'include/ptx_ir/**'
+      - 'include/ptxsim/execution_types.h'
+  workflow_dispatch:
+
+# Cancel in-progress runs for same branch on new push.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  drift-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Invariant 1: PTXEMU_API_VERSION frozen at 1 (HSK-8 spec §Decision 3).
+      # Bumping VERSION requires new HSK-N handshake, not in-PR change.
+      - name: Check PTXEMU_API_VERSION == 1
+        run: |
+          if ! grep -qE "^#define[[:space:]]+PTXEMU_API_VERSION[[:space:]]+1\b" \
+              include/ptxemu/device_api.h; then
+            echo "::error file=include/ptxemu/device_api.h::PTXEMU_API_VERSION must remain 1; public signature changes require HSK-9 (bump VERSION in new spec)."
+            exit 1
+          fi
+
+      # Invariant 2: IPtxEmuDevice virtual method count covers S1 facade 12
+      # callsites (HSK-8 spec §CppTLM 端接受条件 隐含要求). Count methods
+      # declared `= 0` (pure virtual) which are the IPtxEmuDevice
+      # contract surface.
+      - name: Check IPtxEmuDevice has >= 12 pure virtual methods
+        run: |
+          PURE_VIRTUAL_COUNT=$(grep -cE 'virtual[[:space:]]+[a-zA-Z_:&<>,* ]+[[:space:]]+[a-zA-Z_]+\([^)]*\)([[:space:]]+const)?[[:space:]]*=[[:space:]]*0' \
+              include/ptxemu/device_api.h || true)
+          if [ "$PURE_VIRTUAL_COUNT" -lt 12 ]; then
+            echo "::error file=include/ptxemu/device_api.h::IPtxEmuDevice pure virtual method count ($PURE_VIRTUAL_COUNT) < 12 (S1 facade 12 callsites coverage)."
+            exit 1
+          fi
+
+      # Invariant 3: device_api.h MUST NOT use C++20-only features
+      # (HSK-8 spec §C++17 兼容 + spec/public-device-api §Requirement C++17).
+      # Forbidden: std::format, requires, concept, <=>, consteval, constinit,
+      # likely/unlikely attributes.
+      # Filter comment lines first to avoid matching keywords mentioned
+      # in documentation comments (e.g., "avoid std::format").
+      - name: Check device_api.h C++17 compatibility
+        run: |
+          HITS=$(grep -vE '^[[:space:]]*(//|\*|/\*)' include/ptxemu/device_api.h \
+                 | grep -nE 'std::format\b|requires[[:space:]]|concept\b|<=>|consteval\b|constinit\b|likely\]|unlikely\]' \
+                 || true)
+          if [ -n "$HITS" ]; then
+            echo "::error file=include/ptxemu/device_api.h::detected C++20-only feature; HSK-8 spec §C++17 requires C++17-compatible header."
+            echo "$HITS"
+            exit 1
+          fi
+
+      # Invariant 4: public device_api.h MUST contain required HSK-8 contract
+      # symbols (PTXEMU_API_VERSION macro, IPtxEmuDevice class, factory
+      # functions create_device/destroy_device).
+      - name: Check HSK-8 required symbols present
+        run: |
+          for SYMBOL in PTXEMU_API_VERSION IPtxEmuDevice create_device destroy_device; do
+            if ! grep -q "\<$SYMBOL\>" include/ptxemu/device_api.h; then
+              echo "::error file=include/ptxemu/device_api.h::required HSK-8 symbol '$SYMBOL' missing."
+              exit 1
+            fi
+          done
+
+      # Invariant 5: ptxemu_core CMake target name frozen (CppTLM consumer
+      # references this exact target). Per design.md Decision 2.
+      - name: Check ptxemu_core CMake target name frozen
+        run: |
+          if ! grep -qE 'add_library\(ptxemu_core[[:space:]]+STATIC' src/CMakeLists.txt; then
+            echo "::error file=src/CMakeLists.txt::ptxemu_core STATIC library target renamed; HSK-8 spec §Decision 2 freezes target name for CppTLM consumer."
+            exit 1
+          fi

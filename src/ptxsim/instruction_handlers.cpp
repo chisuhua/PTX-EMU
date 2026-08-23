@@ -112,10 +112,11 @@
 // CP_ASYNC handler (currently treated as simple, but can be extended)
 #define IMPLEMENT_CP_ASYNC_INSTR_HANDLER(Name) \
     __attribute__((weak)) void Name##Handler::executeAsyncCopy(ThreadContext *context, const CpAsyncInstr &instr) { \
+        const auto &cache = context->operand_phy_cache_; \
         PTX_DEBUG_EMU("Enqueuing async copy: dst=%p, src=%p, size=%d", \
-                      instr.operands[0].operand_phy_addr, \
-                      instr.operands[1].operand_phy_addr, \
-                      *(int*)instr.operands[2].operand_phy_addr); \
+                      cache.size() > 0 ? cache[0] : nullptr, \
+                      cache.size() > 1 ? cache[1] : nullptr, \
+                      cache.size() > 2 ? *(int*)cache[2] : 0); \
         /* TODO: integrate with async copy engine */ \
         return; \
     };

@@ -136,12 +136,14 @@ KernelLaunchRequest PtxInterpreter::prepareKernelLaunchRequest(
         for (auto &stmt : kernelContext->kernelStatements) {
             if (stmt.type == S_BAR_WARP_SYNC) {
                 auto &barrier = std::get<BarWarpSyncInstr>(stmt.data);
+                // Phase 0.3d: invalidatePhyAddr removed (operand_phy_addr
+                // field gone). Reassigning OperandContext already defaults
+                // to nullptr phy_addr; cache is cleared on next acquire.
+                (void)mask;
                 if (barrier.operands.size() >= 2) {
                     barrier.operands[0] = OperandContext{ImmOperand{std::to_string(mask)}};
-                    barrier.operands[0].invalidatePhyAddr();
                 } else if (barrier.operands.size() == 1) {
                     barrier.operands[0] = OperandContext{ImmOperand{std::to_string(mask)}};
-                    barrier.operands[0].invalidatePhyAddr();
                 }
             }
         }

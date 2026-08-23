@@ -1,14 +1,21 @@
-// statement_context.h
-#ifndef STATEMENT_CONTEXT_H
-#define STATEMENT_CONTEXT_H
+#ifndef PTXEMU_IR_STATEMENT_H
+#define PTXEMU_IR_STATEMENT_H
 
-#include "operand_context.h"
-#include "ptx_types.h"
-#include "ptxsim/execution_types.h"
+#include "ptxemu/ir/operand_context.h"
+#include "ptxemu/ir/ptx_types.h"
+#include "ptxemu/ir/execution_types.h"
 #include <optional>
 #include <string>
 #include <variant>
 #include <vector>
+
+// Phase 1 (HSK-8 ack 738b412c): namespace wrapping for public IR types.
+// statement_context.h content moved verbatim from include/ptx_ir/, wrapped
+// in ptxemu::ir namespace. Old ptx_ir path continues working via forwarding
+// header include/ptx_ir/statement_context.h (one release cycle).
+
+namespace ptxemu {
+namespace ir {
 
 // -----------------------------------------------------------------------------
 // Declaration-like statements (.reg, .const, .shared, etc.)
@@ -328,7 +335,12 @@ public:
     template <typename Visitor> auto visit(Visitor &&vis) const {
         return std::visit(std::forward<Visitor>(vis), data);
     }
-    [[nodiscard]] std::string toString() const;
+
+    // Debug/pretty-printer.
+    [[nodiscard]] std::string toString(int bytes = 0) const;
 };
 
-#endif
+}  // namespace ir
+}  // namespace ptxemu
+
+#endif  // PTXEMU_IR_STATEMENT_H

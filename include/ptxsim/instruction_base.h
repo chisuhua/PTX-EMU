@@ -90,7 +90,10 @@ protected:
 
     bool acquireAllOperands(ThreadContext *context, std::vector<OperandContext> &operands,
                            const std::vector<Qualifier> &qualifiers, int opCount);
-    void releaseAllOperands(std::vector<OperandContext> &operands, int opCount);
+    // Phase 0.3b (HSK-8 ack 738b412c): ThreadContext* added so releaseAllOperands
+    // can populate operand_phy_cache_ alongside clearing operand_phy_addr.
+    void releaseAllOperands(ThreadContext *context, std::vector<OperandContext> &operands,
+                            int opCount);
 };
 
 // Specific pipeline handler types

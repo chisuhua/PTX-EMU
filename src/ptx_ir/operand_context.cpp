@@ -73,33 +73,5 @@ std::string OperandContext::toString(int bytes) const {
         },
         data);
 
-    // Step 2: Append physical addrOperand and value (if available)
-    // Note: For ADDR operands, operand_phy_addr IS the target address, not a pointer to the value.
-    //       So we should not dereference it for value display.
-    if (operand_phy_addr != nullptr) {
-        oss << " phy_addr:0x" << std::hex
-            << reinterpret_cast<uintptr_t>(operand_phy_addr);
-
-        // Skip value display for ADDR operands (it's the address itself, not a pointer to value)
-        bool skipValue = std::holds_alternative<AddrOperand>(data);
-        
-        // Only print value if 'bytes' is valid (1,2,4,8) and not an ADDR operand
-        if (!skipValue && bytes == 1) {
-            uint8_t val = *static_cast<const uint8_t *>(operand_phy_addr);
-            oss << " value:0x" << std::setfill('0') << std::setw(2)
-                << static_cast<unsigned>(val);
-        } else if (!skipValue && bytes == 2) {
-            uint16_t val = *static_cast<const uint16_t *>(operand_phy_addr);
-            oss << " value:0x" << std::setfill('0') << std::setw(4) << val;
-        } else if (!skipValue && bytes == 4) {
-            uint32_t val = *static_cast<const uint32_t *>(operand_phy_addr);
-            oss << " value:0x" << std::setfill('0') << std::setw(8) << val;
-        } else if (!skipValue && bytes == 8) {
-            uint64_t val = *static_cast<const uint64_t *>(operand_phy_addr);
-            oss << " value:0x" << std::setfill('0') << std::setw(16) << val;
-        }
-        oss << std::dec; // restore dec for future use
-    }
-
     return oss.str();
 }

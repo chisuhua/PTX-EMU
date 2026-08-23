@@ -95,7 +95,7 @@ bool BarWarpSyncHandler::executeOperation(ThreadContext* context, StatementConte
     // Note: set_pc_overridden(true) is called INSIDE processOperation's else branch
     // when the thread is blocked. We do NOT call it here unconditionally.
 
-    releaseAllOperands(instr.operands, static_cast<int>(instr.operands.size()));
+    releaseAllOperands(context, instr.operands, static_cast<int>(instr.operands.size()));
     return true;
 }
 
@@ -105,7 +105,7 @@ bool BarWarpSyncHandler::commitResults(ThreadContext* context, StatementContext&
     if (!instr.operands.empty()) {
         context->commit_operand(stmt, instr.operands[0], instr.qualifiers);
     }
-    releaseAllOperands(instr.operands, static_cast<int>(instr.operands.size()));
+    releaseAllOperands(context, instr.operands, static_cast<int>(instr.operands.size()));
     return true;
 }
 

@@ -451,7 +451,7 @@ TEST_CASE("Roundtrip: PredicatePrefix") {
 
 TEST_CASE("Roundtrip: BarWarpSyncInstr") {
     StatementContext stmt =
-        make_stmt(S_BAR_WARP_SYNC, BarWarpSyncInstr{{}, {}, ""});
+        make_stmt(S_BAR_WARP_SYNC, BarWarpSyncInstr{{}, {}});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -608,7 +608,7 @@ TEST_CASE("Roundtrip: mixed 100+ statements") {
         make_stmt(S_MBARRIER_INIT, MbarrierInstr{{Qualifier::Q_CTA}, "init", {}}));
     stmts.push_back(make_stmt(
         S_CALL, CallInstr{"foo", "call.uni foo", {Qualifier::Q_UNI}, {}}));
-    stmts.push_back(make_stmt(S_BAR_WARP_SYNC, BarWarpSyncInstr{{}, {}, ""}));
+    stmts.push_back(make_stmt(S_BAR_WARP_SYNC, BarWarpSyncInstr{{}, {}}));
     stmts.push_back(
         make_stmt(S_VOTE, VoteInstr{{Qualifier::Q_U32}, "ballot", {}}));
     stmts.push_back(
@@ -663,7 +663,7 @@ StatementContext make_representative(StatementType t) {
         case S_MBARRIER_INIT: case S_MBARRIER_ARRIVE: case S_MBARRIER_TRY_WAIT:
             return make_stmt(t, MbarrierInstr{{Qualifier::Q_CTA}, "init", {}});
         case S_CALL: return make_stmt(t, CallInstr{"foo", "call foo", {Qualifier::Q_UNI}, {}});
-        case S_BAR_WARP_SYNC: return make_stmt(t, BarWarpSyncInstr{{}, {}, ""});
+        case S_BAR_WARP_SYNC: return make_stmt(t, BarWarpSyncInstr{{}, {}});
         case S_VOTE: return make_stmt(t, VoteInstr{{Qualifier::Q_U32}, "ballot", {}});
         case S_SHFL: return make_stmt(t, ShflInstr{{Qualifier::Q_U32}, "up", {}});
         case S_ATOM: return make_stmt(t, AtomInstr{{Qualifier::Q_GLOBAL, Qualifier::Q_ADD_ATOM}, {}});

@@ -1,6 +1,5 @@
-// operand_context.h
-#ifndef OPERAND_CONTEXT_H
-#define OPERAND_CONTEXT_H
+#ifndef PTXEMU_IR_OPERAND_CONTEXT_H
+#define PTXEMU_IR_OPERAND_CONTEXT_H
 
 #include "ptx_types.h"
 #include <memory>
@@ -8,6 +7,14 @@
 #include <string>
 #include <variant>
 #include <vector>
+
+// Phase 1 (HSK-8 ack 738b412c): namespace wrapping for public IR types.
+// OperandContext promoted from include/ptx_ir/operand_context.h,
+// wrapped in ptxemu::ir namespace. Phase 0.3d already removed the
+// operand_phy_addr field; this is the post-Phase0 clean state.
+
+namespace ptxemu {
+namespace ir {
 
 struct RegOperand {
     std::string name; // e.g., "r", "pred"
@@ -56,20 +63,18 @@ public:
                               VecOperand, AddrOperand, Predicate>;
 
     Data data;
-    // Phase 0.3d (HSK-8 ack 738b412c): operand_phy_addr field removed.
-    // Use ThreadContext::operand_phy_cache_[i] for physical addresses.
 
     // Constructors
     template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, OperandContext>>>
-    OperandContext(T &&t) : data(std::forward<T>(t)) {}
-    OperandContext(const OperandContext &) = default;
-    OperandContext &operator=(const OperandContext &) = default;
-    OperandContext(OperandContext &&) = default;
-    OperandContext &operator=(OperandContext &&) = default;
+    OperandContext(T&&t) : data(std::forward<T>(t)) {}
+    OperandContext(const OperandContext&) = default;
+    OperandContext& operator=(const OperandContext&) = default;
+    OperandContext(OperandContext&&) = default;
+    OperandContext& operator=(OperandContext&&) = default;
 
     [[nodiscard]] OperandKind kind() const {
         return std::visit(
-            [](const auto &x) -> OperandKind {
+            [](const auto& x) -> OperandKind {
                 using T = std::decay_t<decltype(x)>;
                 if constexpr (std::is_same_v<T, RegOperand>)
                     return OperandKind::REG;
@@ -91,4 +96,7 @@ public:
     [[nodiscard]] std::string toString(int bytes = 0) const;
 };
 
-#endif // OPERAND_CONTEXT_H
+}  // namespace ir
+}  // namespace ptxemu
+
+#endif  // PTXEMU_IR_OPERAND_CONTEXT_H

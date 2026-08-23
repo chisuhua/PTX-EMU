@@ -6,27 +6,28 @@
 
 ## ADDED Requirements
 
-### Requirement: Phase 0 闭包净化 — 2 污染点 MUST 消除
+### Requirement: Phase 0 闭包净化 — 2 污染点 MUST 消除 ✅ **COMPLETE**
 
 晋升前 MUST 消除以下 2 个非纯数据污染点:
 
-**污染点 A**: `include/ptx_ir/operand_context.h:59` — `mutable void *operand_phy_addr = nullptr`
-- MUST 移出 `OperandContext` 值类型
-- 推荐方案 (per Metis MUST-RESOLVE #4): ThreadContext-local index-keyed cache (`std::vector<std::vector<void*>> operand_phy_cache_`), 不使用指针-key (避免 `vector<OperandContext>` 元素地址稳定性问题)
-- 8 处 `operand_phy_addr` + `setPhyAddr` + `invalidatePhyAddr` 调用点必须审计迁移 (per Metis audit)
+**污染点 A**: `include/ptx_ir/operand_context.h:59` — `mutable void *operand_phy_addr = nullptr` ✅ **REMOVED (commit 1fb15d89)**
+- 替代方案 (per Metis MUST-RESOLVE #4): ThreadContext-local index-keyed cache (`std::vector<void *> operand_phy_cache_;`)
+- 实施 4 commits (d8b6ca56/a6c9bdaf/66ca4875/1fb15d89): add cache → dual-write → migrate READ → remove field
+- OperandContext::setPhyAddr/invalidatePhyAddr methods 已移除
+- 8 active sites 全迁移 (5 WRITE dual-write / 3 READ cache-first or removed)
 
-**污染点 B**: `include/ptx_ir/statement_context.h:310` — `InstructionState state = InstructionState::READY`
-- MUST 移出 `StatementContext` 值类型
-- 关键事实 (per Metis audit): 该字段声明后**从未被读写**, 是 cleanup 必删的 dead code
-- 之前 proposal.md 声称的 "8+ 处 set_state() 调用点" 实际是 `ThreadContext::set_state(EXE_STATE)`, 使用 `EXE_STATE` 枚举而非 `InstructionState`, 与本字段无关
+**污染点 B**: `include/ptx_ir/statement_context.h:306` — `InstructionState state = InstructionState::READY` ✅ **REMOVED (commit 586ea14f)**
+- 字段声明后**从未被读写** (per Metis audit)
+- `src/ptxsim/instruction_base.cpp:100-102` 注释确认 "do not write to stmt.state here to avoid a data race... The state begins as READY and need not be reset"
+- InstructionState enum 保留为 schema placeholder
 
-#### Scenario: Phase 0 净化后 2 污染点 0 出现
-- **WHEN** `git grep "operand_phy_addr" include/ptxemu/ir/` 或 `git grep "InstructionState state =" include/ptxemu/ir/`
-- **THEN** 0 matches (字段已移出值类型)
+#### Scenario: Phase 0 净化后 2 污染点 0 出现 ✅
+- **WHEN** `git grep "operand_phy_addr" include/ptx_ir/` 或 `git grep "InstructionState state =" include/ptx_ir/`
+- **THEN** 0 matches (字段已移除)
 
-#### Scenario: 调度器 invariant 在 Phase 0 净化后保持
+#### Scenario: 调度器 invariant 在 Phase 0 净化后保持 ✅
 - **WHEN** 实施 Phase 0 净化后跑 PTX-EMU 全量 ctest
-- **THEN** 0 回归 (调度器行为不变)
+- **THEN** 0 回归 (246/246 PASS, 多次验证 33.37s/37.57s/35.82s/35.02s/29.95s)
 
 ### Requirement: `StatementContext` 晋升为 `ptxemu::ir::Statement`
 
@@ -38,8 +39,8 @@
 | `include/ptx_ir/operand_context.h` | `include/ptxemu/ir/operand_context.h` | `ptxemu::ir::OperandContext` |
 | `include/ptx_ir/ptx_types.h` | `include/ptxemu/ir/ptx_types.h` | `ptxemu::ir::Qualifier` 等 |
 | `include/ptxsim/execution_types.h` | `include/ptxemu/ir/execution_types.h` | `ptxemu::ir::InstructionState` (only this exported) |
-| `include/ptx_ir/ptx_qualifier.def` | `include/ptxemu/ir/ptx_qualifier.def` | (X-Macro) |
-| `include/ptx_ir/ptx_op.def` | `include/ptxemu/ir/ptx_op.def` | (X-Macro) |
+| `include/ptx_ir/ptx_qualifier.def` | | (X-Macro) |
+| `include/ptx_ir/ptx_op.def` | | (X-Macro) |
 
 #### Scenario: 5 文件自洽 include
 - **WHEN** `g++ -fsyntax-only -I include/ptxemu/ir include/ptxemu/ir/statement.h`
@@ -62,13 +63,16 @@
 - **WHEN** Phase 1 实施后 `git grep -E "(class|struct)\s+\w+\s*\{" include/ptxemu/ir/statement.h | wc -l`
 - **THEN** >= 20 (20 struct 全部存在)
 
-### Requirement: `BarWarpSyncInstr::reconvergenceLabel` dead code 删除
+### Requirement: `BarWarpSyncInstr::reconvergenceLabel` dead code 删除 ✅ **COMPLETE**
 
-晋升前 MUST 删除 `include/ptx_ir/statement_context.h:229` 的 `std::string reconvergenceLabel` 字段 (dead code per Oracle 审计)。
+Promotes MUST BEFORE 5 file promotion: `reconvergenceLabel` field MUST be removed as it is dead code per Oracle 审计 (commit 602bfc30 + 359579ec).
+- ✅ `include/ptx_ir/statement_context.h:229` 字段已删除
+- ✅ `src/ptx_parser/ptx_visitor_barrier.cpp:119` writer 已删除
+- ✅ `tests/unit/test_ptxir_serialization.cpp` 3 处 aggregate initializer 已修复
 
-#### Scenario: 0 caller 引用 reconvergenceLabel
-- **WHEN** 晋升前 `git grep "reconvergenceLabel" -- ':!docs/' ':!openspec/'`
-- **THEN** 0 matches (除定义点外)
+#### Scenario: 0 caller 引用 reconvergenceLabel ✅
+- **WHEN** `git grep "reconvergenceLabel" -- ':!docs/' ':!openspec/'`
+- **THEN** 0 matches ✅
 
 ## REMOVED Requirements
 

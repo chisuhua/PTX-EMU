@@ -81,20 +81,25 @@ CI:
 
 ## Decisions
 
-### Decision 1: StatementContext 路径 — 选 (a) 晋升 [CONDITIONAL Phase 0]
+### Decision 1: StatementContext 路径 — 选 (a) 晋升 ✅ **[Phase 0 COMPLETE]**
 
 **Why** (3 关键论据,per Oracle Hypothesis 1 验证):
 1. CppTLM Decision 5 显式锁 "sizeof visibility is mandatory" — 与路径 (b) opaque handle 语义直接冲突
 2. 路径 (b) 题面自相矛盾:"CppTLM 通过现有 PtxirReader" 即返回 `vector<StatementContext>`, 即暴露
 3. 1 年维护税率: 路径 (a) `ptx_op.def` 表驱动 X-Macro 增列不破 ABI;路径 (b) 每次版本 bump 双仓回归
 
-**Alternatives considered**:
+**实施结果** (Phase 0 全部完成):
+- 污染点 A (`operand_phy_addr`): 4 commits (d8b6ca56/a6c9bdaf/66ca4875/1fb15d89), ThreadContext-local index-keyed cache 替代
+- 污染点 B (`InstructionState state`): 1 commit (586ea14f), 字段已移除
+- reconvergenceLabel dead code: 2 commits (602bfc30 + 359579ec)
+- ctest 246/246 PASS 全程验证
+- **无需降级路径 (b)** — 路径 (a) 成功实施
+
+**Alternatives considered** (已否决,无需降级):
 - **(b) StatementHandle 不透明 + `decode_ptxir` 字节流**:
   - 优点: 内部 IR 完全私有
-  - 缺点: 与 CppTLM Decision 5 冲突, 长期维护税高 (PTXIR version bump 近期发生已 1 次, 见 ADR-0028)
-  - 何时降级: Phase 0 净化发现 `state` 字段被 5+ 处执行引擎深度依赖无法剥离 (Per ptx-lessons-learned §1 跨模块状态翻译, `state` 是嵌入式 IR 翻译信号, 迁移风险极高)
-
-**Phase 0 净化 (Must, 3-4d)**:
+  - 缺点: 与 CppTLM Decision 5 冲突, 长期维护税高
+  - **未启用**: Phase 0 实施顺利, 路径 (a) 验证通过
 
 **污染点 A**: `include/ptx_ir/operand_context.h:59` — `mutable void *operand_phy_addr = nullptr`
 - **实际调用点 (8 sites, 4 文件, per Metis audit)**:

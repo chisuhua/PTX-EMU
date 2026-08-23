@@ -150,12 +150,17 @@ uint32_t read_reg_32(const RegOperand &reg) {
     // Maximum operands per instruction
     static constexpr size_t MAX_OPERANDS_PER_INSTR = 4;
 
-    std::vector<void *>
+std::vector<void *>
         operand_collected; // collect operand addr  from BASE_INSTR operands
 
+    // Per-thread operand physical address cache (parallel to operand_collected).
+    // HSK-8 (ack 738b412c): canonical replacement for OperandContext::
+    // operand_phy_addr field during Phase 0.3 dual-write / reader migration.
+    std::vector<void *> operand_phy_cache_;
+
     // Track which operands are immediate (vs register/variable)
-    // For immediate operands, operand_collected[i] is a pointer to the
-    // immediate value For register/variable operands, operand_collected[i] is
+    // For immediate operands: operand_collected[i] is a pointer to the
+    // immediate value For register/variable operands: operand_collected[i] is
     // the actual value/address Usage example:
     //   if (operand_is_immediate_[i]) {
     //       // Direct access: operand_collected[i] points to immediate value
