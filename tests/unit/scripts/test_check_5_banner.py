@@ -19,7 +19,7 @@ def setup_fixture(root):
 def run_validator(root):
     r = subprocess.run(
         ['python3', 'scripts/check-docs-index.py', f'--mock-root={root}'],
-        capture_output=True, text=True, cwd=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        capture_output=True, text=True, cwd=os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
     )
     return r.returncode, r.stdout, r.stderr
 
