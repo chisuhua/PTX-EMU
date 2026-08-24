@@ -4,16 +4,29 @@
 
 ## Why
 
-HSK-8 Phase 2 (`PR #14 merged fcdad151` + CppTLM bump `beb3db8`) successfully shipped the public device API surface (`IPtxEmuDevice` 12-method interface + `ptxemu_core` STATIC library + `PTXEMU_API_VERSION=1` freeze per `include/ptxemu/device_api.h:117` static_assert). The `cpp 不暴露` constraint (CppTLM-side 0 PTX-EMU internal header includes, commit `09c27d5`) is honored, but **4 of the 12 pure virtual methods are still stubbed** in `src/ptxemu/device_api_impl.cc`:
+HSK-8 Phase 2 (`PR #14 merged fcdad151` + CppTLM bump `beb3db8`) successfully shipped the public device API surface (`IPtxEmuDevice` 12-method interface + `ptxemu_core` STATIC library + `PTXEMU_API_VERSION=1` freeze per `include/ptxemu/device_api.h:117` static_assert). The `cpp 不暴露` constraint (CppTLM-side 0 PTX-EMU internal header includes, commit `09c27d5`) is honored, but **7 of the 12 pure virtual methods have stub bodies** in `src/ptxemu/device_api_impl.cc`:
+
+**In-scope (this change, 4 methods)**:
 
 | Method | Stub at `device_api_impl.cc` | Real target |
 |--------|------------------------------|-------------|
 | `set_scoreboard` (sm_id, warp_id, mask) | L92-96 (`return false`) | `SMContext::set_scoreboard(IScoreboard*)` at `include/ptxsim/sm_context.h:87` |
 | `set_active_mask` (sm_id, warp_id, mask) | L105-110 (`return false`) | `WarpContext::set_active_mask(uint32_t)` at `include/ptxsim/warp_context.h:199` |
-| `set_next_pc` (sm_id, warp_id, lane_id, pc) | L113-118 (`return false`) | `ThreadContext::set_next_pc(int)` at `include/ptxsim/thread_context.h:229` |
+| `set_next_pc` (sm_id, warp_id, lane_id, pc) | L113-118 (`return false`) | `ThreadContext::set_pc(int)` + `commit_pc()` at `include/ptxsim/thread_context.h:227-232` |
 | `attach_timing` (sb, pl, tc) | L131-134 (`void{}`) | HSK-4 vendored interfaces injection into SMContext timing hooks |
 
-CppTLM-side `facade` (`beb3db8` state) consumes these 4 methods today as no-op, meaning **all delegated state modifications silently fail**. Until these are wired, HSK-8 acceptance is incomplete and `ptxemu_core` cannot fulfill its design promise.
+**Deferred (out-of-scope, 3 methods, follow-up change)**:
+
+| Method | Stub at `device_api_impl.cc` | Why deferred |
+|--------|------------------------------|--------------|
+| `warp_exe_once` (sm_id, warp_id) | L85-88 (`return -1`) | Requires instance-based `g_gpu_context` migration (Phase 2.2) + warp scheduler integration testing |
+| `get_thread_state` (sm_id, warp_id, lane_id) | L99-102 (`return ThreadState::kIdle`) | Requires ThreadContext read accessor + enum mapping validation |
+| `get_warp_status` (sm_id, warp_id) | L121-126 (default `WarpStatus s{}; return s;`) | Requires WarpContext lane/active_mask/blocked_cycles snapshotter |
+
+**Already implemented (5 methods, no change needed)**:
+`initialize`, `shutdown`, `exe_once`, `sm_exe_once`, `is_finished` (Note: per empirical reading of `src/ptxemu/device_api_impl.cc:128-134`, `is_finished` IS implemented — calls `g_gpu_context->get_state() == EXE_STATE::IDLE` — contrary to the prior Oracle table claim of "5 stubs confirmed").
+
+CppTLM-side `facade` (`beb3db8` state) consumes these methods today; the 4 in-scope stubs no-op, meaning **all delegated state modifications silently fail**; the 3 deferred stubs also silently fail but are out of scope. Until the 4 in-scope are wired, HSK-8 acceptance is incomplete for state-delegation semantics (read-only queries via `exe_once`/`sm_exe_once` work, but state mutations don't).
 
 ## What Changes
 

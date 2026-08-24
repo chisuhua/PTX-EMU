@@ -7,7 +7,7 @@
 - [ ] 1.3 MUST: Metis pre-impl review 审计 4 OpenSpec artifacts (per §7 + §H in ptx-lessons-learned)
 - [ ] 1.4 应用 Metis MUST-RESOLVE 列表,重审直至 ⚠️→GO 或 ✅
 - [ ] 1.5 NOTE: 4 artifacts 范围数字一致性按 Checklist J 校验
-- [ ] 1.6 MUST: `git add openspec/changes/2026-08-24-device-api-delegation/` + commit (per Checklist E)
+- [ ] 1.6 MUST: `git add openspec/changes/device-api-delegation/` + commit (per Checklist E)
 - [ ] 1.7 创建 `feat/device-api-delegation` 分支从 origin main (HEAD `530bd6ca` or later)
 
 ## 2. Phase 2.2 delegation 实施 (per design Decision 1 + spec/ptxemu-device-api-delegation)
@@ -16,25 +16,27 @@
 - [ ] 2.2 实施 `set_active_mask` delegation (overwrite 语义, NOT OR-merge, per BUG-RETHANG)
 - [ ] 2.3 实施 `set_next_pc` delegation (使用 `set_pc()` + `commit_pc()`, NOT `force_set_pc`, per AGENTS.md ANTI-PATTERNS L85)
 - [ ] 2.4 unit test 覆盖 3 个 delegation (`tests/unit/ptxemu/test_device_api_delegation.cpp`)
-- [ ] 2.5 e2e test 经 `execute_warp_instruction` 验证 thread PC (`tests/integration/warp/test_device_api_delegation_e2e.cc` per test-coverage-enforcer)
-- [ ] 2.6 regression guard test for `set_active_mask` overwrite (`tests/integration/warp/test_set_active_mask_overwrite.cpp`)
-- [ ] 2.7 full clean rebuild + ctest 验证 252/252 (246 baseline + 6 new unit) + drift_check 5 invariants PASS
-- [ ] 2.8 commit "feat(ptxemu): phase 2.2 set_scoreboard + set_active_mask + set_next_pc delegation"
+- [ ] 2.5 regression guard test for `set_active_mask` overwrite (`tests/integration/warp/test_set_active_mask_overwrite.cpp`)
+- [ ] 2.6 full clean rebuild + ctest 验证 251/251 (246 baseline + 3 unit (delegation file) + 2 integration (overwrite file, counted via ctest labels)) + drift_check 5 invariants PASS
+- [ ] 2.7 commit "feat(ptxemu): phase 2.2 set_scoreboard + set_active_mask + set_next_pc delegation"
 
 ## 3. Phase 2.3 attach_timing 实施 (per design Decision 4 + spec/ptxemu-device-api-delegation)
 
 - [ ] 3.1 实施 `attach_timing` HSK-4 vendored interface injection (IScoreboard/IPipelineLatencyProvider/ITensorCoreTiming)
+  - **Namespace bridge** (per design Decision 6): use `static_cast<::IScoreboard*>(sb)` etc. for cross-namespace pointer bridge
 - [ ] 3.2 注入到 SMContext timing hooks (per design.md Decision 4)
 - [ ] 3.3 unit test 覆盖 `attach_timing` (`tests/unit/ptxemu/test_device_api_attach_timing.cpp`)
-- [ ] 3.4 full clean rebuild + ctest 验证 253/253 (252 baseline + 1 new e2e) + drift_check 5 invariants PASS
-- [ ] 3.5 commit "feat(ptxemu): phase 2.3 attach_timing HSK-4 vendored interface injection"
+- [ ] 3.4 e2e test 经 `execute_warp_instruction` 验证 thread PC (`tests/integration/warp/test_device_api_delegation_e2e.cc` per test-coverage-enforcer) — 文件创建后,在 Phase 2.3 ctest run 中验证
+- [ ] 3.5 full clean rebuild + ctest 验证 253/253 (251 Phase 2.2 baseline + 1 unit (attach_timing file) + 1 e2e (delegation_e2e file)) + drift_check **6** invariants PASS (per Decision 4 CI gate)
+- [ ] 3.6 commit "feat(ptxemu): phase 2.3 attach_timing HSK-4 vendored interface injection"
 
 ## 4. drift_check Invariant 6 + README sync + 验证 (per ptx-lessons-learned §21 + this plan Risk R3)
 
-- [ ] 4.1 扩展 `.github/workflows/drift_check.yml` Invariant 6: 验证 `src/ptxemu/device_api_impl.cc` 中无 `return false` (除 `attach_timing` 的 void 返回)
-- [ ] 4.2 更新 `README.md` §已实现功能 IPtxEmuDevice 条目(添加 "Phase 2.2/2.3 delegation 完成" 字样, per §21 Checklist I)
-- [ ] 4.3 drift_check workflow 验证 delegation 不可回归 stub (`grep 'return false' src/ptxemu/device_api_impl.cc` 应为 0 except `attach_timing`)
-- [ ] 4.4 ctest PASS(253 tests: 246 baseline + 6 new unit + 1 e2e + 0 regression guard counted in 6)
+- [ ] 4.1 扩展 `.github/workflows/drift_check.yml` paths 触发过滤: 添加 `src/ptxemu/**` (per Metis MR-3)
+- [ ] 4.2 添加 `.github/workflows/drift_check.yml` Invariant 6: 验证 `src/ptxemu/device_api_impl.cc` 中**无空 body 方法体**(per Metis MR-2) — 不检测 `return false` 计数(spec 要求合法 `return false` 错误路径);使用 regex 匹配 `return true;[^}]*}` (空 body 模式) 等
+- [ ] 4.3 更新 `README.md` §已实现功能 IPtxEmuDevice 条目(添加 "Phase 2.2/2.3 delegation 完成" 字样, per §21 Checklist I)
+- [ ] 4.4 ctest PASS(253 tests: 246 baseline + 4 unit (delegation + attach_timing files) + 3 integration (overwrite + e2e + 1 = counted via ctest labels))
+- [ ] 4.5 drift_check workflow 验证 delegation 不可回归 stub (per MR-3 + MR-2 修订)
 
 ## 5. PR submission (per archive/2026-08-24-ptxemu-public-device-api §8 先例)
 

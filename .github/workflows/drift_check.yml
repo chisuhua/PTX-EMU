@@ -12,12 +12,16 @@ on:
       - 'include/ptxemu/**'
       - 'include/ptx_ir/**'
       - 'include/ptxsim/execution_types.h'
+      # Phase 2.2/2.3 (device-api-delegation): Invariant 6 watches
+      # src/ptxemu/device_api_impl.cc for stub regression (per Metis MR-3).
+      - 'src/ptxemu/**'
   push:
     branches: [main]
     paths:
       - 'include/ptxemu/**'
       - 'include/ptx_ir/**'
       - 'include/ptxsim/execution_types.h'
+      - 'src/ptxemu/**'
   workflow_dispatch:
 
 # Cancel in-progress runs for same branch on new push.

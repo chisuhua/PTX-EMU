@@ -39,14 +39,14 @@ The `IPtxEmuDevice::set_active_mask(uint32_t sm_id, uint32_t warp_id, uint64_t m
 
 ### Requirement: `IPtxEmuDevice::set_next_pc` delegates to ThreadContext via set_pc + commit_pc
 
-The `IPtxEmuDevice::set_next_pc(uint32_t sm_id, uint32_t warp_id, uint32_t lane_id, uint32_t pc)` method MUST delegate to `ThreadContext::set_next_pc(int)` (`include/ptxsim/thread_context.h:229`) for the given `(sm_id, warp_id, lane_id)`. The delegation MUST use the `set_pc()` + `commit_pc()` pattern (per AGENTS.md ANTI-PATTERNS L85), NOT `force_set_pc()`. The method MUST return `true` on success.
+The `IPtxEmuDevice::set_next_pc(uint32_t sm_id, uint32_t warp_id, uint32_t lane_id, uint32_t pc)` method MUST delegate to `ThreadContext::set_pc(int)` + `ThreadContext::commit_pc()` (`include/ptxsim/thread_context.h` L227-232) for the given `(sm_id, warp_id, lane_id)`. The delegation MUST use the `set_pc()` + `commit_pc()` pattern (per AGENTS.md ANTI-PATTERNS L85), NOT `force_set_pc()`. The `pc` parameter is narrowed from `uint32_t` to `int` via `static_cast<int>(pc)` (per AGENTS.md PTX PC is 32-bit, no overflow risk for valid PTX programs). The method MUST return `true` on success.
 
 > **CRITICAL invariant**: `force_set_pc` bypasses PC synchronization invariants and is forbidden by AGENTS.md. Using `force_set_pc` in `device_api_impl.cc::set_next_pc` is a hard anti-pattern that MUST NOT occur.
 
 #### Scenario: Valid thread PC update
 
 - **WHEN** `device.set_next_pc(0, 0, 0, 42)` is called on a GPU with thread (sm=0, warp=0, lane=0)
-- **THEN** thread (sm=0, warp=0, lane=0)'s `simt_pc_mgr_->next_pc_` is set to 42 via `set_pc(42)` + `commit_pc()`
+- **THEN** thread (sm=0, warp=0, lane=0)'s PC is set to 42 via `thread->set_pc(42)` + `thread->commit_pc()`
 - **AND** the method returns `true`
 - **AND** subsequent `execute_warp_instruction` observes the new PC at the next dispatch
 
