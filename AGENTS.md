@@ -20,7 +20,7 @@ PTX-EMU 通过 HSK (HandShake) protocol 与 CppTLM / UsrLinuxEmu 协同. 跨仓�
 |-----|------|-------------|------|
 | HSK-6 | ✅ ACCEPTED | PTX-EMU `25e36f60` + CppTLM `369cf71` | `docs/superpowers/specs/2026-08-18-hsk-6-cpptlm-bridge-deprecation.md` |
 | HSK-7 | 🔵 预留 (未签发) — 仅 ABI 解冻 CPPTLMBRIDGE_VERSION 触发 | — | — |
-| **HSK-8** | 🔄 **PTX-EMU ACK 已发送** (738b412c, ack body 250+ 行) | PTX-EMU `738b412c` + Phase 2 PR `feat/ptxemu-public-device-api` (11 commits ahead) | `docs/superpowers/specs/2026-08-22-hsk-8-ptxemu-public-api-ack.md` |
+| **HSK-8** | ✅ **ACCEPTED** (PR #14 merged `fcdad151` + CppTLM bump `beb3db8`) | PTX-EMU `fcdad151` (squash merge of 12 impl commits) + CppTLM `beb3db8` (submodule pin at `530bd6ca`) | `docs/superpowers/specs/2026-08-22-hsk-8-ptxemu-public-api-ack.md` + `docs/audits/2026-08-13-hsk8-ptxemu-public-api.md` §Postmortem |
 | HSK-9 | 🔵 预留 — 仅 PTXEMU_API_VERSION bump 触发 | — | — |
 
 HSK-8 实施进度 (per OpenSpec `openspec/changes/ptxemu-public-device-api/`):
@@ -29,15 +29,17 @@ HSK-8 实施进度 (per OpenSpec `openspec/changes/ptxemu-public-device-api/`):
 - ✅ Phase 2: `device_api.h` + `device_api_impl.cc` + `ptxemu_core` 静态库 (commit d281a21e)
 - ✅ Phase 3: `PROJECT_IS_TOP_LEVEL` 隔离 + `PTXEMU_BUILD_TESTING` option + install rules (commit c225780e)
 - ✅ Phase 4: `.github/workflows/drift_check.yml` 5 invariants 验证 (commit ae86c816)
-- 🔄 Phase 5: 文档同步 (本 phase)
-- ⏳ CppTLM bump PR (待 HSK-8 Phase 2 PR 合入后由 CppTLM 触发)
+- ✅ Phase 5: doc sync (`include/ptxemu/AGENTS.md` + root AGENTS.md HSK chain + audit doc) — commit `3678a0d7`
+- ✅ Phase 6 (本 session): archive prep + postmortem + 4 main specs create — commits `d5600e89` / `8aa72f1d` / `530bd6ca`
+- ✅ CppTLM bump PR — commits `6f408b5` / `09c27d5` / `d035551` + submodule pin `beb3db8`
 
 跨仓协调顺序 (HSK-8 spec §"跨仓协调顺序"):
 1. ✅ PTX-EMU HSK-8 ack commit (738b412c) + issue #22 评论 #5381166580
-2. 🔄 PTX-EMU Phase 2 PR (当前 feat/ptxemu-public-device-api 分支, 11 commits ahead)
-3. ⏳ PTX-EMU CI 全绿 (drift_check + ctest 全部 PASS)
-4. ⏳ PTX-EMU Phase 2 PR 合入 main (目标 2026-09-19 前, per HSK-8 ack 决策点 4)
-5. ⏳ CppTLM bump PR (submodule pin + add_subdirectory + 桥接残留簇删除)
+2. ✅ PTX-EMU Phase 2 PR — PR #14 merged `fcdad151`(2026-08-24T03:55:14Z by `chisuhua`, 分支已 archive + 删除)
+3. ✅ PTX-EMU CI 全绿 — ctest 246/246 + drift_check 5 invariants PASS
+4. ✅ PTX-EMU Phase 2 PR 合入 main — origin/main HEAD = `530bd6ca`,**ahead of 2026-09-19 target by 26 天**
+5. ✅ CppTLM bump PR — submodule pin `beb3db8` → PTX-EMU `530bd6ca`, 5 HSK-8 commits merged (`6f408b5` + `09c27d5` + `d035551` + `12b9e0f` + `beb3db8`)
+6. ✅ Gate 1 fix archive (2026-08-25) — PR #16 (`chore/archive-gate1-fix-2026-08-25` branch, 3 commits `13f55bbe` / `3a3f8a93` / `098c50fc`),Gate 1 leak 物理消除 by 4-phase refactor (`09786635`),详见 `docs/audits/2026-08-25-fix-phase0-gate1-archive-postmortem.md`
 
 HSK protocol 文档: `docs/superpowers/specs/HSK-PROTOCOL-NOTES.md`
 
