@@ -2066,4 +2066,4 @@ set(ANTLR_EXECUTABLE ${CMAKE_SOURCE_DIR}/antlr4/antlr-4.13.2-complete.jar)
 set(ANTLR_EXECUTABLE ${PROJECT_SOURCE_DIR}/antlr4/antlr-4.13.2-complete.jar)
 ```
 
-**真实案例**: `antlr4-path-hardcoding-fix` change (commit `<antlr4-path-fix-commit-hash>`, 2026-08-25) — Doc2 §8 follow-up item 4 (`docs/audits/2026-08-25-fix-phase0-gate1-archive-postmortem.md` §7.2 item 4) 解决，drift_check Invariant 7 防回归
+**真实案例**: `antlr4-path-hardcoding-fix` change (commit `2148e15c`, 2026-08-25) — Doc2 §8 follow-up item 4 (`docs/audits/2026-08-25-fix-phase0-gate1-archive-postmortem.md` §7.2 item 4) 解决，drift_check Invariant 7 防回归
