@@ -1,0 +1,3 @@
+# phase-2-2-1-3-1-followup
+
+PTX-EMU HSK-8 Phase 2.2.1/2.3.1 follow-up — completes 3 deferred `IPtxEmuDevice` method stubs (`warp_exe_once` / `get_thread_state` / `get_warp_status`) deferred from `device-api-delegation` (archived 2026-08-25, commit `183a6ada`) + adds e2e test via `WarpContext::execute_warp_instruction` for delegated state changes. Removes drift_check Invariant 6 exemption list (3 → 0 methods) once all 12 `IPtxEmuDevice` methods are real implementations. No public API signature changes (`PTXEMU_API_VERSION=1` frozen). See parent plan `2026-08-24-hsk8-followup-task-path.md` §Phase 3 Task 3.1-3.2.
