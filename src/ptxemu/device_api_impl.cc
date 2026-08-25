@@ -29,7 +29,11 @@
 #include <ptxsim/scoreboard_interface.h>
 #include <ptxsim/pipeline_interface.h>
 #include <ptxsim/tensor_core_interface.h>
+#include <ptxsim/warp_context.h>
+#include <ptx_ir/statement_context.h>
 
+#include <climits>
+#include <cstdint>
 #include <memory>
 
 // Forward decl for global GPUContext singleton (declared in src/cudart/
@@ -87,10 +91,68 @@ public:
         return 0;
     }
 
-    int warp_exe_once(uint32_t /*sm_id*/, uint32_t /*warp_id*/) override {
-        // Phase 2.2: SMContext::get_warp(warp_id) → WarpContext::execute
-        // For now return -1 to indicate not implemented.
-        return -1;
+    // warp_exe_once: advance ONE warp by one statement via
+    // WarpContext::execute_warp_instruction(StatementContext&, int).
+    //
+    // CRITICAL: This is a STATE-MUTATING hot path. Per ptx-instruction-pipeline
+    // skill, must NOT bypass barrier/scoreboard invariants. Per
+    // ptx-barrier-mechanism, must respect BarrierModule::release_warp_barrier
+    // overwrite semantics (BUG-RETHANG / BUG-POSTBARRIER-TWOHALVES guard).
+    //
+    // Implementation mirrors the single-warp path in SMContext::exe_once
+    // (sm_context.cpp L255-L321): get_lanes_by_pc → pick non-blocked PC →
+    // extract StatementContext from sample lane → execute.
+    //
+    // Returns 0 on success, -1 if sm_id/warp_id invalid or no StatementContext
+    // available. Returns 0 if no schedulable lanes (matches SMContext idle path).
+    int warp_exe_once(uint32_t sm_id, uint32_t warp_id) override {
+        if (!g_gpu_context) return -1;
+        auto* sm = g_gpu_context->get_sm(sm_id);
+        if (!sm) return -1;
+        auto* warp = sm->get_warp(warp_id);
+        if (!warp) return -1;
+
+        auto lanes_by_pc = warp->get_lanes_by_pc();
+        if (lanes_by_pc.empty()) {
+            // No schedulable lanes (idle, all blocked, or all exited) — same
+            // skip semantics as SMContext::exe_once.
+            return 0;
+        }
+
+        // Pick first PC whose lanes are not all blocked on a barrier.
+        int pick_pc = lanes_by_pc.begin()->first;
+        const auto& ws = warp->get_warp_state();
+        for (const auto& [pc, lanes] : lanes_by_pc) {
+            bool all_non_blocked = true;
+            for (int lane : lanes) {
+                if (ws.threads[lane].is_blocked) {
+                    all_non_blocked = false;
+                    break;
+                }
+            }
+            if (all_non_blocked) {
+                pick_pc = pc;
+                break;
+            }
+        }
+
+        // Extract StatementContext from the sample lane (mirrors
+        // SMContext::exe_once L262-L264).
+        const auto& lanes = lanes_by_pc.begin()->second;
+        int sample_lane = lanes[0];
+        ThreadContext* thread = warp->get_thread(sample_lane);
+        if (!thread) return -1;
+        if (pick_pc < 0 || pick_pc >= thread->statements_size()) {
+            // Out-of-bounds PC (e.g. barrier handler jumped to reconvergence_pc
+            // beyond statement list). Skip this tick — matches scheduler_utils.h
+            // out-of-bounds guard.
+            return 0;
+        }
+        StatementContext* stmt = thread->get_statement_at(pick_pc);
+        if (!stmt) return -1;
+
+        warp->execute_warp_instruction(*stmt, pick_pc);
+        return 0;
     }
 
     // Phase 2.2 — set_scoreboard delegation via SMContext.
@@ -110,11 +172,26 @@ public:
         return sm->get_scoreboard() != nullptr;
     }
 
-    // get_thread_state: read from GPUContext thread state.
-    ThreadState get_thread_state(uint32_t /*sm_id*/, uint32_t /*warp_id*/,
-                                 uint32_t /*lane_id*/) override {
-        // Phase 2.2: SMContext → WarpContext → ThreadContext::state
-        return ThreadState::kIdle;
+    // get_thread_state: read from ThreadContext::get_state() (which returns
+    // EXE_STATE) and map to ptxemu::ThreadState via the existing map_state
+    // helper (HSK-8 spec §Decision 6 static_assert lock).
+    //
+    // READ-ONLY (per state-modification-audit skill): no state mutation.
+    //
+    // CRITICAL: Per include/ptxsim/thread_context.h:205, ThreadContext exposes
+    // get_state() (not direct field access). The pre-fix stub returned
+    // hardcoded ThreadState::kIdle which violated HSK-8 spec §Decision 6
+    // (returning constant regardless of underlying EXE_STATE).
+    ThreadState get_thread_state(uint32_t sm_id, uint32_t warp_id,
+                                 uint32_t lane_id) override {
+        if (!g_gpu_context) return ThreadState::kIdle;
+        auto* sm = g_gpu_context->get_sm(sm_id);
+        if (!sm) return ThreadState::kIdle;
+        auto* warp = sm->get_warp(warp_id);
+        if (!warp) return ThreadState::kIdle;
+        auto* thread = warp->get_thread(static_cast<int>(lane_id));
+        if (!thread) return ThreadState::kIdle;
+        return map_state(thread->get_state());
     }
 
     // set_active_mask — overwrite semantics (per ptx-lessons-learned §1
