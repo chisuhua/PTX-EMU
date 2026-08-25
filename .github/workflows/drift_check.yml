@@ -15,6 +15,9 @@ on:
       # Phase 2.2/2.3 (device-api-delegation): Invariant 6 watches
       # src/ptxemu/device_api_impl.cc for stub regression (per Metis MR-3).
       - 'src/ptxemu/**'
+      # antlr4-path-hardcoding-fix: Invariant 7 watches CMakeLists.txt for
+      # vendored ANTLR4 path regressions (per cmake-antlr4-relative-paths).
+      - 'CMakeLists.txt'
   push:
     branches: [main]
     paths:
@@ -22,6 +25,9 @@ on:
       - 'include/ptx_ir/**'
       - 'include/ptxsim/execution_types.h'
       - 'src/ptxemu/**'
+      # antlr4-path-hardcoding-fix: Invariant 7 watches CMakeLists.txt for
+      # vendored ANTLR4 path regressions (per cmake-antlr4-relative-paths).
+      - 'CMakeLists.txt'
   workflow_dispatch:
 
 # Cancel in-progress runs for same branch on new push.
@@ -164,3 +170,15 @@ jobs:
                   print(f"::error file={IMPL}::{e} — per spec/ci-drift-check-extension Invariant 6, in-scope IPtxEmuDevice methods must have real delegation, not constant-return stubs.")
               sys.exit(1)
           PYEOF
+
+      # Invariant 7 (antlr4-path-hardcoding-fix, per cmake-antlr4-relative-paths
+      # spec): CMakeLists.txt MUST NOT use ${CMAKE_SOURCE_DIR} for vendored
+      # ANTLR4 paths. CMAKE_SOURCE_DIR resolves to the top-level project root
+      # and breaks CppTLM-side add_subdirectory/ExternalProject_Add consumers;
+      # ${PROJECT_SOURCE_DIR} is project-relative and stable.
+      - name: Check no CMAKE_SOURCE_DIR hardcoded ANTLR4 paths (Invariant 7)
+        run: |
+          if grep -nE "CMAKE_SOURCE_DIR.*antlr4|antlr4.*CMAKE_SOURCE_DIR" CMakeLists.txt; then
+            echo "::error file=CMakeLists.txt::vendored ANTLR4 paths must use \${PROJECT_SOURCE_DIR} (project-relative), not \${CMAKE_SOURCE_DIR} (top-level-relative) — breaks CppTLM-side add_subdirectory consumers (per cmake-antlr4-relative-paths spec)."
+            exit 1
+          fi
