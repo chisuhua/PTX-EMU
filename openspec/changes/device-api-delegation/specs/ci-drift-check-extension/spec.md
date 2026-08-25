@@ -41,3 +41,18 @@ The drift_check workflow (`.github/workflows/drift_check.yml`) MUST extend its `
 - **EXCLUDE**: methods with >1 statement (delegation logic + error guards)
 - **EXCLUDE**: `attach_timing` (void return type — stub pattern is no statements at all, but tracked by separate "empty void body" pattern)
 - **IMPLEMENTATION**: bash + grep -E "^\s+return (false|nullptr|-1|ThreadState::kIdle);" -- context 5 (must be only return in method body); OR Python AST parse
+
+#### Scenario: Deferred stub methods (per design Non-Goal 5) are explicitly exempted
+
+- **WHEN** a method is in the **deferred stubs list**:
+  - `warp_exe_once` (`src/ptxemu/device_api_impl.cc` L85-88, returns `-1`)
+  - `get_thread_state` (L99-102, returns `ThreadState::kIdle`)
+  - `get_warp_status` (L121-126, returns default-constructed `WarpStatus s{}`)
+- **THEN** drift_check Invariant 6 EXEMPTS these 3 methods from empty-body detection
+- **AND** this exemption is documented in `openspec/changes/device-api-delegation/design.md` Non-Goal 5 (deferred to Phase 2.2.1/2.3.1 follow-up change)
+- **AND** Invariant 6 implementation MUST encode this exemption via explicit method-name whitelist
+- **WHEN** the Phase 2.2.1/2.3.1 follow-up change implements these 3 methods
+- **THEN** the exemption MUST be removed from Invariant 6 simultaneously
+- **AND** the follow-up change commit message MUST reference this spec scenario as the exemption removal trigger
+
+> **Rationale** (per design.md Non-Goal 5 + Metis MR-Oracle inventory): these 3 methods were `nlohmann::`-style documentation-only stubs in the HSK-8 Phase 2 PR (commit `d281a21e`). Phase 2.2/2.3 R7-constrained minimum scope implements only 4 in-scope methods (set_scoreboard / set_active_mask / set_next_pc / attach_timing). The 3 deferred stubs are tracked as follow-up work and SHOULD remain stub bodies until the Phase 2.2.1/2.3.1 change lands.
