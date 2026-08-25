@@ -1,8 +1,7 @@
-# ci-drift-check Specification
+# ci-drift-check spec (delta for antlr4-path-hardcoding-fix)
 
-## Purpose
-TBD - created by archiving change ptxemu-public-device-api. Update Purpose after archive.
-## Requirements
+## MODIFIED Requirements
+
 ### Requirement: `.github/workflows/drift_check.yml` MUST 存在
 
 新增 workflow 文件 MUST 验证 PTX-EMU 内部公共头布局与仓内 hash 一致:
@@ -105,3 +104,29 @@ The drift_check workflow (`.github/workflows/drift_check.yml`) MUST extend its `
 
 > **Rationale** (per design.md Non-Goal 5 + Metis MR-Oracle inventory): these 3 methods were `nlohmann::`-style documentation-only stubs in the HSK-8 Phase 2 PR (commit `d281a21e`). Phase 2.2/2.3 R7-constrained minimum scope implements only 4 in-scope methods (set_scoreboard / set_active_mask / set_next_pc / attach_timing). The 3 deferred stubs are tracked as follow-up work and SHOULD remain stub bodies until the Phase 2.2.1/2.3.1 change lands.
 
+### Requirement: drift_check workflow Invariant 7 verifies CMake vendored path correctness
+
+The drift_check workflow MUST extend its `paths` trigger filter to include `CMakeLists.txt` (alongside existing `src/ptxemu/**` and `include/ptxemu/**`), and add Invariant 7: after this change, `CMakeLists.txt` MUST NOT contain `${CMAKE_SOURCE_DIR}/antlr4` hardcoded paths (per `cmake-antlr4-relative-paths/spec.md` requirement).
+
+> **Invariant 7 (NEW)**: This is added as the 7th invariant in drift_check workflow, alongside the existing 6 invariants.
+
+#### Scenario: CMakeLists.txt change triggers drift_check on path-correctness
+
+- **WHEN** a commit modifying `CMakeLists.txt` is pushed to any branch
+- **AND** the file uses `${PROJECT_SOURCE_DIR}/antlr4` (or `${CMAKE_CURRENT_SOURCE_DIR}/antlr4`) instead of `${CMAKE_SOURCE_DIR}/antlr4`
+- **THEN** drift_check Invariant 7 PASSES
+- **AND** the overall drift_check workflow exits 0
+
+#### Scenario: Regression to `${CMAKE_SOURCE_DIR}/antlr4` hardcoding fails Invariant 7
+
+- **WHEN** a future commit modifies `CMakeLists.txt` to re-introduce `${CMAKE_SOURCE_DIR}/antlr4` hardcoded path
+- **THEN** drift_check Invariant 7 FAILS
+- **AND** the CI pipeline blocks merge to main
+- **AND** the regression is detected before reaching CppTLM-side chained builds (analogous to BUG-RETHANG prevention)
+
+#### Scenario: Invariant 7 implementation
+
+- **MATCH**: `${CMAKE_SOURCE_DIR}/antlr4` (any occurrence in `CMakeLists.txt`)
+- **EXCLUDE**: `${CMAKE_CURRENT_SOURCE_DIR}/antlr4` (acceptable for subdirectory-relative references)
+- **EXCLUDE**: `${PROJECT_SOURCE_DIR}/antlr4` (the correct fix)
+- **IMPLEMENTATION**: bash + grep -nE "CMAKE_SOURCE_DIR.*antlr4|antlr4.*CMAKE_SOURCE_DIR" CMakeLists.txt (returns 0 lines = PASS)

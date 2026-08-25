@@ -262,7 +262,7 @@ These are tracked in the HSK-8 follow-up plan, **NOT** this Gate 1 archive chang
 1. ⏳ Update `AGENTS.md` HSK-8 cross-repo section: remove "等待 PTX-EMU fix 后 bump" stale description
 2. ⏳ Bump submodule to include HSK-8 follow-up commits (Doc1 Phase 1 docs-sync + Phase 2 delegation)
 3. ⏳ Audit `cleanup-cudart-cpptlm-bridge-coupling` (58 tasks): many are now obsolete post-4-phase refactor
-4. ⏳ Continue ANTLR4 path hardcoding fix (per Doc2 §8 follow-up list, item 4)
+4. ✅ ANTLR4 path hardcoding fix landed (commit `<antlr4-path-fix-commit-hash>`, drift_check Invariant 7 added, see `openspec/changes/antlr4-path-hardcoding-fix/`)
 
 ### 7.3 Future maintenance
 

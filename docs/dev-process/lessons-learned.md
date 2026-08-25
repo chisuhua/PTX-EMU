@@ -2040,3 +2040,30 @@ WarpContext* schedule_next() {
 - Mutation test 必须显式覆盖：(a) 同 bytes 两次 deserialize 字段一致，(b) N=100 sequential launches 全部成功，(c) image bytes SHA-256 invariance
 
 **真实案例**: `feat-ptxemu-image-executor` change (commit `feat: Phase 0 + Phase 1 - PTX-EMU Image Executor`, 2026-08-10)
+
+## 45. CMake `CMAKE_SOURCE_DIR` vs `PROJECT_SOURCE_DIR` for vendored dependencies (2026-08-25)
+
+**问题模式**: `CMakeLists.txt:98-99` 用 `${CMAKE_SOURCE_DIR}` 定位 vendored ANTLR4 (`antlr4/antlr-4.13.2-complete.jar` + `antlr4/antlr4-cpp-runtime-4.13.2-source`)。`CMAKE_SOURCE_DIR` 始终解析到 **top-level project root**。PTX-EMU standalone 时恰好等于 PTX-EMU 根目录，但 CppTLM 通过 `add_subdirectory(external/PTX-EMU)` 或 `ExternalProject_Add` 消费时，CppTLM 的 CMakeLists.txt 成为 top-level，`${CMAKE_SOURCE_DIR}/antlr4/` 不再存在 → CppTLM-side chained build 在 `ANTLR_EXECUTABLE` 解析处失败。
+
+**关键经验**:
+- vendored 依赖的 CMake 路径必须用 `${PROJECT_SOURCE_DIR}`（最近一次 `project()` 的目录，project-relative、跨嵌套 CMakeLists.txt 稳定），不能用 `${CMAKE_SOURCE_DIR}`（top-level-relative，subproject 消费时会漂移）
+- `${CMAKE_CURRENT_SOURCE_DIR}` 同理：在嵌套 `add_subdirectory` 场景下等于当前子目录（如 `src/CMakeLists.txt` = `src/`），不适合引用 project root 下的 vendored 内容
+- standalone build 时 `CMAKE_SOURCE_DIR == PROJECT_SOURCE_DIR`，单一构建验证无法暴露该 bug — 必须靠 CI invariant（drift_check Invariant 7）+ subproject 消费场景测试
+- 修复是 2 行变量替换，但回归防护（CI invariant）与修复本身同等重要
+
+**诊断命令**:
+```bash
+grep -n "CMAKE_SOURCE_DIR" CMakeLists.txt   # 所有 top-level-relative 引用点
+grep -nE "CMAKE_SOURCE_DIR.*antlr4|antlr4.*CMAKE_SOURCE_DIR" CMakeLists.txt  # Invariant 7
+```
+
+**修复模板**:
+```cmake
+# BEFORE: top-level-relative，被 add_subdirectory 消费时失效
+set(ANTLR_EXECUTABLE ${CMAKE_SOURCE_DIR}/antlr4/antlr-4.13.2-complete.jar)
+
+# AFTER: project-relative，subproject 消费时稳定
+set(ANTLR_EXECUTABLE ${PROJECT_SOURCE_DIR}/antlr4/antlr-4.13.2-complete.jar)
+```
+
+**真实案例**: `antlr4-path-hardcoding-fix` change (commit `<antlr4-path-fix-commit-hash>`, 2026-08-25) — Doc2 §8 follow-up item 4 (`docs/audits/2026-08-25-fix-phase0-gate1-archive-postmortem.md` §7.2 item 4) 解决，drift_check Invariant 7 防回归

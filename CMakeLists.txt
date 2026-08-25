@@ -95,8 +95,8 @@ set(DEFAULT_CUDA_ARCH "100" CACHE STRING "Default CUDA architecture")
 # ==============================
 # 🐜 ANTLR4 配置
 # ==============================
-set(ANTLR_EXECUTABLE ${CMAKE_SOURCE_DIR}/antlr4/antlr-4.13.2-complete.jar)
-set(ANTLR4_RUNTIME_SOURCE_DIR ${CMAKE_SOURCE_DIR}/antlr4/antlr4-cpp-runtime-4.13.2-source)
+set(ANTLR_EXECUTABLE ${PROJECT_SOURCE_DIR}/antlr4/antlr-4.13.2-complete.jar)
+set(ANTLR4_RUNTIME_SOURCE_DIR ${PROJECT_SOURCE_DIR}/antlr4/antlr4-cpp-runtime-4.13.2-source)
 set(ANTLR4_GENERATED_SRC_DIR ${CMAKE_CURRENT_BINARY_DIR}/antlr4_generated_src)
 
 file(MAKE_DIRECTORY ${ANTLR4_GENERATED_SRC_DIR})
