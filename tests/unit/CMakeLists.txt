@@ -850,3 +850,21 @@ add_catch_test(unit_image_executor_mutation
 )
 target_link_libraries(unit_image_executor_mutation PRIVATE ptxemu_device OpenSSL::Crypto)
 set_tests_properties(unit_image_executor_mutation PROPERTIES LABELS "unit;cpptlm_module;mutation")
+
+# ============================================================================
+# device-api-delegation (OpenSpec change 2026-08-24): Phase 2.2 unit tests
+# for IPtxEmuDevice::set_scoreboard / set_active_mask / set_next_pc delegation.
+# Defensive guards + null g_gpu_context handling. Deep success-path tests
+# are in tests/integration/simt/test_set_active_mask_overwrite.cpp (regression).
+# ============================================================================
+add_catch_test(unit_device_api_delegation
+    ptxemu/test_device_api_delegation.cpp
+)
+target_link_libraries(unit_device_api_delegation PRIVATE ptxemu_core)
+set_tests_properties(unit_device_api_delegation PROPERTIES LABELS "unit;ptxemu;delegation")
+
+add_catch_test(unit_device_api_attach_timing
+    ptxemu/test_device_api_attach_timing.cpp
+)
+target_link_libraries(unit_device_api_attach_timing PRIVATE ptxemu_core)
+set_tests_properties(unit_device_api_attach_timing PROPERTIES LABELS "unit;ptxemu;delegation;attach_timing")

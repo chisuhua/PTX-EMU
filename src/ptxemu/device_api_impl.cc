@@ -10,20 +10,25 @@
 // Phase 2.1 minimal scope (本文件):
 //   - PtxEmuDeviceImpl class
 //   - exe_once / sm_exe_once / warp_exe_once 委托 GPUContext
-//   - get_thread_state / get_warp_status 读取 GPUContext 状态
+//   - get_thread_state / get_warp_status 读取 GPUContext 状态 (stubs)
 //   - 其他 set_* 方法返回 false (not implemented yet) — Phase 2.2/2.3
 //   - create_device / destroy_device factory
 //
-// Phase 2.2/2.3 follow-ups:
-//   - set_scoreboard via SMContext
-//   - set_active_mask via WarpContext (overwrite semantics per lessons-learned §3)
-//   - set_next_pc via ThreadContext::set_next_pc (NOT force_set_pc)
-//   - attach_timing via HSK-4 vendored interfaces
+// Phase 2.2 (device-api-delegation change): 3 set_* 方法委托实现:
+//   - set_scoreboard: SMContext + IScoreboard 注册验证 (R7 mask 传播 deferred)
+//   - set_active_mask: WarpContext overwrite (NOT OR-merge, per BUG-RETHANG)
+//   - set_next_pc: ThreadContext::set_pc + commit_pc (NOT force_set_pc)
+//
+// Phase 2.3 follow-up: attach_timing via HSK-4 vendored interfaces
+//   (per Decision 6 namespace bridge via static_cast<void*> round-trip)
 
 #include <ptxemu/device_api.h>
 #include <ptxsim/gpu_context.h>
 #include <ptxsim/sm_context.h>
 #include <ptxsim/execution_types.h>
+#include <ptxsim/scoreboard_interface.h>
+#include <ptxsim/pipeline_interface.h>
+#include <ptxsim/tensor_core_interface.h>
 
 #include <memory>
 
@@ -89,10 +94,20 @@ public:
     }
 
     // Phase 2.2 — set_scoreboard delegation via SMContext.
-    bool set_scoreboard(uint32_t /*sm_id*/, uint32_t /*warp_id*/,
+    // Per design R7 (device-api-delegation/design.md): Phase 2.2 minimum
+    // validates SMContext + IScoreboard registration; mask/warp_id
+    // propagation deferred to Phase 2.2.1 follow-up change.
+    // Per Decision 6 (namespace bridge): Phase 2.2 R7-constrained minimal
+    // scope sidesteps the bridge entirely — no IScoreboard* parameter on
+    // public surface; we only verify the existing wiring is in place.
+    bool set_scoreboard(uint32_t sm_id, uint32_t warp_id,
                         uint64_t /*mask*/) override {
-        // Phase 2.2: SMContext::set_scoreboard(IScoreboard*)
-        return false;
+        if (!g_gpu_context) return false;
+        auto* sm = g_gpu_context->get_sm(sm_id);
+        if (!sm) return false;
+        // R7: validate IScoreboard registration only.
+        (void)warp_id;
+        return sm->get_scoreboard() != nullptr;
     }
 
     // get_thread_state: read from GPUContext thread state.
@@ -102,22 +117,39 @@ public:
         return ThreadState::kIdle;
     }
 
-    // set_active_mask — overwrite semantics (per ptx-lessons-learned §3
+    // set_active_mask — overwrite semantics (per ptx-lessons-learned §1
     // BUG-RETHANG / BUG-POSTBARRIER-TWOHALVES: set_active_mask is
     // overwrite, NOT OR-merge; OR logic is encapsulated in
     // BarrierModule::release_warp_barrier).
-    bool set_active_mask(uint32_t /*sm_id*/, uint32_t /*warp_id*/,
-                         uint64_t /*mask*/) override {
-        // Phase 2.2: WarpContext::set_active_mask_u32
-        return false;
+    // ptx-barrier-mechanism skill: ret handler depends on overwrite
+    // semantics to clear retired lanes correctly.
+    bool set_active_mask(uint32_t sm_id, uint32_t warp_id,
+                         uint64_t mask) override {
+        if (!g_gpu_context) return false;
+        auto* sm = g_gpu_context->get_sm(sm_id);
+        if (!sm) return false;
+        auto* warp = sm->get_warp(warp_id);
+        if (!warp) return false;
+        // OVERWRITE (NOT OR-merge). Direct delegation to WarpContext.
+        warp->set_active_mask(static_cast<uint32_t>(mask));
+        return true;
     }
 
     // set_next_pc — normal PC advancement (NOT force_set_pc per
-    // ptx-lessons-learned ANTI-PATTERNS).
-    bool set_next_pc(uint32_t /*sm_id*/, uint32_t /*warp_id*/,
-                     uint32_t /*lane_id*/, uint32_t /*pc*/) override {
-        // Phase 2.2: ThreadContext::set_next_pc
-        return false;
+    // ptx-lessons-learned ANTI-PATTERNS + AGENTS.md L85).
+    bool set_next_pc(uint32_t sm_id, uint32_t warp_id,
+                     uint32_t lane_id, uint32_t pc) override {
+        if (!g_gpu_context) return false;
+        auto* sm = g_gpu_context->get_sm(sm_id);
+        if (!sm) return false;
+        auto* warp = sm->get_warp(warp_id);
+        if (!warp) return false;
+        auto* thread = warp->get_thread(static_cast<int>(lane_id));
+        if (!thread) return false;
+        // AGENTS.md ANTI-PATTERNS L85: NEVER force_set_pc(). Use set_pc + commit_pc.
+        thread->set_pc(static_cast<int>(pc));
+        thread->commit_pc();
+        return true;
     }
 
     // get_warp_status: snapshot of warp state.
@@ -133,10 +165,24 @@ public:
         return g_gpu_context->get_state() == EXE_STATE::IDLE;
     }
 
-    // attach_timing — HSK-4 vendored interfaces injection (HSK-8 spec #6).
-    void attach_timing(IScoreboard* /*sb*/, IPipelineLatencyProvider* /*pl*/,
-                       ITensorCoreTiming* /*tc*/) override {
-        // Phase 2.3: store + inject into SMContext
+    // attach_timing — HSK-4 vendored interfaces injection (HSK-8 spec §6).
+    // Per design Decision 6: namespace bridge via static_cast<void*>
+    // round-trip. ptxemu::IScoreboard* (device_api.h forward decl) is
+    // bridged to ::IScoreboard* (ptxsim/scoreboard_interface.h full def)
+    // via void* intermediate. Same pattern for the other 2 interfaces.
+    // Phase 2.3 prototype hardcodes sm_id=0 (attach_timing is a global
+    // setup method, not per-SM).
+    void attach_timing(IScoreboard* sb, IPipelineLatencyProvider* pl,
+                       ITensorCoreTiming* tc) override {
+        if (!g_gpu_context) return;
+        auto* sm = g_gpu_context->get_sm(0);
+        if (!sm) return;
+        sm->set_scoreboard(
+            static_cast<::IScoreboard*>(static_cast<void*>(sb)));
+        sm->set_pipeline_latency_provider(
+            static_cast<::IPipelineLatencyProvider*>(static_cast<void*>(pl)));
+        sm->set_tensor_core_timing(
+            static_cast<::ITensorCoreTiming*>(static_cast<void*>(tc)));
     }
 
 private:

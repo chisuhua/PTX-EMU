@@ -620,3 +620,9 @@ add_catch_test(integration_ptxir_deserialize_cost
 )
 target_link_libraries(integration_ptxir_deserialize_cost PRIVATE ptxemu_device)
 set_tests_properties(integration_ptxir_deserialize_cost PROPERTIES LABELS "integration;cpptlm_module;perf")
+
+add_catch_test(integration_set_active_mask_overwrite
+    simt/test_set_active_mask_overwrite.cpp
+)
+target_link_libraries(integration_set_active_mask_overwrite PRIVATE ptxemu_core)
+set_tests_properties(integration_set_active_mask_overwrite PROPERTIES LABELS "integration;simt;delegation;regression")

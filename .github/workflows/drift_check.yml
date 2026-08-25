@@ -98,3 +98,69 @@ jobs:
             echo "::error file=src/CMakeLists.txt::ptxemu_core STATIC library target renamed; HSK-8 spec §Decision 2 freezes target name for CppTLM consumer."
             exit 1
           fi
+
+      # Invariant 6 (device-api-delegation, per spec/ci-drift-check-extension):
+      # device_api_impl.cc MUST NOT contain empty-body IPtxEmuDevice method
+      # stubs (return false/-1/nullptr/etc with no real delegation logic).
+      # Per design Non-Goal 5, 3 deferred stubs are explicitly exempted:
+      #   - warp_exe_once, get_thread_state, get_warp_status
+      # Exemption tracked in spec/ci-drift-check-extension "Deferred stub
+      # methods (per design Non-Goal 5) are explicitly exempted" scenario;
+      # exemption MUST be removed when Phase 2.2.1/2.3.1 follow-up implements
+      # these 3 methods.
+      - name: Check no empty-body IPtxEmuDevice method stubs (Invariant 6)
+        run: |
+          python3 - <<'PYEOF'
+          import re
+          import sys
+
+          DEFERRED = {'warp_exe_once', 'get_thread_state', 'get_warp_status'}
+          IMPL = 'src/ptxemu/device_api_impl.cc'
+          # Single constant return (matches spec/ci-drift-check-extension regex)
+          CONST_RETURN = re.compile(
+              r'^\s*return\s+(false|nullptr|-1|true|ThreadState::kIdle)\s*;?\s*$'
+          )
+
+          with open(IMPL) as f:
+              content = f.read()
+
+          # Match each override method: <name>(...) [const] override { <body> }
+          # Capture only IPtxEmuDevice overrides (inside the impl class).
+          pattern = re.compile(r'(\w+)\s*\([^)]*\)\s*(?:const\s*)?override\s*\{')
+          errors = []
+          pos = 0
+          while True:
+              m = pattern.search(content, pos)
+              if not m:
+                  break
+              name = m.group(1)
+              start = m.end() - 1  # position of '{'
+              # Find matching closing brace
+              depth, i = 0, start
+              while i < len(content):
+                  if content[i] == '{':
+                      depth += 1
+                  elif content[i] == '}':
+                      depth -= 1
+                      if depth == 0:
+                          break
+                  i += 1
+              body = content[start+1:i]
+              pos = i + 1
+
+              if name in DEFERRED:
+                  continue  # exempted per design Non-Goal 5
+
+              # Strip comments + blank lines, check for single constant return
+              lines = [
+                  l.strip() for l in body.split('\n')
+                  if l.strip() and not l.strip().startswith('//')
+              ]
+              if len(lines) == 1 and CONST_RETURN.match(lines[0]):
+                  errors.append(f"{name}: empty-body stub (body: {lines[0]!r})")
+
+          if errors:
+              for e in errors:
+                  print(f"::error file={IMPL}::{e} — per spec/ci-drift-check-extension Invariant 6, in-scope IPtxEmuDevice methods must have real delegation, not constant-return stubs.")
+              sys.exit(1)
+          PYEOF
