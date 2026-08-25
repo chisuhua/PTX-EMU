@@ -26,6 +26,9 @@
 #include <ptxsim/gpu_context.h>
 #include <ptxsim/sm_context.h>
 #include <ptxsim/execution_types.h>
+#include <ptxsim/scoreboard_interface.h>
+#include <ptxsim/pipeline_interface.h>
+#include <ptxsim/tensor_core_interface.h>
 
 #include <memory>
 
@@ -162,10 +165,24 @@ public:
         return g_gpu_context->get_state() == EXE_STATE::IDLE;
     }
 
-    // attach_timing — HSK-4 vendored interfaces injection (HSK-8 spec #6).
-    void attach_timing(IScoreboard* /*sb*/, IPipelineLatencyProvider* /*pl*/,
-                       ITensorCoreTiming* /*tc*/) override {
-        // Phase 2.3: store + inject into SMContext
+    // attach_timing — HSK-4 vendored interfaces injection (HSK-8 spec §6).
+    // Per design Decision 6: namespace bridge via static_cast<void*>
+    // round-trip. ptxemu::IScoreboard* (device_api.h forward decl) is
+    // bridged to ::IScoreboard* (ptxsim/scoreboard_interface.h full def)
+    // via void* intermediate. Same pattern for the other 2 interfaces.
+    // Phase 2.3 prototype hardcodes sm_id=0 (attach_timing is a global
+    // setup method, not per-SM).
+    void attach_timing(IScoreboard* sb, IPipelineLatencyProvider* pl,
+                       ITensorCoreTiming* tc) override {
+        if (!g_gpu_context) return;
+        auto* sm = g_gpu_context->get_sm(0);
+        if (!sm) return;
+        sm->set_scoreboard(
+            static_cast<::IScoreboard*>(static_cast<void*>(sb)));
+        sm->set_pipeline_latency_provider(
+            static_cast<::IPipelineLatencyProvider*>(static_cast<void*>(pl)));
+        sm->set_tensor_core_timing(
+            static_cast<::ITensorCoreTiming*>(static_cast<void*>(tc)));
     }
 
 private:

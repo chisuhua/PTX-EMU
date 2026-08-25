@@ -862,3 +862,9 @@ add_catch_test(unit_device_api_delegation
 )
 target_link_libraries(unit_device_api_delegation PRIVATE ptxemu_core)
 set_tests_properties(unit_device_api_delegation PROPERTIES LABELS "unit;ptxemu;delegation")
+
+add_catch_test(unit_device_api_attach_timing
+    ptxemu/test_device_api_attach_timing.cpp
+)
+target_link_libraries(unit_device_api_attach_timing PRIVATE ptxemu_core)
+set_tests_properties(unit_device_api_attach_timing PROPERTIES LABELS "unit;ptxemu;delegation;attach_timing")
