@@ -1,4 +1,24 @@
-## Context
+## ⚠️ 2026-08-25 Archive Notice — Design 不可实施
+
+**本 design 提议的方案(`-Wl,--whole-archive,--exclude-libs=ALL cpptlm_core`)已被更优方案取代**:`commit 09786635 refactor(cudart): remove cpptlm linkage + bridge files (Phase 3 of 4)` 直接从 `target_link_libraries(cudart ...)` 移除 `cpptlm_core`,**根除**了 cpptlm 符号 leak 的可能性 —— 无需 `--exclude-libs` 隐藏。
+
+**Design Decision 1 已被实证否决**:`587a6d5e fix(cudart): hide cpptlm_core non-ABI symbols from libcudart.so (Gate 1)` (未合并) 的 commit message 记录了 Round-2 Oracle 实证:
+
+> GNU ld's `--exclude-libs` applies to archive basename (must include 'lib' prefix and '.a' suffix). The Round-2-recommended `--exclude-libs=ALL` was rejected after empirical test: it also hides 4051 ANTLR4 generated symbols (compiled into cudart's object files at `src/CMakeLists.txt:55`) and breaks ptxir_embed/executable link. Oracle consultation (2026-08-21) recommended targeted `--exclude-libs=libcpptlm_core.a`.
+
+即 `587a6d5e` (Round-1 实验) 验证了 `--exclude-libs=ALL` 会破坏 ptxir_embed 链接,改用 `--exclude-libs=libcpptlm_core.a` 才能正确工作 —— 但即便如此方案仍不如 4-phase refactor 的"根除式"修复彻底。
+
+**为何归档而非 cherry-pick `587a6d5e`**:
+
+1. 4-phase refactor 已实现更彻底目标(链接完全移除 vs 链接保留但符号隐藏)
+2. cherry-pick `587a6d5e` 会**重新引入** `cpptlm_core` 链接 → 与 HSK-8 设计冲突
+3. cpptlm 真相源保留在 `include/cudart/cpptlm_bridge.h` (commit `25e36f60` 冻结) 但 CppTLM 端 `abi_guards.h` 已接管验证(17 static_assert)
+
+详细分析见 [`docs/audits/2026-08-25-fix-phase0-gate1-archive-postmortem.md`](../../../../../docs/audits/2026-08-25-fix-phase0-gate1-archive-postmortem.md)。
+
+---
+
+## Context (原始描述,保留作历史记录)
 
 PTX-EMU ships a fake `libcudart.so` (`src/cudart/cudart_sim.cpp`) that intercepts CUDA runtime calls. To enable CppTLM co-simulation, `PTX-EMU/CMakeLists.txt:147-167` adds CppTLM as a subdirectory and links `cpptlm_core` (a CppTLM static lib) into `libcudart.so` using:
 

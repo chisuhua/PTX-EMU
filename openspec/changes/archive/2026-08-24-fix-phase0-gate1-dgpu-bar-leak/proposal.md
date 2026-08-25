@@ -1,4 +1,43 @@
-## Why
+## ⚠️ 2026-08-25 Archive Notice
+
+**本 change 不再需要实施**。Gate 1 leak 已被 [`commit 09786635`](https://github.com/chisuhua/PTX-EMU/commit/09786635) (`refactor(cudart): remove cpptlm linkage + bridge files (Phase 3 of 4, libcudart.so is sync-only)`) **物理消除** —— 该 commit 及后续 4-phase refactor (`a9a14e1d` / `292022a3` / `e4d7e369` / `09786635`) 完全移除了 `cpptlm_core` 与 `cudart` 的链接。
+
+**物理推论**: 当前 HEAD (`530bd6ca`) 的 `src/CMakeLists.txt:177` 是 `target_link_libraries(cudart ptx_ir ptx_parser ptxsim ptxir)`,**完全不含 cpptlm_core** → `nm -D --defined-only libcudart.so | grep cpptlm` 必然为空 → **Gate 1 必然 PASS**。
+
+**真实消除路径** (post-Archive 文档归档时间序):
+
+| Commit | 日期 | 与 Gate 1 leak 关系 |
+|--------|------|--------------------|
+| `87820951` | 2026-08-13 | docs(audit): 添加 HAL backend cross-repo defect audit,提出 Gate 1 修复需求(本 change 起源) |
+| `587a6d5e` | 2026-08-21 | **未合并 main**: 实际实施 `--whole-archive,--exclude-libs=libcpptlm_core.a`(Round-2 方案,见 design.md Decision 1)。217 symbols 移除,3 e2e_cosim PASS. dangling state,不在任何 branch |
+| `8088b24c` | 2026-08-21 | docs(openspec): commit cleanup-cudart-cpptlm-bridge-coupling + fix-phase0-gate1-dgpu-bar-leak artifacts |
+| `25e36f60` | 2026-08-18 | docs(hsk-6): announce CppTLM bridge deprecation(本 change Doc2 误归因此 commit) |
+| `a9a14e1d` | 2026-08 | Phase 1 of 4: delete bridge-specific test files |
+| `292022a3` | 2026-08 | Phase 2a of 4: remove cpptlm bridge code paths from libcudart.so |
+| `e4d7e369` | 2026-08 | Phase 2b of 4: remove cpptlm GLOBAL LD/ST bridge from memory.cpp |
+| **`09786635`** | 2026-08 | **Phase 3 of 4: remove cpptlm linkage + bridge files** ← **真正的 Gate 1 leak 物理消除** |
+| `d281a21e` | 2026-08 | HSK-8 Phase 2: add ptxemu_core library (replace cpptlm bridge with IPtxEmuDevice) |
+| `c225780e` | 2026-08 | HSK-8 Phase 3: PROJECT_IS_TOP_LEVEL isolation |
+| `738b412c` | 2026-08 | HSK-8 ack |
+| `530bd6ca` | 2026-08-24 | current HEAD: archive ptxemu-public-device-api |
+
+**关键认知**: `--exclude-libs=ALL` 方案是"妥协式"修复(保留 cpptlm 链接但隐藏符号);4-phase refactor 是"根治式"修复(直接移除 cpptlm 链接,根本不需要隐藏符号)。后者的优势:
+
+1. **零误伤**: 不依赖 GNU ld `--exclude-libs` 语义的精确理解(`587a6d5e` commit message 实验验证 `--exclude-libs=ALL` 会隐藏 4051 ANTLR4 符号)
+2. **简化编译图**: `cudart` 不再依赖 `cpptlm_core`,维护性更好
+3. **HSK-8 自然结果**: HSK-8 Phase 2 `ptxemu_core` 替代 cpptlm bridge,导致 cpptlm 链接彻底无意义
+
+**后续工作** (本 change 归档后):
+
+1. **`cleanup-cudart-cpptlm-bridge-coupling`** (下游 chain,58 tasks): 58 tasks 中哪些仍 relevant? 需 audit,因为 4-phase refactor 已完成大部分目标
+2. **HSK-8 Phase 2.2/2.3 delegation**: 下一个真 actionable 工作(per `2026-08-24-hsk8-followup-task-path.md`)
+3. **CppTLM 端**: `505333b` 已完成,等待 PTX-EMU 推送 HSK-8 follow-up commits 后再 bump(不要再等本 change)
+
+详细分析见 [`docs/audits/2026-08-25-fix-phase0-gate1-archive-postmortem.md`](../../../../../docs/audits/2026-08-25-fix-phase0-gate1-archive-postmortem.md)。
+
+---
+
+## Why (原始描述,保留作历史记录)
 
 `integration_phase0_byte_identical_gates` Gate 1 currently FAILs: **131 `cpptlm_core` origin symbols** (mangled names in `tlm::`/`cpptlm::`/`nlohmann::` namespaces, including the 10 `tlm::gpu::DGpuBar` members: `init/shutdown/write_reg/read_reg/vram_base/vram_size` + 4 ctors/dtors) leaked into `libcudart.so` via `-Wl,--whole-archive cpptlm_core` in `PTX-EMU/CMakeLists.txt:166-167`. The baseline `/tmp/baseline-artifacts/libcudart-nm-before.txt` (captured 2026-08-18 14:33) has 3274 symbols; current build has 3284 (131 additions, 0 missing). The leak violates ADR-0029 §D7 Gate 1 ("`nm -D --defined-only libcudart.so` 前后 diff 必须为空").
 
