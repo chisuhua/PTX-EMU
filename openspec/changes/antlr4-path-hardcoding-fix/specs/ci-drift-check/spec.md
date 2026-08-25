@@ -104,6 +104,8 @@ The drift_check workflow (`.github/workflows/drift_check.yml`) MUST extend its `
 
 > **Rationale** (per design.md Non-Goal 5 + Metis MR-Oracle inventory): these 3 methods were `nlohmann::`-style documentation-only stubs in the HSK-8 Phase 2 PR (commit `d281a21e`). Phase 2.2/2.3 R7-constrained minimum scope implements only 4 in-scope methods (set_scoreboard / set_active_mask / set_next_pc / attach_timing). The 3 deferred stubs are tracked as follow-up work and SHOULD remain stub bodies until the Phase 2.2.1/2.3.1 change lands.
 
+## ADDED Requirements
+
 ### Requirement: drift_check workflow Invariant 7 verifies CMake vendored path correctness
 
 The drift_check workflow MUST extend its `paths` trigger filter to include `CMakeLists.txt` (alongside existing `src/ptxemu/**` and `include/ptxemu/**`), and add Invariant 7: after this change, `CMakeLists.txt` MUST NOT contain `${CMAKE_SOURCE_DIR}/antlr4` hardcoded paths (per `cmake-antlr4-relative-paths/spec.md` requirement).
