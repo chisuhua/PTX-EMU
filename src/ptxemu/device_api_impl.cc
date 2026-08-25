@@ -30,6 +30,8 @@
 #include <ptxsim/pipeline_interface.h>
 #include <ptxsim/tensor_core_interface.h>
 #include <ptxsim/warp_context.h>
+#include <ptxsim/warp_state.h>
+#include <ptxsim/thread_state.h>
 #include <ptx_ir/statement_context.h>
 
 #include <climits>
@@ -52,6 +54,28 @@ ThreadState map_state(EXE_STATE s) {
         case EXE_STATE::RUN:     return ThreadState::kRun;
         case EXE_STATE::EXIT:    return ThreadState::kExit;
         case EXE_STATE::BAR_SYNC: return ThreadState::kBarSync;
+    }
+    return ThreadState::kIdle;
+}
+
+// Map ptxsim::ThreadStatus (WarpState::threads[i].status) to
+// ptxemu::ThreadState. Parallel to map_state(EXE_STATE) helper.
+// ThreadStatus is from include/ptxsim/thread_state.h (Active/Blocked/
+// Exited/Yielded), distinct from EXE_STATE — used by
+// WarpContext::get_warp_state().threads[i].status for get_warp_status
+// lane snapshot.
+//
+// Yielded maps to kIdle (conservative default): ThreadState enum is
+// frozen at 4 values per HSK-8 spec §Decision 6 — adding a new value
+// would break ABI (would require HSK-9 VERSION bump). Yielded
+// semantically means "Active but yielded CPU" — mapping to kIdle is
+// the conservative default.
+ThreadState map_thread_status(ptxsim::ThreadStatus ts) {
+    switch (ts) {
+        case ptxsim::ThreadStatus::Active:  return ThreadState::kRun;
+        case ptxsim::ThreadStatus::Blocked: return ThreadState::kBarSync;
+        case ptxsim::ThreadStatus::Exited:  return ThreadState::kExit;
+        case ptxsim::ThreadStatus::Yielded: return ThreadState::kIdle;
     }
     return ThreadState::kIdle;
 }
@@ -229,10 +253,47 @@ public:
         return true;
     }
 
-    // get_warp_status: snapshot of warp state.
-    WarpStatus get_warp_status(uint32_t /*sm_id*/, uint32_t /*warp_id*/) override {
-        // Phase 2.2: query WarpContext for lanes/active_mask/blocked_cycles
-        WarpStatus s{};
+    // get_warp_status: snapshot of warp state via warp->get_warp_state().
+    // Populates the EXISTING 5-field WarpStatus struct at
+    // include/ptxemu/device_api.h:69-75 — no new fields, no sizeof change
+    // (HSK-8 spec §Decision 5 sizeof visibility, PTXEMU_API_VERSION=1 frozen).
+    //
+    // READ-ONLY (per state-modification-audit skill): no state mutation.
+    // Returns default-constructed WarpStatus on invalid sm_id/warp_id.
+    WarpStatus get_warp_status(uint32_t sm_id, uint32_t warp_id) override {
+        if (!g_gpu_context) return WarpStatus{};
+        auto* sm = g_gpu_context->get_sm(sm_id);
+        if (!sm) return WarpStatus{};
+        auto* warp = sm->get_warp(warp_id);
+        if (!warp) return WarpStatus{};
+
+        WarpStatus s;
+        s.warp_id = warp_id;
+        s.sm_id = sm_id;
+
+        const auto& ws = warp->get_warp_state();
+        s.lanes.reserve(32);
+        for (int i = 0; i < 32; ++i) {
+            LaneStatus ls;
+            ls.lane_id = static_cast<uint32_t>(i);
+            ls.state = map_thread_status(ws.threads[i].status);
+            ls.pc = ws.threads[i].pc;
+            s.lanes.push_back(ls);
+        }
+
+        s.active_count = static_cast<uint32_t>(ws.count_active_lanes());
+
+        // Sum blocked_cycles_remaining across threads, clamp to int32_t
+        // range. 32 threads × uint32_t max = ~128 billion — extreme case
+        // but preserved as defense (per design Decision Open Questions Q3).
+        uint64_t total_blocked = 0;
+        for (const auto& thread : ws.threads) {
+            total_blocked += thread.blocked_cycles_remaining;
+        }
+        s.blocked_cycles = (total_blocked > static_cast<uint64_t>(INT32_MAX))
+                               ? INT32_MAX
+                               : static_cast<int32_t>(total_blocked);
+
         return s;
     }
 

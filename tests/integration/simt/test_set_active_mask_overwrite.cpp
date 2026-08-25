@@ -8,145 +8,113 @@
 //   active_mask must reflect the latest set_active_mask call, NOT a
 //   cumulative OR of historical masks.
 //
-// Test strategy:
-//   - Setup: g_gpu_context + 1 SM with 1 warp; warp.active_mask_ = 0xFF
+// Test strategy (per OpenSpec phase-2-2-1-3-1-followup §3.6):
+//   - Setup: g_gpu_context + 1 SM with 1 warp (via WarpExecutorTestFixture)
+//   - Verify pre-condition: warp.active_mask_ == 0xFF (all lanes)
 //   - Call: dev->set_active_mask(0, 0, 0x01)
 //   - Verify: warp.active_mask_ == 0x01 (overwrite)
 //   - NOT expected: 0xFF (no-op) or 0xFF | 0x01 = 0xFF (OR-merge)
+//
+// Phase 2.3.1 update: replaced WARN+early-return guard with proper warp
+// setup via WarpExecutorTestFixture (shared in tests/integration/warp/).
 //
 // This integration test exercises the full delegation path through
 // IPtxEmuDevice → WarpContext, validating that the IPtxEmuDevice layer
 // preserves WarpContext overwrite semantics.
 //
 // Ref: openspec/changes/device-api-delegation/specs/ptxemu-device-api-delegation/spec.md
+// Ref: openspec/changes/phase-2-2-1-3-1-followup/proposal.md §3.6
 // Ref: ptx-barrier-mechanism skill (set_active_mask overwrite semantics)
 // =============================================================================
 
 #include "catch_amalgamated.hpp"
-#include "ptxemu/device_api.h"
-
-#include "ptxsim/gpu_context.h"
-#include "ptxsim/sm_context.h"
-#include "ptxsim/warp_context.h"
-#include "ptxsim/thread_context.h"
+#include "ptxemu/testing/warp_executor_test_fixture.h"
 
 #include <memory>
 
-#include "catch_amalgamated.hpp"
-#include "ptxemu/device_api.h"
-
-#include "ptxsim/gpu_context.h"
-#include "ptxsim/sm_context.h"
-#include "ptxsim/warp_context.h"
-#include "ptxsim/thread_context.h"
-
-#include <memory>
-
-// g_gpu_context singleton is defined in src/cudart/cudart_sim.cpp
-// (per ADR-0021 v1.1).
-extern std::unique_ptr<GPUContext> g_gpu_context;
-
-namespace {
-
-// RAII guard: install a minimal GPUContext for the test, restore on scope exit.
-// This avoids test order-dependence (one test leaving state that affects another).
-class GpuContextScope {
-public:
-    GpuContextScope() {
-        saved_ = std::move(g_gpu_context);
-        g_gpu_context = std::make_unique<GPUContext>();
-        REQUIRE(g_gpu_context != nullptr);
-    }
-    ~GpuContextScope() {
-        g_gpu_context = std::move(saved_);
-    }
-
-    GpuContextScope(const GpuContextScope&) = delete;
-    GpuContextScope& operator=(const GpuContextScope&) = delete;
-
-    GPUContext* gpu() const { return g_gpu_context.get(); }
-
-private:
-    std::unique_ptr<GPUContext> saved_;
-};
-
-}  // namespace
+using ptxemu::testing::WarpExecutorTestFixture;
 
 TEST_CASE("set_active_mask: overwrite (BUG-RETHANG regression guard)",
           "[integration][simt][delegation][regression]") {
-    GpuContextScope scope;
+    WarpExecutorTestFixture scope;
     REQUIRE(scope.gpu() != nullptr);
-
-    auto dev = ptxemu::create_device();
-    REQUIRE(dev != nullptr);
+    REQUIRE(scope.sm() != nullptr);
+    REQUIRE(scope.warp() != nullptr);
+    REQUIRE(scope.dev() != nullptr);
 
     SECTION("starting mask 0xFF, set_active_mask(0x01) → mask becomes 0x01 (overwrite)") {
-        // Get SM 0, warp 0. The default active_mask_ depends on warp setup;
-        // we set it explicitly to 0xFF first.
-        auto* sm = scope.gpu()->get_sm(0);
-        if (sm == nullptr) {
-            // SM 0 doesn't exist (no blocks added). We can't test delegation
-            // through the warp without a warp; skip this scenario.
-            WARN("SM 0 not available; skipping overwrite test (requires warp setup)");
-            return;
-        }
-        auto* warp = sm->get_warp(0);
-        if (warp == nullptr) {
-            WARN("warp 0 not available; skipping overwrite test");
-            return;
-        }
+        // Pre-condition: all lanes active.
+        scope.warp()->set_active_mask(0xFFFFFFFFu);
+        REQUIRE(scope.warp()->get_active_mask() == 0xFFFFFFFFu);
 
-        warp->set_active_mask(0xFFFFFFFFu);
-        REQUIRE(warp->get_active_mask() == 0xFFFFFFFFu);  // precondition
-
-        // Call delegation method
-        bool result = dev->set_active_mask(0, 0, 0x01u);
+        // Call delegation method.
+        bool result = scope.dev()->set_active_mask(0, 0, 0x01u);
         REQUIRE(result == true);
 
-        // Verify OVERWRITE (NOT OR-merge, NOT no-op)
-        REQUIRE(warp->get_active_mask() == 0x01u);
+        // Verify OVERWRITE (NOT OR-merge, NOT no-op).
+        REQUIRE(scope.warp()->get_active_mask() == 0x01u);
     }
 
-    SECTION("starting mask 0x00, set_active_mask(0xFF) → mask becomes 0xFF (not 0xFF|0x00=0xFF trivially)") {
-        auto* sm = scope.gpu()->get_sm(0);
-        if (sm == nullptr) {
-            WARN("SM 0 not available; skipping");
-            return;
-        }
-        auto* warp = sm->get_warp(0);
-        if (warp == nullptr) {
-            WARN("warp 0 not available; skipping");
-            return;
-        }
+    SECTION("starting mask 0x00, set_active_mask(0xFF) → mask becomes 0xFF (overwrite)") {
+        scope.warp()->set_active_mask(0x00000000u);
+        REQUIRE(scope.warp()->get_active_mask() == 0x00000000u);
 
-        warp->set_active_mask(0x00000000u);
-        REQUIRE(warp->get_active_mask() == 0x00000000u);  // precondition
-
-        bool result = dev->set_active_mask(0, 0, 0xFFu);
+        bool result = scope.dev()->set_active_mask(0, 0, 0xFFu);
         REQUIRE(result == true);
 
-        REQUIRE(warp->get_active_mask() == 0xFFu);
+        REQUIRE(scope.warp()->get_active_mask() == 0xFFu);
+    }
+
+    SECTION("set_active_mask twice → second wins (last-write-wins overwrite)") {
+        scope.warp()->set_active_mask(0xFFFFFFFFu);
+        scope.dev()->set_active_mask(0, 0, 0x0Fu);
+        REQUIRE(scope.warp()->get_active_mask() == 0x0Fu);
+
+        // Second call should overwrite the first, NOT OR-merge (0x0F | 0xF0 = 0xFF).
+        scope.dev()->set_active_mask(0, 0, 0xF0u);
+        REQUIRE(scope.warp()->get_active_mask() == 0xF0u);
     }
 }
 
 TEST_CASE("set_active_mask: invalid sm_id returns false without crash",
           "[integration][simt][delegation]") {
-    GpuContextScope scope;
-    auto dev = ptxemu::create_device();
-    REQUIRE(dev != nullptr);
+    WarpExecutorTestFixture scope;
+    REQUIRE(scope.dev() != nullptr);
 
-    // Invalid sm_id (e.g., 999 when GPU only has few SMs) must return false
+    // Invalid sm_id (e.g., 999 when GPU only has 1 SM) must return false
     // without crashing.
-    bool result = dev->set_active_mask(999, 0, 0x01u);
+    bool result = scope.dev()->set_active_mask(999, 0, 0x01u);
     REQUIRE(result == false);
 }
 
 TEST_CASE("set_next_pc: invalid sm_id returns false without crash",
           "[integration][simt][delegation]") {
-    GpuContextScope scope;
-    auto dev = ptxemu::create_device();
-    REQUIRE(dev != nullptr);
+    WarpExecutorTestFixture scope;
+    REQUIRE(scope.dev() != nullptr);
 
-    bool result = dev->set_next_pc(999, 0, 0, 42u);
+    bool result = scope.dev()->set_next_pc(999, 0, 0, 42u);
     REQUIRE(result == false);
+}
+
+TEST_CASE("set_active_mask + BarrierModule interaction: overwrite observable in barrier",
+          "[integration][simt][delegation][regression][barrier]") {
+    // Phase 2.3.1 addition: verify BUG-POSTBARRIER-TWOHALVES guard holds.
+    // After overwrite to lane 0 only, barrier arrival/release must observe
+    // only lane 0 as active (not the original 0xFF).
+    WarpExecutorTestFixture scope;
+    REQUIRE(scope.warp() != nullptr);
+
+    scope.warp()->set_active_mask(0xFFFFFFFFu);
+    REQUIRE(scope.warp()->get_active_mask() == 0xFFFFFFFFu);
+
+    // Overwrite to lane 0 only.
+    bool ok = scope.dev()->set_active_mask(0, 0, 0x01u);
+    REQUIRE(ok == true);
+    REQUIRE(scope.warp()->get_active_mask() == 0x01u);
+
+    // Verify the count_active_lanes() (used by barrier arrival accounting)
+    // reflects the overwrite.
+    auto& ws = scope.warp()->get_warp_state();
+    int active_lanes = ws.count_active_lanes();
+    REQUIRE(active_lanes == 1);  // Only lane 0 is active after overwrite.
 }

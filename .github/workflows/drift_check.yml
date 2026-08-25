@@ -105,22 +105,19 @@ jobs:
             exit 1
           fi
 
-      # Invariant 6 (device-api-delegation, per spec/ci-drift-check-extension):
+      # Invariant 6 (device-api-delegation + phase-2-2-1-3-1-followup,
+      # per spec/ci-drift-check-extension):
       # device_api_impl.cc MUST NOT contain empty-body IPtxEmuDevice method
       # stubs (return false/-1/nullptr/etc with no real delegation logic).
-      # Per design Non-Goal 5, 3 deferred stubs are explicitly exempted:
-      #   - warp_exe_once, get_thread_state, get_warp_status
-      # Exemption tracked in spec/ci-drift-check-extension "Deferred stub
-      # methods (per design Non-Goal 5) are explicitly exempted" scenario;
-      # exemption MUST be removed when Phase 2.2.1/2.3.1 follow-up implements
-      # these 3 methods.
+      # Per phase-2-2-1-3-1-followup OpenSpec change: exemption list is
+      # EMPTY (3 deferred stubs implemented as real delegations).
       - name: Check no empty-body IPtxEmuDevice method stubs (Invariant 6)
         run: |
           python3 - <<'PYEOF'
           import re
           import sys
 
-          DEFERRED = {'warp_exe_once', 'get_thread_state', 'get_warp_status'}
+          DEFERRED = set()
           IMPL = 'src/ptxemu/device_api_impl.cc'
           # Single constant return (matches spec/ci-drift-check-extension regex)
           CONST_RETURN = re.compile(

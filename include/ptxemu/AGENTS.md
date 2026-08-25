@@ -19,6 +19,30 @@ linked as static library `ptxemu_core`.
 | `ir/statement.h` | 20 instruction struct types + `StatementContext` class + `InstrVariant` (std::variant<25>) — promoted from `include/ptx_ir/statement_context.h` |
 | `ir/ptx_qualifier.def`, `ir/ptx_op.def` | X-Macro tables (parallel to `include/ptx_ir/` for CppTLM header inclusion path) |
 
+## IPtxEmuDevice METHOD STATUS
+
+All 12 `IPtxEmuDevice` pure virtual methods are wired (12/12 implemented)
+as of `phase-2-2-1-3-1-followup` (2026-08-25). Implementation lives in
+`src/ptxemu/device_api_impl.cc`.
+
+| # | Method | Delegates to | Implemented |
+|---|--------|--------------|-------------|
+| 1 | `initialize(config)` | stores config | ✅ Phase 2.1 |
+| 2 | `shutdown()` | clears `initialized_` flag | ✅ Phase 2.1 |
+| 3 | `exe_once()` | `g_gpu_context->exe_once()` | ✅ Phase 2.1 |
+| 4 | `sm_exe_once(sm_id)` | `g_gpu_context->get_sm()->exe_once()` | ✅ Phase 2.1 |
+| 5 | `warp_exe_once(sm_id, warp_id)` | `warp->execute_warp_instruction(stmt, pc)` | ✅ Phase 2.2.1 |
+| 6 | `set_scoreboard(sm, warp, mask)` | `sm->get_scoreboard()` registration check | ✅ Phase 2.2 |
+| 7 | `get_thread_state(sm, warp, lane)` | `thread->get_state()` + `map_state` | ✅ Phase 2.2.1 |
+| 8 | `set_active_mask(sm, warp, mask)` | `warp->set_active_mask(mask` (NOT OR-merge) | ✅ Phase 2.2 |
+| 9 | `set_next_pc(sm, warp, lane, pc)` | `thread->set_pc() + commit_pc()` | ✅ Phase 2.2 |
+| 10 | `get_warp_status(sm, warp)` | `warp->get_warp_state()` + `map_thread_status` | ✅ Phase 2.3.1 |
+| 11 | `is_finished()` | `g_gpu_context->get_state() == IDLE` | ✅ Phase 2.1 |
+| 12 | `attach_timing(sb, pl, tc)` | `sm->set_*` via `static_cast<void*>` round-trip | ✅ Phase 2.3 |
+
+drift_check workflow Invariant 6 enforces 0 empty-body stubs (exemption
+list EMPTY per `phase-2-2-1-3-1-followup` §3.7).
+
 ## CONVENTIONS
 
 - **Namespace**: All public types in `ptxemu` (IPtxEmuDevice/DTOs) or `ptxemu::ir` (IR types). Per HSK-8 spec §2: 命名空间.
