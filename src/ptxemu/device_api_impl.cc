@@ -1,26 +1,12 @@
 // device_api_impl.cc - PTX-EMU public device API implementation
 //
-// Phase 2 implementation (HSK-8 ack 738b412c, OpenSpec design.md Phase 2):
+// HSK-8 ack 738b412c, OpenSpec design.md Phase 2 + phase-2-2-1-3-1-followup:
 //   - IPtxEmuDevice thin adapter layer over PTX-EMU internal classes
 //   - 1:1 mapping to S1 facade.cc 12 callsites (HSK-8 spec §CppTLM 端接受条件 #1)
 //   - C++17 compatible (per spec/public-device-api §Requirement C++17)
-//   - ThreadState enum maps to ptxsim::EXE_STATE (HSK-8 spec §Decision 6
-//     static_assert 锁)
-//
-// Phase 2.1 minimal scope (本文件):
-//   - PtxEmuDeviceImpl class
-//   - exe_once / sm_exe_once / warp_exe_once 委托 GPUContext
-//   - get_thread_state / get_warp_status 读取 GPUContext 状态 (stubs)
-//   - 其他 set_* 方法返回 false (not implemented yet) — Phase 2.2/2.3
-//   - create_device / destroy_device factory
-//
-// Phase 2.2 (device-api-delegation change): 3 set_* 方法委托实现:
-//   - set_scoreboard: SMContext + IScoreboard 注册验证 (R7 mask 传播 deferred)
-//   - set_active_mask: WarpContext overwrite (NOT OR-merge, per BUG-RETHANG)
-//   - set_next_pc: ThreadContext::set_pc + commit_pc (NOT force_set_pc)
-//
-// Phase 2.3 follow-up: attach_timing via HSK-4 vendored interfaces
-//   (per Decision 6 namespace bridge via static_cast<void*> round-trip)
+//   - ThreadState enum maps to ptxsim::EXE_STATE (HSK-8 spec §Decision 6)
+//   - 12/12 IPtxEmuDevice methods wired; see include/ptxemu/AGENTS.md for
+//     per-method delegation table
 
 #include <ptxemu/device_api.h>
 #include <ptxsim/gpu_context.h>

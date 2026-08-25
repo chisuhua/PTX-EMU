@@ -274,9 +274,9 @@ install(TARGETS ptxemu_core
 | 1 | PTX-EMU 完成 Phase 2.2.1/2.3.1 实施 (commit `eb207378` + `4c2fb143`) | ✅ |
 | 2 | PTX-EMU CI 全绿 — ctest 251/251 + drift_check 7 invariants PASS | ✅ |
 | 3 | PTX-EMU push branch + open PR (#19) | ✅ |
-| 4 | CppTLM owner 接收通知 + 验证 PR | 🔄 |
-| 5 | PTX-EMU merge PR (squash) | 🔄 |
-| 6 | CppTLM submodule bump PR | ⏳ 等 Phase 2.2.1/2.3.1 合入后 |
+| 4 | CppTLM owner 接收通知 + 验证 PR | ✅ |
+| 5 | PTX-EMU merge PR (squash) — commit `f9b0e486` (2026-08-25T10:05:16Z) | ✅ |
+| 6 | CppTLM submodule bump PR | 🔄 PTX-EMU working tree staged `41b77310` (archived) |
 | 7 | 跨仓 双向 smoke test | ⏳ |
 
 ### HSK-9 准入准备完成状态
@@ -293,7 +293,7 @@ install(TARGETS ptxemu_core
 
 ### 参考链接
 
-- [OpenSpec change `openspec/changes/phase-2-2-1-3-1-followup/`](../changes/phase-2-2-1-3-1-followup/) — 本次实施 artifacts
+- [OpenSpec archive `openspec/changes/archive/2026-08-25-phase-2-2-1-3-1-followup/`](../changes/archive/2026-08-25-phase-2-2-1-3-1-followup/) — 本次实施 artifacts (archived 2026-08-25)
 - [Postmortem `docs/audits/2026-08-13-hsk8-ptxemu-public-api.md` §2026-08-25 Follow-up](../../audits/2026-08-13-hsk8-ptxemu-public-api.md)
 - [PR #19](https://github.com/chisuhua/PTX-EMU/pull/19) — Phase 2.2.1/2.3.1 PR
 - [Commits `eb207378` + `4c2fb143`](https://github.com/chisuhua/PTX-EMU/commits/feat/phase-2-2-1-3-1-followup) — 实施 commits
