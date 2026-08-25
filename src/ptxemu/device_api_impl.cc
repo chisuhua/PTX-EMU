@@ -29,7 +29,13 @@
 #include <ptxsim/scoreboard_interface.h>
 #include <ptxsim/pipeline_interface.h>
 #include <ptxsim/tensor_core_interface.h>
+#include <ptxsim/warp_context.h>
+#include <ptxsim/warp_state.h>
+#include <ptxsim/thread_state.h>
+#include <ptx_ir/statement_context.h>
 
+#include <climits>
+#include <cstdint>
 #include <memory>
 
 // Forward decl for global GPUContext singleton (declared in src/cudart/
@@ -48,6 +54,28 @@ ThreadState map_state(EXE_STATE s) {
         case EXE_STATE::RUN:     return ThreadState::kRun;
         case EXE_STATE::EXIT:    return ThreadState::kExit;
         case EXE_STATE::BAR_SYNC: return ThreadState::kBarSync;
+    }
+    return ThreadState::kIdle;
+}
+
+// Map ptxsim::ThreadStatus (WarpState::threads[i].status) to
+// ptxemu::ThreadState. Parallel to map_state(EXE_STATE) helper.
+// ThreadStatus is from include/ptxsim/thread_state.h (Active/Blocked/
+// Exited/Yielded), distinct from EXE_STATE — used by
+// WarpContext::get_warp_state().threads[i].status for get_warp_status
+// lane snapshot.
+//
+// Yielded maps to kIdle (conservative default): ThreadState enum is
+// frozen at 4 values per HSK-8 spec §Decision 6 — adding a new value
+// would break ABI (would require HSK-9 VERSION bump). Yielded
+// semantically means "Active but yielded CPU" — mapping to kIdle is
+// the conservative default.
+ThreadState map_thread_status(ptxsim::ThreadStatus ts) {
+    switch (ts) {
+        case ptxsim::ThreadStatus::Active:  return ThreadState::kRun;
+        case ptxsim::ThreadStatus::Blocked: return ThreadState::kBarSync;
+        case ptxsim::ThreadStatus::Exited:  return ThreadState::kExit;
+        case ptxsim::ThreadStatus::Yielded: return ThreadState::kIdle;
     }
     return ThreadState::kIdle;
 }
@@ -87,10 +115,68 @@ public:
         return 0;
     }
 
-    int warp_exe_once(uint32_t /*sm_id*/, uint32_t /*warp_id*/) override {
-        // Phase 2.2: SMContext::get_warp(warp_id) → WarpContext::execute
-        // For now return -1 to indicate not implemented.
-        return -1;
+    // warp_exe_once: advance ONE warp by one statement via
+    // WarpContext::execute_warp_instruction(StatementContext&, int).
+    //
+    // CRITICAL: This is a STATE-MUTATING hot path. Per ptx-instruction-pipeline
+    // skill, must NOT bypass barrier/scoreboard invariants. Per
+    // ptx-barrier-mechanism, must respect BarrierModule::release_warp_barrier
+    // overwrite semantics (BUG-RETHANG / BUG-POSTBARRIER-TWOHALVES guard).
+    //
+    // Implementation mirrors the single-warp path in SMContext::exe_once
+    // (sm_context.cpp L255-L321): get_lanes_by_pc → pick non-blocked PC →
+    // extract StatementContext from sample lane → execute.
+    //
+    // Returns 0 on success, -1 if sm_id/warp_id invalid or no StatementContext
+    // available. Returns 0 if no schedulable lanes (matches SMContext idle path).
+    int warp_exe_once(uint32_t sm_id, uint32_t warp_id) override {
+        if (!g_gpu_context) return -1;
+        auto* sm = g_gpu_context->get_sm(sm_id);
+        if (!sm) return -1;
+        auto* warp = sm->get_warp(warp_id);
+        if (!warp) return -1;
+
+        auto lanes_by_pc = warp->get_lanes_by_pc();
+        if (lanes_by_pc.empty()) {
+            // No schedulable lanes (idle, all blocked, or all exited) — same
+            // skip semantics as SMContext::exe_once.
+            return 0;
+        }
+
+        // Pick first PC whose lanes are not all blocked on a barrier.
+        int pick_pc = lanes_by_pc.begin()->first;
+        const auto& ws = warp->get_warp_state();
+        for (const auto& [pc, lanes] : lanes_by_pc) {
+            bool all_non_blocked = true;
+            for (int lane : lanes) {
+                if (ws.threads[lane].is_blocked) {
+                    all_non_blocked = false;
+                    break;
+                }
+            }
+            if (all_non_blocked) {
+                pick_pc = pc;
+                break;
+            }
+        }
+
+        // Extract StatementContext from the sample lane (mirrors
+        // SMContext::exe_once L262-L264).
+        const auto& lanes = lanes_by_pc.begin()->second;
+        int sample_lane = lanes[0];
+        ThreadContext* thread = warp->get_thread(sample_lane);
+        if (!thread) return -1;
+        if (pick_pc < 0 || pick_pc >= thread->statements_size()) {
+            // Out-of-bounds PC (e.g. barrier handler jumped to reconvergence_pc
+            // beyond statement list). Skip this tick — matches scheduler_utils.h
+            // out-of-bounds guard.
+            return 0;
+        }
+        StatementContext* stmt = thread->get_statement_at(pick_pc);
+        if (!stmt) return -1;
+
+        warp->execute_warp_instruction(*stmt, pick_pc);
+        return 0;
     }
 
     // Phase 2.2 — set_scoreboard delegation via SMContext.
@@ -110,11 +196,26 @@ public:
         return sm->get_scoreboard() != nullptr;
     }
 
-    // get_thread_state: read from GPUContext thread state.
-    ThreadState get_thread_state(uint32_t /*sm_id*/, uint32_t /*warp_id*/,
-                                 uint32_t /*lane_id*/) override {
-        // Phase 2.2: SMContext → WarpContext → ThreadContext::state
-        return ThreadState::kIdle;
+    // get_thread_state: read from ThreadContext::get_state() (which returns
+    // EXE_STATE) and map to ptxemu::ThreadState via the existing map_state
+    // helper (HSK-8 spec §Decision 6 static_assert lock).
+    //
+    // READ-ONLY (per state-modification-audit skill): no state mutation.
+    //
+    // CRITICAL: Per include/ptxsim/thread_context.h:205, ThreadContext exposes
+    // get_state() (not direct field access). The pre-fix stub returned
+    // hardcoded ThreadState::kIdle which violated HSK-8 spec §Decision 6
+    // (returning constant regardless of underlying EXE_STATE).
+    ThreadState get_thread_state(uint32_t sm_id, uint32_t warp_id,
+                                 uint32_t lane_id) override {
+        if (!g_gpu_context) return ThreadState::kIdle;
+        auto* sm = g_gpu_context->get_sm(sm_id);
+        if (!sm) return ThreadState::kIdle;
+        auto* warp = sm->get_warp(warp_id);
+        if (!warp) return ThreadState::kIdle;
+        auto* thread = warp->get_thread(static_cast<int>(lane_id));
+        if (!thread) return ThreadState::kIdle;
+        return map_state(thread->get_state());
     }
 
     // set_active_mask — overwrite semantics (per ptx-lessons-learned §1
@@ -152,10 +253,47 @@ public:
         return true;
     }
 
-    // get_warp_status: snapshot of warp state.
-    WarpStatus get_warp_status(uint32_t /*sm_id*/, uint32_t /*warp_id*/) override {
-        // Phase 2.2: query WarpContext for lanes/active_mask/blocked_cycles
-        WarpStatus s{};
+    // get_warp_status: snapshot of warp state via warp->get_warp_state().
+    // Populates the EXISTING 5-field WarpStatus struct at
+    // include/ptxemu/device_api.h:69-75 — no new fields, no sizeof change
+    // (HSK-8 spec §Decision 5 sizeof visibility, PTXEMU_API_VERSION=1 frozen).
+    //
+    // READ-ONLY (per state-modification-audit skill): no state mutation.
+    // Returns default-constructed WarpStatus on invalid sm_id/warp_id.
+    WarpStatus get_warp_status(uint32_t sm_id, uint32_t warp_id) override {
+        if (!g_gpu_context) return WarpStatus{};
+        auto* sm = g_gpu_context->get_sm(sm_id);
+        if (!sm) return WarpStatus{};
+        auto* warp = sm->get_warp(warp_id);
+        if (!warp) return WarpStatus{};
+
+        WarpStatus s;
+        s.warp_id = warp_id;
+        s.sm_id = sm_id;
+
+        const auto& ws = warp->get_warp_state();
+        s.lanes.reserve(32);
+        for (int i = 0; i < 32; ++i) {
+            LaneStatus ls;
+            ls.lane_id = static_cast<uint32_t>(i);
+            ls.state = map_thread_status(ws.threads[i].status);
+            ls.pc = ws.threads[i].pc;
+            s.lanes.push_back(ls);
+        }
+
+        s.active_count = static_cast<uint32_t>(ws.count_active_lanes());
+
+        // Sum blocked_cycles_remaining across threads, clamp to int32_t
+        // range. 32 threads × uint32_t max = ~128 billion — extreme case
+        // but preserved as defense (per design Decision Open Questions Q3).
+        uint64_t total_blocked = 0;
+        for (const auto& thread : ws.threads) {
+            total_blocked += thread.blocked_cycles_remaining;
+        }
+        s.blocked_cycles = (total_blocked > static_cast<uint64_t>(INT32_MAX))
+                               ? INT32_MAX
+                               : static_cast<int32_t>(total_blocked);
+
         return s;
     }
 

@@ -626,3 +626,21 @@ add_catch_test(integration_set_active_mask_overwrite
 )
 target_link_libraries(integration_set_active_mask_overwrite PRIVATE ptxemu_core)
 set_tests_properties(integration_set_active_mask_overwrite PROPERTIES LABELS "integration;simt;delegation;regression")
+
+# ============================================================================
+# Phase 2.3.1: IPtxEmuDevice delegation e2e tests via WarpContext
+# (per OpenSpec phase-2-2-1-3-1-followup §3.5)
+# ============================================================================
+add_catch_test(integration_warp_status_snapshot
+    warp/test_warp_status_snapshot.cpp
+)
+target_link_libraries(integration_warp_status_snapshot PRIVATE ptxemu_core)
+set_tests_properties(integration_warp_status_snapshot PROPERTIES
+    LABELS "integration;warp;delegation;warp_status")
+
+add_catch_test(integration_device_api_delegation_e2e
+    warp/test_device_api_delegation_e2e.cc
+)
+target_link_libraries(integration_device_api_delegation_e2e PRIVATE ptxemu_core)
+set_tests_properties(integration_device_api_delegation_e2e PROPERTIES
+    LABELS "integration;warp;delegation;e2e")

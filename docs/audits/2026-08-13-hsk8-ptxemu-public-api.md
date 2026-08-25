@@ -207,3 +207,46 @@ $ for commit in 586ea14f 602bfc30 359579ec d8b6ca56 a6c9bdaf 66ca4875 \
 - [openspec/changes/ptxemu-public-device-api/](../../openspec/changes/ptxemu-public-device-api/) — change artifacts (本次 archive 后移至 archive/2026-08-24-ptxemu-public-device-api/)
 - [PR #14](https://github.com/chisuhua/PTX-EMU/pull/14) — HSK-8 Phase 2 PR (squash merged)
 - [CppTLM HSK-8 implementation commits](https://github.com/chisuhua/CppTLM) — `6f408b5` + `09c27d5`
+
+---
+
+## 2026-08-25 Follow-up：phase-2-2-1-3-1-followup 实施回顾
+
+> **生成方式**: Per `openspec-apply-change` skill 强制 prompt (ptx-lessons-learned integration),Phase 2 PR archive 前生成。
+> **背景**: HSK-8 device-api-delegation (PR #17 merged `183a6ada`) 实施 4/12 IPtxEmuDevice 方法,3 个 deferred stubs (`warp_exe_once` / `get_thread_state` / `get_warp_status`) + 1 个 deferred e2e test 跟踪为 Phase 2.2.1/2.3.1 follow-up change。
+
+### Phase 2.2.1/2.3.1 实施结果
+
+| Phase | 内容 | Commit | 状态 |
+|-------|------|--------|------|
+| 2.2.1 | `warp_exe_once` + `get_thread_state` 实施 | `eb207378` | ✅ |
+| 2.3.1 | `get_warp_status` + `map_thread_status` helper + 2 新测试 + drift_check Invariant 6 exemption 移除 | `4c2fb143` | ✅ |
+| 2.4 | doc sync (root AGENTS.md + README.md + include/ptxemu/AGENTS.md + 此 audit 段) | (合并入 4c2fb143) | ✅ |
+
+### 关键决策与权衡
+
+1. **`warp_exe_once` 调用路径**: 实际 `WarpContext::execute_warp_instruction(StatementContext&, int)` 是带参的（非 design.md 假设的无参版本）。实施时复用 `SMContext::exe_once` 的单 warp 路径模式 (`get_lanes_by_pc` → pick non-blocked PC → extract StatementContext from sample lane → execute)。
+
+2. **`get_thread_state` READ-ONLY 严格性**: `thread->get_state() const` 返回 `EXE_STATE`,通过现有 `map_state` helper 翻译。**严禁**直接访问 `thread->state` 字段（不存在）；**严禁**误用 `set_state()` 之类的 mutator。
+
+3. **`get_warp_status` 不破坏 ABI**: 严格填充 existing 5-field `WarpStatus` struct,不引入新字段、不修改 field semantics、不改变 sizeof。`PTXEMU_API_VERSION=1` 冻结。
+
+4. **`map_thread_status` Yielded → kIdle**: `ThreadState` enum 冻结 4 个值 per HSK-8 spec §Decision 6,新增 value = ABI break。Yielded 映射到 `kIdle` 是保守默认（Yielded 语义上等价于 Active 但让出 CPU）。
+
+### drift_check 状态
+
+- Invariant 1-7: 全部 PASS
+- Invariant 6 (exemption list): **EMPTY** (3 → 0)
+- 6 invariants 总数不变（Phase 2 增量 = 0）
+
+### ctest 状态
+
+- **251/251 PASS** (249 baseline + 2 新测试: `integration_warp_status_snapshot` + `integration_device_api_delegation_e2e`)
+
+### 关联链接
+
+- [openspec/changes/phase-2-2-1-3-1-followup/](../../openspec/changes/phase-2-2-1-3-1-followup/) — change artifacts (archive 后)
+- [OpenSpec archive change `2026-08-25-device-api-delegation/`](../../openspec/changes/archive/2026-08-25-device-api-delegation/) — Phase 2.2/2.3 父 change
+- [include/ptxemu/AGENTS.md §IPtxEmuDevice METHOD STATUS](../../ptxemu/AGENTS.md) — 12/12 methods 状态表
+- `feat/phase-2-2-1-3-1-followup` 分支 — commits `eb207378` + `4c2fb143`
+- HSK protocol 状态: 无变化（public ABI 冻结,12/12 IPtxEmuDevice 方法 wired 是 HSK-9 准入准备完成案例）
