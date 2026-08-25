@@ -1,0 +1,3 @@
+# antlr4-path-hardcoding-fix
+
+PTX-EMU `CMakeLists.txt:98-99` uses `${CMAKE_SOURCE_DIR}` for vendored ANTLR4 paths, which breaks CppTLM-side chained builds via `add_subdirectory`/`ExternalProject_Add` (CppTLM becomes the top-level project, so `${CMAKE_SOURCE_DIR}` points to CppTLM root). This change substitutes `${PROJECT_SOURCE_DIR}` (project-relative, stable across nested CMakeLists.txt inclusions) and adds drift_check Invariant 7 to prevent regression. Resolves Doc2 §8 follow-up item 4 (per `docs/audits/2026-08-25-fix-phase0-gate1-archive-postmortem.md:265`).
