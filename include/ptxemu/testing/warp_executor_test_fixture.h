@@ -41,7 +41,15 @@ namespace testing {
 
 class WarpExecutorTestFixture {
 public:
-    WarpExecutorTestFixture() {
+    // Default `statements = {}` preserves pre-change behavior for the 3 existing
+    // fixture-using tests (test_set_active_mask_overwrite / test_warp_status_snapshot
+    // / test_device_api_delegation_e2e). Tests that need schedulable instructions
+    // for SMContext::exe_once() (e.g. attach-timing-consumer-e2e G4) pass
+    // {make_ffma(...)} etc. via this parameter — the warp created by add_block()
+    // carries those statements at PC=0 and exe_once() can execute them
+    // (sm_context.cpp:266-268 guard passes when statements_size() > 0).
+    explicit WarpExecutorTestFixture(
+        std::vector<StatementContext> statements = {}) {
         saved_context_ = std::move(g_gpu_context);
         g_gpu_context = std::make_unique<GPUContext>();
         REQUIRE(g_gpu_context != nullptr);
@@ -54,7 +62,6 @@ public:
 
         // Add a block with 32 threads = 1 warp to SM 0.
         auto block = std::make_unique<CTAContext>();
-        std::vector<StatementContext> statements;  // empty OK for setup
         std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
         std::map<std::string, int> label2pc;
         Dim3 grid_dim{1, 1, 1};
