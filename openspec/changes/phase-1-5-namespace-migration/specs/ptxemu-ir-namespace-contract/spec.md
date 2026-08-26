@@ -7,11 +7,11 @@ TBD - created by archiving change phase-1-5-namespace-migration. Update Purpose 
 
 ### Requirement: `ptxemu::ir` MUST be the canonical namespace for all PTX-EMU IR public types
 
-All PTX-EMU IR public type definitions (Qualifier, StatementType, OperandType, OperandKind, InstructionState, 20+ instruction structs, 6 operand variant types, StatementContext, InstrVariant) MUST be defined exclusively in `include/ptxemu/ir/` headers and wrapped in `namespace ptxemu { namespace ir { ... } }`. The `include/ptx_ir/` directory MUST contain only forwarding shims (per `task 9.4` 1 release cycle), not duplicate type definitions.
+All PTX-EMU IR public type definitions (Qualifier, StatementType, OperandType, OperandKind, InstructionState, 20+ instruction structs, 6 operand variant types, StatementContext, InstrVariant) MUST be defined exclusively in `include/ptxemu/ir/` headers and wrapped in `namespace ptxemu { namespace ir { ... } }`. Within `include/ptx_ir/`, only the three legacy type headers `ptx_types.h`, `operand_context.h`, and `statement_context.h` are forwarding shims; other internal headers may remain at the legacy path but MUST contain no duplicate IR type definitions and MUST use canonical qualified names.
 
 #### Scenario: IR type location verification
 - **WHEN** `git grep -E "^(enum|struct|class)\s+(Qualifier|StatementType|StatementContext|OperandContext|Tcgen05Instr)\b" include/`
-- **THEN** all matches are within `include/ptxemu/ir/` headers, not within `include/ptx_ir/` headers (which contain only `using` declarations + `#include <ptxemu/ir/...>`)
+- **THEN** all matches are within `include/ptxemu/ir/` headers, not within `include/ptx_ir/` headers; the three legacy type headers contain only forwarding declarations, while other legacy internal headers contain no duplicate definitions and use canonical qualified names
 
 #### Scenario: Namespace boundary check
 - **WHEN** reading any header in `include/ptxemu/ir/`
@@ -19,13 +19,13 @@ All PTX-EMU IR public type definitions (Qualifier, StatementType, OperandType, O
 
 ### Requirement: Old `include/ptx_ir/*.h` path MUST function as forwarding shim
 
-`include/ptx_ir/{ptx_types,operand_context,statement_context}.h` MUST function as backward-compatible forwarding shims. Each shim MUST:
+`include/ptx_ir/{ptx_types,operand_context,statement_context}.h` MUST function as forwarding shims. The fixed compatibility policy is canonical type names and free functions only; bare unscoped enumerators such as `S_REG` and `O_REG` are intentionally not exported. Each shim MUST:
 1. `#include <ptxemu/ir/<corresponding>.h>` to pull in canonical definitions
 2. Provide explicit `using ::ptxemu::ir::TypeName;` declarations for each type in the canonical header
 3. NOT redefine any type (no duplicate `enum class` / `struct` / `class` declarations)
 4. Provide optional `namespace ptx_ir = ::ptxemu::ir;` alias for explicit opt-in
 
-#### Scenario: Old path preserves unqualified type access
+#### Scenario: Old path preserves unqualified canonical type access
 - **WHEN** legacy caller writes `Qualifier q = Qualifier::Q_F32;` after `#include "ptx_ir/ptx_types.h"`
 - **THEN** the type `Qualifier` resolves to `ptxemu::ir::Qualifier` via the shim's `using` declaration, compilation succeeds
 
@@ -51,21 +51,18 @@ All PTX-EMU IR public type definitions (Qualifier, StatementType, OperandType, O
 
 ### Requirement: All internal callers MUST use `ptxemu::ir::*` qualified names
 
-All 218 files containing IR caller sites in `src/ptx_ir/`, `src/ptxir/`, `src/ptx_parser/`, `src/ptxsim/`, `src/cudart/`, `include/ptx_ir/` non-shim headers, `include/ptxir/`, `include/{ptxsim,ptxemu,cudart,ptx_parser,register,utils}/`, and `tests/{unit,integration,e2e}/` MUST use the qualified `ptxemu::ir::TypeName` form for any IR type. Bare unqualified IR type names (`Qualifier` without prefix, `StatementContext` without prefix, etc.) MUST NOT appear outside:
+All caller files reported by the reproducible scanner command in `tasks.md` under `src/ptx_ir/`, `src/ptxir/`, `src/ptx_parser/`, `src/ptxsim/`, `src/cudart/`, non-shim `include/ptx_ir/`, `include/ptxir/`, `include/{ptxsim,ptxemu,cudart,ptx_parser,register,utils}/`, and `tests/{unit,integration,e2e}/` MUST use the qualified `ptxemu::ir::TypeName` form for any IR type. Bare unqualified IR type names (`Qualifier` without prefix, `StatementContext` without prefix, etc.) MUST NOT appear outside:
 - Only `include/ptx_ir/{ptx_types,operand_context,statement_context}.h` forwarding shim headers (where `using` declarations are mandatory); non-shim `include/ptx_ir/*.h` and all `include/ptxir/` headers are in migration scope
 - Comments and string literals (where the type name appears as documentation, not as a type reference)
 
-#### Scenario: No bare IR types in src/
-- **WHEN** `git grep -E "\b(Qualifier|StatementContext|OperandContext|InstrVariant|Tcgen05Instr|Tcgen05OpKind|Tcgen05Dtype)\b" src/`
-- **THEN** every match is preceded by `ptxemu::ir::` (or appears in a comment / string literal)
+#### Scenario: No bare IR types in callers
+- **WHEN** `scripts/check_ptxemu_ir_names.py` runs with the caller roots and exclusions defined in `design.md`
+- **THEN** every reported IR type token is qualified as `ptxemu::ir::`, and comments, literals, shim headers, and canonical `include/ptxemu/ir/` definitions are ignored; unscoped enumerators are checked according to the fixed type-name-only shim policy
+- **AND** the scanner covers at least `StatementType`, `OperandType`, `InstructionState`, `Qualifier`, `OperandContext`, `InstrVariant`, `Tcgen05Instr`, `Tcgen05OpKind`, and `Tcgen05Dtype`
 
-#### Scenario: No bare IR types in include/ subdirectories
-- **WHEN** `git grep -E "\b(Qualifier|StatementContext|OperandContext|InstrVariant|Tcgen05Instr|Tcgen05OpKind|Tcgen05Dtype)\b" include/ptxsim/ include/ptxemu/ include/cudart/ include/ptx_parser/ include/register/ include/utils/`
-- **THEN** every match is preceded by `ptxemu::ir::` (or appears in a comment / string literal)
-
-#### Scenario: No bare IR types in tests/
-- **WHEN** `git grep -E "\b(Qualifier|StatementContext|OperandContext|InstrVariant|Tcgen05Instr|Tcgen05OpKind|Tcgen05Dtype)\b" tests/`
-- **THEN** every match is preceded by `ptxemu::ir::` (or appears in a comment / string literal)
+#### Scenario: Scanner regression fixtures
+- **WHEN** the scanner is run against bare, qualified, comment/string/raw-string, shim, canonical-definition, and unscoped-enumerator fixtures
+- **THEN** only bare caller code is rejected, while qualified tokens, literals, shim declarations, canonical namespace definitions, and the selected enumerator compatibility policy produce the documented result
 
 ### Requirement: GPUContext interface MUST use `ptxemu::ir::StatementContext`
 

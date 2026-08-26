@@ -1,11 +1,11 @@
 ## Context
 
 **当前状态**（baseline `2cd8449e`）：
-- `include/ptxemu/ir/` 5 个 header 含完整 `ptxemu::ir` 命名空间定义（Phase 1 scaffolding commit `564174f7`），但**0 caller**（canonical 是合同基线，但 PTX-EMU 内部全部使用 `include/ptx_ir/...`）
+- `include/ptxemu/ir/` canonical headers 含完整 `ptxemu::ir` 命名空间定义（Phase 1 scaffolding commit `564174f7`），但**0 caller**（canonical 是合同基线，但 PTX-EMU 内部全部使用 `include/ptx_ir/...`）；实际 caller 文件集合以 Phase 0 scanner 生成并冻结的清单为准
 - `include/ptx_ir/` 11 个 header 在全局命名空间，实测 **218 个 src/include/tests 文件**含未限定 IR 类型名（src 58、include 40、tests 120），其中 `include/ptx_ir/` 非 shim 头和 `include/ptxir/` 也必须迁移
 - `include/ptx_ir/AGENTS.md` 此前文档谎言（声称 forwarding shim + using-directive），已在 commit `d7890a61` 修正
 - `include/ptx_ir/{ptx_op,ptx_qualifier}.def` byte-equivalent 双维护，已在 commit `2cd8449e` 单源化为 11 行 shim
-- `src/ptx_ir/*.cpp` 8 个文件实现 `Q2s/S2s/Q2bytes/extractREG` 等自由函数，定义在全局 namespace
+- `src/ptx_ir/` 实际包含 7 个 `.cpp`，其 namespace ownership 固定为：`ptx_types.cpp`、`operand_context.cpp`、`statement_context.cpp` 属于 `ptxemu::ir`；`instruction_latency_table.cpp` 属于 `ptxsim`；`ptx_syntax_utils.cpp` 属于 `ptx::syntax`；`ptxir_reader.cpp`、`ptxir_writer.cpp` 保持其头文件声明的 namespace。该 7 文件清单是本 change 的完整 `.cpp` 集合。
 - `libcudart.so` / `libptxemu_device.so` / `libptxemu_core.so` 公共 ABI 冻结（`PTXEMU_API_VERSION=1`，HSK-8 spec §Decision 3）
 - `cpp 不暴露` 约束（drift_check Invariant 4）保证 CppTLM 仓仅 `add_subdirectory(external/PTX-EMU)` 消费 `ptxemu_core` library，看不到 `ptx_ir/` 内部 header
 - 252/252 ctest 绿
@@ -48,7 +48,7 @@
 
 ### D1: shim 形式 — per-file 显式 `using` 而非 `using namespace`
 
-**Decision**：`include/ptx_ir/{ptx_types,operand_context,statement_context}.h` 改造为：
+**Decision**：shim 兼容策略固定为“canonical 类型名兼容、unscoped enumerator 不兼容”。`include/ptx_ir/{ptx_types,operand_context,statement_context}.h` 改造为：
 ```cpp
 #include <ptxemu/ir/foo.h>
 namespace ptx_ir = ::ptxemu::ir;  // alias namespace, optional opt-in
@@ -59,8 +59,9 @@ using ::ptxemu::ir::StatementContext;
 
 **Rationale**：
 - 显式 `using` 列名避免 `using namespace` 引入的所有潜在 ODR 冲突（ptx-lessons-learned §1 警示）
-- 旧 caller 用裸 `Qualifier` 走 `using` alias 解析到 `ptxemu::ir::Qualifier` —— **零 caller 改动**
-- 旧 caller 用 `Qualifier::Q_F32` 通过 type alias 等价 lookup 仍工作
+- 旧 caller 用裸 scoped 类型（如 `Qualifier`）走 `using` 声明解析到 `ptxemu::ir::Qualifier`
+- unscoped `StatementType`/`OperandType` 的裸 enumerator（如 `S_REG`/`O_REG`）不会随类型 using 自动导入；本 change 固定采用“类型名兼容、enumerator 不兼容”策略，避免在 shim 中重新导出大规模全局 enumerator 集合
+- 旧 caller 用 `Qualifier::Q_F32` 通过 type using 等价 lookup 仍工作
 - 旧 caller 用 `ptx_ir::Qualifier` 显式限定也工作（namespace alias）
 
 **Alternatives considered**：
@@ -70,7 +71,7 @@ using ::ptxemu::ir::StatementContext;
 
 ### D2: src/ptx_ir/*.cpp 命名空间 wrap 必须与 shim 同步
 
-**Decision**：`src/ptx_ir/{ptx_types,operand_context,statement_context,ptxir_reader,ptxir_writer,instruction_latency_table,ptx_syntax_utils}.cpp` 8 个文件全部 wrap 到 `ptxemu::ir` 命名空间，函数定义加 `ptxemu::ir::` 前缀（`Q2s/S2s/Q2bytes/extractREG` + 类方法 out-of-line 定义）。
+**Decision**：canonical IR 定义/实现文件（`ptx_types.cpp`、`operand_context.cpp`、`statement_context.cpp`，以及确实定义 canonical IR 类的方法）wrap 到 `ptxemu::ir`，函数定义与类方法保持 canonical 声明一致。`instruction_latency_table.cpp` 保留 `namespace ptxsim`，`ptx_syntax_utils.cpp` 保留 `namespace ptx::syntax`，两者仅将 IR 类型限定为 `ptxemu::ir::*`。`ptxir_reader.cpp`/`ptxir_writer.cpp`/serialization 文件保持其头文件声明的 namespace，不能盲目整体 wrap。
 
 **Rationale**：
 - 2026-08-26 实测发现：canonical `ptxemu/ir/ptx_types.h` 声明 `Q2s(Q2bytes/extractREG)` 但**无函数体**（仅声明），函数体仍在 `src/ptx_ir/ptx_types.cpp` 全局。Shim 把 `using Q2s = ptxemu::ir::Q2s` 暴露后，cpp 中 `Q2s(Qualifier q)` 重声明与 canonical 签名 ODR 冲突。
@@ -123,10 +124,12 @@ using ::ptxemu::ir::StatementContext;
 ```
 
 The scanner MUST:
-- skip comments and string literals;
-- scan `include/ptx_ir/` non-shim headers and `include/ptxir/`;
-- ignore IR tokens already preceded by `ptxemu::ir::` (negative lookbehind or equivalent parser); and
-- fail on a bare code token outside the three forwarding shim headers.
+- skip comments, ordinary/char literals, and C++ raw string literals;
+- scan caller roots `src/`, `include/ptxsim/`, `include/ptxemu/` (excluding canonical definitions under `include/ptxemu/ir/`), `include/cudart/`, `include/ptx_parser/`, `include/register/`, `include/utils/`, `include/ptx_ir/`, `include/ptxir/`, and `tests/`;
+- exclude only the three forwarding shim headers plus `include/ptxemu/ir/` canonical definition headers;
+- ignore IR tokens already qualified by `ptxemu::ir::` and tokens lexically inside the canonical namespace block; and
+- fail on a bare caller code token outside those explicit definition/shim exclusions.
+The token set MUST include at least `StatementType`, `OperandType`, `InstructionState`, `Qualifier`, `OperandContext`, `InstrVariant`, `Tcgen05Instr`, `Tcgen05OpKind`, and `Tcgen05Dtype`; the implementation may derive the complete type/enumerator set from the canonical headers/def files.
 
 **Rationale**：
 - 防止 1.5c-1.5i 完成后，新代码又用裸 `Qualifier` 写，污染 namespace 迁移成果；扫描范围必须包含 `include/ptx_ir/` 非 shim 头和 `include/ptxir/`
@@ -140,17 +143,17 @@ The scanner MUST:
 ## Risks / Trade-offs
 
 - **[R1] 218 files 跨 9+ 目录，AI 误改率高** → Mitigation: per-directory 子批次 ≤30 files + 每 commit ctest 验证 + 失败立即 revert (per ptx-lessons-learned §3-4)
-- **[R2] `StatementContext::toString()` out-of-line 定义（`statement_context.cpp:52`）namespace wrap 后需重定位** → Mitigation: 1.5c+d 阶段明确将 `ptxemu::ir::StatementContext::toString` 定义 wrap 进 namespace
+- **[R2] `StatementContext::toString()` out-of-line 定义（`src/ptx_ir/statement_context.cpp`）namespace wrap 后需重定位** → Mitigation: 1.5c+d 阶段明确将 `ptxemu::ir::StatementContext::toString` 定义 wrap 进 namespace
 - **[R3] `std::visit` + ADL 在 namespace wrap 后行为可能微妙变化** → Mitigation: 1.5d 阶段重点验证 `src/ptx_parser/ptx_visitor*.cpp` 9 个文件 + `src/ptxsim/instruction_factory.cpp` 的 `handler_map` 分发
 - **[R4] ANTLR4-generated 头（`build/antlr4_generated_src/`）含未限定 `StatementType/Qualifier`** → Mitigation: 本 change 不 sweep generated 头；这些头是 ANTLR4 runtime 管辖；如未来 ANTLR 升级触发 issue 另开 change
-- **[R5] `src/ptxir/ptxir_serialization.cpp` 是另一 namespace 平行的 .cpp 包含 statement_context 类型** → Mitigation: 1.5c+d 阶段确认此文件及 `include/ptxir/ptxir_serialization.h` 的 IR 引用，采用 `using ::ptxemu::ir::StatementContext` 等显式 alias 或完整 namespace wrap；如遇 ODR 类似 D2 冲突
+- **[R5] `src/ptxir/ptxir_serialization.cpp` 与 `include/ptxir/ptxir_serialization.h` 使用旧的全局 `StatementContext` 前置声明** → Mitigation: 1.5c+d 阶段改为 canonical `ptxemu::ir::StatementContext`，header 增加 canonical include 或合法 namespace forward declaration，implementation 与 API roundtrip 一并验证；不整体 wrap serialization namespace
 - **[R6] `include/ptxemu/ir/statement.h` 头本身未实现类方法（与 `ptx_types.h` 同样模式）** → Mitigation: shim 后旧路径 caller 仍依赖 `src/ptx_ir/*.cpp` 实现，1.5c+d 阶段必须 wrap cpp；如未 wrap，链接失败
 - **[R7] HSK-9 提前签发需要重新评估** → Mitigation: 1.5i 完成后未到 HSK-9 触发窗口前，本 change 闭合 spec/code drift 承诺；如 HSK-9 提前签发，新 change 重新评估
-- **[R8] git 合并冲突与 PTX-EMU 作为 CppTLM submodule 约束** → Mitigation: 每次 commit 后推 origin/main，缩短未推送窗口；C++ code 冲突概率低（per-directory 切 commit 独立）
+- **[R8] git 合并冲突与 PTX-EMU 作为 CppTLM submodule 约束** → Mitigation: 每个 phase 在独立分支提交并通过 PR 审查后合并；不直接 push `origin/main`，C++ code 冲突概率低（per-directory 切 commit 独立）
 
 ## Migration Plan
 
-**Phase 顺序（9 phases, 1.5a/1.5b 已完成）**：
+**Phase 顺序（12 implementation groups, 1.5a/1.5b 已完成）**：
 
 1. **1.5a** ✅ (commit `d7890a61`): AGENTS.md 文档谎言修正
 2. **1.5b** ✅ (commit `2cd8449e`): def 文件单源化
@@ -174,7 +177,7 @@ The scanner MUST:
 - 1.5j 失败：`git revert HEAD` 单 commit
 - 1.5k 失败：drift_check workflow 自身可 disable（workflow_dispatch: false），不影响 main
 
-**Baseline commit**：`2cd8449e`（HEAD，1.5b 完成后状态，ctest 252/252 verified）
+**Baseline commit**：`2cd8449e`（1.5b 完成后状态）；Phase 0 必须先创建 scanner、冻结 caller 清单，并执行 `cmake --build build && cd build && ctest --output-on-failure`，以实际结果确认基线，不将历史声明视为独立证据
 
 **Defer 触发条件**：
 - 1.5c+d 失败 2 次 → 暂存，提交 `fix-phase-1-5-...` change 单独排查
@@ -183,7 +186,7 @@ The scanner MUST:
 
 ## Open Questions
 
-1. **`StatementContext` 重命名 → `Statement` 是否在本 change 范围？** Oracle 当前建议"重命名另开 change"，本 design 采纳此建议保持最小风险。如 maintainer 倾向一并重命名，需在 Phase 1.5c+d 之前确认（影响所有 caller 的类型名）。
-2. **`include/ptxir/ptxir_serialization.h` 中是否引用 IR 类型？** 待 1.5d 阶段实审计。当前假设"不引用"（ptxir_serialization 与 statement IR 解耦）。
-3. **是否需要 ANTLR4-generated 头（`build/antlr4_generated_src/PTXParser.h` 等）添加 `using ::ptxemu::ir::Type;` 声明？** 当前假设"不需要"（ANTLR4-generated 头在 build dir，不在 src tree；如 PTX parser 编译失败，1.5e 阶段回头处理）。
+1. **`StatementContext` 重命名 → `Statement` 不在本 change 范围。** 已固定保持类名不变；如未来需要重命名，另开 change。
+2. **`include/ptxir/ptxir_serialization.h` 的 IR 引用已实证**：当前通过全局 `struct StatementContext` 前置声明使用；Phase 1.5c+d 必须迁移为 `ptxemu::ir::StatementContext`，并按 task 1.6 增加 canonical include 或合法 namespace forward declaration。
+3. **ANTLR4-generated 头无需迁移。** 已核对 generated headers 不包含实际 IR 类型引用；不得修改 `build/antlr4_generated_src/`，若未来生成代码行为变化则另开 change。
 4. **`include/ptxemu/ir/statement.h` 头里类方法实现位置？** 当前 header 不实现类方法（仅声明），如发现 1.5d 阶段某些 `std::get<I>` 调用期望 out-of-line 定义，需检查 statement.h 实际内容。
