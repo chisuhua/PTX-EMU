@@ -31,6 +31,27 @@ extern std::unique_ptr<GPUContext> g_gpu_context;
 namespace ptxemu {
 
 namespace {
+// HSK-8 spec §Decision 6: compile-time lock that ptxemu::ThreadState values
+// match the global-namespace unscoped enum ::EXE_STATE
+// (include/ptxsim/execution_types.h:8). ThreadState is ABI-frozen; any
+// drift between the two enums breaks map_state() silently without these.
+static_assert(
+    static_cast<uint32_t>(ptxemu::ThreadState::kIdle) ==
+        static_cast<uint32_t>(::EXE_STATE::IDLE),
+    "HSK-8 Decision 6: ThreadState::kIdle must equal ::EXE_STATE::IDLE");
+static_assert(
+    static_cast<uint32_t>(ptxemu::ThreadState::kRun) ==
+        static_cast<uint32_t>(::EXE_STATE::RUN),
+    "HSK-8 Decision 6: ThreadState::kRun must equal ::EXE_STATE::RUN");
+static_assert(
+    static_cast<uint32_t>(ptxemu::ThreadState::kExit) ==
+        static_cast<uint32_t>(::EXE_STATE::EXIT),
+    "HSK-8 Decision 6: ThreadState::kExit must equal ::EXE_STATE::EXIT");
+static_assert(
+    static_cast<uint32_t>(ptxemu::ThreadState::kBarSync) ==
+        static_cast<uint32_t>(::EXE_STATE::BAR_SYNC),
+    "HSK-8 Decision 6: ThreadState::kBarSync must equal ::EXE_STATE::BAR_SYNC");
+
 // Map EXE_STATE (global namespace) to ptxemu::ThreadState
 // (HSK-8 spec §Decision 6).
 // Ordering MUST match ThreadState enum values in device_api.h.

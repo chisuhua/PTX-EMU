@@ -50,12 +50,13 @@ struct DeviceConfig {
 
 // ThreadState enum (per HSK-8 spec §Decision 6 static_assert 锁:
 // impl 层 static_assert(static_cast<uint32_t>(ptxemu::ThreadState::kIdle) ==
-// static_cast<uint32_t>(ptxsim::EXE_STATE::IDLE))。
+// static_cast<uint32_t>(::EXE_STATE::IDLE))。注: EXE_STATE 是全局命名空间
+// 无作用域枚举 (include/ptxsim/execution_types.h:8), 不在 ptxsim 命名空间。
 enum class ThreadState : uint32_t {
-    kIdle = 0,    // ptxsim::EXE_STATE::IDLE
-    kRun = 1,     // ptxsim::EXE_STATE::RUN
-    kExit = 2,    // ptxsim::EXE_STATE::EXIT
-    kBarSync = 3, // ptxsim::EXE_STATE::BAR_SYNC
+    kIdle = 0,    // ::EXE_STATE::IDLE
+    kRun = 1,     // ::EXE_STATE::RUN
+    kExit = 2,    // ::EXE_STATE::EXIT
+    kBarSync = 3, // ::EXE_STATE::BAR_SYNC
 };
 
 // Per-lane status snapshot.

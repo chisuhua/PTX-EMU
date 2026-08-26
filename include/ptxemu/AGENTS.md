@@ -48,7 +48,7 @@ list EMPTY per `phase-2-2-1-3-1-followup` §3.7).
 - **Namespace**: All public types in `ptxemu` (IPtxEmuDevice/DTOs) or `ptxemu::ir` (IR types). Per HSK-8 spec §2: 命名空间.
 - **ABI freeze**: `PTXEMU_API_VERSION=1` macro is FROZEN (per HSK-8 spec §Decision 3). Any public signature change requires new HSK-N handshake (not in-PR bump).
 - **C++17 compatibility**: `device_api.h` MUST NOT use C++20-only features (`std::format` / `requires` / `concept` / `<=>` / `consteval` / `constinit` / `[[likely]]` / `[[unlikely]]`). Per spec/public-device-api §Requirement C++17.
-- **Static_assert lock**: impl layer MUST have `static_assert(static_cast<uint32_t>(ptxemu::ThreadState::kIdle) == static_cast<uint32_t>(ptxsim::EXE_STATE::IDLE))` series. Per HSK-8 spec §Decision 6.
+- **Static_assert lock**: impl layer MUST have `static_assert(static_cast<uint32_t>(ptxemu::ThreadState::kIdle) == static_cast<uint32_t>(::EXE_STATE::IDLE))` series (4 asserts covering kIdle/kRun/kExit/kBarSync, in `src/ptxemu/device_api_impl.cc` anonymous namespace). Per HSK-8 spec §Decision 6. Note: `EXE_STATE` is a global-namespace unscoped enum (`include/ptxsim/execution_types.h:8`), NOT in `ptxsim` namespace.
 - **Forward-declared HSK-4 vendored interfaces**: `IScoreboard` / `IPipelineLatencyProvider` / `ITensorCoreTiming` are declared in `device_api.h` only (no duplicate definitions) — full definitions in vendored headers. Per HSK-8 spec §6 HSK-4 复用.
 
 ## ANTI-PATTERNS
