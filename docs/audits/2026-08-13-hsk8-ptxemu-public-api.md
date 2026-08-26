@@ -136,11 +136,11 @@ $ for commit in 586ea14f 602bfc30 359579ec d8b6ca56 a6c9bdaf 66ca4875 \
 
 | 任务 | 推迟原因 | 未来实施 |
 |------|----------|----------|
-| **Phase 1.5** (task 3.7) `include/ptx_ir/` forwarding header 迁移 | namespace 包装 (`ptxemu::ir`) 触发级联 build 失败 (`gpu_context.h:173` `std::vector<StatementContext>` 类型推断错误 + `statement_context.cpp:52` namespace 闭包不匹配)。需要 (1) 一次性更新所有 src/ 调用点使用 `ptxemu::ir::` 类型限定名 **或** (2) forwarding header 用 `using namespace ptxemu::ir` (namespace pollution,违反设计意图) | 新开 `phase-1-5-namespace-migration` change,独立 PR 处理 |
+| **Phase 1.5** (task 3.7) `include/ptx_ir/` forwarding header 迁移 | 推迟原因分两层: (A) **预测的失败模式** (per 2026-08-26 Metis 复审) — namespace 包装会触发级联 build 问题: `gpu_context.h:58,80,173` `std::vector<StatementContext>` 类型推断需更新 (未限定的 `StatementContext` 应变 `ptxemu::ir::StatementContext`); `statement_context.cpp:52` 所在的 out-of-line `StatementContext::toString()` 定义在 namespace 包裹后需 `ptxemu::ir::StatementContext::toString` 或外加 `namespace ptxemu::ir { }` 包裹; AGENTS.md L33 描述的 `using namespace ptxemu::ir` forwarding 实际并未实施 (AGENTS.md 文档谎言); (B) **实施路径决策** — 需 (1) 一次性更新 177 个 src/ caller 使用 `ptxemu::ir::` 限定名 + (2) 重命名 `StatementContext` 为 `Statement` (per statement-ir-public spec L33-40); forwarding shim 形式最终为 `#include <ptxemu/ir/foo.h> + namespace ptx_ir = ::ptxemu::ir;` (statement-ir-public spec L46-48 Scenario)。`using namespace ptxemu::ir` 全局污染方案已被否决 (违反设计意图) | 新开 `phase-1-5-namespace-migration` OpenSpec change, 9 Phase 顺序 commit, 独立 PR 处理; 2026-08-26 已开 Metis pre-impl review 并锁定方案 B (C2: statement-ir-public spec L33-48 明确承诺 ptxemu/ir 公共路径, 方案 A "删死树" 违反合同) |
 | **Phase 2.2** (设计文档隐含) `set_scoreboard` / `set_active_mask` / `set_next_pc` delegation | `device_api_impl.cc` stub 返回 false,需要 SMContext/WarpContext/ThreadContext 实际 delegation 实现 | HSK-9 准入后增量实施 |
 | **Phase 2.3** (设计文档隐含) `attach_timing` HSK-4 vendored interface injection | 同上,需要 IScoreboard/IPipelineLatencyProvider/ITensorCoreTiming 注入 | HSK-9 准入后增量实施 |
 | **HSK-9** (task 6.4) `consumer_smoke` test | HSK-8 ack 决策点 2 明示:本期仅 drift_check,下期 consumer_smoke;仅当 `PTXEMU_API_VERSION` bump 触发 | 等待 `PTXEMU_API_VERSION 1→2` 时由 HSK-9 spec 启动 |
-| **task 9.4** 1 release 后删除 `include/ptx_ir/` forwarding header | 前置条件 task 3.7 尚未执行;需 Phase 1.5 实施后才有 header 可删 | 1 release after HSK-8 ack (= 2026-08-22 + 1 release cycle) |
+| **task 9.4** 1 release 后删除 `include/ptx_ir/` forwarding header | 前置条件 task 3.7 尚未执行;需 Phase 1.5 实施后才有 header 可删 | 1 release after HSK-8 ack (= 2026-08-22 + 1 release cycle, ≈ 2026-09 中旬)。2026-08-26 状态: 已确认 `task 9.4` 当前先决条件 `task 3.7` 仍未满足, 推迟触发窗口随之顺延 |
 
 ### 同期发现的独立 bug
 
