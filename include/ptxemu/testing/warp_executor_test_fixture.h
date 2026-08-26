@@ -48,8 +48,16 @@ public:
     // {make_ffma(...)} etc. via this parameter — the warp created by add_block()
     // carries those statements at PC=0 and exe_once() can execute them
     // (sm_context.cpp:266-268 guard passes when statements_size() > 0).
+    //
+    // statements_ is a MEMBER (not just a parameter) so that its lifetime matches
+    // the fixture's lifetime. SimtPcManager stores a raw pointer to the statements
+    // vector (see thread_context.cpp:67 — `&statements` passed to SimtPcManager
+    // ctor); if statements went out of scope when the ctor returned, the warp's
+    // threads would dangle and exe_once() would access freed memory.
     explicit WarpExecutorTestFixture(
         std::vector<StatementContext> statements = {}) {
+        statements_ = std::move(statements);
+
         saved_context_ = std::move(g_gpu_context);
         g_gpu_context = std::make_unique<GPUContext>();
         REQUIRE(g_gpu_context != nullptr);
@@ -67,7 +75,7 @@ public:
         Dim3 grid_dim{1, 1, 1};
         Dim3 block_dim{32, 1, 1};
         Dim3 block_idx{0, 0, 0};
-        block->init(grid_dim, block_dim, block_idx, statements, &name2Sym,
+        block->init(grid_dim, block_dim, block_idx, statements_, &name2Sym,
                     label2pc);
 
         bool ok = sm_->add_block(std::move(block));
@@ -95,6 +103,10 @@ public:
     IPtxEmuDevice* dev() const { return dev_.get(); }
 
 private:
+    // Lifetime-tied to the fixture so SimtPcManager's raw statements pointer
+    // (set via thread->init's &statements parameter) stays valid throughout
+    // the test body. See comment in constructor above.
+    std::vector<StatementContext> statements_;
     std::unique_ptr<GPUContext> saved_context_;
     SMContext* sm_ = nullptr;
     WarpContext* warp_ = nullptr;

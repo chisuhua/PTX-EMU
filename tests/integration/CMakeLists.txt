@@ -589,6 +589,20 @@ add_catch_test(integration_mock_injection_slow_path
 set_tests_properties(integration_mock_injection_slow_path PROPERTIES
     LABELS "integration;cpptlm;g4;mock;slow_path")
 
+# ============================================================================
+# 2026-08-25 attach-timing-consumer-e2e: 4 e2e tests verifying
+# IPtxEmuDevice::attach_timing injects HSK-4 vendored interfaces into
+# SMContext AND that SMContext::exe_once + step_b_set_blocked_cycles actually
+# query the injected mocks (closes asymmetric test gap left by CppTLM
+# commit d909407's 7 consumer-side tests).
+# ============================================================================
+add_catch_test(integration_attach_timing_consumer_e2e
+    cpptlm/test_attach_timing_consumer_e2e.cpp
+)
+target_link_libraries(integration_attach_timing_consumer_e2e PRIVATE ptxemu_core)
+set_tests_properties(integration_attach_timing_consumer_e2e PROPERTIES
+    LABELS "integration;cpptlm;attach_timing")
+
 # =============================================================================
 # Phase 0 Step 1 byte-identical fallback gates (per ADR-0029 §D7)
 # =============================================================================
