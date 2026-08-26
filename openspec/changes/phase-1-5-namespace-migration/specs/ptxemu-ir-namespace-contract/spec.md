@@ -51,8 +51,8 @@ All PTX-EMU IR public type definitions (Qualifier, StatementType, OperandType, O
 
 ### Requirement: All internal callers MUST use `ptxemu::ir::*` qualified names
 
-All 178 src/include caller sites in `src/ptx_parser/`, `src/ptxsim/`, `src/cudart/`, `include/{ptxsim,ptxemu,cudart,ptx_parser,register,utils}/`, and `tests/{unit,integration,e2e}/` MUST use the qualified `ptxemu::ir::TypeName` form for any IR type. Bare unqualified IR type names (`Qualifier` without prefix, `StatementContext` without prefix, etc.) MUST NOT appear outside:
-- The `include/ptx_ir/*.h` forwarding shim headers (where `using` declarations are mandatory)
+All 218 files containing IR caller sites in `src/ptx_ir/`, `src/ptxir/`, `src/ptx_parser/`, `src/ptxsim/`, `src/cudart/`, `include/ptx_ir/` non-shim headers, `include/ptxir/`, `include/{ptxsim,ptxemu,cudart,ptx_parser,register,utils}/`, and `tests/{unit,integration,e2e}/` MUST use the qualified `ptxemu::ir::TypeName` form for any IR type. Bare unqualified IR type names (`Qualifier` without prefix, `StatementContext` without prefix, etc.) MUST NOT appear outside:
+- Only `include/ptx_ir/{ptx_types,operand_context,statement_context}.h` forwarding shim headers (where `using` declarations are mandatory); non-shim `include/ptx_ir/*.h` and all `include/ptxir/` headers are in migration scope
 - Comments and string literals (where the type name appears as documentation, not as a type reference)
 
 #### Scenario: No bare IR types in src/
@@ -84,11 +84,11 @@ All 178 src/include caller sites in `src/ptx_parser/`, `src/ptxsim/`, `src/cudar
 
 ### Requirement: `using namespace ::ptxemu::ir;` MUST NOT appear anywhere
 
-No source file, header, test, or generated artifact MUST use `using namespace ::ptxemu::ir;` (or `using namespace ptxemu::ir;`) to introduce IR types into another namespace. Only the explicit per-type `using ::ptxemu::ir::TypeName;` declarations inside the `include/ptx_ir/*.h` forwarding shim headers are permitted.
+No source file, header, test, or generated artifact MUST use `using namespace ::ptxemu::ir;` (or `using namespace ptxemu::ir;`) to introduce IR types into another namespace. Only the explicit per-type `using ::ptxemu::ir::TypeName;` declarations inside the three `include/ptx_ir/{ptx_types,operand_context,statement_context}.h` forwarding shim headers are permitted.
 
 #### Scenario: No global using-directive
 - **WHEN** `git grep -E "using\s+namespace\s+::?ptxemu::ir" src/ include/ptxsim/ include/ptxemu/ include/cudart/ include/ptx_parser/ include/register/ include/utils/ tests/`
-- **THEN** 0 matches outside `include/ptx_ir/*.h` shim files
+- **THEN** 0 bare-type matches outside the three forwarding shim headers `include/ptx_ir/{ptx_types,operand_context,statement_context}.h`; non-shim `include/ptx_ir/` and all `include/ptxir/` headers remain in the scan scope
 
 ### Requirement: ANTLR4-generated headers MUST NOT be modified
 

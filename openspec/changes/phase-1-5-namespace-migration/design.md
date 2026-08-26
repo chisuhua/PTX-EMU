@@ -2,7 +2,7 @@
 
 **当前状态**（baseline `2cd8449e`）：
 - `include/ptxemu/ir/` 5 个 header 含完整 `ptxemu::ir` 命名空间定义（Phase 1 scaffolding commit `564174f7`），但**0 caller**（canonical 是合同基线，但 PTX-EMU 内部全部使用 `include/ptx_ir/...`）
-- `include/ptx_ir/` 11 个 header 在全局命名空间，**178 个 src/include caller 使用**未限定类型（`Qualifier`/`StatementContext`/`OperandContext`/...）
+- `include/ptx_ir/` 11 个 header 在全局命名空间，实测 **218 个 src/include/tests 文件**含未限定 IR 类型名（src 58、include 40、tests 120），其中 `include/ptx_ir/` 非 shim 头和 `include/ptxir/` 也必须迁移
 - `include/ptx_ir/AGENTS.md` 此前文档谎言（声称 forwarding shim + using-directive），已在 commit `d7890a61` 修正
 - `include/ptx_ir/{ptx_op,ptx_qualifier}.def` byte-equivalent 双维护，已在 commit `2cd8449e` 单源化为 11 行 shim
 - `src/ptx_ir/*.cpp` 8 个文件实现 `Q2s/S2s/Q2bytes/extractREG` 等自由函数，定义在全局 namespace
@@ -27,7 +27,7 @@
 
 **Goals:**
 - 完成 `statement-ir-public` spec §33-48 全部承诺（5 文件晋升 + 旧路径 forwarding shim + 1 release cycle 后清理）
-- 178 个 src/include caller 全部迁移到 `ptxemu::ir::*` 限定名，无函数行为变化
+- 218 个 src/include/tests caller 文件全部迁移到 `ptxemu::ir::*` 限定名，无函数行为变化
 - `include/ptxsim/gpu_context.h` 3 处 type signature 重命名（`StatementContext` → `ptxemu::ir::StatementContext`）
 - drift_check Invariant 8 防止后续代码回归到裸 IR 类型名
 - HSK-8 audit §Postmortem Phase 1.5 状态从"deferred" → "completed"
@@ -83,16 +83,16 @@ using ::ptxemu::ir::StatementContext;
 
 ### D3: per-directory 切 commit + 单 commit ≤30 sites
 
-**Decision**：178 caller sites 按调用拓扑顺序切 5-7 个 commit，每 commit 仅 sweep 一个目录 + 立即 ctest 252/252 验证。顺序：`src/ptx_parser/` → `src/ptxsim/instructions/` + `src/ptxsim/core/` → `src/cudart/` → `include/ptxsim/` + `include/ptxemu/` + `include/cudart/` + `include/ptx_parser/` + `include/register/` + `include/utils/` → `tests/{unit,integration,e2e}/`。
+**Decision**：218 caller files 按调用拓扑和 ≤30 files/commit 约束切子批次，每批立即 ctest 252/252：`src/ptx_parser/` → `src/ptxsim/instructions/` → `src/ptxsim/core+utils/` → `src/cudart/` → `include/ptx_ir/` 非 shim + `include/ptxir/` → 其他 `include/` → `tests/unit/` → `tests/integration/` → `tests/e2e/`。
 
 **Rationale**：
 - ptx-lessons-learned §3-4 分 Phase commit 纪律
-- Oracle SPLIT 建议：per-directory 切 commit 才能 bisect；单 commit 178 sites 出问题难以定位
+- Oracle SPLIT 建议：per-directory 子批次切 commit 才能 bisect；单 commit 218 files 出问题难以定位
 - 拓扑顺序保证依赖方向：parser → sim → cudart → include（反向依赖 sim） → tests（消费所有）
 - 每 commit 后 ctest 验证：失败立即 revert 不污染后续
 
 **Alternatives considered**：
-- (a) 单 commit 178 sites — 拒绝（不可 bisect，review 不可读）
+- (a) 单 commit 218 files — 拒绝（不可 bisect，review 不可读）
 - (b) 随机目录顺序 — 拒绝（依赖方向会导致 forward-decl 错误）
 
 ### D4: GPUContext 接口重签名作为独立 commit (1.5j)
@@ -110,21 +110,26 @@ using ::ptxemu::ir::StatementContext;
 ### D5: drift_check Invariant 8 — 禁止裸名 IR 类型回归
 
 **Decision**：在 `.github/workflows/drift_check.yml` 新增 Invariant 8：
-```bash
-# 禁止 src/include/tests 出现裸 IR 类型（除 ptx_ir_shim.h 转发层）
-# 允许例外: include/ptx_ir/*_shim.h 转发层
+```yaml
+# Invariant 8 uses a token-aware Python scanner, not bare `\bType\b` grep:
+# `\bQualifier\b` also matches `ptxemu::ir::Qualifier` because `:` is non-word.
 - name: Check no bare IR type names outside ptx_ir shim (Invariant 8)
   run: |
-    for type in Qualifier StatementContext OperandContext InstrVariant Tcgen05Instr Tcgen05OpKind; do
-      if grep -rEn "\\b$type\\b" src/ include/ptxsim/ include/cudart/ include/ptxemu/ include/ptx_parser/ include/register/ include/utils/ tests/ 2>/dev/null | grep -vE '#include\s+["<]ptx_ir/.*_shim\.h[">]'; then
-        echo "::error::bare IR type $type found outside ptx_ir shim layer"
-        exit 1
-      fi
-    done
+    python3 scripts/check_ptxemu_ir_names.py \
+      --roots src include tests \
+      --exclude include/ptx_ir/ptx_types.h \
+      --exclude include/ptx_ir/operand_context.h \
+      --exclude include/ptx_ir/statement_context.h
 ```
 
+The scanner MUST:
+- skip comments and string literals;
+- scan `include/ptx_ir/` non-shim headers and `include/ptxir/`;
+- ignore IR tokens already preceded by `ptxemu::ir::` (negative lookbehind or equivalent parser); and
+- fail on a bare code token outside the three forwarding shim headers.
+
 **Rationale**：
-- 防止 1.5c-1.5i 完成后，新代码又用裸 `Qualifier` 写，污染 namespace 迁移成果
+- 防止 1.5c-1.5i 完成后，新代码又用裸 `Qualifier` 写，污染 namespace 迁移成果；扫描范围必须包含 `include/ptx_ir/` 非 shim 头和 `include/ptxir/`
 - ptx-lessons-learned §1 警示：状态/类型翻译漂移是无声回归的常见来源
 - 灰度期（1.5i 完成后 1 release cycle）期间 shim 仍存在，caller 可临时回退到 shim 路径，但应在 deadline 前清理
 
@@ -134,12 +139,12 @@ using ::ptxemu::ir::StatementContext;
 
 ## Risks / Trade-offs
 
-- **[R1] 178 sites 跨 5+ 目录，AI 误改率高** → Mitigation: per-directory 切 commit + 每 commit ctest 验证 + 失败立即 revert (per ptx-lessons-learned §3-4)
-- **[R2] `StatementContext::toString()` out-of-line 定义（`statement_context.cpp:52`）namespace wrap 后需重定位** → Mitigation: 1.5d 阶段明确将 `ptxemu::ir::StatementContext::toString` 定义 wrap 进 namespace
+- **[R1] 218 files 跨 9+ 目录，AI 误改率高** → Mitigation: per-directory 子批次 ≤30 files + 每 commit ctest 验证 + 失败立即 revert (per ptx-lessons-learned §3-4)
+- **[R2] `StatementContext::toString()` out-of-line 定义（`statement_context.cpp:52`）namespace wrap 后需重定位** → Mitigation: 1.5c+d 阶段明确将 `ptxemu::ir::StatementContext::toString` 定义 wrap 进 namespace
 - **[R3] `std::visit` + ADL 在 namespace wrap 后行为可能微妙变化** → Mitigation: 1.5d 阶段重点验证 `src/ptx_parser/ptx_visitor*.cpp` 9 个文件 + `src/ptxsim/instruction_factory.cpp` 的 `handler_map` 分发
 - **[R4] ANTLR4-generated 头（`build/antlr4_generated_src/`）含未限定 `StatementType/Qualifier`** → Mitigation: 本 change 不 sweep generated 头；这些头是 ANTLR4 runtime 管辖；如未来 ANTLR 升级触发 issue 另开 change
-- **[R5] `src/ptxir/ptxir_serialization.cpp` 是另一 namespace 平行的 .cpp 包含 statement_context 类型** → Mitigation: 1.5d 阶段确认此文件 `using ::ptxemu::ir::StatementContext` 等 alias 或完整 namespace wrap；如遇 ODR 类似 D2 冲突
-- **[R6] `include/ptxemu/ir/statement.h` 头本身未实现类方法（与 `ptx_types.h` 同样模式）** → Mitigation: shim 后旧路径 caller 仍依赖 `src/ptx_ir/*.cpp` 全局实现，1.5d 阶段必须 wrap cpp；如未 wrap，链接失败
+- **[R5] `src/ptxir/ptxir_serialization.cpp` 是另一 namespace 平行的 .cpp 包含 statement_context 类型** → Mitigation: 1.5c+d 阶段确认此文件及 `include/ptxir/ptxir_serialization.h` 的 IR 引用，采用 `using ::ptxemu::ir::StatementContext` 等显式 alias 或完整 namespace wrap；如遇 ODR 类似 D2 冲突
+- **[R6] `include/ptxemu/ir/statement.h` 头本身未实现类方法（与 `ptx_types.h` 同样模式）** → Mitigation: shim 后旧路径 caller 仍依赖 `src/ptx_ir/*.cpp` 实现，1.5c+d 阶段必须 wrap cpp；如未 wrap，链接失败
 - **[R7] HSK-9 提前签发需要重新评估** → Mitigation: 1.5i 完成后未到 HSK-9 触发窗口前，本 change 闭合 spec/code drift 承诺；如 HSK-9 提前签发，新 change 重新评估
 - **[R8] git 合并冲突与 PTX-EMU 作为 CppTLM submodule 约束** → Mitigation: 每次 commit 后推 origin/main，缩短未推送窗口；C++ code 冲突概率低（per-directory 切 commit 独立）
 
@@ -150,13 +155,17 @@ using ::ptxemu::ir::StatementContext;
 1. **1.5a** ✅ (commit `d7890a61`): AGENTS.md 文档谎言修正
 2. **1.5b** ✅ (commit `2cd8449e`): def 文件单源化
 3. **1.5c+d** (1 commit, ~3h): shim 改造 + src/ptx_ir/*.cpp namespace wrap + 函数体加 `ptxemu::ir::` 前缀 + ctest 验证
-4. **1.5e** (1 commit, ~1h): `src/ptx_parser/` 17 文件 sweep
-5. **1.5f** (1 commit, ~2h): `src/ptxsim/{instructions,core,debug,utils}/` 15 文件 sweep
-6. **1.5g** (1 commit, ~1h): `src/cudart/` 5 文件 sweep
-7. **1.5h** (1 commit, ~1h): `include/{ptxsim,ptxemu,cudart,ptx_parser,register,utils}/` 25 文件 sweep
-8. **1.5i** (1 commit, ~2h): `tests/{unit,integration,e2e}/` 130+ 文件 sweep
-9. **1.5j** (1 commit, ~30min): `include/ptxsim/gpu_context.h` 3 处 type signature 重命名
-10. **1.5k** (1 commit, ~30min): drift_check Invariant 8 + `openspec/specs/statement-ir-public/spec.md` Scenario 验证 + HSK-8 audit postmortem 关闭
+4. **1.5e** (1 commit, ~1h): `src/ptx_parser/` caller sweep（实测 13 files）
+5. **1.5f1** (1 commit, ~1.5h): `src/ptxsim/instructions/` caller sweep
+6. **1.5f2** (1 commit, ~1.5h): `src/ptxsim/core+utils+debug/` caller sweep（src/ptxsim 合计实测 33 files）
+7. **1.5g** (1 commit, ~1h): `src/cudart/` caller sweep（实测 4 files）
+8. **1.5h1** (1 commit, ~1h): `include/ptx_ir/` 非 shim + `include/ptxir/` caller sweep
+9. **1.5h2** (1 commit, ~1h): 其他 `include/{ptxsim,ptxemu,cudart,ptx_parser,register,utils}/` caller sweep（include 合计实测 40 files）
+10. **1.5i1** (1 commit, ~1h): `tests/unit/` caller sweep
+11. **1.5i2** (1 commit, ~1h): `tests/integration/` caller sweep
+12. **1.5i3** (1 commit, ~1h): `tests/e2e/` caller sweep（tests 合计实测 120 files）
+13. **1.5j** (1 commit, ~30min): `include/ptxsim/gpu_context.h` 3 处 type signature 重命名
+14. **1.5k** (1 commit, ~30min): drift_check Invariant 8 + `openspec/specs/statement-ir-public/spec.md` Scenario 验证 + HSK-8 audit postmortem 关闭
 
 **Rollback strategy**：
 - 每 phase 独立 commit → 任何 phase 失败 `git revert HEAD` 不污染后续
