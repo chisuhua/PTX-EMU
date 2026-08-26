@@ -1,12 +1,8 @@
 # attach-timing-consumer-e2e Specification
 
 ## Purpose
-PTX-EMU-side integration test coverage for `IPtxEmuDevice::attach_timing` end-to-end behavior — verifies namespace bridge round-trip identity + downstream query path participation in `SMContext::exe_once()`. Closes the asymmetric test gap left by CppTLM commit `d909407` (2026-08-25) which only verified consumer-side flow.
-
-> **Scope**: This spec covers 4 `TEST_CASE` (G1-G4) in a single file `tests/integration/cpptlm/test_attach_timing_consumer_e2e.cpp`, plus a backward-compatible extension to `WarpExecutorTestFixture`.
-
+TBD - created by archiving change attach-timing-consumer-e2e-tests. Update Purpose after archive.
 ## Requirements
-
 ### Requirement: Integration tests verify `IPtxEmuDevice::attach_timing` namespace bridge round-trip identity
 
 The PTX-EMU test suite MUST contain integration tests that verify `IPtxEmuDevice::attach_timing(IScoreboard*, IPipelineLatencyProvider*, ITensorCoreTiming*)` correctly injects the HSK-4 vendored interfaces into `SMContext` via the `static_cast<void*>` namespace bridge (per HSK-8 spec Decision 6). After injection, `sm->get_scoreboard()`, `sm->get_pipeline_latency_provider()`, and `sm->get_tensor_core_timing()` MUST return pointers equal to the original mock instances (round-trip identity preserved across the bridge).
@@ -122,3 +118,4 @@ Each `TEST_CASE` MUST be independent — no global state from one test affects a
 - **WHEN** `integration_attach_timing_consumer_e2e` ctest target runs (4 TEST_CASE)
 - **THEN** all 4 cases pass regardless of execution order
 - **AND** running the target multiple times produces identical results
+
