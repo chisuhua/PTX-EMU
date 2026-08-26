@@ -1,0 +1,180 @@
+## Context
+
+**当前状态**（baseline `2cd8449e`）：
+- `include/ptxemu/ir/` 5 个 header 含完整 `ptxemu::ir` 命名空间定义（Phase 1 scaffolding commit `564174f7`），但**0 caller**（canonical 是合同基线，但 PTX-EMU 内部全部使用 `include/ptx_ir/...`）
+- `include/ptx_ir/` 11 个 header 在全局命名空间，**178 个 src/include caller 使用**未限定类型（`Qualifier`/`StatementContext`/`OperandContext`/...）
+- `include/ptx_ir/AGENTS.md` 此前文档谎言（声称 forwarding shim + using-directive），已在 commit `d7890a61` 修正
+- `include/ptx_ir/{ptx_op,ptx_qualifier}.def` byte-equivalent 双维护，已在 commit `2cd8449e` 单源化为 11 行 shim
+- `src/ptx_ir/*.cpp` 8 个文件实现 `Q2s/S2s/Q2bytes/extractREG` 等自由函数，定义在全局 namespace
+- `libcudart.so` / `libptxemu_device.so` / `libptxemu_core.so` 公共 ABI 冻结（`PTXEMU_API_VERSION=1`，HSK-8 spec §Decision 3）
+- `cpp 不暴露` 约束（drift_check Invariant 4）保证 CppTLM 仓仅 `add_subdirectory(external/PTX-EMU)` 消费 `ptxemu_core` library，看不到 `ptx_ir/` 内部 header
+- 252/252 ctest 绿
+
+**驱动约束**：
+- `openspec/specs/statement-ir-public/spec.md:33-40` 明确承诺 `ptxemu::ir::Statement` 等 5 文件晋升；spec §46-48 Scenario 描述旧路径 forwarding shim 形式（`#include <ptxemu/ir/foo.h> + namespace ptx_ir = ::ptxemu::ir;`）
+- `ptxemu-core-library/spec.md:17-18` PUBLIC/PRIVATE 拆分：Phase 1.5 后 `ptx_ir/` 仍 PRIVATE（CppTLM 不可见），但 `ptxemu/ir/` 是 PUBLIC 一部分
+- HSK-8 audit §Postmortem 标记 Phase 1.5 deferred item 触发窗口 = HSK-8 ack 2026-08-22 + 1 release cycle (≈ 2026-09 中旬)
+- PTXEMU_API_VERSION=1 冻结 → HSK-9 准入是 PTXEMU public ABI 唯一变更触发点；本 change 不触及 public ABI
+- ptx-lessons-learned §1 跨模块间接状态翻译警示：`using namespace` 全局 shim 风险（本 change 用 per-file 显式 `using ::ptxemu::ir::Type` 而非 `using namespace`）
+- ptx-lessons-learned §3-4 分 Phase commit 纪律：任何 phase 失败立即 revert，不混入后续 commit
+
+**Stakeholders**：
+- PTX-EMU maintainer (chi-suhua)：负责本 change 实施
+- CppTLM 仓 owner：消费方，**本 change 不影响**（`cpp 不暴露` 约束下 CppTLM 看不到 `ptx_ir/` 内部路径）
+- 未来 HSK-9 触发者：需要 canonical public ABI 稳定
+
+## Goals / Non-Goals
+
+**Goals:**
+- 完成 `statement-ir-public` spec §33-48 全部承诺（5 文件晋升 + 旧路径 forwarding shim + 1 release cycle 后清理）
+- 178 个 src/include caller 全部迁移到 `ptxemu::ir::*` 限定名，无函数行为变化
+- `include/ptxsim/gpu_context.h` 3 处 type signature 重命名（`StatementContext` → `ptxemu::ir::StatementContext`）
+- drift_check Invariant 8 防止后续代码回归到裸 IR 类型名
+- HSK-8 audit §Postmortem Phase 1.5 状态从"deferred" → "completed"
+- 252/252 ctest 全程绿（每 phase 验证）
+- PTXEMU_API_VERSION=1 冻结面不受影响
+- 公共 ABI（`libptxemu_core.so` / `libcudart.so` / `libptxemu_device.so`）不变
+
+**Non-Goals:**
+- 不重命名 `StatementContext` → `Statement`（虽然 spec L33 表格写了 `ptxemu::ir::Statement`，但实际 `include/ptxemu/ir/statement.h:308` 仍用 `StatementContext`；保持类名不变仅 namespace wrap 是最小风险路径；如需重命名类另开 change）
+- 不触 `include/ptxemu/device_api.h` 公共面（`PTXEMU_API_VERSION=1` 冻结）
+- 不删除 `include/ptx_ir/` 转发 shim（per `task 9.4` 1 release cycle 后再删）
+- 不改 PTXIR 二进制格式（`include/ptxir/ptxir_format.h` 与 namespace 迁移正交）
+- 不更新 CppTLM 仓（无 HSK 触发需要）
+- 不引入 `using namespace ::ptxemu::ir;` 全局污染方案（违反 HSK-8 spec §Decision 6 "no namespace pollution"，ptx-lessons-learned §1 警示）
+- 不动 ANTLR4-generated 头（`build/antlr4_generated_src/` 由 ANTLR runtime 管辖）
+
+## Decisions
+
+### D1: shim 形式 — per-file 显式 `using` 而非 `using namespace`
+
+**Decision**：`include/ptx_ir/{ptx_types,operand_context,statement_context}.h` 改造为：
+```cpp
+#include <ptxemu/ir/foo.h>
+namespace ptx_ir = ::ptxemu::ir;  // alias namespace, optional opt-in
+using ::ptxemu::ir::Qualifier;
+using ::ptxemu::ir::StatementContext;
+// ... 每个类型一行
+```
+
+**Rationale**：
+- 显式 `using` 列名避免 `using namespace` 引入的所有潜在 ODR 冲突（ptx-lessons-learned §1 警示）
+- 旧 caller 用裸 `Qualifier` 走 `using` alias 解析到 `ptxemu::ir::Qualifier` —— **零 caller 改动**
+- 旧 caller 用 `Qualifier::Q_F32` 通过 type alias 等价 lookup 仍工作
+- 旧 caller 用 `ptx_ir::Qualifier` 显式限定也工作（namespace alias）
+
+**Alternatives considered**：
+- (a) `using namespace ::ptxemu::ir;` 全局污染 — 拒绝（违反 HSK-8 Decision 6 + ptx-lessons-learned §1）
+- (b) 重命名 `StatementContext` → `Statement` — 推迟（statement.h:308 当前名字，最小风险路径；如需重命名另开 change）
+- (c) 完全删除 `ptx_ir/` 旧路径 — 拒绝（违反 spec §46-48 Scenario 承诺 + `task 9.4` 1 release cycle 清理窗口未到）
+
+### D2: src/ptx_ir/*.cpp 命名空间 wrap 必须与 shim 同步
+
+**Decision**：`src/ptx_ir/{ptx_types,operand_context,statement_context,ptxir_reader,ptxir_writer,instruction_latency_table,ptx_syntax_utils}.cpp` 8 个文件全部 wrap 到 `ptxemu::ir` 命名空间，函数定义加 `ptxemu::ir::` 前缀（`Q2s/S2s/Q2bytes/extractREG` + 类方法 out-of-line 定义）。
+
+**Rationale**：
+- 2026-08-26 实测发现：canonical `ptxemu/ir/ptx_types.h` 声明 `Q2s(Q2bytes/extractREG)` 但**无函数体**（仅声明），函数体仍在 `src/ptx_ir/ptx_types.cpp` 全局。Shim 把 `using Q2s = ptxemu::ir::Q2s` 暴露后，cpp 中 `Q2s(Qualifier q)` 重声明与 canonical 签名 ODR 冲突。
+- 解决路径：cpp 内函数定义改用 `ptxemu::ir::Q2s(Qualifier q)` 限定形式，函数体包入 `namespace ptxemu::ir {}` 即可
+- 验证：1.5c+d 合并 commit 后 ctest 252/252 必须绿
+
+**Alternatives considered**：
+- (a) shim 单独 commit（不变 cpp）— 失败，已在本次 session 验证（ODR 冲突立即 revert）
+- (b) 删除 canonical 中的函数声明，保留 cpp 全局定义 — 拒绝（canonical 必须完整，cpp 仅实现细节）
+
+### D3: per-directory 切 commit + 单 commit ≤30 sites
+
+**Decision**：178 caller sites 按调用拓扑顺序切 5-7 个 commit，每 commit 仅 sweep 一个目录 + 立即 ctest 252/252 验证。顺序：`src/ptx_parser/` → `src/ptxsim/instructions/` + `src/ptxsim/core/` → `src/cudart/` → `include/ptxsim/` + `include/ptxemu/` + `include/cudart/` + `include/ptx_parser/` + `include/register/` + `include/utils/` → `tests/{unit,integration,e2e}/`。
+
+**Rationale**：
+- ptx-lessons-learned §3-4 分 Phase commit 纪律
+- Oracle SPLIT 建议：per-directory 切 commit 才能 bisect；单 commit 178 sites 出问题难以定位
+- 拓扑顺序保证依赖方向：parser → sim → cudart → include（反向依赖 sim） → tests（消费所有）
+- 每 commit 后 ctest 验证：失败立即 revert 不污染后续
+
+**Alternatives considered**：
+- (a) 单 commit 178 sites — 拒绝（不可 bisect，review 不可读）
+- (b) 随机目录顺序 — 拒绝（依赖方向会导致 forward-decl 错误）
+
+### D4: GPUContext 接口重签名作为独立 commit (1.5j)
+
+**Decision**：`include/ptxsim/gpu_context.h:58,80,173` 三处 `std::vector<StatementContext>` → `std::vector<ptxemu::ir::StatementContext>` 独立 commit。
+
+**Rationale**：
+- 头文件 type signature 修改会影响所有 include `gpu_context.h` 的 TU（~10 个 src/ + 3 个 include/）
+- 必须独立 commit 让 review 可读，并允许在 1.5e-1.5i 之前或之后单独 verify
+- 与 caller sweep 解耦：先做 caller sweep（仅类型名加限定），再做 GPUContext 重签名（实际类型变 namespace），降低 bisect 复杂度
+
+**Alternatives considered**：
+- (a) 与 1.5d 合并 — 拒绝（namespace wrap 阶段不该触动 type signature，1.5j 单独便于 bisect）
+
+### D5: drift_check Invariant 8 — 禁止裸名 IR 类型回归
+
+**Decision**：在 `.github/workflows/drift_check.yml` 新增 Invariant 8：
+```bash
+# 禁止 src/include/tests 出现裸 IR 类型（除 ptx_ir_shim.h 转发层）
+# 允许例外: include/ptx_ir/*_shim.h 转发层
+- name: Check no bare IR type names outside ptx_ir shim (Invariant 8)
+  run: |
+    for type in Qualifier StatementContext OperandContext InstrVariant Tcgen05Instr Tcgen05OpKind; do
+      if grep -rEn "\\b$type\\b" src/ include/ptxsim/ include/cudart/ include/ptxemu/ include/ptx_parser/ include/register/ include/utils/ tests/ 2>/dev/null | grep -vE '#include\s+["<]ptx_ir/.*_shim\.h[">]'; then
+        echo "::error::bare IR type $type found outside ptx_ir shim layer"
+        exit 1
+      fi
+    done
+```
+
+**Rationale**：
+- 防止 1.5c-1.5i 完成后，新代码又用裸 `Qualifier` 写，污染 namespace 迁移成果
+- ptx-lessons-learned §1 警示：状态/类型翻译漂移是无声回归的常见来源
+- 灰度期（1.5i 完成后 1 release cycle）期间 shim 仍存在，caller 可临时回退到 shim 路径，但应在 deadline 前清理
+
+**Alternatives considered**：
+- (a) 不加 invariant — 拒绝（漂移风险敞口）
+- (b) 仅 grep `using namespace` — 拒绝（语义粗，且与 D1 显式 using 冲突）
+
+## Risks / Trade-offs
+
+- **[R1] 178 sites 跨 5+ 目录，AI 误改率高** → Mitigation: per-directory 切 commit + 每 commit ctest 验证 + 失败立即 revert (per ptx-lessons-learned §3-4)
+- **[R2] `StatementContext::toString()` out-of-line 定义（`statement_context.cpp:52`）namespace wrap 后需重定位** → Mitigation: 1.5d 阶段明确将 `ptxemu::ir::StatementContext::toString` 定义 wrap 进 namespace
+- **[R3] `std::visit` + ADL 在 namespace wrap 后行为可能微妙变化** → Mitigation: 1.5d 阶段重点验证 `src/ptx_parser/ptx_visitor*.cpp` 9 个文件 + `src/ptxsim/instruction_factory.cpp` 的 `handler_map` 分发
+- **[R4] ANTLR4-generated 头（`build/antlr4_generated_src/`）含未限定 `StatementType/Qualifier`** → Mitigation: 本 change 不 sweep generated 头；这些头是 ANTLR4 runtime 管辖；如未来 ANTLR 升级触发 issue 另开 change
+- **[R5] `src/ptxir/ptxir_serialization.cpp` 是另一 namespace 平行的 .cpp 包含 statement_context 类型** → Mitigation: 1.5d 阶段确认此文件 `using ::ptxemu::ir::StatementContext` 等 alias 或完整 namespace wrap；如遇 ODR 类似 D2 冲突
+- **[R6] `include/ptxemu/ir/statement.h` 头本身未实现类方法（与 `ptx_types.h` 同样模式）** → Mitigation: shim 后旧路径 caller 仍依赖 `src/ptx_ir/*.cpp` 全局实现，1.5d 阶段必须 wrap cpp；如未 wrap，链接失败
+- **[R7] HSK-9 提前签发需要重新评估** → Mitigation: 1.5i 完成后未到 HSK-9 触发窗口前，本 change 闭合 spec/code drift 承诺；如 HSK-9 提前签发，新 change 重新评估
+- **[R8] git 合并冲突与 PTX-EMU 作为 CppTLM submodule 约束** → Mitigation: 每次 commit 后推 origin/main，缩短未推送窗口；C++ code 冲突概率低（per-directory 切 commit 独立）
+
+## Migration Plan
+
+**Phase 顺序（9 phases, 1.5a/1.5b 已完成）**：
+
+1. **1.5a** ✅ (commit `d7890a61`): AGENTS.md 文档谎言修正
+2. **1.5b** ✅ (commit `2cd8449e`): def 文件单源化
+3. **1.5c+d** (1 commit, ~3h): shim 改造 + src/ptx_ir/*.cpp namespace wrap + 函数体加 `ptxemu::ir::` 前缀 + ctest 验证
+4. **1.5e** (1 commit, ~1h): `src/ptx_parser/` 17 文件 sweep
+5. **1.5f** (1 commit, ~2h): `src/ptxsim/{instructions,core,debug,utils}/` 15 文件 sweep
+6. **1.5g** (1 commit, ~1h): `src/cudart/` 5 文件 sweep
+7. **1.5h** (1 commit, ~1h): `include/{ptxsim,ptxemu,cudart,ptx_parser,register,utils}/` 25 文件 sweep
+8. **1.5i** (1 commit, ~2h): `tests/{unit,integration,e2e}/` 130+ 文件 sweep
+9. **1.5j** (1 commit, ~30min): `include/ptxsim/gpu_context.h` 3 处 type signature 重命名
+10. **1.5k** (1 commit, ~30min): drift_check Invariant 8 + `openspec/specs/statement-ir-public/spec.md` Scenario 验证 + HSK-8 audit postmortem 关闭
+
+**Rollback strategy**：
+- 每 phase 独立 commit → 任何 phase 失败 `git revert HEAD` 不污染后续
+- 1.5c 失败（已发生，已 revert 1 次）：`git checkout -- include/ptx_ir/*` + rebuild
+- 1.5d-1.5i 失败：`git revert HEAD~N..HEAD --no-edit` 回滚到上一 commit
+- 1.5j 失败：`git revert HEAD` 单 commit
+- 1.5k 失败：drift_check workflow 自身可 disable（workflow_dispatch: false），不影响 main
+
+**Baseline commit**：`2cd8449e`（HEAD，1.5b 完成后状态，ctest 252/252 verified）
+
+**Defer 触发条件**：
+- 1.5c+d 失败 2 次 → 暂存，提交 `fix-phase-1-5-...` change 单独排查
+- HSK-9 提前签发 → 暂停本 change，等 HSK-9 准入流程
+- `cpp 不暴露` 不变量被破坏 → 立即 revert，触发新 HSK 协商
+
+## Open Questions
+
+1. **`StatementContext` 重命名 → `Statement` 是否在本 change 范围？** Oracle 当前建议"重命名另开 change"，本 design 采纳此建议保持最小风险。如 maintainer 倾向一并重命名，需在 Phase 1.5c+d 之前确认（影响所有 caller 的类型名）。
+2. **`include/ptxir/ptxir_serialization.h` 中是否引用 IR 类型？** 待 1.5d 阶段实审计。当前假设"不引用"（ptxir_serialization 与 statement IR 解耦）。
+3. **是否需要 ANTLR4-generated 头（`build/antlr4_generated_src/PTXParser.h` 等）添加 `using ::ptxemu::ir::Type;` 声明？** 当前假设"不需要"（ANTLR4-generated 头在 build dir，不在 src tree；如 PTX parser 编译失败，1.5e 阶段回头处理）。
+4. **`include/ptxemu/ir/statement.h` 头里类方法实现位置？** 当前 header 不实现类方法（仅声明），如发现 1.5d 阶段某些 `std::get<I>` 调用期望 out-of-line 定义，需检查 statement.h 实际内容。
