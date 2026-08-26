@@ -1,5 +1,15 @@
 # complete-x-macro-dispatch
 
+> **状态**: CLOSED — premise-stale(2026-08-26 验证)
+> **关闭理由**: 提案前提 "X-Macro 仅用于注册/分派,未充分利用其代码生成能力" 与当前代码事实不符。X-Macro 已在 5 个使用点承担全部代码生成职责,每个使用点有独立 X 定义(这正是 X-Macro 模式的标准用法,非 "重复展开" 问题):
+> - `src/ptxsim/instruction_factory.cpp:18` — 生成全部 ptx_op.def 条目的 handler 注册(`handler_map[enum_val] = new opstr##Handler()`)
+> - `src/ptxsim/instruction_handlers.cpp:191` — 生成全部 handler 实现(`IMPLEMENT_##struct_kind##_HANDLER(op_str)`)
+> - `src/ptx_ir/statement_context.cpp:15` — 生成 `S2s()` 字符串转换 switch 全部分支
+> - `src/ptx_parser/ptx_parser.cpp:1048` — 生成 statement builder 分派(`STATEMENT_##struct_kind`)
+> - `src/ptx_parser/ptx_visitor.cpp:593` — 生成 visitor 实现(`VISITOR_IMPL_##instr_kind`)
+>
+> 新增 ptx_op.def 条目已自动生效于全部使用点,提案目标客观上已达成,无需改动。
+
 **优先级**: P3 | **来源**: docs/roadmap/post-phase3-debt-roadmap.md §1.2 C-15
 **阶段**: default | **分类**: core-impl
 **类型**: refactor

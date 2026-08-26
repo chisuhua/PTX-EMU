@@ -1,5 +1,10 @@
 # add-cmake-options
 
+> **状态**: RESOLVED-core(2026-08-26 验证)
+> **解决 commit**: `95fe25b8` build(cmake): add ENABLE_ASAN/UBSAN/WERROR options
+> **验证证据**: 根 `CMakeLists.txt:39-41` 定义 `ENABLE_ASAN` / `ENABLE_UBSAN` / `ENABLE_WERROR`(均默认 OFF,满足 "不破坏现有构建");lines 50-62 实际接线 `-fsanitize=address` / `-fsanitize=undefined` / `-Werror` 的 compile + link options;ASAN 与 UBSAN 为独立 option,可同时启用。测试构建开关由 line 48 `PTXEMU_BUILD_TESTING` 覆盖。
+> **残留子项(未解决)**: 可选 `BUILD_BENCH` 开关未添加(原提案标注 "可选");ASAN/UBSAN 的 CI 集成属原提案 Out Scope,未验证。
+
 **优先级**: P3 | **来源**: docs/roadmap/post-phase3-debt-roadmap.md §1.2 C-10
 **阶段**: default | **分类**: infra-setup
 **类型**: infra

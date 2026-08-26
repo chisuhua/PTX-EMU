@@ -1,5 +1,9 @@
 # refactor-ptxir-writer
 
+> **状态**: RESOLVED(2026-08-26 验证)
+> **解决 commit**: `b21c875d` refactor(ptxir_writer): extract per-type helper methods
+> **验证证据**: `src/ptx_ir/ptxir_writer.cpp:237-267` `write_instruction()` 现为 31 行纯分发逻辑(`stmt.visit` + `if constexpr` 链调用 per-type 函数),满足验收标准 "< 50 行";25 个独立 `write_*()` 序列化函数位于 lines 269-411;`ctest -R ptxir` 实测 14/14 通过(含 `unit_ptxir_serialization` round-trip)。
+
 **优先级**: P2 | **来源**: docs/roadmap/post-phase3-debt-roadmap.md §1.2 C-4
 **阶段**: default | **分类**: core-impl
 **类型**: refactor

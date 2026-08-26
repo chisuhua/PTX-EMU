@@ -1,5 +1,9 @@
 # replace-assert-false-with-throw
 
+> **状态**: RESOLVED(2026-08-26 验证)
+> **解决 commit**: `d1f7668a` fix(ptxir): replace assert(false) with PtxEmuException throw
+> **验证证据**: `grep -rn 'assert[[:space:]]*([[:space:]]*false' src/ include/ tests/` 返回 0 处代码匹配(仅 `include/ptxsim/ptx_exceptions.h:5` 文档注释提及该历史模式,非代码);`src/ptx_ir/statement_context.cpp:20-23` `S2s()` default 分支现抛 `PtxEmuException`,异常消息包含 StatementType 数值(满足 "SHOULD 在异常消息中包含 StatementType 的数值")。
+
 **优先级**: P3 | **来源**: docs/roadmap/post-phase3-debt-roadmap.md §1.2 C-21
 **阶段**: default | **分类**: core-impl
 **类型**: refactor

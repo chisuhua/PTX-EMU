@@ -1,5 +1,10 @@
 # cmake-use-glob-for-sources
 
+> **状态**: RESOLVED-core(2026-08-26 验证)
+> **解决 commit**: `d8368597` build(cmake): use GLOB for cudart source discovery
+> **验证证据**: `src/CMakeLists.txt:43` 使用 `file(GLOB SOURCES CONFIGURE_DEPENDS ...)`,lines 41-42 附 GLOB 策略注释(满足 "SHOULD 添加注释说明 GLOB 策略")。
+> **残留子项(未解决)**: (1) GLOB 目前仅覆盖 `cudart/*.cpp`(外加 2 个显式列出的文件);`ptx_ir` / `ptxsim` / `ptx_parser` / `ptxemu_device` / `ptxemu_core` 的源文件列表仍为手动维护,新增这些目录下的 .cpp 仍需修改 CMakeLists.txt;(2) In-Scope 中的 "添加 CI 检查确保 GLOB 结果与预期一致" 未实施(`.github/workflows/` 中无相关检查)。
+
 **优先级**: P3 | **来源**: docs/roadmap/post-phase3-debt-roadmap.md §1.2 C-9
 **阶段**: default | **分类**: infra-setup
 **类型**: infra
