@@ -1,7 +1,7 @@
 # PTX-EMU Post-Phase3 Debt Roadmap (2026-07)
 
 > **维护者**: PTX-EMU Architecture Team
-> **最后更新**: 2026-07-05（HEAD `b5d3092`，parser-completeness + add-extern-function-declaration + Quick Wins 后）
+> **最后更新**: 2026-08-26（HEAD `1862039f`，debt-audit-2026-08-02 实证同步：C-4/C-9/C-10/C-15/C-21 关闭）
 > **目的**: 记录当前剩余技术债务 + 提供未来 OpenSpec change 创建指南
 > **配套文档**:
 > - [`docs/audits/debt-audit-2026-07-02.md`](../audits/debt-audit-2026-07-02.md) — 原始债务审计基线
@@ -17,12 +17,12 @@
 
 | 维度 | 数据 |
 |------|------|
-| **OpenSpec 已 Archived changes** | 18 个（最近：`2026-07-05-add-extern-function-declaration`, `2026-07-05-parser-completeness`, `2026-07-05-fix-cvt-strategy-actual-split`） |
+| **OpenSpec 已 Archived changes** | 113 个（最近：`2026-08-26-attach-timing-consumer-e2e-tests`, `2026-08-25-phase-2-2-1-3-1-followup`, `2026-08-25-device-api-delegation`） |
 | **Active changes** | 0 |
 | **已 RESOLVED 债务**（本次会话） | A-5, A-7, A-8, C-11, C-12 |
 | **剩余 A 系列债务** | 0（A-5 ✅ **RESOLVED 2026-07-06**, A-9 ✅ ARCHIVED, A-10 ✅ ARCHIVED） |
-| **剩余 C 系列债务** | 18（god class + tests + includes；C-19 已移除：测试已存在） |
-| **剩余 D 系列债务** | 6（docs README + OpenSpec 孤儿） |
+| **剩余 C 系列债务** | 11 active（C-1, C-3, C-5, C-6, C-7, C-8, C-17, C-18, C-20, C-22, C-24）+ 7 已关闭（C-2, C-16 此前关闭；C-4, C-9, C-10, C-15, C-21 于 2026-08-02 实证关闭，见 §1.2） |
+| **剩余 D 系列债务** | 0（D-1~D-6 全部 RESOLVED，见 §1.3） |
 | **Oracle tests 新增** | `unit_multi_ptx` + `unit_extern_function`（parser series） |
 | **specs 已 promoted** | `parser-deadcode-cleanup`, `parser-multi-ptx-warning`, `extern-function-parse-coverage`, `stub-explicit-failure`, `wmma-tensor-core` 等 |
 
@@ -52,19 +52,19 @@
 | C-1 | `thread_context.cpp` **885 行**（parser-completeness 后 -19）22 个 include god class | 🟡 P1 | `god-class-refactor-thread-context` | 10h |
 | C-2 | ✅ **Phase 1+2+3+4 RESOLVED** (commits `59df7abf`, `01389c18`, `a2e84791`, `7aedda44`) — `sm_context.cpp` 862 → **616 行**（-246，-28.5%）；Phase 3 拆分 `sm_block_dispatch::Access`（6 个 helper），Phase 4 拆分 `sm_warp_lifecycle::Access`（5 个 helper），Phase 5 fold-back（0 行 SM barrier glue 剩余，step_b 已在 Phase 2 迁移至 `sm_cpptlm_inject`）。helper cap 由 ≤4 上调至 **≤5**（per .rddf/plans/god-class-refactor-sm-context-phase3.md）。剩余目标 `<250` 需 follow-up `exe-once-decomposition`（226 行 monolithic loop） | ✅ ~~🟡 P2~~ | `god-class-refactor-sm-context` ✅ | ~~6h~~ |
 | C-3 | `arithmetic.cpp` + `arithmetic_ext.cpp` 应合并 | 🟢 P3 | `merge-arithmetic-handlers` | 3h |
-| C-4 | `src/ptx_ir/ptxir_writer.cpp::write_instruction()` **函数 246 行**（文件 374 行）degree 184 | 🟡 P2 | `refactor-ptxir-writer` | 3h |
+| C-4 | ✅ **RESOLVED**（debt-audit-2026-08-02 §1.1 实证 + 2026-08-26 复测）— `write_instruction()` 现为 **31 行 dispatcher**（line 237-267，`if constexpr` 分发 32 个 `is_same_v` 分支）+ **34 个 per-type `write_*` helpers**；验收标准"<50 行仅分发逻辑"已满足。文件 411 行（tcgen05 等指令扩展所致，非单函数膨胀） | ✅ ~~🟡 P2~~ | `refactor-ptxir-writer` ✅ | ~~3h~~ |
 | C-5 | 7 个子 AGENTS.md 与根 70%+ 重复 | 🟢 P3 | `consolidate-sub-agents-md` | 2h |
 | C-6 | `tests/unit/contexts/` 7 个 <50 行 POD 测试太浅 | 🟢 P3 | `strengthen-pod-tests` | 2h |
 | C-7 | `include/ptxsim/thread_context.h` 23 个 include | 🟢 P3 | `reduce-thread-context-includes` | 3h |
 | C-8 | `include/ptxsim/testing/memory_test_utils.h` 18 个 include | 🟢 P3 | `reduce-memory-test-utils-includes` | 1h |
-| C-9 | `src/CMakeLists.txt` 手动 `set(SOURCES)` 非 GLOB | 🟢 P3 | `cmake-use-glob-for-sources` | 1h + CI 检查 |
-| C-10 | 仅 1 个 cmake option（无 ASAN/UBSAN） | 🟢 P3 | `add-cmake-options` | 1h |
-| C-15 | `instruction_handlers.cpp` X-Macro 仅调用 1 次 | 🟢 P3 | `complete-x-macro-dispatch` | 3h |
+| C-9 | ✅ **RESOLVED** — `src/CMakeLists.txt` line 43 已用 `file(GLOB SOURCES CONFIGURE_DEPENDS ...)`（commit `d8368597`） | ✅ ~~🟢 P3~~ | `cmake-use-glob-for-sources` ✅ | ~~1h + CI 检查~~ |
+| C-10 | ✅ **RESOLVED** — 根 `CMakeLists.txt` 现有 5 个 option：`USE_DETAILED_LOGGING` + `ENABLE_ASAN`/`ENABLE_UBSAN`/`ENABLE_WERROR`（commit `95fe25b8`，line 39-41）+ `PTXEMU_BUILD_TESTING`（line 48） | ✅ ~~🟢 P3~~ | `add-cmake-options` ✅ | ~~1h~~ |
+| C-15 | ✅ **MOOT**（debt-audit-2026-08-02 §1.1）— 原文件 `src/ptxsim/instructions/instruction_handlers.cpp` 已迁移为 `src/ptxsim/instruction_handlers.cpp`（205 行）；X-Macro（line 191 `#include "ptx_ir/ptx_op.def"`）单次调用对 106 个条目一次展开 = X-Macro 正确用法，"仅调用 1 次"系误识别 | ✅ ~~🟢 P3~~ | `complete-x-macro-dispatch` ✅ | ~~3h~~ |
 | C-16 | ~~`atomic.cpp` 115 行 stub（CAS 缺失）~~ ✅ **合并到 A-9 已 archive** | ~~🟢 P3~~ | ~~(合并到 A-9)~~ | 8h |
 | C-17 | `ptx_visitor.cpp` **998 行**（parser-completeness 后 -16）+ 12 TODO | 🟡 P2 | `split-ptx-visitor-god-class` | 5h |
 | C-18 | `warp_context.cpp` **537 行**（清理后 -19）+ 6 次/30 commits | 🟡 P2 | `refactor-warp-context` | 4h |
 | C-20 | `ptx_visitor_atom.cpp:28` 硬编码 ptx_op.def 格式（DRY） | 🟢 P3 | `dedupe-ptx-op-def-format` | 0.5h |
-| C-21 | `assert(false && "...")` 3 处应改 throw | 🟢 P3 | `replace-assert-false-with-throw` | 1h |
+| C-21 | ✅ **RESOLVED** — 2026-08-26 grep 实证 `src/` + `include/` 0 处 `assert(false && ...)` 代码残留（唯一匹配为 `include/ptxsim/ptx_exceptions.h:5` 文档注释），项目以 `throw`/`UnsupportedInstructionException` 替代 | ✅ ~~🟢 P3~~ | `replace-assert-false-with-throw` ✅ | ~~1h~~ |
 | C-22 | 6 个 "docs(t2-4)" commit 占最近 50 commit 12% | 🟢 P3 | (流程性，非 change) | — |
 | C-24 | `tests/e2e/divergence/test_divergence.cu` 仅 1 个非 barrier E2E | 🟢 P3 | `expand-e2e-divergence-coverage` | 8h |
 
@@ -94,6 +94,8 @@
 🟢 P3（季度清理，13 条）:
    C-3, C-5, C-6, C-7, C-8, C-9, C-10, C-15, C-20, C-21, C-24, D-3, D-5
 ```
+
+> **2026-08-26 sync**：上述清单为 2026-07-06 快照。此后 C-4（P2）+ C-9/C-10/C-15/C-21（P3）已 ✅ RESOLVED/MOOT（实证 docs/audits/debt-audit-2026-08-02.md §1.1），D-1~D-6 亦全部 RESOLVED（§1.3）。当前 active：P2 = C-17, C-18；P3 = C-3, C-5, C-6, C-7, C-8, C-20, C-24（C-22 流程性）。
 
 **Tier vs Priority 映射**（工时时间箱）：
 
@@ -274,7 +276,7 @@ git merge --no-ff refactor/<change-name>
 > **当前 Tier 1 为空**：最近一次审计（2026-07-05, MR-1 修复后）移除 C-19（虚假债务）后，剩余 P1 项（A-9 = 8h, C-1 = 10h）的工时均超过 4h 单时间箱。
 >
 > **后续策略**：
-> - 等待 quick-win 类型的 P1 项（如 C-8 减少 test util includes 1h、C-21 替换 assert(false) 1h）出现
+> - 等待 quick-win 类型的 P1 项（如 C-8 减少 test util includes 1h）出现（~~C-21 替换 assert(false) 1h~~ ✅ 已 RESOLVED 2026-08-02 实证）
 > - 或将 P1 项 scope 拆分（如 A-9 拆为 Phase 1: CAS handler only，~3h）
 
 ### 3.2 Tier 2 — 本月（**15h 月度预算**，硬上限）
@@ -310,10 +312,10 @@ git merge --no-ff refactor/<change-name>
 #### 其他 Tier 3 项
 
 参见 §1.2 完整列表，按工时 + 影响排序选择。优先序列：
-- 🟡 P2 高 ROI: C-2 (sm_context 6h), C-4 (ptxir_writer 函数 246 行 3h), C-17 (ptx_visitor 5h), C-18 (warp_context 4h)
-- 🟢 P3 流程性: 全部 C-5~C-10, C-15, C-20~C-22, C-24
-- 🟡 P2 文档: D-1, D-4, D-6
-- 🟢 P3 文档: D-3, D-5
+- 🟡 P2 高 ROI: ~~C-2~~ ✅（见 §1.2）, ~~C-4~~ ✅（2026-08-02 实证）, C-17 (ptx_visitor 5h), C-18 (warp_context 4h)
+- 🟢 P3 流程性: C-5~C-8, C-20, C-22, C-24（~~C-9/C-10/C-15/C-21~~ ✅ 2026-08-02 实证）
+- 🟡 P2 文档: ~~D-1, D-4, D-6~~ ✅（§1.3）
+- 🟢 P3 文档: ~~D-3, D-5~~ ✅（§1.3）
 
 ---
 
@@ -496,6 +498,7 @@ grep -rn "<deleted_symbol>" src/ include/ tests/
 | 1.2 | 2026-07-05 | MR-N1~N3 (Oracle review) |
 | 1.3 | 2026-07-06 | A-9 `implement-atomic-cas-and-true-atomicity` archive（commits `3a38ca0` + `5a328ac` + `6cb5baa` + archive commit）。3 Phase 全部完成（CAS handler + cross-warp mutex + multi-warp oracle test）。§0 更新 A-9 RESOLVED、§1.1 A-9 ✅、§1.2 C-16 ✅ RESOLVED（合并到 A-9）、附录 A.1 atomic.cpp RESOLVED |
 | 1.4 | 2026-07-06 | A-10 `add-nested-divergence-tests` archive（commit `ef425d2` + archive commit）。32-lane 两级嵌套 setp+selp 覆盖率 added；TODO 2026-05-08 at line 106 removed。注：direct @%p bra 变体发现预存在的 SIMT stack 32-lane 跟踪 bug（lanes 16..31 inherit taken-branch state 无论 predicate）— 已 documented in file header, follow-up change required。§0 更新 A-10 RESOLVED、§1.1 A-10 ✅ |
+| 1.5 | 2026-08-26 | C-4/C-9/C-10/C-15/C-21 状态同步（docs/audits/debt-audit-2026-08-02.md §1.1 实证 + 2026-08-26 复测）：§0 / §1.2 / §1.4 / §3.1 / §3.3 / 附录 A.2 标记 ✅ RESOLVED/MOOT；§0 archive 计数 18→113、C 系列 active 18→11、D 系列清零；证据 commits `d8368597`（C-9 GLOB）、`95fe25b8`（C-10 options） |
 
 ---
 
@@ -514,7 +517,7 @@ grep -rn "<deleted_symbol>" src/ include/ tests/
 |------|------|----------|--------|
 | `src/ptxsim/core/thread_context.cpp` | god class | 全文 **885 行**（parser-completeness 后 -19） | 🟡 P1 |
 | `src/ptxsim/core/sm_context.cpp` | god class | 全文 703 行 | 🟡 P2 |
-| `src/ptx_ir/ptxir_writer.cpp` | `write_instruction()` 长函数 | 函数 246 行（始于 line 129） | 🟡 P2 |
+| `src/ptx_ir/ptxir_writer.cpp` | ✅ **RESOLVED**（2026-08-02 实证 + 2026-08-26 复测）：`write_instruction()` 31 行 dispatcher + 34 helpers，<50 行验收满足 | line 237-267 | ~~🟡 P2~~ |
 | `src/ptx_parser/ptx_visitor.cpp` | god class | 全文 **998 行**（parser-completeness 后 -16） | 🟡 P2 |
 | `src/ptxsim/core/warp_context.cpp` | 多次修改的 god class | 全文 **537 行**（清理后 -19） | 🟡 P2 |
 | `src/ptxsim/instructions/arithmetic.cpp` + `arithmetic_ext.cpp` | 应合并 | 全文 | 🟢 P3 |
@@ -522,12 +525,12 @@ grep -rn "<deleted_symbol>" src/ include/ tests/
 | 7 个 `src/**/AGENTS.md` | 与根 AGENTS.md 70%+ 重复 | 全文 | 🟢 P3 |
 | `include/ptxsim/thread_context.h` | 23 个 include | line 1-30 | 🟢 P3 |
 | `include/ptxsim/testing/memory_test_utils.h` | 18 个 include | line 1-25 | 🟢 P3 |
-| `src/CMakeLists.txt` | 手动 `set(SOURCES)` 68 个 .cpp | line 41-48 | 🟢 P3 |
-| `CMakeLists.txt` | 仅 1 个 cmake option | line 34 | 🟢 P3 |
-| `src/ptxsim/instructions/instruction_handlers.cpp` | X-Macro 仅 1 次 | line 190 | 🟢 P3 |
+| `src/CMakeLists.txt` | ✅ **RESOLVED**：`file(GLOB SOURCES CONFIGURE_DEPENDS ...)`（commit `d8368597`） | line 43 | ~~🟢 P3~~ |
+| `CMakeLists.txt` | ✅ **RESOLVED**：5 个 option 含 `ENABLE_ASAN`/`ENABLE_UBSAN`/`ENABLE_WERROR`（commit `95fe25b8`） | line 34-48 | ~~🟢 P3~~ |
+| `src/ptxsim/instruction_handlers.cpp` | ✅ **MOOT**：自 `src/ptxsim/instructions/` 迁移；X-Macro 单次调用展开 106 条目 = 正确用法 | line 191 | ~~🟢 P3~~ |
 | `src/ptxsim/instructions/atomic.cpp` | ~~stub（C-16 = A-9 合并）~~ ✅ **A-9 archive 2026-07-06** | 全文 | 🟢 |
 | `src/ptx_parser/ptx_visitor_atom.cpp` | 硬编码 ptx_op.def 格式（DRY） | line 28 | 🟢 P3 |
-| `ptx_types.cpp` + `statement_context.cpp` | 3 处 `assert(false && "...")` | — | 🟢 P3 |
+| `ptx_types.cpp` + `statement_context.cpp` | ✅ **RESOLVED**：0 处 `assert(false && "...")` 残留（2026-08-26 grep 实证），以 `throw`/`UnsupportedInstructionException` 替代 | — | ~~🟢 P3~~ |
 | `tests/e2e/divergence/test_divergence.cu` | 仅 1 个非 barrier E2E | 全文 | 🟢 P3 |
 
 ### A.3 文档债务（D 系列）
