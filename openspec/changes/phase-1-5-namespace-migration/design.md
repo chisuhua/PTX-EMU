@@ -64,6 +64,8 @@ using ::ptxemu::ir::StatementContext;
 - 旧 caller 用 `Qualifier::Q_F32` 通过 type using 等价 lookup 仍工作
 - 旧 caller 用 `ptx_ir::Qualifier` 显式限定也工作（namespace alias）
 
+**Bridge 过渡（Oracle 2026-08-26 修订）**：tasks.md 1.1 的"enumerator 不兼容"是**终态契约**。1.5c+d 中 shim 顶部必须临时加 `using enum ::ptxemu::ir::StatementType;` 与 `using enum ::ptxemu::ir::OperandType;`（C++20），让 ~87 个 caller 文件（src 18、include 8、tests 62）继续编译。Bridge 在 1.5k 阶段、caller sweep 全部完成后移除。C++20 `using enum` 仅注入 enumerator 常量到 global namespace，对 type identity 与符号表零影响（mangling 不变）。
+
 **Alternatives considered**：
 - (a) `using namespace ::ptxemu::ir;` 全局污染 — 拒绝（违反 HSK-8 Decision 6 + ptx-lessons-learned §1）
 - (b) 重命名 `StatementContext` → `Statement` — 推迟（statement.h:308 当前名字，最小风险路径；如需重命名另开 change）

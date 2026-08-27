@@ -12,7 +12,7 @@
 
 ## 1. Phase 1.5c+d — shim + src/ptx_ir and src/ptxir self-migration
 
-- [ ] 1.1 Replace `include/ptx_ir/ptx_types.h` with a forwarding shim: canonical include, `namespace ptx_ir = ::ptxemu::ir`, and explicit fully-qualified `using` for canonical types and free functions. Compatibility policy is fixed to canonical type names only; do not export bare `S_*`/`O_*` enumerators. Legacy enumerator access is covered by the negative fixture and is intentionally outside the shim contract.
+- [ ] 1.1 Replace `include/ptx_ir/ptx_types.h` with a forwarding shim: canonical include, `namespace ptx_ir = ::ptxemu::ir`, and explicit fully-qualified `using` for canonical types. Compatibility policy is fixed to canonical type names only; do not export bare `S_*`/`O_*` enumerators. Legacy enumerator access is covered by the negative fixture and is intentionally outside the shim contract. **Temporary bridge (1.5c+d only):** shim also emits `using enum ::ptxemu::ir::StatementType;` and `using enum ::ptxemu::ir::OperandType;` (C++20) so the ~87 caller files (src 18, include 8, tests 62) keep compiling. The bridge is removed in Phase 1.5k after the caller sweeps complete.
 - [ ] 1.2 Replace `include/ptx_ir/operand_context.h` with a forwarding shim and explicit fully-qualified `using` for all operand types.
 - [ ] 1.3 Replace `include/ptx_ir/statement_context.h` with a forwarding shim and explicit fully-qualified `using` for all instruction structs, enums, `InstrVariant`, and `StatementContext`; preserve the type-name-only compatibility policy from 1.1.
 - [ ] 1.4 Wrap `src/ptx_ir/ptx_types.cpp` in `namespace ptxemu::ir` and migrate all free-function definitions to the canonical declarations (fixes the verified ODR conflict).
