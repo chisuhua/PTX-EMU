@@ -14,6 +14,17 @@
 
 namespace ptxir::factory {
 
+// Phase 1.5c+d: operand types live in the canonical ptxemu::ir
+// namespace. The ptxir::factory namespace needs them in scope to build
+// OperandContext from bare RegOperand/ImmOperand/etc.
+using ptxemu::ir::OperandContext;
+using ptxemu::ir::RegOperand;
+using ptxemu::ir::VariableOperand;
+using ptxemu::ir::ImmOperand;
+using ptxemu::ir::Predicate;
+using ptxemu::ir::AddrOperand;
+using ptxemu::ir::VecOperand;
+
 // =============================================================================
 // 1. 底层工厂: 直接利用已有模板构造函数
 // =============================================================================

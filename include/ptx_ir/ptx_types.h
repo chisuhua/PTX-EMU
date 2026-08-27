@@ -1,32 +1,20 @@
 #ifndef PTX_TYPES_H
 #define PTX_TYPES_H
 
-#include <cassert>
-#include <string>
+#include <ptxemu/ir/ptx_types.h>
 
-void extractREG(std::string s, int &idx, std::string &name);
+namespace ptx_ir = ::ptxemu::ir;
 
-enum class Qualifier {
-#define X(enum_val, ...) enum_val,
-#include "ptx_qualifier.def"
-#undef X
-    Q_UNKNOWN
-};
+using ::ptxemu::ir::Qualifier;
+using ::ptxemu::ir::StatementType;
+using ::ptxemu::ir::OperandType;
+using ::ptxemu::ir::OperandKind;
 
-std::string Q2s(Qualifier q);
-int Q2bytes(Qualifier q);
+// Temporary enum: bridge (1.5c+d only — removed in 1.5k after caller
+// sweeps complete). C++20 'using enum' injects unscoped enumerators
+// into the global namespace so the ~87 caller files that still
+// reference S_*/O_* directly keep compiling through 1.5e-1.5i3.
+using enum ::ptxemu::ir::StatementType;
+using enum ::ptxemu::ir::OperandType;
 
-enum StatementType {
-#define X(enum_val, struct_name, str, opcount, _, instr_kind) enum_val,
-#include "ptx_op.def"
-#undef X
-    S_UNKNOWN
-};
-
-std::string S2s(StatementType s);
-
-enum OperandType { O_REG, O_VAR, O_IMM, O_VEC, O_FA, O_PRED };
-
-enum class OperandKind { REG, VAR, IMM, VEC, ADDR, PRED };
-
-#endif // PTX_TYPES_H
+#endif  // PTX_TYPES_H

@@ -13,6 +13,14 @@
 #include <stdexcept>
 #include <vector>
 
+// Phase 1.5c+d: Q2bytes is defined in the ptxsim namespace so it no
+// longer exists at global scope. This eliminates the ambiguous-call
+// overload between the legacy fallback (returns 0 for non-data
+// qualifiers like Q_LT) and the canonical ptxemu::ir::Q2bytes (strict,
+// asserts on unknown). Internal callers use the qualified
+// ptxsim::Q2bytes; external call sites (cta_context etc.) that use the
+// unqualified Q2bytes now resolve via ADL to canonical only.
+namespace ptxsim {
 int Q2bytes(Qualifier q) {
     switch (q) {
     case Qualifier::Q_U64:
@@ -40,6 +48,7 @@ int Q2bytes(Qualifier q) {
         return 0;
     }
 }
+}  // namespace ptxsim
 
 bool Signed(Qualifier q) {
     switch (q) {
@@ -55,7 +64,7 @@ bool Signed(Qualifier q) {
 
 int getBytes(const std::vector<Qualifier> &q) {
     for (auto e : q) {
-        int bytes = Q2bytes(e);
+        int bytes = ptxsim::Q2bytes(e);
         if (bytes)
             return bytes;
     }
@@ -117,7 +126,7 @@ DTYPE getDType(Qualifier q) {
 
 Qualifier getDataQualifier(const std::vector<Qualifier> &qualifiers) {
     for (const auto &q : qualifiers) {
-        if (Q2bytes(q))
+        if (ptxsim::Q2bytes(q))
             return q;
     }
     assert(0);
@@ -157,7 +166,7 @@ void splitDstSrcQualifiers(const std::vector<Qualifier> &qualifiers,
 
     // 遍历限定符，分离目标和源限定符
     for (const auto &q : qualifiers) {
-        int bytes = Q2bytes(q);
+        int bytes = ptxsim::Q2bytes(q);
 
         // 如果这个限定符代表一种数据类型
         if (bytes > 0) {
@@ -354,7 +363,7 @@ getOperandBytes(const std::vector<Qualifier> &operand_qualifiers) {
 
     int bytes = 0;
     for (const auto &qual : operand_qualifiers) {
-        int size = Q2bytes(qual);
+        int size = ptxsim::Q2bytes(qual);
         if (size > 0) {
             bytes = size;
             bytes_list.push_back(bytes);

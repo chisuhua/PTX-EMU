@@ -4,16 +4,16 @@
 #include <cstdlib>
 #include <string>
 
+namespace ptxemu {
+namespace ir {
+
 void extractREG(std::string s, int &idx, std::string &name) {
-    // Handle special registers like %tid.x, %ctaid.x, etc.
     size_t dotPos = s.find('.');
     if (dotPos != std::string::npos) {
-        name = s; // Keep the full name including the dot part
+        name = s;
         idx = 0;
         return;
     }
-
-    // Handle regular registers like %r1, %rd2, etc.
     int ret = 0;
     for (char c : s) {
         if (c >= '0' && c <= '9') {
@@ -72,9 +72,12 @@ int Q2bytes(Qualifier q) {
     case Qualifier::Q_F64:
         return 8;
     case Qualifier::Q_PRED:
-        return 1; // Assume predicate is 1 byte
+        return 1;
     default:
         assert(0 && "Unsupported qualifier for byte calculation");
-        return 4; // Default return 4 bytes
+        return 4;
     }
 }
+
+}  // namespace ir
+}  // namespace ptxemu

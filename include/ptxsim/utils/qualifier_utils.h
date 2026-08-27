@@ -7,7 +7,17 @@
 #include "ptxsim/utils/type_utils.h"
 #include <vector>
 
+// Q2bytes removed from header (Phase 1.5c+d): the canonical
+// ptxemu::ir::Q2bytes is selected by ADL on the Qualifier argument.
+// Keeping a duplicate global declaration caused an ambiguous call
+// overload between the canonical strict implementation (asserts on
+// unknown qualifiers) and the ptxsim legacy fallback (returns 0 for
+// non-data qualifiers like Q_LT). The fallback now lives only in
+// src/ptxsim/utils/qualifier_utils.cpp as ptxsim::Q2bytes, reached
+// by qualifying the call site when needed.
+namespace ptxsim {
 int Q2bytes(Qualifier q);
+}
 bool Signed(Qualifier q);
 
 int getBytes(const std::vector<Qualifier> &q);

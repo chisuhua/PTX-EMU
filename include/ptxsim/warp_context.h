@@ -37,9 +37,9 @@ namespace warp_simt {
 
 // Forward declaration of warp_dispatch helper namespace
 // (refactor-warp-context C-18 Phase 3 extraction).
-class StatementContext;
+namespace ptxemu { namespace ir { class StatementContext; } }
 namespace warp_dispatch {
-    void execute_warp_instruction(WarpContext* w, StatementContext& stmt, int target_pc);
+    void execute_warp_instruction(WarpContext* w, ptxemu::ir::StatementContext& stmt, int target_pc);
 }  // namespace warp_dispatch
 
 // Forward declaration of sm_reconvergence helper namespace
@@ -59,7 +59,7 @@ public:
     void add_thread(std::unique_ptr<ThreadContext> thread, int lane_id);
 
     // 执行 warp 的一条指令
-    void execute_warp_instruction(StatementContext &stmt, int target_pc = -1);
+    void execute_warp_instruction(ptxemu::ir::StatementContext &stmt, int target_pc = -1);
 
     // 【SIMT v2.0】处理分支指令 (warp 级操作)
     void handle_branch(const std::string &predicate, bool predicate_negated,
@@ -254,7 +254,7 @@ public:
     friend uint32_t warp_active_mask::get_active_mask_u32(const WarpContext*);
     friend void warp_active_mask::set_active_mask_u32(WarpContext*, uint32_t);
     friend bool warp_simt::check_reconvergence(WarpContext*);
-    friend void warp_dispatch::execute_warp_instruction(WarpContext*, StatementContext&, int);
+    friend void warp_dispatch::execute_warp_instruction(WarpContext*, ptxemu::ir::StatementContext&, int);
     friend void sm_reconvergence::drain_simt_and_update_active(WarpContext*);
 
     // 【BARRIER RECONVERGENCE】Force all non-exited threads to reconverge at
