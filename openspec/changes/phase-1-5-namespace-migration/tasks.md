@@ -95,10 +95,10 @@
 
 ## 9. Phase 1.5j — GPUContext interface re-sign
 
-- [ ] 9.1 Change the three `std::vector<StatementContext>` signatures in `include/ptxsim/gpu_context.h` (current lines 58/80/173) to `std::vector<ptxemu::ir::StatementContext>`.
-- [ ] 9.2 Verify `src/ptxsim/core/gpu_context.cpp` definitions and all callers match.
-- [ ] 9.3 Build + ctest 252/252 verification.
-- [ ] 9.4 Commit: `refactor(ptx-1.5j): qualify GPUContext StatementContext signatures`.
+- [x] 9.1 Change the three `std::vector<StatementContext>` signatures in `include/ptxsim/gpu_context.h` (current lines 58/80/173) to `std::vector<ptxemu::ir::StatementContext>`.
+- [x] 9.2 Verify `src/ptxsim/core/gpu_context.cpp` definitions and all callers match.
+- [x] 9.3 Build + ctest 252/252 verification.
+- [x] 9.4 Commit: `refactor(ptx-1.5j): qualify GPUContext StatementContext signatures`.
 
 ## 10. Phase 1.5k — drift_check Invariant 8 and closure
 
