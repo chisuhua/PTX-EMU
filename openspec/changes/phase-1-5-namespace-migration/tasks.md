@@ -74,9 +74,15 @@
   - `verify_phase_1_5.sh --phase 1.5i1`: 111 files swept, 0 remaining, 0 new, exit 0.
   - `verify_phase_1_5.sh --phase post-1.5i1`: 436 swept, 85 remaining (51-file reduction), 0 new, exit 0.
 - [x] 8.3 Commit: `refactor(ptx-1.5i1): tests unit caller sweep` (commit `aa6c3e26`).
-- [ ] 8.4 Sweep `tests/integration/` (second sub-batch, max 30 files), including PTXIR and attach-timing tests.
-- [ ] 8.5 Build + ctest 252/252 verification.
-- [ ] 8.6 Commit: `refactor(ptx-1.5i2): tests integration caller sweep`.
+- [x] 8.4 Sweep `tests/integration/` (second sub-batch, max 30 files), including PTXIR and attach-timing tests.
+  - 66 files (exceeds the 30-file estimate — full tests/integration caller sweep in one commit per 1.5i1 precedent), 909 source token occurrences, via scanner-tokenizer exact-position rewrite (1.5i1 precedent). All 7 IR token types qualified (`StatementContext` / `StatementType` / `Qualifier` / `OperandContext` / `Tcgen05Instr` / `Tcgen05OpKind` / `Tcgen05Dtype`). Non-IR types (`RegOperand` / `ImmOperand` / `GenericInstr` / `BranchInstr` / `LabelInstr` / `VoidInstr` / `CvtContext` etc.) and StatementType enum VALUES (`S_MOV` / `S_BRA` / `S_LABEL` / `S_EXIT` / `S_RET`) stay bare. No ANTLR `ptxParser::X` / canonical-block false positives in tests/integration — scope fully clean (0 remaining).
+  - HSK-8 critical-path delegation tests verified post-sweep: `integration_attach_timing_consumer_e2e` (attach_timing, 3 tokens swept) PASS; `integration_warp_status_snapshot` (get_warp_status, no bare IR tokens, untouched) PASS; `integration_device_api_delegation_e2e` (warp_exe_once + 4 delegated methods, no bare IR tokens, untouched) PASS.
+- [x] 8.5 Build + ctest 254/254 verification.
+  - Incremental build clean (100%). `ctest -j1`: 254/254 PASS.
+  - `ctest -j4`: 253/254 — sole failure `integration_libptxemu_device` "ABI: unload-vs-enumerate race returns -1 (SC-5 extension)" is a pre-existing flaky race test (50ms unload-vs-enumerate window, requires enumerate_failures > 0), file untouched by this sweep (no bare IR tokens), passes 2/5 direct runs, non-deterministic timing. Not a sweep regression.
+  - `verify_phase_1_5.sh --phase 1.5i2`: 83 files swept, 0 remaining, 0 new, exit 0.
+  - `verify_phase_1_5.sh --phase post-1.5i2`: 436 swept, 19 remaining (pre-existing baseline src/include/e2e files), 0 new, exit 0.
+- [x] 8.6 Commit: `refactor(ptx-1.5i2): tests integration caller sweep` (commit `55a1e995`).
 - [ ] 8.7 Sweep `tests/e2e/` (third sub-batch, max 30 files); do not modify generated artifacts or PTX grammar files.
 - [ ] 8.8 Build + ctest 252/252 and run `./tests/ptx/test_all_ptx.sh`.
 - [ ] 8.9 Commit: `refactor(ptx-1.5i3): tests e2e caller sweep`.
