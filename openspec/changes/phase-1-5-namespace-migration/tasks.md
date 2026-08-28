@@ -37,9 +37,9 @@
 
 ## 4. Phase 1.5f2 — src/ptxsim/core+utils+debug caller sweep
 
-- [ ] 4.1 Sweep all matching files under `src/ptxsim/core/`, `src/ptxsim/utils/`, and `src/ptxsim/debug/`, plus the `src/ptxsim/*.cpp` root files (`instruction_base.cpp`, `instruction_factory.cpp`, `instruction_handlers.cpp`, `register_analyzer.cpp`) and `src/utils/*.cpp` (`ptx_lane_verification.cpp`) — no phase previously claimed these 5 caller files, so 1.5f2 is expanded to cover them (**~19 files** total in this phase, max 30 per commit); qualify all IR types. **Rationale (Option A):** the 4 `src/ptxsim/*.cpp` root files + `src/utils/ptx_lane_verification.cpp` carry bare IR tokens but were listed under no phase; folding them into the existing `src/ptxsim` sweep phase keeps the phase map complete without adding a new phase.
-- [ ] 4.2 Build + ctest 252/252 verification.
-- [ ] 4.3 Commit: `refactor(ptx-1.5f2): src/ptxsim core utils debug caller sweep`.
+- [x] 4.1 Sweep all matching files under `src/ptxsim/core/`, `src/ptxsim/utils/`, and `src/ptxsim/debug/`, plus the `src/ptxsim/*.cpp` root files (`instruction_base.cpp`, `instruction_factory.cpp`, `instruction_handlers.cpp`, `register_analyzer.cpp`) and `src/utils/*.cpp` (`ptx_lane_verification.cpp`) — no phase previously claimed these 5 caller files, so 1.5f2 is expanded to cover them (**~19 files** total in this phase, max 30 per commit); qualify all IR types. **Rationale (Option A):** the 4 `src/ptxsim/*.cpp` root files + `src/utils/ptx_lane_verification.cpp` carry bare IR tokens but were listed under no phase; folding them into the existing `src/ptxsim` sweep phase keeps the phase map complete without adding a new phase.
+- [x] 4.2 Build + ctest 252/252 verification.
+- [x] 4.3 Commit: `refactor(ptx-1.5f2): src/ptxsim core utils debug caller sweep`.
 
 ## 5. Phase 1.5g — src/cudart caller sweep
 
