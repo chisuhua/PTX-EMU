@@ -49,9 +49,9 @@
 
 ## 6. Phase 1.5h1 — non-shim include/ptx_ir and include/ptxir sweep
 
-- [ ] 6.1 Sweep every non-shim `include/ptx_ir/*.h` with a matching scanner hit, including `instruction_latency_table.h`, `kernel_context.h`, `param_context.h`, `ptx_context.h`, `ptxir_reader.h`, `ptxir_writer.h`, `statement_factory.h`, and all matching `include/ptxir/` headers; qualify all IR types. The three forwarding shims and canonical `include/ptxemu/ir/` definitions remain the only exempt paths.
-- [ ] 6.2 Build + ctest 252/252 verification.
-- [ ] 6.3 Commit: `refactor(ptx-1.5h1): include ptx_ir and ptxir caller sweep`.
+- [x] 6.1 Sweep every non-shim `include/ptx_ir/*.h` with a matching scanner hit, including `instruction_latency_table.h`, `kernel_context.h`, `param_context.h`, `ptx_context.h`, `ptxir_reader.h`, `ptxir_writer.h`, `statement_factory.h`, and all matching `include/ptxir/` headers; qualify all IR types. The three forwarding shims and canonical `include/ptxemu/ir/` definitions remain the only exempt paths.
+- [x] 6.2 Build + ctest 252/252 verification.
+- [x] 6.3 Commit: `refactor(ptx-1.5h1): include ptx_ir and ptxir caller sweep`.
 
 ## 7. Phase 1.5h2 — remaining include/ caller sweep
 
