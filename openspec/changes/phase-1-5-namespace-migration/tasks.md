@@ -67,9 +67,13 @@
 
 ## 8. Phase 1.5i1/i2/i3 — tests caller sweep
 
-- [ ] 8.1 Sweep `tests/unit/` (first sub-batch, max 30 files) and qualify all IR types while preserving fixture construction semantics.
-- [ ] 8.2 Build + ctest 252/252 verification.
-- [ ] 8.3 Commit: `refactor(ptx-1.5i1): tests unit caller sweep`.
+- [x] 8.1 Sweep `tests/unit/` (first sub-batch, max 30 files) and qualify all IR types while preserving fixture construction semantics.
+  - 51 files (exceeds the 30-file estimate — full tests/unit caller sweep in one commit per goal directive), 670 source token occurrences (563 lines), via scanner-tokenizer exact-position rewrite (1.5h2 precedent). All 10 IR token types qualified (`StatementContext` / `StatementType` / `Qualifier` / `OperandContext` / `InstrVariant` / `Tcgen05Instr` / `Tcgen05OpKind`). Non-IR types (`RegOperand` / `ImmOperand` / `GenericInstr` / `BranchInstr` / `LabelInstr` / `VoidInstr` / `CvtContext` etc.) and StatementType enum VALUES (`S_MOV` / `S_BRA` / `S_LABEL` / `S_EXIT` / `S_RET`) stay bare. No ANTLR `ptxParser::X` / canonical-block false positives in tests/unit — scope fully clean (0 remaining).
+- [x] 8.2 Build + ctest 252/252 verification.
+  - Incremental build clean (100%). `ctest -j4`: 254/254 PASS; `ctest -j1`: 254/254 PASS.
+  - `verify_phase_1_5.sh --phase 1.5i1`: 111 files swept, 0 remaining, 0 new, exit 0.
+  - `verify_phase_1_5.sh --phase post-1.5i1`: 436 swept, 85 remaining (51-file reduction), 0 new, exit 0.
+- [x] 8.3 Commit: `refactor(ptx-1.5i1): tests unit caller sweep` (commit `aa6c3e26`).
 - [ ] 8.4 Sweep `tests/integration/` (second sub-batch, max 30 files), including PTXIR and attach-timing tests.
 - [ ] 8.5 Build + ctest 252/252 verification.
 - [ ] 8.6 Commit: `refactor(ptx-1.5i2): tests integration caller sweep`.
