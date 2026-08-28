@@ -43,9 +43,9 @@
 
 ## 5. Phase 1.5g — src/cudart caller sweep
 
-- [ ] 5.1 Sweep all matching files under `src/cudart/` (4 files measured); qualify all IR types.
-- [ ] 5.2 Build + ctest 252/252 verification, including CppTLM/image/ PTXIR tests.
-- [ ] 5.3 Commit: `refactor(ptx-1.5g): src/cudart caller sweep`.
+- [x] 5.1 Sweep all matching files under `src/cudart/` (4 files measured); qualify all IR types.
+- [x] 5.2 Build + ctest 252/252 verification, including CppTLM/image/ PTXIR tests.
+- [x] 5.3 Commit: `refactor(ptx-1.5g): src/cudart caller sweep`.
 
 ## 6. Phase 1.5h1 — non-shim include/ptx_ir and include/ptxir sweep
 
