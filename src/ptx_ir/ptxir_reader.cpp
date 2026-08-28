@@ -135,7 +135,7 @@ ManifestSection read_manifest_section(const std::vector<uint8_t>& buf) {
 
 PtxirReader::PtxirReader(std::istream& in) : in_(in) {}
 
-std::vector<StatementContext> PtxirReader::read() {
+std::vector<ptxemu::ir::StatementContext> PtxirReader::read() {
     read_header();
     if (version_ == 1) {
         return read_legacy_v1();
@@ -159,12 +159,12 @@ void PtxirReader::read_header() {
     header_ = hdr;
 }
 
-std::vector<StatementContext> PtxirReader::read_legacy_v1() {
+std::vector<ptxemu::ir::StatementContext> PtxirReader::read_legacy_v1() {
     read_string_table();
     return read_kernel_section();
 }
 
-std::vector<StatementContext> PtxirReader::read_v2() {
+std::vector<ptxemu::ir::StatementContext> PtxirReader::read_v2() {
     // TOC starts right after header (sizeof(PtxirHeader) = 24)
     in_.seekg(static_cast<std::streamoff>(sizeof(PtxirHeader)));
 
@@ -197,7 +197,7 @@ std::vector<StatementContext> PtxirReader::read_v2() {
         return (stop > start) ? (stop - start) : 0;
     };
 
-    std::vector<StatementContext> result;
+    std::vector<ptxemu::ir::StatementContext> result;
     // First pass: load STRING_TABLE (needed for string ID lookups in other sections)
     for (const auto& entry : toc) {
         if (static_cast<PtxirSectionType>(entry.type) == PtxirSectionType::STRING_TABLE) {
@@ -272,8 +272,8 @@ void PtxirReader::read_string_table() {
     (void)base;
 }
 
-std::vector<StatementContext> PtxirReader::read_kernel_section() {
-    std::vector<StatementContext> result;
+std::vector<ptxemu::ir::StatementContext> PtxirReader::read_kernel_section() {
+    std::vector<ptxemu::ir::StatementContext> result;
     statement_count_ = read_u32(in_);
 
     for (uint32_t i = 0; i < statement_count_; i++) {
@@ -282,11 +282,11 @@ std::vector<StatementContext> PtxirReader::read_kernel_section() {
     return result;
 }
 
-StatementContext PtxirReader::read_instruction() {
+ptxemu::ir::StatementContext PtxirReader::read_instruction() {
     uint16_t type_raw = read_u16(in_);
-    StatementType type = static_cast<StatementType>(type_raw);
+    ptxemu::ir::StatementType type = static_cast<ptxemu::ir::StatementType>(type_raw);
 
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
     stmt.type = type;
 
     switch (type) {
@@ -394,7 +394,7 @@ StatementContext PtxirReader::read_instruction() {
             GenericInstr instr;
             uint8_t qcount = read_u8(in_);
             for (uint8_t i = 0; i < qcount; i++) {
-                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+                instr.qualifiers.push_back(static_cast<ptxemu::ir::Qualifier>(read_u16(in_)));
             }
             read_u32(in_);  // dst_reg_id (unused for now)
             uint8_t ocount = read_u8(in_);
@@ -437,7 +437,7 @@ StatementContext PtxirReader::read_instruction() {
         case S_PARAM: {
             DeclarationInstr instr;
             instr.kind = static_cast<DeclarationInstr::Kind>(read_u8(in_));
-            instr.dataType = static_cast<Qualifier>(read_u16(in_));
+            instr.dataType = static_cast<ptxemu::ir::Qualifier>(read_u16(in_));
             uint32_t id = read_u32(in_);
             if (id < string_table_.size()) {
                 instr.name = string_table_[id];
@@ -450,7 +450,7 @@ StatementContext PtxirReader::read_instruction() {
             BarWarpSyncInstr instr;
             uint8_t qcount = read_u8(in_);
             for (uint8_t i = 0; i < qcount; i++) {
-                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+                instr.qualifiers.push_back(static_cast<ptxemu::ir::Qualifier>(read_u16(in_)));
             }
             uint8_t ocount = read_u8(in_);
             for (uint8_t i = 0; i < ocount; i++) {
@@ -466,7 +466,7 @@ StatementContext PtxirReader::read_instruction() {
             MembarInstr instr;
             uint8_t qcount = read_u8(in_);
             for (uint8_t i = 0; i < qcount; i++) {
-                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+                instr.qualifiers.push_back(static_cast<ptxemu::ir::Qualifier>(read_u16(in_)));
             }
             stmt.data = instr;
             break;
@@ -475,7 +475,7 @@ StatementContext PtxirReader::read_instruction() {
             FenceInstr instr;
             uint8_t qcount = read_u8(in_);
             for (uint8_t i = 0; i < qcount; i++) {
-                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+                instr.qualifiers.push_back(static_cast<ptxemu::ir::Qualifier>(read_u16(in_)));
             }
             stmt.data = instr;
             break;
@@ -484,7 +484,7 @@ StatementContext PtxirReader::read_instruction() {
             ReduxSyncInstr instr;
             uint8_t qcount = read_u8(in_);
             for (uint8_t i = 0; i < qcount; i++) {
-                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+                instr.qualifiers.push_back(static_cast<ptxemu::ir::Qualifier>(read_u16(in_)));
             }
             uint8_t ocount = read_u8(in_);
             for (uint8_t i = 0; i < ocount; i++) {
@@ -502,7 +502,7 @@ StatementContext PtxirReader::read_instruction() {
             MbarrierInstr instr;
             uint8_t qcount = read_u8(in_);
             for (uint8_t i = 0; i < qcount; i++) {
-                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+                instr.qualifiers.push_back(static_cast<ptxemu::ir::Qualifier>(read_u16(in_)));
             }
             uint8_t ocount = read_u8(in_);
             for (uint8_t i = 0; i < ocount; i++) {
@@ -518,7 +518,7 @@ StatementContext PtxirReader::read_instruction() {
             CallInstr instr;
             uint8_t qcount = read_u8(in_);
             for (uint8_t i = 0; i < qcount; i++) {
-                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+                instr.qualifiers.push_back(static_cast<ptxemu::ir::Qualifier>(read_u16(in_)));
             }
             uint8_t ocount = read_u8(in_);
             for (uint8_t i = 0; i < ocount; i++) {
@@ -534,7 +534,7 @@ StatementContext PtxirReader::read_instruction() {
             VoteInstr instr;
             uint8_t qcount = read_u8(in_);
             for (uint8_t i = 0; i < qcount; i++) {
-                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+                instr.qualifiers.push_back(static_cast<ptxemu::ir::Qualifier>(read_u16(in_)));
             }
             uint8_t ocount = read_u8(in_);
             for (uint8_t i = 0; i < ocount; i++) {
@@ -550,7 +550,7 @@ StatementContext PtxirReader::read_instruction() {
             ShflInstr instr;
             uint8_t qcount = read_u8(in_);
             for (uint8_t i = 0; i < qcount; i++) {
-                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+                instr.qualifiers.push_back(static_cast<ptxemu::ir::Qualifier>(read_u16(in_)));
             }
             uint8_t ocount = read_u8(in_);
             for (uint8_t i = 0; i < ocount; i++) {
@@ -566,7 +566,7 @@ StatementContext PtxirReader::read_instruction() {
             AtomInstr instr;
             uint8_t qcount = read_u8(in_);
             for (uint8_t i = 0; i < qcount; i++) {
-                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+                instr.qualifiers.push_back(static_cast<ptxemu::ir::Qualifier>(read_u16(in_)));
             }
             uint8_t ocount = read_u8(in_);
             for (uint8_t i = 0; i < ocount; i++) {
@@ -586,7 +586,7 @@ StatementContext PtxirReader::read_instruction() {
             TextureInstr instr;
             uint8_t qcount = read_u8(in_);
             for (uint8_t i = 0; i < qcount; i++) {
-                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+                instr.qualifiers.push_back(static_cast<ptxemu::ir::Qualifier>(read_u16(in_)));
             }
             uint8_t ocount = read_u8(in_);
             for (uint8_t i = 0; i < ocount; i++) {
@@ -605,7 +605,7 @@ StatementContext PtxirReader::read_instruction() {
             SurfaceInstr instr;
             uint8_t qcount = read_u8(in_);
             for (uint8_t i = 0; i < qcount; i++) {
-                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+                instr.qualifiers.push_back(static_cast<ptxemu::ir::Qualifier>(read_u16(in_)));
             }
             uint8_t ocount = read_u8(in_);
             for (uint8_t i = 0; i < ocount; i++) {
@@ -621,7 +621,7 @@ StatementContext PtxirReader::read_instruction() {
             ReductionInstr instr;
             uint8_t qcount = read_u8(in_);
             for (uint8_t i = 0; i < qcount; i++) {
-                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+                instr.qualifiers.push_back(static_cast<ptxemu::ir::Qualifier>(read_u16(in_)));
             }
             uint8_t ocount = read_u8(in_);
             for (uint8_t i = 0; i < ocount; i++) {
@@ -638,7 +638,7 @@ StatementContext PtxirReader::read_instruction() {
             PrefetchInstr instr;
             uint8_t qcount = read_u8(in_);
             for (uint8_t i = 0; i < qcount; i++) {
-                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+                instr.qualifiers.push_back(static_cast<ptxemu::ir::Qualifier>(read_u16(in_)));
             }
             uint8_t ocount = read_u8(in_);
             for (uint8_t i = 0; i < ocount; i++) {
@@ -654,7 +654,7 @@ StatementContext PtxirReader::read_instruction() {
             CpAsyncInstr instr;
             uint8_t qcount = read_u8(in_);
             for (uint8_t i = 0; i < qcount; i++) {
-                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+                instr.qualifiers.push_back(static_cast<ptxemu::ir::Qualifier>(read_u16(in_)));
             }
             uint8_t ocount = read_u8(in_);
             for (uint8_t i = 0; i < ocount; i++) {
@@ -682,24 +682,24 @@ StatementContext PtxirReader::read_instruction() {
         case S_TCGEN05_COMMIT:
         case S_TCGEN05_WAIT:
         case S_TCGEN05_FENCE: {
-            Tcgen05Instr instr;
+            ptxemu::ir::Tcgen05Instr instr;
             switch (type) {
-                case S_TCGEN05_ALLOC:      instr.op_kind = Tcgen05OpKind::ALLOC; break;
-                case S_TCGEN05_DEALLOC:    instr.op_kind = Tcgen05OpKind::DEALLOC; break;
-                case S_TCGEN05_RELINQUISH: instr.op_kind = Tcgen05OpKind::RELINQUISH; break;
-                case S_TCGEN05_LD:         instr.op_kind = Tcgen05OpKind::LD; break;
-                case S_TCGEN05_ST:         instr.op_kind = Tcgen05OpKind::ST; break;
-                case S_TCGEN05_CP:         instr.op_kind = Tcgen05OpKind::CP; break;
-                case S_TCGEN05_MMA:        instr.op_kind = Tcgen05OpKind::MMA; break;
-                case S_TCGEN05_MMA_WS:     instr.op_kind = Tcgen05OpKind::MMA_WS; break;
-                case S_TCGEN05_COMMIT:     instr.op_kind = Tcgen05OpKind::COMMIT; break;
-                case S_TCGEN05_WAIT:       instr.op_kind = Tcgen05OpKind::WAIT; break;
-                case S_TCGEN05_FENCE:      instr.op_kind = Tcgen05OpKind::FENCE; break;
+                case S_TCGEN05_ALLOC:      instr.op_kind = ptxemu::ir::Tcgen05OpKind::ALLOC; break;
+                case S_TCGEN05_DEALLOC:    instr.op_kind = ptxemu::ir::Tcgen05OpKind::DEALLOC; break;
+                case S_TCGEN05_RELINQUISH: instr.op_kind = ptxemu::ir::Tcgen05OpKind::RELINQUISH; break;
+                case S_TCGEN05_LD:         instr.op_kind = ptxemu::ir::Tcgen05OpKind::LD; break;
+                case S_TCGEN05_ST:         instr.op_kind = ptxemu::ir::Tcgen05OpKind::ST; break;
+                case S_TCGEN05_CP:         instr.op_kind = ptxemu::ir::Tcgen05OpKind::CP; break;
+                case S_TCGEN05_MMA:        instr.op_kind = ptxemu::ir::Tcgen05OpKind::MMA; break;
+                case S_TCGEN05_MMA_WS:     instr.op_kind = ptxemu::ir::Tcgen05OpKind::MMA_WS; break;
+                case S_TCGEN05_COMMIT:     instr.op_kind = ptxemu::ir::Tcgen05OpKind::COMMIT; break;
+                case S_TCGEN05_WAIT:       instr.op_kind = ptxemu::ir::Tcgen05OpKind::WAIT; break;
+                case S_TCGEN05_FENCE:      instr.op_kind = ptxemu::ir::Tcgen05OpKind::FENCE; break;
                 default: break;
             }
             uint8_t qcount = read_u8(in_);
             for (uint8_t i = 0; i < qcount; i++) {
-                instr.qualifiers.push_back(static_cast<Qualifier>(read_u16(in_)));
+                instr.qualifiers.push_back(static_cast<ptxemu::ir::Qualifier>(read_u16(in_)));
             }
             uint8_t ocount = read_u8(in_);
             for (uint8_t i = 0; i < ocount; i++) {

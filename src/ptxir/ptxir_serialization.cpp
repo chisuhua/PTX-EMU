@@ -133,27 +133,27 @@ bool generate_ptxir(const std::string& ptx_path,
                 mp.size = static_cast<uint16_t>(p.byteSize);
                 mp.kind = ParamKind::U32;
                 for (const auto& q : p.paramTypes) {
-                    if (q == Qualifier::Q_U64 || q == Qualifier::Q_PTR) {
+                    if (q == ptxemu::ir::Qualifier::Q_U64 || q == ptxemu::ir::Qualifier::Q_PTR) {
                         mp.kind = ParamKind::U64;
                         break;
                     }
-                    if (q == Qualifier::Q_U32 || q == Qualifier::Q_S32) {
+                    if (q == ptxemu::ir::Qualifier::Q_U32 || q == ptxemu::ir::Qualifier::Q_S32) {
                         mp.kind = ParamKind::U32;
                         break;
                     }
-                    if (q == Qualifier::Q_F32) {
+                    if (q == ptxemu::ir::Qualifier::Q_F32) {
                         mp.kind = ParamKind::F32;
                         break;
                     }
-                    if (q == Qualifier::Q_F64) {
+                    if (q == ptxemu::ir::Qualifier::Q_F64) {
                         mp.kind = ParamKind::F64;
                         break;
                     }
-                    if (q == Qualifier::Q_U16) {
+                    if (q == ptxemu::ir::Qualifier::Q_U16) {
                         mp.kind = ParamKind::U16;
                         break;
                     }
-                    if (q == Qualifier::Q_U8) {
+                    if (q == ptxemu::ir::Qualifier::Q_U8) {
                         mp.kind = ParamKind::U8;
                         break;
                     }

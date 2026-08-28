@@ -83,7 +83,7 @@ void write_manifest_section(std::vector<uint8_t>& buf, const ManifestSection& m)
 
 PtxirWriter::PtxirWriter(std::ostream& out) : out_(out) {}
 
-void PtxirWriter::write(const std::vector<StatementContext>& statements) {
+void PtxirWriter::write(const std::vector<ptxemu::ir::StatementContext>& statements) {
     stmts_ = statements;
     pre_pass(statements);
     write_header();
@@ -118,7 +118,7 @@ void PtxirWriter::write(const std::vector<StatementContext>& statements) {
 
 void PtxirWriter::set_manifest(const ManifestSection& manifest) { manifest_ = manifest; }
 
-void PtxirWriter::pre_pass(const std::vector<StatementContext>& statements) {
+void PtxirWriter::pre_pass(const std::vector<ptxemu::ir::StatementContext>& statements) {
     for (const auto& stmt : statements) {
         stmt.visit([this](const auto& instr) {
             using T = std::decay_t<decltype(instr)>;
@@ -234,7 +234,7 @@ void PtxirWriter::write_string_table() {
     }
 }
 
-void PtxirWriter::write_instruction(const StatementContext& stmt) {
+void PtxirWriter::write_instruction(const ptxemu::ir::StatementContext& stmt) {
     write_u16(out_, static_cast<uint16_t>(stmt.type));
     stmt.visit([this](const auto& instr) {
         using T = std::decay_t<decltype(instr)>;
@@ -261,19 +261,19 @@ void PtxirWriter::write_instruction(const StatementContext& stmt) {
         else if constexpr (std::is_same_v<T, ReductionInstr>) { write_reduction(instr); }
         else if constexpr (std::is_same_v<T, PrefetchInstr>) { write_prefetch(instr); }
         else if constexpr (std::is_same_v<T, CpAsyncInstr>) { write_cp_async(instr); }
-        else if constexpr (std::is_same_v<T, Tcgen05Instr>) { write_tcgen05(instr); }
+        else if constexpr (std::is_same_v<T, ptxemu::ir::Tcgen05Instr>) { write_tcgen05(instr); }
         else if constexpr (std::is_same_v<T, AbiDirective>) { write_abi_directive(instr); }
     });
 }
 
-void PtxirWriter::write_qualifiers(const std::vector<Qualifier>& qualifiers) {
+void PtxirWriter::write_qualifiers(const std::vector<ptxemu::ir::Qualifier>& qualifiers) {
     write_u8(out_, static_cast<uint8_t>(qualifiers.size()));
     for (const auto& q : qualifiers) {
         write_u16(out_, static_cast<uint16_t>(q));
     }
 }
 
-void PtxirWriter::write_operand(const OperandContext& op, bool with_imm) {
+void PtxirWriter::write_operand(const ptxemu::ir::OperandContext& op, bool with_imm) {
     if (op.kind() == OperandKind::REG) {
         const auto& reg = std::get<RegOperand>(op.data);
         write_u32(out_, get_reg_id(reg.fullName()));
@@ -284,7 +284,7 @@ void PtxirWriter::write_operand(const OperandContext& op, bool with_imm) {
     }
 }
 
-void PtxirWriter::write_operands(const std::vector<OperandContext>& operands,
+void PtxirWriter::write_operands(const std::vector<ptxemu::ir::OperandContext>& operands,
                                  bool with_imm) {
     write_u8(out_, static_cast<uint8_t>(operands.size()));
     for (const auto& op : operands) {
@@ -359,7 +359,7 @@ void PtxirWriter::write_call(const CallInstr& instr) {
     write_operands(instr.operands, true);
 }
 
-void PtxirWriter::write_tcgen05(const Tcgen05Instr& instr) {
+void PtxirWriter::write_tcgen05(const ptxemu::ir::Tcgen05Instr& instr) {
     write_qualifiers(instr.qualifiers);
     write_operands(instr.operands, true);
 }
