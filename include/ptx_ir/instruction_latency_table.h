@@ -37,18 +37,18 @@ public:
     // Reset all entries to constexpr defaults from instruction_latency.h.
     void reset_to_defaults();
 
-    InstructionLatency get(StatementType type) const;
+    InstructionLatency get(ptxemu::ir::StatementType type) const;
 
 private:
     InstructionLatencyTable();
-    InstructionLatency resolve_default(StatementType type) const;
+    InstructionLatency resolve_default(ptxemu::ir::StatementType type) const;
 
-    std::map<StatementType, InstructionLatency> table_;
+    std::map<ptxemu::ir::StatementType, InstructionLatency> table_;
 };
 
 // Backward-compatible free function. Equivalent to
 // InstructionLatencyTable::instance().get(type).
-InstructionLatency getLatency(StatementType type);
+InstructionLatency getLatency(ptxemu::ir::StatementType type);
 
 } // namespace ptxsim
 

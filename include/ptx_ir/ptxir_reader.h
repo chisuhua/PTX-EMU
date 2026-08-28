@@ -16,7 +16,7 @@ class PtxirReader {
 public:
     explicit PtxirReader(std::istream& in);
 
-    std::vector<StatementContext> read();
+    std::vector<ptxemu::ir::StatementContext> read();
     const ManifestSection& get_manifest() const;
 
 private:
@@ -24,10 +24,10 @@ private:
     void read_string_table();
     void read_string_table_v2();
     void read_regdecl_section();
-    std::vector<StatementContext> read_kernel_section();
-    StatementContext read_instruction();
-    std::vector<StatementContext> read_legacy_v1();
-    std::vector<StatementContext> read_v2();
+    std::vector<ptxemu::ir::StatementContext> read_kernel_section();
+    ptxemu::ir::StatementContext read_instruction();
+    std::vector<ptxemu::ir::StatementContext> read_legacy_v1();
+    std::vector<ptxemu::ir::StatementContext> read_v2();
 
     std::istream& in_;
     std::vector<std::string> string_table_;

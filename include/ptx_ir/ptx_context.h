@@ -18,7 +18,7 @@ public:
     int ptxAddressSize;
 
     std::vector<KernelContext> ptxKernels;
-    std::vector<StatementContext> ptxStatements;
+    std::vector<ptxemu::ir::StatementContext> ptxStatements;
     std::vector<ExternFuncDecl> externFuncs;
 
     PtxContext()
