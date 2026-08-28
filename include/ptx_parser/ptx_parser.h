@@ -20,11 +20,11 @@ public:
     PtxContext ptxContext;
     KernelContext *kernelContext = nullptr;
     ParamContext *paramContext = nullptr;
-    std::queue<Qualifier> qualifier;
-    StatementType statementType;
-    StatementContext statementContext;
+    std::queue<ptxemu::ir::Qualifier> qualifier;
+    ptxemu::ir::StatementType statementType;
+    ptxemu::ir::StatementContext statementContext;
     void *statement = nullptr;
-    std::queue<OperandContext *> op;
+    std::queue<ptxemu::ir::OperandContext *> op;
 
     // 添加一个标记，用于指示当前是否在解析extern func
     bool isInExternFunc = false;
@@ -35,8 +35,8 @@ public:
 
     /* helper function */
     void test_semantic();
-    void fetchOperand(OperandContext &oc);
-    void fetchOperand(std::vector<OperandContext> &oc);
+    void fetchOperand(ptxemu::ir::OperandContext &oc);
+    void fetchOperand(std::vector<ptxemu::ir::OperandContext> &oc);
 
     /* listener function */
     virtual void enterAst(ptxParser::AstContext *ctx) override;

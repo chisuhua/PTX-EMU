@@ -19,7 +19,7 @@ public:
     static bool hasEmbeddedPTXIR(const uint8_t* data, size_t size);
     static std::unique_ptr<uint8_t[]> extractPTXIR(const uint8_t* data, size_t size, size_t* out_size);
     static std::optional<std::vector<uint8_t>> extractPureCubin(const uint8_t* data, size_t size);
-    static std::vector<StatementContext> deserializeForCubin(const uint8_t* ptxir_data, size_t ptxir_size);
+    static std::vector<ptxemu::ir::StatementContext> deserializeForCubin(const uint8_t* ptxir_data, size_t ptxir_size);
 };
 
 // ============================================================================

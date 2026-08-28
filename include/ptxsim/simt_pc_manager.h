@@ -24,7 +24,7 @@ public:
     // lane_id: thread index within the warp
     // stmts: statement vector for is_valid_pc() / get_current_statement()
     SimtPcManager(WarpContext *warp_ctx, int lane_id,
-                  std::vector<StatementContext> *stmts)
+                  std::vector<ptxemu::ir::StatementContext> *stmts)
         : warp_context_(warp_ctx), lane_id_(lane_id), state_(RUN),
           statements_(stmts) {}
 
@@ -54,8 +54,8 @@ public:
     bool is_valid_pc() const;
     bool is_valid_pc(int p) const;
     int statements_size() const;
-    StatementContext *get_statement_at(int p);
-    StatementContext *get_current_statement();
+    ptxemu::ir::StatementContext *get_statement_at(int p);
+    ptxemu::ir::StatementContext *get_current_statement();
 
     // ── Mutable accessors (MR-4: for set_warp_context fanout) ────────
     void set_warp_context(WarpContext *warp_ctx) { warp_context_ = warp_ctx; }
@@ -65,7 +65,7 @@ private:
     WarpContext *warp_context_;
     int lane_id_;
     EXE_STATE state_;
-    std::vector<StatementContext> *statements_;
+    std::vector<ptxemu::ir::StatementContext> *statements_;
 };
 
 #endif // SIMT_PC_MANAGER_H

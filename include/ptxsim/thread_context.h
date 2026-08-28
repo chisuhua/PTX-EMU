@@ -38,7 +38,7 @@ class CTAContext;
 class ThreadContext {
 public:
     // 资源管理
-    std::vector<StatementContext> *statements;
+    std::vector<ptxemu::ir::StatementContext> *statements;
     std::map<std::string, std::unique_ptr<Symtable>> *name2Sym;
     std::map<std::string, std::unique_ptr<Symtable>>
         *name2Share; // 添加共享内存符号表引用
@@ -86,7 +86,7 @@ std::unique_ptr<SimtPcManager> simt_pc_mgr_;
 
     void
     init(Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim, Dim3 BlockDim,
-         std::vector<StatementContext> &statements,
+         std::vector<ptxemu::ir::StatementContext> &statements,
          std::map<std::string, std::unique_ptr<Symtable>> *name2Sym,
          std::map<std::string, int> &label2pc,
          std::map<std::string, std::unique_ptr<Symtable>> *name2Share = nullptr,
@@ -96,24 +96,24 @@ std::unique_ptr<SimtPcManager> simt_pc_mgr_;
     void clear_temporaries();
 
     // 通用访问接口
-    void *acquire_operand(const OperandContext &op,
-                          const std::vector<Qualifier> &qualifiers);
-    void collect_operands(StatementContext &stmt,
-                          const std::vector<OperandContext> &operands,
-                          const std::vector<Qualifier> *qualifier);
+    void *acquire_operand(const ptxemu::ir::OperandContext &op,
+                          const std::vector<ptxemu::ir::Qualifier> &qualifiers);
+    void collect_operands(ptxemu::ir::StatementContext &stmt,
+                          const std::vector<ptxemu::ir::OperandContext> &operands,
+                          const std::vector<ptxemu::ir::Qualifier> *qualifier);
 
-    void commit_operand(StatementContext &stmt, const OperandContext &operand,
-                        const std::vector<Qualifier> &qualifier);
+    void commit_operand(ptxemu::ir::StatementContext &stmt, const ptxemu::ir::OperandContext &operand,
+                        const std::vector<ptxemu::ir::Qualifier> &qualifier);
     // void *get_memory_addr(OperandContext::FA *fa,
     //                       std::vector<Qualifier> &qualifiers);
     // void *acquire_register(OperandContext::REG *reg,
     //                        std::vector<Qualifier> qualifier);
 
     void *get_memory_addr(const AddrOperand &op,
-                          const std::vector<Qualifier> &qualifiers);
+                          const std::vector<ptxemu::ir::Qualifier> &qualifiers);
 // 寄存器访问接口（Phase 2: delegate to RegisterAccessLayer）
 void *acquire_register(const RegOperand &op,
-                       std::vector<Qualifier> qualifier) {
+                       std::vector<ptxemu::ir::Qualifier> qualifier) {
     return reg_access_->acquire_register(op, qualifier);
 }
 
@@ -133,12 +133,12 @@ uint32_t read_reg_32(const RegOperand &reg) {
     void set_local_memory_space(void *local_mem_space);
 
     // 通用操作
-    void mov_data(void *src, void *dst, std::vector<Qualifier> &qualifiers);
-    void trace_instruction(StatementContext &statement);
+    void mov_data(void *src, void *dst, std::vector<ptxemu::ir::Qualifier> &qualifiers);
+    void trace_instruction(ptxemu::ir::StatementContext &statement);
 
     // 辅助函数接口（供指令处理器使用）
-    void mov(void *from, void *to, const std::vector<Qualifier> &q);
-    bool isIMMorVEC(OperandContext &op);
+    void mov(void *from, void *to, const std::vector<ptxemu::ir::Qualifier> &q);
+    bool isIMMorVEC(ptxemu::ir::OperandContext &op);
 
     // 新增：为断点条件准备上下文
     void prepare_breakpoint_context(
@@ -174,7 +174,7 @@ std::vector<void *>
     std::vector<char> operand_is_immediate_;
 
     // 新增：打印指令状态
-    void print_instruction_status(StatementContext &stmt);
+    void print_instruction_status(ptxemu::ir::StatementContext &stmt);
 
     // 新增：模板函数用于打印线程状态信息
     template <typename... Args>
@@ -256,12 +256,12 @@ bool is_valid_pc(int p) const { return simt_pc_mgr_->is_valid_pc(p); }
 
 int statements_size() const { return simt_pc_mgr_->statements_size(); }
 
-StatementContext *get_statement_at(int p) {
+ptxemu::ir::StatementContext *get_statement_at(int p) {
     return simt_pc_mgr_->get_statement_at(p);
 }
 
 // 获取当前指令
-StatementContext *get_current_statement() {
+ptxemu::ir::StatementContext *get_current_statement() {
     return simt_pc_mgr_->get_current_statement();
 }
 
@@ -307,7 +307,7 @@ void sync_to_warp_state() { simt_pc_mgr_->sync_to_warp_state(); }
 
 private:
     void _execute_once();
-    bool is_immediate_or_vector(OperandContext &op);
+    bool is_immediate_or_vector(ptxemu::ir::OperandContext &op);
     // 用于存储已收集的寄存器地址，避免重复分配
     // std::map<std::string, void *> cached_register_addrs;
 

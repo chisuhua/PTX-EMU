@@ -80,7 +80,7 @@ inline WarpContext* create_warp_with_threads(int num_lanes) {
 
     std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
 
     std::vector<std::unique_ptr<ThreadContext>> threads;
     for (int i = 0; i < num_lanes; i++) {
@@ -101,7 +101,7 @@ inline WarpContext* create_warp_with_threads(int num_lanes) {
 }
 
 inline CTAContext* create_block(SMContext& sm, Dim3 grid, Dim3 block, Dim3 blockIdx) {
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     std::map<std::string, int> label2pc;
     auto cta = std::make_unique<CTAContext>();
     cta->init(grid, block, blockIdx, stmts,
@@ -121,7 +121,7 @@ inline void setup_warp(WarpContext& warp,
 
     std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
 
     threads.clear();
 
@@ -169,7 +169,7 @@ inline TestWarpContext::TestWarpContext(int num_lanes)
     Dim3 blockDim{(uint32_t)num_lanes, 1, 1};
     Dim3 blockIdx{0, 0, 0};
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     std::map<std::string, int> label2pc;
     auto cta = std::make_unique<CTAContext>();
     cta->init(gridDim, blockDim, blockIdx, stmts,

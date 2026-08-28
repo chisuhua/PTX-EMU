@@ -10,7 +10,7 @@
 // 符号表项定义，用于存储常量、参数、局部变量等信息
 class Symtable {
 public:
-    Qualifier symType; // 符号类型（如CONST、PARAM、LOCAL等）
+    ptxemu::ir::Qualifier symType; // 符号类型（如CONST、PARAM、LOCAL等）
     int byteNum;       // 每个元素的字节数
     int elementNum;    // 元素数量
     std::string name;  // 符号名称
@@ -20,7 +20,7 @@ public:
 // 寄存器定义，用于存储寄存器信息
 class Reg {
 public:
-    Qualifier regType; // 寄存器类型
+    ptxemu::ir::Qualifier regType; // 寄存器类型
     int byteNum;       // 每个元素的字节数
     int elementNum;    // 元素数量
     std::string name;  // 寄存器名称
@@ -30,7 +30,7 @@ public:
 // 立即数定义，用于存储立即数操作数
 class IMM {
 public:
-    Qualifier type; // 立即数类型
+    ptxemu::ir::Qualifier type; // 立即数类型
     union Data {
         uint8_t u8;
         uint16_t u16;

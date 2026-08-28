@@ -57,14 +57,14 @@ inline void init_instruction_factory_once() {
 // Memory Declarations (S_SHARED, S_LOCAL)
 // ============================================================================
 
-inline StatementContext make_shared_decl(const std::string &name,
+inline ptxemu::ir::StatementContext make_shared_decl(const std::string &name,
                                           int array_size) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_SHARED;
     DeclarationInstr d;
     d.kind = DeclarationInstr::Kind::SHARED;
     d.name = name;
-    d.dataType = Qualifier::Q_B32;
+    d.dataType = ptxemu::ir::Qualifier::Q_B32;
     d.array_size = array_size;
     ctx.data = d;
     ctx.instructionText =
@@ -72,14 +72,14 @@ inline StatementContext make_shared_decl(const std::string &name,
     return ctx;
 }
 
-inline StatementContext make_local_decl(const std::string &name,
+inline ptxemu::ir::StatementContext make_local_decl(const std::string &name,
                                          int array_size) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_LOCAL;
     DeclarationInstr d;
     d.kind = DeclarationInstr::Kind::LOCAL;
     d.name = name;
-    d.dataType = Qualifier::Q_B32;
+    d.dataType = ptxemu::ir::Qualifier::Q_B32;
     d.array_size = array_size;
     ctx.data = d;
     ctx.instructionText =
@@ -91,84 +91,84 @@ inline StatementContext make_local_decl(const std::string &name,
 // Addressed Loads / Stores (AddrOperand form, not VariableOperand)
 // ============================================================================
 
-inline StatementContext make_st_shared_addr(const std::string &base_sym,
+inline ptxemu::ir::StatementContext make_st_shared_addr(const std::string &base_sym,
                                              const std::string &offset_reg,
                                              const std::string &src_reg) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_ST;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_SHARED, Qualifier::Q_B8};
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_SHARED, ptxemu::ir::Qualifier::Q_B8};
     AddrOperand addr;
     addr.space = AddrOperand::Space::SHARED;
     addr.baseSymbol = base_sym;
     addr.offsetType = AddrOperand::OffsetType::REGISTER;
     addr.registerOffset =
-        std::make_shared<OperandContext>(RegOperand{offset_reg, -1});
-    instr.operands.push_back(OperandContext{addr});
-    instr.operands.push_back(OperandContext{RegOperand{src_reg, -1}});
+        std::make_shared<ptxemu::ir::OperandContext>(RegOperand{offset_reg, -1});
+    instr.operands.push_back(ptxemu::ir::OperandContext{addr});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src_reg, -1}});
     ctx.data = instr;
     ctx.instructionText =
         "st.shared.b8 [" + base_sym + "+" + offset_reg + "], " + src_reg + ";";
     return ctx;
 }
 
-inline StatementContext make_st_local_addr(const std::string &base_sym,
+inline ptxemu::ir::StatementContext make_st_local_addr(const std::string &base_sym,
                                             const std::string &offset_reg,
                                             const std::string &src_reg) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_ST;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_LOCAL, Qualifier::Q_B32};
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_LOCAL, ptxemu::ir::Qualifier::Q_B32};
     AddrOperand addr;
     addr.space = AddrOperand::Space::LOCAL;
     addr.baseSymbol = base_sym;
     addr.offsetType = AddrOperand::OffsetType::REGISTER;
     addr.registerOffset =
-        std::make_shared<OperandContext>(RegOperand{offset_reg, -1});
-    instr.operands.push_back(OperandContext{addr});
-    instr.operands.push_back(OperandContext{RegOperand{src_reg, -1}});
+        std::make_shared<ptxemu::ir::OperandContext>(RegOperand{offset_reg, -1});
+    instr.operands.push_back(ptxemu::ir::OperandContext{addr});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src_reg, -1}});
     ctx.data = instr;
     ctx.instructionText =
         "st.local.b32 [" + base_sym + "+" + offset_reg + "], " + src_reg + ";";
     return ctx;
 }
 
-inline StatementContext make_ld_shared_addr(const std::string &dst_reg,
+inline ptxemu::ir::StatementContext make_ld_shared_addr(const std::string &dst_reg,
                                              const std::string &base_sym,
                                              const std::string &offset_reg) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_LD;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_SHARED, Qualifier::Q_B8};
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_SHARED, ptxemu::ir::Qualifier::Q_B8};
     AddrOperand addr;
     addr.space = AddrOperand::Space::SHARED;
     addr.baseSymbol = base_sym;
     addr.offsetType = AddrOperand::OffsetType::REGISTER;
     addr.registerOffset =
-        std::make_shared<OperandContext>(RegOperand{offset_reg, -1});
-    instr.operands.push_back(OperandContext{RegOperand{dst_reg, -1}});
-    instr.operands.push_back(OperandContext{addr});
+        std::make_shared<ptxemu::ir::OperandContext>(RegOperand{offset_reg, -1});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{dst_reg, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{addr});
     ctx.data = instr;
     ctx.instructionText =
         "ld.shared.b8 " + dst_reg + ", [" + base_sym + "+" + offset_reg + "];";
     return ctx;
 }
 
-inline StatementContext make_ld_local_addr(const std::string &dst_reg,
+inline ptxemu::ir::StatementContext make_ld_local_addr(const std::string &dst_reg,
                                             const std::string &base_sym,
                                             const std::string &offset_reg) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_LD;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_LOCAL, Qualifier::Q_B32};
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_LOCAL, ptxemu::ir::Qualifier::Q_B32};
     AddrOperand addr;
     addr.space = AddrOperand::Space::LOCAL;
     addr.baseSymbol = base_sym;
     addr.offsetType = AddrOperand::OffsetType::REGISTER;
     addr.registerOffset =
-        std::make_shared<OperandContext>(RegOperand{offset_reg, -1});
-    instr.operands.push_back(OperandContext{RegOperand{dst_reg, -1}});
-    instr.operands.push_back(OperandContext{addr});
+        std::make_shared<ptxemu::ir::OperandContext>(RegOperand{offset_reg, -1});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{dst_reg, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{addr});
     ctx.data = instr;
     ctx.instructionText =
         "ld.local.b32 " + dst_reg + ", [" + base_sym + "+" + offset_reg + "];";
@@ -180,7 +180,7 @@ inline StatementContext make_ld_local_addr(const std::string &dst_reg,
 // ============================================================================
 
 inline WarpContext *setup_block(SMContext &sm,
-                                 std::vector<StatementContext> &stmts) {
+                                 std::vector<ptxemu::ir::StatementContext> &stmts) {
     // Calculate per-thread local memory size from .local declarations
     size_t localMemBytesPerThread = 0;
     for (const auto &stmt : stmts) {
@@ -222,7 +222,7 @@ inline WarpContext *setup_block(SMContext &sm,
 //   - InstructionFactory must be initialized (call init_instruction_factory_once())
 //   - ResourceManager must be initialized
 inline WarpContext *setup_block_with_dynamic_shared(SMContext &sm,
-                                                     std::vector<StatementContext> &stmts,
+                                                     std::vector<ptxemu::ir::StatementContext> &stmts,
                                                      size_t dynamic_bytes) {
     auto blk = std::make_unique<CTAContext>();
     Dim3 g{1, 1, 1};
@@ -251,22 +251,22 @@ inline uint32_t read_reg_u32(WarpContext *w, const std::string &reg, int lane) {
 // Multi-Width Load/Store (Qualifier Overloads)
 // ============================================================================
 
-inline StatementContext make_ld_shared_addr(const std::string &dst_reg,
+inline ptxemu::ir::StatementContext make_ld_shared_addr(const std::string &dst_reg,
                                             const std::string &base_sym,
                                             const std::string &offset_reg,
-                                            Qualifier q) {
-    StatementContext ctx;
+                                            ptxemu::ir::Qualifier q) {
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_LD;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_SHARED, q};
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_SHARED, q};
     AddrOperand addr;
     addr.space = AddrOperand::Space::SHARED;
     addr.baseSymbol = base_sym;
     addr.offsetType = AddrOperand::OffsetType::REGISTER;
     addr.registerOffset =
-        std::make_shared<OperandContext>(RegOperand{offset_reg, -1});
-    instr.operands.push_back(OperandContext{RegOperand{dst_reg, -1}});
-    instr.operands.push_back(OperandContext{addr});
+        std::make_shared<ptxemu::ir::OperandContext>(RegOperand{offset_reg, -1});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{dst_reg, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{addr});
     ctx.data = instr;
     std::string qStr = Q2s(q);
     ctx.instructionText =
@@ -274,22 +274,22 @@ inline StatementContext make_ld_shared_addr(const std::string &dst_reg,
     return ctx;
 }
 
-inline StatementContext make_st_shared_addr(const std::string &base_sym,
+inline ptxemu::ir::StatementContext make_st_shared_addr(const std::string &base_sym,
                                             const std::string &offset_reg,
                                             const std::string &src_reg,
-                                            Qualifier q) {
-    StatementContext ctx;
+                                            ptxemu::ir::Qualifier q) {
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_ST;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_SHARED, q};
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_SHARED, q};
     AddrOperand addr;
     addr.space = AddrOperand::Space::SHARED;
     addr.baseSymbol = base_sym;
     addr.offsetType = AddrOperand::OffsetType::REGISTER;
     addr.registerOffset =
-        std::make_shared<OperandContext>(RegOperand{offset_reg, -1});
-    instr.operands.push_back(OperandContext{addr});
-    instr.operands.push_back(OperandContext{RegOperand{src_reg, -1}});
+        std::make_shared<ptxemu::ir::OperandContext>(RegOperand{offset_reg, -1});
+    instr.operands.push_back(ptxemu::ir::OperandContext{addr});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src_reg, -1}});
     ctx.data = instr;
     std::string qStr = Q2s(q);
     ctx.instructionText =
@@ -301,24 +301,24 @@ inline StatementContext make_st_shared_addr(const std::string &base_sym,
 // Vector Load/Store (v2/v4)
 // ============================================================================
 
-inline StatementContext make_ld_shared_addr_v2(const std::string &dst1,
+inline ptxemu::ir::StatementContext make_ld_shared_addr_v2(const std::string &dst1,
                                                const std::string &dst2,
                                                const std::string &base_sym,
                                                const std::string &offset_reg,
-                                               Qualifier q = Qualifier::Q_B32) {
-    StatementContext ctx;
+                                               ptxemu::ir::Qualifier q = ptxemu::ir::Qualifier::Q_B32) {
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_LD;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_SHARED, q, Qualifier::Q_V2};
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_SHARED, q, ptxemu::ir::Qualifier::Q_V2};
     AddrOperand addr;
     addr.space = AddrOperand::Space::SHARED;
     addr.baseSymbol = base_sym;
     addr.offsetType = AddrOperand::OffsetType::REGISTER;
     addr.registerOffset =
-        std::make_shared<OperandContext>(RegOperand{offset_reg, -1});
-    instr.operands.push_back(OperandContext{RegOperand{dst1, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{dst2, -1}});
-    instr.operands.push_back(OperandContext{addr});
+        std::make_shared<ptxemu::ir::OperandContext>(RegOperand{offset_reg, -1});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{dst1, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{dst2, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{addr});
     ctx.data = instr;
     std::string qStr = Q2s(q);
     ctx.instructionText = "ld.shared.v2." + qStr + " {" + dst1 + "," + dst2 +
@@ -326,24 +326,24 @@ inline StatementContext make_ld_shared_addr_v2(const std::string &dst1,
     return ctx;
 }
 
-inline StatementContext make_st_shared_addr_v2(const std::string &base_sym,
+inline ptxemu::ir::StatementContext make_st_shared_addr_v2(const std::string &base_sym,
                                                const std::string &offset_reg,
                                                const std::string &src1,
                                                const std::string &src2,
-                                               Qualifier q = Qualifier::Q_B32) {
-    StatementContext ctx;
+                                               ptxemu::ir::Qualifier q = ptxemu::ir::Qualifier::Q_B32) {
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_ST;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_SHARED, q, Qualifier::Q_V2};
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_SHARED, q, ptxemu::ir::Qualifier::Q_V2};
     AddrOperand addr;
     addr.space = AddrOperand::Space::SHARED;
     addr.baseSymbol = base_sym;
     addr.offsetType = AddrOperand::OffsetType::REGISTER;
     addr.registerOffset =
-        std::make_shared<OperandContext>(RegOperand{offset_reg, -1});
-    instr.operands.push_back(OperandContext{addr});
-    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+        std::make_shared<ptxemu::ir::OperandContext>(RegOperand{offset_reg, -1});
+    instr.operands.push_back(ptxemu::ir::OperandContext{addr});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src2, -1}});
     ctx.data = instr;
     std::string qStr = Q2s(q);
     ctx.instructionText = "st.shared.v2." + qStr + " [" + base_sym + "+" +
@@ -351,28 +351,28 @@ inline StatementContext make_st_shared_addr_v2(const std::string &base_sym,
     return ctx;
 }
 
-inline StatementContext make_ld_shared_addr_v4(const std::string &dst1,
+inline ptxemu::ir::StatementContext make_ld_shared_addr_v4(const std::string &dst1,
                                                const std::string &dst2,
                                                const std::string &dst3,
                                                const std::string &dst4,
                                                const std::string &base_sym,
                                                const std::string &offset_reg,
-                                               Qualifier q = Qualifier::Q_B32) {
-    StatementContext ctx;
+                                               ptxemu::ir::Qualifier q = ptxemu::ir::Qualifier::Q_B32) {
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_LD;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_SHARED, q, Qualifier::Q_V4};
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_SHARED, q, ptxemu::ir::Qualifier::Q_V4};
     AddrOperand addr;
     addr.space = AddrOperand::Space::SHARED;
     addr.baseSymbol = base_sym;
     addr.offsetType = AddrOperand::OffsetType::REGISTER;
     addr.registerOffset =
-        std::make_shared<OperandContext>(RegOperand{offset_reg, -1});
-    instr.operands.push_back(OperandContext{RegOperand{dst1, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{dst2, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{dst3, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{dst4, -1}});
-    instr.operands.push_back(OperandContext{addr});
+        std::make_shared<ptxemu::ir::OperandContext>(RegOperand{offset_reg, -1});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{dst1, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{dst2, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{dst3, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{dst4, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{addr});
     ctx.data = instr;
     std::string qStr = Q2s(q);
     ctx.instructionText = "ld.shared.v4." + qStr + " {" + dst1 + "," + dst2 +
@@ -381,28 +381,28 @@ inline StatementContext make_ld_shared_addr_v4(const std::string &dst1,
     return ctx;
 }
 
-inline StatementContext make_st_shared_addr_v4(const std::string &base_sym,
+inline ptxemu::ir::StatementContext make_st_shared_addr_v4(const std::string &base_sym,
                                                const std::string &offset_reg,
                                                const std::string &src1,
                                                const std::string &src2,
                                                const std::string &src3,
                                                const std::string &src4,
-                                               Qualifier q = Qualifier::Q_B32) {
-    StatementContext ctx;
+                                               ptxemu::ir::Qualifier q = ptxemu::ir::Qualifier::Q_B32) {
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_ST;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_SHARED, q, Qualifier::Q_V4};
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_SHARED, q, ptxemu::ir::Qualifier::Q_V4};
     AddrOperand addr;
     addr.space = AddrOperand::Space::SHARED;
     addr.baseSymbol = base_sym;
     addr.offsetType = AddrOperand::OffsetType::REGISTER;
     addr.registerOffset =
-        std::make_shared<OperandContext>(RegOperand{offset_reg, -1});
-    instr.operands.push_back(OperandContext{addr});
-    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{src3, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{src4, -1}});
+        std::make_shared<ptxemu::ir::OperandContext>(RegOperand{offset_reg, -1});
+    instr.operands.push_back(ptxemu::ir::OperandContext{addr});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src2, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src3, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src4, -1}});
     ctx.data = instr;
     std::string qStr = Q2s(q);
     ctx.instructionText = "st.shared.v4." + qStr + " [" + base_sym + "+" +
@@ -419,18 +419,18 @@ inline StatementContext make_st_shared_addr_v4(const std::string &base_sym,
 // Exercises the VEC code path in ThreadContext::acquire_operand (OperandKind::VEC),
 // which is the path that interacts with LdHandler/StHandler V2/V4 via the
 // per-ThreadContext vecOp_phy_addrs stack (see BUG-VECOP-STALE).
-inline StatementContext make_mov_b64_vec_src(const std::string &dst,
+inline ptxemu::ir::StatementContext make_mov_b64_vec_src(const std::string &dst,
                                              const std::vector<std::string> &srcs) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_MOV;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_B64};
-    instr.operands.push_back(OperandContext{RegOperand{dst, -1}});
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_B64};
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{dst, -1}});
     VecOperand v;
     for (const auto &s : srcs) {
-        v.elements.push_back(OperandContext{RegOperand{s, -1}});
+        v.elements.push_back(ptxemu::ir::OperandContext{RegOperand{s, -1}});
     }
-    OperandContext vec_op{v};
+    ptxemu::ir::OperandContext vec_op{v};
     instr.operands.push_back(vec_op);
     ctx.data = instr;
     std::string text = "mov.b64 " + dst + ", {";
@@ -443,76 +443,76 @@ inline StatementContext make_mov_b64_vec_src(const std::string &dst,
     return ctx;
 }
 
-inline StatementContext make_setp_eq(const std::string &pred,
+inline ptxemu::ir::StatementContext make_setp_eq(const std::string &pred,
                                       const std::string &src1,
                                       const std::string &src2) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_SETP;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_EQ};
-    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_B32, ptxemu::ir::Qualifier::Q_EQ};
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{pred, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src2, -1}});
     ctx.data = instr;
     ctx.instructionText = "setp.eq.u32 " + pred + ", " + src1 + ", " + src2 + ";";
     return ctx;
 }
 
-inline StatementContext make_setp_ne(const std::string &pred,
+inline ptxemu::ir::StatementContext make_setp_ne(const std::string &pred,
                                       const std::string &src1,
                                       const std::string &src2) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_SETP;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_NE};
-    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_B32, ptxemu::ir::Qualifier::Q_NE};
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{pred, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src2, -1}});
     ctx.data = instr;
     ctx.instructionText = "setp.ne.u32 " + pred + ", " + src1 + ", " + src2 + ";";
     return ctx;
 }
 
-inline StatementContext make_setp_gt(const std::string &pred,
+inline ptxemu::ir::StatementContext make_setp_gt(const std::string &pred,
                                       const std::string &src1,
                                       const std::string &src2) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_SETP;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_GT};
-    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_B32, ptxemu::ir::Qualifier::Q_GT};
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{pred, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src2, -1}});
     ctx.data = instr;
     ctx.instructionText = "setp.gt.u32 " + pred + ", " + src1 + ", " + src2 + ";";
     return ctx;
 }
 
-inline StatementContext make_setp_ge(const std::string &pred,
+inline ptxemu::ir::StatementContext make_setp_ge(const std::string &pred,
                                       const std::string &src1,
                                       const std::string &src2) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_SETP;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_GE};
-    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_B32, ptxemu::ir::Qualifier::Q_GE};
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{pred, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src2, -1}});
     ctx.data = instr;
     ctx.instructionText = "setp.ge.u32 " + pred + ", " + src1 + ", " + src2 + ";";
     return ctx;
 }
 
-inline StatementContext make_setp_le(const std::string &pred,
+inline ptxemu::ir::StatementContext make_setp_le(const std::string &pred,
                                       const std::string &src1,
                                       const std::string &src2) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_SETP;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_LE};
-    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{src2, -1}});
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_B32, ptxemu::ir::Qualifier::Q_LE};
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{pred, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src2, -1}});
     ctx.data = instr;
     ctx.instructionText = "setp.le.u32 " + pred + ", " + src1 + ", " + src2 + ";";
     return ctx;
@@ -522,96 +522,96 @@ inline StatementContext make_setp_le(const std::string &pred,
 // Setp Comparison Variants (Immediate operand)
 // ============================================================================
 
-inline StatementContext make_setp_eq_imm(const std::string &pred,
+inline ptxemu::ir::StatementContext make_setp_eq_imm(const std::string &pred,
                                           const std::string &src1,
                                           int32_t imm_value) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_SETP;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_EQ};
-    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
-    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(imm_value)}});
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_B32, ptxemu::ir::Qualifier::Q_EQ};
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{pred, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{ImmOperand{std::to_string(imm_value)}});
     ctx.data = instr;
     ctx.instructionText =
         "setp.eq.u32 " + pred + ", " + src1 + ", " + std::to_string(imm_value) + ";";
     return ctx;
 }
 
-inline StatementContext make_setp_ne_imm(const std::string &pred,
+inline ptxemu::ir::StatementContext make_setp_ne_imm(const std::string &pred,
                                           const std::string &src1,
                                           int32_t imm_value) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_SETP;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_NE};
-    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
-    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(imm_value)}});
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_B32, ptxemu::ir::Qualifier::Q_NE};
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{pred, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{ImmOperand{std::to_string(imm_value)}});
     ctx.data = instr;
     ctx.instructionText =
         "setp.ne.u32 " + pred + ", " + src1 + ", " + std::to_string(imm_value) + ";";
     return ctx;
 }
 
-inline StatementContext make_setp_lt_imm(const std::string &pred,
+inline ptxemu::ir::StatementContext make_setp_lt_imm(const std::string &pred,
                                           const std::string &src1,
                                           int32_t imm_value) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_SETP;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_LT};
-    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
-    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(imm_value)}});
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_B32, ptxemu::ir::Qualifier::Q_LT};
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{pred, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{ImmOperand{std::to_string(imm_value)}});
     ctx.data = instr;
     ctx.instructionText =
         "setp.lt.u32 " + pred + ", " + src1 + ", " + std::to_string(imm_value) + ";";
     return ctx;
 }
 
-inline StatementContext make_setp_gt_imm(const std::string &pred,
+inline ptxemu::ir::StatementContext make_setp_gt_imm(const std::string &pred,
                                           const std::string &src1,
                                           int32_t imm_value) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_SETP;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_GT};
-    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
-    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(imm_value)}});
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_B32, ptxemu::ir::Qualifier::Q_GT};
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{pred, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{ImmOperand{std::to_string(imm_value)}});
     ctx.data = instr;
     ctx.instructionText =
         "setp.gt.u32 " + pred + ", " + src1 + ", " + std::to_string(imm_value) + ";";
     return ctx;
 }
 
-inline StatementContext make_setp_le_imm(const std::string &pred,
+inline ptxemu::ir::StatementContext make_setp_le_imm(const std::string &pred,
                                           const std::string &src1,
                                           int32_t imm_value) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_SETP;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_LE};
-    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
-    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(imm_value)}});
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_B32, ptxemu::ir::Qualifier::Q_LE};
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{pred, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{ImmOperand{std::to_string(imm_value)}});
     ctx.data = instr;
     ctx.instructionText =
         "setp.le.u32 " + pred + ", " + src1 + ", " + std::to_string(imm_value) + ";";
     return ctx;
 }
 
-inline StatementContext make_setp_ge_imm(const std::string &pred,
+inline ptxemu::ir::StatementContext make_setp_ge_imm(const std::string &pred,
                                           const std::string &src1,
                                           int32_t imm_value) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_SETP;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_B32, Qualifier::Q_GE};
-    instr.operands.push_back(OperandContext{RegOperand{pred, -1}});
-    instr.operands.push_back(OperandContext{RegOperand{src1, -1}});
-    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(imm_value)}});
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_B32, ptxemu::ir::Qualifier::Q_GE};
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{pred, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src1, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{ImmOperand{std::to_string(imm_value)}});
     ctx.data = instr;
     ctx.instructionText =
         "setp.ge.u32 " + pred + ", " + src1 + ", " + std::to_string(imm_value) + ";";
@@ -622,9 +622,9 @@ inline StatementContext make_setp_ge_imm(const std::string &pred,
 // Shared Declaration with Qualifier and Multi-Dim
 // ============================================================================
 
-inline StatementContext make_shared_decl(const std::string &name, int array_size,
-                                         Qualifier q) {
-    StatementContext ctx;
+inline ptxemu::ir::StatementContext make_shared_decl(const std::string &name, int array_size,
+                                         ptxemu::ir::Qualifier q) {
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_SHARED;
     DeclarationInstr d;
     d.kind = DeclarationInstr::Kind::SHARED;
@@ -638,10 +638,10 @@ inline StatementContext make_shared_decl(const std::string &name, int array_size
     return ctx;
 }
 
-inline StatementContext make_shared_decl(const std::string &name, int dim1,
+inline ptxemu::ir::StatementContext make_shared_decl(const std::string &name, int dim1,
                                          int dim2,
-                                         Qualifier q = Qualifier::Q_B32) {
-    StatementContext ctx;
+                                         ptxemu::ir::Qualifier q = ptxemu::ir::Qualifier::Q_B32) {
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_SHARED;
     DeclarationInstr d;
     d.kind = DeclarationInstr::Kind::SHARED;

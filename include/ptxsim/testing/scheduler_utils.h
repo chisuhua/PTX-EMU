@@ -16,7 +16,7 @@ enum class StepResult { Continue, BarrierHit, Converged, Diverged, Complete };
 
 // step_warp — 完全模拟 sm_context.cpp 调度器算法
 // Returns the PC that was executed
-inline int step_warp(WarpContext* w, std::vector<StatementContext>& v) {
+inline int step_warp(WarpContext* w, std::vector<ptxemu::ir::StatementContext>& v) {
     auto m = w->get_lanes_by_pc();
     // No schedulable lanes this tick (e.g. all blocked on ld.global latency
     // or at a barrier). A real SMContext skips the warp; do the same here
@@ -44,7 +44,7 @@ inline int step_warp(WarpContext* w, std::vector<StatementContext>& v) {
 
 // make_kernel_request — 从 StatementContext 向量创建 KernelLaunchRequest
 inline KernelLaunchRequest make_kernel_request(
-    std::vector<StatementContext>& statements,
+    std::vector<ptxemu::ir::StatementContext>& statements,
     std::map<std::string, std::unique_ptr<Symtable>>& name2Sym,
     std::map<std::string, int>& label2pc,
     void** args = nullptr,
@@ -66,14 +66,14 @@ inline KernelLaunchRequest make_kernel_request(
 // run_until_converged — 运行 warp 直到汇聚或达到最大步数
 // Returns true if converged, false if max_steps reached
 inline bool run_until_converged(WarpContext* warp,
-                                const std::vector<StatementContext>& stmts,
+                                const std::vector<ptxemu::ir::StatementContext>& stmts,
                                 int max_steps = 1000) {
     for (int i = 0; i < max_steps; ++i) {
         uint32_t mask = warp->get_active_mask();
         if (mask == 1) {
             return true;
         }
-        step_warp(warp, const_cast<std::vector<StatementContext>&>(stmts));
+        step_warp(warp, const_cast<std::vector<ptxemu::ir::StatementContext>&>(stmts));
     }
     return false;
 }

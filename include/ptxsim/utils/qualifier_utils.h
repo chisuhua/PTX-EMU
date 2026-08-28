@@ -16,43 +16,43 @@
 // src/ptxsim/utils/qualifier_utils.cpp as ptxsim::Q2bytes, reached
 // by qualifying the call site when needed.
 namespace ptxsim {
-int Q2bytes(Qualifier q);
+int Q2bytes(ptxemu::ir::Qualifier q);
 }
-bool Signed(Qualifier q);
+bool Signed(ptxemu::ir::Qualifier q);
 
-int getBytes(const std::vector<Qualifier> &q);
+int getBytes(const std::vector<ptxemu::ir::Qualifier> &q);
 
-DTYPE getDType(std::vector<Qualifier> &q);
-DTYPE getDType(Qualifier q);
-void splitCvtQualifiers(const std::vector<Qualifier> &qualifiers,
-                        std::vector<Qualifier> &dst_qualifiers,
-                        std::vector<Qualifier> &src_qualifiers);
+DTYPE getDType(std::vector<ptxemu::ir::Qualifier> &q);
+DTYPE getDType(ptxemu::ir::Qualifier q);
+void splitCvtQualifiers(const std::vector<ptxemu::ir::Qualifier> &qualifiers,
+                        std::vector<ptxemu::ir::Qualifier> &dst_qualifiers,
+                        std::vector<ptxemu::ir::Qualifier> &src_qualifiers);
 
-Qualifier getDataQualifier(const std::vector<Qualifier> &qualifiers);
-Qualifier getCmpOpQualifier(const std::vector<Qualifier> &qualifiers);
+ptxemu::ir::Qualifier getDataQualifier(const std::vector<ptxemu::ir::Qualifier> &qualifiers);
+ptxemu::ir::Qualifier getCmpOpQualifier(const std::vector<ptxemu::ir::Qualifier> &qualifiers);
 
-void splitDstSrcQualifiers(const std::vector<Qualifier> &qualifiers,
-                           std::vector<Qualifier> &dst_qualifiers,
-                           std::vector<Qualifier> &src1_qualifiers,
-                           std::vector<Qualifier> &src2_qualifiers);
+void splitDstSrcQualifiers(const std::vector<ptxemu::ir::Qualifier> &qualifiers,
+                           std::vector<ptxemu::ir::Qualifier> &dst_qualifiers,
+                           std::vector<ptxemu::ir::Qualifier> &src1_qualifiers,
+                           std::vector<ptxemu::ir::Qualifier> &src2_qualifiers);
 
-void splitDstSrcQualifiers(const std::vector<Qualifier> &qualifiers,
-                           std::vector<Qualifier> &dst_qualifiers,
-                           std::vector<Qualifier> &src2_qualifiers);
+void splitDstSrcQualifiers(const std::vector<ptxemu::ir::Qualifier> &qualifiers,
+                           std::vector<ptxemu::ir::Qualifier> &dst_qualifiers,
+                           std::vector<ptxemu::ir::Qualifier> &src2_qualifiers);
 
 // 添加获取地址空间的辅助函数
-MemorySpace getAddressSpace(const std::vector<Qualifier> &qualifiers);
+MemorySpace getAddressSpace(const std::vector<ptxemu::ir::Qualifier> &qualifiers);
 
 // 解析立即数到缓冲区
-void parseImmediate(const std::string &s, Qualifier q, void *out);
+void parseImmediate(const std::string &s, ptxemu::ir::Qualifier q, void *out);
 
-bool QvecHasQ(const std::vector<Qualifier> &qvec, Qualifier q);
+bool QvecHasQ(const std::vector<ptxemu::ir::Qualifier> &qvec, ptxemu::ir::Qualifier q);
 
 // 检查修饰符中是否包含.cc修饰符
-bool hasCCQualifier(const std::vector<Qualifier> &qualifiers);
+bool hasCCQualifier(const std::vector<ptxemu::ir::Qualifier> &qualifiers);
 
 // 获取每个操作数的字节大小
 std::vector<int>
-getOperandBytes(const std::vector<Qualifier> &operand_qualifiers);
+getOperandBytes(const std::vector<ptxemu::ir::Qualifier> &operand_qualifiers);
 
 #endif // QUALIFIER_UTILS_H

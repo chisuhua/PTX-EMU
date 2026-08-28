@@ -119,12 +119,12 @@ public:
 private:
     PtxContext &ctx;
     KernelContext *currentKernel = nullptr;
-    std::vector<Qualifier> currentQualifiers;
+    std::vector<ptxemu::ir::Qualifier> currentQualifiers;
     
     // Helper methods
-    Qualifier tokenToQualifier(antlr4::Token *token);
-    std::vector<Qualifier> extractQualifiersFromContext(antlr4::ParserRuleContext *ctx);
-    OperandContext createOperandFromContext(ptxparser::ptxParser::OperandContext *ctx);
+    ptxemu::ir::Qualifier tokenToQualifier(antlr4::Token *token);
+    std::vector<ptxemu::ir::Qualifier> extractQualifiersFromContext(antlr4::ParserRuleContext *ctx);
+    ptxemu::ir::OperandContext createOperandFromContext(ptxparser::ptxParser::OperandContext *ctx);
     int extractIntFromToken(antlr4::Token *token);
     std::string extractStringFromToken(antlr4::Token *token);
 };

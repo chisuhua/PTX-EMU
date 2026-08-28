@@ -66,9 +66,9 @@ public:
     }
 
     // 添加获取完整指令字符串的函数声明
-    static std::string getOperandsString(const StatementContext &statement);
+    static std::string getOperandsString(const ptxemu::ir::StatementContext &statement);
     static std::string
-    get_full_instruction_string(const StatementContext &statement);
+    get_full_instruction_string(const ptxemu::ir::StatementContext &statement);
 
     // 启用/禁用特定类型的指令跟踪
     // void enable_instruction_trace(InstructionType type, bool enable = true) {

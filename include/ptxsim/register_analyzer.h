@@ -34,7 +34,7 @@ class RegisterAnalyzer {
 public:
     // 分析语句向量，收集所有需要的寄存器信息
     static std::vector<RegisterInfo>
-    analyze_registers(const std::vector<StatementContext> &statements);
+    analyze_registers(const std::vector<ptxemu::ir::StatementContext> &statements);
 
     // 【NEW】CppTLM D1-Full injection (ADR-0020, Phase 8.B PTX-5b):
     // Extract dest (write) register IDs for Scoreboard hazard detection.
@@ -42,22 +42,22 @@ public:
     // st/red/prefetch/barrier/bra/ret naturally return [] (no dest reg).
     // VecOperand (tex/ld.v4) and tcgen05.TMEM dest are out of Phase 8.B scope.
     static std::vector<uint32_t> get_dest_registers_as_ids(
-        const StatementContext &stmt);
+        const ptxemu::ir::StatementContext &stmt);
 
 private:
     // 从单个语句中提取寄存器信息
     static void extract_registers_from_statement(
-        const StatementContext &stmt,
+        const ptxemu::ir::StatementContext &stmt,
         std::unordered_set<RegisterInfo, RegisterInfoHash> &registers);
 
     // 从语句的所有操作数中提取寄存器信息
     static void extract_registers_from_all_operands(
-        const StatementContext &stmt,
+        const ptxemu::ir::StatementContext &stmt,
         std::unordered_set<RegisterInfo, RegisterInfoHash> &registers);
 
     // 从操作数中提取寄存器信息
     static void extract_register_from_operand(
-        const OperandContext &op,
+        const ptxemu::ir::OperandContext &op,
         std::unordered_set<RegisterInfo, RegisterInfoHash> &registers);
 };
 
