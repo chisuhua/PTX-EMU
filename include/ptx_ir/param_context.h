@@ -9,7 +9,7 @@
 
 struct ParamContext {
     std::string paramName;
-    std::vector<Qualifier> paramTypes; // e.g., Q_U32, Q_PTR
+    std::vector<ptxemu::ir::Qualifier> paramTypes; // e.g., Q_U32, Q_PTR
     size_t byteSize = 0;               // total size in bytes
     std::optional<size_t> align;       // alignment in bytes (e.g., 4, 8, 16)
 

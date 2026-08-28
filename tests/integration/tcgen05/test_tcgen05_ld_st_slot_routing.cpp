@@ -97,29 +97,29 @@ private:
 };
 
 // Minimal Tcgen05Instr for ld (op_kind + operands enough for handler).
-Tcgen05Instr make_ld_instr() {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::LD;
+ptxemu::ir::Tcgen05Instr make_ld_instr() {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::LD;
     instr.cta_group = 1;
     // ld handler only reads desc_store + tmem; operands are unused for
     // the Phase 2 placeholder (registers parsed but not resolved).
-    instr.operands = std::vector<OperandContext>(
-        2, OperandContext(RegOperand{"r", 0}));
+    instr.operands = std::vector<ptxemu::ir::OperandContext>(
+        2, ptxemu::ir::OperandContext(RegOperand{"r", 0}));
     return instr;
 }
 
-Tcgen05Instr make_st_instr() {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::ST;
+ptxemu::ir::Tcgen05Instr make_st_instr() {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::ST;
     instr.cta_group = 1;
-    instr.operands = std::vector<OperandContext>(
-        2, OperandContext(RegOperand{"r", 0}));
+    instr.operands = std::vector<ptxemu::ir::OperandContext>(
+        2, ptxemu::ir::OperandContext(RegOperand{"r", 0}));
     return instr;
 }
 
-Tcgen05Instr make_cp_instr() {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::CP;
+ptxemu::ir::Tcgen05Instr make_cp_instr() {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::CP;
     instr.cta_group = 1;
     // cp handler uses operands[1] for smem offset (AddrOperand::SHARED)
     // Construct an AddrOperand with SHARED space + immediate offset "0"
@@ -127,9 +127,9 @@ Tcgen05Instr make_cp_instr() {
     addr.space = AddrOperand::Space::SHARED;
     addr.offsetType = AddrOperand::OffsetType::IMMEDIATE;
     addr.immediateOffset = "0";
-    instr.operands = std::vector<OperandContext>{
-        OperandContext(RegOperand{"r", 0}),
-        OperandContext(addr)
+    instr.operands = std::vector<ptxemu::ir::OperandContext>{
+        ptxemu::ir::OperandContext(RegOperand{"r", 0}),
+        ptxemu::ir::OperandContext(addr)
     };
     return instr;
 }
@@ -199,7 +199,7 @@ TEST_CASE("processTcgen05Ld writes to warp-allocated slot, not hardcoded 0 (FU-3
     rig.fill_global_buf(0xAB);
 
     // Run ld — handler should allocate a slot via warp cursor
-    Tcgen05Instr instr = make_ld_instr();
+    ptxemu::ir::Tcgen05Instr instr = make_ld_instr();
     REQUIRE_NOTHROW(ptxsim::processTcgen05Ld(&rig.thread(), instr));
 
     // RED: last_ld_slot() is currently 0 because handler hardcodes tmem.write(0, ...)
@@ -233,7 +233,7 @@ TEST_CASE("processTcgen05St reads from warp's last_ld_slot (FU-3 C2 RED)") {
     rig.fill_global_buf(0xCD);
 
     // Run ld (writes pattern to allocated slot)
-    Tcgen05Instr ld_instr = make_ld_instr();
+    ptxemu::ir::Tcgen05Instr ld_instr = make_ld_instr();
     REQUIRE_NOTHROW(ptxsim::processTcgen05Ld(&rig.thread(), ld_instr));
 
     size_t ld_slot = warp.last_ld_slot();
@@ -242,7 +242,7 @@ TEST_CASE("processTcgen05St reads from warp's last_ld_slot (FU-3 C2 RED)") {
     std::memset(rig.global_buf().data(), 0x00, rig.global_buf().size());
 
     // Run st — handler should read from warp's last_ld_slot
-    Tcgen05Instr st_instr = make_st_instr();
+    ptxemu::ir::Tcgen05Instr st_instr = make_st_instr();
     REQUIRE_NOTHROW(ptxsim::processTcgen05St(&rig.thread(), st_instr));
 
     // After GREEN fix: st should write ld data back to global buffer
@@ -268,14 +268,14 @@ TEST_CASE("ld→st round-trip preserves data via warp cursor (FU-3 C2 regression
     }
 
     // ld → allocated slot
-    Tcgen05Instr ld_instr = make_ld_instr();
+    ptxemu::ir::Tcgen05Instr ld_instr = make_ld_instr();
     REQUIRE_NOTHROW(ptxsim::processTcgen05Ld(&rig.thread(), ld_instr));
 
     // Clear global buffer
     std::memset(rig.global_buf().data(), 0x00, rig.global_buf().size());
 
     // st → last_ld_slot → global
-    Tcgen05Instr st_instr = make_st_instr();
+    ptxemu::ir::Tcgen05Instr st_instr = make_st_instr();
     REQUIRE_NOTHROW(ptxsim::processTcgen05St(&rig.thread(), st_instr));
 
     // Verify exact pattern preserved
@@ -296,7 +296,7 @@ TEST_CASE("processTcgen05Cp writes to warp-allocated cp slot (FU-3 C2 RED)") {
     std::memset(rig.smem().data(), 0xEE, Tmem::kSlotSize);
 
     // Run cp — handler allocates from separate cp pool (base 32 + cursor)
-    Tcgen05Instr instr = make_cp_instr();
+    ptxemu::ir::Tcgen05Instr instr = make_cp_instr();
     REQUIRE_NOTHROW(ptxsim::processTcgen05Cp(&rig.thread(), instr));
 
     // cp writes to slot 32 + allocate_cp_slot() = 32 + 0 = 32

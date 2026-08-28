@@ -10,7 +10,7 @@
 static std::mutex g_printf_mutex;
 
 // RET is a VOID_INSTR handler
-void RetHandler::processOperation(ThreadContext *context, StatementContext &stmt) {
+void RetHandler::processOperation(ThreadContext *context, ptxemu::ir::StatementContext &stmt) {
     if (context->call_stack.empty()) {
         context->set_state(EXIT);  // MR-1: bare-field access → method call
         WarpContext *wc = context->get_warp_context();

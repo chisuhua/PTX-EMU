@@ -8,7 +8,7 @@ using namespace ptxir::factory;
 #define VISITOR_TEXTURE_INSTR(openum, opstr, opname, opcount)                          \
 std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
-    std::vector<OperandContext> operands;                                       \
+    std::vector<ptxemu::ir::OperandContext> operands;                                       \
     auto operandCtxs = ctx->getRuleContexts<ptxparser::ptxParser::OperandContext>();     \
     for (size_t i = 0; i < std::min(operandCtxs.size(), (size_t)opcount); ++i) {   \
         operands.push_back(createOperandFromContext(operandCtxs[i]));            \
@@ -21,7 +21,7 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
 #define VISITOR_SURFACE_INSTR(openum, opstr, opname, opcount)                          \
 std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
-    std::vector<OperandContext> operands;                                       \
+    std::vector<ptxemu::ir::OperandContext> operands;                                       \
     auto operandCtxs = ctx->getRuleContexts<ptxparser::ptxParser::OperandContext>();     \
     for (size_t i = 0; i < std::min(operandCtxs.size(), (size_t)opcount); ++i) {   \
         operands.push_back(createOperandFromContext(operandCtxs[i]));            \
@@ -34,7 +34,7 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
 #define VISITOR_REDUCTION_INSTR(openum, opstr, opname, opcount)                        \
 std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
-    std::vector<OperandContext> operands;                                       \
+    std::vector<ptxemu::ir::OperandContext> operands;                                       \
     auto operandCtxs = ctx->getRuleContexts<ptxparser::ptxParser::OperandContext>();     \
     for (size_t i = 0; i < std::min(operandCtxs.size(), (size_t)opcount); ++i) {   \
         operands.push_back(createOperandFromContext(operandCtxs[i]));            \
@@ -47,7 +47,7 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
 #define VISITOR_PREFETCH_INSTR(openum, opstr, opname, opcount)                         \
 std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
-    std::vector<OperandContext> operands;                                       \
+    std::vector<ptxemu::ir::OperandContext> operands;                                       \
     auto operandCtxs = ctx->getRuleContexts<ptxparser::ptxParser::OperandContext>();     \
     for (size_t i = 0; i < std::min(operandCtxs.size(), (size_t)opcount); ++i) {   \
         operands.push_back(createOperandFromContext(operandCtxs[i]));            \
@@ -60,7 +60,7 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
 #define VISITOR_CP_ASYNC_INSTR(openum, opstr, opname, opcount)                         \
 std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
-    std::vector<OperandContext> operands;                                       \
+    std::vector<ptxemu::ir::OperandContext> operands;                                       \
     auto operandCtxs = ctx->getRuleContexts<ptxparser::ptxParser::OperandContext>();     \
     for (size_t i = 0; i < std::min(operandCtxs.size(), (size_t)opcount); ++i) {   \
         operands.push_back(createOperandFromContext(operandCtxs[i]));            \

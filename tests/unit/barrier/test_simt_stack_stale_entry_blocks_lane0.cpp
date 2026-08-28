@@ -101,13 +101,13 @@ TEST_CASE(
     constexpr int PC_RET = 1;
     constexpr int NUM_STMTS = 2;
 
-    std::vector<StatementContext> v(NUM_STMTS);
+    std::vector<ptxemu::ir::StatementContext> v(NUM_STMTS);
     for (auto &s : v)
         s = make_nop();
 
     // PC=0: st.shared.b32 [sdata+0], r_val (lane 0 write)
     v[PC_ST_SHARED] = ptxsim::testing::make_st_shared_addr(
-        "sdata", "r_tid", "r_val", Qualifier::Q_B32);
+        "sdata", "r_tid", "r_val", ptxemu::ir::Qualifier::Q_B32);
     v[PC_RET] = make_ret();
 
     auto blk = std::make_unique<CTAContext>();
@@ -237,11 +237,11 @@ TEST_CASE("U-2: non-stale SIMT entry with reconv=X blocks lane at PC=X",
     constexpr int PC_RET = 1;
     constexpr int NUM_STMTS = 2;
 
-    std::vector<StatementContext> v(NUM_STMTS);
+    std::vector<ptxemu::ir::StatementContext> v(NUM_STMTS);
     for (auto &s : v)
         s = make_nop();
     v[PC_ST_SHARED] = ptxsim::testing::make_st_shared_addr(
-        "sdata", "r_tid", "r_val", Qualifier::Q_B32);
+        "sdata", "r_tid", "r_val", ptxemu::ir::Qualifier::Q_B32);
     v[PC_RET] = make_ret();
 
     auto blk = std::make_unique<CTAContext>();

@@ -7,7 +7,10 @@ class WarpContext;  // forward decl (WarpContext lives in global namespace)
 class SMContext;
 class IPipelineLatencyProvider;
 class ITensorCoreTiming;
-struct StatementContext;  // global namespace
+// Phase 1.5c+d: forward declarations must live in the canonical
+// namespace. Global-scope `struct StatementContext;` would conflict
+// with the forwarding shim's using-declarations.
+namespace ptxemu { namespace ir { class StatementContext; } }
 
 // Forward declaration of helper functions (god-class-refactor-sm-context C-2
 // Phase 2: ADR-0020 cpptlm injection extraction).
@@ -20,7 +23,7 @@ namespace sm_cpptlm_inject {
 void step_b_set_blocked_cycles(IPipelineLatencyProvider* pipeline,
                                ITensorCoreTiming* tc,
                                WarpContext* warp,
-                               const StatementContext& stmt);
+                               const ptxemu::ir::StatementContext& stmt);
 
 }  // namespace sm_cpptlm_inject
 #endif

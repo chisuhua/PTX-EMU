@@ -4,11 +4,11 @@
 #include <iomanip>
 #include <sstream>
 
+namespace ptxemu {
+namespace ir {
+
 std::string OperandContext::toString(int bytes) const {
     std::ostringstream oss;
-
-    // Step 1: Print operand representation (e.g., %r1, { %r1, %r2 },
-    // [shared::buf + %r3])
     std::visit(
         [&oss, bytes](const auto &op) {
             using T = std::decay_t<decltype(op)>;
@@ -24,28 +24,17 @@ std::string OperandContext::toString(int bytes) const {
                 for (size_t i = 0; i < op.elements.size(); ++i) {
                     if (i > 0)
                         oss << ", ";
-                    oss << op.elements[i].toString(
-                        bytes); // propagate bytes for recursive value print
+                    oss << op.elements[i].toString(bytes);
                 }
                 oss << "}";
             } else if constexpr (std::is_same_v<T, AddrOperand>) {
                 const char *spaceStr = "";
                 switch (op.space) {
-                case AddrOperand::Space::CONST:
-                    spaceStr = "const";
-                    break;
-                case AddrOperand::Space::PARAM:
-                    spaceStr = "param";
-                    break;
-                case AddrOperand::Space::GLOBAL:
-                    spaceStr = "global";
-                    break;
-                case AddrOperand::Space::LOCAL:
-                    spaceStr = "local";
-                    break;
-                case AddrOperand::Space::SHARED:
-                    spaceStr = "shared";
-                    break;
+                case AddrOperand::Space::CONST: spaceStr = "const"; break;
+                case AddrOperand::Space::PARAM: spaceStr = "param"; break;
+                case AddrOperand::Space::GLOBAL: spaceStr = "global"; break;
+                case AddrOperand::Space::LOCAL: spaceStr = "local"; break;
+                case AddrOperand::Space::SHARED: spaceStr = "shared"; break;
                 }
                 oss << "[";
                 if (spaceStr[0])
@@ -75,3 +64,6 @@ std::string OperandContext::toString(int bytes) const {
 
     return oss.str();
 }
+
+}  // namespace ir
+}  // namespace ptxemu

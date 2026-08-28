@@ -13,9 +13,9 @@ class ThreadContext;
 enum DTYPE { DNONE, DINT, DFLOAT };
 namespace TypeUtils {
 
-bool is_float_type(const std::vector<Qualifier> &qualifiers);
-Qualifier get_comparison_op(const std::vector<Qualifier> &qualifiers);
-bool is_signed_type(const std::vector<Qualifier> &qualifiers);
+bool is_float_type(const std::vector<ptxemu::ir::Qualifier> &qualifiers);
+ptxemu::ir::Qualifier get_comparison_op(const std::vector<ptxemu::ir::Qualifier> &qualifiers);
+bool is_signed_type(const std::vector<ptxemu::ir::Qualifier> &qualifiers);
 
 // 浮点 NaN 检查
 inline bool is_nan(float x) { return x != x; }
@@ -28,24 +28,24 @@ inline bool is_nan(uint16_t h) {
 
 // === 通用比较模板（用于整数和 float/double）===
 template <typename T>
-inline bool compare(const T &a, const T &b, Qualifier op) {
+inline bool compare(const T &a, const T &b, ptxemu::ir::Qualifier op) {
     if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>) {
         if (is_nan(a) || is_nan(b)) {
-            return (op == Qualifier::Q_NE);
+            return (op == ptxemu::ir::Qualifier::Q_NE);
         }
     }
     switch (op) {
-    case Qualifier::Q_EQ:
+    case ptxemu::ir::Qualifier::Q_EQ:
         return a == b;
-    case Qualifier::Q_NE:
+    case ptxemu::ir::Qualifier::Q_NE:
         return a != b;
-    case Qualifier::Q_LT:
+    case ptxemu::ir::Qualifier::Q_LT:
         return a < b;
-    case Qualifier::Q_LE:
+    case ptxemu::ir::Qualifier::Q_LE:
         return a <= b;
-    case Qualifier::Q_GT:
+    case ptxemu::ir::Qualifier::Q_GT:
         return a > b;
-    case Qualifier::Q_GE:
+    case ptxemu::ir::Qualifier::Q_GE:
         return a >= b;
     default:
         return false;
@@ -54,20 +54,20 @@ inline bool compare(const T &a, const T &b, Qualifier op) {
 
 template <>
 inline bool compare<uint16_t>(const uint16_t &a, const uint16_t &b,
-                              Qualifier op) {
+                              ptxemu::ir::Qualifier op) {
     // uint16_t 应作为无符号整数进行比较，不转换为 float
     switch (op) {
-    case Qualifier::Q_EQ:
+    case ptxemu::ir::Qualifier::Q_EQ:
         return a == b;
-    case Qualifier::Q_NE:
+    case ptxemu::ir::Qualifier::Q_NE:
         return a != b;
-    case Qualifier::Q_LT:
+    case ptxemu::ir::Qualifier::Q_LT:
         return a < b; // 无符号比较
-    case Qualifier::Q_LE:
+    case ptxemu::ir::Qualifier::Q_LE:
         return a <= b;
-    case Qualifier::Q_GT:
+    case ptxemu::ir::Qualifier::Q_GT:
         return a > b;
-    case Qualifier::Q_GE:
+    case ptxemu::ir::Qualifier::Q_GE:
         return a >= b;
     default:
         return false;
@@ -96,22 +96,22 @@ inline bool compare<uint16_t>(const uint16_t &a, const uint16_t &b,
     do {                                                                       \
         uint8_t __result = 0;                                                  \
         switch (dtype) {                                                       \
-            DISPATCH(Qualifier::Q_U8, uint8_t, op)                             \
-            DISPATCH(Qualifier::Q_S8, int8_t, op)                              \
-            DISPATCH(Qualifier::Q_B8, uint8_t, op)                             \
-            DISPATCH(Qualifier::Q_U16, uint16_t, op)                           \
-            DISPATCH(Qualifier::Q_S16, int16_t, op)                            \
-            DISPATCH(Qualifier::Q_B16, uint16_t, op)                           \
-            DISPATCH_F16(Qualifier::Q_F16, op)                                 \
-            DISPATCH(Qualifier::Q_U32, uint32_t, op)                           \
-            DISPATCH(Qualifier::Q_S32, int32_t, op)                            \
-            DISPATCH(Qualifier::Q_B32, uint32_t, op)                           \
-            DISPATCH(Qualifier::Q_F32, float, op)                              \
-            DISPATCH(Qualifier::Q_U64, uint64_t, op)                           \
-            DISPATCH(Qualifier::Q_S64, int64_t, op)                            \
-            DISPATCH(Qualifier::Q_B64, uint64_t, op)                           \
-            DISPATCH(Qualifier::Q_F64, double, op)                             \
-            DISPATCH(Qualifier::Q_PRED, uint8_t, op)                           \
+            DISPATCH(ptxemu::ir::Qualifier::Q_U8, uint8_t, op)                             \
+            DISPATCH(ptxemu::ir::Qualifier::Q_S8, int8_t, op)                              \
+            DISPATCH(ptxemu::ir::Qualifier::Q_B8, uint8_t, op)                             \
+            DISPATCH(ptxemu::ir::Qualifier::Q_U16, uint16_t, op)                           \
+            DISPATCH(ptxemu::ir::Qualifier::Q_S16, int16_t, op)                            \
+            DISPATCH(ptxemu::ir::Qualifier::Q_B16, uint16_t, op)                           \
+            DISPATCH_F16(ptxemu::ir::Qualifier::Q_F16, op)                                 \
+            DISPATCH(ptxemu::ir::Qualifier::Q_U32, uint32_t, op)                           \
+            DISPATCH(ptxemu::ir::Qualifier::Q_S32, int32_t, op)                            \
+            DISPATCH(ptxemu::ir::Qualifier::Q_B32, uint32_t, op)                           \
+            DISPATCH(ptxemu::ir::Qualifier::Q_F32, float, op)                              \
+            DISPATCH(ptxemu::ir::Qualifier::Q_U64, uint64_t, op)                           \
+            DISPATCH(ptxemu::ir::Qualifier::Q_S64, int64_t, op)                            \
+            DISPATCH(ptxemu::ir::Qualifier::Q_B64, uint64_t, op)                           \
+            DISPATCH(ptxemu::ir::Qualifier::Q_F64, double, op)                             \
+            DISPATCH(ptxemu::ir::Qualifier::Q_PRED, uint8_t, op)                           \
                                                                                \
         default:                                                               \
             __result = 0;                                                      \

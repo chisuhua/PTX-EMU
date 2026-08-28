@@ -32,7 +32,7 @@ namespace {
 // false if RAW hazard detected or scoreboard full (caller should goto
 // warp_done).
 inline bool step_a_scoreboard_check(IScoreboard *scoreboard, WarpContext *warp,
-                                    const StatementContext &stmt) {
+                                    const ptxemu::ir::StatementContext &stmt) {
     if (!scoreboard)
         return true; // nullptr = skip injection
     scoreboard->tick();
@@ -66,7 +66,7 @@ inline bool step_a_scoreboard_check(IScoreboard *scoreboard, WarpContext *warp,
 // Step A failed.
 inline void step_c_release_scoreboard(IScoreboard *scoreboard,
                                       WarpContext *warp,
-                                      const StatementContext &stmt) {
+                                      const ptxemu::ir::StatementContext &stmt) {
     if (!scoreboard)
         return; // nullptr = skip injection
     auto dest_regs = RegisterAnalyzer::get_dest_registers_as_ids(stmt);
@@ -78,7 +78,7 @@ inline void step_c_release_scoreboard(IScoreboard *scoreboard,
 /// Dest register extraction wrapper — aligns with design.md §7.2 helper list.
 /// Delegates to RegisterAnalyzer::get_dest_registers_as_ids for the actual
 /// StatementContext variant traversal.
-inline std::vector<uint32_t> get_dest_registers(const StatementContext &stmt) {
+inline std::vector<uint32_t> get_dest_registers(const ptxemu::ir::StatementContext &stmt) {
     return RegisterAnalyzer::get_dest_registers_as_ids(stmt);
 }
 
@@ -140,30 +140,30 @@ void SMContext::try_admit_pending_blocks() {
 // === CppTLM D1-Full injection helpers (Phase 8.B PTX-6, ADR-0020) ===
 // Public static for testability (tests/unit/sm/test_exe_once_helpers.cpp).
 
-bool SMContext::is_tensor_core_instruction(const StatementContext &stmt) {
-    return stmt.type >= StatementType::S_TCGEN05_ALLOC &&
-           stmt.type <= StatementType::S_TCGEN05_FENCE;
+bool SMContext::is_tensor_core_instruction(const ptxemu::ir::StatementContext &stmt) {
+    return stmt.type >= ptxemu::ir::StatementType::S_TCGEN05_ALLOC &&
+           stmt.type <= ptxemu::ir::StatementType::S_TCGEN05_FENCE;
 }
 
 PipelineId
-SMContext::map_instruction_to_pipeline(const StatementContext &stmt) {
+SMContext::map_instruction_to_pipeline(const ptxemu::ir::StatementContext &stmt) {
     if (is_tensor_core_instruction(stmt)) {
         return PipelineId::P4_TC;
     }
-    if (stmt.type == StatementType::S_LD || stmt.type == StatementType::S_ST ||
-        stmt.type == StatementType::S_ATOM) {
+    if (stmt.type == ptxemu::ir::StatementType::S_LD || stmt.type == ptxemu::ir::StatementType::S_ST ||
+        stmt.type == ptxemu::ir::StatementType::S_ATOM) {
         return PipelineId::P3_LSU;
     }
     // SFU (Special Function Unit) instructions → P2_SFU
     switch (stmt.type) {
-    case StatementType::S_SIN:
-    case StatementType::S_COS:
-    case StatementType::S_LG2:
-    case StatementType::S_EX2:
-    case StatementType::S_RCP:
-    case StatementType::S_RSQRT:
-    case StatementType::S_SQRT:
-    case StatementType::S_TANH:
+    case ptxemu::ir::StatementType::S_SIN:
+    case ptxemu::ir::StatementType::S_COS:
+    case ptxemu::ir::StatementType::S_LG2:
+    case ptxemu::ir::StatementType::S_EX2:
+    case ptxemu::ir::StatementType::S_RCP:
+    case ptxemu::ir::StatementType::S_RSQRT:
+    case ptxemu::ir::StatementType::S_SQRT:
+    case ptxemu::ir::StatementType::S_TANH:
         return PipelineId::P2_SFU;
     default:
         break;
@@ -172,7 +172,7 @@ SMContext::map_instruction_to_pipeline(const StatementContext &stmt) {
     if (std::holds_alternative<GenericInstr>(stmt.data)) {
         const auto &instr = std::get<GenericInstr>(stmt.data);
         for (const auto &q : instr.qualifiers) {
-            if (q == Qualifier::Q_F64)
+            if (q == ptxemu::ir::Qualifier::Q_F64)
                 return PipelineId::P1_FP64;
         }
     }
@@ -182,18 +182,18 @@ SMContext::map_instruction_to_pipeline(const StatementContext &stmt) {
 }
 
 TcPrecision
-SMContext::map_instruction_to_tc_precision(const StatementContext &stmt) {
+SMContext::map_instruction_to_tc_precision(const ptxemu::ir::StatementContext &stmt) {
     if (std::holds_alternative<GenericInstr>(stmt.data)) {
         const auto &instr = std::get<GenericInstr>(stmt.data);
         for (const auto &q : instr.qualifiers) {
             switch (q) {
-            case Qualifier::Q_F16:
+            case ptxemu::ir::Qualifier::Q_F16:
                 return TcPrecision::FP16;
-            case Qualifier::Q_BF16:
+            case ptxemu::ir::Qualifier::Q_BF16:
                 return TcPrecision::BF16;
-            case Qualifier::Q_TCGEN_TF32:
+            case ptxemu::ir::Qualifier::Q_TCGEN_TF32:
                 return TcPrecision::TF32;
-            case Qualifier::Q_F8:
+            case ptxemu::ir::Qualifier::Q_F8:
                 return TcPrecision::FP8;
             default:
                 continue;
@@ -206,7 +206,7 @@ SMContext::map_instruction_to_tc_precision(const StatementContext &stmt) {
 void SMContext::step_b_set_blocked_cycles(IPipelineLatencyProvider *pipeline,
                                           ITensorCoreTiming *tc,
                                           WarpContext *warp,
-                                          const StatementContext &stmt) {
+                                          const ptxemu::ir::StatementContext &stmt) {
     sm_cpptlm_inject::step_b_set_blocked_cycles(pipeline, tc, warp, stmt);
 }
 
@@ -266,7 +266,7 @@ EXE_STATE SMContext::exe_once() {
                 if (target_pc >= 0 &&
                     target_pc <
                         static_cast<int>(sample_thread->statements_size())) {
-                    StatementContext *stmt =
+                    ptxemu::ir::StatementContext *stmt =
                         sample_thread->get_statement_at(target_pc);
                     if (stmt) {
                         // 【Phase 8.B PTX-6】Step A: Scoreboard hazard check
@@ -361,7 +361,7 @@ EXE_STATE SMContext::exe_once() {
 
             if (sample_thread && pc >= 0 &&
                 pc < sample_thread->statements_size()) {
-                StatementContext *stmt = sample_thread->get_statement_at(pc);
+                ptxemu::ir::StatementContext *stmt = sample_thread->get_statement_at(pc);
 
                 if (stmt) {
                     // 【Phase 8.B PTX-6】Step A: Scoreboard hazard check
@@ -561,7 +561,7 @@ void SMContext::print_warp_status(const WarpContext *warp,
 
             // 获取当前PC对应的指令文本
             if (pc_to_instruction.find(pc) == pc_to_instruction.end()) {
-                StatementContext *stmt = thread->get_current_statement();
+                ptxemu::ir::StatementContext *stmt = thread->get_current_statement();
                 if (stmt != nullptr) {
                     pc_to_instruction[pc] = stmt->instructionText;
                 } else {

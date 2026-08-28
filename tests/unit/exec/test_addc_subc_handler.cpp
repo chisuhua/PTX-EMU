@@ -29,9 +29,9 @@ void test_addc_u32_with_carry() {
 
     void *operands[3] = {&dst, &src1, &src2};
 
-    std::vector<Qualifier> qualifiers;
-    qualifiers.push_back(Qualifier::Q_U32);
-    qualifiers.push_back(Qualifier::Q_CC); // 添加.cc修饰符
+    std::vector<ptxemu::ir::Qualifier> qualifiers;
+    qualifiers.push_back(ptxemu::ir::Qualifier::Q_U32);
+    qualifiers.push_back(ptxemu::ir::Qualifier::Q_CC); // 添加.cc修饰符
 
     AddcHandler addc_handler;
     addc_handler.processOperation(&context, operands, qualifiers);
@@ -66,9 +66,9 @@ void test_addc_u32_without_carry() {
 
     void *operands[3] = {&dst, &src1, &src2};
 
-    std::vector<Qualifier> qualifiers;
-    qualifiers.push_back(Qualifier::Q_U32);
-    qualifiers.push_back(Qualifier::Q_CC);
+    std::vector<ptxemu::ir::Qualifier> qualifiers;
+    qualifiers.push_back(ptxemu::ir::Qualifier::Q_U32);
+    qualifiers.push_back(ptxemu::ir::Qualifier::Q_CC);
 
     AddcHandler addc_handler;
     addc_handler.processOperation(&context, operands, qualifiers);
@@ -99,9 +99,9 @@ void test_subc_u32_with_borrow() {
 
     void *operands[3] = {&dst, &src1, &src2};
 
-    std::vector<Qualifier> qualifiers;
-    qualifiers.push_back(Qualifier::Q_U32);
-    qualifiers.push_back(Qualifier::Q_CC);
+    std::vector<ptxemu::ir::Qualifier> qualifiers;
+    qualifiers.push_back(ptxemu::ir::Qualifier::Q_U32);
+    qualifiers.push_back(ptxemu::ir::Qualifier::Q_CC);
 
     SubcHandler subc_handler;
     subc_handler.processOperation(&context, operands, qualifiers);
@@ -133,9 +133,9 @@ void test_subc_u32_without_borrow() {
 
     void *operands[3] = {&dst, &src1, &src2};
 
-    std::vector<Qualifier> qualifiers;
-    qualifiers.push_back(Qualifier::Q_U32);
-    qualifiers.push_back(Qualifier::Q_CC);
+    std::vector<ptxemu::ir::Qualifier> qualifiers;
+    qualifiers.push_back(ptxemu::ir::Qualifier::Q_U32);
+    qualifiers.push_back(ptxemu::ir::Qualifier::Q_CC);
 
     SubcHandler subc_handler;
     subc_handler.processOperation(&context, operands, qualifiers);
@@ -166,9 +166,9 @@ void test_addc_u8() {
 
     void *operands[3] = {&dst, &src1, &src2};
 
-    std::vector<Qualifier> qualifiers;
-    qualifiers.push_back(Qualifier::Q_U8);
-    qualifiers.push_back(Qualifier::Q_CC);
+    std::vector<ptxemu::ir::Qualifier> qualifiers;
+    qualifiers.push_back(ptxemu::ir::Qualifier::Q_U8);
+    qualifiers.push_back(ptxemu::ir::Qualifier::Q_CC);
 
     AddcHandler addc_handler;
     addc_handler.processOperation(&context, operands, qualifiers);

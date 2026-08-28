@@ -64,7 +64,7 @@ TEST_CASE("integration_ld_st_shared_round_trip",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(5);
     stmts.push_back(make_shared_decl("buf", 32));        // PC=0
     stmts.push_back(make_mov("r1", "tid.x"));            // PC=1

@@ -113,7 +113,7 @@ std::unique_ptr<WarpContext> make_warp() {
     Dim3 gridDim = {1, 1, 1};
     Dim3 blockDim = {32, 1, 1};
 
-    std::vector<StatementContext> statements;
+    std::vector<ptxemu::ir::StatementContext> statements;
     std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
 
@@ -125,8 +125,8 @@ std::unique_ptr<WarpContext> make_warp() {
     return warp;
 }
 
-StatementContext make_stmt(StatementType t) {
-    StatementContext s;
+ptxemu::ir::StatementContext make_stmt(ptxemu::ir::StatementType t) {
+    ptxemu::ir::StatementContext s;
     s.type = t;
     return s;
 }

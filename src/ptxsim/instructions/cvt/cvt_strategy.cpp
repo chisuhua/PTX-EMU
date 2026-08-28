@@ -3,7 +3,7 @@
 // CVT 策略模式 — dispatcher 实现 (commit fc3c352/9837d44/d6123e0 完成部署)
 //
 // 状态:
-//   - build_context():  从 Qualifier 列表构造强类型 CvtContext
+//   - build_context():  从 ptxemu::ir::Qualifier 列表构造强类型 CvtContext
 //   - select_strategy(): 返回 4 个具体 Strategy 实例之一（按 dst/src 类型）
 //   - CvtHandler::processOperation(): 顶层入口，调用 select_strategy + convert
 //
@@ -32,16 +32,16 @@ namespace ptxsim {
 namespace cvt_strategy {
 
 // ---------------------------------------------------------------------------
-// build_context: 从 Qualifier 列表提取 CvtContext
+// build_context: 从 ptxemu::ir::Qualifier 列表提取 CvtContext
 //
 // 来源: arithmetic_conversion.cpp:17-90 (旧 processOperation 第一段)
 // 抽取后: arithmetic_conversion.cpp::processOperation 直接构造 ctx，
-//        避免每次重新解析 Qualifier。
+//        避免每次重新解析 ptxemu::ir::Qualifier。
 // ---------------------------------------------------------------------------
-CvtContext build_context(const std::vector<Qualifier> &qualifiers) {
+CvtContext build_context(const std::vector<ptxemu::ir::Qualifier> &qualifiers) {
     CvtContext ctx;
 
-    std::vector<Qualifier> dst_qualifiers, src_qualifiers;
+    std::vector<ptxemu::ir::Qualifier> dst_qualifiers, src_qualifiers;
     splitDstSrcQualifiers(qualifiers, dst_qualifiers, src_qualifiers);
 
     ctx.dst_bytes = getBytes(dst_qualifiers);
@@ -51,7 +51,7 @@ CvtContext build_context(const std::vector<Qualifier> &qualifiers) {
 
     // f16 (half) 强制 2 字节 + 视为 float
     for (const auto &q : dst_qualifiers) {
-        if (q == Qualifier::Q_F16) {
+        if (q == ptxemu::ir::Qualifier::Q_F16) {
             ctx.dst_is_half = true;
             ctx.dst_is_float = true;
             ctx.dst_bytes = 2;
@@ -59,7 +59,7 @@ CvtContext build_context(const std::vector<Qualifier> &qualifiers) {
         }
     }
     for (const auto &q : src_qualifiers) {
-        if (q == Qualifier::Q_F16) {
+        if (q == ptxemu::ir::Qualifier::Q_F16) {
             ctx.src_is_half = true;
             ctx.src_is_float = true;
             ctx.src_bytes = 2;
@@ -79,17 +79,17 @@ CvtContext build_context(const std::vector<Qualifier> &qualifiers) {
     }
 
     // 修饰符
-    ctx.has_sat = QvecHasQ(qualifiers, Qualifier::Q_SAT);
-    ctx.has_rn = QvecHasQ(qualifiers, Qualifier::Q_RN);
-    ctx.has_rni = QvecHasQ(qualifiers, Qualifier::Q_RNI);
-    ctx.has_rz = QvecHasQ(qualifiers, Qualifier::Q_RZ);
-    ctx.has_rzi = QvecHasQ(qualifiers, Qualifier::Q_RZI);
-    ctx.has_rm = QvecHasQ(qualifiers, Qualifier::Q_RM);
-    ctx.has_rmi = QvecHasQ(qualifiers, Qualifier::Q_RMI);
-    ctx.has_rp = QvecHasQ(qualifiers, Qualifier::Q_RP);
-    ctx.has_rpi = QvecHasQ(qualifiers, Qualifier::Q_RPI);
-    ctx.has_rna = QvecHasQ(qualifiers, Qualifier::Q_RNA);
-    ctx.has_rs = QvecHasQ(qualifiers, Qualifier::Q_RS);
+    ctx.has_sat = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_SAT);
+    ctx.has_rn = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_RN);
+    ctx.has_rni = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_RNI);
+    ctx.has_rz = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_RZ);
+    ctx.has_rzi = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_RZI);
+    ctx.has_rm = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_RM);
+    ctx.has_rmi = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_RMI);
+    ctx.has_rp = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_RP);
+    ctx.has_rpi = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_RPI);
+    ctx.has_rna = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_RNA);
+    ctx.has_rs = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_RS);
 
     // 符号性
     ctx.dst_is_signed = TypeUtils::is_signed_type(dst_qualifiers);
@@ -118,7 +118,7 @@ const ConversionStrategy &select_strategy(const CvtContext &ctx) {
 
 void CvtHandler::processOperation(
     ThreadContext * /*context*/, void **operands,
-    const std::vector<Qualifier> &qualifiers,
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
     const std::vector<char> * /*operand_is_immediate*/) {
     void *dst = operands[0];
     void *src = operands[1];

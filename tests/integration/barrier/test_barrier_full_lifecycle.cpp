@@ -75,7 +75,7 @@ static uint32_t get_reg_u32(WarpContext *w, const std::string &reg, int warp_id,
 // Build a 2-warp CTA (64 threads) with the same statement sequence. Returns
 // the two WarpContext pointers (warp 0 and warp 1).
 static std::pair<WarpContext *, WarpContext *>
-setup_two_warps(SMContext &sm, std::vector<StatementContext> &stmts) {
+setup_two_warps(SMContext &sm, std::vector<ptxemu::ir::StatementContext> &stmts) {
     auto blk = std::make_unique<CTAContext>();
     Dim3 g{1, 1, 1};
     Dim3 b{64, 1, 1}; // 64 threads = 2 warps
@@ -113,7 +113,7 @@ setup_two_warps(SMContext &sm, std::vector<StatementContext> &stmts) {
 //          OTHER warp to arrive at bar.sync.
 //   -2   : likely infinite loop in handler (re-ran the same PC > 4 times)
 static int run_warp_until_ret_or_stuck(WarpContext *w,
-                                       std::vector<StatementContext> &stmts,
+                                       std::vector<ptxemu::ir::StatementContext> &stmts,
                                        int barrier_pc, int post_barrier_pc,
                                        int ret_pc, int max_steps = 64) {
     int last_pc = -1;
@@ -186,7 +186,7 @@ TEST_CASE("bar_lifecycle_two_warps_release",
     ResourceManager::instance().initialize(2, 8192);
 
     // Per-warp statement sequence (PC=0..3)
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(4);
     stmts.push_back(make_mov("r1", "tid.x"));    // PC=0
     stmts.push_back(make_bar_sync(0));           // PC=1: bar.sync 0
@@ -278,7 +278,7 @@ TEST_CASE("bar_lifecycle_single_warp_blocks",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(2, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(4);
     stmts.push_back(make_mov("r1", "tid.x"));    // PC=0
     stmts.push_back(make_bar_sync(0));           // PC=1: bar.sync 0
@@ -356,7 +356,7 @@ TEST_CASE("bar_lifecycle_reuse_after_release",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(2, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(6);
     stmts.push_back(make_mov("r1", "tid.x"));    // PC=0
     stmts.push_back(make_bar_sync(0));           // PC=1

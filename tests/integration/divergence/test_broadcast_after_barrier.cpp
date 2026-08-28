@@ -118,16 +118,16 @@ TEST_CASE("I-1: cute_rmsnorm broadcast pattern — every lane executes "
     constexpr int PC_RET     = 6;
     constexpr int NUM_STMTS  = 7;
 
-    std::vector<StatementContext> v(NUM_STMTS);
+    std::vector<ptxemu::ir::StatementContext> v(NUM_STMTS);
     for (auto& s : v) s = make_nop();
 
     // PC=0: setp.eq.b32 p1, r_tid, 0
     v[PC_SETP] = makeGenericInstr(
         S_SETP,
-        {Qualifier::Q_B32, Qualifier::Q_EQ},
-        {OperandContext{RegOperand{"p1", -1}},
-         OperandContext{RegOperand{"r_tid", -1}},
-         OperandContext{ImmOperand{"0"}}},
+        {ptxemu::ir::Qualifier::Q_B32, ptxemu::ir::Qualifier::Q_EQ},
+        {ptxemu::ir::OperandContext{RegOperand{"p1", -1}},
+         ptxemu::ir::OperandContext{RegOperand{"r_tid", -1}},
+         ptxemu::ir::OperandContext{ImmOperand{"0"}}},
         "setp.eq.b32 %p1, %r_tid, 0;");
 
     // PC=1: @p1 bra L_TID0 (predicated branch — pushes SIMT stack entry)
@@ -144,7 +144,7 @@ TEST_CASE("I-1: cute_rmsnorm broadcast pattern — every lane executes "
 
     // PC=5: ld.shared.b32 r2, [sdata+r_tid]  (broadcast-style read)
     v[PC_LDSH] = ptxsim::testing::make_ld_shared_addr(
-        "r2", "sdata", "r_tid", Qualifier::Q_B32);
+        "r2", "sdata", "r_tid", ptxemu::ir::Qualifier::Q_B32);
 
     // PC=6: ret
     v[PC_RET] = make_ret();
@@ -273,7 +273,7 @@ TEST_CASE("I-2: cute_rmsnorm reduction loop + broadcast barrier — full pattern
     constexpr int PC_BCONV  = 14;
     constexpr int PC_LDSH   = 15;
 
-    std::vector<StatementContext> v(NUM_STMTS);
+    std::vector<ptxemu::ir::StatementContext> v(NUM_STMTS);
     for (auto& s : v) s = make_nop();
 
     // ----- Iteration 1 (s=1, only lane 0) -----
@@ -281,7 +281,7 @@ TEST_CASE("I-2: cute_rmsnorm reduction loop + broadcast barrier — full pattern
     v[1] = make_bra_pred("L_WR1", "p1", false, /*reconv*/ 2);
     v[2] = make_bra("L_BAR1");
     v[3] = ptxsim::testing::make_st_shared_addr(
-        "sdata", "r_tid", "r_val", Qualifier::Q_B32);
+        "sdata", "r_tid", "r_val", ptxemu::ir::Qualifier::Q_B32);
     v[4] = make_bar_warp_sync(0xFFFFFFFFu, /*reconv*/ 5);
 
     // ----- Iteration 2 (also s=1, only lane 0 — same predicate for simplicity) -----
@@ -289,26 +289,26 @@ TEST_CASE("I-2: cute_rmsnorm reduction loop + broadcast barrier — full pattern
     v[6] = make_bra_pred("L_WR2", "p2", false, /*reconv*/ 7);
     v[7] = make_bra("L_BAR2");
     v[8] = ptxsim::testing::make_st_shared_addr(
-        "sdata", "r_tid", "r_val", Qualifier::Q_B32);
+        "sdata", "r_tid", "r_val", ptxemu::ir::Qualifier::Q_B32);
     v[9] = make_bar_warp_sync(0xFFFFFFFFu, /*reconv*/ 10);
 
     // ----- Lane-0 write (rsqrt result) -----
     v[10] = makeGenericInstr(
         S_SETP,
-        {Qualifier::Q_B32, Qualifier::Q_EQ},
-        {OperandContext{RegOperand{"p3", -1}},
-         OperandContext{RegOperand{"r_tid", -1}},
-         OperandContext{ImmOperand{"0"}}},
+        {ptxemu::ir::Qualifier::Q_B32, ptxemu::ir::Qualifier::Q_EQ},
+        {ptxemu::ir::OperandContext{RegOperand{"p3", -1}},
+         ptxemu::ir::OperandContext{RegOperand{"r_tid", -1}},
+         ptxemu::ir::OperandContext{ImmOperand{"0"}}},
         "setp.eq.b32 %p3, %r_tid, 0;");
     v[11] = make_bra_pred("L_TID0_W", "p3", false, /*reconv*/ 12);
     v[12] = make_bra("L_BCONV");
     v[13] = ptxsim::testing::make_st_shared_addr(
-        "sdata", "r_tid", "r_rsqrt", Qualifier::Q_B32);
+        "sdata", "r_tid", "r_rsqrt", ptxemu::ir::Qualifier::Q_B32);
 
     // ----- Broadcast barrier + read -----
     v[PC_BCONV] = make_bar_warp_sync(0xFFFFFFFFu, /*reconv*/ PC_LDSH);
     v[PC_LDSH]  = ptxsim::testing::make_ld_shared_addr(
-        "r2", "sdata", "r_tid", Qualifier::Q_B32);
+        "r2", "sdata", "r_tid", ptxemu::ir::Qualifier::Q_B32);
     v[PC_LDSH + 1] = make_ret();
 
     auto blk = std::make_unique<CTAContext>();

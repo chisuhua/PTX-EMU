@@ -149,8 +149,8 @@ std::optional<std::vector<uint8_t>> PTXIRLoader::extractPureCubin(const uint8_t*
     return prefix;
 }
 
-std::vector<StatementContext> PTXIRLoader::deserializeForCubin(const uint8_t* ptxir_data, size_t ptxir_size) {
-    std::vector<StatementContext> result;
+std::vector<ptxemu::ir::StatementContext> PTXIRLoader::deserializeForCubin(const uint8_t* ptxir_data, size_t ptxir_size) {
+    std::vector<ptxemu::ir::StatementContext> result;
     if (!ptxir_data || ptxir_size == 0) return result;
     try {
         std::string s(reinterpret_cast<const char*>(ptxir_data), ptxir_size);

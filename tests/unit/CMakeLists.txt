@@ -868,3 +868,15 @@ add_catch_test(unit_device_api_attach_timing
 )
 target_link_libraries(unit_device_api_attach_timing PRIVATE ptxemu_core)
 set_tests_properties(unit_device_api_attach_timing PROPERTIES LABELS "unit;ptxemu;delegation;attach_timing")
+
+# ============================================================================
+# fix-ptx-extraction-race (OpenSpec change 2026-08-28):
+# Concurrent PTX extraction isolation unit test. RED PHASE: this test MUST
+# FAIL on unpatched code (cubin_utils.cpp writes to shared cwd). The .cu file
+# embeds a real kernel so cuobjdump can list/extract it.
+# ============================================================================
+add_catch_test(unit_cubin_extract_isolation
+    cudart/test_cubin_extract_isolation.cu
+)
+set_tests_properties(unit_cubin_extract_isolation PROPERTIES
+    LABELS "unit;cudart;extract;race;regression;PTX-EXTRACTION-RACE")

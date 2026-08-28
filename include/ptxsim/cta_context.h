@@ -47,7 +47,7 @@ public:
     std::map<std::string, std::unique_ptr<Symtable>> name2Share; // 本地内存符号表
 
     void init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
-              std::vector<StatementContext> &statements,
+              std::vector<ptxemu::ir::StatementContext> &statements,
               std::map<std::string, std::unique_ptr<Symtable>> *name2Sym,
               std::map<std::string, int> &label2pc,
               void *local_memory_base = nullptr,
@@ -139,7 +139,7 @@ public:
 
 private:
     // 存储初始化时的statements引用，用于后续构建共享内存符号表
-    std::vector<StatementContext> *init_statements;
+    std::vector<ptxemu::ir::StatementContext> *init_statements;
 
     // 状态管理
     CTAState state_ = CTAState::INIT;

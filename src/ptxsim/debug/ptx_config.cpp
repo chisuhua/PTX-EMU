@@ -11,7 +11,7 @@
 namespace ptxsim {
 
 // 辅助函数：获取操作数字符串
-std::string DebugConfig::getOperandsString(const StatementContext &statement) {
+std::string DebugConfig::getOperandsString(const ptxemu::ir::StatementContext &statement) {
     return statement.toString();
 
     // std::ostringstream oss;
@@ -52,7 +52,7 @@ std::string DebugConfig::getOperandsString(const StatementContext &statement) {
 }
 
 std::string
-DebugConfig::get_full_instruction_string(const StatementContext &statement) {
+DebugConfig::get_full_instruction_string(const ptxemu::ir::StatementContext &statement) {
     // 使用StatementContext的相关方法来获取指令字符串
     std::ostringstream oss;
     oss << S2s(statement.type) << " ";

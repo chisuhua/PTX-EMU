@@ -26,22 +26,22 @@ TEST_CASE("tcgen05.commit parse → IR",
     // PTX source: tcgen05.commit.cta_group::1;
     const std::string ptx_text = "tcgen05.commit.cta_group::1;";
 
-    std::vector<Qualifier> qualifiers = {
-        Qualifier::Q_TCGEN_CTA_GROUP,  // .cta_group::1
+    std::vector<ptxemu::ir::Qualifier> qualifiers = {
+        ptxemu::ir::Qualifier::Q_TCGEN_CTA_GROUP,  // .cta_group::1
     };
 
     // Zero operands (commit is a sync-only instruction)
-    std::vector<OperandContext> operands;
+    std::vector<ptxemu::ir::OperandContext> operands;
 
     auto stmt = ptxir::factory::makeTcgen05Instr(
-        Tcgen05OpKind::COMMIT, qualifiers, operands, ptx_text);
+        ptxemu::ir::Tcgen05OpKind::COMMIT, qualifiers, operands, ptx_text);
 
-    REQUIRE(std::holds_alternative<Tcgen05Instr>(stmt.data));
-    const auto& instr = std::get<Tcgen05Instr>(stmt.data);
+    REQUIRE(std::holds_alternative<ptxemu::ir::Tcgen05Instr>(stmt.data));
+    const auto& instr = std::get<ptxemu::ir::Tcgen05Instr>(stmt.data);
 
-    REQUIRE(instr.op_kind == Tcgen05OpKind::COMMIT);
+    REQUIRE(instr.op_kind == ptxemu::ir::Tcgen05OpKind::COMMIT);
     REQUIRE(instr.qualifiers.size() == 1);
-    REQUIRE(instr.qualifiers[0] == Qualifier::Q_TCGEN_CTA_GROUP);
+    REQUIRE(instr.qualifiers[0] == ptxemu::ir::Qualifier::Q_TCGEN_CTA_GROUP);
     REQUIRE(instr.operands.size() == 0);
     REQUIRE(instr.instructionText == ptx_text);
 }

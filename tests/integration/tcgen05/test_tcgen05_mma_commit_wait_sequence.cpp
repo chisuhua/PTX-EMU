@@ -63,26 +63,26 @@ private:
     std::unique_ptr<ThreadContext> thread_;
 };
 
-Tcgen05Instr make_mma_instr() {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::MMA;
+ptxemu::ir::Tcgen05Instr make_mma_instr() {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::MMA;
     instr.cta_group = 1;
-    instr.dtype = Tcgen05Dtype::F16;
-    instr.operands = std::vector<OperandContext>(
-        4, OperandContext(RegOperand{"r", 0}));
+    instr.dtype = ptxemu::ir::Tcgen05Dtype::F16;
+    instr.operands = std::vector<ptxemu::ir::OperandContext>(
+        4, ptxemu::ir::OperandContext(RegOperand{"r", 0}));
     return instr;
 }
 
-Tcgen05Instr make_commit_instr() {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::COMMIT;
+ptxemu::ir::Tcgen05Instr make_commit_instr() {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::COMMIT;
     instr.cta_group = 1;
     return instr;
 }
 
-Tcgen05Instr make_wait_instr() {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::WAIT;
+ptxemu::ir::Tcgen05Instr make_wait_instr() {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::WAIT;
     instr.cta_group = 1;
     return instr;
 }

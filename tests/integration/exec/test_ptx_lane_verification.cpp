@@ -64,9 +64,9 @@ static PtxContext parse_ptx_code(const std::string& ptx_code) {
 }
 
 /// 提取 kernel 可执行指令（不含声明）
-static std::vector<StatementContext> extract_kernel_statements(
+static std::vector<ptxemu::ir::StatementContext> extract_kernel_statements(
     const KernelContext& kernel) {
-    std::vector<StatementContext> exec_stmts;
+    std::vector<ptxemu::ir::StatementContext> exec_stmts;
     for (const auto& stmt : kernel.kernelStatements) {
         if (stmt.type == S_REG || stmt.type == S_SHARED ||
             stmt.type == S_LOCAL || stmt.type == S_GLOBAL ||
@@ -194,38 +194,38 @@ TEST_CASE("ptx_lane_verification: 精简序列执行 + ExecutionTracer",
     label2pc["$L__BB0_5"] = 11;
     label2pc["$L__BB0_6"] = 12;
 
-    std::vector<StatementContext> stmts;
-    stmts.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B32},
-        {OperandContext{RegOperand{"r", 1}}, OperandContext{RegOperand{"tid.x", -1}}},
+    std::vector<ptxemu::ir::StatementContext> stmts;
+    stmts.push_back(makeGenericInstr(S_MOV, {ptxemu::ir::Qualifier::Q_B32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 1}}, ptxemu::ir::OperandContext{RegOperand{"tid.x", -1}}},
         "mov.u32 %r1, %tid.x;"));
-    stmts.push_back(makeGenericInstr(S_AND, {Qualifier::Q_B32},
-        {OperandContext{RegOperand{"r", 2}}, OperandContext{RegOperand{"r", 1}}, OperandContext{ImmOperand{"31"}}},
+    stmts.push_back(makeGenericInstr(S_AND, {ptxemu::ir::Qualifier::Q_B32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 2}}, ptxemu::ir::OperandContext{RegOperand{"r", 1}}, ptxemu::ir::OperandContext{ImmOperand{"31"}}},
         "and.b32 %r2, %r1, 31;"));
-    stmts.push_back(makeGenericInstr(S_SETP, {Qualifier::Q_B32, Qualifier::Q_LT},
-        {OperandContext{RegOperand{"p", 1}}, OperandContext{RegOperand{"r", 2}}, OperandContext{ImmOperand{"16"}}},
+    stmts.push_back(makeGenericInstr(S_SETP, {ptxemu::ir::Qualifier::Q_B32, ptxemu::ir::Qualifier::Q_LT},
+        {ptxemu::ir::OperandContext{RegOperand{"p", 1}}, ptxemu::ir::OperandContext{RegOperand{"r", 2}}, ptxemu::ir::OperandContext{ImmOperand{"16"}}},
         "setp.lt.u32 %p1, %r2, 16;"));
     stmts.push_back(makeBranchInstr(S_BRA, {}, "$L__BB0_2", "%p1", false,
         "@%p1 bra $L__BB0_2;"));
-    stmts.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B32},
-        {OperandContext{RegOperand{"r", 3}}, OperandContext{ImmOperand{"99"}}},
+    stmts.push_back(makeGenericInstr(S_MOV, {ptxemu::ir::Qualifier::Q_B32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 3}}, ptxemu::ir::OperandContext{ImmOperand{"99"}}},
         "mov.u32 %r3, 99;"));
     stmts.push_back(makeBranchInstr(S_BRA, {}, "$L__BB0_3", "", false,
         "bra.uni $L__BB0_3;"));
-    stmts.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B32},
-        {OperandContext{RegOperand{"r", 3}}, OperandContext{ImmOperand{"100"}}},
+    stmts.push_back(makeGenericInstr(S_MOV, {ptxemu::ir::Qualifier::Q_B32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 3}}, ptxemu::ir::OperandContext{ImmOperand{"100"}}},
         "mov.u32 %r3, 100;"));
-    stmts.push_back(makeGenericInstr(S_SETP, {Qualifier::Q_B32, Qualifier::Q_NE},
-        {OperandContext{RegOperand{"p", 3}}, OperandContext{RegOperand{"r", 1}}, OperandContext{ImmOperand{"0"}}},
+    stmts.push_back(makeGenericInstr(S_SETP, {ptxemu::ir::Qualifier::Q_B32, ptxemu::ir::Qualifier::Q_NE},
+        {ptxemu::ir::OperandContext{RegOperand{"p", 3}}, ptxemu::ir::OperandContext{RegOperand{"r", 1}}, ptxemu::ir::OperandContext{ImmOperand{"0"}}},
         "setp.ne.s32 %p3, %r1, 0;"));
     stmts.push_back(makeBranchInstr(S_BRA, {}, "$L__BB0_5", "%p3", false,
         "@%p3 bra $L__BB0_5;"));
-    stmts.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B32},
-        {OperandContext{RegOperand{"r", 4}}, OperandContext{ImmOperand{"1"}}},
+    stmts.push_back(makeGenericInstr(S_MOV, {ptxemu::ir::Qualifier::Q_B32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 4}}, ptxemu::ir::OperandContext{ImmOperand{"1"}}},
         "mov.u32 %r4, 1;"));
     stmts.push_back(makeBranchInstr(S_BRA, {}, "$L__BB0_6", "", false,
         "bra.uni $L__BB0_6;"));
-    stmts.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B32},
-        {OperandContext{RegOperand{"r", 4}}, OperandContext{ImmOperand{"2"}}},
+    stmts.push_back(makeGenericInstr(S_MOV, {ptxemu::ir::Qualifier::Q_B32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 4}}, ptxemu::ir::OperandContext{ImmOperand{"2"}}},
         "mov.u32 %r4, 2;"));
     stmts.push_back(makeVoidInstr(S_RET, "ret;"));
 

@@ -2,10 +2,12 @@
 #include "ptx_ir/ptx_types.h"
 #include "utils/logger.h"
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <string>
 #include <vector>
 #include <regex>
+#include <unistd.h>
 
 #define PTX_ERROR(fmt, ...) PTX_ERROR_EMU(fmt, ##__VA_ARGS__)
 #define PTX_DEBUG(fmt, ...) PTX_DEBUG_EMU(fmt, ##__VA_ARGS__)
@@ -89,26 +91,68 @@ static std::string strip_inline_asm(const std::string& ptx_code) {
     return result;
 }
 
+// Per-call unique extraction workspace.
+//
+// The PTX list file and each extracted .ptx file are written into this
+// directory. It is created with mkdtemp (atomic 6-char random suffix), so
+// concurrent extract_ptx_with_cuobjdump calls never collide on the same
+// files. Previously these were written to the shared process cwd, which
+// raced under parallel ctest -j4 (one call's `rm` deleted another's
+// in-flight file). See openspec/changes/fix-ptx-extraction-race/.
+class ExtractWorkspace {
+  public:
+    explicit ExtractWorkspace() {
+        char tmpl[] = "/tmp/ptxemu-XXXXXX";
+        char *created = mkdtemp(tmpl);
+        if (created == nullptr) {
+            return;
+        }
+        dir_ = created;
+    }
+
+    ~ExtractWorkspace() {
+        if (dir_.empty()) {
+            return;
+        }
+        // Best-effort cleanup: the directory is private to this call, so a
+        // failure here cannot corrupt another extraction. /tmp is also
+        // cleared by the OS eventually.
+        std::error_code ec;
+        std::filesystem::remove_all(dir_, ec);
+    }
+
+    ExtractWorkspace(const ExtractWorkspace &) = delete;
+    ExtractWorkspace &operator=(const ExtractWorkspace &) = delete;
+
+    bool valid() const { return !dir_.empty(); }
+
+    std::string path(const std::string &leaf) const { return dir_ + "/" + leaf; }
+
+    std::string dir() const { return dir_; }
+
+  private:
+    std::string dir_;
+};
+
 std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
-    // Get absolute path to working directory
-    char cwd[1024];
-    if (getcwd(cwd, sizeof(cwd)) == nullptr) {
-        PTX_ERROR("Failed to get current working directory");
+    ExtractWorkspace ws;
+    if (!ws.valid()) {
+        PTX_ERROR("Failed to create unique extraction temp dir (mkdtemp)");
         return "";
     }
-    
+
     char ptx_list_cmd[1024];
     snprintf(ptx_list_cmd, 1024,
              CUOBJDUMP_PATH " -lptx %s | cut -d : -f 2 | awk '{$1=$1}1' > "
              "%s/__ptx_list_temp__",
-             executable_path.c_str(), cwd);
+             executable_path.c_str(), ws.dir().c_str());
 
     if (system(ptx_list_cmd) != 0) {
         PTX_ERROR("Failed to execute: %s", ptx_list_cmd);
         return "";
     }
 
-    std::string ptx_list_path = std::string(cwd) + "/__ptx_list_temp__";
+    std::string ptx_list_path = ws.path("__ptx_list_temp__");
     std::ifstream ptx_list_file(ptx_list_path);
     if (!ptx_list_file.is_open()) {
         PTX_ERROR("Failed to open PTX list file");
@@ -123,17 +167,21 @@ std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
     // the warning below is purely diagnostic. See c5 Fix #3.
     int ptx_section_count = 0;
     while (std::getline(ptx_list_file, ptx_file)) {
+        // Run cuobjdump in a subshell cd'd into the private workspace so the
+        // extracted .ptx lands there. The parent process cwd is left
+        // untouched, which keeps concurrent threads safe (chdir is
+        // process-global and would break isolation).
         char extract_cmd[1024];
-        snprintf(extract_cmd, 1024, CUOBJDUMP_PATH " -xptx %s %s",
-                 ptx_file.c_str(), executable_path.c_str());
+        snprintf(extract_cmd, 1024,
+                 "cd %s && " CUOBJDUMP_PATH " -xptx %s %s",
+                 ws.dir().c_str(), ptx_file.c_str(), executable_path.c_str());
 
         if (system(extract_cmd) != 0) {
             PTX_ERROR("Failed to extract PTX: %s", extract_cmd);
             continue;
         }
 
-        // PTX file is extracted to current directory
-        std::string ptx_file_path = std::string(cwd) + "/" + ptx_file;
+        std::string ptx_file_path = ws.path(ptx_file);
         std::ifstream extracted_ptx_file(ptx_file_path);
         if (!extracted_ptx_file.is_open()) {
             PTX_ERROR("Failed to open extracted PTX file: %s", ptx_file_path.c_str());
@@ -148,10 +196,6 @@ std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
         extracted_ptx_file.close();
 
         ++ptx_section_count;
-
-        char cleanup_cmd[1024];
-        snprintf(cleanup_cmd, 1024, "rm %s", ptx_file_path.c_str());
-        system(cleanup_cmd);
     }
     ptx_list_file.close();
 
@@ -160,10 +204,6 @@ std::string extract_ptx_with_cuobjdump(const std::string &executable_path) {
                      "all sections extracted (c5 Fix #3)",
                      ptx_section_count);
     }
-
-    char cleanup_cmd[1024];
-    snprintf(cleanup_cmd, 1024, "rm %s", ptx_list_path.c_str());
-    system(cleanup_cmd);
 
     // 移除内联汇编块，避免解析错误
     return strip_inline_asm(ptx_codes);

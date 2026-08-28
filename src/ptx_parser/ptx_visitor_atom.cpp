@@ -9,7 +9,7 @@ using namespace ptxir::factory;
 std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstContext *ctx) {  \
     if (!currentKernel) return nullptr;                                        \
                                                                                      \
-    std::vector<OperandContext> operands;                                          \
+    std::vector<ptxemu::ir::OperandContext> operands;                                          \
     auto operandCtxs = ctx->getRuleContexts<ptxparser::ptxParser::OperandContext>();     \
                                                                                      \
     /* atom grammar:                                                                  \
@@ -23,7 +23,7 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
      * ctx->addressExpr() = middle address expression (the [addr] part)              \
      *                                                                                \
      * The previous implementation only collected dst+src via                         \
-     * getRuleContexts<OperandContext>() and silently dropped the middle             \
+     * getRuleContexts<ptxemu::ir::OperandContext>() and silently dropped the middle             \
      * addressExpr, yielding fewer operands than S_ATOM in ptx_op.def declares.      \
      *                                                                                \
      * Fix: explicitly convert ctx->addressExpr() into an AddrOperand and            \
@@ -39,12 +39,12 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
         addr.immediateOffset = "0";                                                \
         if (addrExprCtx->operand()) {                                              \
             auto baseOp = createOperandFromContext(addrExprCtx->operand());        \
-            if (baseOp.kind() == OperandKind::REG) {                               \
+            if (baseOp.kind() == ptxemu::ir::OperandKind::REG) {                               \
                 const auto &reg = std::get<RegOperand>(baseOp.data);               \
                 addr.baseSymbol = reg.fullName();                                  \
                 addr.id = reg.fullName();                                          \
                 addr.offsetType = AddrOperand::OffsetType::REGISTER;               \
-                addr.registerOffset = std::make_shared<OperandContext>(baseOp);    \
+                addr.registerOffset = std::make_shared<ptxemu::ir::OperandContext>(baseOp);    \
             } else {                                                               \
                 std::string raw = addrExprCtx->getText();                          \
                 if (!raw.empty() && (raw.front() == '[' || raw.back() == ']')) {   \
@@ -66,7 +66,7 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
                 ? ("-" + immCtx->IMMEDIATE()->getText())                           \
                 : immCtx->IMMEDIATE()->getText();                                  \
         }                                                                          \
-        operands.push_back(OperandContext{addr});                                  \
+        operands.push_back(ptxemu::ir::OperandContext{addr});                                  \
         operands.push_back(createOperandFromContext(operandCtxs[1]));              \
         for (size_t i = 2; i < std::min(operandCtxs.size(), (size_t)opcount); ++i) { \
             operands.push_back(createOperandFromContext(operandCtxs[i]));          \
@@ -86,8 +86,8 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
      */                                                                                \
     for (auto &q : quals) {                                                            \
         switch (q) {                                                                   \
-        case Qualifier::Q_DOTADD: q = Qualifier::Q_ADD_ATOM; break;                   \
-        case Qualifier::Q_DOTOR:  q = Qualifier::Q_OR_ATOM;  break;                   \
+        case ptxemu::ir::Qualifier::Q_DOTADD: q = ptxemu::ir::Qualifier::Q_ADD_ATOM; break;                   \
+        case ptxemu::ir::Qualifier::Q_DOTOR:  q = ptxemu::ir::Qualifier::Q_OR_ATOM;  break;                   \
         default: break;                                                                \
         }                                                                              \
     }                                                                                  \

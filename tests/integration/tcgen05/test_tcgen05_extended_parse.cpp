@@ -79,32 +79,32 @@ private:
     std::unique_ptr<ThreadContext> thread1_;
 };
 
-Tcgen05Instr make_fence_instr(uint32_t cta_group,
-                              std::vector<Qualifier> qualifiers) {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::FENCE;
+ptxemu::ir::Tcgen05Instr make_fence_instr(uint32_t cta_group,
+                              std::vector<ptxemu::ir::Qualifier> qualifiers) {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::FENCE;
     instr.cta_group = cta_group;
     instr.qualifiers = std::move(qualifiers);
     return instr;
 }
 
-Tcgen05Instr make_alloc_instr(uint32_t cta_group = 1) {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::ALLOC;
+ptxemu::ir::Tcgen05Instr make_alloc_instr(uint32_t cta_group = 1) {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::ALLOC;
     instr.cta_group = cta_group;
     return instr;
 }
 
-Tcgen05Instr make_dealloc_instr(uint32_t cta_group = 1) {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::DEALLOC;
+ptxemu::ir::Tcgen05Instr make_dealloc_instr(uint32_t cta_group = 1) {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::DEALLOC;
     instr.cta_group = cta_group;
     return instr;
 }
 
-Tcgen05Instr make_relinquish_instr(uint32_t cta_group = 1) {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::RELINQUISH;
+ptxemu::ir::Tcgen05Instr make_relinquish_instr(uint32_t cta_group = 1) {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::RELINQUISH;
     instr.cta_group = cta_group;
     return instr;
 }
@@ -125,7 +125,7 @@ TEST_CASE("processTcgen05Fence: integration ::before_thread_sync records positio
 
     REQUIRE_NOTHROW(ptxsim::processTcgen05Fence(
         &rig.thread0(),
-        make_fence_instr(1, {Qualifier::Q_BEFORE_THREAD_SYNC})));
+        make_fence_instr(1, {ptxemu::ir::Qualifier::Q_BEFORE_THREAD_SYNC})));
 
     REQUIRE(rig.warp0().get_last_fence_position() ==
             WarpContext::kFenceBefore);
@@ -153,7 +153,7 @@ TEST_CASE("processTcgen05Fence: integration alloc/fence/dealloc interleave",
 
     ptxsim::processTcgen05Fence(
         &rig.thread0(),
-        make_fence_instr(1, {Qualifier::Q_AFTER_THREAD_SYNC}));
+        make_fence_instr(1, {ptxemu::ir::Qualifier::Q_AFTER_THREAD_SYNC}));
     REQUIRE(rig.warp0().get_last_fence_position() ==
             WarpContext::kFenceAfter);
     REQUIRE(alloc.active_allocation_count() == 1);  // fence did not allocate
@@ -178,10 +178,10 @@ TEST_CASE("processTcgen05Fence: integration multi-warp independence",
 
     ptxsim::processTcgen05Fence(
         &rig.thread0(),
-        make_fence_instr(1, {Qualifier::Q_BEFORE_THREAD_SYNC}));
+        make_fence_instr(1, {ptxemu::ir::Qualifier::Q_BEFORE_THREAD_SYNC}));
     ptxsim::processTcgen05Fence(
         &rig.thread1(),
-        make_fence_instr(1, {Qualifier::Q_AFTER_THREAD_SYNC}));
+        make_fence_instr(1, {ptxemu::ir::Qualifier::Q_AFTER_THREAD_SYNC}));
 
     REQUIRE(rig.warp0().get_last_fence_position() ==
             WarpContext::kFenceBefore);
@@ -191,7 +191,7 @@ TEST_CASE("processTcgen05Fence: integration multi-warp independence",
     // Records persist independently.
     ptxsim::processTcgen05Fence(
         &rig.thread0(),
-        make_fence_instr(1, {Qualifier::Q_AFTER_THREAD_SYNC}));
+        make_fence_instr(1, {ptxemu::ir::Qualifier::Q_AFTER_THREAD_SYNC}));
     REQUIRE(rig.warp0().get_last_fence_position() ==
             WarpContext::kFenceAfter);
     REQUIRE(rig.warp1().get_last_fence_position() ==
@@ -209,7 +209,7 @@ TEST_CASE("processTcgen05Fence: integration cta_group::2 throws ADR-0018",
     REQUIRE_THROWS_AS(
         ptxsim::processTcgen05Fence(
             &rig.thread0(),
-            make_fence_instr(2, {Qualifier::Q_BEFORE_THREAD_SYNC})),
+            make_fence_instr(2, {ptxemu::ir::Qualifier::Q_BEFORE_THREAD_SYNC})),
         UnsupportedInstructionException);
     // State must NOT be mutated before the throw
     REQUIRE(rig.warp0().get_last_fence_position() == WarpContext::kFenceNone);

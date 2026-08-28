@@ -6,8 +6,14 @@
 #include <vector>
 
 class Dim3;
+// Phase 1.5c+d: forward declarations must live in the canonical
+// namespace. Global-scope `struct RegOperand;` / `enum class Qualifier;`
+// would conflict with the forwarding shim's using-declarations in
+// include/ptx_ir/ptx_types.h.
+namespace ptxemu { namespace ir {
 struct RegOperand;
 enum class Qualifier : int;
+} }
 
 // Encapsulates register lookup and allocation, extracted from ThreadContext
 // (Phase 2 of god-class-refactor-thread-context).
@@ -29,8 +35,8 @@ public:
     // Resolve a register operand to its backing memory address.
     // Handles special registers (tid.x, ctaid.x, ntid.x, nctaid.x, etc.)
     // before falling through to RegisterBankManager.
-    void *acquire_register(const RegOperand &reg,
-                           std::vector<Qualifier> qualifier);
+    void *acquire_register(const ptxemu::ir::RegOperand &reg,
+                           std::vector<ptxemu::ir::Qualifier> qualifier);
 
     // ── Register bank access ──────────────────────────────────────
     void set_register_bank_manager(std::shared_ptr<RegisterBankManager> mgr) {

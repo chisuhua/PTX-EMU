@@ -10,8 +10,8 @@
 using namespace ptxsim;
 
 namespace {
-StatementContext make_nop_stmt() {
-    StatementContext stmt;
+ptxemu::ir::StatementContext make_nop_stmt() {
+    ptxemu::ir::StatementContext stmt;
     stmt.type = S_MOV;
     GenericInstr instr;
     stmt.data = instr;
@@ -24,7 +24,7 @@ void add_thread(WarpContext &warp, int lane, bool is_exited = false) {
     Dim3 threadIdx = {(uint32_t)lane, 0, 0};
     Dim3 gridDim = {1, 1, 1};
     Dim3 blockDim = {32, 1, 1};
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.push_back(make_nop_stmt());
     std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;

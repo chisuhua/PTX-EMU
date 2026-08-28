@@ -63,10 +63,10 @@ static void init_factory() {
     }
 }
 
-static std::vector<StatementContext> build_instrs(
+static std::vector<ptxemu::ir::StatementContext> build_instrs(
     std::map<std::string, int>& l2pc)
 {
-    std::vector<StatementContext> v(NUM_STMTS);
+    std::vector<ptxemu::ir::StatementContext> v(NUM_STMTS);
     for (auto& s : v) s = make_nop();
     v[BRANCH_PC]  = make_bra_pred("L_PATH_B", "%p1", false, BARRIER_PC);
     v[BARRIER_PC] = make_bar_warp_sync(0xFFFFFFFFu, POST_BARRIER);
@@ -80,7 +80,7 @@ static std::vector<StatementContext> build_instrs(
 }
 
 static WarpContext* setup_warp(SMContext& sm,
-                               std::vector<StatementContext>& v,
+                               std::vector<ptxemu::ir::StatementContext>& v,
                                std::map<std::string, int>& l2pc)
 {
     auto blk = std::make_unique<CTAContext>();

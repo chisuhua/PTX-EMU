@@ -13,142 +13,151 @@
 #include <stdexcept>
 #include <vector>
 
-int Q2bytes(Qualifier q) {
+// Phase 1.5c+d: Q2bytes is defined in the ptxsim namespace so it no
+// longer exists at global scope. This eliminates the ambiguous-call
+// overload between the legacy fallback (returns 0 for non-data
+// qualifiers like Q_LT) and the canonical ptxemu::ir::Q2bytes (strict,
+// asserts on unknown). Internal callers use the qualified
+// ptxsim::Q2bytes; external call sites (cta_context etc.) that use the
+// unqualified Q2bytes now resolve via ADL to canonical only.
+namespace ptxsim {
+int Q2bytes(ptxemu::ir::Qualifier q) {
     switch (q) {
-    case Qualifier::Q_U64:
-    case Qualifier::Q_S64:
-    case Qualifier::Q_B64:
-    case Qualifier::Q_F64:
+    case ptxemu::ir::Qualifier::Q_U64:
+    case ptxemu::ir::Qualifier::Q_S64:
+    case ptxemu::ir::Qualifier::Q_B64:
+    case ptxemu::ir::Qualifier::Q_F64:
         return 8;
-    case Qualifier::Q_U32:
-    case Qualifier::Q_S32:
-    case Qualifier::Q_B32:
-    case Qualifier::Q_F32:
+    case ptxemu::ir::Qualifier::Q_U32:
+    case ptxemu::ir::Qualifier::Q_S32:
+    case ptxemu::ir::Qualifier::Q_B32:
+    case ptxemu::ir::Qualifier::Q_F32:
         return 4;
-    case Qualifier::Q_U16:
-    case Qualifier::Q_S16:
-    case Qualifier::Q_B16:
-    case Qualifier::Q_F16:
+    case ptxemu::ir::Qualifier::Q_U16:
+    case ptxemu::ir::Qualifier::Q_S16:
+    case ptxemu::ir::Qualifier::Q_B16:
+    case ptxemu::ir::Qualifier::Q_F16:
         return 2;
-    case Qualifier::Q_U8:
-    case Qualifier::Q_S8:
-    case Qualifier::Q_B8:
-    case Qualifier::Q_PRED:
-    case Qualifier::Q_F8:
+    case ptxemu::ir::Qualifier::Q_U8:
+    case ptxemu::ir::Qualifier::Q_S8:
+    case ptxemu::ir::Qualifier::Q_B8:
+    case ptxemu::ir::Qualifier::Q_PRED:
+    case ptxemu::ir::Qualifier::Q_F8:
         return 1;
     default:
         return 0;
     }
 }
+}  // namespace ptxsim
 
-bool Signed(Qualifier q) {
+bool Signed(ptxemu::ir::Qualifier q) {
     switch (q) {
-    case Qualifier::Q_S64:
-    case Qualifier::Q_S32:
-    case Qualifier::Q_S16:
-    case Qualifier::Q_S8:
+    case ptxemu::ir::Qualifier::Q_S64:
+    case ptxemu::ir::Qualifier::Q_S32:
+    case ptxemu::ir::Qualifier::Q_S16:
+    case ptxemu::ir::Qualifier::Q_S8:
         return true;
     default:
         return false;
     }
 }
 
-int getBytes(const std::vector<Qualifier> &q) {
+int getBytes(const std::vector<ptxemu::ir::Qualifier> &q) {
     for (auto e : q) {
-        int bytes = Q2bytes(e);
+        int bytes = ptxsim::Q2bytes(e);
         if (bytes)
             return bytes;
     }
     return 0;
 }
 
-DTYPE getDType(std::vector<Qualifier> &q) {
+DTYPE getDType(std::vector<ptxemu::ir::Qualifier> &q) {
     if (q.size() == 0)
         return DNONE;
-    Qualifier e = q.back();
+    ptxemu::ir::Qualifier e = q.back();
     switch (e) {
-    case Qualifier::Q_F64:
-    case Qualifier::Q_F32:
-    case Qualifier::Q_F16:
-    case Qualifier::Q_F8:
+    case ptxemu::ir::Qualifier::Q_F64:
+    case ptxemu::ir::Qualifier::Q_F32:
+    case ptxemu::ir::Qualifier::Q_F16:
+    case ptxemu::ir::Qualifier::Q_F8:
         return DFLOAT;
-    case Qualifier::Q_U64:
-    case Qualifier::Q_U32:
-    case Qualifier::Q_U16:
-    case Qualifier::Q_U8:
-    case Qualifier::Q_S64:
-    case Qualifier::Q_S32:
-    case Qualifier::Q_S16:
-    case Qualifier::Q_S8:
-    case Qualifier::Q_B64:
-    case Qualifier::Q_B32:
-    case Qualifier::Q_B16:
-    case Qualifier::Q_B8:
+    case ptxemu::ir::Qualifier::Q_U64:
+    case ptxemu::ir::Qualifier::Q_U32:
+    case ptxemu::ir::Qualifier::Q_U16:
+    case ptxemu::ir::Qualifier::Q_U8:
+    case ptxemu::ir::Qualifier::Q_S64:
+    case ptxemu::ir::Qualifier::Q_S32:
+    case ptxemu::ir::Qualifier::Q_S16:
+    case ptxemu::ir::Qualifier::Q_S8:
+    case ptxemu::ir::Qualifier::Q_B64:
+    case ptxemu::ir::Qualifier::Q_B32:
+    case ptxemu::ir::Qualifier::Q_B16:
+    case ptxemu::ir::Qualifier::Q_B8:
         return DINT;
     default:
         return DNONE;
     }
 }
 
-DTYPE getDType(Qualifier q) {
+DTYPE getDType(ptxemu::ir::Qualifier q) {
     switch (q) {
-    case Qualifier::Q_F64:
-    case Qualifier::Q_F32:
-    case Qualifier::Q_F16:
-    case Qualifier::Q_F8:
+    case ptxemu::ir::Qualifier::Q_F64:
+    case ptxemu::ir::Qualifier::Q_F32:
+    case ptxemu::ir::Qualifier::Q_F16:
+    case ptxemu::ir::Qualifier::Q_F8:
         return DFLOAT;
-    case Qualifier::Q_U64:
-    case Qualifier::Q_U32:
-    case Qualifier::Q_U16:
-    case Qualifier::Q_U8:
-    case Qualifier::Q_S64:
-    case Qualifier::Q_S32:
-    case Qualifier::Q_S16:
-    case Qualifier::Q_S8:
-    case Qualifier::Q_B64:
-    case Qualifier::Q_B32:
-    case Qualifier::Q_B16:
-    case Qualifier::Q_B8:
+    case ptxemu::ir::Qualifier::Q_U64:
+    case ptxemu::ir::Qualifier::Q_U32:
+    case ptxemu::ir::Qualifier::Q_U16:
+    case ptxemu::ir::Qualifier::Q_U8:
+    case ptxemu::ir::Qualifier::Q_S64:
+    case ptxemu::ir::Qualifier::Q_S32:
+    case ptxemu::ir::Qualifier::Q_S16:
+    case ptxemu::ir::Qualifier::Q_S8:
+    case ptxemu::ir::Qualifier::Q_B64:
+    case ptxemu::ir::Qualifier::Q_B32:
+    case ptxemu::ir::Qualifier::Q_B16:
+    case ptxemu::ir::Qualifier::Q_B8:
         return DINT;
     default:
         return DNONE;
     }
 }
 
-Qualifier getDataQualifier(const std::vector<Qualifier> &qualifiers) {
+ptxemu::ir::Qualifier getDataQualifier(const std::vector<ptxemu::ir::Qualifier> &qualifiers) {
     for (const auto &q : qualifiers) {
-        if (Q2bytes(q))
+        if (ptxsim::Q2bytes(q))
             return q;
     }
     assert(0);
-    return Qualifier::Q_UNKNOWN; // 添加默认返回值
+    return ptxemu::ir::Qualifier::Q_UNKNOWN; // 添加默认返回值
 }
 
-Qualifier getCmpOpQualifier(const std::vector<Qualifier> &qualifiers) {
+ptxemu::ir::Qualifier getCmpOpQualifier(const std::vector<ptxemu::ir::Qualifier> &qualifiers) {
     for (auto e : qualifiers) {
         switch (e) {
-        case Qualifier::Q_EQ:
-        case Qualifier::Q_NE:
-        case Qualifier::Q_LT:
-        case Qualifier::Q_LE:
-        case Qualifier::Q_GT:
-        case Qualifier::Q_GE:
-        case Qualifier::Q_LO:
-        case Qualifier::Q_HI:
-        case Qualifier::Q_LTU:
-        case Qualifier::Q_LEU:
-        case Qualifier::Q_GEU:
-        case Qualifier::Q_NEU:
-        case Qualifier::Q_GTU:
+        case ptxemu::ir::Qualifier::Q_EQ:
+        case ptxemu::ir::Qualifier::Q_NE:
+        case ptxemu::ir::Qualifier::Q_LT:
+        case ptxemu::ir::Qualifier::Q_LE:
+        case ptxemu::ir::Qualifier::Q_GT:
+        case ptxemu::ir::Qualifier::Q_GE:
+        case ptxemu::ir::Qualifier::Q_LO:
+        case ptxemu::ir::Qualifier::Q_HI:
+        case ptxemu::ir::Qualifier::Q_LTU:
+        case ptxemu::ir::Qualifier::Q_LEU:
+        case ptxemu::ir::Qualifier::Q_GEU:
+        case ptxemu::ir::Qualifier::Q_NEU:
+        case ptxemu::ir::Qualifier::Q_GTU:
             return e;
         }
     }
-    return Qualifier::Q_UNKNOWN;
+    return ptxemu::ir::Qualifier::Q_UNKNOWN;
 }
 
-void splitDstSrcQualifiers(const std::vector<Qualifier> &qualifiers,
-                           std::vector<Qualifier> &dst_qualifiers,
-                           std::vector<Qualifier> &src_qualifiers) {
+void splitDstSrcQualifiers(const std::vector<ptxemu::ir::Qualifier> &qualifiers,
+                           std::vector<ptxemu::ir::Qualifier> &dst_qualifiers,
+                           std::vector<ptxemu::ir::Qualifier> &src_qualifiers) {
     dst_qualifiers.clear();
     src_qualifiers.clear();
 
@@ -157,7 +166,7 @@ void splitDstSrcQualifiers(const std::vector<Qualifier> &qualifiers,
 
     // 遍历限定符，分离目标和源限定符
     for (const auto &q : qualifiers) {
-        int bytes = Q2bytes(q);
+        int bytes = ptxsim::Q2bytes(q);
 
         // 如果这个限定符代表一种数据类型
         if (bytes > 0) {
@@ -185,18 +194,18 @@ void splitDstSrcQualifiers(const std::vector<Qualifier> &qualifiers,
 }
 
 // 实现获取地址空间的辅助函数
-MemorySpace getAddressSpace(const std::vector<Qualifier> &qualifiers) {
+MemorySpace getAddressSpace(const std::vector<ptxemu::ir::Qualifier> &qualifiers) {
     for (const auto &qual : qualifiers) {
         switch (qual) {
-        case Qualifier::Q_GLOBAL:
+        case ptxemu::ir::Qualifier::Q_GLOBAL:
             return MemorySpace::GLOBAL;
-        case Qualifier::Q_SHARED:
+        case ptxemu::ir::Qualifier::Q_SHARED:
             return MemorySpace::SHARED;
-        case Qualifier::Q_LOCAL:
+        case ptxemu::ir::Qualifier::Q_LOCAL:
             return MemorySpace::LOCAL;
-        case Qualifier::Q_CONST:
+        case ptxemu::ir::Qualifier::Q_CONST:
             return MemorySpace::CONST;
-        case Qualifier::Q_PARAM:
+        case ptxemu::ir::Qualifier::Q_PARAM:
             return MemorySpace::PARAM;
         default:
             continue;
@@ -207,7 +216,7 @@ MemorySpace getAddressSpace(const std::vector<Qualifier> &qualifiers) {
 }
 
 // 解析立即数到缓冲区
-void parseImmediate(const std::string &s, Qualifier q, void *out) {
+void parseImmediate(const std::string &s, ptxemu::ir::Qualifier q, void *out) {
     if (!out)
         return;
 
@@ -216,14 +225,14 @@ void parseImmediate(const std::string &s, Qualifier q, void *out) {
     clean.erase(std::remove_if(clean.begin(), clean.end(), ::isspace),
                 clean.end());
     if (clean.empty()) {
-        std::vector<Qualifier> q_vec = {q};
+        std::vector<ptxemu::ir::Qualifier> q_vec = {q};
         memset(out, 0, getBytes(q_vec));
         return;
     }
 
     try {
         switch (q) {
-        case Qualifier::Q_F32: {
+        case ptxemu::ir::Qualifier::Q_F32: {
             float *dst = static_cast<float *>(out);
             if (clean.find("0x") == 0 || clean.find("0X") == 0) {
                 // 检查是否为标准十六进制浮点数格式（如 0x1.0p0）
@@ -249,7 +258,7 @@ void parseImmediate(const std::string &s, Qualifier q, void *out) {
             }
             break;
         }
-        case Qualifier::Q_F64: {
+        case ptxemu::ir::Qualifier::Q_F64: {
             double *dst = static_cast<double *>(out);
             if (clean.find("0x") == 0 || clean.find("0X") == 0) {
                 // 检查是否为标准十六进制浮点数格式（如 0x1.0p0）
@@ -274,35 +283,35 @@ void parseImmediate(const std::string &s, Qualifier q, void *out) {
             break;
         }
         // 整型统一用 stoll + 截断
-        case Qualifier::Q_S64:
-        case Qualifier::Q_U64:
-        case Qualifier::Q_B64: {
+        case ptxemu::ir::Qualifier::Q_S64:
+        case ptxemu::ir::Qualifier::Q_U64:
+        case ptxemu::ir::Qualifier::Q_B64: {
             int64_t val = std::stoll(clean, nullptr, 0);
             *static_cast<uint64_t *>(out) = static_cast<uint64_t>(val);
             break;
         }
-        case Qualifier::Q_S32:
-        case Qualifier::Q_U32:
-        case Qualifier::Q_B32: {
+        case ptxemu::ir::Qualifier::Q_S32:
+        case ptxemu::ir::Qualifier::Q_U32:
+        case ptxemu::ir::Qualifier::Q_B32: {
             int64_t val = std::stoll(clean, nullptr, 0); // 使用stoll防止溢出
             *static_cast<uint32_t *>(out) = static_cast<uint32_t>(val);
             break;
         }
-        case Qualifier::Q_S16:
-        case Qualifier::Q_U16:
-        case Qualifier::Q_B16: {
+        case ptxemu::ir::Qualifier::Q_S16:
+        case ptxemu::ir::Qualifier::Q_U16:
+        case ptxemu::ir::Qualifier::Q_B16: {
             int64_t val = std::stoll(clean, nullptr, 0);
             *static_cast<uint16_t *>(out) = static_cast<uint16_t>(val);
             break;
         }
-        case Qualifier::Q_S8:
-        case Qualifier::Q_U8:
-        case Qualifier::Q_B8: {
+        case ptxemu::ir::Qualifier::Q_S8:
+        case ptxemu::ir::Qualifier::Q_U8:
+        case ptxemu::ir::Qualifier::Q_B8: {
             int64_t val = std::stoll(clean, nullptr, 0);
             *static_cast<uint8_t *>(out) = static_cast<uint8_t>(val);
             break;
         }
-        case Qualifier::Q_PRED: {
+        case ptxemu::ir::Qualifier::Q_PRED: {
             // 谓词类型应为1-bit，但存储为uint8_t
             bool val = (std::stoll(clean, nullptr, 0) != 0);
             *static_cast<uint8_t *>(out) = static_cast<uint8_t>(val);
@@ -313,7 +322,7 @@ void parseImmediate(const std::string &s, Qualifier q, void *out) {
             PTX_WARN_EMU("Unsupported immediate qualifier: %s, zeroing value",
                          Q2s(q).c_str());
             {
-                std::vector<Qualifier> q_vec = {q};
+                std::vector<ptxemu::ir::Qualifier> q_vec = {q};
                 memset(out, 0, getBytes(q_vec));
             }
             return;
@@ -322,13 +331,13 @@ void parseImmediate(const std::string &s, Qualifier q, void *out) {
         PTX_ERROR_EMU("Failed to parse immediate value '%s' as %s: %s",
                       clean.c_str(), Q2s(q).c_str(), e.what());
         {
-            std::vector<Qualifier> q_vec = {q};
+            std::vector<ptxemu::ir::Qualifier> q_vec = {q};
             memset(out, 0, getBytes(q_vec));
         }
     }
 }
 
-bool QvecHasQ(const std::vector<Qualifier> &qvec, Qualifier q) {
+bool QvecHasQ(const std::vector<ptxemu::ir::Qualifier> &qvec, ptxemu::ir::Qualifier q) {
     for (const auto &item : qvec) {
         if (item == q) {
             return true;
@@ -338,9 +347,9 @@ bool QvecHasQ(const std::vector<Qualifier> &qvec, Qualifier q) {
 }
 
 // 检查修饰符中是否包含.cc修饰符
-bool hasCCQualifier(const std::vector<Qualifier> &qualifiers) {
+bool hasCCQualifier(const std::vector<ptxemu::ir::Qualifier> &qualifiers) {
     for (const auto &q : qualifiers) {
-        if (q == Qualifier::Q_CC) {
+        if (q == ptxemu::ir::Qualifier::Q_CC) {
             return true;
         }
     }
@@ -349,12 +358,12 @@ bool hasCCQualifier(const std::vector<Qualifier> &qualifiers) {
 
 // 获取每个操作数的字节大小
 std::vector<int>
-getOperandBytes(const std::vector<Qualifier> &operand_qualifiers) {
+getOperandBytes(const std::vector<ptxemu::ir::Qualifier> &operand_qualifiers) {
     std::vector<int> bytes_list;
 
     int bytes = 0;
     for (const auto &qual : operand_qualifiers) {
-        int size = Q2bytes(qual);
+        int size = ptxsim::Q2bytes(qual);
         if (size > 0) {
             bytes = size;
             bytes_list.push_back(bytes);

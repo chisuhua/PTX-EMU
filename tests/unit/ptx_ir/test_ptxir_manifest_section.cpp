@@ -35,7 +35,7 @@ TEST_CASE("MANIFEST section default on empty buffer", "[ptxir][manifest]") {
 }
 
 TEST_CASE("Old PtxirReader skips MANIFEST section without throwing", "[ptxir][manifest][compat]") {
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
     stmt.type = S_LABEL;
     stmt.data = LabelInstr{"L0"};
 

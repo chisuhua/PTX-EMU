@@ -31,8 +31,8 @@ static void init_instruction_factory_once() {
     }
 }
 
-static StatementContext make_mov_stmt() {
-    StatementContext ctx;
+static ptxemu::ir::StatementContext make_mov_stmt() {
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_MOV;
     ctx.data = GenericInstr{};
     ctx.instructionText = "mov.u32 %r1, %r2;";
@@ -49,7 +49,7 @@ static WarpContext* create_warp_with_threads(SMContext& sm, std::unique_ptr<CTAC
 }
 
 static std::unique_ptr<CTAContext> create_block(
-    std::vector<StatementContext> &statements,
+    std::vector<ptxemu::ir::StatementContext> &statements,
     Dim3 gridDim = {1, 1, 1},
     Dim3 blockDim = {32, 1, 1},
     Dim3 blockIdx = {0, 0, 0}) {
@@ -65,7 +65,7 @@ TEST_CASE("integrated_wbar_convergence_operations", "[wbar][integrated][execute_
  init_instruction_factory_once();
  ResourceManager::instance().initialize(1, 8192);
 
- std::vector<StatementContext> statements;
+ std::vector<ptxemu::ir::StatementContext> statements;
  statements.push_back(make_mov_stmt());
  statements.push_back(makeBarWarpSyncInstr(0x0000000F, 2));
  statements.push_back(make_mov_stmt());
@@ -109,7 +109,7 @@ TEST_CASE("integrated_warp_barrier_divergence_scenario", "[wbar][divergence][int
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> statements;
+    std::vector<ptxemu::ir::StatementContext> statements;
     statements.push_back(make_mov_stmt());
     statements.push_back(makeBarWarpSyncInstr(0xFFFFFFFE, 2));  // Fixed: barrier mask matches exec_mask
     statements.push_back(make_mov_stmt());
@@ -137,7 +137,7 @@ TEST_CASE("integrated_multiple_barrier_registers", "[wbar][multi][integrated]") 
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> statements;
+    std::vector<ptxemu::ir::StatementContext> statements;
     statements.push_back(make_mov_stmt());                        // PC=0
     statements.push_back(makeBarWarpSyncInstr(0x0000000F, 2));   // PC=1: barrier→PC=2
     statements.push_back(make_mov_stmt());                        // PC=2
@@ -181,7 +181,7 @@ TEST_CASE("integrated_wbar_partial_participation", "[wbar][partial][integrated]"
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> statements;
+    std::vector<ptxemu::ir::StatementContext> statements;
     statements.push_back(make_mov_stmt());
     statements.push_back(makeBarWarpSyncInstr(0x00000003, 2));
     statements.push_back(make_mov_stmt());
@@ -217,7 +217,7 @@ TEST_CASE("integrated_wbar_divergent_control_flow", "[wbar][divergence][integrat
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> statements;
+    std::vector<ptxemu::ir::StatementContext> statements;
     statements.push_back(make_mov_stmt());
     statements.push_back(make_mov_stmt());
     statements.push_back(make_mov_stmt());
@@ -249,7 +249,7 @@ TEST_CASE("integrated_wbar_reconvergence_pc", "[wbar][pc][integrated]") {
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> statements;
+    std::vector<ptxemu::ir::StatementContext> statements;
     statements.push_back(make_mov_stmt());
     statements.push_back(makeBarWarpSyncInstr(0x000000FF, 4));
     statements.push_back(make_mov_stmt());
@@ -289,7 +289,7 @@ TEST_CASE("integrated_wbar_thread_state_transitions", "[wbar][state][integrated]
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> statements;
+    std::vector<ptxemu::ir::StatementContext> statements;
     statements.push_back(make_mov_stmt());
     statements.push_back(makeBarWarpSyncInstr(0xFFFFFFFF, 3));
     statements.push_back(make_mov_stmt());
@@ -329,7 +329,7 @@ TEST_CASE("integrated_full_barrier_execution_flow", "[wbar][full][integrated]") 
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> statements;
+    std::vector<ptxemu::ir::StatementContext> statements;
     statements.push_back(make_mov_stmt());
     statements.push_back(makeBarWarpSyncInstr(0xFFFFFFFF, 2));
     statements.push_back(make_mov_stmt());

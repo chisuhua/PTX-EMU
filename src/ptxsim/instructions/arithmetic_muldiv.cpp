@@ -10,7 +10,7 @@
 #include <type_traits>
 
 void MulHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                             const std::vector<char> *operand_is_immediate) {
     // === 解析类型和修饰符 ===
     int bytes = getBytes(qualifiers);
@@ -21,9 +21,9 @@ void MulHandler::processOperation(ThreadContext *context, void **operands,
     void *src2 = operands[2];
 
     // 检查修饰符
-    bool has_wide = QvecHasQ(qualifiers, Qualifier::Q_WIDE);
-    bool has_hi = QvecHasQ(qualifiers, Qualifier::Q_HI);
-    bool has_lo = QvecHasQ(qualifiers, Qualifier::Q_LO);
+    bool has_wide = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_WIDE);
+    bool has_hi = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_HI);
+    bool has_lo = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_LO);
     bool has_cc = hasCCQualifier(qualifiers); // 检查是否有.cc修饰符
 
     // === 浮点类型：直接相乘（忽略修饰符）===
@@ -178,7 +178,7 @@ void MulHandler::processOperation(ThreadContext *context, void **operands,
 }
 
 void DivHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                             const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -197,7 +197,7 @@ void DivHandler::processOperation(ThreadContext *context, void **operands,
 }
 
 void MadHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                             const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -209,10 +209,10 @@ void MadHandler::processOperation(ThreadContext *context, void **operands,
     void *src3 = operands[3];
 
     // 检查修饰符
-    bool has_wide = QvecHasQ(qualifiers, Qualifier::Q_WIDE);
-    bool has_hi = QvecHasQ(qualifiers, Qualifier::Q_HI);
-    bool has_lo = QvecHasQ(qualifiers, Qualifier::Q_LO);
-    bool has_sat = QvecHasQ(qualifiers, Qualifier::Q_SAT);
+    bool has_wide = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_WIDE);
+    bool has_hi = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_HI);
+    bool has_lo = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_LO);
+    bool has_sat = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_SAT);
     bool has_cc = hasCCQualifier(qualifiers); // 检查是否有.cc修饰符
 
     // === 浮点类型：直接执行乘加（忽略修饰符）===
@@ -409,7 +409,7 @@ void MadHandler::processOperation(ThreadContext *context, void **operands,
 }
 
 void MinHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                             const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -434,7 +434,7 @@ void MinHandler::processOperation(ThreadContext *context, void **operands,
 }
 
 void MaxHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                             const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -459,7 +459,7 @@ void MaxHandler::processOperation(ThreadContext *context, void **operands,
 }
 
 void RemHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                             const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);

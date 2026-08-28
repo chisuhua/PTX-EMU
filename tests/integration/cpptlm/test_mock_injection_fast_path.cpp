@@ -68,15 +68,15 @@ TEST_CASE("G4 fast-path: mock interfaces callable", "[integration][cpptlm][g4][m
 }
 
 TEST_CASE("G4 fast-path: pipeline mapping helpers", "[integration][cpptlm][g4][mock][fast_path]") {
-    StatementContext ld_stmt;
-    ld_stmt.type = StatementType::S_LD;
+    ptxemu::ir::StatementContext ld_stmt;
+    ld_stmt.type = ptxemu::ir::StatementType::S_LD;
     REQUIRE(SMContext::map_instruction_to_pipeline(ld_stmt) == PipelineId::P3_LSU);
 
-    StatementContext st_stmt;
-    st_stmt.type = StatementType::S_ST;
+    ptxemu::ir::StatementContext st_stmt;
+    st_stmt.type = ptxemu::ir::StatementType::S_ST;
     REQUIRE(SMContext::map_instruction_to_pipeline(st_stmt) == PipelineId::P3_LSU);
 
-    StatementContext mov_stmt;
-    mov_stmt.type = StatementType::S_MOV;
+    ptxemu::ir::StatementContext mov_stmt;
+    mov_stmt.type = ptxemu::ir::StatementType::S_MOV;
     REQUIRE(SMContext::map_instruction_to_pipeline(mov_stmt) == PipelineId::P0_INT_FP32);
 }

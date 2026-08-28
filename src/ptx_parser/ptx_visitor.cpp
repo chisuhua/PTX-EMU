@@ -18,14 +18,14 @@ using namespace ptxir::factory;
 
 namespace {
 
-Qualifier qualifierFromText(const std::string &text) {
+ptxemu::ir::Qualifier qualifierFromText(const std::string &text) {
 #define X(enum_val, enum_name, str_val)                                        \
     if (text == str_val || text == std::string(str_val).substr(1)) {          \
-        return Qualifier::enum_val;                                            \
+        return ptxemu::ir::Qualifier::enum_val;                                            \
     }
 #include "ptx_ir/ptx_qualifier.def"
 #undef X
-    return Qualifier::Q_UNKNOWN;
+    return ptxemu::ir::Qualifier::Q_UNKNOWN;
 }
 
 int parseArraySizeFromRegDecl(
@@ -45,7 +45,7 @@ int parseArraySizeFromRegDecl(
 }
 
 // 检测存储类型（.param/.shared/.const/.local/.global）
-StatementType detectStorageClass(const std::string &text) {
+ptxemu::ir::StatementType detectStorageClass(const std::string &text) {
     if (text.find(".param") != std::string::npos) {
         return S_PARAM;
     }
@@ -65,23 +65,23 @@ StatementType detectStorageClass(const std::string &text) {
 }
 
 // 从文本检测数据类型（按长度从长到短排序，避免 .b16 误匹配 .b1）
-Qualifier detectDataTypeFromText(const std::string &text) {
+ptxemu::ir::Qualifier detectDataTypeFromText(const std::string &text) {
     // 按长度从长到短排序，避免前缀误匹配
-    if (text.find(".f64") != std::string::npos) return Qualifier::Q_F64;
-    if (text.find(".f32") != std::string::npos) return Qualifier::Q_F32;
-    if (text.find(".s64") != std::string::npos) return Qualifier::Q_S64;
-    if (text.find(".s32") != std::string::npos) return Qualifier::Q_S32;
-    if (text.find(".s16") != std::string::npos) return Qualifier::Q_S16;
-    if (text.find(".s8") != std::string::npos) return Qualifier::Q_S8;
-    if (text.find(".u64") != std::string::npos) return Qualifier::Q_U64;
-    if (text.find(".u32") != std::string::npos) return Qualifier::Q_U32;
-    if (text.find(".u16") != std::string::npos) return Qualifier::Q_U16;
-    if (text.find(".u8") != std::string::npos) return Qualifier::Q_U8;
-    if (text.find(".b64") != std::string::npos) return Qualifier::Q_B64;
-    if (text.find(".b32") != std::string::npos) return Qualifier::Q_B32;
-    if (text.find(".b16") != std::string::npos) return Qualifier::Q_B16;
-    if (text.find(".b8") != std::string::npos) return Qualifier::Q_B8;
-    return Qualifier::Q_UNKNOWN;
+    if (text.find(".f64") != std::string::npos) return ptxemu::ir::Qualifier::Q_F64;
+    if (text.find(".f32") != std::string::npos) return ptxemu::ir::Qualifier::Q_F32;
+    if (text.find(".s64") != std::string::npos) return ptxemu::ir::Qualifier::Q_S64;
+    if (text.find(".s32") != std::string::npos) return ptxemu::ir::Qualifier::Q_S32;
+    if (text.find(".s16") != std::string::npos) return ptxemu::ir::Qualifier::Q_S16;
+    if (text.find(".s8") != std::string::npos) return ptxemu::ir::Qualifier::Q_S8;
+    if (text.find(".u64") != std::string::npos) return ptxemu::ir::Qualifier::Q_U64;
+    if (text.find(".u32") != std::string::npos) return ptxemu::ir::Qualifier::Q_U32;
+    if (text.find(".u16") != std::string::npos) return ptxemu::ir::Qualifier::Q_U16;
+    if (text.find(".u8") != std::string::npos) return ptxemu::ir::Qualifier::Q_U8;
+    if (text.find(".b64") != std::string::npos) return ptxemu::ir::Qualifier::Q_B64;
+    if (text.find(".b32") != std::string::npos) return ptxemu::ir::Qualifier::Q_B32;
+    if (text.find(".b16") != std::string::npos) return ptxemu::ir::Qualifier::Q_B16;
+    if (text.find(".b8") != std::string::npos) return ptxemu::ir::Qualifier::Q_B8;
+    return ptxemu::ir::Qualifier::Q_UNKNOWN;
 }
 
 } // namespace
@@ -199,7 +199,7 @@ std::any PtxVisitor::visitAddressSizeDirective(ptxparser::ptxParser::AddressSize
 std::any PtxVisitor::visitVariableDecl(ptxparser::ptxParser::VariableDeclContext *ctx) {
     std::string text = ctx->getText();
 
-    StatementType type = detectStorageClass(text);
+    ptxemu::ir::StatementType type = detectStorageClass(text);
 
     DeclarationInstr decl;
     decl.kind = DeclarationInstr::Kind::REG;
@@ -216,8 +216,8 @@ std::any PtxVisitor::visitVariableDecl(ptxparser::ptxParser::VariableDeclContext
     }
 
     decl.dataType = detectDataTypeFromText(text);
-    if (decl.dataType == Qualifier::Q_UNKNOWN) {
-        decl.dataType = Qualifier::Q_U32;
+    if (decl.dataType == ptxemu::ir::Qualifier::Q_UNKNOWN) {
+        decl.dataType = ptxemu::ir::Qualifier::Q_U32;
     }
 
     decl.array_size = 1;
@@ -315,14 +315,14 @@ std::any PtxVisitor::visitFunctionDecl(ptxparser::ptxParser::FunctionDeclContext
                 paramDecl->paramTypeSpec()->typeSpecifier()) {
                 auto q = qualifierFromText(
                     paramDecl->paramTypeSpec()->typeSpecifier()->getText());
-                if (q != Qualifier::Q_UNKNOWN) {
+                if (q != ptxemu::ir::Qualifier::Q_UNKNOWN) {
                     param.paramTypes.push_back(q);
                     param.byteSize = Q2bytes(q);
                 }
 
                 if (paramDecl->paramTypeSpec()->PTR()) {
                     param.isPtr = true;
-                    param.paramTypes.push_back(Qualifier::Q_PTR);
+                    param.paramTypes.push_back(ptxemu::ir::Qualifier::Q_PTR);
                     param.byteSize = this->ctx.ptxAddressSize == 32 ? 4 : 8;
                 }
 
@@ -337,7 +337,7 @@ std::any PtxVisitor::visitFunctionDecl(ptxparser::ptxParser::FunctionDeclContext
                 }
             } else if (paramDecl->typeSpecifier()) {
                 auto q = qualifierFromText(paramDecl->typeSpecifier()->getText());
-                if (q != Qualifier::Q_UNKNOWN) {
+                if (q != ptxemu::ir::Qualifier::Q_UNKNOWN) {
                     param.paramTypes.push_back(q);
                     param.byteSize = Q2bytes(q);
                 }
@@ -387,17 +387,17 @@ std::any PtxVisitor::visitFunctionDecl(ptxparser::ptxParser::FunctionDeclContext
             }
 
             std::string text = regDeclCtx->getText();
-            StatementType type = detectStorageClass(text);
+            ptxemu::ir::StatementType type = detectStorageClass(text);
 
             DeclarationInstr decl;
             decl.kind = DeclarationInstr::Kind::REG;
             decl.name = regDeclCtx->ID() ? regDeclCtx->ID()->getText() : "";
             decl.array_size = parseArraySizeFromRegDecl(regDeclCtx);
-            decl.dataType = Qualifier::Q_U32;
+            decl.dataType = ptxemu::ir::Qualifier::Q_U32;
 
             if (regDeclCtx->typeSpecifier()) {
                 auto q = qualifierFromText(regDeclCtx->typeSpecifier()->getText());
-                if (q != Qualifier::Q_UNKNOWN) {
+                if (q != ptxemu::ir::Qualifier::Q_UNKNOWN) {
                     decl.dataType = q;
                 }
             }
@@ -412,7 +412,7 @@ std::any PtxVisitor::visitFunctionDecl(ptxparser::ptxParser::FunctionDeclContext
             }
 
             std::string text = varDeclCtx->getText();
-            StatementType type = varDeclCtx->storageClass() ? detectStorageClass(text) : S_REG;
+            ptxemu::ir::StatementType type = varDeclCtx->storageClass() ? detectStorageClass(text) : S_REG;
 
             DeclarationInstr decl;
             decl.kind = DeclarationInstr::Kind::REG;
@@ -437,10 +437,10 @@ std::any PtxVisitor::visitFunctionDecl(ptxparser::ptxParser::FunctionDeclContext
                 }
             }
 
-            decl.dataType = Qualifier::Q_U32;
+            decl.dataType = ptxemu::ir::Qualifier::Q_U32;
             if (varDeclCtx->typeSpecifier()) {
                 auto q = qualifierFromText(varDeclCtx->typeSpecifier()->getText());
-                if (q != Qualifier::Q_UNKNOWN) {
+                if (q != ptxemu::ir::Qualifier::Q_UNKNOWN) {
                     decl.dataType = q;
                 }
             }

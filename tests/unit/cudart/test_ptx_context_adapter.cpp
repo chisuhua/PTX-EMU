@@ -42,7 +42,7 @@ TEST_CASE("fromEmbedded_withAddressSize_setsPtxAddressSize", "[ptx_context_adapt
 TEST_CASE("fromEmbedded_stmtsBecomeKernelStatements", "[ptx_context_adapter]") {
     EmbeddedKernelManifest m;
     m.kernelName = "k";
-    std::vector<StatementContext> stmts(5);
+    std::vector<ptxemu::ir::StatementContext> stmts(5);
     auto ctx = PtxContextAdapter::fromEmbedded(stmts, m);
     REQUIRE(ctx.ptxKernels[0].kernelStatements.size() == 5);
 }

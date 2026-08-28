@@ -22,9 +22,9 @@ TEST_CASE("CC register: ADDC with carry flag sets carry=true", "[cc][addc]") {
     uint8_t dst = 0;
     void *operands[3] = {&dst, &src1, &src2};
 
-    std::vector<Qualifier> qualifiers;
-    qualifiers.push_back(Qualifier::Q_U8);
-    qualifiers.push_back(Qualifier::Q_CC);
+    std::vector<ptxemu::ir::Qualifier> qualifiers;
+    qualifiers.push_back(ptxemu::ir::Qualifier::Q_U8);
+    qualifiers.push_back(ptxemu::ir::Qualifier::Q_CC);
 
     AddcHandler addc_handler;
     addc_handler.processOperation(&context, operands, qualifiers);
@@ -45,9 +45,9 @@ TEST_CASE("CC register: SUBC with borrow flag sets carry=true", "[cc][subc]") {
     uint32_t dst = 0;
     void *operands[3] = {&dst, &src1, &src2};
 
-    std::vector<Qualifier> qualifiers;
-    qualifiers.push_back(Qualifier::Q_U32);
-    qualifiers.push_back(Qualifier::Q_CC);
+    std::vector<ptxemu::ir::Qualifier> qualifiers;
+    qualifiers.push_back(ptxemu::ir::Qualifier::Q_U32);
+    qualifiers.push_back(ptxemu::ir::Qualifier::Q_CC);
 
     SubcHandler subc_handler;
     subc_handler.processOperation(&context, operands, qualifiers);
@@ -68,8 +68,8 @@ TEST_CASE("CC register: ADDC without .cc does not update CC", "[cc][addc]") {
     uint32_t dst = 0;
     void *operands[3] = {&dst, &src1, &src2};
 
-    std::vector<Qualifier> qualifiers;
-    qualifiers.push_back(Qualifier::Q_U32);
+    std::vector<ptxemu::ir::Qualifier> qualifiers;
+    qualifiers.push_back(ptxemu::ir::Qualifier::Q_U32);
 
     AddcHandler addc_handler;
     addc_handler.processOperation(&context, operands, qualifiers);

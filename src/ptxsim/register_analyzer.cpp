@@ -3,7 +3,7 @@
 #include <iostream>
 
 std::vector<RegisterInfo> RegisterAnalyzer::analyze_registers(
-    const std::vector<StatementContext> &statements) {
+    const std::vector<ptxemu::ir::StatementContext> &statements) {
     std::unordered_set<RegisterInfo, RegisterInfoHash> all_registers;
 
     for (const auto &stmt : statements) {
@@ -17,7 +17,7 @@ std::vector<RegisterInfo> RegisterAnalyzer::analyze_registers(
 }
 
 std::vector<uint32_t> RegisterAnalyzer::get_dest_registers_as_ids(
-    const StatementContext &stmt) {
+    const ptxemu::ir::StatementContext &stmt) {
     std::vector<uint32_t> result;
     stmt.visit([&result](const auto &instr) {
         using T = std::decay_t<decltype(instr)>;
@@ -37,10 +37,10 @@ std::vector<uint32_t> RegisterAnalyzer::get_dest_registers_as_ids(
 }
 
 void RegisterAnalyzer::extract_registers_from_statement(
-    const StatementContext &stmt,
+    const ptxemu::ir::StatementContext &stmt,
     std::unordered_set<RegisterInfo, RegisterInfoHash> &registers) {
     // 首先处理寄存器声明语句
-    if (stmt.type == StatementType::S_REG) {
+    if (stmt.type == ptxemu::ir::StatementType::S_REG) {
         // auto *reg_stmt = static_cast<StatementContext::REG
         // *>(stmt.statement);
         const DeclarationInstr &reg_stmt =
@@ -72,7 +72,7 @@ void RegisterAnalyzer::extract_registers_from_statement(
     // extract_registers_from_all_operands(stmt, registers);
 }
 void RegisterAnalyzer::extract_registers_from_all_operands(
-    const StatementContext &stmt,
+    const ptxemu::ir::StatementContext &stmt,
     std::unordered_set<RegisterInfo, RegisterInfoHash> &registers) {
     // 使用visit来访问不同类型的指令并提取操作数中的寄存器
     stmt.visit([&registers](const auto &instr) {
@@ -88,7 +88,7 @@ void RegisterAnalyzer::extract_registers_from_all_operands(
 }
 
 void RegisterAnalyzer::extract_register_from_operand(
-    const OperandContext &op,
+    const ptxemu::ir::OperandContext &op,
     std::unordered_set<RegisterInfo, RegisterInfoHash> &registers) {
     // 检查操作数是否为寄存器类型
     if (std::holds_alternative<RegOperand>(op.data)) {

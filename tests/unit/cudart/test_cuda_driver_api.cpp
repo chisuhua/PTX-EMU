@@ -28,7 +28,7 @@ namespace {
 // Build a minimal valid PTXIR binary section: "PTXIR" + size + serialized body.
 // Uses PtxirWriter to produce a minimal statement sequence.
 std::vector<uint8_t> build_minimal_ptxir() {
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
     stmt.type = S_LABEL;
     stmt.data = LabelInstr{"L0"};
 

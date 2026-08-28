@@ -61,7 +61,7 @@ public:
      * @return CFG Control flow graph
      */
     static CFG build(
-        const std::vector<StatementContext>& statements,
+        const std::vector<ptxemu::ir::StatementContext>& statements,
         const std::map<std::string, int>& label2pc);
     
     /**
@@ -73,16 +73,16 @@ public:
     
 private:
     static std::vector<BasicBlock> identifyBasicBlocks(
-        const std::vector<StatementContext>& statements,
+        const std::vector<ptxemu::ir::StatementContext>& statements,
         const std::map<std::string, int>& label2pc);
     
     static std::set<int> findBranchTargets(
-        const std::vector<StatementContext>& statements,
+        const std::vector<ptxemu::ir::StatementContext>& statements,
         const std::map<std::string, int>& label2pc);
     
     static void buildEdges(CFG& cfg,
                           const std::map<std::string, int>& label2pc,
-                          const std::vector<StatementContext>& statements);
+                          const std::vector<ptxemu::ir::StatementContext>& statements);
     
     static int findImmediatePostDominator(
         const BasicBlock& block,

@@ -17,7 +17,7 @@ class ThreadContext;
 
 class InstructionFactory {
 public:
-    static InstructionHandler *get_handler(StatementType type);
+    static InstructionHandler *get_handler(ptxemu::ir::StatementType type);
 
     // 注册指令处理器
     // static void register_handler(StatementType type,
@@ -34,7 +34,7 @@ public:
 
 private:
     static bool initialized;
-    static std::unordered_map<StatementType, InstructionHandler *> handler_map;
+    static std::unordered_map<ptxemu::ir::StatementType, InstructionHandler *> handler_map;
 };
 
 #endif // INSTRUCTION_FACTORY_H

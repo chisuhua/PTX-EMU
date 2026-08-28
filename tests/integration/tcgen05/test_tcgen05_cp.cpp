@@ -61,16 +61,16 @@ private:
     std::vector<uint8_t> smem_buf_;
 };
 
-Tcgen05Instr make_cp_instr_with_smem_offset(uint32_t smem_offset) {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::CP;
+ptxemu::ir::Tcgen05Instr make_cp_instr_with_smem_offset(uint32_t smem_offset) {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::CP;
     instr.cta_group = 1;
 
     AddrOperand dst_dummy;
     dst_dummy.space = AddrOperand::Space::SHARED;
     dst_dummy.offsetType = AddrOperand::OffsetType::IMMEDIATE;
     dst_dummy.immediateOffset = "0";
-    instr.operands.push_back(OperandContext(dst_dummy));
+    instr.operands.push_back(ptxemu::ir::OperandContext(dst_dummy));
 
     AddrOperand src;
     src.space = AddrOperand::Space::SHARED;
@@ -78,7 +78,7 @@ Tcgen05Instr make_cp_instr_with_smem_offset(uint32_t smem_offset) {
     char buf[32];
     std::snprintf(buf, sizeof(buf), "%u", smem_offset);
     src.immediateOffset = buf;
-    instr.operands.push_back(OperandContext(src));
+    instr.operands.push_back(ptxemu::ir::OperandContext(src));
 
     return instr;
 }

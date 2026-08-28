@@ -20,46 +20,46 @@
 #include <memory>
 
 /// Build exact PTX statements from test_nested_sync with proper operand setup
-static std::vector<StatementContext> build_nested_sync_statements() {
-    std::vector<StatementContext> statements;
+static std::vector<ptxemu::ir::StatementContext> build_nested_sync_statements() {
+    std::vector<ptxemu::ir::StatementContext> statements;
     std::map<std::string, int> label2pc;
 
     // PC 0-5: prologue
     for (int i = 0; i < 6; i++) {
-        StatementContext ctx;
+        ptxemu::ir::StatementContext ctx;
         ctx.type = S_MOV;
         statements.push_back(ctx);
     }
 
     // PC=6: bar.sync 0 (first barrier)
     {
-        StatementContext ctx;
+        ptxemu::ir::StatementContext ctx;
         ctx.type = S_BAR_WARP_SYNC;
         BarWarpSyncInstr instr;
-        instr.qualifiers = {Qualifier::Q_B32};
-        instr.operands.push_back(OperandContext{ImmOperand{"65535"}});
-        instr.operands.push_back(OperandContext{ImmOperand{"-1"}});
+        instr.qualifiers = {ptxemu::ir::Qualifier::Q_B32};
+        instr.operands.push_back(ptxemu::ir::OperandContext{ImmOperand{"65535"}});
+        instr.operands.push_back(ptxemu::ir::OperandContext{ImmOperand{"-1"}});
         ctx.data = instr;
         statements.push_back(ctx);
     }
 
     // PC=7: setp.gt.u32 %p1, %r1, 15
     {
-        StatementContext ctx;
+        ptxemu::ir::StatementContext ctx;
         ctx.type = S_SETP;
         statements.push_back(ctx);
     }
 
     // PC=8-9: mov, add
     for (int i = 0; i < 2; i++) {
-        StatementContext ctx;
+        ptxemu::ir::StatementContext ctx;
         ctx.type = S_MOV;
         statements.push_back(ctx);
     }
 
     // PC=10: @%p1 bra $L__BB2_2
     {
-        StatementContext ctx;
+        ptxemu::ir::StatementContext ctx;
         ctx.type = S_BRA;
         BranchInstr instr;
         instr.target = "$L__BB2_2";
@@ -71,14 +71,14 @@ static std::vector<StatementContext> build_nested_sync_statements() {
 
     // PC 11-17: not-taken path (7 instructions)
     for (int i = 0; i < 7; i++) {
-        StatementContext ctx;
+        ptxemu::ir::StatementContext ctx;
         ctx.type = S_MOV;
         statements.push_back(ctx);
     }
 
     // PC=18: label $L__BB2_2
     {
-        StatementContext ctx;
+        ptxemu::ir::StatementContext ctx;
         ctx.type = S_LABEL;
         LabelInstr instr;
         instr.labelName = "$L__BB2_2";
@@ -88,33 +88,33 @@ static std::vector<StatementContext> build_nested_sync_statements() {
 
     // PC=19: cvta
     {
-        StatementContext ctx;
+        ptxemu::ir::StatementContext ctx;
         ctx.type = S_MOV;
         statements.push_back(ctx);
     }
 
     // PC=20: bar.sync 0 (second barrier)
     {
-        StatementContext ctx;
+        ptxemu::ir::StatementContext ctx;
         ctx.type = S_BAR_WARP_SYNC;
         BarWarpSyncInstr instr;
-        instr.qualifiers = {Qualifier::Q_B32};
-        instr.operands.push_back(OperandContext{ImmOperand{"65535"}});
-        instr.operands.push_back(OperandContext{ImmOperand{"-1"}});
+        instr.qualifiers = {ptxemu::ir::Qualifier::Q_B32};
+        instr.operands.push_back(ptxemu::ir::OperandContext{ImmOperand{"65535"}});
+        instr.operands.push_back(ptxemu::ir::OperandContext{ImmOperand{"-1"}});
         ctx.data = instr;
         statements.push_back(ctx);
     }
 
     // PC 21-24: post-barrier (ld, mul, add, st)
     for (int i = 0; i < 4; i++) {
-        StatementContext ctx;
+        ptxemu::ir::StatementContext ctx;
         ctx.type = S_MOV;
         statements.push_back(ctx);
     }
 
     // PC=25: ret
     {
-        StatementContext ctx;
+        ptxemu::ir::StatementContext ctx;
         ctx.type = S_RET;
         statements.push_back(ctx);
     }
@@ -144,7 +144,7 @@ static std::vector<StatementContext> build_nested_sync_statements() {
             auto& barrier = std::get<BarWarpSyncInstr>(stmt.data);
             if (barrier.operands.size() >= 2) {
                 barrier.operands[1] =
-                    OperandContext{ImmOperand{std::to_string(i + 1)}};
+                    ptxemu::ir::OperandContext{ImmOperand{std::to_string(i + 1)}};
             }
         }
     }

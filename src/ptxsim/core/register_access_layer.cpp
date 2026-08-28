@@ -12,7 +12,7 @@ RegisterAccessLayer::RegisterAccessLayer(
       block_dim_(bDim) {}
 
 void *RegisterAccessLayer::acquire_register(const RegOperand &reg,
-                                            std::vector<Qualifier> qualifier) {
+                                            std::vector<ptxemu::ir::Qualifier> qualifier) {
 // Special registers (per-thread identifiers)
 if (reg.name.find('.') != std::string::npos) {
     if (reg.name == "tid.x")

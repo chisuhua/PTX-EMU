@@ -14,8 +14,8 @@
 
 namespace {
 
-StatementContext make_stmt(StatementType type, InstrVariant &&instr) {
-    StatementContext stmt;
+ptxemu::ir::StatementContext make_stmt(ptxemu::ir::StatementType type, ptxemu::ir::InstrVariant &&instr) {
+    ptxemu::ir::StatementContext stmt;
     stmt.type = type;
     stmt.data = std::move(instr);
     return stmt;
@@ -40,7 +40,7 @@ const char *kPtxForCfgEmbed =
 }  // namespace
 
 TEST_CASE("Roundtrip: BranchInstr") {
-    StatementContext stmt =
+    ptxemu::ir::StatementContext stmt =
         make_stmt(S_BRA, BranchInstr{{}, "L1", "%p1", true, 42});
 
     auto data = serialize_to_string({stmt});
@@ -54,7 +54,7 @@ TEST_CASE("Roundtrip: BranchInstr") {
 }
 
 TEST_CASE("Roundtrip: LabelInstr") {
-    StatementContext stmt = make_stmt(S_LABEL, LabelInstr{"L1"});
+    ptxemu::ir::StatementContext stmt = make_stmt(S_LABEL, LabelInstr{"L1"});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -65,7 +65,7 @@ TEST_CASE("Roundtrip: LabelInstr") {
 }
 
 TEST_CASE("Roundtrip: VoidInstr (S_EXIT)") {
-    StatementContext stmt = make_stmt(S_EXIT, VoidInstr{});
+    ptxemu::ir::StatementContext stmt = make_stmt(S_EXIT, VoidInstr{});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -76,7 +76,7 @@ TEST_CASE("Roundtrip: VoidInstr (S_EXIT)") {
 }
 
 TEST_CASE("Roundtrip: VoidInstr (S_RET)") {
-    StatementContext stmt = make_stmt(S_RET, VoidInstr{});
+    ptxemu::ir::StatementContext stmt = make_stmt(S_RET, VoidInstr{});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -87,8 +87,8 @@ TEST_CASE("Roundtrip: VoidInstr (S_RET)") {
 }
 
 TEST_CASE("Roundtrip: BarrierInstr") {
-    StatementContext stmt =
-        make_stmt(S_BAR, BarrierInstr{{Qualifier::Q_CTA}, "cta", 0, -1});
+    ptxemu::ir::StatementContext stmt =
+        make_stmt(S_BAR, BarrierInstr{{ptxemu::ir::Qualifier::Q_CTA}, "cta", 0, -1});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -101,8 +101,8 @@ TEST_CASE("Roundtrip: BarrierInstr") {
 
 TEST_CASE("Roundtrip: BarrierInstr reconvergence_pc") {
     // T1: non-default reconvergence_pc must survive roundtrip (v3 format)
-    StatementContext stmt =
-        make_stmt(S_BAR, BarrierInstr{{Qualifier::Q_CTA}, "cta", 0, 42});
+    ptxemu::ir::StatementContext stmt =
+        make_stmt(S_BAR, BarrierInstr{{ptxemu::ir::Qualifier::Q_CTA}, "cta", 0, 42});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -116,7 +116,7 @@ TEST_CASE("Roundtrip: BarrierInstr reconvergence_pc") {
 
 TEST_CASE("Roundtrip: BarrierInstr barId=nullopt") {
     // T2: sentinel -1 path - barId nullopt survives roundtrip
-    StatementContext stmt =
+    ptxemu::ir::StatementContext stmt =
         make_stmt(S_BAR, BarrierInstr{{}, "", std::nullopt, -1});
 
     auto data = serialize_to_string({stmt});
@@ -209,8 +209,8 @@ TEST_CASE("load_ptxir v3: apply_cfg=true == apply_cfg=false") {
 TEST_CASE("Roundtrip: GenericInstr (S_MOV)") {
     // Note: the current writer stores register operands as placeholder IDs,
     // so we verify the type and qualifier roundtrip here.
-    StatementContext stmt =
-        make_stmt(S_MOV, GenericInstr{{Qualifier::Q_U32}, {}});
+    ptxemu::ir::StatementContext stmt =
+        make_stmt(S_MOV, GenericInstr{{ptxemu::ir::Qualifier::Q_U32}, {}});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -218,13 +218,13 @@ TEST_CASE("Roundtrip: GenericInstr (S_MOV)") {
     REQUIRE(result.size() == 1);
     CHECK(result[0].type == S_MOV);
     const auto &out = std::get<GenericInstr>(result[0].data);
-    CHECK(out.qualifiers == std::vector<Qualifier>{Qualifier::Q_U32});
+    CHECK(out.qualifiers == std::vector<ptxemu::ir::Qualifier>{ptxemu::ir::Qualifier::Q_U32});
 }
 
 TEST_CASE("Roundtrip: GenericInstr (S_CVTA)") {
     // Previously threw "Unknown StatementType: 28" on deserialize
-    StatementContext stmt =
-        make_stmt(S_CVTA, GenericInstr{{Qualifier::Q_U64}, {}});
+    ptxemu::ir::StatementContext stmt =
+        make_stmt(S_CVTA, GenericInstr{{ptxemu::ir::Qualifier::Q_U64}, {}});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -232,12 +232,12 @@ TEST_CASE("Roundtrip: GenericInstr (S_CVTA)") {
     REQUIRE(result.size() == 1);
     CHECK(result[0].type == S_CVTA);   // FAILS pre-fix (reader throws)
     const auto &out = std::get<GenericInstr>(result[0].data);
-    CHECK(out.qualifiers == std::vector<Qualifier>{Qualifier::Q_U64});
+    CHECK(out.qualifiers == std::vector<ptxemu::ir::Qualifier>{ptxemu::ir::Qualifier::Q_U64});
 }
 
 TEST_CASE("Roundtrip: GenericInstr (S_FMA)") {
-    StatementContext stmt =
-        make_stmt(S_FMA, GenericInstr{{Qualifier::Q_F32}, {}});
+    ptxemu::ir::StatementContext stmt =
+        make_stmt(S_FMA, GenericInstr{{ptxemu::ir::Qualifier::Q_F32}, {}});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -247,8 +247,8 @@ TEST_CASE("Roundtrip: GenericInstr (S_FMA)") {
 }
 
 TEST_CASE("Roundtrip: GenericInstr (S_POPC)") {
-    StatementContext stmt =
-        make_stmt(S_POPC, GenericInstr{{Qualifier::Q_B32}, {}});
+    ptxemu::ir::StatementContext stmt =
+        make_stmt(S_POPC, GenericInstr{{ptxemu::ir::Qualifier::Q_B32}, {}});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -258,7 +258,7 @@ TEST_CASE("Roundtrip: GenericInstr (S_POPC)") {
 }
 
 TEST_CASE("Roundtrip: BranchInstr (S_BRX)") {
-    StatementContext stmt =
+    ptxemu::ir::StatementContext stmt =
         make_stmt(S_BRX, BranchInstr{{}, "L1", "%p1", false, -1});
 
     auto data = serialize_to_string({stmt});
@@ -269,7 +269,7 @@ TEST_CASE("Roundtrip: BranchInstr (S_BRX)") {
 }
 
 TEST_CASE("Roundtrip: VoidInstr (S_TRAP / S_BRK / S_BRKPT)") {
-    for (StatementType t : {S_TRAP, S_BRK, S_BRKPT}) {
+    for (ptxemu::ir::StatementType t : {S_TRAP, S_BRK, S_BRKPT}) {
         auto data = serialize_to_string({make_stmt(t, VoidInstr{})});
         auto result = deserialize_from_string(data);
         REQUIRE(result.size() == 1);
@@ -279,54 +279,54 @@ TEST_CASE("Roundtrip: VoidInstr (S_TRAP / S_BRK / S_BRKPT)") {
 
 TEST_CASE("Roundtrip: Tcgen05Instr (S_TCGEN05_MMA)") {
     // T2.3: previously silently dropped by writer (no dispatch branch)
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::MMA;
-    instr.qualifiers = {Qualifier::Q_F16};
-    StatementContext stmt = make_stmt(S_TCGEN05_MMA, instr);
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::MMA;
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_F16};
+    ptxemu::ir::StatementContext stmt = make_stmt(S_TCGEN05_MMA, instr);
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
 
     REQUIRE(result.size() == 1);
     CHECK(result[0].type == S_TCGEN05_MMA);              // FAILS pre-fix
-    const auto &out = std::get<Tcgen05Instr>(result[0].data);
-    CHECK(out.op_kind == Tcgen05OpKind::MMA);            // FAILS pre-fix
-    CHECK(out.qualifiers == std::vector<Qualifier>{Qualifier::Q_F16});
+    const auto &out = std::get<ptxemu::ir::Tcgen05Instr>(result[0].data);
+    CHECK(out.op_kind == ptxemu::ir::Tcgen05OpKind::MMA);            // FAILS pre-fix
+    CHECK(out.qualifiers == std::vector<ptxemu::ir::Qualifier>{ptxemu::ir::Qualifier::Q_F16});
 }
 
 TEST_CASE("Roundtrip: Tcgen05Instr (S_TCGEN05_MMA_WS) op_kind derivation") {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::MMA_WS;
-    StatementContext stmt = make_stmt(S_TCGEN05_MMA_WS, instr);
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::MMA_WS;
+    ptxemu::ir::StatementContext stmt = make_stmt(S_TCGEN05_MMA_WS, instr);
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
 
     REQUIRE(result.size() == 1);
     CHECK(result[0].type == S_TCGEN05_MMA_WS);
-    const auto &out = std::get<Tcgen05Instr>(result[0].data);
-    CHECK(out.op_kind == Tcgen05OpKind::MMA_WS);         // FAILS pre-fix
+    const auto &out = std::get<ptxemu::ir::Tcgen05Instr>(result[0].data);
+    CHECK(out.op_kind == ptxemu::ir::Tcgen05OpKind::MMA_WS);         // FAILS pre-fix
 }
 
 TEST_CASE("Roundtrip: Tcgen05Instr (S_TCGEN05_ALLOC)") {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::ALLOC;
-    StatementContext stmt = make_stmt(S_TCGEN05_ALLOC, instr);
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::ALLOC;
+    ptxemu::ir::StatementContext stmt = make_stmt(S_TCGEN05_ALLOC, instr);
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
 
     REQUIRE(result.size() == 1);
     CHECK(result[0].type == S_TCGEN05_ALLOC);
-    const auto &out = std::get<Tcgen05Instr>(result[0].data);
-    CHECK(out.op_kind == Tcgen05OpKind::ALLOC);          // FAILS pre-fix
+    const auto &out = std::get<ptxemu::ir::Tcgen05Instr>(result[0].data);
+    CHECK(out.op_kind == ptxemu::ir::Tcgen05OpKind::ALLOC);          // FAILS pre-fix
 }
 
 TEST_CASE("Roundtrip: DeclarationInstr (S_REG)") {
-    StatementContext stmt =
+    ptxemu::ir::StatementContext stmt =
         make_stmt(S_REG, DeclarationInstr{DeclarationInstr::Kind::REG,
                                           "%r1",
-                                          Qualifier::Q_U32,
+                                          ptxemu::ir::Qualifier::Q_U32,
                                           std::nullopt,
                                           std::nullopt,
                                           1,
@@ -339,12 +339,12 @@ TEST_CASE("Roundtrip: DeclarationInstr (S_REG)") {
     CHECK(result[0].type == S_REG);
     const auto &out = std::get<DeclarationInstr>(result[0].data);
     CHECK(out.kind == DeclarationInstr::Kind::REG);
-    CHECK(out.dataType == Qualifier::Q_U32);
+    CHECK(out.dataType == ptxemu::ir::Qualifier::Q_U32);
     CHECK(out.array_size == 1);
 }
 
 TEST_CASE("Roundtrip: PragmaInstr") {
-    StatementContext stmt =
+    ptxemu::ir::StatementContext stmt =
         make_stmt(S_PRAGMA, PragmaInstr{"#pragma unroll"});
 
     auto data = serialize_to_string({stmt});
@@ -356,7 +356,7 @@ TEST_CASE("Roundtrip: PragmaInstr") {
 }
 
 TEST_CASE("Roundtrip: DollarNameInstr") {
-    StatementContext stmt = make_stmt(S_DOLLOR, DollarNameInstr{"$r1"});
+    ptxemu::ir::StatementContext stmt = make_stmt(S_DOLLOR, DollarNameInstr{"$r1"});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -367,8 +367,8 @@ TEST_CASE("Roundtrip: DollarNameInstr") {
 }
 
 TEST_CASE("Roundtrip: MembarInstr") {
-    StatementContext stmt =
-        make_stmt(S_MEMBAR, MembarInstr{{Qualifier::Q_CTA}, "cta"});
+    ptxemu::ir::StatementContext stmt =
+        make_stmt(S_MEMBAR, MembarInstr{{ptxemu::ir::Qualifier::Q_CTA}, "cta"});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -376,12 +376,12 @@ TEST_CASE("Roundtrip: MembarInstr") {
     REQUIRE(result.size() == 1);
     CHECK(result[0].type == S_MEMBAR);
     CHECK(std::get<MembarInstr>(result[0].data).qualifiers ==
-          std::vector<Qualifier>{Qualifier::Q_CTA});
+          std::vector<ptxemu::ir::Qualifier>{ptxemu::ir::Qualifier::Q_CTA});
 }
 
 TEST_CASE("Roundtrip: FenceInstr") {
-    StatementContext stmt = make_stmt(
-        S_FENCE, FenceInstr{{Qualifier::Q_GPU}, "acquire", "gpu"});
+    ptxemu::ir::StatementContext stmt = make_stmt(
+        S_FENCE, FenceInstr{{ptxemu::ir::Qualifier::Q_GPU}, "acquire", "gpu"});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -389,13 +389,13 @@ TEST_CASE("Roundtrip: FenceInstr") {
     REQUIRE(result.size() == 1);
     CHECK(result[0].type == S_FENCE);
     CHECK(std::get<FenceInstr>(result[0].data).qualifiers ==
-          std::vector<Qualifier>{Qualifier::Q_GPU});
+          std::vector<ptxemu::ir::Qualifier>{ptxemu::ir::Qualifier::Q_GPU});
 }
 
 TEST_CASE("Roundtrip: ReduxSyncInstr") {
-    StatementContext stmt = make_stmt(
+    ptxemu::ir::StatementContext stmt = make_stmt(
         S_REDUX_SYNC,
-        ReduxSyncInstr{{Qualifier::Q_ADD_ATOM, Qualifier::Q_S32}, "add", {}});
+        ReduxSyncInstr{{ptxemu::ir::Qualifier::Q_ADD_ATOM, ptxemu::ir::Qualifier::Q_S32}, "add", {}});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -403,12 +403,12 @@ TEST_CASE("Roundtrip: ReduxSyncInstr") {
     REQUIRE(result.size() == 1);
     CHECK(result[0].type == S_REDUX_SYNC);
     CHECK(std::get<ReduxSyncInstr>(result[0].data).qualifiers ==
-          std::vector<Qualifier>{Qualifier::Q_ADD_ATOM, Qualifier::Q_S32});
+          std::vector<ptxemu::ir::Qualifier>{ptxemu::ir::Qualifier::Q_ADD_ATOM, ptxemu::ir::Qualifier::Q_S32});
 }
 
 TEST_CASE("Roundtrip: MbarrierInstr") {
-    StatementContext stmt = make_stmt(
-        S_MBARRIER_INIT, MbarrierInstr{{Qualifier::Q_CTA}, "init", {}});
+    ptxemu::ir::StatementContext stmt = make_stmt(
+        S_MBARRIER_INIT, MbarrierInstr{{ptxemu::ir::Qualifier::Q_CTA}, "init", {}});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -416,12 +416,12 @@ TEST_CASE("Roundtrip: MbarrierInstr") {
     REQUIRE(result.size() == 1);
     CHECK(result[0].type == S_MBARRIER_INIT);
     CHECK(std::get<MbarrierInstr>(result[0].data).qualifiers ==
-          std::vector<Qualifier>{Qualifier::Q_CTA});
+          std::vector<ptxemu::ir::Qualifier>{ptxemu::ir::Qualifier::Q_CTA});
 }
 
 TEST_CASE("Roundtrip: CallInstr") {
-    StatementContext stmt = make_stmt(
-        S_CALL, CallInstr{"foo", "call.uni foo", {Qualifier::Q_UNI}, {}});
+    ptxemu::ir::StatementContext stmt = make_stmt(
+        S_CALL, CallInstr{"foo", "call.uni foo", {ptxemu::ir::Qualifier::Q_UNI}, {}});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -429,7 +429,7 @@ TEST_CASE("Roundtrip: CallInstr") {
     REQUIRE(result.size() == 1);
     CHECK(result[0].type == S_CALL);
     CHECK(std::get<CallInstr>(result[0].data).qualifiers ==
-          std::vector<Qualifier>{Qualifier::Q_UNI});
+          std::vector<ptxemu::ir::Qualifier>{ptxemu::ir::Qualifier::Q_UNI});
 }
 
 // S_PREDICATE_PREFIX is not yet defined in ptx_op.def (the PredicatePrefix
@@ -437,7 +437,7 @@ TEST_CASE("Roundtrip: CallInstr") {
 // enum is added and the reader has a matching case.
 #ifdef S_PREDICATE_PREFIX
 TEST_CASE("Roundtrip: PredicatePrefix") {
-    StatementContext stmt =
+    ptxemu::ir::StatementContext stmt =
         make_stmt(S_PREDICATE_PREFIX, PredicatePrefix{{}, {}, "%p1"});
 
     auto data = serialize_to_string({stmt});
@@ -450,7 +450,7 @@ TEST_CASE("Roundtrip: PredicatePrefix") {
 #endif
 
 TEST_CASE("Roundtrip: BarWarpSyncInstr") {
-    StatementContext stmt =
+    ptxemu::ir::StatementContext stmt =
         make_stmt(S_BAR_WARP_SYNC, BarWarpSyncInstr{{}, {}});
 
     auto data = serialize_to_string({stmt});
@@ -462,8 +462,8 @@ TEST_CASE("Roundtrip: BarWarpSyncInstr") {
 }
 
 TEST_CASE("Roundtrip: VoteInstr") {
-    StatementContext stmt = make_stmt(
-        S_VOTE, VoteInstr{{Qualifier::Q_U32}, "ballot", {}});
+    ptxemu::ir::StatementContext stmt = make_stmt(
+        S_VOTE, VoteInstr{{ptxemu::ir::Qualifier::Q_U32}, "ballot", {}});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -471,12 +471,12 @@ TEST_CASE("Roundtrip: VoteInstr") {
     REQUIRE(result.size() == 1);
     CHECK(result[0].type == S_VOTE);
     CHECK(std::get<VoteInstr>(result[0].data).qualifiers ==
-          std::vector<Qualifier>{Qualifier::Q_U32});
+          std::vector<ptxemu::ir::Qualifier>{ptxemu::ir::Qualifier::Q_U32});
 }
 
 TEST_CASE("Roundtrip: ShflInstr") {
-    StatementContext stmt =
-        make_stmt(S_SHFL, ShflInstr{{Qualifier::Q_U32}, "up", {}});
+    ptxemu::ir::StatementContext stmt =
+        make_stmt(S_SHFL, ShflInstr{{ptxemu::ir::Qualifier::Q_U32}, "up", {}});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -484,13 +484,13 @@ TEST_CASE("Roundtrip: ShflInstr") {
     REQUIRE(result.size() == 1);
     CHECK(result[0].type == S_SHFL);
     CHECK(std::get<ShflInstr>(result[0].data).qualifiers ==
-          std::vector<Qualifier>{Qualifier::Q_U32});
+          std::vector<ptxemu::ir::Qualifier>{ptxemu::ir::Qualifier::Q_U32});
 }
 
 TEST_CASE("Roundtrip: AtomInstr") {
-    StatementContext stmt = make_stmt(
-        S_ATOM, AtomInstr{{Qualifier::Q_U32, Qualifier::Q_GLOBAL},
-                          {OperandContext{ImmOperand{"42"}}},
+    ptxemu::ir::StatementContext stmt = make_stmt(
+        S_ATOM, AtomInstr{{ptxemu::ir::Qualifier::Q_U32, ptxemu::ir::Qualifier::Q_GLOBAL},
+                          {ptxemu::ir::OperandContext{ImmOperand{"42"}}},
                           0});
 
     auto data = serialize_to_string({stmt});
@@ -499,11 +499,11 @@ TEST_CASE("Roundtrip: AtomInstr") {
     REQUIRE(result.size() == 1);
     CHECK(result[0].type == S_ATOM);
     CHECK(std::get<AtomInstr>(result[0].data).qualifiers ==
-          std::vector<Qualifier>{Qualifier::Q_U32, Qualifier::Q_GLOBAL});
+          std::vector<ptxemu::ir::Qualifier>{ptxemu::ir::Qualifier::Q_U32, ptxemu::ir::Qualifier::Q_GLOBAL});
 }
 
 TEST_CASE("Roundtrip: TextureInstr") {
-    StatementContext stmt = make_stmt(S_TEX, TextureInstr{{}, {}});
+    ptxemu::ir::StatementContext stmt = make_stmt(S_TEX, TextureInstr{{}, {}});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -514,7 +514,7 @@ TEST_CASE("Roundtrip: TextureInstr") {
 }
 
 TEST_CASE("Roundtrip: SurfaceInstr") {
-    StatementContext stmt = make_stmt(S_SURF, SurfaceInstr{{}, {}});
+    ptxemu::ir::StatementContext stmt = make_stmt(S_SURF, SurfaceInstr{{}, {}});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -525,7 +525,7 @@ TEST_CASE("Roundtrip: SurfaceInstr") {
 }
 
 TEST_CASE("Roundtrip: ReductionInstr") {
-    StatementContext stmt =
+    ptxemu::ir::StatementContext stmt =
         make_stmt(S_RED, ReductionInstr{{}, "add", {}});
 
     auto data = serialize_to_string({stmt});
@@ -537,7 +537,7 @@ TEST_CASE("Roundtrip: ReductionInstr") {
 }
 
 TEST_CASE("Roundtrip: PrefetchInstr") {
-    StatementContext stmt = make_stmt(S_PREFETCH, PrefetchInstr{{}, {}});
+    ptxemu::ir::StatementContext stmt = make_stmt(S_PREFETCH, PrefetchInstr{{}, {}});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -548,7 +548,7 @@ TEST_CASE("Roundtrip: PrefetchInstr") {
 }
 
 TEST_CASE("Roundtrip: CpAsyncInstr") {
-    StatementContext stmt = make_stmt(S_CP_ASYNC, CpAsyncInstr{{}, {}});
+    ptxemu::ir::StatementContext stmt = make_stmt(S_CP_ASYNC, CpAsyncInstr{{}, {}});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -559,7 +559,7 @@ TEST_CASE("Roundtrip: CpAsyncInstr") {
 }
 
 TEST_CASE("Roundtrip: AbiDirective") {
-    StatementContext stmt = make_stmt(S_ABI_PRESERVE, AbiDirective{15});
+    ptxemu::ir::StatementContext stmt = make_stmt(S_ABI_PRESERVE, AbiDirective{15});
 
     auto data = serialize_to_string({stmt});
     auto result = deserialize_from_string(data);
@@ -570,12 +570,12 @@ TEST_CASE("Roundtrip: AbiDirective") {
 }
 
 TEST_CASE("Roundtrip: mixed 100+ statements") {
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(121);
 
     for (int i = 0; i < 50; ++i) {
         stmts.push_back(
-            make_stmt(S_MOV, GenericInstr{{Qualifier::Q_U32}, {}}));
+            make_stmt(S_MOV, GenericInstr{{ptxemu::ir::Qualifier::Q_U32}, {}}));
     }
     for (int i = 0; i < 50; ++i) {
         stmts.push_back(make_stmt(
@@ -586,11 +586,11 @@ TEST_CASE("Roundtrip: mixed 100+ statements") {
     stmts.push_back(make_stmt(S_RET, VoidInstr{}));
     stmts.push_back(make_stmt(S_LABEL, LabelInstr{"L99"}));
     stmts.push_back(
-        make_stmt(S_BAR, BarrierInstr{{Qualifier::Q_CTA}, "cta", 0, -1}));
+        make_stmt(S_BAR, BarrierInstr{{ptxemu::ir::Qualifier::Q_CTA}, "cta", 0, -1}));
     stmts.push_back(
         make_stmt(S_REG, DeclarationInstr{DeclarationInstr::Kind::REG,
                                           "%r1",
-                                          Qualifier::Q_U32,
+                                          ptxemu::ir::Qualifier::Q_U32,
                                           std::nullopt,
                                           std::nullopt,
                                           1,
@@ -598,21 +598,21 @@ TEST_CASE("Roundtrip: mixed 100+ statements") {
     stmts.push_back(make_stmt(S_PRAGMA, PragmaInstr{"#pragma unroll"}));
     stmts.push_back(make_stmt(S_DOLLOR, DollarNameInstr{"$r1"}));
     stmts.push_back(
-        make_stmt(S_MEMBAR, MembarInstr{{Qualifier::Q_CTA}, "cta"}));
+        make_stmt(S_MEMBAR, MembarInstr{{ptxemu::ir::Qualifier::Q_CTA}, "cta"}));
     stmts.push_back(
-        make_stmt(S_FENCE, FenceInstr{{Qualifier::Q_GPU}, "acquire", "gpu"}));
+        make_stmt(S_FENCE, FenceInstr{{ptxemu::ir::Qualifier::Q_GPU}, "acquire", "gpu"}));
     stmts.push_back(make_stmt(
         S_REDUX_SYNC,
-        ReduxSyncInstr{{Qualifier::Q_ADD_ATOM, Qualifier::Q_S32}, "add", {}}));
+        ReduxSyncInstr{{ptxemu::ir::Qualifier::Q_ADD_ATOM, ptxemu::ir::Qualifier::Q_S32}, "add", {}}));
     stmts.push_back(
-        make_stmt(S_MBARRIER_INIT, MbarrierInstr{{Qualifier::Q_CTA}, "init", {}}));
+        make_stmt(S_MBARRIER_INIT, MbarrierInstr{{ptxemu::ir::Qualifier::Q_CTA}, "init", {}}));
     stmts.push_back(make_stmt(
-        S_CALL, CallInstr{"foo", "call.uni foo", {Qualifier::Q_UNI}, {}}));
+        S_CALL, CallInstr{"foo", "call.uni foo", {ptxemu::ir::Qualifier::Q_UNI}, {}}));
     stmts.push_back(make_stmt(S_BAR_WARP_SYNC, BarWarpSyncInstr{{}, {}}));
     stmts.push_back(
-        make_stmt(S_VOTE, VoteInstr{{Qualifier::Q_U32}, "ballot", {}}));
+        make_stmt(S_VOTE, VoteInstr{{ptxemu::ir::Qualifier::Q_U32}, "ballot", {}}));
     stmts.push_back(
-        make_stmt(S_SHFL, ShflInstr{{Qualifier::Q_U32}, "up", {}}));
+        make_stmt(S_SHFL, ShflInstr{{ptxemu::ir::Qualifier::Q_U32}, "up", {}}));
     stmts.push_back(make_stmt(S_TEX, TextureInstr{{}, {}}));
     stmts.push_back(make_stmt(S_SURF, SurfaceInstr{{}, {}}));
     stmts.push_back(make_stmt(S_RED, ReductionInstr{{}, "add", {}}));
@@ -628,7 +628,7 @@ TEST_CASE("Roundtrip: mixed 100+ statements") {
     for (size_t i = 0; i < 50; ++i) {
         CHECK(result[i].type == S_MOV);
         CHECK(std::get<GenericInstr>(result[i].data).qualifiers ==
-              std::vector<Qualifier>{Qualifier::Q_U32});
+              std::vector<ptxemu::ir::Qualifier>{ptxemu::ir::Qualifier::Q_U32});
     }
     for (size_t i = 50; i < 100; ++i) {
         CHECK(result[i].type == S_BRA);
@@ -643,30 +643,30 @@ TEST_CASE("Roundtrip: mixed 100+ statements") {
 
 namespace {
 // Representative constructor per struct_kind (minimal valid payload).
-StatementContext make_representative(StatementType t) {
+ptxemu::ir::StatementContext make_representative(ptxemu::ir::StatementType t) {
     switch (t) {
         case S_LABEL: return make_stmt(t, LabelInstr{"L0"});
         case S_BRA: case S_BRX:
             return make_stmt(t, BranchInstr{{}, "L0", "", false, -1});
         case S_EXIT: case S_RET: case S_TRAP: case S_BRK: case S_BRKPT:
             return make_stmt(t, VoidInstr{});
-        case S_BAR: return make_stmt(t, BarrierInstr{{Qualifier::Q_CTA}, "cta", 0, -1});
+        case S_BAR: return make_stmt(t, BarrierInstr{{ptxemu::ir::Qualifier::Q_CTA}, "cta", 0, -1});
         case S_REG: case S_CONST: case S_SHARED: case S_LOCAL: case S_GLOBAL: case S_PARAM:
             return make_stmt(t, DeclarationInstr{DeclarationInstr::Kind::REG,
-                                                 "%r1", Qualifier::Q_U32,
+                                                 "%r1", ptxemu::ir::Qualifier::Q_U32,
                                                  std::nullopt, std::nullopt, 1, {}});
         case S_PRAGMA: return make_stmt(t, PragmaInstr{"p"});
         case S_DOLLOR: return make_stmt(t, DollarNameInstr{"$r1"});
-        case S_MEMBAR: return make_stmt(t, MembarInstr{{Qualifier::Q_CTA}, "cta"});
-        case S_FENCE: return make_stmt(t, FenceInstr{{Qualifier::Q_GPU}, "acquire", "gpu"});
+        case S_MEMBAR: return make_stmt(t, MembarInstr{{ptxemu::ir::Qualifier::Q_CTA}, "cta"});
+        case S_FENCE: return make_stmt(t, FenceInstr{{ptxemu::ir::Qualifier::Q_GPU}, "acquire", "gpu"});
         case S_REDUX_SYNC: return make_stmt(t, ReduxSyncInstr{{}, "add", {}});
         case S_MBARRIER_INIT: case S_MBARRIER_ARRIVE: case S_MBARRIER_TRY_WAIT:
-            return make_stmt(t, MbarrierInstr{{Qualifier::Q_CTA}, "init", {}});
-        case S_CALL: return make_stmt(t, CallInstr{"foo", "call foo", {Qualifier::Q_UNI}, {}});
+            return make_stmt(t, MbarrierInstr{{ptxemu::ir::Qualifier::Q_CTA}, "init", {}});
+        case S_CALL: return make_stmt(t, CallInstr{"foo", "call foo", {ptxemu::ir::Qualifier::Q_UNI}, {}});
         case S_BAR_WARP_SYNC: return make_stmt(t, BarWarpSyncInstr{{}, {}});
-        case S_VOTE: return make_stmt(t, VoteInstr{{Qualifier::Q_U32}, "ballot", {}});
-        case S_SHFL: return make_stmt(t, ShflInstr{{Qualifier::Q_U32}, "up", {}});
-        case S_ATOM: return make_stmt(t, AtomInstr{{Qualifier::Q_GLOBAL, Qualifier::Q_ADD_ATOM}, {}});
+        case S_VOTE: return make_stmt(t, VoteInstr{{ptxemu::ir::Qualifier::Q_U32}, "ballot", {}});
+        case S_SHFL: return make_stmt(t, ShflInstr{{ptxemu::ir::Qualifier::Q_U32}, "up", {}});
+        case S_ATOM: return make_stmt(t, AtomInstr{{ptxemu::ir::Qualifier::Q_GLOBAL, ptxemu::ir::Qualifier::Q_ADD_ATOM}, {}});
         case S_TEX: case S_TEX_LDG: case S_TEX_GRAD: case S_TEX_LOD: case S_TXQ:
             return make_stmt(t, TextureInstr{{}, {}});
         case S_SURF: case S_SULD: case S_SUST: case S_SUQ:
@@ -679,21 +679,21 @@ StatementContext make_representative(StatementType t) {
         case S_TCGEN05_LD: case S_TCGEN05_ST: case S_TCGEN05_CP:
         case S_TCGEN05_MMA: case S_TCGEN05_MMA_WS: case S_TCGEN05_COMMIT:
         case S_TCGEN05_WAIT: case S_TCGEN05_FENCE: {
-            Tcgen05Instr instr;
-            instr.qualifiers = {Qualifier::Q_F16};
+            ptxemu::ir::Tcgen05Instr instr;
+            instr.qualifiers = {ptxemu::ir::Qualifier::Q_F16};
             return make_stmt(t, instr);
         }
         default:
             // All remaining GENERIC_INSTR enums
-            return make_stmt(t, GenericInstr{{Qualifier::Q_U32}, {}});
+            return make_stmt(t, GenericInstr{{ptxemu::ir::Qualifier::Q_U32}, {}});
     }
 }
 }  // namespace
 
 TEST_CASE("Roundtrip: all 106 StatementType enums") {
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     for (int t = 0; t < S_UNKNOWN; ++t) {
-        stmts.push_back(make_representative(static_cast<StatementType>(t)));
+        stmts.push_back(make_representative(static_cast<ptxemu::ir::StatementType>(t)));
     }
     REQUIRE(stmts.size() == 106);
 

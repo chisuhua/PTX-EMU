@@ -282,6 +282,14 @@ void **__cudaRegisterFatBinary(void **fatCubinHandle, void *fat_bin,
         }
         close(fd);
 
+        fd = mkstemps(output_path, 4);
+        if (fd == -1) {
+            std::remove(input_path);
+            std::cerr << "Error: Could not create temp output file" << std::endl;
+            return nullptr;
+        }
+        close(fd);
+
         std::ofstream infile(input_path);
         infile << ptx_code;
         infile.close();

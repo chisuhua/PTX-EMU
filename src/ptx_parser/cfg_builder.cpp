@@ -37,7 +37,7 @@ void CFG::print() const {
 }
 
 std::set<int> CFGBuilder::findBranchTargets(
-    const std::vector<StatementContext>& statements,
+    const std::vector<ptxemu::ir::StatementContext>& statements,
     const std::map<std::string, int>& label2pc) {
     
     std::set<int> targets;
@@ -63,7 +63,7 @@ std::set<int> CFGBuilder::findBranchTargets(
 }
 
 std::vector<BasicBlock> CFGBuilder::identifyBasicBlocks(
-    const std::vector<StatementContext>& statements,
+    const std::vector<ptxemu::ir::StatementContext>& statements,
     const std::map<std::string, int>& label2pc) {
     
     std::set<int> boundaries;
@@ -102,7 +102,7 @@ std::vector<BasicBlock> CFGBuilder::identifyBasicBlocks(
 
 void CFGBuilder::buildEdges(CFG& cfg,
                             const std::map<std::string, int>& label2pc,
-                            const std::vector<StatementContext>& statements) {
+                            const std::vector<ptxemu::ir::StatementContext>& statements) {
     
     for (size_t i = 0; i < cfg.blocks.size(); i++) {
         BasicBlock& block = cfg.blocks[i];
@@ -176,7 +176,7 @@ void CFGBuilder::buildEdges(CFG& cfg,
 }
 
 CFG CFGBuilder::build(
-    const std::vector<StatementContext>& statements,
+    const std::vector<ptxemu::ir::StatementContext>& statements,
     const std::map<std::string, int>& label2pc) {
     
     CFG cfg;

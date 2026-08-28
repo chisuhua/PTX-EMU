@@ -68,7 +68,7 @@ TEST_CASE("integration_dynamic_shared_memory",
     ResourceManager::instance().initialize(1, 8192);
 
     // Build instruction sequence
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(7);
     stmts.push_back(make_shared_decl("buf", 16));              // PC=0: static 64 bytes
     stmts.push_back(make_mov("r0", "tid.x"));                  // PC=1: r0 = lane_id

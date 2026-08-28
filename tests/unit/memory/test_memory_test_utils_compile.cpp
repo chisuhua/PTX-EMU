@@ -46,13 +46,13 @@ TEST_CASE("memory_test_utils.h: addr-based ld/st helpers compile",
 
 TEST_CASE("memory_test_utils.h: qualifier-overloaded helpers compile",
           "[unit][memory][include_smoke]") {
-    auto ld_q = ptu::make_ld_shared_addr("%rd", "buf", "%r1", Qualifier::Q_B16);
+    auto ld_q = ptu::make_ld_shared_addr("%rd", "buf", "%r1", ptxemu::ir::Qualifier::Q_B16);
     CHECK(ld_q.type == S_LD);
 
-    auto st_q = ptu::make_st_shared_addr("buf", "%r1", "%r2", Qualifier::Q_B16);
+    auto st_q = ptu::make_st_shared_addr("buf", "%r1", "%r2", ptxemu::ir::Qualifier::Q_B16);
     CHECK(st_q.type == S_ST);
 
-    auto shared_q = ptu::make_shared_decl("buf16", 8, Qualifier::Q_B16);
+    auto shared_q = ptu::make_shared_decl("buf16", 8, ptxemu::ir::Qualifier::Q_B16);
     CHECK(shared_q.type == S_SHARED);
 }
 

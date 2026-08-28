@@ -33,3 +33,14 @@ add_catch_test(integration_sync_only_immediate
 )
 set_tests_properties(integration_sync_only_immediate PROPERTIES
     LABELS "integration;cudart;sync")
+
+# ============================================================================
+# fix-ptx-extraction-race (OpenSpec change 2026-08-28):
+# Repeated concurrent real-binary PTX extraction integration test.
+# RED PHASE: this test MUST FAIL on unpatched code (shared-cwd race).
+# ============================================================================
+add_catch_test(integration_parallel_cubin_extract
+    test_parallel_cubin_extract.cu
+)
+set_tests_properties(integration_parallel_cubin_extract PROPERTIES
+    LABELS "integration;cudart;extract;race;regression;PTX-EXTRACTION-RACE")

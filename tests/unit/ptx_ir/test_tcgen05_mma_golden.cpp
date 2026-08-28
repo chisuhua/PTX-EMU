@@ -83,7 +83,7 @@ TEST_CASE("tcgen05.h forward declaration compiles and links",
     // dispatch is wired by fix-tcgen05-handler-dispatch.
     //
     // Taking the address of the function confirms the symbol exists.
-    using FnPtr = void (*)(ThreadContext*, const Tcgen05Instr&);
+    using FnPtr = void (*)(ThreadContext*, const ptxemu::ir::Tcgen05Instr&);
     FnPtr fn = &ptxsim::processTcgen05Mma;
     REQUIRE(fn != nullptr);
 }

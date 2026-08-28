@@ -8,7 +8,7 @@
 namespace {
 
 std::vector<uint8_t> make_manifest_ptxir(const std::string& kernel_name) {
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
     stmt.type = S_LABEL;
     stmt.data = LabelInstr{"L0"};
     std::ostringstream oss(std::ios::binary);

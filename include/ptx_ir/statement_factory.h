@@ -14,6 +14,17 @@
 
 namespace ptxir::factory {
 
+// Phase 1.5c+d: operand types live in the canonical ptxemu::ir
+// namespace. The ptxir::factory namespace needs them in scope to build
+// OperandContext from bare RegOperand/ImmOperand/etc.
+using ptxemu::ir::OperandContext;
+using ptxemu::ir::RegOperand;
+using ptxemu::ir::VariableOperand;
+using ptxemu::ir::ImmOperand;
+using ptxemu::ir::Predicate;
+using ptxemu::ir::AddrOperand;
+using ptxemu::ir::VecOperand;
+
 // =============================================================================
 // 1. 底层工厂: 直接利用已有模板构造函数
 // =============================================================================
@@ -26,10 +37,10 @@ namespace ptxir::factory {
  * @return 构造完成的 StatementContext
  */
 template <typename InstrType>
-inline StatementContext makeStatementContext(StatementType type,
+inline ptxemu::ir::StatementContext makeStatementContext(ptxemu::ir::StatementType type,
                                               InstrType &&instr,
                                               const std::string &text = "") {
-    StatementContext ctx(type, std::forward<InstrType>(instr));
+    ptxemu::ir::StatementContext ctx(type, std::forward<InstrType>(instr));
     ctx.instructionText = text;
     return ctx;
 }
@@ -39,16 +50,16 @@ inline StatementContext makeStatementContext(StatementType type,
 // =============================================================================
 
 // --- 2.1 无操作数指令 (VoidInstr) ---
-inline StatementContext makeVoidInstr(StatementType type,
+inline ptxemu::ir::StatementContext makeVoidInstr(ptxemu::ir::StatementType type,
                                        const std::string &text = "") {
     return makeStatementContext(type, VoidInstr{}, text);
 }
 
 // --- 2.2 通用指令 (GenericInstr) ---
-inline StatementContext makeGenericInstr(
-    StatementType type,
-    const std::vector<Qualifier> &qualifiers,
-    const std::vector<OperandContext> &operands,
+inline ptxemu::ir::StatementContext makeGenericInstr(
+    ptxemu::ir::StatementType type,
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
+    const std::vector<ptxemu::ir::OperandContext> &operands,
     const std::string &text = "") {
     GenericInstr instr;
     instr.qualifiers = qualifiers;
@@ -57,9 +68,9 @@ inline StatementContext makeGenericInstr(
 }
 
 // --- 2.3 分支指令 (BranchInstr) ---
-inline StatementContext makeBranchInstr(
-    StatementType type,
-    const std::vector<Qualifier> &qualifiers,
+inline ptxemu::ir::StatementContext makeBranchInstr(
+    ptxemu::ir::StatementType type,
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
     const std::string &target,
     const std::string &predicate,
     bool predicate_negated,
@@ -74,9 +85,9 @@ inline StatementContext makeBranchInstr(
 }
 
 // --- 2.4 屏障指令 (BarrierInstr) ---
-inline StatementContext makeBarrierInstr(
-    StatementType type,
-    const std::vector<Qualifier> &qualifiers,
+inline ptxemu::ir::StatementContext makeBarrierInstr(
+    ptxemu::ir::StatementType type,
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
     const std::optional<int> &barId,
     const std::string &type_str,
     const std::string &text = "") {
@@ -89,9 +100,9 @@ inline StatementContext makeBarrierInstr(
 }
 
 // --- 2.5 Warp 屏障指令 (BarWarpSyncInstr) ---
-inline StatementContext makeBarWarpSyncInstr(
-    const std::vector<Qualifier> &qualifiers,
-    const std::vector<OperandContext> &operands,
+inline ptxemu::ir::StatementContext makeBarWarpSyncInstr(
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
+    const std::vector<ptxemu::ir::OperandContext> &operands,
     const std::string &text = "") {
     BarWarpSyncInstr instr;
     instr.qualifiers = qualifiers;
@@ -105,13 +116,13 @@ inline StatementContext makeBarWarpSyncInstr(
  * @param reconv_pc 重汇聚 PC
  * @param text 原始 PTX 文本（用于调试）
  */
-inline StatementContext makeBarWarpSyncInstr(
+inline ptxemu::ir::StatementContext makeBarWarpSyncInstr(
     const std::string &mask,
     int reconv_pc,
     const std::string &text = "") {
     BarWarpSyncInstr instr;
-    instr.operands.push_back(OperandContext{ImmOperand{mask}});
-    instr.operands.push_back(OperandContext{ImmOperand{std::to_string(reconv_pc)}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{ImmOperand{mask}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{ImmOperand{std::to_string(reconv_pc)}});
     return makeStatementContext(S_BAR_WARP_SYNC, std::move(instr), text);
 }
 
@@ -121,7 +132,7 @@ inline StatementContext makeBarWarpSyncInstr(
  * @param reconv_pc 重汇聚 PC
  * @param text 原始 PTX 文本（用于调试）
  */
-inline StatementContext makeBarWarpSyncInstr(
+inline ptxemu::ir::StatementContext makeBarWarpSyncInstr(
     uint32_t mask,
     int reconv_pc,
     const std::string &text = "") {
@@ -131,11 +142,11 @@ inline StatementContext makeBarWarpSyncInstr(
 }
 
 // --- 2.6 调用指令 (CallInstr) ---
-inline StatementContext makeCallInstr(
-    StatementType type,
+inline ptxemu::ir::StatementContext makeCallInstr(
+    ptxemu::ir::StatementType type,
     const std::string &funcName,
-    const std::vector<Qualifier> &qualifiers,
-    const std::vector<OperandContext> &operands,
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
+    const std::vector<ptxemu::ir::OperandContext> &operands,
     const std::string &text = "") {
     CallInstr instr;
     instr.funcName = funcName;
@@ -146,11 +157,11 @@ inline StatementContext makeCallInstr(
 }
 
 // --- 2.7 声明指令 (DeclarationInstr) ---
-inline StatementContext makeDeclarationInstr(
-    StatementType type,
+inline ptxemu::ir::StatementContext makeDeclarationInstr(
+    ptxemu::ir::StatementType type,
     DeclarationInstr::Kind kind,
     const std::string &name,
-    Qualifier dataType,
+    ptxemu::ir::Qualifier dataType,
     int array_size,
     const std::string &text = "") {
     DeclarationInstr instr;
@@ -162,7 +173,7 @@ inline StatementContext makeDeclarationInstr(
 }
 
 // --- 2.8 标签指令 (LabelInstr) ---
-inline StatementContext makeLabelInstr(
+inline ptxemu::ir::StatementContext makeLabelInstr(
     const std::string &labelName,
     const std::string &text = "") {
     LabelInstr instr;
@@ -171,7 +182,7 @@ inline StatementContext makeLabelInstr(
 }
 
 // --- 2.9 内联寄存器指令 (DollarNameInstr) ---
-inline StatementContext makeDollarNameInstr(
+inline ptxemu::ir::StatementContext makeDollarNameInstr(
     const std::string &name,
     const std::string &text = "") {
     DollarNameInstr instr;
@@ -180,7 +191,7 @@ inline StatementContext makeDollarNameInstr(
 }
 
 // --- 2.10 Pragma 指令 (PragmaInstr) ---
-inline StatementContext makePragmaInstr(
+inline ptxemu::ir::StatementContext makePragmaInstr(
     const std::string &content,
     const std::string &text = "") {
     PragmaInstr instr;
@@ -189,7 +200,7 @@ inline StatementContext makePragmaInstr(
 }
 
 // --- 2.11 ABI 指令 (AbiDirective) ---
-inline StatementContext makeAbiDirective(
+inline ptxemu::ir::StatementContext makeAbiDirective(
     int regNumber,
     const std::string &text = "") {
     AbiDirective instr;
@@ -198,8 +209,8 @@ inline StatementContext makeAbiDirective(
 }
 
 // --- 2.12 Membar 指令 (MembarInstr) ---
-inline StatementContext makeMembarInstr(
-    const std::vector<Qualifier> &qualifiers,
+inline ptxemu::ir::StatementContext makeMembarInstr(
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
     const std::string &scope,
     const std::string &text = "") {
     MembarInstr instr;
@@ -209,8 +220,8 @@ inline StatementContext makeMembarInstr(
 }
 
 // --- 2.13 Fence 指令 (FenceInstr) ---
-inline StatementContext makeFenceInstr(
-    const std::vector<Qualifier> &qualifiers,
+inline ptxemu::ir::StatementContext makeFenceInstr(
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
     const std::string &memoryOrder,
     const std::string &scope,
     const std::string &text = "") {
@@ -222,10 +233,10 @@ inline StatementContext makeFenceInstr(
 }
 
 // --- 2.14 ReduxSync 指令 (ReduxSyncInstr) ---
-inline StatementContext makeReduxSyncInstr(
-    const std::vector<Qualifier> &qualifiers,
+inline ptxemu::ir::StatementContext makeReduxSyncInstr(
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
     const std::string &operation,
-    const std::vector<OperandContext> &operands,
+    const std::vector<ptxemu::ir::OperandContext> &operands,
     const std::string &text = "") {
     ReduxSyncInstr instr;
     instr.qualifiers = qualifiers;
@@ -235,11 +246,11 @@ inline StatementContext makeReduxSyncInstr(
 }
 
 // --- 2.15 Mbarrier 指令 (MbarrierInstr) ---
-inline StatementContext makeMbarrierInstr(
-    StatementType type,
-    const std::vector<Qualifier> &qualifiers,
+inline ptxemu::ir::StatementContext makeMbarrierInstr(
+    ptxemu::ir::StatementType type,
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
     const std::string &operation,
-    const std::vector<OperandContext> &operands,
+    const std::vector<ptxemu::ir::OperandContext> &operands,
     const std::string &text = "") {
     MbarrierInstr instr;
     instr.qualifiers = qualifiers;
@@ -249,54 +260,54 @@ inline StatementContext makeMbarrierInstr(
 }
 
 // --- 2.16 谓词前缀 (PredicatePrefix) ---
-inline StatementContext makePredicatePrefix(
-    const std::vector<Qualifier> &qualifiers,
-    const std::vector<OperandContext> &operands,
+inline ptxemu::ir::StatementContext makePredicatePrefix(
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
+    const std::vector<ptxemu::ir::OperandContext> &operands,
     const std::string &target,
     const std::string &text = "") {
     PredicatePrefix instr;
     instr.qualifiers = qualifiers;
     instr.operands = operands;
     instr.target = target;
-    return makeStatementContext(static_cast<StatementType>(0), std::move(instr), text);
+    return makeStatementContext(static_cast<ptxemu::ir::StatementType>(0), std::move(instr), text);
 }
 
 // --- 2.17.1 Blackwell tcgen05 指令 (Tcgen05Instr) ---
-inline StatementContext makeTcgen05Instr(
-    Tcgen05OpKind op_kind,
-    const std::vector<Qualifier> &qualifiers,
-    const std::vector<OperandContext> &operands,
+inline ptxemu::ir::StatementContext makeTcgen05Instr(
+    ptxemu::ir::Tcgen05OpKind op_kind,
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
+    const std::vector<ptxemu::ir::OperandContext> &operands,
     const std::string &text = "",
     uint32_t cta_group = 1) {
-    Tcgen05Instr instr;
+    ptxemu::ir::Tcgen05Instr instr;
     instr.op_kind = op_kind;
     instr.qualifiers = qualifiers;
     instr.operands = operands;
     instr.instructionText = text;
     instr.cta_group = cta_group;  // Oracle C3 fix — route cta_group from visitor
     // Map op_kind to correct S_TCGEN05_* StatementType (fix-tcgen05-grammar-mr3 B2)
-    StatementType stmt_type;
+    ptxemu::ir::StatementType stmt_type;
     switch (op_kind) {
-        case Tcgen05OpKind::ALLOC:      stmt_type = static_cast<StatementType>(S_TCGEN05_ALLOC); break;
-        case Tcgen05OpKind::DEALLOC:    stmt_type = static_cast<StatementType>(S_TCGEN05_DEALLOC); break;
-        case Tcgen05OpKind::RELINQUISH: stmt_type = static_cast<StatementType>(S_TCGEN05_RELINQUISH); break;
-        case Tcgen05OpKind::LD:         stmt_type = static_cast<StatementType>(S_TCGEN05_LD); break;
-        case Tcgen05OpKind::ST:         stmt_type = static_cast<StatementType>(S_TCGEN05_ST); break;
-        case Tcgen05OpKind::CP:         stmt_type = static_cast<StatementType>(S_TCGEN05_CP); break;
-        case Tcgen05OpKind::MMA:        stmt_type = static_cast<StatementType>(S_TCGEN05_MMA); break;
-        case Tcgen05OpKind::MMA_WS:     stmt_type = static_cast<StatementType>(S_TCGEN05_MMA_WS); break;
-        case Tcgen05OpKind::COMMIT:     stmt_type = static_cast<StatementType>(S_TCGEN05_COMMIT); break;
-        case Tcgen05OpKind::WAIT:       stmt_type = static_cast<StatementType>(S_TCGEN05_WAIT); break;
-        case Tcgen05OpKind::FENCE:      stmt_type = static_cast<StatementType>(S_TCGEN05_FENCE); break;
-        default:                        stmt_type = static_cast<StatementType>(S_TCGEN05_MMA); break;
+        case ptxemu::ir::Tcgen05OpKind::ALLOC:      stmt_type = static_cast<ptxemu::ir::StatementType>(S_TCGEN05_ALLOC); break;
+        case ptxemu::ir::Tcgen05OpKind::DEALLOC:    stmt_type = static_cast<ptxemu::ir::StatementType>(S_TCGEN05_DEALLOC); break;
+        case ptxemu::ir::Tcgen05OpKind::RELINQUISH: stmt_type = static_cast<ptxemu::ir::StatementType>(S_TCGEN05_RELINQUISH); break;
+        case ptxemu::ir::Tcgen05OpKind::LD:         stmt_type = static_cast<ptxemu::ir::StatementType>(S_TCGEN05_LD); break;
+        case ptxemu::ir::Tcgen05OpKind::ST:         stmt_type = static_cast<ptxemu::ir::StatementType>(S_TCGEN05_ST); break;
+        case ptxemu::ir::Tcgen05OpKind::CP:         stmt_type = static_cast<ptxemu::ir::StatementType>(S_TCGEN05_CP); break;
+        case ptxemu::ir::Tcgen05OpKind::MMA:        stmt_type = static_cast<ptxemu::ir::StatementType>(S_TCGEN05_MMA); break;
+        case ptxemu::ir::Tcgen05OpKind::MMA_WS:     stmt_type = static_cast<ptxemu::ir::StatementType>(S_TCGEN05_MMA_WS); break;
+        case ptxemu::ir::Tcgen05OpKind::COMMIT:     stmt_type = static_cast<ptxemu::ir::StatementType>(S_TCGEN05_COMMIT); break;
+        case ptxemu::ir::Tcgen05OpKind::WAIT:       stmt_type = static_cast<ptxemu::ir::StatementType>(S_TCGEN05_WAIT); break;
+        case ptxemu::ir::Tcgen05OpKind::FENCE:      stmt_type = static_cast<ptxemu::ir::StatementType>(S_TCGEN05_FENCE); break;
+        default:                        stmt_type = static_cast<ptxemu::ir::StatementType>(S_TCGEN05_MMA); break;
     }
     return makeStatementContext(stmt_type, std::move(instr), text);
 }
 
 // --- 2.18 原子指令 (AtomInstr) ---
-inline StatementContext makeAtomInstr(
-    const std::vector<Qualifier> &qualifiers,
-    const std::vector<OperandContext> &operands,
+inline ptxemu::ir::StatementContext makeAtomInstr(
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
+    const std::vector<ptxemu::ir::OperandContext> &operands,
     int operandNum,
     const std::string &text = "") {
     AtomInstr instr;
@@ -307,10 +318,10 @@ inline StatementContext makeAtomInstr(
 }
 
 // --- 2.19 Vote 指令 (VoteInstr) ---
-inline StatementContext makeVoteInstr(
-    const std::vector<Qualifier> &qualifiers,
+inline ptxemu::ir::StatementContext makeVoteInstr(
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
     const std::string &mode,
-    const std::vector<OperandContext> &operands,
+    const std::vector<ptxemu::ir::OperandContext> &operands,
     const std::string &text = "") {
     VoteInstr instr;
     instr.qualifiers = qualifiers;
@@ -320,10 +331,10 @@ inline StatementContext makeVoteInstr(
 }
 
 // --- 2.20 Shuffle指令 (ShflInstr) ---
-inline StatementContext makeShflInstr(
-    const std::vector<Qualifier> &qualifiers,
+inline ptxemu::ir::StatementContext makeShflInstr(
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
     const std::string &mode,
-    const std::vector<OperandContext> &operands,
+    const std::vector<ptxemu::ir::OperandContext> &operands,
     const std::string &text = "") {
     ShflInstr instr;
     instr.qualifiers = qualifiers;
@@ -334,10 +345,10 @@ inline StatementContext makeShflInstr(
 
 // --- 2.21 Texture/Surface/Reduction/Prefetch 指令 ---
 template <typename InstrType>
-inline StatementContext makeInstrWithQualifiersAndOperands(
-    StatementType type,
-    const std::vector<Qualifier> &qualifiers,
-    const std::vector<OperandContext> &operands,
+inline ptxemu::ir::StatementContext makeInstrWithQualifiersAndOperands(
+    ptxemu::ir::StatementType type,
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
+    const std::vector<ptxemu::ir::OperandContext> &operands,
     const std::string &text = "") {
     InstrType instr;
     instr.qualifiers = qualifiers;
@@ -346,26 +357,26 @@ inline StatementContext makeInstrWithQualifiersAndOperands(
 }
 
 // 专用别名函数（提高代码可读性）
-inline StatementContext makeTextureInstr(
-    const std::vector<Qualifier> &qualifiers,
-    const std::vector<OperandContext> &operands,
+inline ptxemu::ir::StatementContext makeTextureInstr(
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
+    const std::vector<ptxemu::ir::OperandContext> &operands,
     const std::string &text = "") {
     return makeInstrWithQualifiersAndOperands<TextureInstr>(
         S_TEX, qualifiers, operands, text);
 }
 
-inline StatementContext makeSurfaceInstr(
-    const std::vector<Qualifier> &qualifiers,
-    const std::vector<OperandContext> &operands,
+inline ptxemu::ir::StatementContext makeSurfaceInstr(
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
+    const std::vector<ptxemu::ir::OperandContext> &operands,
     const std::string &text = "") {
     return makeInstrWithQualifiersAndOperands<SurfaceInstr>(
         S_SURF, qualifiers, operands, text);
 }
 
-inline StatementContext makeReductionInstr(
-    const std::vector<Qualifier> &qualifiers,
+inline ptxemu::ir::StatementContext makeReductionInstr(
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
     const std::string &operation,
-    const std::vector<OperandContext> &operands,
+    const std::vector<ptxemu::ir::OperandContext> &operands,
     const std::string &text = "") {
     ReductionInstr instr;
     instr.qualifiers = qualifiers;
@@ -374,18 +385,18 @@ inline StatementContext makeReductionInstr(
     return makeStatementContext(S_RED, std::move(instr), text);
 }
 
-inline StatementContext makePrefetchInstr(
-    const std::vector<Qualifier> &qualifiers,
-    const std::vector<OperandContext> &operands,
+inline ptxemu::ir::StatementContext makePrefetchInstr(
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
+    const std::vector<ptxemu::ir::OperandContext> &operands,
     const std::string &text = "") {
     return makeInstrWithQualifiersAndOperands<PrefetchInstr>(
         S_PREFETCH, qualifiers, operands, text);
 }
 
 // --- 2.22 异步指令 ---
-inline StatementContext makeCpAsyncInstr(
-    const std::vector<Qualifier> &qualifiers,
-    const std::vector<OperandContext> &operands,
+inline ptxemu::ir::StatementContext makeCpAsyncInstr(
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
+    const std::vector<ptxemu::ir::OperandContext> &operands,
     const std::string &text = "") {
     return makeInstrWithQualifiersAndOperands<CpAsyncInstr>(
         S_CP_ASYNC, qualifiers, operands, text);

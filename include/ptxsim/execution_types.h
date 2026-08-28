@@ -5,6 +5,11 @@
 #include <sstream>
 #include <string>
 
+// Phase 1.5c+d: InstructionState is now defined canonically in
+// ptxemu::ir. This file re-exports it so existing ptxsim callers
+// referencing the old global ::InstructionState keep compiling.
+#include <ptxemu/ir/execution_types.h>
+
 enum EXE_STATE { IDLE, RUN, EXIT, BAR_SYNC };
 enum BAR_TYPE { SYNC };
 
@@ -19,12 +24,7 @@ struct Dim3 {
     }
 };
 
-enum class InstructionState {
-    READY,   // 准备执行新指令
-    PREPARE, // 准备阶段
-    EXECUTE, // 执行阶段
-    COMMIT   // 提交阶段
-};
+using ::ptxemu::ir::InstructionState;
 
 // 定义 CTA 唯一标识符（可扩展为多 GPU）
 struct CTAId {

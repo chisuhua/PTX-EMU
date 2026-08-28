@@ -99,14 +99,14 @@ TEST_CASE("BUG-ST-OVERREAD: StHandler respects declared data_size for b32 write"
     // PC=3: ld.shared.b32 r2, [buf + r1]  (load back)
     // PC=4: ret
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(5);
-    stmts.push_back(make_shared_decl("buf", 32, Qualifier::Q_B32)); // PC=0
+    stmts.push_back(make_shared_decl("buf", 32, ptxemu::ir::Qualifier::Q_B32)); // PC=0
     stmts.push_back(make_mov_imm("r0", 0x12345678));                 // PC=1
     stmts.push_back(make_mov_imm("r1", 0));                         // PC=2: offset=0
     // Use b32 qualifier for st - this is where the bug manifests
-    stmts.push_back(make_st_shared_addr("buf", "r1", "r0", Qualifier::Q_B32)); // PC=3
-    stmts.push_back(make_ld_shared_addr("r2", "buf", "r1", Qualifier::Q_B32)); // PC=4
+    stmts.push_back(make_st_shared_addr("buf", "r1", "r0", ptxemu::ir::Qualifier::Q_B32)); // PC=3
+    stmts.push_back(make_ld_shared_addr("r2", "buf", "r1", ptxemu::ir::Qualifier::Q_B32)); // PC=4
     stmts.push_back(make_ret());                                     // PC=5
 
     SMContext sm(4, 128, 4096, 0);
@@ -145,16 +145,16 @@ TEST_CASE("BUG-ST-OVERREAD: StHandler b32 write does not corrupt adjacent memory
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(8);
-    stmts.push_back(make_shared_decl("buf", 64, Qualifier::Q_B32)); // PC=0: 64 elements
+    stmts.push_back(make_shared_decl("buf", 64, ptxemu::ir::Qualifier::Q_B32)); // PC=0: 64 elements
     stmts.push_back(make_mov_imm("r0", 0xAAAAAAAA));                // PC=1: value to write
     stmts.push_back(make_mov_imm("r1", 0));                        // PC=2: offset 0
     stmts.push_back(make_mov_imm("r3", 0xBBBBBBBB));               // PC=3: value for buf[1]
     stmts.push_back(make_mov_imm("r4", 4));                        // PC=4: offset 4 (buf[1])
-    stmts.push_back(make_st_shared_addr("buf", "r4", "r3", Qualifier::Q_B32)); // PC=5: write buf[1]
-    stmts.push_back(make_st_shared_addr("buf", "r1", "r0", Qualifier::Q_B32)); // PC=6: write buf[0]
-    stmts.push_back(make_ld_shared_addr("r2", "buf", "r4", Qualifier::Q_B32)); // PC=7: load buf[1]
+    stmts.push_back(make_st_shared_addr("buf", "r4", "r3", ptxemu::ir::Qualifier::Q_B32)); // PC=5: write buf[1]
+    stmts.push_back(make_st_shared_addr("buf", "r1", "r0", ptxemu::ir::Qualifier::Q_B32)); // PC=6: write buf[0]
+    stmts.push_back(make_ld_shared_addr("r2", "buf", "r4", ptxemu::ir::Qualifier::Q_B32)); // PC=7: load buf[1]
     stmts.push_back(make_ret());                                    // PC=8
 
     SMContext sm(4, 128, 4096, 0);

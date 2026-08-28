@@ -337,22 +337,22 @@ namespace {
         "yet implemented for the ws variant.");
 }
 
-bool is_ws_path(const Tcgen05Instr& instr) {
+bool is_ws_path(const ptxemu::ir::Tcgen05Instr& instr) {
     for (auto q : instr.qualifiers) {
-        if (q == Qualifier::Q_TCGEN_WS) return true;
+        if (q == ptxemu::ir::Qualifier::Q_TCGEN_WS) return true;
     }
     return false;
 }
 
-bool has_f16_qualifier(const Tcgen05Instr& instr) {
+bool has_f16_qualifier(const ptxemu::ir::Tcgen05Instr& instr) {
     for (auto q : instr.qualifiers) {
-        if (q == Qualifier::Q_F16) return true;
+        if (q == ptxemu::ir::Qualifier::Q_F16) return true;
     }
     return false;
 }
 }  // namespace
 
-void processTcgen05Mma(ThreadContext* context, const Tcgen05Instr& instr) {
+void processTcgen05Mma(ThreadContext* context, const ptxemu::ir::Tcgen05Instr& instr) {
     // op_kind may be MMA or MMA_WS (the latter only reachable via direct
     // Tcgen05Instr construction in tests; the grammar produces op_kind=MMA
     // + Q_TCGEN_WS qualifier). Both paths route to the same arithmetic.
@@ -383,7 +383,7 @@ void processTcgen05Mma(ThreadContext* context, const Tcgen05Instr& instr) {
     // C1 fix (fix-tcgen05-idesc-parsing): mma.accumulate bit from idesc operand[3]
     bool accumulate = false;
     if (instr.operands.size() >= 4 &&
-        instr.operands[3].kind() == OperandKind::REG) {
+        instr.operands[3].kind() == ptxemu::ir::OperandKind::REG) {
         const RegOperand &idesc_reg =
             std::get<RegOperand>(instr.operands[3].data);
         uint32_t idesc_val = context->read_reg_32(idesc_reg);
@@ -408,7 +408,7 @@ void processTcgen05Mma(ThreadContext* context, const Tcgen05Instr& instr) {
 // Layout: TmaDescriptorStore at cta->tma_descriptor_store().load(0)
 //         128-byte transfer (Tmem::kSlotSize) desc->global_address → TMEM slot 0
 // ---------------------------------------------------------------------------
-void processTcgen05Ld(ThreadContext* context, const Tcgen05Instr& instr) {
+void processTcgen05Ld(ThreadContext* context, const ptxemu::ir::Tcgen05Instr& instr) {
     (void)instr;  // op_kind already validated by caller dispatch
     // PTX ISA §9.7.16: tcgen05.ld — load from TMA descriptor to TMEM
     // UNVERIFIED-AGAINST-HARDWARE — PTX ISA §9.7.16
@@ -459,7 +459,7 @@ void processTcgen05Ld(ThreadContext* context, const Tcgen05Instr& instr) {
 // Layout: TmaDescriptorStore at cta->tma_descriptor_store().load(0)
 //         128-byte transfer (Tmem::kSlotSize) TMEM slot 0 → desc->global_address
 // ---------------------------------------------------------------------------
-void processTcgen05St(ThreadContext* context, const Tcgen05Instr& instr) {
+void processTcgen05St(ThreadContext* context, const ptxemu::ir::Tcgen05Instr& instr) {
     (void)instr;  // op_kind already validated by caller dispatch
     // PTX ISA §9.7.16: tcgen05.st — store from TMEM to TMA descriptor
     // UNVERIFIED-AGAINST-HARDWARE — PTX ISA §9.7.16
@@ -507,7 +507,7 @@ void processTcgen05St(ThreadContext* context, const Tcgen05Instr& instr) {
 //
 // Per ADR-0016 Phase 0.3: cluster arrive is opt-in via has_cluster_context().
 // ---------------------------------------------------------------------------
-void processTcgen05Commit(ThreadContext* context, const Tcgen05Instr& instr) {
+void processTcgen05Commit(ThreadContext* context, const ptxemu::ir::Tcgen05Instr& instr) {
     // PTX ISA §9.7.16: tcgen05.commit — commit async tensor ops
     // UNVERIFIED-AGAINST-HARDWARE — PTX ISA §9.7.16
     WarpContext* warp = context->get_warp_context();
@@ -543,7 +543,7 @@ void processTcgen05Commit(ThreadContext* context, const Tcgen05Instr& instr) {
 //
 // Per ADR-0016 Phase 0.3: cluster wait is opt-in via has_cluster_context().
 // ---------------------------------------------------------------------------
-void processTcgen05Wait(ThreadContext* context, const Tcgen05Instr& instr) {
+void processTcgen05Wait(ThreadContext* context, const ptxemu::ir::Tcgen05Instr& instr) {
     // PTX ISA §9.7.16: tcgen05.wait — wait for async tensor ops completion
     // UNVERIFIED-AGAINST-HARDWARE — PTX ISA §9.7.16
     WarpContext* warp = context->get_warp_context();
@@ -589,41 +589,41 @@ void processTcgen05Wait(ThreadContext* context, const Tcgen05Instr& instr) {
 // X-Macro factory registration pattern).
 void Tcgen05Handler::processTcgen05Operation(
     ThreadContext *context, void **operands,
-    const std::vector<Qualifier> &qualifiers,
-    const Tcgen05Instr &instr) {
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
+    const ptxemu::ir::Tcgen05Instr &instr) {
     (void)operands;
     (void)qualifiers;
 
     switch (instr.op_kind) {
-    case Tcgen05OpKind::MMA:
-    case Tcgen05OpKind::MMA_WS:
+    case ptxemu::ir::Tcgen05OpKind::MMA:
+    case ptxemu::ir::Tcgen05OpKind::MMA_WS:
         ptxsim::processTcgen05Mma(context, instr);
         break;
-    case Tcgen05OpKind::LD:
+    case ptxemu::ir::Tcgen05OpKind::LD:
         ptxsim::processTcgen05Ld(context, instr);
         break;
-    case Tcgen05OpKind::ST:
+    case ptxemu::ir::Tcgen05OpKind::ST:
         ptxsim::processTcgen05St(context, instr);
         break;
-    case Tcgen05OpKind::COMMIT:
+    case ptxemu::ir::Tcgen05OpKind::COMMIT:
         ptxsim::processTcgen05Commit(context, instr);
         break;
-    case Tcgen05OpKind::WAIT:
+    case ptxemu::ir::Tcgen05OpKind::WAIT:
         ptxsim::processTcgen05Wait(context, instr);
         break;
-    case Tcgen05OpKind::ALLOC:
+    case ptxemu::ir::Tcgen05OpKind::ALLOC:
         ptxsim::processTcgen05Alloc(context, instr);
         break;
-    case Tcgen05OpKind::DEALLOC:
+    case ptxemu::ir::Tcgen05OpKind::DEALLOC:
         ptxsim::processTcgen05Dealloc(context, instr);
         break;
-    case Tcgen05OpKind::RELINQUISH:
+    case ptxemu::ir::Tcgen05OpKind::RELINQUISH:
         ptxsim::processTcgen05Relinquish(context, instr);
         break;
-    case Tcgen05OpKind::CP:
+    case ptxemu::ir::Tcgen05OpKind::CP:
         ptxsim::processTcgen05Cp(context, instr);
         break;
-    case Tcgen05OpKind::FENCE:
+    case ptxemu::ir::Tcgen05OpKind::FENCE:
         ptxsim::processTcgen05Fence(context, instr);
         break;
     }

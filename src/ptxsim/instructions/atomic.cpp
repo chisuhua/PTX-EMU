@@ -9,7 +9,7 @@
 #include <cstdint>
 
 void AtomHandler::processAtomicOperation(ThreadContext *context, void **operands,
-                                 const std::vector<Qualifier> &qualifiers,
+                                 const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                                  const std::vector<char> *operand_is_immediate) {
     // Operands (collected in ptx_visitor_atom.cpp):
     //   operands[0] = dst register address (write old value here)
@@ -34,28 +34,28 @@ void AtomHandler::processAtomicOperation(ThreadContext *context, void **operands
     MemorySpace space = getAddressSpace(qualifiers);
 
     // Identify atomic opcode (one of Q_{ADD,AND,OR,XOR,INC,DEC,EXCH,MIN,MAX,CAS}_ATOM)
-    Qualifier atom_op = Qualifier::Q_UNKNOWN;
+    ptxemu::ir::Qualifier atom_op = ptxemu::ir::Qualifier::Q_UNKNOWN;
     for (auto q : qualifiers) {
         switch (q) {
-        case Qualifier::Q_ADD_ATOM:
-        case Qualifier::Q_AND_ATOM:
-        case Qualifier::Q_OR_ATOM:
-        case Qualifier::Q_XOR_ATOM:
-        case Qualifier::Q_INC_ATOM:
-        case Qualifier::Q_DEC_ATOM:
-        case Qualifier::Q_EXCH_ATOM:
-        case Qualifier::Q_MIN_ATOM:
-        case Qualifier::Q_MAX_ATOM:
-        case Qualifier::Q_CAS_ATOM:
+        case ptxemu::ir::Qualifier::Q_ADD_ATOM:
+        case ptxemu::ir::Qualifier::Q_AND_ATOM:
+        case ptxemu::ir::Qualifier::Q_OR_ATOM:
+        case ptxemu::ir::Qualifier::Q_XOR_ATOM:
+        case ptxemu::ir::Qualifier::Q_INC_ATOM:
+        case ptxemu::ir::Qualifier::Q_DEC_ATOM:
+        case ptxemu::ir::Qualifier::Q_EXCH_ATOM:
+        case ptxemu::ir::Qualifier::Q_MIN_ATOM:
+        case ptxemu::ir::Qualifier::Q_MAX_ATOM:
+        case ptxemu::ir::Qualifier::Q_CAS_ATOM:
             atom_op = q;
             break;
         default:
             continue;
         }
-        if (atom_op != Qualifier::Q_UNKNOWN) break;
+        if (atom_op != ptxemu::ir::Qualifier::Q_UNKNOWN) break;
     }
 
-    if (atom_op == Qualifier::Q_UNKNOWN) {
+    if (atom_op == ptxemu::ir::Qualifier::Q_UNKNOWN) {
         return;
     }
 
@@ -75,7 +75,7 @@ void AtomHandler::processAtomicOperation(ThreadContext *context, void **operands
     // CAS path: read-modify-compare-write. PTX-EMU's warp-level scheduler
     // (sm_context.cpp:225-260) serializes per-warp dispatch; the cross-warp
     // mutex above bridges concurrent warps.
-    if (atom_op == Qualifier::Q_CAS_ATOM) {
+    if (atom_op == ptxemu::ir::Qualifier::Q_CAS_ATOM) {
         void *cmp_buf = operands[2];
         void *val_buf = operands[3];
         if (!cmp_buf || !val_buf) {
@@ -117,32 +117,32 @@ void AtomHandler::processAtomicOperation(ThreadContext *context, void **operands
 
     uint64_t new_val = old_val;
     switch (atom_op) {
-    case Qualifier::Q_ADD_ATOM:
+    case ptxemu::ir::Qualifier::Q_ADD_ATOM:
         new_val = old_val + src_val;
         break;
-    case Qualifier::Q_AND_ATOM:
+    case ptxemu::ir::Qualifier::Q_AND_ATOM:
         new_val = old_val & src_val;
         break;
-    case Qualifier::Q_OR_ATOM:
+    case ptxemu::ir::Qualifier::Q_OR_ATOM:
         new_val = old_val | src_val;
         break;
-    case Qualifier::Q_XOR_ATOM:
+    case ptxemu::ir::Qualifier::Q_XOR_ATOM:
         new_val = old_val ^ src_val;
         break;
-    case Qualifier::Q_EXCH_ATOM:
+    case ptxemu::ir::Qualifier::Q_EXCH_ATOM:
         new_val = src_val;
         break;
-    case Qualifier::Q_MIN_ATOM:
+    case ptxemu::ir::Qualifier::Q_MIN_ATOM:
         new_val = (old_val < src_val) ? old_val : src_val;
         break;
-    case Qualifier::Q_MAX_ATOM:
+    case ptxemu::ir::Qualifier::Q_MAX_ATOM:
         new_val = (old_val > src_val) ? old_val : src_val;
         break;
-    case Qualifier::Q_INC_ATOM:
+    case ptxemu::ir::Qualifier::Q_INC_ATOM:
         // Wrap to 0 when old_val >= src_val (matches PTX ISA 8.7.4 atom.inc)
         new_val = (old_val >= src_val) ? 0u : (old_val + 1u);
         break;
-    case Qualifier::Q_DEC_ATOM:
+    case ptxemu::ir::Qualifier::Q_DEC_ATOM:
         // Clamp at src_val when old_val == 0 or old_val > src_val
         new_val = (old_val == 0 || old_val > src_val) ? src_val : (old_val - 1u);
         break;

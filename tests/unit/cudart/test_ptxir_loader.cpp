@@ -30,7 +30,7 @@ std::vector<uint8_t> sha256(const std::vector<uint8_t>& data) {
 }
 
 std::vector<uint8_t> build_minimal_ptxir_section(const std::string& kernel_name) {
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
     stmt.type = S_LABEL;
     stmt.data = LabelInstr{"L0"};
 
@@ -47,7 +47,7 @@ std::vector<uint8_t> build_minimal_ptxir_section(const std::string& kernel_name)
 }
 
 std::vector<uint8_t> build_minimal_ptxir_section_with_bad_hash() {
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
     stmt.type = S_LABEL;
     stmt.data = LabelInstr{"L0"};
 

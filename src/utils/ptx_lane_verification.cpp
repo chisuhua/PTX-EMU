@@ -34,7 +34,7 @@ WarpContext* create_execution_warp(
     Dim3 blockIdx{0, 0, 0};
 
     auto block = std::make_unique<CTAContext>();
-    std::vector<StatementContext> statements;
+    std::vector<ptxemu::ir::StatementContext> statements;
     std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
 
     block->init(gridDim, blockDim, blockIdx, statements, &name2Sym, const_cast<std::map<std::string, int>&>(config.label2pc));
@@ -157,7 +157,7 @@ std::vector<PathVerificationResult> verify_warp_branch_decisions(
             iteration_count++;
 
             for (size_t pc = 0; pc < path.statements.size(); ++pc) {
-                StatementContext stmt = path.statements[pc];
+                ptxemu::ir::StatementContext stmt = path.statements[pc];
                 warp->execute_warp_instruction(stmt, static_cast<int>(pc));
             }
 

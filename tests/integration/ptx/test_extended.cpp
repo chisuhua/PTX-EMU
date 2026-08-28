@@ -70,7 +70,7 @@ void set_reg_per_lane_u32(WarpContext *w, const std::string &reg,
     }
 }
 
-WarpContext *setup_block(SMContext &sm, std::vector<StatementContext> &stmts) {
+WarpContext *setup_block(SMContext &sm, std::vector<ptxemu::ir::StatementContext> &stmts) {
     auto blk = std::make_unique<CTAContext>();
     Dim3 g{1, 1, 1};
     Dim3 b{32, 1, 1};
@@ -96,7 +96,7 @@ TEST_CASE("integration_ptx_extended_mad", "[integration][ptx][extended][mad]") {
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(3);
     stmts.push_back(make_mov("r1", "tid.x"));
     stmts.push_back(make_mad("r2", "r1", "r1", "r1")); // r2 = r1*r1 + r1
@@ -131,7 +131,7 @@ TEST_CASE("integration_ptx_extended_mul24",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(3);
     stmts.push_back(make_mov("r1", "tid.x"));
     stmts.push_back(make_mul24("r2", "r1", "r1")); // r2 = r1 * r1 (24-bit mul)
@@ -166,7 +166,7 @@ TEST_CASE("integration_ptx_extended_addc",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(3);
     stmts.push_back(make_mov("r1", "tid.x"));
     stmts.push_back(make_addc("r2", "r1", "r1")); // r2 = r1 + r1 (with carry)
@@ -203,7 +203,7 @@ TEST_CASE("integration_ptx_extended_subc",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(3);
     stmts.push_back(make_mov("r1", "tid.x"));
     stmts.push_back(make_subc("r2", "r1", "r1")); // r2 = r1 - r1 (with borrow)

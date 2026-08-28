@@ -33,7 +33,7 @@ extern bool IFLOG();
 
 void ThreadContext::init(
     Dim3 &blockIdx, Dim3 &threadIdx, Dim3 GridDim, Dim3 BlockDim,
-    std::vector<StatementContext> &statements,
+    std::vector<ptxemu::ir::StatementContext> &statements,
     std::map<std::string, std::unique_ptr<Symtable>> *name2Sym,
     std::map<std::string, int> &label2pc,
     std::map<std::string, std::unique_ptr<Symtable>> *name2Share,
@@ -119,7 +119,7 @@ void ThreadContext::_execute_once() {
 
     // 跟踪指令
     int current_pc = get_pc();
-    StatementContext &statement = (*statements)[current_pc];
+    ptxemu::ir::StatementContext &statement = (*statements)[current_pc];
     
     // Controlled by debug config: configs/debug_config.ini component.thread=debug
     // or configs/verbose_trace_config.ini component.thread=trace
@@ -242,8 +242,8 @@ EXE_STATE ThreadContext::execute_thread_instruction() {
 
 // acquire_operand() return the operand_phy_addr, which later use store in
 // operand_collected by collect_operands()
-void *ThreadContext::acquire_operand(const OperandContext &operand,
-                                     const std::vector<Qualifier> &qualifiers) {
+void *ThreadContext::acquire_operand(const ptxemu::ir::OperandContext &operand,
+                                     const std::vector<ptxemu::ir::Qualifier> &qualifiers) {
     switch (operand.kind()) {
     case OperandKind::VAR: {
         const VariableOperand &varOp = std::get<VariableOperand>(operand.data);
@@ -320,7 +320,7 @@ void *ThreadContext::acquire_operand(const OperandContext &operand,
 
     case OperandKind::IMM: {
         auto immOp = std::get<ImmOperand>(operand.data);
-        Qualifier q = getDataQualifier(qualifiers);
+        ptxemu::ir::Qualifier q = getDataQualifier(qualifiers);
 
         // 使用栈上缓冲区（每个 IMM 使用独立空间，支持多 IMM 指令）
         // 注意：此指针仅在当前指令执行期间有效！
@@ -374,8 +374,8 @@ void *ThreadContext::acquire_operand(const OperandContext &operand,
 }
 
 void ThreadContext::collect_operands(
-    StatementContext &stmt, const std::vector<OperandContext> &operands,
-    const std::vector<Qualifier> *qualifier) {
+    ptxemu::ir::StatementContext &stmt, const std::vector<ptxemu::ir::OperandContext> &operands,
+    const std::vector<ptxemu::ir::Qualifier> *qualifier) {
     // 获取每个操作数的字节大小
     std::vector<int> operand_bytes = getOperandBytes(*qualifier);
 
@@ -411,9 +411,9 @@ void ThreadContext::collect_operands(
     // 阶段可能未设置或过时。当前实现正确，无需修改。
 };
 
-void ThreadContext::commit_operand(StatementContext &stmt,
-                                   const OperandContext &operand,
-                                   const std::vector<Qualifier> &qualifier) {
+void ThreadContext::commit_operand(ptxemu::ir::StatementContext &stmt,
+                                   const ptxemu::ir::OperandContext &operand,
+                                   const std::vector<ptxemu::ir::Qualifier> &qualifier) {
     int bytes = getBytes(qualifier);
     trace_status(ptxsim::log_level::debug, "thread", "Commit:  %s ",
                  operand.toString(bytes).c_str());
@@ -423,23 +423,23 @@ void ThreadContext::commit_operand(StatementContext &stmt,
 // acquire_register() is now inline in thread_context.h.
 
 void *ThreadContext::get_memory_addr(const AddrOperand &fa,
-                                     const std::vector<Qualifier> &qualifiers) {
+                                     const std::vector<ptxemu::ir::Qualifier> &qualifiers) {
     void *ret;
     if (fa.offsetType == AddrOperand::OffsetType::REGISTER) {
         // 1. 执行到get_memory_addr时，传入的qualifiers含有Q_GLOBAL, Q_SHARED,
         // Q_PARAM如何处理地址信息，
         // 把qualifiers里的地址信息设定到mem_qualifiers，而不是假定哟个Q_U64.
-        Qualifier mem_qualifier = Qualifier::Q_UNKNOWN;
+        ptxemu::ir::Qualifier mem_qualifier = ptxemu::ir::Qualifier::Q_UNKNOWN;
         for (const auto &q : qualifiers) {
             // 将地址空间信息添加到mem_qualifiers中
-            if (q == Qualifier::Q_SHARED) {
-                mem_qualifier = Qualifier::Q_U32;
-            } else if (q == Qualifier::Q_GLOBAL || q == Qualifier::Q_PARAM ||
-                       q == Qualifier::Q_LOCAL) {
-                mem_qualifier = Qualifier::Q_U64;
+            if (q == ptxemu::ir::Qualifier::Q_SHARED) {
+                mem_qualifier = ptxemu::ir::Qualifier::Q_U32;
+            } else if (q == ptxemu::ir::Qualifier::Q_GLOBAL || q == ptxemu::ir::Qualifier::Q_PARAM ||
+                       q == ptxemu::ir::Qualifier::Q_LOCAL) {
+                mem_qualifier = ptxemu::ir::Qualifier::Q_U64;
             }
         }
-        if (mem_qualifier == Qualifier::Q_UNKNOWN) {
+        if (mem_qualifier == ptxemu::ir::Qualifier::Q_UNKNOWN) {
             throw ExecutionStateException(
                 0, "unknown memory qualifier",
                 "Failed to determine memory address space from qualifiers");
@@ -453,14 +453,14 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
             return nullptr;
 
         uint64_t reg_value;
-        if (mem_qualifier == Qualifier::Q_U32) {
+        if (mem_qualifier == ptxemu::ir::Qualifier::Q_U32) {
             reg_value = *(uint32_t *)regAddr;
         } else {
             reg_value = *(uint64_t *)regAddr;
         }
 
         // 如果是shared memory访问，需要特殊处理
-        if (QvecHasQ(qualifiers, Qualifier::Q_SHARED)) {
+        if (QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_SHARED)) {
             // 对于共享内存访问，寄存器中的值是偏移量，需要加上共享内存基地址
             if (shared_mem_space != nullptr) {
                 uint64_t offset = reg_value;
@@ -476,7 +476,7 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
                 // 如果没有设置共享内存基地址，则返回nullptr
                 return nullptr;
             }
-        } else if (QvecHasQ(qualifiers, Qualifier::Q_LOCAL)) {
+        } else if (QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_LOCAL)) {
             if (local_mem_space != nullptr) {
                 uint64_t offset = reg_value;
                 if (cta_context_ != nullptr && !fa.baseSymbol.empty()) {
@@ -517,17 +517,17 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
 #endif
 
             // Determine qualifier for register data type
-            Qualifier mem_qualifier = Qualifier::Q_UNKNOWN;
+            ptxemu::ir::Qualifier mem_qualifier = ptxemu::ir::Qualifier::Q_UNKNOWN;
             for (const auto &q : qualifiers) {
-                if (q == Qualifier::Q_SHARED) {
-                    mem_qualifier = Qualifier::Q_U32;
-                } else if (q == Qualifier::Q_GLOBAL ||
-                           q == Qualifier::Q_PARAM || q == Qualifier::Q_LOCAL) {
-                    mem_qualifier = Qualifier::Q_U64;
+                if (q == ptxemu::ir::Qualifier::Q_SHARED) {
+                    mem_qualifier = ptxemu::ir::Qualifier::Q_U32;
+                } else if (q == ptxemu::ir::Qualifier::Q_GLOBAL ||
+                           q == ptxemu::ir::Qualifier::Q_PARAM || q == ptxemu::ir::Qualifier::Q_LOCAL) {
+                    mem_qualifier = ptxemu::ir::Qualifier::Q_U64;
                 }
             }
-            if (mem_qualifier == Qualifier::Q_UNKNOWN) {
-                mem_qualifier = Qualifier::Q_U64; // default to 64-bit
+            if (mem_qualifier == ptxemu::ir::Qualifier::Q_UNKNOWN) {
+                mem_qualifier = ptxemu::ir::Qualifier::Q_U64; // default to 64-bit
             }
 
             void *regAddr = acquire_register(regOp, {mem_qualifier});
@@ -543,19 +543,19 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
             // register value as signed 32-bit for shared memory, then
             // sign-extend to 64-bit.
             int64_t base_value;
-            if (QvecHasQ(qualifiers, Qualifier::Q_SHARED) &&
-                mem_qualifier == Qualifier::Q_U32) {
+            if (QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_SHARED) &&
+                mem_qualifier == ptxemu::ir::Qualifier::Q_U32) {
                 // For shared memory with 32-bit registers, read as signed to
                 // support negative offsets
                 base_value = (int64_t)*(int32_t *)regAddr;
             } else {
-                base_value = (mem_qualifier == Qualifier::Q_U32)
+                base_value = (mem_qualifier == ptxemu::ir::Qualifier::Q_U32)
                                  ? (int64_t)*(uint32_t *)regAddr
                                  : (int64_t)*(uint64_t *)regAddr;
             }
 
             // For shared memory, add shared_mem_space to the base value
-            if (QvecHasQ(qualifiers, Qualifier::Q_SHARED)) {
+            if (QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_SHARED)) {
                 if (shared_mem_space != nullptr) {
                     ret = (void *)((uint64_t)shared_mem_space + base_value);
                 } else {
@@ -588,7 +588,7 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
             // memory address. S_SHARED symbols in name2Sym carry a
             // relative offset (typically 0 for extern-shared); the
             // absolute address must include shared_mem_space.
-            if (QvecHasQ(qualifiers, Qualifier::Q_SHARED)) {
+            if (QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_SHARED)) {
                 if (shared_mem_space != nullptr) {
                     ret = (void *)((uint64_t)ret + (uint64_t)shared_mem_space);
                 } else {
@@ -654,9 +654,9 @@ void *ThreadContext::get_memory_addr(const AddrOperand &fa,
     }
 
     // 如果是shared memory访问，需要特殊处理
-    if (QvecHasQ(qualifiers, Qualifier::Q_SHARED)) {
+    if (QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_SHARED)) {
         // 对于共享内存，地址已经在上面的逻辑中正确处理了
-    } else if (QvecHasQ(qualifiers, Qualifier::Q_LOCAL)) {
+    } else if (QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_LOCAL)) {
         // 对于本地内存，地址也已经在上面的逻辑中正确处理了
     }
 
@@ -679,7 +679,7 @@ handle_offset:
 }
 
 void ThreadContext::mov_data(void *src, void *dst,
-                             std::vector<Qualifier> &qualifiers) {
+                             std::vector<ptxemu::ir::Qualifier> &qualifiers) {
     int bytes = getBytes(qualifiers);
     memcpy(dst, src, bytes);
 }
@@ -699,20 +699,20 @@ void ThreadContext::initialize_shared_memory(const std::string &name,
     }
 }
 
-void ThreadContext::mov(void *from, void *to, const std::vector<Qualifier> &q) {
+void ThreadContext::mov(void *from, void *to, const std::vector<ptxemu::ir::Qualifier> &q) {
     int bytes = getBytes(q);
     memcpy(to, from, bytes);
 }
 
-bool ThreadContext::isIMMorVEC(OperandContext &op) {
+bool ThreadContext::isIMMorVEC(ptxemu::ir::OperandContext &op) {
     return (op.kind() == OperandKind::IMM || op.kind() == OperandKind::VEC);
 }
 
-bool ThreadContext::is_immediate_or_vector(OperandContext &op) {
+bool ThreadContext::is_immediate_or_vector(ptxemu::ir::OperandContext &op) {
     return (op.kind() == OperandKind::IMM || op.kind() == OperandKind::VEC);
 }
 
-void ThreadContext::print_instruction_status(StatementContext &stmt) {
+void ThreadContext::print_instruction_status(ptxemu::ir::StatementContext &stmt) {
     // 获取操作数字符串
     std::string operands_str = ptxsim::DebugConfig::getOperandsString(stmt);
 

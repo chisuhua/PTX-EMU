@@ -69,7 +69,7 @@ struct CvtContext {
 // 从 Qualifier 列表构造 CvtContext。
 // 输入: dst_dtype, src_dtype, 可选 .sat / .rn* / .rni* / .rna / .rs
 // 等价于 arithmetic_conversion.cpp:11-90 的所有 Qualifier 解析逻辑。
-CvtContext build_context(const std::vector<Qualifier> &qualifiers);
+CvtContext build_context(const std::vector<ptxemu::ir::Qualifier> &qualifiers);
 
 // ---------------------------------------------------------------------------
 // ConversionStrategy: 抽象策略基类 (运行时多态)

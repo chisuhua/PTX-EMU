@@ -61,7 +61,7 @@ TEST_CASE("atom.global.cas.u32 writes val when cmp matches and returns old",
     simple_mem->direct_access(addr_host, const_cast<uint32_t *>(&INITIAL_MEM),
                               sizeof(uint32_t), /*is_write=*/true);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(2);
     stmts.push_back(make_atom_global_cas_u32("r_old", "rd_addr", "r_cmp",
                                               "r_val"));
@@ -146,7 +146,7 @@ TEST_CASE("atom.global.cas.u32 leaves mem unchanged when cmp mismatches",
     simple_mem->direct_access(addr_host, const_cast<uint32_t *>(&INITIAL_MEM),
                               sizeof(uint32_t), /*is_write=*/true);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(2);
     stmts.push_back(make_atom_global_cas_u32("r_old", "rd_addr", "r_cmp",
                                               "r_val"));
@@ -215,7 +215,7 @@ TEST_CASE("atom.global.cas.u32 winner-takes-all on mixed cmp",
     simple_mem->direct_access(addr_host, const_cast<uint32_t *>(&INITIAL_MEM),
                               sizeof(uint32_t), /*is_write=*/true);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(2);
     stmts.push_back(make_atom_global_cas_u32("r_old", "rd_addr", "r_cmp",
                                               "r_val"));

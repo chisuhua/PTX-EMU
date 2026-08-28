@@ -7,6 +7,9 @@
 #include <cctype> // for tolower (optional)
 #include <sstream>
 
+namespace ptxemu {
+namespace ir {
+
 std::string S2s(StatementType s) {
     switch (s) {
 #define X(stype, opkind, opname, count, struct_kind, instr_kind)                           \
@@ -34,50 +37,30 @@ std::string operandsToString(const std::vector<OperandContext> &ops) {
     for (size_t i = 0; i < ops.size(); ++i) {
         if (i > 0)
             oss << ", ";
-        oss << ops[i].toString(); // Assumes OperandContext::toString() exists
+        oss << ops[i].toString();
     }
     return oss.str();
 }
 
-// ------------------------------------------------------------
-// StatementContext::toString()
-// ------------------------------------------------------------
-std::string StatementContext::toString() const {
-    // Prefer original source if available
+std::string StatementContext::toString(int bytes) const {
     if (!instructionText.empty()) {
         return instructionText;
     }
 
     std::ostringstream oss;
 
-    // Special: Predicate prefix (@%p1)
-    // if (type == S_AT) {
-    //     const auto &pred = get<PredicatePrefix>();
-    //     oss << "@";
-    //     if (!pred.operands.empty()) {
-    //         oss << "(" << operandsToString(pred.operands) << ")";
-    //     }
-    //     oss << pred.target;
-    //
-    //     return oss.str();
-    // }
-    //
-
-    // Special: Dollar name ( $ r1)
     if (type == S_DOLLOR) {
         const auto &d = get<DollarNameInstr>();
         oss << d.name;
         return oss.str();
     }
 
-    // Special: Pragma
     if (type == S_PRAGMA) {
         const auto &p = get<PragmaInstr>();
         oss << p.content;
         return oss.str();
     }
 
-    // Declaration directives: .reg, .const, .shared, etc.
     if (type == S_REG || type == S_CONST || type == S_SHARED ||
         type == S_LOCAL || type == S_GLOBAL || type == S_PARAM) {
         const auto &decl = get<DeclarationInstr>();
@@ -119,13 +102,11 @@ std::string StatementContext::toString() const {
         return oss.str();
     }
 
-    // Void instructions (e.g., ret)
     if (type == S_RET) {
         oss << "ret;";
         return oss.str();
     }
 
-    // Branch
     if (type == S_BRA) {
         const auto &b = get<BranchInstr>();
         oss << "bra" << qualifiersToString(b.qualifiers) << " " << b.target
@@ -133,7 +114,6 @@ std::string StatementContext::toString() const {
         return oss.str();
     }
 
-    // Barrier
     if (type == S_BAR) {
         const auto &bar = get<BarrierInstr>();
         oss << "bar.sync" << qualifiersToString(bar.qualifiers);
@@ -146,7 +126,6 @@ std::string StatementContext::toString() const {
         return oss.str();
     }
 
-    // Call
     if (type == S_CALL) {
         const auto &call = get<CallInstr>();
         oss << "call" << qualifiersToString(call.qualifiers) << " "
@@ -158,7 +137,6 @@ std::string StatementContext::toString() const {
         return oss.str();
     }
 
-    // Generic, Atom — all use operand list + qualifiers
     if (holds_alternative<GenericInstr>(data)) {
         const auto &g = get<GenericInstr>();
         oss << S2s(type) << qualifiersToString(g.qualifiers) << " "
@@ -173,7 +151,9 @@ std::string StatementContext::toString() const {
         return oss.str();
     }
 
-    // Fallback: unknown or unhandled type
     oss << "// unknown stmt: " << S2s(type);
     return oss.str();
 }
+
+}  // namespace ir
+}  // namespace ptxemu

@@ -29,37 +29,37 @@ static void init_execution_environment() {
     }
 }
 
-static std::vector<StatementContext> build_barrier_divergence_statements() {
-    std::vector<StatementContext> stmts;
+static std::vector<ptxemu::ir::StatementContext> build_barrier_divergence_statements() {
+    std::vector<ptxemu::ir::StatementContext> stmts;
 
-    stmts.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B32},
-        {OperandContext{RegOperand{"r", 1}}, OperandContext{RegOperand{"tid.x", -1}}},
+    stmts.push_back(makeGenericInstr(S_MOV, {ptxemu::ir::Qualifier::Q_B32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 1}}, ptxemu::ir::OperandContext{RegOperand{"tid.x", -1}}},
         "mov.u32 %r1, %tid.x;"));
 
-    stmts.push_back(makeGenericInstr(S_SETP, {Qualifier::Q_B32, Qualifier::Q_LT},
-        {OperandContext{RegOperand{"p", 1}}, OperandContext{RegOperand{"r", 1}}, OperandContext{ImmOperand{"8"}}},
+    stmts.push_back(makeGenericInstr(S_SETP, {ptxemu::ir::Qualifier::Q_B32, ptxemu::ir::Qualifier::Q_LT},
+        {ptxemu::ir::OperandContext{RegOperand{"p", 1}}, ptxemu::ir::OperandContext{RegOperand{"r", 1}}, ptxemu::ir::OperandContext{ImmOperand{"8"}}},
         "setp.lt.u32 %p1, %r1, 8;"));
 
-    stmts.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B32},
-        {OperandContext{RegOperand{"r", 2}}, OperandContext{ImmOperand{"100"}}},
+    stmts.push_back(makeGenericInstr(S_MOV, {ptxemu::ir::Qualifier::Q_B32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 2}}, ptxemu::ir::OperandContext{ImmOperand{"100"}}},
         "mov.u32 %r2, 100;"));
 
-    stmts.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B32},
-        {OperandContext{RegOperand{"r", 3}}, OperandContext{ImmOperand{"200"}}},
+    stmts.push_back(makeGenericInstr(S_MOV, {ptxemu::ir::Qualifier::Q_B32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 3}}, ptxemu::ir::OperandContext{ImmOperand{"200"}}},
         "mov.u32 %r3, 200;"));
 
-    stmts.push_back(makeGenericInstr(S_SELP, {Qualifier::Q_B32},
-        {OperandContext{RegOperand{"r", 4}}, OperandContext{RegOperand{"r", 2}}, OperandContext{RegOperand{"r", 3}}, OperandContext{RegOperand{"p", 1}}},
+    stmts.push_back(makeGenericInstr(S_SELP, {ptxemu::ir::Qualifier::Q_B32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 4}}, ptxemu::ir::OperandContext{RegOperand{"r", 2}}, ptxemu::ir::OperandContext{RegOperand{"r", 3}}, ptxemu::ir::OperandContext{RegOperand{"p", 1}}},
         "selp.b32 %r4, %r2, %r3, %p1;"));
 
     stmts.push_back(makeBarWarpSyncInstr(0x0000FFFFu, 9));
 
-    stmts.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B64},
-        {OperandContext{RegOperand{"rd", 1}}, OperandContext{ImmOperand{"0"}}},
+    stmts.push_back(makeGenericInstr(S_MOV, {ptxemu::ir::Qualifier::Q_B64},
+        {ptxemu::ir::OperandContext{RegOperand{"rd", 1}}, ptxemu::ir::OperandContext{ImmOperand{"0"}}},
         "mov.u64 %rd1, 0;"));
 
-    stmts.push_back(makeGenericInstr(S_ADD, {Qualifier::Q_S64},
-        {OperandContext{RegOperand{"rd", 2}}, OperandContext{RegOperand{"rd", 1}}, OperandContext{ImmOperand{"0"}}},
+    stmts.push_back(makeGenericInstr(S_ADD, {ptxemu::ir::Qualifier::Q_S64},
+        {ptxemu::ir::OperandContext{RegOperand{"rd", 2}}, ptxemu::ir::OperandContext{RegOperand{"rd", 1}}, ptxemu::ir::OperandContext{ImmOperand{"0"}}},
         "add.s64 %rd2, %rd1, 0;"));
 
     stmts.push_back(makeVoidInstr(S_RET, "ret;"));

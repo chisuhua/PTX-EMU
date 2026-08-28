@@ -55,16 +55,16 @@ private:
     std::unique_ptr<ThreadContext> thread_;
 };
 
-Tcgen05Instr make_commit_instr(uint32_t cta_group) {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::COMMIT;
+ptxemu::ir::Tcgen05Instr make_commit_instr(uint32_t cta_group) {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::COMMIT;
     instr.cta_group = cta_group;
     return instr;
 }
 
-Tcgen05Instr make_wait_instr(uint32_t cta_group) {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::WAIT;
+ptxemu::ir::Tcgen05Instr make_wait_instr(uint32_t cta_group) {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::WAIT;
     instr.cta_group = cta_group;
     return instr;
 }

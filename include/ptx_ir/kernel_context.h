@@ -42,7 +42,7 @@ public:
     std::vector<ParamContext> kernelParams;
 
     // --- Statements (IR for simulation) ---
-    std::vector<StatementContext> kernelStatements;
+    std::vector<ptxemu::ir::StatementContext> kernelStatements;
 
     // === NEW: PTX 9.0+ ABI Preserve Support ===
     // Registers that must be preserved across function calls (for

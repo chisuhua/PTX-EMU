@@ -53,13 +53,13 @@ using ptxsim::testing::setup_block;
 // direct ctor rather than a helper because no public helper exists for a
 // VEC source operand today — see integration/ptx/test_vec_ld_st_isolation.cpp
 // where this pattern is exercised end-to-end through the handler.
-static OperandContext make_vec_reg_operand(
+static ptxemu::ir::OperandContext make_vec_reg_operand(
     const std::vector<std::string> &regs) {
     VecOperand v;
     for (const auto &r : regs) {
-        v.elements.push_back(OperandContext{RegOperand{r, -1}});
+        v.elements.push_back(ptxemu::ir::OperandContext{RegOperand{r, -1}});
     }
-    return OperandContext{v};
+    return ptxemu::ir::OperandContext{v};
 }
 
 TEST_CASE("BUG-VECOP-STALE: VEC acquire pushes a per-call buffer",
@@ -67,7 +67,7 @@ TEST_CASE("BUG-VECOP-STALE: VEC acquire pushes a per-call buffer",
     init_instruction_factory_once();
     SMContext sm(4, 128, 4096, 0);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.push_back(ptxsim::testing::make_ret());
     WarpContext *w = setup_block(sm, stmts);
     REQUIRE(w != nullptr);
@@ -84,10 +84,10 @@ TEST_CASE("BUG-VECOP-STALE: VEC acquire pushes a per-call buffer",
 
     // Qualifiers are not exercised by the VEC branch's acquire_operand; pass
     // an empty vector.
-    std::vector<Qualifier> no_qual;
+    std::vector<ptxemu::ir::Qualifier> no_qual;
 
     // First VEC acquire: 2-element vector {r1, r2}.
-    OperandContext vec1 = make_vec_reg_operand({"r1", "r2"});
+    ptxemu::ir::OperandContext vec1 = make_vec_reg_operand({"r1", "r2"});
     void *p1 = tc->acquire_operand(vec1, no_qual);
     REQUIRE(p1 != nullptr);
 
@@ -104,7 +104,7 @@ TEST_CASE("BUG-VECOP-STALE: VEC acquire pushes a per-call buffer",
     // code, this must NOT alias base1 — it must reference a fresh stack
     // entry. On the broken FIFO code, the acquire would re-use the same
     // queue entry, so base2 == base1.
-    OperandContext vec2 = make_vec_reg_operand({"r3", "r4", "r5", "r6"});
+    ptxemu::ir::OperandContext vec2 = make_vec_reg_operand({"r3", "r4", "r5", "r6"});
     void *p2 = tc->acquire_operand(vec2, no_qual);
     REQUIRE(p2 != nullptr);
 
@@ -144,13 +144,13 @@ TEST_CASE("BUG-VECOP-STALE: VEC acquire does not leave a partial entry on the "
     init_instruction_factory_once();
     SMContext sm(4, 128, 4096, 0);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.push_back(ptxsim::testing::make_ret());
     WarpContext *w = setup_block(sm, stmts);
     REQUIRE(w != nullptr);
 
     ThreadContext *tc = w->get_thread(0);
-    std::vector<Qualifier> no_qual;
+    std::vector<ptxemu::ir::Qualifier> no_qual;
 
     auto rbm = w->get_register_bank_manager();
     rbm->create_register("r1", 4);
@@ -161,7 +161,7 @@ TEST_CASE("BUG-VECOP-STALE: VEC acquire does not leave a partial entry on the "
     rbm->create_register("r6", 4);
     // "r_undeclared" deliberately not created — acquire_register throws.
 
-    OperandContext bad = make_vec_reg_operand(
+    ptxemu::ir::OperandContext bad = make_vec_reg_operand(
         {"r1", "r_undeclared", "r2"});
     REQUIRE_THROWS(tc->acquire_operand(bad, no_qual));
 
@@ -173,7 +173,7 @@ TEST_CASE("BUG-VECOP-STALE: VEC acquire does not leave a partial entry on the "
     // entry would still work for this isolated test, while the real
     // failure mode (cross-instruction corruption) is caught by the
     // integration test in test_vec_ld_st_isolation.cpp.
-    OperandContext good = make_vec_reg_operand(
+    ptxemu::ir::OperandContext good = make_vec_reg_operand(
         {"r3", "r4", "r5", "r6"});
     void *p = tc->acquire_operand(good, no_qual);
     REQUIRE(p != nullptr);

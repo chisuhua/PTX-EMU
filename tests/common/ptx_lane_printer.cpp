@@ -89,7 +89,7 @@ static PtxContext parse_ptx(const std::string& code) {
 
 /// 直接使用全部 kernel statements（不含过滤）
 /// 声明/标签由对应 handler 自动跳过，保留完整 PC 索引
-static std::vector<StatementContext> extract_executable(
+static std::vector<ptxemu::ir::StatementContext> extract_executable(
     const KernelContext& kernel) {
     return kernel.kernelStatements; // 直接复制，保持 PC 一致
 }
@@ -98,7 +98,7 @@ static std::vector<StatementContext> extract_executable(
 /// 注意：labelName 可能含 '$' 前缀，但分支指令的 target 会先 strip '$'，
 /// 所以统一存储不带 '$' 的键名
 static std::map<std::string, int> build_label2pc(
-    const std::vector<StatementContext>& stmts) {
+    const std::vector<ptxemu::ir::StatementContext>& stmts) {
     std::map<std::string, int> label2pc;
     for (size_t i = 0; i < stmts.size(); i++) {
         if (stmts[i].type == S_LABEL) {
@@ -114,12 +114,12 @@ static std::map<std::string, int> build_label2pc(
 }
 
 /// 检查指令类型是否为分支
-static bool is_branch_type(StatementType type) {
+static bool is_branch_type(ptxemu::ir::StatementType type) {
     return type == S_BRA || type == S_BRX;
 }
 
 /// 检查指令类型是否为 ret/exit
-static bool is_ret_type(StatementType type) {
+static bool is_ret_type(ptxemu::ir::StatementType type) {
     return type == S_RET || type == S_EXIT;
 }
 
@@ -145,7 +145,7 @@ static std::vector<std::vector<int>> extract_lane_pc_sequences(
 /// 从 lane PC 序列中提取唯一路径
 static std::vector<PathInfo> extract_paths(
     const std::vector<std::vector<int>>& lane_pcs,
-    const std::vector<StatementContext>& stmts) {
+    const std::vector<ptxemu::ir::StatementContext>& stmts) {
     std::vector<PathInfo> paths;
     std::map<std::vector<int>, int> path_map; // pc_seq → path_id
     std::vector<int> path_lane_count;
@@ -184,7 +184,7 @@ static std::vector<PathInfo> extract_paths(
 
 /// SIMT 执行：逐 PC 执行，记录每步的 active mask
 static SimtTrace simt_execute(WarpContext* warp,
-                               const std::vector<StatementContext>& exec_stmts,
+                               const std::vector<ptxemu::ir::StatementContext>& exec_stmts,
                                bool verbose = false) {
     SimtTrace trace;
     int num_stmts = (int)exec_stmts.size();
@@ -214,7 +214,7 @@ static SimtTrace simt_execute(WarpContext* warp,
             // 执行
             try {
                 warp->execute_warp_instruction(
-                    const_cast<StatementContext&>(exec_stmts[pc]), pc);
+                    const_cast<ptxemu::ir::StatementContext&>(exec_stmts[pc]), pc);
             } catch (const std::exception& e) {
                 if (verbose) {
                     std::cout << "  [SIMT] PC=" << pc << " error: "
@@ -263,7 +263,7 @@ static SimtTrace simt_execute(WarpContext* warp,
 // ============================================================================
 
 static void print_trace(const SimtTrace& trace,
-                         const std::vector<StatementContext>& exec_stmts,
+                         const std::vector<ptxemu::ir::StatementContext>& exec_stmts,
                          bool verbose) {
     if (trace.empty()) {
         std::cout << "  (empty trace)\n";

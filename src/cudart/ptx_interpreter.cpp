@@ -141,9 +141,9 @@ KernelLaunchRequest PtxInterpreter::prepareKernelLaunchRequest(
                 // to nullptr phy_addr; cache is cleared on next acquire.
                 (void)mask;
                 if (barrier.operands.size() >= 2) {
-                    barrier.operands[0] = OperandContext{ImmOperand{std::to_string(mask)}};
+                    barrier.operands[0] = ptxemu::ir::OperandContext{ImmOperand{std::to_string(mask)}};
                 } else if (barrier.operands.size() == 1) {
-                    barrier.operands[0] = OperandContext{ImmOperand{std::to_string(mask)}};
+                    barrier.operands[0] = ptxemu::ir::OperandContext{ImmOperand{std::to_string(mask)}};
                 }
             }
         }
@@ -274,16 +274,16 @@ KernelLaunchRequest PtxInterpreter::prepareKernelLaunchRequest(
             for (size_t i = 0; i < globalDecl->initValues.size() && i < array_size; ++i) {
                 char *target = (char *)dest_addr + i * element_size;
                 switch (globalDecl->dataType) {
-                case Qualifier::Q_B8:  case Qualifier::Q_U8:  case Qualifier::Q_S8:
+                case ptxemu::ir::Qualifier::Q_B8:  case ptxemu::ir::Qualifier::Q_U8:  case ptxemu::ir::Qualifier::Q_S8:
                     *target = static_cast<char>(globalDecl->initValues[i]);  break;
-                case Qualifier::Q_B16: case Qualifier::Q_U16: case Qualifier::Q_S16:
-                case Qualifier::Q_F16:
+                case ptxemu::ir::Qualifier::Q_B16: case ptxemu::ir::Qualifier::Q_U16: case ptxemu::ir::Qualifier::Q_S16:
+                case ptxemu::ir::Qualifier::Q_F16:
                     *(short *)target = static_cast<short>(globalDecl->initValues[i]); break;
-                case Qualifier::Q_B32: case Qualifier::Q_U32: case Qualifier::Q_S32:
-                case Qualifier::Q_F32:
+                case ptxemu::ir::Qualifier::Q_B32: case ptxemu::ir::Qualifier::Q_U32: case ptxemu::ir::Qualifier::Q_S32:
+                case ptxemu::ir::Qualifier::Q_F32:
                     *(int *)target = static_cast<int>(globalDecl->initValues[i]); break;
-                case Qualifier::Q_B64: case Qualifier::Q_U64: case Qualifier::Q_S64:
-                case Qualifier::Q_F64:
+                case ptxemu::ir::Qualifier::Q_B64: case ptxemu::ir::Qualifier::Q_U64: case ptxemu::ir::Qualifier::Q_S64:
+                case ptxemu::ir::Qualifier::Q_F64:
                     *(long long *)target = static_cast<long long>(globalDecl->initValues[i]); break;
                 default:
                     *(int *)target = static_cast<int>(globalDecl->initValues[i]); break;
@@ -402,7 +402,7 @@ void PtxInterpreter::setupKernelArguments(
         if (!p.paramTypes.empty()) {
             bool hasPtrType = false;
             for (auto q : p.paramTypes) {
-                if (q == Qualifier::Q_PTR) {
+                if (q == ptxemu::ir::Qualifier::Q_PTR) {
                     hasPtrType = true;
                     continue;
                 }
@@ -421,11 +421,11 @@ void PtxInterpreter::setupKernelArguments(
         return 0;
     };
 
-    auto get_param_type = [](const ParamContext &p) -> Qualifier {
+    auto get_param_type = [](const ParamContext &p) -> ptxemu::ir::Qualifier {
         if (!p.paramTypes.empty()) {
             return p.paramTypes[0];
         }
-        return Qualifier::Q_U64;
+        return ptxemu::ir::Qualifier::Q_U64;
     };
 
     // 计算参数总大小
@@ -584,7 +584,7 @@ void PtxInterpreter::setupLabels(std::map<std::string, int> &label2pc) {
                     kernelContext->kernelStatements[i].data);
                 if (barrier.operands.size() >= 2) {
                     int barrier_reconvergence = i + 1;
-                    barrier.operands[1] = OperandContext{ImmOperand{std::to_string(barrier_reconvergence)}};
+                    barrier.operands[1] = ptxemu::ir::OperandContext{ImmOperand{std::to_string(barrier_reconvergence)}};
                     updated_barriers++;
                     PTX_INFO_EMU("CFG[PC=%d]: S_BAR_WARP_SYNC updated - new_reconvergence_pc=%d",
                                 i, barrier_reconvergence);

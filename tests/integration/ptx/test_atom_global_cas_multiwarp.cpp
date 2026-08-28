@@ -46,7 +46,7 @@ using ptxsim::testing::make_ret;
 namespace {
 
 static std::pair<WarpContext *, WarpContext *>
-setup_two_warps(SMContext &sm, std::vector<StatementContext> &stmts) {
+setup_two_warps(SMContext &sm, std::vector<ptxemu::ir::StatementContext> &stmts) {
     auto blk = std::make_unique<CTAContext>();
     Dim3 g{1, 1, 1};
     Dim3 b{64, 1, 1};  // 64 threads = 2 warps
@@ -65,7 +65,7 @@ setup_two_warps(SMContext &sm, std::vector<StatementContext> &stmts) {
 
 // Drive a warp a bounded number of step_warp() calls. Returns true if
 // the warp reached `ret_pc`, false otherwise (deadlock or hang).
-static bool run_to_ret(WarpContext *w, std::vector<StatementContext> &stmts,
+static bool run_to_ret(WarpContext *w, std::vector<ptxemu::ir::StatementContext> &stmts,
                        int ret_pc, int max_steps = 64) {
     int steps_taken = 0;
     for (int step = 0; step < max_steps; ++step) {
@@ -95,7 +95,7 @@ TEST_CASE("atom.global.cas across 2 warps is mutex-serialized (no deadlock)",
     simple_mem->direct_access(addr_host, const_cast<uint32_t *>(&INITIAL_MEM),
                               sizeof(uint32_t), /*is_write=*/true);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(2);
     stmts.push_back(make_atom_global_cas_u32("r_old", "rd_addr", "r_cmp",
                                               "r_val"));
@@ -188,7 +188,7 @@ TEST_CASE("atom.global.cas all-mismatch across 2 warps leaves mem unchanged",
     simple_mem->direct_access(addr_host, const_cast<uint32_t *>(&INITIAL_MEM),
                               sizeof(uint32_t), /*is_write=*/true);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(2);
     stmts.push_back(make_atom_global_cas_u32("r_old", "rd_addr", "r_cmp",
                                               "r_val"));

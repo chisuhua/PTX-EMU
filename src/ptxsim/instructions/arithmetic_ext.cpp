@@ -10,7 +10,7 @@
 #include <cstring>
 
 void AddcHandler::processOperation(ThreadContext *context, void **operands,
-                                    const std::vector<Qualifier> &qualifiers,
+                                    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                                     const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -241,7 +241,7 @@ void AddcHandler::processOperation(ThreadContext *context, void **operands,
 }
 
 void SubcHandler::processOperation(ThreadContext *context, void **operands,
-                                    const std::vector<Qualifier> &qualifiers,
+                                    const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                                     const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -463,7 +463,7 @@ void SubcHandler::processOperation(ThreadContext *context, void **operands,
 }
 
 void Mul24Handler::processOperation(ThreadContext *context, void **operands,
-                                     const std::vector<Qualifier> &qualifiers,
+                                     const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                                      const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -473,8 +473,8 @@ void Mul24Handler::processOperation(ThreadContext *context, void **operands,
     void *src2 = operands[2];
 
     // 检查修饰符
-    bool has_hi = QvecHasQ(qualifiers, Qualifier::Q_HI);
-    bool has_lo = QvecHasQ(qualifiers, Qualifier::Q_LO);
+    bool has_hi = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_HI);
+    bool has_lo = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_LO);
 
     // MUL24指令处理32位操作数，但只使用其中的24位（最低有效位）
     // 结果是48位，根据修饰符选择高32位或低32位
@@ -508,7 +508,7 @@ void Mul24Handler::processOperation(ThreadContext *context, void **operands,
 }
 
 void Mad24Handler::processOperation(ThreadContext *context, void **operands,
-                                     const std::vector<Qualifier> &qualifiers,
+                                     const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                                      const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -519,8 +519,8 @@ void Mad24Handler::processOperation(ThreadContext *context, void **operands,
     void *src3 = operands[3];
 
     // 检查修饰符
-    bool has_hi = QvecHasQ(qualifiers, Qualifier::Q_HI);
-    bool has_lo = QvecHasQ(qualifiers, Qualifier::Q_LO);
+    bool has_hi = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_HI);
+    bool has_lo = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_LO);
 
     // MAD24指令处理32位操作数，但只使用其中的24位（最低有效位）
     // 结果是48位加上第三个操作数，根据修饰符选择高32位或低32位
@@ -558,7 +558,7 @@ void Mad24Handler::processOperation(ThreadContext *context, void **operands,
 }
 
 void FmaHandler::processOperation(ThreadContext *context, void **operands,
-                                   const std::vector<Qualifier> &qualifiers,
+                                   const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                                    const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -570,10 +570,10 @@ void FmaHandler::processOperation(ThreadContext *context, void **operands,
     void *src3 = operands[3];
 
     // 检查修饰符
-    bool has_wide = QvecHasQ(qualifiers, Qualifier::Q_WIDE);
-    bool has_hi = QvecHasQ(qualifiers, Qualifier::Q_HI);
-    bool has_lo = QvecHasQ(qualifiers, Qualifier::Q_LO);
-    bool has_sat = QvecHasQ(qualifiers, Qualifier::Q_SAT);
+    bool has_wide = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_WIDE);
+    bool has_hi = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_HI);
+    bool has_lo = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_LO);
+    bool has_sat = QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_SAT);
 
     // === 浮点类型：执行融合乘加（忽略修饰符，因为FMA本身就是融合操作）===
     if (is_float) {

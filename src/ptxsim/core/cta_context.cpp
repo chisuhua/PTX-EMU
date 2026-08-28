@@ -21,7 +21,7 @@ extern bool IFLOG();
 #endif
 
 void CTAContext::init(Dim3 &GridDim, Dim3 &BlockDim, Dim3 &blockIdx,
-                      std::vector<StatementContext> &statements,
+                      std::vector<ptxemu::ir::StatementContext> &statements,
                       std::map<std::string, std::unique_ptr<Symtable>> *name2Sym,
                       std::map<std::string, int> &label2pc,
                       void *local_memory_base, size_t local_mem_per_thread,

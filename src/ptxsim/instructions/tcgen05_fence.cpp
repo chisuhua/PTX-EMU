@@ -31,21 +31,21 @@ namespace {
 // has_f16_qualifier). Linear scan over enum-vector Qualifier; explicit specialization
 // since Q_BEFORE_THREAD_SYNC / Q_AFTER_THREAD_SYNC come from grammar tokens that the
 // visitor stores in instr.qualifiers.
-bool has_before_sync_qualifier(const Tcgen05Instr &instr) {
+bool has_before_sync_qualifier(const ptxemu::ir::Tcgen05Instr &instr) {
     for (auto q : instr.qualifiers) {
-        if (q == Qualifier::Q_BEFORE_THREAD_SYNC) return true;
+        if (q == ptxemu::ir::Qualifier::Q_BEFORE_THREAD_SYNC) return true;
     }
     return false;
 }
-bool has_after_sync_qualifier(const Tcgen05Instr &instr) {
+bool has_after_sync_qualifier(const ptxemu::ir::Tcgen05Instr &instr) {
     for (auto q : instr.qualifiers) {
-        if (q == Qualifier::Q_AFTER_THREAD_SYNC) return true;
+        if (q == ptxemu::ir::Qualifier::Q_AFTER_THREAD_SYNC) return true;
     }
     return false;
 }
 }  // namespace
 
-void processTcgen05Fence(ThreadContext *context, const Tcgen05Instr &instr) {
+void processTcgen05Fence(ThreadContext *context, const ptxemu::ir::Tcgen05Instr &instr) {
     WarpContext *warp = context->get_warp_context();
     if (!warp) {
         PTX_ERROR_EMU("tcgen05.fence: no WarpContext attached to thread");

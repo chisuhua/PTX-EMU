@@ -33,7 +33,7 @@ void add_thread(WarpContext& warp, int lane) {
     Dim3 threadIdx = {(uint32_t)lane, 0, 0};
     Dim3 gridDim = {1, 1, 1};
     Dim3 blockDim = {32, 1, 1};
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
     thread->init(blockIdx, threadIdx, gridDim, blockDim, stmts, &name2Sym,

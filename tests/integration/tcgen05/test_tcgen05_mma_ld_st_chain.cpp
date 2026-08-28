@@ -97,31 +97,31 @@ private:
     std::vector<uint8_t> global_buf_;
 };
 
-Tcgen05Instr make_mma_instr() {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::MMA;
+ptxemu::ir::Tcgen05Instr make_mma_instr() {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::MMA;
     instr.cta_group = 1;
-    instr.dtype = Tcgen05Dtype::F16;
-    instr.operands = std::vector<OperandContext>(
-        4, OperandContext(RegOperand{"r", 0}));
+    instr.dtype = ptxemu::ir::Tcgen05Dtype::F16;
+    instr.operands = std::vector<ptxemu::ir::OperandContext>(
+        4, ptxemu::ir::OperandContext(RegOperand{"r", 0}));
     return instr;
 }
 
-Tcgen05Instr make_ld_instr() {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::LD;
+ptxemu::ir::Tcgen05Instr make_ld_instr() {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::LD;
     instr.cta_group = 1;
-    instr.operands = std::vector<OperandContext>(
-        2, OperandContext(RegOperand{"r", 0}));
+    instr.operands = std::vector<ptxemu::ir::OperandContext>(
+        2, ptxemu::ir::OperandContext(RegOperand{"r", 0}));
     return instr;
 }
 
-Tcgen05Instr make_st_instr() {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::ST;
+ptxemu::ir::Tcgen05Instr make_st_instr() {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::ST;
     instr.cta_group = 1;
-    instr.operands = std::vector<OperandContext>(
-        2, OperandContext(RegOperand{"r", 0}));
+    instr.operands = std::vector<ptxemu::ir::OperandContext>(
+        2, ptxemu::ir::OperandContext(RegOperand{"r", 0}));
     return instr;
 }
 

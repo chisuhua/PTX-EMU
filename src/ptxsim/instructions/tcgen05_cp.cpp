@@ -51,12 +51,12 @@ namespace ptxsim {
 // `AddrOperand`. Returns 0 if the operand is not an address with an
 // immediate offset (e.g., register-offset or symbolic base). Future
 // phases should resolve register offsets via the register bank.
-uint32_t extract_smem_offset_placeholder(const Tcgen05Instr &instr) {
+uint32_t extract_smem_offset_placeholder(const ptxemu::ir::Tcgen05Instr &instr) {
     if (instr.operands.size() < 2) {
         return 0;
     }
     const auto &op = instr.operands[1];
-    if (op.kind() != OperandKind::ADDR) {
+    if (op.kind() != ptxemu::ir::OperandKind::ADDR) {
         return 0;
     }
     const auto &addr = std::get<AddrOperand>(op.data);
@@ -80,7 +80,7 @@ uint32_t extract_smem_offset_placeholder(const Tcgen05Instr &instr) {
     return 0;
 }
 
-void processTcgen05Cp(ThreadContext *context, const Tcgen05Instr &instr) {
+void processTcgen05Cp(ThreadContext *context, const ptxemu::ir::Tcgen05Instr &instr) {
     WarpContext *warp = context->get_warp_context();
     if (!warp) {
         PTX_ERROR_EMU("tcgen05.cp: no WarpContext attached to thread");

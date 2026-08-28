@@ -17,7 +17,7 @@ using namespace ptxparser;
 
 namespace {
 
-void dumpStatements(const std::vector<StatementContext> &statements,
+void dumpStatements(const std::vector<ptxemu::ir::StatementContext> &statements,
                           std::ostream &os, const std::string &indent) {
      for (size_t i = 0; i < statements.size(); ++i) {
           os << indent << "[" << i << "] " << statements[i].toString()

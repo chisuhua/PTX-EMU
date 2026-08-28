@@ -174,7 +174,7 @@ void GPUContext::submit_kernel_request(KernelLaunchRequest &&request) {
 
 bool GPUContext::execute_kernel_internal(
     void **args, Dim3 &gridDim, Dim3 &blockDim,
-    std::vector<StatementContext> &statements,
+    std::vector<ptxemu::ir::StatementContext> &statements,
     std::map<std::string, std::unique_ptr<Symtable>> &name2Sym,
     std::map<std::string, int> &label2pc, const KernelLaunchRequest &request) {
     int ctaNum = gridDim.x * gridDim.y * gridDim.z;

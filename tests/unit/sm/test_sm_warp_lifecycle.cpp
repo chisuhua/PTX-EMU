@@ -29,7 +29,7 @@ namespace {
 // tests/integration/barrier/test_barrier_full_lifecycle.cpp.
 std::unique_ptr<CTAContext> make_block(Dim3 blockIdx, int threads,
                                         size_t shared_mem_bytes,
-                                        std::vector<StatementContext> &stmts) {
+                                        std::vector<ptxemu::ir::StatementContext> &stmts) {
     Dim3 gridDim = {1, 1, 1};
     Dim3 blockDim = {static_cast<uint32_t>(threads), 1, 1};
     auto block = std::make_unique<CTAContext>();
@@ -48,7 +48,7 @@ TEST_CASE("sm_warp_lifecycle::Access registers a new warp",
     ResourceManager::instance().initialize(/*num_sms=*/1, /*shared_mem=*/8192);
     SMContext sm(/*max_warps=*/2, /*max_threads=*/64, /*shared_mem=*/8192,
                  /*sm_id=*/0);
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
 
     Dim3 idx = {0, 0, 0};
     auto block = make_block(idx, /*threads=*/32, /*shared_mem=*/0, stmts);
@@ -61,7 +61,7 @@ TEST_CASE("sm_warp_lifecycle::Access::get_active_warps_count matches public API 
     ResourceManager::instance().initialize(/*num_sms=*/1, /*shared_mem=*/8192);
     SMContext sm(/*max_warps=*/2, /*max_threads=*/64, /*shared_mem=*/8192,
                  /*sm_id=*/0);
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
 
     Dim3 idx = {0, 0, 0};
     auto block = make_block(idx, /*threads=*/32, /*shared_mem=*/0, stmts);

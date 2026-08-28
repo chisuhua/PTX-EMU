@@ -72,7 +72,7 @@ void set_reg_per_lane_u32(WarpContext *w, const std::string &reg,
     }
 }
 
-WarpContext *setup_block(SMContext &sm, std::vector<StatementContext> &stmts) {
+WarpContext *setup_block(SMContext &sm, std::vector<ptxemu::ir::StatementContext> &stmts) {
     auto blk = std::make_unique<CTAContext>();
     Dim3 g{1, 1, 1};
     Dim3 b{32, 1, 1};
@@ -99,7 +99,7 @@ TEST_CASE("integration_ptx_integer_add_s32",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(3);
     stmts.push_back(make_mov("r1", "tid.x"));    // PC=0
     stmts.push_back(make_add("r2", "r1", "r1")); // PC=1: r2 = r1 + r1
@@ -134,7 +134,7 @@ TEST_CASE("integration_ptx_integer_sub_s32",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(4);
     stmts.push_back(make_mov("r1", "tid.x"));    // PC=0
     stmts.push_back(make_mov_imm("r3", 5));      // PC=1: r3 = 5
@@ -170,7 +170,7 @@ TEST_CASE("integration_ptx_integer_mul_s32",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(3);
     stmts.push_back(make_mov("r1", "tid.x"));    // PC=0
     stmts.push_back(make_mul("r2", "r1", "r1")); // PC=1: r2 = r1 * r1

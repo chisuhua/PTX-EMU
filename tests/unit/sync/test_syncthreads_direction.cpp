@@ -24,16 +24,16 @@ using namespace ptxir::factory;
 // Helpers
 // ============================================================
 
-static StatementContext make_regular_stmt(StatementType type = S_MOV) {
-    StatementContext ctx;
+static ptxemu::ir::StatementContext make_regular_stmt(ptxemu::ir::StatementType type = S_MOV) {
+    ptxemu::ir::StatementContext ctx;
     ctx.type = type;
     GenericInstr instr;
     ctx.data = instr;
     return ctx;
 }
 
-static StatementContext make_branch_stmt(const std::string& target) {
-    StatementContext ctx;
+static ptxemu::ir::StatementContext make_branch_stmt(const std::string& target) {
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_BRA;
     BranchInstr branch;
     branch.target = target;
@@ -42,8 +42,8 @@ static StatementContext make_branch_stmt(const std::string& target) {
     return ctx;
 }
 
-static StatementContext make_label_stmt(const std::string& name) {
-    StatementContext ctx;
+static ptxemu::ir::StatementContext make_label_stmt(const std::string& name) {
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_DOLLOR;
     DollarNameInstr label;
     label.name = name;
@@ -52,7 +52,7 @@ static StatementContext make_label_stmt(const std::string& name) {
 }
 
 static cfg::PostDominatorMap build_post_doms(
-    const std::vector<StatementContext>& stmts,
+    const std::vector<ptxemu::ir::StatementContext>& stmts,
     const std::map<std::string, int>& label2pc)
 {
     cfg::CFG cfg_obj = cfg::CFGBuilder::build(stmts, label2pc);
@@ -70,7 +70,7 @@ static uint32_t compute_participation_mask(int total_threads) {
 
 TEST_CASE("D1: barrier reconvergence_pc fallback when no post-dominator",
           "[cfg][direction1][reconvergence]") {
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     std::map<std::string, int> label2pc;
 
     stmts.push_back(make_regular_stmt());
@@ -99,7 +99,7 @@ TEST_CASE("D1: barrier reconvergence_pc fallback when no post-dominator",
 
 TEST_CASE("D1: two consecutive barriers — second barrier reconvergence",
           "[cfg][direction1][reconvergence]") {
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     std::map<std::string, int> label2pc;
     stmts.push_back(makeBarWarpSyncInstr(0x0000FFFF, -1));
     stmts.push_back(makeBarWarpSyncInstr(0x0000FFFF, -1));
@@ -152,7 +152,7 @@ TEST_CASE("D2: CFG post-dominator for branch-then-barrier (Test 3 pattern)",
     // PC=12:   bar.sync 0                ← ALL threads converge
     // PC=13:   ld.shared
     // PC=14:   ret
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     std::map<std::string, int> label2pc;
 
     for (int i = 0; i < 5; i++) stmts.push_back(make_regular_stmt());
@@ -195,7 +195,7 @@ TEST_CASE("D2: CFG post-dominator for branch-then-barrier (Test 3 pattern)",
 TEST_CASE("D2: divergent branch with 8 threads in CTA",
           "[cfg][direction2][small_cta]") {
     // 8-thread CTA: tid 0-3 take branch, tid 4-7 fall through
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     std::map<std::string, int> label2pc;
 
     stmts.push_back(make_regular_stmt());    // PC=0: mov
@@ -238,7 +238,7 @@ TEST_CASE("D3: sequential shared memory with barrier between writes",
     // PC=2: ld.shared from [%addr0]
     // PC=3: bar.sync 0
     // PC=4: ret
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     std::map<std::string, int> label2pc;
 
     stmts.push_back(make_regular_stmt(S_ST));     // PC=0
@@ -268,7 +268,7 @@ TEST_CASE("D3: barrier reconvergence_pc for if-then pattern with shared memory",
     // Reproduces the exact pattern from test_nested_sync:
     // all threads do first barrier, then only subset executes shared memory writes,
     // then all threads do second barrier and read results.
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     std::map<std::string, int> label2pc;
 
     stmts.push_back(make_regular_stmt());        // PC=0: setup

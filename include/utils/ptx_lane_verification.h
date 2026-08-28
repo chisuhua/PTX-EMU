@@ -48,7 +48,7 @@ struct BranchDecision {
 struct PathConfig {
     std::string name;
     std::vector<int> lane_ids;
-    std::vector<StatementContext> statements;
+    std::vector<ptxemu::ir::StatementContext> statements;
     std::vector<BranchDecision> expected_decisions;
 };
 
@@ -88,7 +88,7 @@ std::map<int, std::vector<PCTraceEntry>> collect_pc_traces();
 // 辅助函数：执行单条语句
 void execute_single_statement(
     WarpContext* warp,
-    StatementContext& stmt,
+    ptxemu::ir::StatementContext& stmt,
     int target_pc = -1
 );
 

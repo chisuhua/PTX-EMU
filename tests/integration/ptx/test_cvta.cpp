@@ -68,7 +68,7 @@ void set_reg_per_lane_u32(WarpContext *w, const std::string &reg,
     }
 }
 
-WarpContext *setup_block(SMContext &sm, std::vector<StatementContext> &stmts) {
+WarpContext *setup_block(SMContext &sm, std::vector<ptxemu::ir::StatementContext> &stmts) {
     auto blk = std::make_unique<CTAContext>();
     Dim3 g{1, 1, 1};
     Dim3 b{32, 1, 1};
@@ -95,7 +95,7 @@ TEST_CASE("integration_ptx_cvta_to_global",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(2);
     stmts.push_back(make_cvta_to_global("r2", "r1"));
     stmts.push_back(make_ret());
@@ -129,7 +129,7 @@ TEST_CASE("integration_ptx_cvta_to_shared",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(2);
     stmts.push_back(make_cvta_to_shared("r2", "r1"));
     stmts.push_back(make_ret());

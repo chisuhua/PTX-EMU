@@ -30,7 +30,7 @@ std::vector<uint8_t> sha256(const std::vector<uint8_t>& data) {
 
 std::vector<uint8_t> make_manifest_ptxir(const std::string& kernel_name,
                                            const std::vector<uint8_t>& prefix) {
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
     stmt.type = S_LABEL;
     stmt.data = LabelInstr{"L0"};
     std::ostringstream oss(std::ios::binary);

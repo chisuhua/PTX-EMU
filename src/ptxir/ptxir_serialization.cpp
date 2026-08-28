@@ -12,20 +12,20 @@
 #include <optional>
 #include <sstream>
 
-std::string serialize_to_string(const std::vector<struct StatementContext>& stmts) {
+std::string serialize_to_string(const std::vector<ptxemu::ir::StatementContext>& stmts) {
     std::ostringstream oss(std::ios::binary);
     ::PtxirWriter writer(oss);
     writer.write(stmts);
     return oss.str();
 }
 
-std::vector<struct StatementContext> deserialize_from_string(const std::string& data) {
+std::vector<ptxemu::ir::StatementContext> deserialize_from_string(const std::string& data) {
     std::istringstream iss(data, std::ios::binary);
     ::PtxirReader reader(iss);
     return reader.read();
 }
 
-bool serialize_statements(const std::vector<struct StatementContext>& stmts, const std::string& path) {
+bool serialize_statements(const std::vector<ptxemu::ir::StatementContext>& stmts, const std::string& path) {
     std::ofstream out(path, std::ios::binary);
     if (!out) return false;
     ::PtxirWriter writer(out);
@@ -33,7 +33,7 @@ bool serialize_statements(const std::vector<struct StatementContext>& stmts, con
     return out.good();
 }
 
-std::vector<struct StatementContext> deserialize_statements(const std::string& path) {
+std::vector<ptxemu::ir::StatementContext> deserialize_statements(const std::string& path) {
     std::ifstream in(path, std::ios::binary);
     if (!in) {
         throw std::runtime_error("PTXIR file not found: " + path);
@@ -45,7 +45,7 @@ std::vector<struct StatementContext> deserialize_statements(const std::string& p
 namespace {
 // Fill reconvergence_pc for all S_BRA and S_BAR from CFG post-dominators.
 // Shared by generate_ptxir() (embed at write time) and load_ptxir(apply_cfg=true).
-void fill_reconvergence_pc(std::vector<StatementContext>& stmts) {
+void fill_reconvergence_pc(std::vector<ptxemu::ir::StatementContext>& stmts) {
     std::map<std::string, int> label2pc;
     for (int i = 0; i < static_cast<int>(stmts.size()); i++) {
         if (stmts[i].type == S_LABEL) {
@@ -133,27 +133,27 @@ bool generate_ptxir(const std::string& ptx_path,
                 mp.size = static_cast<uint16_t>(p.byteSize);
                 mp.kind = ParamKind::U32;
                 for (const auto& q : p.paramTypes) {
-                    if (q == Qualifier::Q_U64 || q == Qualifier::Q_PTR) {
+                    if (q == ptxemu::ir::Qualifier::Q_U64 || q == ptxemu::ir::Qualifier::Q_PTR) {
                         mp.kind = ParamKind::U64;
                         break;
                     }
-                    if (q == Qualifier::Q_U32 || q == Qualifier::Q_S32) {
+                    if (q == ptxemu::ir::Qualifier::Q_U32 || q == ptxemu::ir::Qualifier::Q_S32) {
                         mp.kind = ParamKind::U32;
                         break;
                     }
-                    if (q == Qualifier::Q_F32) {
+                    if (q == ptxemu::ir::Qualifier::Q_F32) {
                         mp.kind = ParamKind::F32;
                         break;
                     }
-                    if (q == Qualifier::Q_F64) {
+                    if (q == ptxemu::ir::Qualifier::Q_F64) {
                         mp.kind = ParamKind::F64;
                         break;
                     }
-                    if (q == Qualifier::Q_U16) {
+                    if (q == ptxemu::ir::Qualifier::Q_U16) {
                         mp.kind = ParamKind::U16;
                         break;
                     }
-                    if (q == Qualifier::Q_U8) {
+                    if (q == ptxemu::ir::Qualifier::Q_U8) {
                         mp.kind = ParamKind::U8;
                         break;
                     }
@@ -175,7 +175,7 @@ bool generate_ptxir(const std::string& ptx_path,
     return generate_ptxir(ptx_path, ptxir_path, kernel_name, std::nullopt);
 }
 
-std::vector<struct StatementContext> load_ptxir(const std::string& ptxir_path,
+std::vector<ptxemu::ir::StatementContext> load_ptxir(const std::string& ptxir_path,
                                                  bool apply_cfg) {
     auto stmts = deserialize_statements(ptxir_path);
     if (apply_cfg) {

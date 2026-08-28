@@ -15,7 +15,7 @@ namespace ptxsim::testing {
 // Statement Sequence Printing (debugging)
 // ============================================================================
 
-inline void print_stmts(std::ostream& os, const std::vector<StatementContext>& stmts, const char* label = "") {
+inline void print_stmts(std::ostream& os, const std::vector<ptxemu::ir::StatementContext>& stmts, const char* label = "") {
     os << "=== Statements " << (label ? label : "") << " (count=" << stmts.size() << ") ===" << std::endl;
     for (size_t i = 0; i < stmts.size() && i < 30; i++) {
         os << "  [" << std::setw(3) << i << "] " << stmts[i].instructionText << std::endl;

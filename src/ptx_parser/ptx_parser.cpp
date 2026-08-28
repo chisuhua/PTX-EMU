@@ -122,24 +122,24 @@ void PtxListener::test_semantic() {
         std::printf("number of statements %zu\n",
                     kernel.kernelStatements.size());
         for (int i = 0; i < kernel.kernelStatements.size(); i++) {
-            StatementContext stat = kernel.kernelStatements[i];
+            ptxemu::ir::StatementContext stat = kernel.kernelStatements[i];
             std::printf("%s %p\n", S2s(stat.statementType).c_str(),
                         stat.statement);
         }
     }
 }
 
-void PtxListener::fetchOperand(OperandContext &oc) {
+void PtxListener::fetchOperand(ptxemu::ir::OperandContext &oc) {
     assert(op.size());
     oc.operand = op.front()->operand;
     oc.operandType = op.front()->operandType;
     op.pop();
 }
 
-void PtxListener::fetchOperand(std::vector<OperandContext> &oc) {
+void PtxListener::fetchOperand(std::vector<ptxemu::ir::OperandContext> &oc) {
     assert(op.size());
     oc.emplace_back(
-        OperandContext{op.front()->operandType, op.front()->operand});
+        ptxemu::ir::OperandContext{op.front()->operandType, op.front()->operand});
     op.pop();
 }
 
@@ -306,7 +306,7 @@ void PtxListener::exitQualifier(ptxParser::QualifierContext *ctx) {
 #define X(enum_val, enum_name, str_val)                                        \
     else if (ctxText.find(std::string(str_val).substr(1)) !=                   \
              std::string::npos) {                                              \
-        qualifier.push(Qualifier::enum_val);                                   \
+        qualifier.push(ptxemu::ir::Qualifier::enum_val);                                   \
     }
 
     if (0) { // 初始条件以启动if-else链
@@ -431,13 +431,13 @@ void PtxListener::exitStatement(ptxParser::StatementContext *ctx) {
 }
 
 void PtxListener::enterRegStatement(ptxParser::RegStatementContext *ctx) {
-    statement = new StatementContext::REG();
+    statement = new ptxemu::ir::StatementContext::REG();
 #ifdef LOG
     std::cout << __func__ << std::endl;
 #endif
 }
 void PtxListener::exitRegStatement(ptxParser::RegStatementContext *ctx) {
-    auto st = (StatementContext::REG *)statement;
+    auto st = (ptxemu::ir::StatementContext::REG *)statement;
 
     /* qualifier */
     while (qualifier.size()) {
@@ -448,7 +448,7 @@ void PtxListener::exitRegStatement(ptxParser::RegStatementContext *ctx) {
     /* reg */
     assert(op.size());
     assert(op.front()->operandType == O_REG);
-    auto reg = *(OperandContext::REG *)op.front()->operand;
+    auto reg = *(ptxemu::ir::OperandContext::REG *)op.front()->operand;
     st->regName = reg.regName;
     op.pop();
 
@@ -467,13 +467,13 @@ void PtxListener::exitRegStatement(ptxParser::RegStatementContext *ctx) {
 }
 
 void PtxListener::enterSharedStatement(ptxParser::SharedStatementContext *ctx) {
-    statement = new StatementContext::SHARED();
+    statement = new ptxemu::ir::StatementContext::SHARED();
 #ifdef LOG
     std::cout << __func__ << std::endl;
 #endif
 }
 void PtxListener::exitSharedStatement(ptxParser::SharedStatementContext *ctx) {
-    auto st = (StatementContext::SHARED *)statement;
+    auto st = (ptxemu::ir::StatementContext::SHARED *)statement;
 
     /* align */
     st->align = stoi(ctx->DIGITS(0)->getText());
@@ -502,14 +502,14 @@ void PtxListener::exitSharedStatement(ptxParser::SharedStatementContext *ctx) {
 }
 
 void PtxListener::enterConstStatement(ptxParser::ConstStatementContext *ctx) {
-    statement = new StatementContext::CONST();
+    statement = new ptxemu::ir::StatementContext::CONST();
 #ifdef LOG
     std::cout << __func__ << std::endl;
 #endif
 }
 
 void PtxListener::exitConstStatement(ptxParser::ConstStatementContext *ctx) {
-    auto st = (StatementContext::CONST *)statement;
+    auto st = (ptxemu::ir::StatementContext::CONST *)statement;
 
     /* align */
     st->constAlign = stoi(ctx->DIGITS(0)->getText());
@@ -537,13 +537,13 @@ void PtxListener::exitConstStatement(ptxParser::ConstStatementContext *ctx) {
 }
 
 void PtxListener::enterLocalStatement(ptxParser::LocalStatementContext *ctx) {
-    statement = new StatementContext::LOCAL();
+    statement = new ptxemu::ir::StatementContext::LOCAL();
 #ifdef LOG
     std::cout << __func__ << std::endl;
 #endif
 }
 void PtxListener::exitLocalStatement(ptxParser::LocalStatementContext *ctx) {
-    auto st = (StatementContext::LOCAL *)statement;
+    auto st = (ptxemu::ir::StatementContext::LOCAL *)statement;
 
     /* align */
     st->align = stoi(ctx->DIGITS(0)->getText());
@@ -571,13 +571,13 @@ void PtxListener::exitLocalStatement(ptxParser::LocalStatementContext *ctx) {
 }
 
 void PtxListener::enterGlobalStatement(ptxParser::GlobalStatementContext *ctx) {
-    statement = new StatementContext::GLOBAL();
+    statement = new ptxemu::ir::StatementContext::GLOBAL();
 #ifdef LOG
     std::cout << __func__ << std::endl;
 #endif
 }
 void PtxListener::exitGlobalStatement(ptxParser::GlobalStatementContext *ctx) {
-    auto st = (StatementContext::GLOBAL *)statement;
+    auto st = (ptxemu::ir::StatementContext::GLOBAL *)statement;
 
     /* align */
     if (ctx->DIGITS(0)) {
@@ -623,13 +623,13 @@ void PtxListener::exitGlobalStatement(ptxParser::GlobalStatementContext *ctx) {
 }
 
 void PtxListener::enterLabel(ptxParser::LabelContext *ctx) {
-    statement = new StatementContext::DOLLOR();
+    statement = new ptxemu::ir::StatementContext::DOLLOR();
 #ifdef LOG
     std::cout << __func__ << std::endl;
 #endif
 }
 void PtxListener::exitLabel(ptxParser::LabelContext *ctx) {
-    auto st = (StatementContext::DOLLOR *)statement;
+    auto st = (ptxemu::ir::StatementContext::DOLLOR *)statement;
 
     /* ID */
     st->dollorName = ctx->ID()->getText();
@@ -642,13 +642,13 @@ void PtxListener::exitLabel(ptxParser::LabelContext *ctx) {
 }
 
 void PtxListener::enterAtStatement(ptxParser::AtStatementContext *ctx) {
-    statement = new StatementContext::AT();
+    statement = new ptxemu::ir::StatementContext::AT();
 #ifdef LOG
     std::cout << __func__ << std::endl;
 #endif
 }
 void PtxListener::exitAtStatement(ptxParser::AtStatementContext *ctx) {
-    auto st = (StatementContext::AT *)statement;
+    auto st = (ptxemu::ir::StatementContext::AT *)statement;
 
     /* reg */
     fetchOperand(st->operands);
@@ -664,13 +664,13 @@ void PtxListener::exitAtStatement(ptxParser::AtStatementContext *ctx) {
 }
 
 void PtxListener::enterPragmaStatement(ptxParser::PragmaStatementContext *ctx) {
-    statement = new StatementContext::PRAGMA();
+    statement = new ptxemu::ir::StatementContext::PRAGMA();
 #ifdef LOG
     std::cout << __func__ << std::endl;
 #endif
 }
 void PtxListener::exitPragmaStatement(ptxParser::PragmaStatementContext *ctx) {
-    auto st = (StatementContext::PRAGMA *)statement;
+    auto st = (ptxemu::ir::StatementContext::PRAGMA *)statement;
 
     /* prama string */
     st->pragmaString = ctx->STRING()->getText();
@@ -683,13 +683,13 @@ void PtxListener::exitPragmaStatement(ptxParser::PragmaStatementContext *ctx) {
 }
 
 void PtxListener::enterRetStatement(ptxParser::RetStatementContext *ctx) {
-    statement = new StatementContext::RET();
+    statement = new ptxemu::ir::StatementContext::RET();
 #ifdef LOG
     std::cout << __func__ << std::endl;
 #endif
 }
 void PtxListener::exitRetStatement(ptxParser::RetStatementContext *ctx) {
-    auto st = (StatementContext::RET *)statement;
+    auto st = (ptxemu::ir::StatementContext::RET *)statement;
     /* end */
     statementType = S_RET;
 #ifdef LOG
@@ -698,13 +698,13 @@ void PtxListener::exitRetStatement(ptxParser::RetStatementContext *ctx) {
 }
 
 void PtxListener::enterBarStatement(ptxParser::BarStatementContext *ctx) {
-    statement = new StatementContext::BAR();
+    statement = new ptxemu::ir::StatementContext::BAR();
 #ifdef LOG
     std::cout << __func__ << std::endl;
 #endif
 }
 void PtxListener::exitBarStatement(ptxParser::BarStatementContext *ctx) {
-    auto st = (StatementContext::BAR *)statement;
+    auto st = (ptxemu::ir::StatementContext::BAR *)statement;
 
     /* qualifier */
     while (qualifier.size()) {
@@ -723,13 +723,13 @@ void PtxListener::exitBarStatement(ptxParser::BarStatementContext *ctx) {
 }
 
 void PtxListener::enterBraStatement(ptxParser::BraStatementContext *ctx) {
-    statement = new StatementContext::BRA();
+    statement = new ptxemu::ir::StatementContext::BRA();
 #ifdef LOG
     std::cout << __func__ << std::endl;
 #endif
 }
 void PtxListener::exitBraStatement(ptxParser::BraStatementContext *ctx) {
-    auto st = (StatementContext::BRA *)statement;
+    auto st = (ptxemu::ir::StatementContext::BRA *)statement;
 
     /* qualifier */
     if (qualifier.size()) {
@@ -748,13 +748,13 @@ void PtxListener::exitBraStatement(ptxParser::BraStatementContext *ctx) {
 }
 
 void PtxListener::enterAtomStatement(ptxParser::AtomStatementContext *ctx) {
-    statement = new StatementContext::ATOM();
+    statement = new ptxemu::ir::StatementContext::ATOM();
 #ifdef LOG
     std::cout << __func__ << std::endl;
 #endif
 }
 void PtxListener::exitAtomStatement(ptxParser::AtomStatementContext *ctx) {
-    auto st = (StatementContext::ATOM *)statement;
+    auto st = (ptxemu::ir::StatementContext::ATOM *)statement;
 
     /* qualifier */
     while (qualifier.size()) {
@@ -793,8 +793,8 @@ void PtxListener::enterReg(ptxParser::RegContext *ctx) {
 #endif
 }
 void PtxListener::exitReg(ptxParser::RegContext *ctx) {
-    OperandContext *o = new OperandContext();
-    OperandContext::REG *r = new OperandContext::REG();
+    ptxemu::ir::OperandContext *o = new ptxemu::ir::OperandContext();
+    ptxemu::ir::OperandContext::REG *r = new ptxemu::ir::OperandContext::REG();
     // 获取完整的寄存器名称，包括可能的点号部分
     std::string regName = "";
     auto ids = ctx->ID();
@@ -820,14 +820,14 @@ void PtxListener::enterVector(ptxParser::VectorContext *ctx) {
 #endif
 }
 void PtxListener::exitVector(ptxParser::VectorContext *ctx) {
-    OperandContext *o = new OperandContext();
-    OperandContext::VEC *v = new OperandContext::VEC();
+    ptxemu::ir::OperandContext *o = new ptxemu::ir::OperandContext();
+    ptxemu::ir::OperandContext::VEC *v = new ptxemu::ir::OperandContext::VEC();
 
     for (int i = 0; i < ctx->regi().size(); i++) {
-        OperandContext oc;
+        ptxemu::ir::OperandContext oc;
         oc.operandType = O_REG;
-        oc.operand = new OperandContext::REG();
-        auto r = (OperandContext::REG *)oc.operand;
+        oc.operand = new ptxemu::ir::OperandContext::REG();
+        auto r = (ptxemu::ir::OperandContext::REG *)oc.operand;
 
         // 获取完整的寄存器名称，包括可能的点号部分
         std::string regName = "";
@@ -856,8 +856,8 @@ void PtxListener::enterFetchAddress(ptxParser::FetchAddressContext *ctx) {
 #endif
 }
 void PtxListener::exitFetchAddress(ptxParser::FetchAddressContext *ctx) {
-    OperandContext *o = new OperandContext();
-    OperandContext::FA *fa = new OperandContext::FA();
+    ptxemu::ir::OperandContext *o = new ptxemu::ir::OperandContext();
+    ptxemu::ir::OperandContext::FA *fa = new ptxemu::ir::OperandContext::FA();
 
     /* base */
     if (ctx->ID()) {
@@ -865,8 +865,8 @@ void PtxListener::exitFetchAddress(ptxParser::FetchAddressContext *ctx) {
         fa->reg = nullptr;
     } else if (ctx->regi()) {
         // assume base not require regMinorName
-        fa->reg = new OperandContext();
-        OperandContext::REG *r = new OperandContext::REG();
+        fa->reg = new ptxemu::ir::OperandContext();
+        ptxemu::ir::OperandContext::REG *r = new ptxemu::ir::OperandContext::REG();
 
         // 获取完整的寄存器名称，包括可能的点号部分
         std::string regName = "";
@@ -909,8 +909,8 @@ void PtxListener::enterImm(ptxParser::ImmContext *ctx) {
 #endif
 }
 void PtxListener::exitImm(ptxParser::ImmContext *ctx) {
-    OperandContext *o = new OperandContext();
-    OperandContext::IMM *imm = new OperandContext::IMM();
+    ptxemu::ir::OperandContext *o = new ptxemu::ir::OperandContext();
+    ptxemu::ir::OperandContext::IMM *imm = new ptxemu::ir::OperandContext::IMM();
 
     imm->immVal = ctx->DIGITS()->getText();
     o->operand = imm;
@@ -927,8 +927,8 @@ void PtxListener::enterVar(ptxParser::VarContext *ctx) {
 #endif
 }
 void PtxListener::exitVar(ptxParser::VarContext *ctx) {
-    OperandContext *o = new OperandContext();
-    OperandContext::VAR *var = new OperandContext::VAR();
+    ptxemu::ir::OperandContext *o = new ptxemu::ir::OperandContext();
+    ptxemu::ir::OperandContext::VAR *var = new ptxemu::ir::OperandContext::VAR();
 
     var->varName = ctx->ID()->getText();
     o->operand = var;
@@ -987,13 +987,13 @@ void PtxListener::exitExternFuncStatement(
 #define STATEMENT_GENERIC_INSTR(opstr, opname, opcount)                        \
     void PtxListener::enter##opstr##Statement(                                 \
         ptxParser::opstr##StatementContext *ctx) {                             \
-        statement = new StatementContext::opname();                            \
+        statement = new ptxemu::ir::StatementContext::opname();                            \
         LOG_FUNC();                                                            \
     }                                                                          \
                                                                                \
     void PtxListener::exit##opstr##Statement(                                  \
         ptxParser::opstr##StatementContext *ctx) {                             \
-        auto st = static_cast<StatementContext::opname *>(statement);          \
+        auto st = static_cast<ptxemu::ir::StatementContext::opname *>(statement);          \
                                                                                \
         /* qualifier */                                                        \
         while (!qualifier.empty()) {                                           \
@@ -1018,13 +1018,13 @@ void PtxListener::exitExternFuncStatement(
 #define STATEMENT_CALL_INSTR(opstr, opname, opcount)                           \
     void PtxListener::enter##opstr##Statement(                                 \
         ptxParser::opstr##StatementContext *ctx) {                             \
-        statement = new StatementContext::opname();                            \
+        statement = new ptxemu::ir::StatementContext::opname();                            \
         LOG_FUNC();                                                            \
     }                                                                          \
                                                                                \
     void PtxListener::exit##opstr##Statement(                                  \
         ptxParser::opstr##StatementContext *ctx) {                             \
-        auto st = static_cast<StatementContext::opname *>(statement);          \
+        auto st = static_cast<ptxemu::ir::StatementContext::opname *>(statement);          \
                                                                                \
         /* qualifier */                                                        \
         while (!qualifier.empty()) {                                           \

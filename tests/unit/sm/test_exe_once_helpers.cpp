@@ -24,7 +24,7 @@
 // ---------------------------------------------------------------------------
 TEST_CASE("is_tensor_core_instruction: S_TCGEN05_ALLOC..FENCE are TC",
           "[unit][sm][ptx6][helper]") {
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
 
     // Test 11 tcgen05 instructions are detected as TC
     stmt.type = S_TCGEN05_ALLOC;
@@ -63,7 +63,7 @@ TEST_CASE("is_tensor_core_instruction: S_TCGEN05_ALLOC..FENCE are TC",
 
 TEST_CASE("is_tensor_core_instruction: arithmetic NOT TC",
           "[unit][sm][ptx6][helper]") {
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
 
     stmt.type = S_ADD;
     REQUIRE(SMContext::is_tensor_core_instruction(stmt) == false);
@@ -89,9 +89,9 @@ TEST_CASE("is_tensor_core_instruction: arithmetic NOT TC",
 // ---------------------------------------------------------------------------
 TEST_CASE("map_instruction_to_tc_precision: .f16 qualifier → FP16",
           "[unit][sm][ptx6][helper]") {
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
     GenericInstr instr;
-    instr.qualifiers.push_back(Qualifier::Q_F16);
+    instr.qualifiers.push_back(ptxemu::ir::Qualifier::Q_F16);
     stmt.data = instr;
 
     REQUIRE(SMContext::map_instruction_to_tc_precision(stmt) == TcPrecision::FP16);
@@ -99,9 +99,9 @@ TEST_CASE("map_instruction_to_tc_precision: .f16 qualifier → FP16",
 
 TEST_CASE("map_instruction_to_tc_precision: .bf16 qualifier → BF16",
           "[unit][sm][ptx6][helper]") {
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
     GenericInstr instr;
-    instr.qualifiers.push_back(Qualifier::Q_BF16);
+    instr.qualifiers.push_back(ptxemu::ir::Qualifier::Q_BF16);
     stmt.data = instr;
 
     REQUIRE(SMContext::map_instruction_to_tc_precision(stmt) == TcPrecision::BF16);
@@ -109,9 +109,9 @@ TEST_CASE("map_instruction_to_tc_precision: .bf16 qualifier → BF16",
 
 TEST_CASE("map_instruction_to_tc_precision: .tf32 qualifier → TF32",
           "[unit][sm][ptx6][helper]") {
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
     GenericInstr instr;
-    instr.qualifiers.push_back(Qualifier::Q_TCGEN_TF32);
+    instr.qualifiers.push_back(ptxemu::ir::Qualifier::Q_TCGEN_TF32);
     stmt.data = instr;
 
     REQUIRE(SMContext::map_instruction_to_tc_precision(stmt) == TcPrecision::TF32);
@@ -119,7 +119,7 @@ TEST_CASE("map_instruction_to_tc_precision: .tf32 qualifier → TF32",
 
 TEST_CASE("map_instruction_to_tc_precision: no qualifier → fallback FP16",
           "[unit][sm][ptx6][helper]") {
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
     GenericInstr instr;
     // No qualifiers
     stmt.data = instr;
@@ -132,7 +132,7 @@ TEST_CASE("map_instruction_to_tc_precision: no qualifier → fallback FP16",
 // ---------------------------------------------------------------------------
 TEST_CASE("map_instruction_to_pipeline: arithmetic → P0_INT_FP32",
           "[unit][sm][ptx6][helper]") {
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
 
     stmt.type = S_ADD;
     REQUIRE(SMContext::map_instruction_to_pipeline(stmt) == PipelineId::P0_INT_FP32);
@@ -143,7 +143,7 @@ TEST_CASE("map_instruction_to_pipeline: arithmetic → P0_INT_FP32",
 
 TEST_CASE("map_instruction_to_pipeline: ld/st → P3_LSU",
           "[unit][sm][ptx6][helper]") {
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
 
     stmt.type = S_LD;
     REQUIRE(SMContext::map_instruction_to_pipeline(stmt) == PipelineId::P3_LSU);
@@ -154,7 +154,7 @@ TEST_CASE("map_instruction_to_pipeline: ld/st → P3_LSU",
 
 TEST_CASE("map_instruction_to_pipeline: tcgen05 → P4_TC",
           "[unit][sm][ptx6][helper]") {
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
 
     stmt.type = S_TCGEN05_MMA;
     REQUIRE(SMContext::map_instruction_to_pipeline(stmt) == PipelineId::P4_TC);

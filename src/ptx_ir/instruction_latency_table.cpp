@@ -14,7 +14,7 @@ InstructionLatencyTable::InstructionLatencyTable() {
 void InstructionLatencyTable::reset_to_defaults() {
     table_.clear();
     for (int i = 0; i <= static_cast<int>(S_UNKNOWN); ++i) {
-        auto type = static_cast<StatementType>(i);
+        auto type = static_cast<ptxemu::ir::StatementType>(i);
         table_[type] = resolve_default(type);
     }
 }
@@ -63,13 +63,13 @@ void InstructionLatencyTable::load(const InstructionLatencyConfig& cfg) {
     }
 }
 
-InstructionLatency InstructionLatencyTable::get(StatementType type) const {
+InstructionLatency InstructionLatencyTable::get(ptxemu::ir::StatementType type) const {
     auto it = table_.find(type);
     if (it != table_.end()) return it->second;
     return DEFAULT_LATENCY;
 }
 
-InstructionLatency InstructionLatencyTable::resolve_default(StatementType type) const {
+InstructionLatency InstructionLatencyTable::resolve_default(ptxemu::ir::StatementType type) const {
     switch (type) {
     case S_LD:                return LD_GLOBAL_LATENCY;
     case S_ST:                return ST_GLOBAL_LATENCY;
@@ -88,7 +88,7 @@ InstructionLatency InstructionLatencyTable::resolve_default(StatementType type) 
     }
 }
 
-InstructionLatency getLatency(StatementType type) {
+InstructionLatency getLatency(ptxemu::ir::StatementType type) {
     return InstructionLatencyTable::instance().get(type);
 }
 

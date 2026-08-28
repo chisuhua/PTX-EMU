@@ -1,5 +1,5 @@
 // ============================================================================
-// Operand / Qualifier Helpers (ADR-0007, lessons-learned §13)
+// Operand / ptxemu::ir::Qualifier Helpers (ADR-0007, lessons-learned §13)
 // ============================================================================
 
 #include "ptx_parser/ptx_visiter.h"
@@ -56,25 +56,25 @@ bool parseRegisterFromText(const std::string &raw, RegOperand &regOut) {
 #define PTX_WARN(fmt, ...) PTX_WARN_EMU(fmt, ##__VA_ARGS__)
 #define PTX_DEBUG(fmt, ...) PTX_DEBUG_EMU(fmt, ##__VA_ARGS__)
 
-Qualifier PtxVisitor::tokenToQualifier(antlr4::Token *token) {
-    if (!token) return Qualifier::Q_UNKNOWN;
+ptxemu::ir::Qualifier PtxVisitor::tokenToQualifier(antlr4::Token *token) {
+    if (!token) return ptxemu::ir::Qualifier::Q_UNKNOWN;
 
     std::string text = token->getText();
 
     // 使用宏来处理各种情况
 #define X(enum_val, enum_name, str_val)                                        \
     if (text == str_val || text == std::string(str_val).substr(1)) {           \
-        return Qualifier::enum_val;                                            \
+        return ptxemu::ir::Qualifier::enum_val;                                            \
     }
 
 #include "ptx_ir/ptx_qualifier.def"
 #undef X
 
-    return Qualifier::Q_UNKNOWN;
+    return ptxemu::ir::Qualifier::Q_UNKNOWN;
 }
 
-std::vector<Qualifier> PtxVisitor::extractQualifiersFromContext(antlr4::ParserRuleContext *ctx) {
-    std::vector<Qualifier> qualifiers;
+std::vector<ptxemu::ir::Qualifier> PtxVisitor::extractQualifiersFromContext(antlr4::ParserRuleContext *ctx) {
+    std::vector<ptxemu::ir::Qualifier> qualifiers;
     if (!ctx) return qualifiers;
 
     std::function<void(antlr4::tree::ParseTree *)> visitNode =
@@ -86,7 +86,7 @@ std::vector<Qualifier> PtxVisitor::extractQualifiersFromContext(antlr4::ParserRu
             auto *terminal = dynamic_cast<antlr4::tree::TerminalNode *>(node);
             if (terminal) {
                 auto qual = tokenToQualifier(terminal->getSymbol());
-                if (qual != Qualifier::Q_UNKNOWN) {
+                if (qual != ptxemu::ir::Qualifier::Q_UNKNOWN) {
                     qualifiers.push_back(qual);
                 }
                 return;
@@ -103,11 +103,11 @@ std::vector<Qualifier> PtxVisitor::extractQualifiersFromContext(antlr4::ParserRu
     return qualifiers;
 }
 
-OperandContext PtxVisitor::createOperandFromContext(ptxparser::ptxParser::OperandContext *ctx) {
+ptxemu::ir::OperandContext PtxVisitor::createOperandFromContext(ptxparser::ptxParser::OperandContext *ctx) {
     if (!ctx) {
         PTX_WARN("createOperandFromContext received null context; defaulting to immediate 0");
-        // Return an empty OperandContext
-        return OperandContext{ImmOperand{"0"}};
+        // Return an empty ptxemu::ir::OperandContext
+        return ptxemu::ir::OperandContext{ImmOperand{"0"}};
     }
 
     // 根据语法规则，operand可以是register, immediate, address, specialRegister, 或ID
@@ -119,10 +119,10 @@ OperandContext PtxVisitor::createOperandFromContext(ptxparser::ptxParser::Operan
         auto regCtx = ctx->register_();
         auto anyResult = visitRegister(regCtx);
         try {
-            return std::any_cast<OperandContext>(anyResult);
+            return std::any_cast<ptxemu::ir::OperandContext>(anyResult);
         } catch (const std::bad_any_cast& e) {
             PTX_ERROR("Failed to cast register operand: %s", e.what());
-            return OperandContext{ImmOperand{"0"}};
+            return ptxemu::ir::OperandContext{ImmOperand{"0"}};
         }
     }
 
@@ -131,10 +131,10 @@ OperandContext PtxVisitor::createOperandFromContext(ptxparser::ptxParser::Operan
         auto immCtx = ctx->immediate();
         auto anyResult = visitImmediate(immCtx);
         try {
-            return std::any_cast<OperandContext>(anyResult);
+            return std::any_cast<ptxemu::ir::OperandContext>(anyResult);
         } catch (const std::bad_any_cast& e) {
             PTX_ERROR("Failed to cast immediate operand: %s", e.what());
-            return OperandContext{ImmOperand{"0"}};
+            return ptxemu::ir::OperandContext{ImmOperand{"0"}};
         }
     }
 
@@ -143,10 +143,10 @@ OperandContext PtxVisitor::createOperandFromContext(ptxparser::ptxParser::Operan
         auto addrCtx = ctx->address();
         auto anyResult = visitAddress(addrCtx);
         try {
-            return std::any_cast<OperandContext>(anyResult);
+            return std::any_cast<ptxemu::ir::OperandContext>(anyResult);
         } catch (const std::bad_any_cast& e) {
             PTX_ERROR("Failed to cast address operand: %s", e.what());
-            return OperandContext{ImmOperand{"0"}};
+            return ptxemu::ir::OperandContext{ImmOperand{"0"}};
         }
     }
 
@@ -155,23 +155,23 @@ OperandContext PtxVisitor::createOperandFromContext(ptxparser::ptxParser::Operan
         auto specRegCtx = ctx->specialRegister();
         auto anyResult = visitSpecialRegister(specRegCtx);
         try {
-            return std::any_cast<OperandContext>(anyResult);
+            return std::any_cast<ptxemu::ir::OperandContext>(anyResult);
         } catch (const std::bad_any_cast& e) {
             PTX_ERROR("Failed to cast special register operand: %s", e.what());
-            return OperandContext{ImmOperand{"0"}};
+            return ptxemu::ir::OperandContext{ImmOperand{"0"}};
         }
     }
 
     // 检查vectorRegister (braced register list like {%r5, %r1, tmp})
     if (ctx->vectorRegister()) {
         auto vecCtx = ctx->vectorRegister();
-        std::vector<OperandContext> elements;
+        std::vector<ptxemu::ir::OperandContext> elements;
         for (auto virtRegCtx : vecCtx->virtRegister()) {
             // virtRegister is either a register_() or a bare ID
             if (virtRegCtx->register_()) {
                 auto anyResult = visitRegister(virtRegCtx->register_());
                 try {
-                    elements.push_back(std::any_cast<OperandContext>(anyResult));
+                    elements.push_back(std::any_cast<ptxemu::ir::OperandContext>(anyResult));
                 } catch (const std::bad_any_cast& e) {
                     PTX_ERROR("Failed to cast vector register element: %s", e.what());
                 }
@@ -179,7 +179,7 @@ OperandContext PtxVisitor::createOperandFromContext(ptxparser::ptxParser::Operan
                 // Bare ID in vector register (e.g., {tmp, %r2})
                 VariableOperand var;
                 var.name = virtRegCtx->ID()->getText();
-                elements.push_back(OperandContext{var});
+                elements.push_back(ptxemu::ir::OperandContext{var});
             } else {
                 PTX_ERROR("virtRegister has neither register_() nor ID()");
             }
@@ -187,7 +187,7 @@ OperandContext PtxVisitor::createOperandFromContext(ptxparser::ptxParser::Operan
         if (!elements.empty()) {
             VecOperand vecOp;
             vecOp.elements = std::move(elements);
-            return OperandContext{vecOp};
+            return ptxemu::ir::OperandContext{vecOp};
         }
     }
 
@@ -196,12 +196,12 @@ OperandContext PtxVisitor::createOperandFromContext(ptxparser::ptxParser::Operan
         const std::string text = ctx->ID()->getText();
         RegOperand reg;
         if (parseRegisterFromText(text, reg)) {
-            return OperandContext{reg};
+            return ptxemu::ir::OperandContext{reg};
         }
 
         VariableOperand var;
         var.name = text;
-        return OperandContext{var};
+        return ptxemu::ir::OperandContext{var};
     }
 
     // 兜底：尽量保留原始文本，避免把符号名误降级为立即数0
@@ -210,12 +210,12 @@ OperandContext PtxVisitor::createOperandFromContext(ptxparser::ptxParser::Operan
         PTX_WARN("Fallback operand parsing path hit: raw=%s", raw.c_str());
         VariableOperand var;
         var.name = raw;
-        return OperandContext{var};
+        return ptxemu::ir::OperandContext{var};
     }
 
     // 默认返回一个立即数0
     PTX_WARN("Fallback operand parsing produced empty raw text; defaulting to immediate 0");
-    return OperandContext{ImmOperand{"0"}};
+    return ptxemu::ir::OperandContext{ImmOperand{"0"}};
 }
 
 int PtxVisitor::extractIntFromToken(antlr4::Token *token) {
@@ -249,7 +249,7 @@ std::any PtxVisitor::visitSpecialRegister(ptxparser::ptxParser::SpecialRegisterC
     }
     // 特殊寄存器通常没有索引
     reg.index = -1;
-    return std::any{OperandContext{reg}};
+    return std::any{ptxemu::ir::OperandContext{reg}};
 }
 
 std::any PtxVisitor::visitRegister(ptxparser::ptxParser::RegisterContext *ctx) {
@@ -288,7 +288,7 @@ std::any PtxVisitor::visitRegister(ptxparser::ptxParser::RegisterContext *ctx) {
         reg.index = -1;
     }
 
-    return std::any{OperandContext{reg}};
+    return std::any{ptxemu::ir::OperandContext{reg}};
 }
 
 std::any PtxVisitor::visitImmediate(ptxparser::ptxParser::ImmediateContext *ctx) {
@@ -298,7 +298,7 @@ std::any PtxVisitor::visitImmediate(ptxparser::ptxParser::ImmediateContext *ctx)
     } else {
         imm.value = ctx->IMMEDIATE()->getText();
     }
-    return std::any{OperandContext{imm}};
+    return std::any{ptxemu::ir::OperandContext{imm}};
 }
 
 std::any PtxVisitor::visitAddress(ptxparser::ptxParser::AddressContext *ctx) {
@@ -317,9 +317,9 @@ std::any PtxVisitor::visitAddress(ptxparser::ptxParser::AddressContext *ctx) {
         auto baseAny = visitOperand(addrExprCtx->operand());
         // 安全地提取OperandContext
         try {
-            auto baseOperand = std::any_cast<OperandContext>(baseAny);
+            auto baseOperand = std::any_cast<ptxemu::ir::OperandContext>(baseAny);
             // 检查基址操作数的类型
-            if (baseOperand.kind() == OperandKind::VAR) {
+            if (baseOperand.kind() == ptxemu::ir::OperandKind::VAR) {
                 const auto& var = std::get<VariableOperand>(baseOperand.data);
                 RegOperand reg;
                 if (parseRegisterFromText(var.name, reg)) {
@@ -327,19 +327,19 @@ std::any PtxVisitor::visitAddress(ptxparser::ptxParser::AddressContext *ctx) {
                     addr.id = reg.fullName();
                     addr.offsetType = AddrOperand::OffsetType::REGISTER;
                     addr.registerOffset =
-                        std::make_shared<OperandContext>(OperandContext{reg});
+                        std::make_shared<ptxemu::ir::OperandContext>(ptxemu::ir::OperandContext{reg});
                 } else {
                     addr.baseSymbol = var.name;
                     addr.id = var.name;
                 }
-            } else if (baseOperand.kind() == OperandKind::REG) {
+            } else if (baseOperand.kind() == ptxemu::ir::OperandKind::REG) {
                 const auto& reg = std::get<RegOperand>(baseOperand.data);
                 addr.baseSymbol = reg.fullName();
                 addr.id = reg.fullName();
                 addr.offsetType = AddrOperand::OffsetType::REGISTER;
                 addr.registerOffset =
-                    std::make_shared<OperandContext>(baseOperand);
-            } else if (baseOperand.kind() == OperandKind::ADDR) {
+                    std::make_shared<ptxemu::ir::OperandContext>(baseOperand);
+            } else if (baseOperand.kind() == ptxemu::ir::OperandKind::ADDR) {
                 const auto &inner = std::get<AddrOperand>(baseOperand.data);
                 addr.baseSymbol = inner.baseSymbol;
                 addr.id = inner.id.empty() ? inner.baseSymbol : inner.id;
@@ -365,5 +365,5 @@ std::any PtxVisitor::visitAddress(ptxparser::ptxParser::AddressContext *ctx) {
         }
     }
 
-    return std::any{OperandContext{addr}};
+    return std::any{ptxemu::ir::OperandContext{addr}};
 }

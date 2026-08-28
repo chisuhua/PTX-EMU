@@ -15,7 +15,7 @@ struct EmbeddedKernelManifest {
 
 class PtxContextAdapter {
 public:
-    static PtxContext fromEmbedded(std::vector<StatementContext> stmts,
+    static PtxContext fromEmbedded(std::vector<ptxemu::ir::StatementContext> stmts,
                                    const EmbeddedKernelManifest& manifest);
 };
 

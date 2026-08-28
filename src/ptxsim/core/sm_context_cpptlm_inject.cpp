@@ -14,7 +14,7 @@ namespace sm_cpptlm_inject {
 void step_b_set_blocked_cycles(IPipelineLatencyProvider* pipeline,
                                ITensorCoreTiming* tc,
                                WarpContext* warp,
-                               const StatementContext& stmt) {
+                               const ptxemu::ir::StatementContext& stmt) {
     if (!pipeline && !tc)
         return; // both nullptr = no-op (lessons-learned §14 byte-identical fallback)
     uint32_t instr_latency = 0;

@@ -7,21 +7,21 @@ using namespace ptxir::factory;
 std::any PtxVisitor::visitTcgen05Inst(ptxparser::ptxParser::Tcgen05InstContext *ctx) {
     if (!currentKernel) return nullptr;
 
-    Tcgen05OpKind op_kind = Tcgen05OpKind::MMA;
+    ptxemu::ir::Tcgen05OpKind op_kind = ptxemu::ir::Tcgen05OpKind::MMA;
     if (ctx->tcgen05SubOp()) {
-        if (ctx->tcgen05SubOp()->MMA())              op_kind = Tcgen05OpKind::MMA;
-        else if (ctx->tcgen05SubOp()->LD())           op_kind = Tcgen05OpKind::LD;
-        else if (ctx->tcgen05SubOp()->ST())           op_kind = Tcgen05OpKind::ST;
-        else if (ctx->tcgen05SubOp()->TCGEN05_CP())  op_kind = Tcgen05OpKind::CP;
-        else if (ctx->tcgen05SubOp()->TCGEN05_ALLOC())    op_kind = Tcgen05OpKind::ALLOC;
-        else if (ctx->tcgen05SubOp()->TCGEN05_DEALLOC())  op_kind = Tcgen05OpKind::DEALLOC;
-        else if (ctx->tcgen05SubOp()->TCGEN05_RELINQUISH()) op_kind = Tcgen05OpKind::RELINQUISH;
-        else if (ctx->tcgen05SubOp()->TCGEN05_COMMIT())  op_kind = Tcgen05OpKind::COMMIT;
-        else if (ctx->tcgen05SubOp()->TCGEN05_WAIT())    op_kind = Tcgen05OpKind::WAIT;
-        else if (ctx->tcgen05SubOp()->FENCE())        op_kind = Tcgen05OpKind::FENCE;
+        if (ctx->tcgen05SubOp()->MMA())              op_kind = ptxemu::ir::Tcgen05OpKind::MMA;
+        else if (ctx->tcgen05SubOp()->LD())           op_kind = ptxemu::ir::Tcgen05OpKind::LD;
+        else if (ctx->tcgen05SubOp()->ST())           op_kind = ptxemu::ir::Tcgen05OpKind::ST;
+        else if (ctx->tcgen05SubOp()->TCGEN05_CP())  op_kind = ptxemu::ir::Tcgen05OpKind::CP;
+        else if (ctx->tcgen05SubOp()->TCGEN05_ALLOC())    op_kind = ptxemu::ir::Tcgen05OpKind::ALLOC;
+        else if (ctx->tcgen05SubOp()->TCGEN05_DEALLOC())  op_kind = ptxemu::ir::Tcgen05OpKind::DEALLOC;
+        else if (ctx->tcgen05SubOp()->TCGEN05_RELINQUISH()) op_kind = ptxemu::ir::Tcgen05OpKind::RELINQUISH;
+        else if (ctx->tcgen05SubOp()->TCGEN05_COMMIT())  op_kind = ptxemu::ir::Tcgen05OpKind::COMMIT;
+        else if (ctx->tcgen05SubOp()->TCGEN05_WAIT())    op_kind = ptxemu::ir::Tcgen05OpKind::WAIT;
+        else if (ctx->tcgen05SubOp()->FENCE())        op_kind = ptxemu::ir::Tcgen05OpKind::FENCE;
     }
 
-    std::vector<Qualifier> qualifiers = extractQualifiersFromContext(ctx);
+    std::vector<ptxemu::ir::Qualifier> qualifiers = extractQualifiersFromContext(ctx);
 
     // C3 fix: extract cta_group IMMEDIATE value from parse tree.
     // Grammar: TCGEN_CTA_GROUP COLONCOLON IMMEDIATE (ptxInstructions.g4:451).
@@ -39,7 +39,7 @@ std::any PtxVisitor::visitTcgen05Inst(ptxparser::ptxParser::Tcgen05InstContext *
         }
     }
 
-    std::vector<OperandContext> operands;
+    std::vector<ptxemu::ir::OperandContext> operands;
     auto opListCtx = ctx->tcgen05Operands();
     if (opListCtx) {
         for (auto* opCtx : opListCtx->tcgen05Operand()) {
@@ -49,10 +49,10 @@ std::any PtxVisitor::visitTcgen05Inst(ptxparser::ptxParser::Tcgen05InstContext *
                 std::string text = vr->getText();
                 if (!text.empty() && text.front() == '{') text.erase(0, 1);
                 if (!text.empty() && text.back() == '}') text.pop_back();
-                operands.push_back(OperandContext(VariableOperand{text}));
+                operands.push_back(ptxemu::ir::OperandContext(VariableOperand{text}));
             } else if (opCtx->address()) {
                 operands.push_back(
-                    std::any_cast<OperandContext>(
+                    std::any_cast<ptxemu::ir::OperandContext>(
                         visitAddress(opCtx->address())));
             } else if (opCtx->operand()) {
                 operands.push_back(

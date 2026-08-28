@@ -15,7 +15,7 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
         mode = ctx->voteMode()->getText(); \
     } \
     \
-    std::vector<OperandContext> operands; \
+    std::vector<ptxemu::ir::OperandContext> operands; \
     auto operandCtxs = ctx->getRuleContexts<ptxparser::ptxParser::OperandContext>(); \
     for (const auto& operandCtx : operandCtxs) { \
         operands.push_back(createOperandFromContext(operandCtx)); \
@@ -37,7 +37,7 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
         mode = ctx->shuffleMode()->getText(); \
     } \
     \
-    std::vector<OperandContext> operands; \
+    std::vector<ptxemu::ir::OperandContext> operands; \
     auto operandCtxs = ctx->getRuleContexts<ptxparser::ptxParser::OperandContext>(); \
     for (const auto& operandCtx : operandCtxs) { \
         operands.push_back(createOperandFromContext(operandCtx)); \

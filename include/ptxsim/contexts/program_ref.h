@@ -26,7 +26,7 @@ namespace contexts {
  */
 struct ProgramRefPod {
     // Current kernel IR statements
-    std::vector<StatementContext> *statements = nullptr;
+    std::vector<ptxemu::ir::StatementContext> *statements = nullptr;
 
     // Symbol tables
     std::map<std::string, std::unique_ptr<Symtable>> *name2Sym = nullptr;

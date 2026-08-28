@@ -18,24 +18,24 @@ class ThreadContext;
 class InstructionHandler {
 public:
     virtual ~InstructionHandler() = default;
-    virtual void ExecPipe(ThreadContext *context, StatementContext &stmt) = 0;
+    virtual void ExecPipe(ThreadContext *context, ptxemu::ir::StatementContext &stmt) = 0;
 };
 
 // Base classes for different instruction categories
 class DeclarationHandler : public InstructionHandler {
 public:
-    void ExecPipe(ThreadContext *context, StatementContext &stmt) override;
+    void ExecPipe(ThreadContext *context, ptxemu::ir::StatementContext &stmt) override;
 };
 
 class SimpleHandler : public InstructionHandler {
 public:
-    void ExecPipe(ThreadContext *context, StatementContext &stmt) override;
+    void ExecPipe(ThreadContext *context, ptxemu::ir::StatementContext &stmt) override;
 };
 
 class VoidHandler : public InstructionHandler {
 public:
-    void ExecPipe(ThreadContext *context, StatementContext &stmt) override;
-    virtual void processOperation(ThreadContext *context, StatementContext &stmt) {
+    void ExecPipe(ThreadContext *context, ptxemu::ir::StatementContext &stmt) override;
+    virtual void processOperation(ThreadContext *context, ptxemu::ir::StatementContext &stmt) {
         // Default implementation does nothing
         (void)context;
         (void)stmt;
@@ -44,7 +44,7 @@ public:
 
 class BranchHandler : public InstructionHandler {
 public:
-    void ExecPipe(ThreadContext *context, StatementContext &stmt) override;
+    void ExecPipe(ThreadContext *context, ptxemu::ir::StatementContext &stmt) override;
     virtual void executeBranch(ThreadContext *context, const BranchInstr &instr) {
         // Default implementation does nothing
         (void)context;
@@ -54,7 +54,7 @@ public:
 
 class BarrierHandler : public InstructionHandler {
 public:
-    void ExecPipe(ThreadContext *context, StatementContext &stmt) override;
+    void ExecPipe(ThreadContext *context, ptxemu::ir::StatementContext &stmt) override;
     virtual void executeBarrier(ThreadContext *context, const BarrierInstr &instr) {
         // Default implementation does nothing
         (void)context;
@@ -64,7 +64,7 @@ public:
 
 class CallBaseHandler : public InstructionHandler {
 public:
-    void ExecPipe(ThreadContext *context, StatementContext &stmt) override;
+    void ExecPipe(ThreadContext *context, ptxemu::ir::StatementContext &stmt) override;
     virtual void executeCall(ThreadContext *context, const CallInstr &instr) {
         // Default implementation does nothing
         (void)context;
@@ -75,7 +75,7 @@ public:
 // Generic instruction handler with prepare/operate/commit pipeline
 class PipelineHandler : public InstructionHandler {
 public:
-    void ExecPipe(ThreadContext *context, StatementContext &stmt) override;
+    void ExecPipe(ThreadContext *context, ptxemu::ir::StatementContext &stmt) override;
 
     bool is_pc_overridden() const { return pc_overridden_; }
 
@@ -84,27 +84,27 @@ protected:
 
     void set_pc_overridden(bool v) { pc_overridden_ = v; }
 
-    virtual bool prepareOperands(ThreadContext *context, StatementContext &stmt) = 0;
-    virtual bool executeOperation(ThreadContext *context, StatementContext &stmt) = 0;
-    virtual bool commitResults(ThreadContext *context, StatementContext &stmt) = 0;
+    virtual bool prepareOperands(ThreadContext *context, ptxemu::ir::StatementContext &stmt) = 0;
+    virtual bool executeOperation(ThreadContext *context, ptxemu::ir::StatementContext &stmt) = 0;
+    virtual bool commitResults(ThreadContext *context, ptxemu::ir::StatementContext &stmt) = 0;
 
-    bool acquireAllOperands(ThreadContext *context, std::vector<OperandContext> &operands,
-                           const std::vector<Qualifier> &qualifiers, int opCount);
+    bool acquireAllOperands(ThreadContext *context, std::vector<ptxemu::ir::OperandContext> &operands,
+                           const std::vector<ptxemu::ir::Qualifier> &qualifiers, int opCount);
     // Phase 0.3b (HSK-8 ack 738b412c): ThreadContext* added so releaseAllOperands
     // can populate operand_phy_cache_ alongside clearing operand_phy_addr.
-    void releaseAllOperands(ThreadContext *context, std::vector<OperandContext> &operands,
+    void releaseAllOperands(ThreadContext *context, std::vector<ptxemu::ir::OperandContext> &operands,
                             int opCount);
 };
 
 // Specific pipeline handler types
 class GenericPipelineHandler : public PipelineHandler {
 protected:
-    bool prepareOperands(ThreadContext *context, StatementContext &stmt) override;
-    bool executeOperation(ThreadContext *context, StatementContext &stmt) override;
-    bool commitResults(ThreadContext *context, StatementContext &stmt) override;
+    bool prepareOperands(ThreadContext *context, ptxemu::ir::StatementContext &stmt) override;
+    bool executeOperation(ThreadContext *context, ptxemu::ir::StatementContext &stmt) override;
+    bool commitResults(ThreadContext *context, ptxemu::ir::StatementContext &stmt) override;
     
     virtual void processOperation(ThreadContext *context, void **operands,
-                                const std::vector<Qualifier> &qualifiers,
+                                const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                                 const std::vector<char> *operand_is_immediate = nullptr) {
         (void)context;
         (void)operands;
@@ -115,12 +115,12 @@ protected:
 
 class AtomicPipelineHandler : public PipelineHandler {
 protected:
-    bool prepareOperands(ThreadContext *context, StatementContext &stmt) override;
-    bool executeOperation(ThreadContext *context, StatementContext &stmt) override;
-    bool commitResults(ThreadContext *context, StatementContext &stmt) override;
+    bool prepareOperands(ThreadContext *context, ptxemu::ir::StatementContext &stmt) override;
+    bool executeOperation(ThreadContext *context, ptxemu::ir::StatementContext &stmt) override;
+    bool commitResults(ThreadContext *context, ptxemu::ir::StatementContext &stmt) override;
     
     virtual void processAtomicOperation(ThreadContext *context, void **operands,
-                                       const std::vector<Qualifier> &qualifiers,
+                                       const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                                        const std::vector<char> *operand_is_immediate = nullptr) {
         // Default implementation does nothing
         (void)context;
@@ -132,16 +132,16 @@ protected:
 
 class Tcgen05PipelineHandler : public PipelineHandler {
 protected:
-    bool prepareOperands(ThreadContext *context, StatementContext &stmt) override;
-    bool executeOperation(ThreadContext *context, StatementContext &stmt) override;
-    bool commitResults(ThreadContext *context, StatementContext &stmt) override;
+    bool prepareOperands(ThreadContext *context, ptxemu::ir::StatementContext &stmt) override;
+    bool executeOperation(ThreadContext *context, ptxemu::ir::StatementContext &stmt) override;
+    bool commitResults(ThreadContext *context, ptxemu::ir::StatementContext &stmt) override;
 
     // Virtual dispatch: subclass Tcgen05Handler in tcgen05.cpp overrides this
     // to provide actual fragment arithmetic. The X-Macro-generated stub in
     // instruction_handlers.cpp throws UnsupportedInstructionException.
     virtual void processTcgen05Operation(ThreadContext *context, void **operands,
-                                        const std::vector<Qualifier> &qualifiers,
-                                        const struct Tcgen05Instr &instr) {
+                                        const std::vector<ptxemu::ir::Qualifier> &qualifiers,
+                                        const struct ptxemu::ir::Tcgen05Instr &instr) {
         (void)context;
         (void)operands;
         (void)qualifiers;
@@ -152,7 +152,7 @@ protected:
 // Async memory copy instruction handler (e.g., cp.async)
 class AsyncCopyHandler : public InstructionHandler {
 public:
-    void ExecPipe(ThreadContext *context, StatementContext &stmt) override;
+    void ExecPipe(ThreadContext *context, ptxemu::ir::StatementContext &stmt) override;
 protected:
     virtual void executeAsyncCopy(ThreadContext *context, const CpAsyncInstr &instr) {
         // Default implementation does nothing

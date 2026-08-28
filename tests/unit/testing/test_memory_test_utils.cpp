@@ -58,7 +58,7 @@ TEST_CASE("make_shared_decl sets SHARED kind and b32 type",
     REQUIRE(d->kind == DeclarationInstr::Kind::SHARED);
     REQUIRE(d->name == "buf");
     REQUIRE(d->array_size == 32);
-    REQUIRE(d->dataType == Qualifier::Q_B32);
+    REQUIRE(d->dataType == ptxemu::ir::Qualifier::Q_B32);
     REQUIRE(ctx.instructionText == ".shared .b32 buf[32];");
 }
 
@@ -72,7 +72,7 @@ TEST_CASE("make_local_decl sets LOCAL kind and b32 type",
     REQUIRE(d->kind == DeclarationInstr::Kind::LOCAL);
     REQUIRE(d->name == "arr");
     REQUIRE(d->array_size == 16);
-    REQUIRE(d->dataType == Qualifier::Q_B32);
+    REQUIRE(d->dataType == ptxemu::ir::Qualifier::Q_B32);
     REQUIRE(ctx.instructionText == ".local .b32 arr[16];");
 }
 
@@ -84,8 +84,8 @@ TEST_CASE("make_st_shared_addr uses Q_SHARED b8 AddrOperand",
     auto *instr = std::get_if<GenericInstr>(&ctx.data);
     REQUIRE(instr != nullptr);
     REQUIRE(instr->qualifiers.size() == 2);
-    REQUIRE(QvecHasQ(instr->qualifiers, Qualifier::Q_SHARED));
-    REQUIRE(QvecHasQ(instr->qualifiers, Qualifier::Q_B8));
+    REQUIRE(QvecHasQ(instr->qualifiers, ptxemu::ir::Qualifier::Q_SHARED));
+    REQUIRE(QvecHasQ(instr->qualifiers, ptxemu::ir::Qualifier::Q_B8));
     REQUIRE(instr->operands.size() == 2);
     auto *addr = std::get_if<AddrOperand>(&instr->operands[0].data);
     REQUIRE(addr != nullptr);
@@ -102,8 +102,8 @@ TEST_CASE("make_st_local_addr uses Q_LOCAL b32 AddrOperand",
     REQUIRE(ctx.type == S_ST);
     auto *instr = std::get_if<GenericInstr>(&ctx.data);
     REQUIRE(instr != nullptr);
-    REQUIRE(QvecHasQ(instr->qualifiers, Qualifier::Q_LOCAL));
-    REQUIRE(QvecHasQ(instr->qualifiers, Qualifier::Q_B32));
+    REQUIRE(QvecHasQ(instr->qualifiers, ptxemu::ir::Qualifier::Q_LOCAL));
+    REQUIRE(QvecHasQ(instr->qualifiers, ptxemu::ir::Qualifier::Q_B32));
     REQUIRE(instr->operands.size() == 2);
     auto *addr = std::get_if<AddrOperand>(&instr->operands[0].data);
     REQUIRE(addr != nullptr);
@@ -119,8 +119,8 @@ TEST_CASE("make_ld_shared_addr uses Q_SHARED b8 AddrOperand",
     REQUIRE(ctx.type == S_LD);
     auto *instr = std::get_if<GenericInstr>(&ctx.data);
     REQUIRE(instr != nullptr);
-    REQUIRE(QvecHasQ(instr->qualifiers, Qualifier::Q_SHARED));
-    REQUIRE(QvecHasQ(instr->qualifiers, Qualifier::Q_B8));
+    REQUIRE(QvecHasQ(instr->qualifiers, ptxemu::ir::Qualifier::Q_SHARED));
+    REQUIRE(QvecHasQ(instr->qualifiers, ptxemu::ir::Qualifier::Q_B8));
     REQUIRE(instr->operands.size() == 2);
     auto *dst = std::get_if<RegOperand>(&instr->operands[0].data);
     REQUIRE(dst != nullptr);
@@ -138,8 +138,8 @@ TEST_CASE("make_ld_local_addr uses Q_LOCAL b32 AddrOperand",
     REQUIRE(ctx.type == S_LD);
     auto *instr = std::get_if<GenericInstr>(&ctx.data);
     REQUIRE(instr != nullptr);
-    REQUIRE(QvecHasQ(instr->qualifiers, Qualifier::Q_LOCAL));
-    REQUIRE(QvecHasQ(instr->qualifiers, Qualifier::Q_B32));
+    REQUIRE(QvecHasQ(instr->qualifiers, ptxemu::ir::Qualifier::Q_LOCAL));
+    REQUIRE(QvecHasQ(instr->qualifiers, ptxemu::ir::Qualifier::Q_B32));
     REQUIRE(instr->operands.size() == 2);
     auto *addr = std::get_if<AddrOperand>(&instr->operands[1].data);
     REQUIRE(addr != nullptr);
@@ -168,7 +168,7 @@ TEST_CASE("setup_block creates warp on minimal CTA",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.push_back(make_shared_decl("buf", 32));
 
     SMContext sm(4, 128, 4096, 0);
@@ -178,16 +178,16 @@ TEST_CASE("setup_block creates warp on minimal CTA",
 
 TEST_CASE("All new shared memory helpers compile and produce valid StatementContext",
            "[unit][testing][memory_test_utils][smoke]") {
-    auto ld_b16 = make_ld_shared_addr("r1", "buf", "r0", Qualifier::Q_B16);
+    auto ld_b16 = make_ld_shared_addr("r1", "buf", "r0", ptxemu::ir::Qualifier::Q_B16);
     REQUIRE(std::get_if<GenericInstr>(&ld_b16.data) != nullptr);
     
-    auto ld_b32 = make_ld_shared_addr("r1", "buf", "r0", Qualifier::Q_B32);
+    auto ld_b32 = make_ld_shared_addr("r1", "buf", "r0", ptxemu::ir::Qualifier::Q_B32);
     REQUIRE(std::get_if<GenericInstr>(&ld_b32.data) != nullptr);
     
-    auto ld_b64 = make_ld_shared_addr("r1", "buf", "r0", Qualifier::Q_B64);
+    auto ld_b64 = make_ld_shared_addr("r1", "buf", "r0", ptxemu::ir::Qualifier::Q_B64);
     REQUIRE(std::get_if<GenericInstr>(&ld_b64.data) != nullptr);
     
-    auto st_b32 = make_st_shared_addr("buf", "r0", "r1", Qualifier::Q_B32);
+    auto st_b32 = make_st_shared_addr("buf", "r0", "r1", ptxemu::ir::Qualifier::Q_B32);
     REQUIRE(std::get_if<GenericInstr>(&st_b32.data) != nullptr);
     
     auto ld_v2 = make_ld_shared_addr_v2("r1", "r2", "buf", "r0");
@@ -202,7 +202,7 @@ TEST_CASE("All new shared memory helpers compile and produce valid StatementCont
     auto st_v4 = make_st_shared_addr_v4("buf", "r0", "r1", "r2", "r3", "r4");
     REQUIRE(std::get_if<GenericInstr>(&st_v4.data) != nullptr);
     
-    auto decl_b16 = make_shared_decl("buf", 32, Qualifier::Q_B16);
+    auto decl_b16 = make_shared_decl("buf", 32, ptxemu::ir::Qualifier::Q_B16);
     REQUIRE(std::get_if<DeclarationInstr>(&decl_b16.data) != nullptr);
     
     auto decl_2d = make_shared_decl("buf", 32, 33);

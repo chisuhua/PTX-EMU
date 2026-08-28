@@ -72,18 +72,18 @@ private:
 
 // Build a Tcgen05Instr with ws+f16+cta_group qualifiers, op_kind=MMA
 // (the grammar's path).
-Tcgen05Instr make_ws_instr() {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::MMA;
+ptxemu::ir::Tcgen05Instr make_ws_instr() {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::MMA;
     instr.qualifiers = {
-        Qualifier::Q_TCGEN_WS,
-        Qualifier::Q_F16,
-        Qualifier::Q_TCGEN_CTA_GROUP,
+        ptxemu::ir::Qualifier::Q_TCGEN_WS,
+        ptxemu::ir::Qualifier::Q_F16,
+        ptxemu::ir::Qualifier::Q_TCGEN_CTA_GROUP,
     };
     // 4 operands (MMA / MMA_WS have operand count 4 per ptx_op.def:133-134).
     // Operand content is irrelevant for the test.
-    instr.operands = std::vector<OperandContext>(
-        4, OperandContext(RegOperand{"r", 0}));
+    instr.operands = std::vector<ptxemu::ir::OperandContext>(
+        4, ptxemu::ir::OperandContext(RegOperand{"r", 0}));
     return instr;
 }
 
@@ -174,8 +174,8 @@ TEST_CASE("processTcgen05Mma with op_kind=MMA_WS (direct construction) "
     TestRig rig;
     fill_tmem_with_golden_inputs(rig.tmem());
 
-    Tcgen05Instr instr = make_ws_instr();
-    instr.op_kind = Tcgen05OpKind::MMA_WS;  // direct construction
+    ptxemu::ir::Tcgen05Instr instr = make_ws_instr();
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::MMA_WS;  // direct construction
     // Note: no Q_TCGEN_WS qualifier; this exercises the dispatch path
     // (case Tcgen05OpKind::MMA_WS routes to processTcgen05Mma which
     // sees no Q_TCGEN_WS and falls through to regular mma).
@@ -209,11 +209,11 @@ TEST_CASE("processTcgen05Mma with ws + Q_F32 throws before reaching helper",
     // check fires, we instead verify the exception is observed (the
     // helper would not be reached).
 
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::MMA;
-    instr.qualifiers = {Qualifier::Q_TCGEN_WS, Qualifier::Q_F32};
-    instr.operands = std::vector<OperandContext>(
-        4, OperandContext(RegOperand{"r", 0}));
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::MMA;
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_TCGEN_WS, ptxemu::ir::Qualifier::Q_F32};
+    instr.operands = std::vector<ptxemu::ir::OperandContext>(
+        4, ptxemu::ir::OperandContext(RegOperand{"r", 0}));
 
     REQUIRE_THROWS_AS(ptxsim::processTcgen05Mma(&rig.thread(), instr),
                       UnsupportedInstructionException);

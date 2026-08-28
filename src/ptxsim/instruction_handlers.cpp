@@ -16,22 +16,22 @@
 
 // Declaration handlers (for .reg, .const, etc.)
 #define IMPLEMENT_DECLARATION_HANDLER(Name) \
-    void Name##Handler::ExecPipe(ThreadContext *context, StatementContext &stmt) { \
+    void Name##Handler::ExecPipe(ThreadContext *context, ptxemu::ir::StatementContext &stmt) { \
         DeclarationHandler::ExecPipe(context, stmt); \
     }
 
 // Simple handlers (labels, pragmas, dollar names, membar, fence, etc.)
 #define IMPLEMENT_SIMPLE_HANDLER(Name) \
-    void Name##Handler::ExecPipe(ThreadContext *context, StatementContext &stmt) { \
+    void Name##Handler::ExecPipe(ThreadContext *context, ptxemu::ir::StatementContext &stmt) { \
         SimpleHandler::ExecPipe(context, stmt); \
     }
 
 // Void handlers (ret, exit, trap, etc.)
 #define IMPLEMENT_VOID_HANDLER(Name) \
-    void Name##Handler::ExecPipe(ThreadContext *context, StatementContext &stmt) { \
+    void Name##Handler::ExecPipe(ThreadContext *context, ptxemu::ir::StatementContext &stmt) { \
         VoidHandler::ExecPipe(context, stmt); \
     } \
-    __attribute__((weak)) void Name##Handler::processOperation(ThreadContext *context, StatementContext &stmt) { \
+    __attribute__((weak)) void Name##Handler::processOperation(ThreadContext *context, ptxemu::ir::StatementContext &stmt) { \
         /* Default implementation does nothing */ \
         (void)context; \
         (void)stmt; \
@@ -85,7 +85,7 @@
 // These are implemented in separate .cpp files
 #define IMPLEMENT_GENERIC_INSTR_HANDLER(Name) \
     __attribute__((weak)) void Name##Handler::processOperation(ThreadContext *context, void **operands, \
-                                        const std::vector<Qualifier> &qualifiers, \
+                                        const std::vector<ptxemu::ir::Qualifier> &qualifiers, \
                                         const std::vector<char> *operand_is_immediate) { \
         /* Implementation is in separate .cpp file - check if comparison.cpp etc. is linked */ \
         (void)context; \
@@ -98,7 +98,7 @@
 // These are implemented in separate .cpp files
 #define IMPLEMENT_ATOM_INSTR_HANDLER(Name) \
     __attribute__((weak)) void Name##Handler::processAtomicOperation(ThreadContext *context, void **operands, \
-                                              const std::vector<Qualifier> &qualifiers, \
+                                              const std::vector<ptxemu::ir::Qualifier> &qualifiers, \
                                               const std::vector<char> *operand_is_immediate) { \
         /* Implementation is in separate .cpp file */ \
         (void)context; \
@@ -126,7 +126,7 @@
 // Per docs/superpowers/plans/2026-06-22-phase2-critical-debt.md Task 4: membar's
 // memory barrier semantics are implicit in PC advancement; no barrier API needed.
 #define IMPLEMENT_MEMBAR_INSTR_HANDLER(Name) \
-    __attribute__((weak)) void Name##Handler::ExecPipe(ThreadContext *context, StatementContext &stmt) { \
+    __attribute__((weak)) void Name##Handler::ExecPipe(ThreadContext *context, ptxemu::ir::StatementContext &stmt) { \
         PTX_DEBUG_EMU("membar handler: no-op in single-threaded SC model"); \
         SimpleHandler::ExecPipe(context, stmt); \
     }
@@ -134,7 +134,7 @@
 // WARP_BARRIER handlers - use GenericPipelineHandler pattern
 #define IMPLEMENT_WARP_BARRIER_HANDLER(Name) \
     __attribute__((weak)) void Name##Handler::processOperation(ThreadContext *context, void **operands, \
-                                        const std::vector<Qualifier> &qualifiers, \
+                                        const std::vector<ptxemu::ir::Qualifier> &qualifiers, \
                                         const std::vector<char> *operand_is_immediate) { \
         /* Implementation is in src/ptxsim/instructions/barrier.cpp */ \
         (void)context; \
@@ -145,7 +145,7 @@
     };
 
 #define IMPLEMENT_FENCE_INSTR_HANDLER(Name) \
-    __attribute__((weak)) void Name##Handler::ExecPipe(ThreadContext *context, StatementContext &stmt) { \
+    __attribute__((weak)) void Name##Handler::ExecPipe(ThreadContext *context, ptxemu::ir::StatementContext &stmt) { \
         PTX_DEBUG_EMU("fence handler: no-op in single-threaded SC model"); \
         SimpleHandler::ExecPipe(context, stmt); \
     }
@@ -198,7 +198,7 @@
 // that are not yet implemented in tcgen05.cpp (per ADR-0016 §C5 fix #1).
 __attribute__((weak)) void Tcgen05Handler::processTcgen05Operation(
     ThreadContext *context, void **operands,
-    const std::vector<Qualifier> &qualifiers, const Tcgen05Instr &instr) {
+    const std::vector<ptxemu::ir::Qualifier> &qualifiers, const ptxemu::ir::Tcgen05Instr &instr) {
     (void)context; (void)operands; (void)qualifiers; (void)instr;
     throw UnsupportedInstructionException(
         "tcgen05.*", "stub: real implementation in tcgen05.cpp");
