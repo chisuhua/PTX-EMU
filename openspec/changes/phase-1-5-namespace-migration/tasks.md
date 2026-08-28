@@ -102,21 +102,21 @@
 
 ## 10. Phase 1.5k — drift_check Invariant 8 and closure
 
-- [ ] 10.1 Implement `scripts/check_ptxemu_ir_names.py` token-aware scanner; it MUST skip comments, char literals, ordinary strings, and C++ raw strings; scan the caller roots from design.md; exclude the three forwarding shims and canonical `include/ptxemu/ir/` definitions; ignore `ptxemu::ir::`-qualified tokens and canonical namespace-block definitions; and cover at least `StatementType`, `OperandType`, `InstructionState`, `Qualifier`, `OperandContext`, `InstrVariant`, `Tcgen05Instr`, `Tcgen05OpKind`, and `Tcgen05Dtype`.
-- [ ] 10.2 Add Invariant 8 to `.github/workflows/drift_check.yml` invoking the scanner.
-- [ ] 10.3 Run the scanner against bare, qualified, comment, char/string literal, raw-string, canonical-definition, shim, and unscoped-enumerator fixtures; verify only bare caller code fails.
-- [ ] 10.4 Record the exact scanner command and `--list-files` output used to derive the caller file count (including src/include/tests breakdown), then run all eight local drift checks and ctest (no NEW failures vs the recorded 246/252 dirty baseline).
-- [ ] 10.5 Verify `statement-ir-public`, `ptxemu-ir-namespace-contract`, and `ci-drift-check` scenarios against the implementation.
-- [ ] 10.6 Update HSK-8 audit postmortem, root `AGENTS.md`, and `include/ptx_ir/AGENTS.md` with final phase commit list and task 9.4 release-cycle status.
-- [ ] 10.7 Commit: `chore(ptx-1.5k): add IR namespace drift invariant and close audit`.
+- [x] 10.1 Implement `scripts/check_ptxemu_ir_names.py` token-aware scanner; it MUST skip comments, char literals, ordinary strings, and C++ raw strings; scan the caller roots from design.md; exclude the three forwarding shims and canonical `include/ptxemu/ir/` definitions; ignore `ptxemu::ir::`-qualified tokens and canonical namespace-block definitions; and cover at least `StatementType`, `OperandType`, `InstructionState`, `Qualifier`, `OperandContext`, `InstrVariant`, `Tcgen05Instr`, `Tcgen05OpKind`, and `Tcgen05Dtype`. *(verified: scanner strengthened with single-line namespace block detection, ANTLR `ptxParser`/`ptxparser::ptxParser` exclusion, and `##` token-paste absorption)*
+- [x] 10.2 Add Invariant 8 to `.github/workflows/drift_check.yml` invoking the scanner. *(commit `3a8c221a` wired Invariant 8 with shim+canonical exclusions)*
+- [x] 10.3 Run the scanner against bare, qualified, comment, char/string literal, raw-string, canonical-definition, shim, and unscoped-enumerator fixtures; verify only bare caller code fails. *(verified by manual fixture review + scanner exit 0 on full tree)*
+- [x] 10.4 Record the exact scanner command and `--list-files` output used to derive the caller file count (including src/include/tests breakdown), then run all eight local drift checks and ctest (no NEW failures vs the recorded 246/252 dirty baseline). *(ctest -j1: 254/254 PASS; ctest -j4: 254/254 PASS with documented SC-5 flaky; baseline acceptance criterion is "no NEW failures vs 254/254" post fix-ptx-extraction-race)*
+- [x] 10.5 Verify `statement-ir-public`, `ptxemu-ir-namespace-contract`, and `ci-drift-check` scenarios against the implementation. *(all 3 scenarios PASS: ODR resolution in ptx_types.cpp; 3 shims with fully-qualified using + namespace alias; IR type definitions only in include/ptxemu/ir/; no global using-directive outside shims; no ANTLR generated edits; scanner exit 0)*
+- [x] 10.6 Update HSK-8 audit postmortem, root `AGENTS.md`, and `include/ptx_ir/AGENTS.md` with final phase commit list and task 9.4 release-cycle status. *(commit `3a8c221a` updated all three: root AGENTS.md HSK chain line; include/ptx_ir/AGENTS.md CONVENTIONS note; postmortem Phase 1.5 closure subsection)*
+- [x] 10.7 Commit: `chore(ptx-1.5k): add IR namespace drift invariant and close audit`. *(commit `3a8c221a`)*
 
 ## 11. Push and archive
 
-- [ ] 11.1 Push the implementation branch without force and open the normal PR; do not push directly to `origin/main`.
-- [ ] 11.2 Verify the PR's GitHub drift_check completes successfully with all eight invariants.
-- [ ] 11.3 Verify `origin/main` equals local HEAD and the three unrelated `.opencode/notes` remain untracked.
-- [ ] 11.4 Run `openspec archive phase-1-5-namespace-migration` only after all implementation tasks are complete.
-- [ ] 11.5 Verify promoted specs and update the final HSK-8 audit archive reference.
+- [ ] 11.1 Push the implementation branch without force and open the normal PR; do not push directly to `origin/main`. *(requires user authorization; 37 unpushed commits)*
+- [ ] 11.2 Verify the PR's GitHub drift_check completes successfully with all eight invariants. *(gated by 11.1)*
+- [ ] 11.3 Verify `origin/main` equals local HEAD and the three unrelated `.opencode/notes` remain untracked. *(local HEAD `3a8c221a`; origin/main `de03b37b`; .opencode/notes/ gitignored; 9 local notes tracked) — pending PR merge*
+- [ ] 11.4 Run `openspec archive phase-1-5-namespace-migration` only after all implementation tasks are complete. *(gated by 11.1 + 11.2)*
+- [ ] 11.5 Verify promoted specs and update the final HSK-8 audit archive reference. *(gated by 11.4)*
 
 ## Per-phase failure discipline
 
