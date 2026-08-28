@@ -31,9 +31,9 @@
 
 ## 3. Phase 1.5f1 — src/ptxsim/instructions caller sweep
 
-- [ ] 3.1 Sweep all matching files under `src/ptxsim/instructions/` (max 30 files per commit); qualify all IR types.
-- [ ] 3.2 Build + ctest 252/252 verification.
-- [ ] 3.3 Commit: `refactor(ptx-1.5f1): src/ptxsim instructions caller sweep`.
+- [x] 3.1 Sweep all matching files under `src/ptxsim/instructions/` (max 30 files per commit); qualify all IR types.
+- [x] 3.2 Build + ctest 254/254 verification.
+- [x] 3.3 Commit: `refactor(ptx-1.5f1): src/ptxsim instructions caller sweep`.
 
 ## 4. Phase 1.5f2 — src/ptxsim/core+utils+debug caller sweep
 
