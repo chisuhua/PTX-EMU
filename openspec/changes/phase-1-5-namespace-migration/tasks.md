@@ -25,9 +25,9 @@
 
 ## 2. Phase 1.5e — src/ptx_parser caller sweep
 
-- [ ] 2.1 Sweep all matching files under `src/ptx_parser/` (13 files measured) and corresponding headers; qualify all IR types with `ptxemu::ir::`.
-- [ ] 2.2 Build + ctest 252/252 verification.
-- [ ] 2.3 Commit: `refactor(ptx-1.5e): src/ptx_parser caller sweep`.
+- [x] 2.1 Sweep all matching files under `src/ptx_parser/` (13 files measured) and corresponding headers; qualify all IR types with `ptxemu::ir::`.
+- [x] 2.2 Build + ctest 254/254 verification.
+- [x] 2.3 Commit: `refactor(ptx-1.5e): src/ptx_parser caller sweep` (commit `7b7f468b`).
 
 ## 3. Phase 1.5f1 — src/ptxsim/instructions caller sweep
 
