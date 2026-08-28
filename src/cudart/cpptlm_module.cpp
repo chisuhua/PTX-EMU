@@ -104,7 +104,7 @@ public:
             bytes_copy = it->second;
         }
 
-        std::vector<StatementContext> stmts;
+        std::vector<ptxemu::ir::StatementContext> stmts;
         try {
             stmts = PTXIRLoader::deserializeForCubin(bytes_copy.data(), bytes_copy.size());
         } catch (...) {
@@ -193,7 +193,7 @@ public:
         // still returns -1 (pre-existing contract for invalid handle).
         if (g_gpu_context == nullptr) return -EINVAL;
 
-        std::vector<StatementContext> stmts;
+        std::vector<ptxemu::ir::StatementContext> stmts;
         try {
             stmts = PTXIRLoader::deserializeForCubin(bytes_copy.data(), bytes_copy.size());
         } catch (...) {
