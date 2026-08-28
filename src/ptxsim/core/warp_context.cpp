@@ -222,7 +222,7 @@ void WarpContext::add_thread(std::unique_ptr<ThreadContext> thread,
     }
 }
 
-void WarpContext::execute_warp_instruction(StatementContext &stmt,
+void WarpContext::execute_warp_instruction(ptxemu::ir::StatementContext &stmt,
                                            int target_pc) {
     warp_dispatch::execute_warp_instruction(this, stmt, target_pc);
 }

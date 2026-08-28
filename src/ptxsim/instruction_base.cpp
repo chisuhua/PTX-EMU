@@ -22,19 +22,19 @@ inline void ptx_debug_emu_impl(const char* fmt, ...) {
 #endif
 
 // Declaration handlers (variable declarations, etc.)
-void DeclarationHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
+void DeclarationHandler::ExecPipe(ThreadContext *context, ptxemu::ir::StatementContext &stmt) {
     // Declarations are handled at kernel initialization, not during execution
     context->set_next_pc(context->get_pc() + 1);
 }
 
 // Simple handlers (labels, pragmas, dollar names)
-void SimpleHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
+void SimpleHandler::ExecPipe(ThreadContext *context, ptxemu::ir::StatementContext &stmt) {
 
     context->set_next_pc(context->get_pc() + 1);
 }
 
 // Void instructions (ret, exit, trap, etc.)
-void VoidHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
+void VoidHandler::ExecPipe(ThreadContext *context, ptxemu::ir::StatementContext &stmt) {
     context->trace_status(ptxsim::log_level::debug, "thread", 
                           "PC=%x VOID_INSTR: %s", context->get_pc(), 
                           stmt.instructionText.c_str());
@@ -43,7 +43,7 @@ void VoidHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
 }
 
 // Branch instructions
-void BranchHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
+void BranchHandler::ExecPipe(ThreadContext *context, ptxemu::ir::StatementContext &stmt) {
     context->trace_status(ptxsim::log_level::debug, "thread", 
                           "PC=%x BRANCH: %s", context->get_pc(), 
                           stmt.instructionText.c_str());
@@ -52,7 +52,7 @@ void BranchHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
 }
 
 // Barrier instructions
-void BarrierHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
+void BarrierHandler::ExecPipe(ThreadContext *context, ptxemu::ir::StatementContext &stmt) {
     context->trace_status(ptxsim::log_level::debug, "thread", 
                           "PC=%x BARRIER: %s", context->get_pc(), 
                           stmt.instructionText.c_str());
@@ -61,7 +61,7 @@ void BarrierHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
 }
 
 // Call instructions
-void CallBaseHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
+void CallBaseHandler::ExecPipe(ThreadContext *context, ptxemu::ir::StatementContext &stmt) {
     context->trace_status(ptxsim::log_level::debug, "thread", 
                           "PC=%x CALL: %s", context->get_pc(), 
                           stmt.instructionText.c_str());
@@ -73,7 +73,7 @@ void CallBaseHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
 }
 
 // Pipeline Handler Implementation
-void PipelineHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
+void PipelineHandler::ExecPipe(ThreadContext *context, ptxemu::ir::StatementContext &stmt) {
     // 保存当前PC，避免屏障处理器修改后 get_pc() 返回错误值
     int saved_pc = context->get_pc();
 
@@ -116,8 +116,8 @@ void PipelineHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
 }
 
 bool PipelineHandler::acquireAllOperands(ThreadContext *context,
-                                       std::vector<OperandContext> &operands,
-                                       const std::vector<Qualifier> &qualifiers,
+                                       std::vector<ptxemu::ir::OperandContext> &operands,
+                                       const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                                        int opCount) {
     for (int i = 0; i < opCount && i < static_cast<int>(operands.size()); i++) {
         void *result = context->acquire_operand(operands[i], qualifiers);
@@ -152,7 +152,7 @@ bool PipelineHandler::acquireAllOperands(ThreadContext *context,
 }
 
 void PipelineHandler::releaseAllOperands(ThreadContext *context,
-                                        std::vector<OperandContext> &operands, int opCount) {
+                                        std::vector<ptxemu::ir::OperandContext> &operands, int opCount) {
     for (int i = 0; i < opCount && i < static_cast<int>(operands.size()); i++) {
         // Phase 0.3d: setPhyAddr(nullptr) removed. Clear cache slot only.
         if (i < static_cast<int>(context->operand_phy_cache_.size())) {
@@ -162,7 +162,7 @@ void PipelineHandler::releaseAllOperands(ThreadContext *context,
 }
 
 // Generic Pipeline Handler
-bool GenericPipelineHandler::prepareOperands(ThreadContext *context, StatementContext &stmt) {
+bool GenericPipelineHandler::prepareOperands(ThreadContext *context, ptxemu::ir::StatementContext &stmt) {
     GenericInstr &instr = std::get<GenericInstr>(stmt.data);
     PTX_INFO_EMU("GenericPipelineHandler::prepareOperands: pc=%d type=%d text=%s", 
                  context->get_pc(), static_cast<int>(stmt.type), stmt.instructionText.c_str());
@@ -174,7 +174,7 @@ bool GenericPipelineHandler::prepareOperands(ThreadContext *context, StatementCo
     return true;
 }
 
-bool GenericPipelineHandler::executeOperation(ThreadContext *context, StatementContext &stmt) {
+bool GenericPipelineHandler::executeOperation(ThreadContext *context, ptxemu::ir::StatementContext &stmt) {
     const GenericInstr &instr = std::get<GenericInstr>(stmt.data);
 
     processOperation(context, &(context->operand_collected[0]), instr.qualifiers,
@@ -182,7 +182,7 @@ bool GenericPipelineHandler::executeOperation(ThreadContext *context, StatementC
     return true;
 }
 
-bool GenericPipelineHandler::commitResults(ThreadContext *context, StatementContext &stmt) {
+bool GenericPipelineHandler::commitResults(ThreadContext *context, ptxemu::ir::StatementContext &stmt) {
     GenericInstr &instr = std::get<GenericInstr>(stmt.data);
     // Note: PTX generic instructions have exactly one destination operand at index 0.
     if (!instr.operands.empty()) {
@@ -193,7 +193,7 @@ bool GenericPipelineHandler::commitResults(ThreadContext *context, StatementCont
 }
 
 // Atomic Pipeline Handler
-bool AtomicPipelineHandler::prepareOperands(ThreadContext *context, StatementContext &stmt) {
+bool AtomicPipelineHandler::prepareOperands(ThreadContext *context, ptxemu::ir::StatementContext &stmt) {
     AtomInstr &instr = std::get<AtomInstr>(stmt.data);
     if (!acquireAllOperands(context, instr.operands, instr.qualifiers, 
                            static_cast<int>(instr.operands.size()))) {
@@ -203,13 +203,13 @@ bool AtomicPipelineHandler::prepareOperands(ThreadContext *context, StatementCon
     return true;
 }
 
-bool AtomicPipelineHandler::executeOperation(ThreadContext *context, StatementContext &stmt) {
+bool AtomicPipelineHandler::executeOperation(ThreadContext *context, ptxemu::ir::StatementContext &stmt) {
     const AtomInstr &instr = std::get<AtomInstr>(stmt.data);
     processAtomicOperation(context, &(context->operand_collected[0]), instr.qualifiers);
     return true;
 }
 
-bool AtomicPipelineHandler::commitResults(ThreadContext *context, StatementContext &stmt) {
+bool AtomicPipelineHandler::commitResults(ThreadContext *context, ptxemu::ir::StatementContext &stmt) {
     AtomInstr &instr = std::get<AtomInstr>(stmt.data);
     if (!instr.operands.empty()) {
         context->commit_operand(stmt, instr.operands[0], instr.qualifiers);
@@ -219,8 +219,8 @@ bool AtomicPipelineHandler::commitResults(ThreadContext *context, StatementConte
 }
 
 // Tcgen05 Pipeline Handler (Blackwell sm_100+, ADR-0016)
-bool Tcgen05PipelineHandler::prepareOperands(ThreadContext *context, StatementContext &stmt) {
-    Tcgen05Instr &instr = std::get<Tcgen05Instr>(stmt.data);
+bool Tcgen05PipelineHandler::prepareOperands(ThreadContext *context, ptxemu::ir::StatementContext &stmt) {
+    ptxemu::ir::Tcgen05Instr &instr = std::get<ptxemu::ir::Tcgen05Instr>(stmt.data);
     // Zero-operand op_kinds (COMMIT/WAIT/FENCE) need no acquire; skip pipeline.
     if (instr.operands.empty()) {
         return true;
@@ -233,16 +233,16 @@ bool Tcgen05PipelineHandler::prepareOperands(ThreadContext *context, StatementCo
     return true;
 }
 
-bool Tcgen05PipelineHandler::executeOperation(ThreadContext *context, StatementContext &stmt) {
-    const Tcgen05Instr &instr = std::get<Tcgen05Instr>(stmt.data);
+bool Tcgen05PipelineHandler::executeOperation(ThreadContext *context, ptxemu::ir::StatementContext &stmt) {
+    const ptxemu::ir::Tcgen05Instr &instr = std::get<ptxemu::ir::Tcgen05Instr>(stmt.data);
     // Defers to subclass Tcgen05Handler::processTcgen05Operation (virtual dispatch).
     processTcgen05Operation(context, &(context->operand_collected[0]),
                             instr.qualifiers, instr);
     return true;
 }
 
-bool Tcgen05PipelineHandler::commitResults(ThreadContext *context, StatementContext &stmt) {
-    Tcgen05Instr &instr = std::get<Tcgen05Instr>(stmt.data);
+bool Tcgen05PipelineHandler::commitResults(ThreadContext *context, ptxemu::ir::StatementContext &stmt) {
+    ptxemu::ir::Tcgen05Instr &instr = std::get<ptxemu::ir::Tcgen05Instr>(stmt.data);
     // COMMIT/WAIT/FENCE have empty operands; no commit_operand call.
     if (!instr.operands.empty()) {
         context->commit_operand(stmt, instr.operands[0], instr.qualifiers);
@@ -251,7 +251,7 @@ bool Tcgen05PipelineHandler::commitResults(ThreadContext *context, StatementCont
     return true;
 }
 
-void AsyncCopyHandler::ExecPipe(ThreadContext *context, StatementContext &stmt) {
+void AsyncCopyHandler::ExecPipe(ThreadContext *context, ptxemu::ir::StatementContext &stmt) {
     context->trace_status(ptxsim::log_level::debug, "thread",
                           "PC=%x CP_ASYNC: %s", context->get_pc(),
                           stmt.instructionText.c_str());

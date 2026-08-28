@@ -144,7 +144,7 @@ int SimtPcManager::statements_size() const {
     return statements_ ? static_cast<int>(statements_->size()) : 0;
 }
 
-StatementContext *SimtPcManager::get_statement_at(int p) {
+ptxemu::ir::StatementContext *SimtPcManager::get_statement_at(int p) {
     if (statements_ != nullptr && p >= 0 &&
         p < static_cast<int>(statements_->size())) {
         return &(*statements_)[p];
@@ -152,7 +152,7 @@ StatementContext *SimtPcManager::get_statement_at(int p) {
     return nullptr;
 }
 
-StatementContext *SimtPcManager::get_current_statement() {
+ptxemu::ir::StatementContext *SimtPcManager::get_current_statement() {
     int pc = get_pc();
     if (statements_ != nullptr && pc >= 0 &&
         pc < static_cast<int>(statements_->size())) {

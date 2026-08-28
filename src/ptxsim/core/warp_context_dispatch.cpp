@@ -21,7 +21,7 @@
 namespace warp_dispatch {
 
 void execute_warp_instruction(WarpContext* w,
-                               StatementContext& stmt,
+                               ptxemu::ir::StatementContext& stmt,
                                int target_pc) {
     std::vector<int> blocked_lanes;
     if (w->check_and_block_at_reconvergence_point(target_pc, blocked_lanes)) {

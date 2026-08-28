@@ -3,7 +3,7 @@
 
 #include <cstdlib>
 
-std::unordered_map<StatementType, InstructionHandler *>
+std::unordered_map<ptxemu::ir::StatementType, InstructionHandler *>
     InstructionFactory::handler_map;
 bool InstructionFactory::initialized = false;
 
@@ -27,7 +27,7 @@ void InstructionFactory::initialize() {
     }
 }
 
-InstructionHandler *InstructionFactory::get_handler(StatementType type) {
+InstructionHandler *InstructionFactory::get_handler(ptxemu::ir::StatementType type) {
     auto it = handler_map.find(type);
     if (it != handler_map.end()) {
         return it->second;
