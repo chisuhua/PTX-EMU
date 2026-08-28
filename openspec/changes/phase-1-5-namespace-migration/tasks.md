@@ -83,9 +83,15 @@
   - `verify_phase_1_5.sh --phase 1.5i2`: 83 files swept, 0 remaining, 0 new, exit 0.
   - `verify_phase_1_5.sh --phase post-1.5i2`: 436 swept, 19 remaining (pre-existing baseline src/include/e2e files), 0 new, exit 0.
 - [x] 8.6 Commit: `refactor(ptx-1.5i2): tests integration caller sweep` (commit `55a1e995`).
-- [ ] 8.7 Sweep `tests/e2e/` (third sub-batch, max 30 files); do not modify generated artifacts or PTX grammar files.
-- [ ] 8.8 Build + ctest 252/252 and run `./tests/ptx/test_all_ptx.sh`.
-- [ ] 8.9 Commit: `refactor(ptx-1.5i3): tests e2e caller sweep`.
+- [x] 8.7 Sweep `tests/e2e/` (third sub-batch, max 30 files); do not modify generated artifacts or PTX grammar files.
+  - Only 1 file had scanner-flagged bare IR tokens: `tests/e2e/kernel/test_test3_cfg_full.cpp` (6 occurrences: StatementContext ×3, StatementType ×1, OperandContext ×2). All other e2e sources (`.cu` kernels, path_1B/1C/2D harnesses) already clean or contain no IR tokens.
+  - `verify_phase_1_5.sh --phase 1.5i3 --roots tests/e2e`: 7 files swept, 0 remaining, 0 new, exit 0. No ANTLR false positives.
+  - PTX grammar files in `tests/ptx/` untouched; no generated artifacts modified.
+- [x] 8.8 Build + ctest 254/254 and run `./tests/ptx/test_all_ptx.sh`.
+  - Incremental build clean. `ctest -j4`: 254/254 PASS. `ctest -j1`: 254/254 PASS.
+  - `./tests/ptx/test_all_ptx.sh`: 46/46 PASS (PTX syntax validation).
+  - `verify_phase_1_5.sh --phase post-1.5i3 --roots src include tests`: 436 swept, 18 remaining (pre-existing baseline), 0 new, exit 0.
+- [x] 8.9 Commit: `refactor(ptx-1.5i3): tests e2e caller sweep` (commit `9f76bb6a`).
 
 ## 9. Phase 1.5j — GPUContext interface re-sign
 
