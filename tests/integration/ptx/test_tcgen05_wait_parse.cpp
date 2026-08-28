@@ -29,23 +29,23 @@ TEST_CASE("tcgen05.wait::load parse → IR",
     // PTX source: tcgen05.wait::load.cta_group::1;
     const std::string ptx_text = "tcgen05.wait::load.cta_group::1;";
 
-    std::vector<Qualifier> qualifiers = {
-        Qualifier::Q_TCGEN_CTA_GROUP,  // .cta_group::1
-        Qualifier::Q_TCGEN05_WAIT,     // .wait marker
+    std::vector<ptxemu::ir::Qualifier> qualifiers = {
+        ptxemu::ir::Qualifier::Q_TCGEN_CTA_GROUP,  // .cta_group::1
+        ptxemu::ir::Qualifier::Q_TCGEN05_WAIT,     // .wait marker
     };
-    std::vector<OperandContext> operands;  // wait is zero-operand
+    std::vector<ptxemu::ir::OperandContext> operands;  // wait is zero-operand
 
     auto stmt = ptxir::factory::makeTcgen05Instr(
-        Tcgen05OpKind::WAIT, qualifiers, operands, ptx_text);
+        ptxemu::ir::Tcgen05OpKind::WAIT, qualifiers, operands, ptx_text);
 
-    REQUIRE(std::holds_alternative<Tcgen05Instr>(stmt.data));
-    const auto& instr = std::get<Tcgen05Instr>(stmt.data);
+    REQUIRE(std::holds_alternative<ptxemu::ir::Tcgen05Instr>(stmt.data));
+    const auto& instr = std::get<ptxemu::ir::Tcgen05Instr>(stmt.data);
 
-    REQUIRE(instr.op_kind == Tcgen05OpKind::WAIT);
+    REQUIRE(instr.op_kind == ptxemu::ir::Tcgen05OpKind::WAIT);
     REQUIRE(instr.operands.size() == 0);
     REQUIRE(instr.qualifiers.size() == 2);
-    REQUIRE(instr.qualifiers[0] == Qualifier::Q_TCGEN_CTA_GROUP);
-    REQUIRE(instr.qualifiers[1] == Qualifier::Q_TCGEN05_WAIT);
+    REQUIRE(instr.qualifiers[0] == ptxemu::ir::Qualifier::Q_TCGEN_CTA_GROUP);
+    REQUIRE(instr.qualifiers[1] == ptxemu::ir::Qualifier::Q_TCGEN05_WAIT);
     REQUIRE(instr.instructionText == ptx_text);
 }
 
@@ -54,22 +54,22 @@ TEST_CASE("tcgen05.wait::store parse → IR",
     // PTX source: tcgen05.wait::store.cta_group::1;
     const std::string ptx_text = "tcgen05.wait::store.cta_group::1;";
 
-    std::vector<Qualifier> qualifiers = {
-        Qualifier::Q_TCGEN_CTA_GROUP,  // .cta_group::1
-        Qualifier::Q_TCGEN05_WAIT,     // .wait marker
+    std::vector<ptxemu::ir::Qualifier> qualifiers = {
+        ptxemu::ir::Qualifier::Q_TCGEN_CTA_GROUP,  // .cta_group::1
+        ptxemu::ir::Qualifier::Q_TCGEN05_WAIT,     // .wait marker
     };
-    std::vector<OperandContext> operands;  // wait is zero-operand
+    std::vector<ptxemu::ir::OperandContext> operands;  // wait is zero-operand
 
     auto stmt = ptxir::factory::makeTcgen05Instr(
-        Tcgen05OpKind::WAIT, qualifiers, operands, ptx_text);
+        ptxemu::ir::Tcgen05OpKind::WAIT, qualifiers, operands, ptx_text);
 
-    REQUIRE(std::holds_alternative<Tcgen05Instr>(stmt.data));
-    const auto& instr = std::get<Tcgen05Instr>(stmt.data);
+    REQUIRE(std::holds_alternative<ptxemu::ir::Tcgen05Instr>(stmt.data));
+    const auto& instr = std::get<ptxemu::ir::Tcgen05Instr>(stmt.data);
 
-    REQUIRE(instr.op_kind == Tcgen05OpKind::WAIT);
+    REQUIRE(instr.op_kind == ptxemu::ir::Tcgen05OpKind::WAIT);
     REQUIRE(instr.operands.size() == 0);
     REQUIRE(instr.qualifiers.size() == 2);
-    REQUIRE(instr.qualifiers[0] == Qualifier::Q_TCGEN_CTA_GROUP);
-    REQUIRE(instr.qualifiers[1] == Qualifier::Q_TCGEN05_WAIT);
+    REQUIRE(instr.qualifiers[0] == ptxemu::ir::Qualifier::Q_TCGEN_CTA_GROUP);
+    REQUIRE(instr.qualifiers[1] == ptxemu::ir::Qualifier::Q_TCGEN05_WAIT);
     REQUIRE(instr.instructionText == ptx_text);
 }

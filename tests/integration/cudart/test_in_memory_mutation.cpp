@@ -38,7 +38,7 @@ std::string short_hash(const uint8_t* p, size_t n) {
 
 // Build minimal PTXIR image: PTXIR header + serialized statements
 std::vector<uint8_t> build_minimal_ptxir() {
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
     stmt.type = S_LABEL;
     stmt.data = LabelInstr{"L0"};
 
@@ -153,7 +153,7 @@ namespace {
 // Returns a standalone PTXIR binary (magic "PTXI" + content) that ptxemu_image_load
 // accepts directly. Uses PtxirWriter for format compatibility with the reader.
 std::vector<uint8_t> build_multi_kernel_ptxir() {
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
     stmt.type = S_LABEL;
     stmt.data = LabelInstr{"L0"};
 

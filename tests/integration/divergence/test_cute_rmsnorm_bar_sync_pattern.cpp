@@ -114,22 +114,22 @@ constexpr int PC_BROADCAST  = 10;
 constexpr int PC_RET        = 11;
 constexpr int NUM_STMTS     = 12;
 
-static std::vector<StatementContext> build_cute_rmsnorm_pattern(
+static std::vector<ptxemu::ir::StatementContext> build_cute_rmsnorm_pattern(
     std::map<std::string, int>& l2pc)
 {
-    std::vector<StatementContext> v(NUM_STMTS);
+    std::vector<ptxemu::ir::StatementContext> v(NUM_STMTS);
     for (auto& s : v) s = make_nop();
 
     v[PC_PER_LANE_ST] = ptxsim::testing::make_st_shared_addr(
-        "sdata", "r_tid", "r_val", Qualifier::Q_B32);
+        "sdata", "r_tid", "r_val", ptxemu::ir::Qualifier::Q_B32);
     v[PC_BAR1]        = make_bar_sync(0);
 
     v[PC_LTID0_DVRG] = makeGenericInstr(
         S_SETP,
-        {Qualifier::Q_B32, Qualifier::Q_NE},
-        {OperandContext{RegOperand{"p3", -1}},
-         OperandContext{RegOperand{"r_tid", -1}},
-         OperandContext{ImmOperand{"0"}}},
+        {ptxemu::ir::Qualifier::Q_B32, ptxemu::ir::Qualifier::Q_NE},
+        {ptxemu::ir::OperandContext{RegOperand{"p3", -1}},
+         ptxemu::ir::OperandContext{RegOperand{"r_tid", -1}},
+         ptxemu::ir::OperandContext{ImmOperand{"0"}}},
         "setp.ne.s32 %p3, %r_tid, 0;");
     // Use negated predicate @!p3 bra: lane 0 (r_tid=0 → p3=0) takes the
     // branch to L_TID0_DVRG_W (PC_TID0_DVRG). Lanes 1-31 (r_tid!=0 →
@@ -137,14 +137,14 @@ static std::vector<StatementContext> build_cute_rmsnorm_pattern(
     v[PC_LTID0_DVRG + 1] = make_bra_pred("L_TID0_DVRG_W", "p3", true, /*reconv*/ PC_BAR3);
     v[PC_LTID0_DVRG + 2] = make_bra("L_BCONV");
     v[PC_TID0_DVRG] = ptxsim::testing::make_st_shared_addr(
-        "sdata", "r_tid", "r_rsqrt", Qualifier::Q_B32);
+        "sdata", "r_tid", "r_rsqrt", ptxemu::ir::Qualifier::Q_B32);
 
     l2pc["L_TID0_DVRG_W"] = PC_TID0_DVRG;
     l2pc["L_BCONV"] = PC_BAR3;
 
     v[PC_BAR3]      = make_bar_sync(0);
     v[PC_BROADCAST] = ptxsim::testing::make_ld_shared_addr(
-        "r2", "sdata", "r_tid", Qualifier::Q_B32);
+        "r2", "sdata", "r_tid", ptxemu::ir::Qualifier::Q_B32);
     v[PC_RET]       = make_ret();
 
     return v;

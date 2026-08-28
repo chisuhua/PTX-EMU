@@ -72,39 +72,39 @@ namespace {
 // with a register-based address — keep these local to the test for now.
 // ============================================================================
 
-inline StatementContext make_ld_global_u32(const std::string &dst_reg,
+inline ptxemu::ir::StatementContext make_ld_global_u32(const std::string &dst_reg,
                                           const std::string &addr_reg) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_LD;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_GLOBAL, Qualifier::Q_U32};
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_GLOBAL, ptxemu::ir::Qualifier::Q_U32};
     AddrOperand addr;
     addr.space = AddrOperand::Space::GLOBAL;
     addr.baseSymbol = ""; // global memory uses the register value as host_ptr
     addr.offsetType = AddrOperand::OffsetType::REGISTER;
     addr.registerOffset =
-        std::make_shared<OperandContext>(RegOperand{addr_reg, -1});
-    instr.operands.push_back(OperandContext{RegOperand{dst_reg, -1}});
-    instr.operands.push_back(OperandContext{addr});
+        std::make_shared<ptxemu::ir::OperandContext>(RegOperand{addr_reg, -1});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{dst_reg, -1}});
+    instr.operands.push_back(ptxemu::ir::OperandContext{addr});
     ctx.data = instr;
     ctx.instructionText = "ld.global.u32 " + dst_reg + ", [" + addr_reg + "];";
     return ctx;
 }
 
-inline StatementContext make_st_global_u32(const std::string &addr_reg,
+inline ptxemu::ir::StatementContext make_st_global_u32(const std::string &addr_reg,
                                           const std::string &src_reg) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_ST;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_GLOBAL, Qualifier::Q_U32};
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_GLOBAL, ptxemu::ir::Qualifier::Q_U32};
     AddrOperand addr;
     addr.space = AddrOperand::Space::GLOBAL;
     addr.baseSymbol = "";
     addr.offsetType = AddrOperand::OffsetType::REGISTER;
     addr.registerOffset =
-        std::make_shared<OperandContext>(RegOperand{addr_reg, -1});
-    instr.operands.push_back(OperandContext{addr});
-    instr.operands.push_back(OperandContext{RegOperand{src_reg, -1}});
+        std::make_shared<ptxemu::ir::OperandContext>(RegOperand{addr_reg, -1});
+    instr.operands.push_back(ptxemu::ir::OperandContext{addr});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src_reg, -1}});
     ctx.data = instr;
     ctx.instructionText = "st.global.u32 [" + addr_reg + "], " + src_reg + ";";
     return ctx;
@@ -152,7 +152,7 @@ TEST_CASE("integration_ldglobal_no_hang",
                               /*is_write=*/true);
 
     // Build the minimal instruction sequence.
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(4);
     stmts.push_back(make_mov("r1", "tid.x"));            // PC=0
     stmts.push_back(make_ld_global_u32("r2", "rd_ptr")); // PC=1 (target)

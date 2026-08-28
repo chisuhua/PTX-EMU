@@ -53,56 +53,56 @@ static int expected_nested_divergence(int tid) {
     return base + first_branch + second_branch;
 }
 
-static std::vector<StatementContext> build_nested_divergence_statements() {
-    std::vector<StatementContext> stmts;
+static std::vector<ptxemu::ir::StatementContext> build_nested_divergence_statements() {
+    std::vector<ptxemu::ir::StatementContext> stmts;
     std::map<std::string, int> label2pc;
 
-    stmts.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B32},
-        {OperandContext{RegOperand{"r", 1}}, OperandContext{RegOperand{"tid.x", -1}}},
+    stmts.push_back(makeGenericInstr(S_MOV, {ptxemu::ir::Qualifier::Q_B32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 1}}, ptxemu::ir::OperandContext{RegOperand{"tid.x", -1}}},
         "mov.u32 %r1, %tid.x;"));
 
-    stmts.push_back(makeGenericInstr(S_AND, {Qualifier::Q_B32},
-        {OperandContext{RegOperand{"r", 2}}, OperandContext{RegOperand{"r", 1}}, OperandContext{ImmOperand{"1"}}},
+    stmts.push_back(makeGenericInstr(S_AND, {ptxemu::ir::Qualifier::Q_B32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 2}}, ptxemu::ir::OperandContext{RegOperand{"r", 1}}, ptxemu::ir::OperandContext{ImmOperand{"1"}}},
         "and.b32 %r2, %r1, 1;"));
 
-    stmts.push_back(makeGenericInstr(S_SETP, {Qualifier::Q_B32, Qualifier::Q_EQ},
-        {OperandContext{RegOperand{"p", 1}}, OperandContext{RegOperand{"r", 2}}, OperandContext{ImmOperand{"1"}}},
+    stmts.push_back(makeGenericInstr(S_SETP, {ptxemu::ir::Qualifier::Q_B32, ptxemu::ir::Qualifier::Q_EQ},
+        {ptxemu::ir::OperandContext{RegOperand{"p", 1}}, ptxemu::ir::OperandContext{RegOperand{"r", 2}}, ptxemu::ir::OperandContext{ImmOperand{"1"}}},
         "setp.eq.b32 %p1, %r2, 1;"));
 
-    stmts.push_back(makeGenericInstr(S_SELP, {Qualifier::Q_B32},
-        {OperandContext{RegOperand{"r", 3}}, OperandContext{ImmOperand{"200"}}, OperandContext{ImmOperand{"100"}}, OperandContext{RegOperand{"p", 1}}},
+    stmts.push_back(makeGenericInstr(S_SELP, {ptxemu::ir::Qualifier::Q_B32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 3}}, ptxemu::ir::OperandContext{ImmOperand{"200"}}, ptxemu::ir::OperandContext{ImmOperand{"100"}}, ptxemu::ir::OperandContext{RegOperand{"p", 1}}},
         "selp.b32 %r3, 200, 100, %p1;"));
 
-    stmts.push_back(makeGenericInstr(S_ADD, {Qualifier::Q_S32},
-        {OperandContext{RegOperand{"r", 4}}, OperandContext{RegOperand{"r", 3}}, OperandContext{RegOperand{"r", 1}}},
+    stmts.push_back(makeGenericInstr(S_ADD, {ptxemu::ir::Qualifier::Q_S32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 4}}, ptxemu::ir::OperandContext{RegOperand{"r", 3}}, ptxemu::ir::OperandContext{RegOperand{"r", 1}}},
         "add.s32 %r4, %r3, %r1;"));
 
-    stmts.push_back(makeGenericInstr(S_AND, {Qualifier::Q_B32},
-        {OperandContext{RegOperand{"r", 5}}, OperandContext{RegOperand{"r", 1}}, OperandContext{ImmOperand{"2"}}},
+    stmts.push_back(makeGenericInstr(S_AND, {ptxemu::ir::Qualifier::Q_B32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 5}}, ptxemu::ir::OperandContext{RegOperand{"r", 1}}, ptxemu::ir::OperandContext{ImmOperand{"2"}}},
         "and.b32 %r5, %r1, 2;"));
 
-    stmts.push_back(makeGenericInstr(S_SETP, {Qualifier::Q_B32, Qualifier::Q_EQ},
-        {OperandContext{RegOperand{"p", 2}}, OperandContext{RegOperand{"r", 5}}, OperandContext{ImmOperand{"0"}}},
+    stmts.push_back(makeGenericInstr(S_SETP, {ptxemu::ir::Qualifier::Q_B32, ptxemu::ir::Qualifier::Q_EQ},
+        {ptxemu::ir::OperandContext{RegOperand{"p", 2}}, ptxemu::ir::OperandContext{RegOperand{"r", 5}}, ptxemu::ir::OperandContext{ImmOperand{"0"}}},
         "setp.eq.s32 %p2, %r5, 0;"));
 
-    stmts.push_back(makeGenericInstr(S_SELP, {Qualifier::Q_B32},
-        {OperandContext{RegOperand{"r", 6}}, OperandContext{ImmOperand{"10"}}, OperandContext{ImmOperand{"20"}}, OperandContext{RegOperand{"p", 2}}},
+    stmts.push_back(makeGenericInstr(S_SELP, {ptxemu::ir::Qualifier::Q_B32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 6}}, ptxemu::ir::OperandContext{ImmOperand{"10"}}, ptxemu::ir::OperandContext{ImmOperand{"20"}}, ptxemu::ir::OperandContext{RegOperand{"p", 2}}},
         "selp.b32 %r6, 10, 20, %p2;"));
 
-    stmts.push_back(makeGenericInstr(S_ADD, {Qualifier::Q_S32},
-        {OperandContext{RegOperand{"r", 7}}, OperandContext{RegOperand{"r", 4}}, OperandContext{RegOperand{"r", 6}}},
+    stmts.push_back(makeGenericInstr(S_ADD, {ptxemu::ir::Qualifier::Q_S32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 7}}, ptxemu::ir::OperandContext{RegOperand{"r", 4}}, ptxemu::ir::OperandContext{RegOperand{"r", 6}}},
         "add.s32 %r7, %r4, %r6;"));
 
-    stmts.push_back(makeGenericInstr(S_MUL, {Qualifier::Q_U32, Qualifier::Q_WIDE},
-        {OperandContext{RegOperand{"rd", 3}}, OperandContext{RegOperand{"r", 1}}, OperandContext{ImmOperand{"4"}}},
+    stmts.push_back(makeGenericInstr(S_MUL, {ptxemu::ir::Qualifier::Q_U32, ptxemu::ir::Qualifier::Q_WIDE},
+        {ptxemu::ir::OperandContext{RegOperand{"rd", 3}}, ptxemu::ir::OperandContext{RegOperand{"r", 1}}, ptxemu::ir::OperandContext{ImmOperand{"4"}}},
         "mul.wide.u32 %rd3, %r1, 4;"));
 
-    stmts.push_back(makeGenericInstr(S_ADD, {Qualifier::Q_S64},
-        {OperandContext{RegOperand{"rd", 4}}, OperandContext{RegOperand{"rd", 2}}, OperandContext{RegOperand{"rd", 3}}},
+    stmts.push_back(makeGenericInstr(S_ADD, {ptxemu::ir::Qualifier::Q_S64},
+        {ptxemu::ir::OperandContext{RegOperand{"rd", 4}}, ptxemu::ir::OperandContext{RegOperand{"rd", 2}}, ptxemu::ir::OperandContext{RegOperand{"rd", 3}}},
         "add.s64 %rd4, %rd2, %rd3;"));
 
-    stmts.push_back(makeGenericInstr(S_ST, {Qualifier::Q_GLOBAL, Qualifier::Q_B32},
-        {OperandContext{AddrOperand{}}, OperandContext{RegOperand{"r", 7}}},
+    stmts.push_back(makeGenericInstr(S_ST, {ptxemu::ir::Qualifier::Q_GLOBAL, ptxemu::ir::Qualifier::Q_B32},
+        {ptxemu::ir::OperandContext{AddrOperand{}}, ptxemu::ir::OperandContext{RegOperand{"r", 7}}},
         "st.global.u32 [%rd4], %r7;"));
 
     stmts.push_back(makeVoidInstr(S_RET, "ret;"));

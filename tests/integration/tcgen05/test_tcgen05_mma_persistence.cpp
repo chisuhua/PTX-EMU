@@ -90,28 +90,28 @@ private:
 // Build a minimal Tcgen05Instr for regular (non-ws) mma.
 // Empty qualifiers + 4 placeholder operands is enough for the regular path
 // (ws path would require Q_F16 + Q_TCGEN_WS to pass the Q3-A scope check).
-Tcgen05Instr make_regular_mma_instr() {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::MMA;
+ptxemu::ir::Tcgen05Instr make_regular_mma_instr() {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::MMA;
     instr.cta_group = 1;
-    instr.dtype = Tcgen05Dtype::F16;
-    instr.operands = std::vector<OperandContext>(
-        4, OperandContext(RegOperand{"r", 0}));
+    instr.dtype = ptxemu::ir::Tcgen05Dtype::F16;
+    instr.operands = std::vector<ptxemu::ir::OperandContext>(
+        4, ptxemu::ir::OperandContext(RegOperand{"r", 0}));
     return instr;
 }
 
 // Build a Tcgen05Instr for tcgen05.cp with the given smem offset.
 // Mirrors tests/integration/tcgen05/test_tcgen05_cp.cpp:64 helper.
-Tcgen05Instr make_cp_instr_with_offset(uint32_t smem_offset) {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::CP;
+ptxemu::ir::Tcgen05Instr make_cp_instr_with_offset(uint32_t smem_offset) {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::CP;
     instr.cta_group = 1;
 
     AddrOperand dst_dummy;
     dst_dummy.space = AddrOperand::Space::SHARED;
     dst_dummy.offsetType = AddrOperand::OffsetType::IMMEDIATE;
     dst_dummy.immediateOffset = "0";
-    instr.operands.push_back(OperandContext(dst_dummy));
+    instr.operands.push_back(ptxemu::ir::OperandContext(dst_dummy));
 
     AddrOperand src;
     src.space = AddrOperand::Space::SHARED;
@@ -119,7 +119,7 @@ Tcgen05Instr make_cp_instr_with_offset(uint32_t smem_offset) {
     char buf[32];
     std::snprintf(buf, sizeof(buf), "%u", smem_offset);
     src.immediateOffset = buf;
-    instr.operands.push_back(OperandContext(src));
+    instr.operands.push_back(ptxemu::ir::OperandContext(src));
 
     return instr;
 }
@@ -406,7 +406,7 @@ TEST_CASE("processTcgen05Mma with idesc accumulate bit set: handler reads "
     std::memcpy(register_bank->get_register("r5", 0, 0), &val, sizeof(val));
 
     auto instr = make_regular_mma_instr();
-    instr.operands[3] = OperandContext(RegOperand{"r", 5});
+    instr.operands[3] = ptxemu::ir::OperandContext(RegOperand{"r", 5});
 
     REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
     REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
@@ -437,7 +437,7 @@ TEST_CASE("processTcgen05Mma with idesc accumulate bit cleared: handler "
     std::memcpy(register_bank->get_register("r5", 0, 0), &val, sizeof(val));
 
     auto instr = make_regular_mma_instr();
-    instr.operands[3] = OperandContext(RegOperand{"r", 5});
+    instr.operands[3] = ptxemu::ir::OperandContext(RegOperand{"r", 5});
 
     REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
     REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
@@ -468,7 +468,7 @@ TEST_CASE("idesc bit-position calibration helper (Oracle C1 D5 procedure)",
         std::memcpy(register_bank->get_register("r5", 0, 0), &val, sizeof(val));
 
         auto instr = make_regular_mma_instr();
-        instr.operands[3] = OperandContext(RegOperand{"r", 5});
+        instr.operands[3] = ptxemu::ir::OperandContext(RegOperand{"r", 5});
 
         REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
         REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));

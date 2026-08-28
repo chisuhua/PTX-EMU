@@ -73,7 +73,7 @@ TEST_CASE("G4 slow-path: setter/getter round-trip", "[integration][cpptlm][g4][m
 TEST_CASE("G4 slow-path: mock returns non-zero latency", "[integration][cpptlm][g4][mock][slow_path]") {
     MockSlowPipeline pipeline;
     REQUIRE(pipeline.get_fractional_cycles_by_type(
-        static_cast<int>(StatementType::S_FMA),
+        static_cast<int>(ptxemu::ir::StatementType::S_FMA),
         PipelineId::P0_INT_FP32) == 4.22);
 
     MockSlowTensorCore tc;
@@ -82,25 +82,25 @@ TEST_CASE("G4 slow-path: mock returns non-zero latency", "[integration][cpptlm][
 }
 
 TEST_CASE("G4 slow-path: pipeline mapping helpers", "[integration][cpptlm][g4][mock][slow_path]") {
-    StatementContext sin_stmt;
-    sin_stmt.type = StatementType::S_SIN;
+    ptxemu::ir::StatementContext sin_stmt;
+    sin_stmt.type = ptxemu::ir::StatementType::S_SIN;
     REQUIRE(SMContext::map_instruction_to_pipeline(sin_stmt) == PipelineId::P2_SFU);
 
-    StatementContext cos_stmt;
-    cos_stmt.type = StatementType::S_COS;
+    ptxemu::ir::StatementContext cos_stmt;
+    cos_stmt.type = ptxemu::ir::StatementType::S_COS;
     REQUIRE(SMContext::map_instruction_to_pipeline(cos_stmt) == PipelineId::P2_SFU);
 
-    StatementContext atom_stmt;
-    atom_stmt.type = StatementType::S_ATOM;
+    ptxemu::ir::StatementContext atom_stmt;
+    atom_stmt.type = ptxemu::ir::StatementType::S_ATOM;
     REQUIRE(SMContext::map_instruction_to_pipeline(atom_stmt) == PipelineId::P3_LSU);
 }
 
 TEST_CASE("G4 slow-path: is_tensor_core_instruction", "[integration][cpptlm][g4][mock][slow_path]") {
-    StatementContext tc_stmt;
-    tc_stmt.type = StatementType::S_TCGEN05_MMA;
+    ptxemu::ir::StatementContext tc_stmt;
+    tc_stmt.type = ptxemu::ir::StatementType::S_TCGEN05_MMA;
     REQUIRE(SMContext::is_tensor_core_instruction(tc_stmt) == true);
 
-    StatementContext mov_stmt;
-    mov_stmt.type = StatementType::S_MOV;
+    ptxemu::ir::StatementContext mov_stmt;
+    mov_stmt.type = ptxemu::ir::StatementType::S_MOV;
     REQUIRE(SMContext::is_tensor_core_instruction(mov_stmt) == false);
 }

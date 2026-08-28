@@ -87,10 +87,10 @@ static void init_factory() {
 //   PC=36:       ret
 //
 // 所有 lane 必须最终到达 PC=35 (MAIN_LOOP_PC) 并执行 ret。
-static std::vector<StatementContext> build_instrs(
+static std::vector<ptxemu::ir::StatementContext> build_instrs(
     std::map<std::string, int>& l2pc)
 {
-    std::vector<StatementContext> v(NUM_STMTS);
+    std::vector<ptxemu::ir::StatementContext> v(NUM_STMTS);
     for (auto& s : v) s = make_nop();
     // 分支：lanes 16-31 (p1=true) 跳到 PATH_B_START
     v[BRANCH_PC]   = make_bra_pred("L_PATH_B", "%p1", false, PATH_A_END + 2);
@@ -109,7 +109,7 @@ static std::vector<StatementContext> build_instrs(
 
 static WarpContext* setup_warp(
     SMContext& sm,
-    std::vector<StatementContext>& v,
+    std::vector<ptxemu::ir::StatementContext>& v,
     std::map<std::string, int>& l2pc)
 {
     auto blk = std::make_unique<CTAContext>();

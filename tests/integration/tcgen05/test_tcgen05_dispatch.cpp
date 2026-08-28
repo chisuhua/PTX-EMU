@@ -42,7 +42,7 @@ TEST_CASE("All 11 S_TCGEN05_* dispatch correctly (no nullptr handler)",
 
     // 11 S_TCGEN05_* enum values registered via ptx_op.def X-Macro.
     // Each must resolve to a non-null handler (per spec scenario).
-    const StatementType tcgen05_types[] = {
+    const ptxemu::ir::StatementType tcgen05_types[] = {
         S_TCGEN05_ALLOC,
         S_TCGEN05_DEALLOC,
         S_TCGEN05_RELINQUISH,

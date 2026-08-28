@@ -37,8 +37,8 @@ static void init_factory_once() {
     }
 }
 
-static std::vector<StatementContext> build_simple_barrier_statements() {
-    std::vector<StatementContext> stmts;
+static std::vector<ptxemu::ir::StatementContext> build_simple_barrier_statements() {
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.push_back(makeBarWarpSyncInstr(0xFFFFFFFF, 1));
     stmts.push_back(makeVoidInstr(S_RET, "ret;"));
     return stmts;
@@ -59,7 +59,7 @@ static WarpContext* create_warp_with_threads(
 }
 
 static std::unique_ptr<CTAContext> create_block(
-    std::vector<StatementContext>& statements,
+    std::vector<ptxemu::ir::StatementContext>& statements,
     Dim3 gridDim = {1, 1, 1},
     Dim3 blockDim = {32, 1, 1},
     Dim3 blockIdx = {0, 0, 0}) {
@@ -91,7 +91,7 @@ TEST_CASE("BarrierModule multi-warp CTA barrier sharing", "[barrier_module][inte
     init_factory_once();
     ResourceManager::instance().initialize(2, 8192);
 
-    std::vector<StatementContext> statements = build_simple_barrier_statements();
+    std::vector<ptxemu::ir::StatementContext> statements = build_simple_barrier_statements();
 
     SMContext sm(4, 128, 4096, 0);
     auto register_bank = std::make_shared<RegisterBankManager>(4, 32);
@@ -196,7 +196,7 @@ TEST_CASE("CTA barrier release advances per-thread PC (BUG-HANDLER-PC-ADVANCE)",
     constexpr int BARRIER_PC = 10;
     constexpr int POST_BARRIER_PC = 11;
 
-    std::vector<StatementContext> statements;
+    std::vector<ptxemu::ir::StatementContext> statements;
     std::map<std::string, int> label2pc;
 
     Dim3 gridDim{1, 1, 1};

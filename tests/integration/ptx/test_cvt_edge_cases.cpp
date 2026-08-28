@@ -69,7 +69,7 @@ void set_reg_per_lane_u32(WarpContext *w, const std::string &reg,
     }
 }
 
-WarpContext *setup_block(SMContext &sm, std::vector<StatementContext> &stmts) {
+WarpContext *setup_block(SMContext &sm, std::vector<ptxemu::ir::StatementContext> &stmts) {
     auto blk = std::make_unique<CTAContext>();
     Dim3 g{1, 1, 1};
     Dim3 b{32, 1, 1};
@@ -105,9 +105,9 @@ TEST_CASE("integration_ptx_cvt_f32_f16_denormal_smallest",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(2);
-    stmts.push_back(make_cvt("r2", "r1", Qualifier::Q_F32, Qualifier::Q_F16));
+    stmts.push_back(make_cvt("r2", "r1", ptxemu::ir::Qualifier::Q_F32, ptxemu::ir::Qualifier::Q_F16));
     stmts.push_back(make_ret());
 
     SMContext sm(4, 128, 4096, 0);
@@ -156,10 +156,10 @@ TEST_CASE("integration_ptx_cvt_u32_f32_rpi_boundary_equality",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(2);
-    stmts.push_back(make_cvt("r2", "r1", Qualifier::Q_U32, Qualifier::Q_F32,
-                             {Qualifier::Q_RPI}));
+    stmts.push_back(make_cvt("r2", "r1", ptxemu::ir::Qualifier::Q_U32, ptxemu::ir::Qualifier::Q_F32,
+                             {ptxemu::ir::Qualifier::Q_RPI}));
     stmts.push_back(make_ret());
 
     SMContext sm(4, 128, 4096, 0);
@@ -195,10 +195,10 @@ TEST_CASE("integration_ptx_cvt_u32_f32_sat_above_boundary_clamps",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(2);
     stmts.push_back(
-        make_cvt_sat("r2", "r1", Qualifier::Q_U32, Qualifier::Q_F32));
+        make_cvt_sat("r2", "r1", ptxemu::ir::Qualifier::Q_U32, ptxemu::ir::Qualifier::Q_F32));
     stmts.push_back(make_ret());
 
     SMContext sm(4, 128, 4096, 0);

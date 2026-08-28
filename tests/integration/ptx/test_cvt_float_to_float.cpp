@@ -60,7 +60,7 @@ void set_reg_per_lane_u32(WarpContext *w, const std::string &reg,
     }
 }
 
-WarpContext *setup_block(SMContext &sm, std::vector<StatementContext> &stmts) {
+WarpContext *setup_block(SMContext &sm, std::vector<ptxemu::ir::StatementContext> &stmts) {
     auto blk = std::make_unique<CTAContext>();
     Dim3 g{1, 1, 1};
     Dim3 b{32, 1, 1};
@@ -89,8 +89,8 @@ TEST_CASE("integration_ptx_cvt_f32_to_f32_identity",
           "[integration][ptx][cvt][f2f]") {
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
-    std::vector<StatementContext> stmts;
-    stmts.push_back(make_cvt("r2", "r1", Qualifier::Q_F32, Qualifier::Q_F32));
+    std::vector<ptxemu::ir::StatementContext> stmts;
+    stmts.push_back(make_cvt("r2", "r1", ptxemu::ir::Qualifier::Q_F32, ptxemu::ir::Qualifier::Q_F32));
     stmts.push_back(make_ret());
     SMContext sm(4, 128, 4096, 0);
     WarpContext *w = setup_block(sm, stmts);
@@ -110,8 +110,8 @@ TEST_CASE("integration_ptx_cvt_f32_to_f32_narrowing_self",
           "[integration][ptx][cvt][f2f]") {
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
-    std::vector<StatementContext> stmts;
-    stmts.push_back(make_cvt("r2", "r1", Qualifier::Q_F32, Qualifier::Q_F32));
+    std::vector<ptxemu::ir::StatementContext> stmts;
+    stmts.push_back(make_cvt("r2", "r1", ptxemu::ir::Qualifier::Q_F32, ptxemu::ir::Qualifier::Q_F32));
     stmts.push_back(make_ret());
     SMContext sm(4, 128, 4096, 0);
     WarpContext *w = setup_block(sm, stmts);
@@ -131,8 +131,8 @@ TEST_CASE("integration_ptx_cvt_f32_to_f64_widening",
           "[integration][ptx][cvt][f2f]") {
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
-    std::vector<StatementContext> stmts;
-    stmts.push_back(make_cvt("r2", "r1", Qualifier::Q_F64, Qualifier::Q_F32));
+    std::vector<ptxemu::ir::StatementContext> stmts;
+    stmts.push_back(make_cvt("r2", "r1", ptxemu::ir::Qualifier::Q_F64, ptxemu::ir::Qualifier::Q_F32));
     stmts.push_back(make_ret());
     SMContext sm(4, 128, 4096, 0);
     WarpContext *w = setup_block(sm, stmts);
@@ -151,8 +151,8 @@ TEST_CASE("integration_ptx_cvt_f64_to_f64_identity",
           "[integration][ptx][cvt][f2f]") {
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
-    std::vector<StatementContext> stmts;
-    stmts.push_back(make_cvt("r2", "r1", Qualifier::Q_F64, Qualifier::Q_F64));
+    std::vector<ptxemu::ir::StatementContext> stmts;
+    stmts.push_back(make_cvt("r2", "r1", ptxemu::ir::Qualifier::Q_F64, ptxemu::ir::Qualifier::Q_F64));
     stmts.push_back(make_ret());
     SMContext sm(4, 128, 4096, 0);
     WarpContext *w = setup_block(sm, stmts);
@@ -177,8 +177,8 @@ TEST_CASE("integration_ptx_cvt_f16_to_f32_via_half_utils",
           "[integration][ptx][cvt][f2f][half]") {
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
-    std::vector<StatementContext> stmts;
-    stmts.push_back(make_cvt("r2", "r1", Qualifier::Q_F32, Qualifier::Q_F16));
+    std::vector<ptxemu::ir::StatementContext> stmts;
+    stmts.push_back(make_cvt("r2", "r1", ptxemu::ir::Qualifier::Q_F32, ptxemu::ir::Qualifier::Q_F16));
     stmts.push_back(make_ret());
     SMContext sm(4, 128, 4096, 0);
     WarpContext *w = setup_block(sm, stmts);
@@ -197,8 +197,8 @@ TEST_CASE("integration_ptx_cvt_f32_to_f16_via_half_utils",
           "[integration][ptx][cvt][f2f][half]") {
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
-    std::vector<StatementContext> stmts;
-    stmts.push_back(make_cvt("r2", "r1", Qualifier::Q_F16, Qualifier::Q_F32));
+    std::vector<ptxemu::ir::StatementContext> stmts;
+    stmts.push_back(make_cvt("r2", "r1", ptxemu::ir::Qualifier::Q_F16, ptxemu::ir::Qualifier::Q_F32));
     stmts.push_back(make_ret());
     SMContext sm(4, 128, 4096, 0);
     WarpContext *w = setup_block(sm, stmts);

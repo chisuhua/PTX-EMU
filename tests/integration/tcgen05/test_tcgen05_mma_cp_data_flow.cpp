@@ -72,32 +72,32 @@ private:
     std::vector<uint8_t> smem_buf_;
 };
 
-Tcgen05Instr make_mma_instr() {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::MMA;
+ptxemu::ir::Tcgen05Instr make_mma_instr() {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::MMA;
     instr.cta_group = 1;
-    instr.dtype = Tcgen05Dtype::F16;
-    instr.operands = std::vector<OperandContext>(
-        4, OperandContext(RegOperand{"r", 0}));
+    instr.dtype = ptxemu::ir::Tcgen05Dtype::F16;
+    instr.operands = std::vector<ptxemu::ir::OperandContext>(
+        4, ptxemu::ir::OperandContext(RegOperand{"r", 0}));
     return instr;
 }
 
-Tcgen05Instr make_cp_instr(uint32_t smem_offset) {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::CP;
+ptxemu::ir::Tcgen05Instr make_cp_instr(uint32_t smem_offset) {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::CP;
     instr.cta_group = 1;
     AddrOperand dst;
     dst.space = AddrOperand::Space::SHARED;
     dst.offsetType = AddrOperand::OffsetType::IMMEDIATE;
     dst.immediateOffset = "0";
-    instr.operands.push_back(OperandContext(dst));
+    instr.operands.push_back(ptxemu::ir::OperandContext(dst));
     AddrOperand src;
     src.space = AddrOperand::Space::SHARED;
     src.offsetType = AddrOperand::OffsetType::IMMEDIATE;
     char buf[32];
     std::snprintf(buf, sizeof(buf), "%u", smem_offset);
     src.immediateOffset = buf;
-    instr.operands.push_back(OperandContext(src));
+    instr.operands.push_back(ptxemu::ir::OperandContext(src));
     return instr;
 }
 

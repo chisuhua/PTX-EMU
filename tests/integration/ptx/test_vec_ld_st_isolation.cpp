@@ -80,30 +80,30 @@ static void write_reg_u32(WarpContext *w, const std::string &reg, int lane,
 // the operand must be a VecOperand, NOT 4 separate REG operands (the
 // default make_st_shared_addr_v4 helper in memory_test_utils.h pushes
 // 4 separate REG operands, which is wrong for the VEC path).
-static OperandContext make_vec_reg_operand(
+static ptxemu::ir::OperandContext make_vec_reg_operand(
     const std::vector<std::string> &regs) {
     VecOperand v;
     for (const auto &r : regs) {
-        v.elements.push_back(OperandContext{RegOperand{r, -1}});
+        v.elements.push_back(ptxemu::ir::OperandContext{RegOperand{r, -1}});
     }
-    return OperandContext{v};
+    return ptxemu::ir::OperandContext{v};
 }
 
-static StatementContext make_st_shared_v4_vec(
+static ptxemu::ir::StatementContext make_st_shared_v4_vec(
     const std::string &base_sym, const std::string &offset_reg,
     const std::vector<std::string> &srcs) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_ST;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_SHARED, Qualifier::Q_B32,
-                         Qualifier::Q_V4};
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_SHARED, ptxemu::ir::Qualifier::Q_B32,
+                         ptxemu::ir::Qualifier::Q_V4};
     AddrOperand addr;
     addr.space = AddrOperand::Space::SHARED;
     addr.baseSymbol = base_sym;
     addr.offsetType = AddrOperand::OffsetType::REGISTER;
     addr.registerOffset =
-        std::make_shared<OperandContext>(RegOperand{offset_reg, -1});
-    instr.operands.push_back(OperandContext{addr});
+        std::make_shared<ptxemu::ir::OperandContext>(RegOperand{offset_reg, -1});
+    instr.operands.push_back(ptxemu::ir::OperandContext{addr});
     instr.operands.push_back(make_vec_reg_operand(srcs));
     ctx.data = instr;
     std::string text =
@@ -117,22 +117,22 @@ static StatementContext make_st_shared_v4_vec(
     return ctx;
 }
 
-static StatementContext make_ld_shared_v4_vec(
+static ptxemu::ir::StatementContext make_ld_shared_v4_vec(
     const std::vector<std::string> &dsts, const std::string &base_sym,
     const std::string &offset_reg) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_LD;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_SHARED, Qualifier::Q_B32,
-                         Qualifier::Q_V4};
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_SHARED, ptxemu::ir::Qualifier::Q_B32,
+                         ptxemu::ir::Qualifier::Q_V4};
     AddrOperand addr;
     addr.space = AddrOperand::Space::SHARED;
     addr.baseSymbol = base_sym;
     addr.offsetType = AddrOperand::OffsetType::REGISTER;
     addr.registerOffset =
-        std::make_shared<OperandContext>(RegOperand{offset_reg, -1});
+        std::make_shared<ptxemu::ir::OperandContext>(RegOperand{offset_reg, -1});
     instr.operands.push_back(make_vec_reg_operand(dsts));
-    instr.operands.push_back(OperandContext{addr});
+    instr.operands.push_back(ptxemu::ir::OperandContext{addr});
     ctx.data = instr;
     std::string text = "ld.shared.v4.b32 {";
     for (size_t i = 0; i < dsts.size(); ++i) {
@@ -171,9 +171,9 @@ TEST_CASE(
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(7);
-    stmts.push_back(make_shared_decl("buf", 64, Qualifier::Q_B32)); // PC=0
+    stmts.push_back(make_shared_decl("buf", 64, ptxemu::ir::Qualifier::Q_B32)); // PC=0
     stmts.push_back(make_mov_imm("r1", 0x11111111));                 // PC=1
     stmts.push_back(make_mov_imm("r2", 0x22222222));                 // PC=2
     stmts.push_back(make_mov_imm("r3", 0x33333333));                 // PC=3
@@ -229,9 +229,9 @@ TEST_CASE(
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(6);
-    stmts.push_back(make_shared_decl("buf", 64, Qualifier::Q_B32)); // PC=0
+    stmts.push_back(make_shared_decl("buf", 64, ptxemu::ir::Qualifier::Q_B32)); // PC=0
     stmts.push_back(make_mov_imm("r1", 0xAAAAAAAA));                 // PC=1
     stmts.push_back(make_mov_imm("r2", 0xBBBBBBBB));                 // PC=2
     stmts.push_back(make_mov_imm("r3", 0xCCCCCCCC));                 // PC=3
@@ -253,8 +253,8 @@ TEST_CASE(
 
     // Mimic a VEC-source mov.b64 dst, {r1, r2} — push a 2-element VEC
     // entry that the OLD code's FIFO would hand to the next V4 handler.
-    std::vector<Qualifier> no_qual;
-    OperandContext stale_vec = make_vec_reg_operand({"r1", "r2"});
+    std::vector<ptxemu::ir::Qualifier> no_qual;
+    ptxemu::ir::OperandContext stale_vec = make_vec_reg_operand({"r1", "r2"});
     void *stale_p = tc->acquire_operand(stale_vec, no_qual);
     REQUIRE(stale_p != nullptr);
 

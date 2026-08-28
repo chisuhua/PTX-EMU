@@ -27,31 +27,31 @@ TEST_CASE("tcgen05.st parse → IR",
     const std::string ptx_text =
         "tcgen05.st.sync.aligned.32x32b.shared::cta.b32 [r0], [r1];";
 
-    std::vector<Qualifier> qualifiers = {
-        Qualifier::Q_SYNC,           // .sync
-        Qualifier::Q_ALIGNED,        // .aligned
-        Qualifier::Q_TCGEN05_X1,     // .32x32b (num_regs=1)
-        Qualifier::Q_SHARED,         // .shared::cta (memory space)
+    std::vector<ptxemu::ir::Qualifier> qualifiers = {
+        ptxemu::ir::Qualifier::Q_SYNC,           // .sync
+        ptxemu::ir::Qualifier::Q_ALIGNED,        // .aligned
+        ptxemu::ir::Qualifier::Q_TCGEN05_X1,     // .32x32b (num_regs=1)
+        ptxemu::ir::Qualifier::Q_SHARED,         // .shared::cta (memory space)
     };
 
     // 2 operands: dst_addr [r0] + src [r1] (note: st operand order is reversed vs ld)
-    std::vector<OperandContext> operands = {
-        OperandContext(RegOperand{"r", 0}),  // dst address
-        OperandContext(RegOperand{"r", 1}),  // src register
+    std::vector<ptxemu::ir::OperandContext> operands = {
+        ptxemu::ir::OperandContext(RegOperand{"r", 0}),  // dst address
+        ptxemu::ir::OperandContext(RegOperand{"r", 1}),  // src register
     };
 
     auto stmt = ptxir::factory::makeTcgen05Instr(
-        Tcgen05OpKind::ST, qualifiers, operands, ptx_text);
+        ptxemu::ir::Tcgen05OpKind::ST, qualifiers, operands, ptx_text);
 
-    REQUIRE(std::holds_alternative<Tcgen05Instr>(stmt.data));
-    const auto& instr = std::get<Tcgen05Instr>(stmt.data);
+    REQUIRE(std::holds_alternative<ptxemu::ir::Tcgen05Instr>(stmt.data));
+    const auto& instr = std::get<ptxemu::ir::Tcgen05Instr>(stmt.data);
 
-    REQUIRE(instr.op_kind == Tcgen05OpKind::ST);
+    REQUIRE(instr.op_kind == ptxemu::ir::Tcgen05OpKind::ST);
     REQUIRE(instr.qualifiers.size() == 4);
-    REQUIRE(instr.qualifiers[0] == Qualifier::Q_SYNC);
-    REQUIRE(instr.qualifiers[1] == Qualifier::Q_ALIGNED);
-    REQUIRE(instr.qualifiers[2] == Qualifier::Q_TCGEN05_X1);
-    REQUIRE(instr.qualifiers[3] == Qualifier::Q_SHARED);
+    REQUIRE(instr.qualifiers[0] == ptxemu::ir::Qualifier::Q_SYNC);
+    REQUIRE(instr.qualifiers[1] == ptxemu::ir::Qualifier::Q_ALIGNED);
+    REQUIRE(instr.qualifiers[2] == ptxemu::ir::Qualifier::Q_TCGEN05_X1);
+    REQUIRE(instr.qualifiers[3] == ptxemu::ir::Qualifier::Q_SHARED);
     REQUIRE(instr.operands.size() == 2);
     REQUIRE(instr.instructionText == ptx_text);
 }

@@ -103,9 +103,9 @@ static void set_reg_per_lane_u32(WarpContext *w, const std::string &reg_name,
     }
 }
 
-static std::vector<StatementContext>
+static std::vector<ptxemu::ir::StatementContext>
 build_statements(std::map<std::string, int> &l2pc) {
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(16);
 
     // PC=0..1: shared-memory declarations (consumed by CTAContext::init, not
@@ -118,16 +118,16 @@ build_statements(std::map<std::string, int> &l2pc) {
     stmts.push_back(make_mov("r5", "tid.x"));                   // PC=2
     stmts.push_back(make_setp_lt_imm("p1", "r5", 16));          // PC=3
     stmts.push_back(make_bra_pred("L_path_b", "p1", false, 9)); // PC=4
-    stmts.push_back(make_st_shared_addr("buf_a", "r1", "r2", Qualifier::Q_B32));  // PC=5 (path A)
+    stmts.push_back(make_st_shared_addr("buf_a", "r1", "r2", ptxemu::ir::Qualifier::Q_B32));  // PC=5 (path A)
     stmts.push_back(make_bra("L_join"));                        // PC=6
     stmts.push_back(make_label("L_path_b"));                    // PC=7
-    stmts.push_back(make_st_shared_addr("buf_b", "r1", "r2", Qualifier::Q_B32));  // PC=8 (path B)
+    stmts.push_back(make_st_shared_addr("buf_b", "r1", "r2", ptxemu::ir::Qualifier::Q_B32));  // PC=8 (path B)
     stmts.push_back(make_label("L_join"));                      // PC=9
     stmts.push_back(make_bar_warp_sync(0xFFFFFFFF, 11));        // PC=10
     stmts.push_back(make_mov_imm("r1", 64));                    // PC=11: buf_a[16] byte offset
-    stmts.push_back(make_ld_shared_addr("r3", "buf_a", "r1", Qualifier::Q_B32));  // PC=12
+    stmts.push_back(make_ld_shared_addr("r3", "buf_a", "r1", ptxemu::ir::Qualifier::Q_B32));  // PC=12
     stmts.push_back(make_mov_imm("r1", 0));                     // PC=13
-    stmts.push_back(make_ld_shared_addr("r4", "buf_b", "r1", Qualifier::Q_B32));  // PC=14
+    stmts.push_back(make_ld_shared_addr("r4", "buf_b", "r1", ptxemu::ir::Qualifier::Q_B32));  // PC=14
     stmts.push_back(make_ret());                                // PC=15
 
     l2pc.clear();
@@ -137,7 +137,7 @@ build_statements(std::map<std::string, int> &l2pc) {
 }
 
 static WarpContext *setup_block(SMContext &sm,
-                                std::vector<StatementContext> &stmts,
+                                std::vector<ptxemu::ir::StatementContext> &stmts,
                                 std::map<std::string, int> &l2pc) {
     auto blk = std::make_unique<CTAContext>();
     Dim3 g{1, 1, 1};

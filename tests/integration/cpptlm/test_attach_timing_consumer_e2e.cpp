@@ -147,9 +147,9 @@ void attach_through_device(IPtxEmuDevice* dev, ::IScoreboard* sb,
 // stmt.type range only — no operand dependency). The default precision
 // (FP16) from map_instruction_to_tc_precision is acceptable for verifying
 // get_latency was called.
-StatementContext make_tcgen05_mma_stmt() {
-    StatementContext stmt;
-    stmt.type = StatementType::S_TCGEN05_MMA;
+ptxemu::ir::StatementContext make_tcgen05_mma_stmt() {
+    ptxemu::ir::StatementContext stmt;
+    stmt.type = ptxemu::ir::StatementType::S_TCGEN05_MMA;
     // Empty operands is fine: tc path only checks stmt.type range
     return stmt;
 }

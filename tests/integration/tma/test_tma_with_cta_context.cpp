@@ -68,7 +68,7 @@ TEST_CASE("Fix #9a: TmaDescriptorStore accessor through SMContext+CTAContext",
     Dim3 gridDim = {1, 1, 1};
     Dim3 blockDim = {32, 1, 1};
     Dim3 blockIdx = {0, 0, 0};
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
     block->init(gridDim, blockDim, blockIdx, stmts, &name2Sym, label2pc);

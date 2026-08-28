@@ -56,23 +56,23 @@ private:
     std::unique_ptr<ThreadContext> thread_;
 };
 
-Tcgen05Instr make_alloc_instr(uint32_t cta_group = 1) {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::ALLOC;
+ptxemu::ir::Tcgen05Instr make_alloc_instr(uint32_t cta_group = 1) {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::ALLOC;
     instr.cta_group = cta_group;
     return instr;
 }
 
-Tcgen05Instr make_dealloc_instr(uint32_t cta_group = 1) {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::DEALLOC;
+ptxemu::ir::Tcgen05Instr make_dealloc_instr(uint32_t cta_group = 1) {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::DEALLOC;
     instr.cta_group = cta_group;
     return instr;
 }
 
-Tcgen05Instr make_relinquish_instr(uint32_t cta_group = 1) {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::RELINQUISH;
+ptxemu::ir::Tcgen05Instr make_relinquish_instr(uint32_t cta_group = 1) {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::RELINQUISH;
     instr.cta_group = cta_group;
     return instr;
 }

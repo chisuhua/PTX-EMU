@@ -56,20 +56,20 @@ using ptxsim::testing::step_warp;
 
 namespace {
 
-inline StatementContext make_st_global_u32(const std::string &addr_reg,
+inline ptxemu::ir::StatementContext make_st_global_u32(const std::string &addr_reg,
                                            const std::string &src_reg) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_ST;
     GenericInstr instr;
-    instr.qualifiers = {Qualifier::Q_GLOBAL, Qualifier::Q_U32};
+    instr.qualifiers = {ptxemu::ir::Qualifier::Q_GLOBAL, ptxemu::ir::Qualifier::Q_U32};
     AddrOperand addr;
     addr.space = AddrOperand::Space::GLOBAL;
     addr.baseSymbol = "";
     addr.offsetType = AddrOperand::OffsetType::REGISTER;
     addr.registerOffset =
-        std::make_shared<OperandContext>(RegOperand{addr_reg, -1});
-    instr.operands.push_back(OperandContext{addr});
-    instr.operands.push_back(OperandContext{RegOperand{src_reg, -1}});
+        std::make_shared<ptxemu::ir::OperandContext>(RegOperand{addr_reg, -1});
+    instr.operands.push_back(ptxemu::ir::OperandContext{addr});
+    instr.operands.push_back(ptxemu::ir::OperandContext{RegOperand{src_reg, -1}});
     ctx.data = instr;
     ctx.instructionText = "st.global.u32 [" + addr_reg + "], " + src_reg + ";";
     return ctx;
@@ -120,7 +120,7 @@ TEST_CASE("integration_ptx_atom_global_add_u32_accumulates",
     simple_mem->direct_access(addr_host, const_cast<uint32_t *>(&INITIAL),
                               sizeof(uint32_t), /*is_write=*/true);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(4);
     stmts.push_back(make_mov("r_val", "tid.x"));               // PC=0
     stmts.push_back(make_atom_global_add_u32("r_old", "rd_addr", "r_val")); // PC=1
@@ -193,7 +193,7 @@ TEST_CASE("integration_ptx_atom_global_add_returns_old_value",
     simple_mem->direct_access(addr_host, const_cast<uint32_t *>(&INITIAL),
                               sizeof(uint32_t), /*is_write=*/true);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(4);
     stmts.push_back(make_mov_imm("r_val", DELTA));             // PC=0
     stmts.push_back(make_atom_global_add_u32("r_old", "rd_addr", "r_val")); // PC=1

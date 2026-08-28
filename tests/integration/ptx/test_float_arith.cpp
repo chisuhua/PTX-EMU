@@ -75,7 +75,7 @@ void set_reg_per_lane_u32(WarpContext *w, const std::string &reg,
     }
 }
 
-WarpContext *setup_block(SMContext &sm, std::vector<StatementContext> &stmts) {
+WarpContext *setup_block(SMContext &sm, std::vector<ptxemu::ir::StatementContext> &stmts) {
     auto blk = std::make_unique<CTAContext>();
     Dim3 g{1, 1, 1};
     Dim3 b{32, 1, 1};
@@ -113,7 +113,7 @@ TEST_CASE("integration_ptx_float_fadd_f32", "[integration][ptx][float][fadd]") {
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(2);
     stmts.push_back(make_fadd("r2", "r1", "r1")); // r2 = r1 + r1
     stmts.push_back(make_ret());
@@ -147,7 +147,7 @@ TEST_CASE("integration_ptx_float_fsub_f32", "[integration][ptx][float][fsub]") {
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(3);
     stmts.push_back(make_mov("r1", "tid.x"));
     stmts.push_back(make_fsub("r2", "r1", "r1")); // PC=1: r2 = r1 - r1 = 0
@@ -186,7 +186,7 @@ TEST_CASE("integration_ptx_float_fmul_f32", "[integration][ptx][float][fmul]") {
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(2);
     stmts.push_back(make_fmul("r2", "r1", "r1")); // r2 = r1 * r1
     stmts.push_back(make_ret());
@@ -225,7 +225,7 @@ TEST_CASE("integration_ptx_float_ffma_f32", "[integration][ptx][float][ffma]") {
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(2);
     stmts.push_back(make_ffma("r2", "r1", "r1", "r1")); // r2 = r1*r1 + r1
     stmts.push_back(make_ret());

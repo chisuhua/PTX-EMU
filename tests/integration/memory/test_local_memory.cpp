@@ -61,7 +61,7 @@ TEST_CASE("integration_local_memory_round_trip",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(5);
     stmts.push_back(make_local_decl("arr", 16));            // PC=0
     stmts.push_back(make_mov("r0", "tid.x"));              // PC=1

@@ -26,20 +26,20 @@ using ptxsim::testing::step_warp;
 
 using namespace ptxsim;
 
-static std::vector<StatementContext> build_simple_barrier_statements() {
-    std::vector<StatementContext> statements;
+static std::vector<ptxemu::ir::StatementContext> build_simple_barrier_statements() {
+    std::vector<ptxemu::ir::StatementContext> statements;
 
     for (int i = 0; i < 5; i++) {
         statements.push_back({S_MOV, GenericInstr{}});
     }
 
     {
-        StatementContext ctx;
+        ptxemu::ir::StatementContext ctx;
         ctx.type = S_BAR_WARP_SYNC;
         BarWarpSyncInstr instr;
-        instr.qualifiers = {Qualifier::Q_B32};
-        instr.operands.push_back(OperandContext{ImmOperand{"65535"}});
-        instr.operands.push_back(OperandContext{ImmOperand{"-1"}});
+        instr.qualifiers = {ptxemu::ir::Qualifier::Q_B32};
+        instr.operands.push_back(ptxemu::ir::OperandContext{ImmOperand{"65535"}});
+        instr.operands.push_back(ptxemu::ir::OperandContext{ImmOperand{"-1"}});
         ctx.data = instr;
         statements.push_back(ctx);
     }
@@ -55,7 +55,7 @@ static std::vector<StatementContext> build_simple_barrier_statements() {
             auto& barrier = std::get<BarWarpSyncInstr>(statements[i].data);
             if (barrier.operands.size() >= 2) {
                 barrier.operands[1] =
-                    OperandContext{ImmOperand{std::to_string(i + 1)}};
+                    ptxemu::ir::OperandContext{ImmOperand{std::to_string(i + 1)}};
             }
         }
     }

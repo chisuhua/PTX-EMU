@@ -25,7 +25,7 @@ std::vector<uint8_t> make_embedded(const std::vector<uint8_t>& prefix,
 }
 
 std::vector<uint8_t> build_minimal_section(const std::string& kernel_name) {
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
     stmt.type = S_LABEL;
     stmt.data = LabelInstr{"L0"};
     std::ostringstream oss(std::ios::binary);

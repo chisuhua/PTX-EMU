@@ -77,7 +77,7 @@ void set_reg_per_lane_u32(WarpContext *w, const std::string &reg,
     }
 }
 
-WarpContext *setup_block(SMContext &sm, std::vector<StatementContext> &stmts) {
+WarpContext *setup_block(SMContext &sm, std::vector<ptxemu::ir::StatementContext> &stmts) {
     auto blk = std::make_unique<CTAContext>();
     Dim3 g{1, 1, 1};
     Dim3 b{32, 1, 1};
@@ -104,7 +104,7 @@ TEST_CASE("integration_ptx_bitwise_and_b32",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(3);
     stmts.push_back(make_mov("r1", "tid.x"));    // PC=0
     stmts.push_back(make_and("r2", "r1", "r1")); // PC=1: r2 = r1 & r1 = r1
@@ -138,7 +138,7 @@ TEST_CASE("integration_ptx_bitwise_or_b32", "[integration][ptx][bitwise][or]") {
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(3);
     stmts.push_back(make_mov("r1", "tid.x"));   // PC=0
     stmts.push_back(make_or("r2", "r1", "r1")); // PC=1: r2 = r1 | r1 = r1
@@ -173,7 +173,7 @@ TEST_CASE("integration_ptx_bitwise_xor_b32",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(3);
     stmts.push_back(make_mov("r1", "tid.x"));    // PC=0
     stmts.push_back(make_xor("r2", "r1", "r1")); // PC=1: r2 = r1 ^ r1 = 0
@@ -208,7 +208,7 @@ TEST_CASE("integration_ptx_bitwise_shl_b32",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(3);
     stmts.push_back(make_mov("r1", "tid.x"));    // PC=0
     stmts.push_back(make_shl("r2", "r1", "r1")); // PC=1: r2 = r1 << r1
@@ -246,7 +246,7 @@ TEST_CASE("integration_ptx_bitwise_not_b32",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(3);
     stmts.push_back(make_mov("r1", "tid.x")); // PC=0
     stmts.push_back(make_not("r2", "r1"));    // PC=1: r2 = ~r1
@@ -299,7 +299,7 @@ TEST_CASE("integration_ptx_bitwise_bfe_byte_extract",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(5);
     stmts.push_back(make_mov("r1", "tid.x"));               // PC=0
     stmts.push_back(make_mov_imm("r_pos", 0));              // PC=1: pos=0
@@ -335,7 +335,7 @@ TEST_CASE("integration_ptx_bitwise_bfe_upper_byte",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(4);
     stmts.push_back(make_mov_imm("r_pos", 24));             // PC=0: pos=24
     stmts.push_back(make_mov_imm("r_len", 8));              // PC=1: len=8
@@ -375,7 +375,7 @@ TEST_CASE("integration_ptx_bitwise_bfe_len_zero",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(4);
     stmts.push_back(make_mov_imm("r_pos", 0));              // PC=0
     stmts.push_back(make_mov_imm("r_len", 0));              // PC=1: len=0
@@ -410,7 +410,7 @@ TEST_CASE("integration_ptx_bitwise_bfe_pos_exceeds_width",
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(4);
     stmts.push_back(make_mov_imm("r_pos", 32));             // PC=0: pos=32 (>= 32-bit width)
     stmts.push_back(make_mov_imm("r_len", 8));              // PC=1

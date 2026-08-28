@@ -31,8 +31,8 @@ static void init_instruction_factory_once() {
     }
 }
 
-static StatementContext make_mov_stmt() {
-    StatementContext ctx;
+static ptxemu::ir::StatementContext make_mov_stmt() {
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_MOV;
     ctx.data = GenericInstr{};
     ctx.instructionText = "mov.u32 %r1, %r2;";
@@ -47,7 +47,7 @@ static WarpContext* create_warp_with_threads(SMContext& sm, std::unique_ptr<CTAC
 }
 
 static std::unique_ptr<CTAContext> create_block(
-    std::vector<StatementContext> &statements,
+    std::vector<ptxemu::ir::StatementContext> &statements,
     Dim3 gridDim = {1, 1, 1},
     Dim3 blockDim = {32, 1, 1},
     Dim3 blockIdx = {0, 0, 0}) {
@@ -63,7 +63,7 @@ TEST_CASE("integrated_pc_after_barrier_commit_flow", "[pc][integrated][execute_w
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> statements;
+    std::vector<ptxemu::ir::StatementContext> statements;
     statements.push_back(make_mov_stmt());
     statements.push_back(makeBarWarpSyncInstr(0xFFFFFFFF, 2));
     statements.push_back(make_mov_stmt());
@@ -94,7 +94,7 @@ TEST_CASE("integrated_pc_divergent_commit", "[pc][divergence][integrated]") {
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> statements;
+    std::vector<ptxemu::ir::StatementContext> statements;
     statements.push_back(make_mov_stmt());
     statements.push_back(make_mov_stmt());
     statements.push_back(make_mov_stmt());
@@ -124,7 +124,7 @@ TEST_CASE("integrated_warp_ready_with_inactive_threads", "[pc][scheduler][integr
     init_instruction_factory_once();
     ResourceManager::instance().initialize(1, 8192);
 
-    std::vector<StatementContext> statements;
+    std::vector<ptxemu::ir::StatementContext> statements;
     statements.push_back(make_mov_stmt());
     statements.push_back(makeBarWarpSyncInstr(0x0000FFFF, 2));
     statements.push_back(make_mov_stmt());

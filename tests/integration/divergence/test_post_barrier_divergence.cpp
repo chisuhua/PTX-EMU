@@ -49,8 +49,8 @@ using ptxsim::WarpState;
 using ptxsim::BarrierModule;
 using ptxsim::testing::step_warp;
 
-static StatementContext make_mov_stmt() {
-    StatementContext ctx;
+static ptxemu::ir::StatementContext make_mov_stmt() {
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_MOV;
     GenericInstr instr;
     ctx.data = instr;
@@ -76,8 +76,8 @@ static void init_instruction_factory_once() {
     }
 }
 
-static StatementContext make_nop_stmt() {
-    StatementContext ctx;
+static ptxemu::ir::StatementContext make_nop_stmt() {
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_PRAGMA;
     ctx.data = PragmaInstr{};
     ctx.instructionText = "pragma;";
@@ -100,7 +100,7 @@ TEST_CASE("T2-1-FIX: bar.warp.sync releases all 32 threads via warp_state",
     Dim3 blockIdx = {0, 0, 0};
     Dim3 gridDim = {1, 1, 1};
     Dim3 blockDim = {32, 1, 1};
-    std::vector<StatementContext> statements;
+    std::vector<ptxemu::ir::StatementContext> statements;
 
     std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
@@ -159,11 +159,11 @@ TEST_CASE("T2-1-FIX: bar.warp.sync releases all 32 threads via warp_state",
             warp.get_warp_state().threads[i].is_exited = false;
         }
 
-        StatementContext barrier_stmt = makeBarWarpSyncInstr(
+        ptxemu::ir::StatementContext barrier_stmt = makeBarWarpSyncInstr(
             0xFFFFFFFF, 1, "bar.warp.sync.b32 0xFFFFFFFF, 1;");
         (void)barrier_stmt;
 
-        StatementContext mov_stmt = make_mov_stmt();
+        ptxemu::ir::StatementContext mov_stmt = make_mov_stmt();
         mov_stmt.instructionText = "mov.u32 %r1, %r2;";
 
         BarrierModule bm;
@@ -262,7 +262,7 @@ TEST_CASE(
     Dim3 blockIdx = {0, 0, 0};
     Dim3 gridDim = {1, 1, 1};
     Dim3 blockDim = {32, 1, 1};
-    std::vector<StatementContext> statements;
+    std::vector<ptxemu::ir::StatementContext> statements;
     std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
 
