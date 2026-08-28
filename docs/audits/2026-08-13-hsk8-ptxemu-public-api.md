@@ -250,3 +250,35 @@ $ for commit in 586ea14f 602bfc30 359579ec d8b6ca56 a6c9bdaf 66ca4875 \
 - [include/ptxemu/AGENTS.md §IPtxEmuDevice METHOD STATUS](../../ptxemu/AGENTS.md) — 12/12 methods 状态表
 - `feat/phase-2-2-1-3-1-followup` 分支 — commits `eb207378` + `4c2fb143`
 - HSK protocol 状态: 无变化（public ABI 冻结,12/12 IPtxEmuDevice 方法 wired 是 HSK-9 准入准备完成案例）
+## 2026-08-28 Phase 1.5 closure：IR namespace migration 收官
+
+### 背景
+
+Phase 1.5 (`openspec/changes/phase-1-5-namespace-migration/`) 将全部 src/include/tests caller
+从全局未限定 IR 类型迁移到 `ptxemu::ir::` 限定名，共 **22 个 atomic commits**（1.5c+d → 1.5k）。
+HSK-8 §Postmortem task 3.7 的 deferred item（forwarding header 迁移）由此完成主体实施。
+`include/ptx_ir/` 三个 forwarding shim 为兼容保留（backward compatibility，非临时 bridge 移除）。
+
+### 1.5k 收官 commit（本 session）
+
+- 修复 `scripts/check_ptxemu_ir_names.py`：
+  - **单行 namespace block 检测**：改为检查命中行自身（1-indexed），消除 3 个 forward-decl 误报。
+  - **ANTLR 排除**：跳过 `ptxParser::X` / `ptxparser::ptxParser::X`（含 `##` token-paste 宏场景），
+    消除 32 个 ANTLR grammar-rule 类型误报（不 sweep，属 scanner 硬化）。
+- 扫尾 3 个遗漏测试文件（21 IR token 命中，实际 cfg 文件 11 处）：
+  - `tests/common/ptx_lane_printer.cpp`（8）/ `tests/ptx/parser/test-ptx.cpp`（1）/
+    `tests/ptx/test_cfg_edge_cases.cpp`（11）
+- drift_check **Invariant 8** wired：`scripts/check_ptxemu_ir_names.py --roots src include tests`
+  （exclude 3 shims + canonical `include/ptxemu/ir/`），CI 路径新增 `src/**` / `tests/**` /
+  `scripts/check_ptxemu_ir_names.py`。
+- Known-flaky baseline 同步：`integration_libptxemu_device`（SC-5 race, ~40% on -j4）入表，6→7 failures。
+
+### 验证结果
+
+| 项 | 结果 |
+|---|---|
+| scanner（含 exclude 的完整命令） | exit 0，全树 0 bare tokens |
+| ctest -j4 | 254/254 PASS（首轮命中已知 flaky `integration_libptxemu_device` → rerun PASS） |
+| ctest -j1 | 254/254 PASS |
+| `./tests/ptx/test_all_ptx.sh` | 46/46 PASS |
+| HSK-8 public ABI | 无变化（`PTXEMU_API_VERSION=1` 仍冻结，无需新 HSK） |

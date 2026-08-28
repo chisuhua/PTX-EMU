@@ -127,7 +127,7 @@
 ## Appendix: Known Flaky Baseline (Pre-existing, OUT of Phase 1.5 Scope)
 
 Recorded dirty baseline: 246/252 PASS (run-to-run variation 244-246/252).
-All 6 failures are pre-existing infra issues in PTX-extraction/kernel-registration path,
+All 7 failures are pre-existing infra issues in PTX-extraction/kernel-registration path,
 NOT namespace-related. To be addressed by independent `fix-ptx-extraction-race` change.
 
 | Test | Symptom | Root cause |
@@ -135,6 +135,7 @@ NOT namespace-related. To be addressed by independent `fix-ptx-extraction-race` 
 | `dummy-float`, `dummy-mul`, `dummy-ldglobal` | "Failed to open extracted PTX file" | `cubin_utils.cpp:139` shared workspace clobbering under parallel `ctest -j` |
 | `e2e_ldglobal_simple` | Same | Same |
 | `simpleGEMM-double`, `all-pairs-distance` | "Kernel not found … Available kernels: [empty]" | fatbin/PTX registration fails → empty kernel list |
+| `integration_libptxemu_device` | "ABI: unload-vs-enumerate race returns -1 (SC-5 extension)" | Pre-existing SC-5 race (50ms unload-vs-enumerate window); ~40% on -j4, ~0% on -j1; discovered 1.5f2 commit c69f0a65 |
 
 Phase 1.5 acceptance criterion is "no NEW failures vs this baseline" — flakes
 that surface during a phase must be diffed against this list before any revert.

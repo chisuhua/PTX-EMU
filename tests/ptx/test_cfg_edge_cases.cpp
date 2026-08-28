@@ -36,7 +36,7 @@ int tests_passed = 0;
 
 TEST_CASE(test_empty_kernel, "[cfg][edge][high]") {
     std::cout << "\nTest: Empty kernel (0 statements)... ";
-    std::vector<StatementContext> statements;
+    std::vector<ptxemu::ir::StatementContext> statements;
     std::map<std::string, int> label2pc;
     
     CFG cfg = CFGBuilder::build(statements, label2pc);
@@ -48,7 +48,7 @@ TEST_CASE(test_empty_kernel, "[cfg][edge][high]") {
 
 TEST_CASE(test_single_statement, "[cfg][edge][high]") {
     std::cout << "\nTest: Single statement kernel... ";
-    std::vector<StatementContext> statements(1);
+    std::vector<ptxemu::ir::StatementContext> statements(1);
     statements[0].type = S_RET;
     
     std::map<std::string, int> label2pc;
@@ -62,7 +62,7 @@ TEST_CASE(test_single_statement, "[cfg][edge][high]") {
 
 TEST_CASE(test_self_referencing_branch, "[cfg][edge][high]") {
     std::cout << "\nTest: Self-referencing branch... ";
-    std::vector<StatementContext> statements(2);
+    std::vector<ptxemu::ir::StatementContext> statements(2);
     statements[0].type = S_BRA;
     BranchInstr branch;
     branch.target = "loop";
@@ -88,7 +88,7 @@ TEST_CASE(test_self_referencing_branch, "[cfg][edge][high]") {
 
 TEST_CASE(test_missing_branch_target, "[cfg][edge][high]") {
     std::cout << "\nTest: Missing branch target... ";
-    std::vector<StatementContext> statements(1);
+    std::vector<ptxemu::ir::StatementContext> statements(1);
     statements[0].type = S_BRA;
     BranchInstr branch;
     branch.target = "L_nonexistent";
@@ -108,7 +108,7 @@ TEST_CASE(test_missing_branch_target, "[cfg][edge][high]") {
 
 TEST_CASE(test_unreachable_label, "[cfg][edge][high]") {
     std::cout << "\nTest: Unreachable label... ";
-    std::vector<StatementContext> statements(3);
+    std::vector<ptxemu::ir::StatementContext> statements(3);
     statements[0].type = S_RET;
     
     statements[1].type = S_DOLLOR;
@@ -129,7 +129,7 @@ TEST_CASE(test_unreachable_label, "[cfg][edge][high]") {
 
 TEST_CASE(test_deep_nested_branches, "[cfg][edge][high]") {
     std::cout << "\nTest: Deep nested branches (10 levels)... ";
-    std::vector<StatementContext> statements(30);
+    std::vector<ptxemu::ir::StatementContext> statements(30);
     std::map<std::string, int> label2pc;
     
     int pc = 0;
@@ -162,7 +162,7 @@ TEST_CASE(test_deep_nested_branches, "[cfg][edge][high]") {
 
 TEST_CASE(test_multi_branch_convergence, "[cfg][edge][high]") {
     std::cout << "\nTest: Multi-branch convergence (3 paths)... ";
-    std::vector<StatementContext> statements(10);
+    std::vector<ptxemu::ir::StatementContext> statements(10);
     std::map<std::string, int> label2pc;
     
     statements[0].type = S_BRA;
@@ -209,7 +209,7 @@ TEST_CASE(test_multi_branch_convergence, "[cfg][edge][high]") {
 
 TEST_CASE(test_linear_code, "[cfg][edge][medium]") {
     std::cout << "\nTest: Linear code (no branches)... ";
-    std::vector<StatementContext> statements(3);
+    std::vector<ptxemu::ir::StatementContext> statements(3);
     statements[0].type = S_RET;
     statements[1].type = S_RET;
     statements[2].type = S_RET;
@@ -224,7 +224,7 @@ TEST_CASE(test_linear_code, "[cfg][edge][medium]") {
 
 TEST_CASE(test_duplicate_labels, "[cfg][edge][medium]") {
     std::cout << "\nTest: Duplicate labels... ";
-    std::vector<StatementContext> statements(4);
+    std::vector<ptxemu::ir::StatementContext> statements(4);
     
     statements[0].type = S_DOLLOR;
     DollarNameInstr label1;
@@ -255,7 +255,7 @@ TEST_CASE(test_duplicate_labels, "[cfg][edge][medium]") {
 
 TEST_CASE(test_cfg_with_barrier, "[cfg][integration]") {
     std::cout << "\nTest: CFG with barrier instruction... ";
-    std::vector<StatementContext> statements(5);
+    std::vector<ptxemu::ir::StatementContext> statements(5);
     
     statements[0].type = S_BRA;
     BranchInstr branch;
@@ -291,7 +291,7 @@ TEST_CASE(test_cfg_with_barrier, "[cfg][integration]") {
 
 TEST_CASE(test_large_kernel, "[cfg][perf]") {
     std::cout << "\nTest: Large kernel (100 statements)... ";
-    std::vector<StatementContext> statements(100);
+    std::vector<ptxemu::ir::StatementContext> statements(100);
     std::map<std::string, int> label2pc;
     
     for (int i = 0; i < 100; i++) {

@@ -135,9 +135,18 @@ def tokenize_cpp(content: str) -> List[Tuple[str, int, int]]:
         if content[i].isalpha() or content[i] == '_':
             start_col = col
             token_start = i
-            while i < len(content) and (content[i].isalnum() or content[i] == '_'):
-                i += 1
-                col += 1
+            # Absorb ## token-paste chains: enter##opstr##Statement and
+            # opstr##StatementContext are single preprocessor tokens (never an
+            # IR type name), so they must not match IR_TOKENS.
+            while True:
+                while i < len(content) and (content[i].isalnum() or content[i] == '_'):
+                    i += 1
+                    col += 1
+                if i + 1 < len(content) and content[i] == '#' and content[i+1] == '#':
+                    i += 2
+                    col += 2
+                    continue
+                break
             token = content[token_start:i]
             tokens.append((token, line, start_col))
 
@@ -214,23 +223,37 @@ def scan_file(filepath: str, ir_tokens: Set[str]) -> List[Tuple[str, int, int]]:
 
         # Walk back through identifier tokens (skipping :: which was consumed in lex)
         # and check if the immediately preceding qualifier is ptxemu::ir::
+        # (qualified => real IR reference, skipped) or an ANTLR grammar-rule
+        # qualifier (ptxParser::X / ptxparser::ptxParser::X => generated-code
+        # false positive, skipped, never a real IR type reference).
         qualified = False
         j = i - 1
         prev_ids = []
-        while j >= 0 and len(prev_ids) < 3:
-            if tokens[j][0] in ('ptxemu', 'ir'):
+        while j >= 0 and len(prev_ids) < 4:
+            if tokens[j][0] in ('ptxemu', 'ir', 'ptxParser', 'ptxparser'):
                 prev_ids.append(tokens[j][0])
                 j -= 1
             else:
                 break
-        if len(prev_ids) == 2 and prev_ids == ['ir', 'ptxemu']:
+        # Real IR: ptxemu::ir::
+        if len(prev_ids) >= 2 and prev_ids[-2:] == ['ir', 'ptxemu']:
+            qualified = True
+        # ANTLR: ptxParser:: (with optional ptxparser:: prefix). prev_ids is
+        # nearest-first (walk-back order), so the immediately-preceding
+        # qualifier is prev_ids[0].
+        if prev_ids and prev_ids[0] == 'ptxParser':
             qualified = True
 
         if qualified:
             continue
 
-        # Check if inside canonical namespace block
-        if is_in_canonical_namespace_block(content, line - 1):
+        # Check if inside canonical namespace block. Use 1-indexed line so the
+        # hit's OWN line is inspected: single-line forward-decl blocks like
+        # `namespace ptxemu { namespace ir { class StatementContext; } }`
+        # declare both the namespace AND the type on the same line, and the
+        # type token there is already inside the canonical namespace (correct,
+        # not a bare caller reference).
+        if is_in_canonical_namespace_block(content, line):
             continue
 
         matches.append((token, line, col))

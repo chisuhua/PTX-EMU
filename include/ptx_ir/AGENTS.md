@@ -35,6 +35,7 @@
 - **Phase 1.5d 进行中**: 新代码 SHOULD include `<ptxemu/ir/...>` directly + 用 `ptxemu::ir::*` 限定名。
 - **Phase 1.5d 进行中**: 现有 src/ caller 仍使用 `#include "ptx_ir/foo.h"` + 全局未限定类型, 这是过渡态。
 - **Phase 1.5f 后**: 旧路径 forwarding shim 提供 `#include + using namespace` 双层兼容, 老 caller 无需立即改。
+- **1.5k closure**: scanner strengthened (ANTLR exclusion + single-line namespace fix); Invariant 8 wired; shim retained for backward compatibility.
 
 ## ANTI-PATTERNS
 

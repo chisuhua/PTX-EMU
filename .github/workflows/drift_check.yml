@@ -18,6 +18,11 @@ on:
       # antlr4-path-hardcoding-fix: Invariant 7 watches CMakeLists.txt for
       # vendored ANTLR4 path regressions (per cmake-antlr4-relative-paths).
       - 'CMakeLists.txt'
+      # Phase 1.5k: Invariant 8 scans src/include/tests for bare IR tokens;
+      # watch the scanned roots plus the scanner itself.
+      - 'src/**'
+      - 'tests/**'
+      - 'scripts/check_ptxemu_ir_names.py'
   push:
     branches: [main]
     paths:
@@ -28,6 +33,11 @@ on:
       # antlr4-path-hardcoding-fix: Invariant 7 watches CMakeLists.txt for
       # vendored ANTLR4 path regressions (per cmake-antlr4-relative-paths).
       - 'CMakeLists.txt'
+      # Phase 1.5k: Invariant 8 scans src/include/tests for bare IR tokens;
+      # watch the scanned roots plus the scanner itself.
+      - 'src/**'
+      - 'tests/**'
+      - 'scripts/check_ptxemu_ir_names.py'
   workflow_dispatch:
 
 # Cancel in-progress runs for same branch on new push.
@@ -177,5 +187,22 @@ jobs:
         run: |
           if grep -nE "CMAKE_SOURCE_DIR.*antlr4|antlr4.*CMAKE_SOURCE_DIR" CMakeLists.txt; then
             echo "::error file=CMakeLists.txt::vendored ANTLR4 paths must use \${PROJECT_SOURCE_DIR} (project-relative), not \${CMAKE_SOURCE_DIR} (top-level-relative) — breaks CppTLM-side add_subdirectory consumers (per cmake-antlr4-relative-paths spec)."
+            exit 1
+          fi
+
+      # Invariant 8 (phase-1-5-namespace-migration, per ptxemu-ir-namespace-contract
+      # spec): no bare ptxemu::ir type tokens in src/include/tests callers. The
+      # 1.5c+d forwarding shims (ptx_types.h / operand_context.h /
+      # statement_context.h) and canonical include/ptxemu/ir/ definitions stay
+      # exempt; everything else must reference IR types ptxemu::ir::-qualified.
+      - name: Check no bare ptxemu::ir type tokens (Invariant 8)
+        run: |
+          if ! python3 scripts/check_ptxemu_ir_names.py \
+              --roots src include tests \
+              --exclude include/ptx_ir/ptx_types.h \
+              --exclude include/ptx_ir/operand_context.h \
+              --exclude include/ptx_ir/statement_context.h \
+              --exclude include/ptxemu/ir; then
+            echo "::error::bare ptxemu::ir type tokens found in src/include/tests callers — qualify them with ptxemu::ir:: (per ptxemu-ir-namespace-contract spec)."
             exit 1
           fi
