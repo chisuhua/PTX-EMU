@@ -49,7 +49,7 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
             }                                                                  \
                                                                                   \
             auto baseOp = createOperandFromContext(addressExprCtx->operand()); \
-            if (baseOp.kind() == OperandKind::VAR) {                           \
+            if (baseOp.kind() == ptxemu::ir::OperandKind::VAR) {                           \
                 const auto &var = std::get<VariableOperand>(baseOp.data);      \
                 RegOperand reg;                                                \
                 if (parseRegFromText(var.name, reg)) {                         \
@@ -57,19 +57,19 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
                     addr.id = reg.fullName();                                  \
                     addr.offsetType = AddrOperand::OffsetType::REGISTER;       \
                     addr.registerOffset =                                      \
-                        std::make_shared<OperandContext>(OperandContext{reg}); \
+                        std::make_shared<ptxemu::ir::OperandContext>(ptxemu::ir::OperandContext{reg}); \
                 } else {                                                       \
                     auto n = normalizeBaseText(var.name);                       \
                     addr.baseSymbol = n;                                       \
                     addr.id = n;                                               \
                 }                                                              \
-            } else if (baseOp.kind() == OperandKind::REG) {                    \
+            } else if (baseOp.kind() == ptxemu::ir::OperandKind::REG) {                    \
                 const auto &reg = std::get<RegOperand>(baseOp.data);           \
                 addr.baseSymbol = reg.fullName();                              \
                 addr.id = reg.fullName();                                      \
                 addr.offsetType = AddrOperand::OffsetType::REGISTER;           \
-                addr.registerOffset = std::make_shared<OperandContext>(baseOp);\
-            } else if (baseOp.kind() == OperandKind::ADDR) {                   \
+                addr.registerOffset = std::make_shared<ptxemu::ir::OperandContext>(baseOp);\
+            } else if (baseOp.kind() == ptxemu::ir::OperandKind::ADDR) {                   \
                 const auto &inner = std::get<AddrOperand>(baseOp.data);        \
                 auto n = normalizeBaseText(                                    \
                     inner.id.empty() ? inner.baseSymbol : inner.id);           \
@@ -86,7 +86,7 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
                     addr.id = reg.fullName();                                  \
                     addr.offsetType = AddrOperand::OffsetType::REGISTER;       \
                     addr.registerOffset =                                      \
-                        std::make_shared<OperandContext>(OperandContext{reg}); \
+                        std::make_shared<ptxemu::ir::OperandContext>(ptxemu::ir::OperandContext{reg}); \
                 } else {                                                       \
                     auto n = normalizeBaseText(rawBase);                       \
                     addr.baseSymbol = n;                                       \
@@ -124,7 +124,7 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
                                                                                   \
         if (!instr.operands.empty()) {                                          \
             AddrOperand addr = buildAddrFromExpr(ldCtx->addressExpr());        \
-            instr.operands.push_back(OperandContext{addr});                   \
+            instr.operands.push_back(ptxemu::ir::OperandContext{addr});                   \
         }                                                                      \
     }                                                                          \
                                                                                   \
@@ -133,7 +133,7 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
         if (stCtx->operand()) {                                                \
             instr.operands.clear();                                            \
             AddrOperand addr = buildAddrFromExpr(stCtx->addressExpr());        \
-            instr.operands.push_back(OperandContext{addr});                    \
+            instr.operands.push_back(ptxemu::ir::OperandContext{addr});                    \
             instr.operands.push_back(createOperandFromContext(stCtx->operand())); \
         }                                                                      \
     }                                                                          \

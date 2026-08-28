@@ -66,11 +66,11 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
         int total_threads = compute_actual_thread_count(currentKernel); \
         uint32_t mask = (total_threads >= 32) ? 0xFFFFFFFFu : ((1u << total_threads) - 1); \
         \
-        std::vector<OperandContext> operands; \
-        operands.push_back(OperandContext{ImmOperand{std::to_string(mask)}}); \
-        operands.push_back(OperandContext{ImmOperand{"0"}}); \
+        std::vector<ptxemu::ir::OperandContext> operands; \
+        operands.push_back(ptxemu::ir::OperandContext{ImmOperand{std::to_string(mask)}}); \
+        operands.push_back(ptxemu::ir::OperandContext{ImmOperand{"0"}}); \
         \
-        auto stmtCtx = makeBarWarpSyncInstr({Qualifier::Q_B32}, operands,      \
+        auto stmtCtx = makeBarWarpSyncInstr({ptxemu::ir::Qualifier::Q_B32}, operands,      \
             "bar.warp.sync.b32 " + std::to_string(mask) + ", 0;");           \
         currentKernel->kernelStatements.push_back(stmtCtx); \
         \
@@ -94,7 +94,7 @@ std::any PtxVisitor::visit##opname##Inst(ptxparser::ptxParser::opname##InstConte
 std::any PtxVisitor::visitBarWarpSyncInst(ptxparser::ptxParser::BarWarpSyncInstContext *ctx) {
     if (!currentKernel) return nullptr;
 
-    std::vector<Qualifier> qualifiers = extractQualifiersFromContext(ctx);
+    std::vector<ptxemu::ir::Qualifier> qualifiers = extractQualifiersFromContext(ctx);
 
     bool hasDataType = false;
     for (auto q : qualifiers) {
@@ -104,11 +104,11 @@ std::any PtxVisitor::visitBarWarpSyncInst(ptxparser::ptxParser::BarWarpSyncInstC
         }
     }
     if (!hasDataType) {
-        qualifiers = {Qualifier::Q_B32};
+        qualifiers = {ptxemu::ir::Qualifier::Q_B32};
         PTX_WARN("bar.warp.sync missing data type qualifier, defaulting to .b32");
     }
 
-    std::vector<OperandContext> operands;
+    std::vector<ptxemu::ir::OperandContext> operands;
     auto operandCtxs = ctx->getRuleContexts<ptxparser::ptxParser::OperandContext>();
     if (!operandCtxs.empty()) {
         operands.push_back(createOperandFromContext(operandCtxs[0]));
