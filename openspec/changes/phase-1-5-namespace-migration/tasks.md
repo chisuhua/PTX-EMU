@@ -21,7 +21,7 @@
 - [x] 1.7 Resolve the duplicate `InstructionState` definition by first including `ptxemu/ir/execution_types.h`, then replacing the global definition in `include/ptxsim/execution_types.h` with `using ::ptxemu::ir::InstructionState;`; preserve unrelated `Dim3`/execution enums and verify `InstructionState::READY` lookup plus `git grep -n "enum class InstructionState" include/` returns only the canonical definition.
 - [x] 1.8 Build + ctest 252/252; run focused PTXIR tests (`ctest -R ptxir --output-on-failure`).
 - [x] 1.9 Commit: `refactor(ptx-1.5c+d): namespace wrap and IR self-migration`.
-- [ ] 1.10 Complete partial migrations in `src/ptx_ir/instruction_latency_table.cpp`, `src/ptxir/ptxir_serialization.cpp`, `src/ptxir/ptxir_reader.cpp`, and `src/ptxir/ptxir_writer.cpp`: replace remaining bare `StatementType`, `Qualifier`, `StatementContext`, `Tcgen05*`, `InstrVariant`, and `OperandContext` references with `ptxemu::ir::`-qualified names. This follow-up is required by design.md **R3** because `StatementType`/qualifier resolution can change under a non-default namespace.
+- [x] 1.10 Complete partial migrations in `src/ptx_ir/instruction_latency_table.cpp`, `src/ptxir/ptxir_serialization.cpp`, `src/ptxir/ptxir_reader.cpp`, and `src/ptxir/ptxir_writer.cpp`: replace remaining bare `StatementType`, `Qualifier`, `StatementContext`, `Tcgen05*`, `InstrVariant`, and `OperandContext` references with `ptxemu::ir::`-qualified names. This follow-up is required by design.md **R3** because `StatementType`/qualifier resolution can change under a non-default namespace.
 
 ## 2. Phase 1.5e — src/ptx_parser caller sweep
 
