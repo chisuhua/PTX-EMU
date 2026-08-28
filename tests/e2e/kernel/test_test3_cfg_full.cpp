@@ -40,17 +40,17 @@ using namespace ptx;
 // PC=18: st.global  [output] <- val
 // PC=19: ret
 
-static StatementContext make_stmt(int pc, StatementType type,
+static ptxemu::ir::StatementContext make_stmt(int pc, ptxemu::ir::StatementType type,
                                    const std::string& label = "",
                                    const std::string& mask = "0xFFFFFFFF",
                                    int placeholder_pc = -1) {
-    StatementContext ctx;
+    ptxemu::ir::StatementContext ctx;
     ctx.type = type;
 
     if (type == S_BAR_WARP_SYNC) {
         BarWarpSyncInstr barrier;
-        barrier.operands.push_back(OperandContext{ImmOperand{mask}});
-        barrier.operands.push_back(OperandContext{ImmOperand{std::to_string(placeholder_pc)}});
+        barrier.operands.push_back(ptxemu::ir::OperandContext{ImmOperand{mask}});
+        barrier.operands.push_back(ptxemu::ir::OperandContext{ImmOperand{std::to_string(placeholder_pc)}});
         ctx.data = barrier;
         return ctx;
     }
@@ -77,7 +77,7 @@ static StatementContext make_stmt(int pc, StatementType type,
 
 TEST_CASE("Test3_CFG: Full CFG of test_nested_sync → second barrier reconvergence_pc",
           "[test3][cfg][reconvergence]") {
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     std::map<std::string, int> label2pc;
 
     // PC=0-4: Write phase (fill data_a)
