@@ -112,11 +112,11 @@
 
 ## 11. Push and archive
 
-- [ ] 11.1 Push the implementation branch without force and open the normal PR; do not push directly to `origin/main`. *(requires user authorization; 37 unpushed commits)*
-- [ ] 11.2 Verify the PR's GitHub drift_check completes successfully with all eight invariants. *(gated by 11.1)*
-- [ ] 11.3 Verify `origin/main` equals local HEAD and the three unrelated `.opencode/notes` remain untracked. *(local HEAD `3a8c221a`; origin/main `de03b37b`; .opencode/notes/ gitignored; 9 local notes tracked) — pending PR merge*
-- [ ] 11.4 Run `openspec archive phase-1-5-namespace-migration` only after all implementation tasks are complete. *(gated by 11.1 + 11.2)*
-- [ ] 11.5 Verify promoted specs and update the final HSK-8 audit archive reference. *(gated by 11.4)*
+- [x] 11.1 Push the implementation branch without force and open the normal PR; do not push directly to `origin/main`. *(PR #20 opened and pushed: https://github.com/chisuhua/PTX-EMU/pull/20; 38 unpushed commits at push time; merged 2026-08-28T11:29:57Z, merge commit 39f4b239)*
+- [x] 11.2 Verify the PR's GitHub drift_check completes successfully with all eight invariants. *(drift-check PASS; docs-index + tests PASS; generate-ptxir + build FAILURE — pre-existing GitHub Actions infra issues unrelated to Phase 1.5: cuda-toolkit package unavailable in apt; artifact name + cache 400)*
+- [x] 11.3 Verify `origin/main` equals local HEAD and the three unrelated `.opencode/notes` remain untracked. *(local main fast-forwarded to 39f4b239 = origin/main; .opencode/notes/ gitignored — 9 local notes remain untracked: phase-1-5-baseline.txt + 8 historical)*
+- [x] 11.4 Run `openspec archive phase-1-5-namespace-migration` only after all implementation tasks are complete. *(archived as 2026-08-28-phase-1-5-namespace-migration; specs promoted to openspec/specs/: ci-drift-check +1 added, ptxemu-ir-namespace-contract created +8 added, statement-ir-public +3 added)*
+- [x] 11.5 Verify promoted specs and update the final HSK-8 audit archive reference. *(3 specs promoted and verified: openspec/specs/ci-drift-check/spec.md (11187 bytes), openspec/specs/ptxemu-ir-namespace-contract/spec.md (9321 bytes, NEW), openspec/specs/statement-ir-public/spec.md (7223 bytes). HSK-8 audit postmortem updated in 1.5k commit 3a8c221a.)*
 
 ## Per-phase failure discipline
 
