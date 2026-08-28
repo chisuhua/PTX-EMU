@@ -55,7 +55,7 @@ struct KernelLaunchRequest {
     void **args;
     Dim3 gridDim;
     Dim3 blockDim;
-    std::vector<StatementContext> *statements; // 直接引用，由ptxContext持有
+    std::vector<ptxemu::ir::StatementContext> *statements; // 直接引用，由ptxContext持有
     std::shared_ptr<std::map<std::string, std::unique_ptr<Symtable>>> name2Sym;
     std::shared_ptr<std::map<std::string, int>> label2pc;
     int request_id; // 添加请求ID以追踪任务状态
@@ -77,7 +77,7 @@ struct KernelLaunchRequest {
 
     KernelLaunchRequest(
         void **_args, Dim3 &_gridDim, Dim3 &_blockDim,
-        std::vector<StatementContext> *_stmts,
+        std::vector<ptxemu::ir::StatementContext> *_stmts,
         std::shared_ptr<std::map<std::string, std::unique_ptr<Symtable>>> _name2Sym,
         std::shared_ptr<std::map<std::string, int>> _label2pc,
         int _request_id = 0, std::function<void()> _on_complete = nullptr)
@@ -170,7 +170,7 @@ private:
 
     // 内部执行kernel的辅助函数
     bool execute_kernel_internal(void **args, Dim3 &gridDim, Dim3 &blockDim,
-                                 std::vector<StatementContext> &statements,
+                                 std::vector<ptxemu::ir::StatementContext> &statements,
                                  std::map<std::string, std::unique_ptr<Symtable>> &name2Sym,
                                  std::map<std::string, int> &label2pc,
                                  const KernelLaunchRequest &request);
