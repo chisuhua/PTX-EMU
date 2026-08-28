@@ -80,9 +80,9 @@ static constexpr int FALLTHROUGH_PC = 5; // BRANCH_PC + 1
 static constexpr int NUM_STMTS = 35;
 
 // Helper to build instruction sequence
-static std::vector<StatementContext> build_divergent_sequence(
+static std::vector<ptxemu::ir::StatementContext> build_divergent_sequence(
     std::map<std::string, int> &l2pc) {
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(NUM_STMTS);
 
     // Fill with NOPs
@@ -107,7 +107,7 @@ static std::vector<StatementContext> build_divergent_sequence(
 
 // Helper to setup warp with divergence
 static WarpContext *setup_divergent_warp(SMContext &sm,
-                                         std::vector<StatementContext> &stmts,
+                                         std::vector<ptxemu::ir::StatementContext> &stmts,
                                          std::map<std::string, int> &l2pc,
                                          uint32_t taken_mask) {
     auto blk = std::make_unique<CTAContext>();
@@ -199,7 +199,7 @@ TEST_CASE("BUG-BRAPRED: divergent branch with inverted predicate",
     ResourceManager::instance().initialize(1, 8192);
 
     std::map<std::string, int> l2pc;
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(NUM_STMTS);
 
     for (int i = 0; i < NUM_STMTS; i++) {

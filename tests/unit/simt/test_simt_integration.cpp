@@ -149,21 +149,21 @@ TEST_CASE("I6: divergent warp executes one PC group per cycle", "[integration][d
     Dim3 blockDim = {32, 1, 1};
     Dim3 blockIdx = {0, 0, 0};
 
-    std::vector<StatementContext> statements;
-    statements.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B32},
-        {OperandContext{RegOperand{"r", 1}}, OperandContext{ImmOperand{"0"}}},
+    std::vector<ptxemu::ir::StatementContext> statements;
+    statements.push_back(makeGenericInstr(S_MOV, {ptxemu::ir::Qualifier::Q_B32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 1}}, ptxemu::ir::OperandContext{ImmOperand{"0"}}},
         "mov.u32 %r1, 0;"));
-    statements.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B32},
-        {OperandContext{RegOperand{"r", 2}}, OperandContext{ImmOperand{"1"}}},
+    statements.push_back(makeGenericInstr(S_MOV, {ptxemu::ir::Qualifier::Q_B32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 2}}, ptxemu::ir::OperandContext{ImmOperand{"1"}}},
         "mov.u32 %r2, 1;"));
-    statements.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B32},
-        {OperandContext{RegOperand{"r", 3}}, OperandContext{ImmOperand{"2"}}},
+    statements.push_back(makeGenericInstr(S_MOV, {ptxemu::ir::Qualifier::Q_B32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 3}}, ptxemu::ir::OperandContext{ImmOperand{"2"}}},
         "mov.u32 %r3, 2;"));
-    statements.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B32},
-        {OperandContext{RegOperand{"r", 4}}, OperandContext{ImmOperand{"3"}}},
+    statements.push_back(makeGenericInstr(S_MOV, {ptxemu::ir::Qualifier::Q_B32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 4}}, ptxemu::ir::OperandContext{ImmOperand{"3"}}},
         "mov.u32 %r4, 3;"));
-    statements.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B32},
-        {OperandContext{RegOperand{"r", 5}}, OperandContext{ImmOperand{"4"}}},
+    statements.push_back(makeGenericInstr(S_MOV, {ptxemu::ir::Qualifier::Q_B32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 5}}, ptxemu::ir::OperandContext{ImmOperand{"4"}}},
         "mov.u32 %r5, 4;"));
 
     std::map<std::string, std::unique_ptr<Symtable>> name2Sym;

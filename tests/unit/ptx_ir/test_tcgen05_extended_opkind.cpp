@@ -65,10 +65,10 @@ private:
     std::unique_ptr<ThreadContext> thread_;
 };
 
-Tcgen05Instr make_fence_instr(uint32_t cta_group,
-                              std::vector<Qualifier> qualifiers) {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::FENCE;
+ptxemu::ir::Tcgen05Instr make_fence_instr(uint32_t cta_group,
+                              std::vector<ptxemu::ir::Qualifier> qualifiers) {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::FENCE;
     instr.cta_group = cta_group;
     instr.qualifiers = std::move(qualifiers);
     return instr;
@@ -89,7 +89,7 @@ TEST_CASE("processTcgen05Fence: ::before_thread_sync records kFenceBefore",
 
     REQUIRE_NOTHROW(ptxsim::processTcgen05Fence(
         &rig.thread(),
-        make_fence_instr(1, {Qualifier::Q_BEFORE_THREAD_SYNC})));
+        make_fence_instr(1, {ptxemu::ir::Qualifier::Q_BEFORE_THREAD_SYNC})));
 
     REQUIRE(rig.warp().get_last_fence_position() ==
             WarpContext::kFenceBefore);
@@ -103,7 +103,7 @@ TEST_CASE("processTcgen05Fence: ::after_thread_sync records kFenceAfter",
 
     REQUIRE_NOTHROW(ptxsim::processTcgen05Fence(
         &rig.thread(),
-        make_fence_instr(1, {Qualifier::Q_AFTER_THREAD_SYNC})));
+        make_fence_instr(1, {ptxemu::ir::Qualifier::Q_AFTER_THREAD_SYNC})));
 
     REQUIRE(rig.warp().get_last_fence_position() ==
             WarpContext::kFenceAfter);
@@ -121,7 +121,7 @@ TEST_CASE("processTcgen05Fence: cta_group::2 throws ADR-0018",
     REQUIRE_THROWS_AS(
         ptxsim::processTcgen05Fence(
             &rig.thread(),
-            make_fence_instr(2, {Qualifier::Q_BEFORE_THREAD_SYNC})),
+            make_fence_instr(2, {ptxemu::ir::Qualifier::Q_BEFORE_THREAD_SYNC})),
         UnsupportedInstructionException);
     // Fence state must NOT have been mutated before the throw.
     REQUIRE(rig.warp().get_last_fence_position() == WarpContext::kFenceNone);
@@ -144,8 +144,8 @@ TEST_CASE("processTcgen05Fence: both qualifiers throws (PTX §9.7.16 violation)"
         ptxsim::processTcgen05Fence(
             &rig.thread(),
             make_fence_instr(1,
-                             {Qualifier::Q_BEFORE_THREAD_SYNC,
-                              Qualifier::Q_AFTER_THREAD_SYNC})),
+                             {ptxemu::ir::Qualifier::Q_BEFORE_THREAD_SYNC,
+                              ptxemu::ir::Qualifier::Q_AFTER_THREAD_SYNC})),
         UnsupportedInstructionException);
 }
 
@@ -164,7 +164,7 @@ TEST_CASE("processTcgen05Fence: state-modification audit (no-mutation invariants
 
     ptxsim::processTcgen05Fence(
         &rig.thread(),
-        make_fence_instr(1, {Qualifier::Q_BEFORE_THREAD_SYNC}));
+        make_fence_instr(1, {ptxemu::ir::Qualifier::Q_BEFORE_THREAD_SYNC}));
 
     REQUIRE(rig.warp().get_allocate_permit() == p);  // no set_allocate_permit
     REQUIRE(rig.warp().get_exec_mask() == m);         // no set_exec_mask

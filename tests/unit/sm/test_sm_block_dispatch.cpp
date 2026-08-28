@@ -26,7 +26,7 @@ namespace {
 // contract).
 std::unique_ptr<CTAContext> make_block(Dim3 blockIdx, int threads,
                                         size_t shared_mem_bytes,
-                                        std::vector<StatementContext> &stmts) {
+                                        std::vector<ptxemu::ir::StatementContext> &stmts) {
     Dim3 gridDim = {1, 1, 1};
     Dim3 blockDim = {static_cast<uint32_t>(threads), 1, 1};
     auto block = std::make_unique<CTAContext>();
@@ -45,7 +45,7 @@ TEST_CASE("sm_block_dispatch::Access::add_block admits a fresh CTA",
     ResourceManager::instance().initialize(/*num_sms=*/1, /*shared_mem=*/8192);
     SMContext sm(/*max_warps=*/2, /*max_threads=*/64, /*shared_mem=*/8192,
                  /*sm_id=*/0);
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
 
     Dim3 idx = {0, 0, 0};
     auto block = make_block(idx, /*threads=*/32, /*shared_mem=*/0, stmts);
@@ -60,7 +60,7 @@ TEST_CASE("sm_block_dispatch::Access::add_block overflow → pending",
     ResourceManager::instance().initialize(/*num_sms=*/1, /*shared_mem=*/8192);
     SMContext sm(/*max_warps=*/2, /*max_threads=*/64, /*shared_mem=*/8192,
                  /*sm_id=*/0);
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
 
     // 2-warp SM, 1-warp blocks → 2 fit, 2 must queue.
     for (int i = 0; i < 4; i++) {
@@ -78,7 +78,7 @@ TEST_CASE("sm_block_dispatch::Access::cleanup_finished_blocks preserves pending"
     ResourceManager::instance().initialize(/*num_sms=*/1, /*shared_mem=*/8192);
     SMContext sm(/*max_warps=*/2, /*max_threads=*/64, /*shared_mem=*/8192,
                  /*sm_id=*/0);
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
 
     for (int i = 0; i < 4; i++) {
         Dim3 idx = {static_cast<uint32_t>(i), 0, 0};
@@ -98,7 +98,7 @@ TEST_CASE("sm_block_dispatch::Access::add_block hard-rejects impossible blocks",
     ResourceManager::instance().initialize(/*num_sms=*/1, /*shared_mem=*/8192);
     SMContext sm(/*max_warps=*/2, /*max_threads=*/64, /*shared_mem=*/8192,
                  /*sm_id=*/0);
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
 
     // 128 threads on a 2-warp SM can NEVER fit → hard reject, no pending dump.
     Dim3 idx = {0, 0, 0};

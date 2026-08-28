@@ -48,7 +48,7 @@ std::unique_ptr<WarpContext> make_warp_with_one_active_thread() {
     Dim3 gridDim   = {1, 1, 1};
     Dim3 blockDim  = {32, 1, 1};
 
-    std::vector<StatementContext> statements;
+    std::vector<ptxemu::ir::StatementContext> statements;
     std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
 
@@ -62,8 +62,8 @@ std::unique_ptr<WarpContext> make_warp_with_one_active_thread() {
 }
 
 // Helper: build a StatementContext of given type.
-StatementContext make_stmt(StatementType type) {
-    StatementContext stmt;
+ptxemu::ir::StatementContext make_stmt(ptxemu::ir::StatementType type) {
+    ptxemu::ir::StatementContext stmt;
     stmt.type = type;
     return stmt;
 }

@@ -30,8 +30,8 @@ using namespace ptx;
 using namespace ptxir::factory;
 
 // Helper: Create a regular (non-branch, non-barrier) statement
-static StatementContext make_regular_stmt(StatementType type = S_MOV) {
-    StatementContext ctx;
+static ptxemu::ir::StatementContext make_regular_stmt(ptxemu::ir::StatementType type = S_MOV) {
+    ptxemu::ir::StatementContext ctx;
     ctx.type = type;
     GenericInstr instr;
     ctx.data = instr;
@@ -39,8 +39,8 @@ static StatementContext make_regular_stmt(StatementType type = S_MOV) {
 }
 
 // Helper: Create a branch statement
-static StatementContext make_branch_stmt(const std::string& target) {
-    StatementContext ctx;
+static ptxemu::ir::StatementContext make_branch_stmt(const std::string& target) {
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_BRA;
     BranchInstr branch;
     branch.target = target;
@@ -50,8 +50,8 @@ static StatementContext make_branch_stmt(const std::string& target) {
 }
 
 // Helper: Create a label statement
-static StatementContext make_label_stmt(const std::string& name) {
-    StatementContext ctx;
+static ptxemu::ir::StatementContext make_label_stmt(const std::string& name) {
+    ptxemu::ir::StatementContext ctx;
     ctx.type = S_DOLLOR;
     DollarNameInstr label;
     label.name = name;
@@ -70,7 +70,7 @@ TEST_CASE("CFG: post-dominator for divergent branch before barrier", "[cfg][reco
     // PC=17:  bar.warp.sync  (second barrier - ALL 32 threads reconverge here)
     // PC=18:  ret
     
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     std::map<std::string, int> label2pc;
     
     // PC=0-9: Setup instructions (10 regular instructions)
@@ -164,7 +164,7 @@ TEST_CASE("CFG: post-dominator for simple if-else pattern", "[cfg][reconvergence
     // PC=4: else-body (1 instruction)
     // PC=5: merge/ret
     
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     std::map<std::string, int> label2pc;
     
     stmts.push_back(make_regular_stmt(S_SETP));  // PC=0: setp
@@ -219,7 +219,7 @@ TEST_CASE("CFG: barrier as explicit reconvergence point", "[cfg][reconvergence][
     // PC=7: barrier (reconvergence)
     // PC=8: ret
     
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     std::map<std::string, int> label2pc;
     
     stmts.push_back(makeBarWarpSyncInstr(0xFFFFFFFF, 0));  // PC=0: first barrier
@@ -277,7 +277,7 @@ TEST_CASE("CFG: barrier as explicit reconvergence point", "[cfg][reconvergence][
 
 TEST_CASE("CFG: post-dominator map completeness", "[cfg][reconvergence]") {
     // Verify that the post-dominator map contains entries for all statements
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     std::map<std::string, int> label2pc;
     
     // Create a simple linear kernel

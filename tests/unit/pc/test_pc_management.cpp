@@ -11,8 +11,8 @@
 
 using namespace ptxsim;
 
-static StatementContext make_nop_stmt() {
-    StatementContext stmt;
+static ptxemu::ir::StatementContext make_nop_stmt() {
+    ptxemu::ir::StatementContext stmt;
     stmt.type = S_MOV;
     GenericInstr instr;
     stmt.data = instr;
@@ -24,7 +24,7 @@ static void init_warp_with_threads(WarpContext& warp, int num_threads = 32) {
     Dim3 gridDim = {1, 1, 1};
     Dim3 blockDim = {32, 1, 1};
 
-    std::vector<StatementContext> statements;
+    std::vector<ptxemu::ir::StatementContext> statements;
     statements.push_back(make_nop_stmt());
     statements.push_back(make_nop_stmt());
     std::map<std::string, std::unique_ptr<Symtable>> name2Sym;

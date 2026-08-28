@@ -62,10 +62,10 @@ static void init_factory() {
     }
 }
 
-static std::vector<StatementContext> build_instrs(
+static std::vector<ptxemu::ir::StatementContext> build_instrs(
     std::map<std::string, int> &l2pc)
 {
-    std::vector<StatementContext> v;
+    std::vector<ptxemu::ir::StatementContext> v;
     v.reserve(NUM_STMTS);
     for (int i = 0; i < NUM_STMTS; i++) v.push_back(ptxsim::testing::make_nop());
     v[BRANCH_PC] = ptxsim::testing::make_bra_pred("L__BB0_4", "%p1", false, CONV_PC);
@@ -77,7 +77,7 @@ static std::vector<StatementContext> build_instrs(
 }
 
 static WarpContext* setup(SMContext &sm,
-                          std::vector<StatementContext> &v,
+                          std::vector<ptxemu::ir::StatementContext> &v,
                           std::map<std::string, int> &l2pc)
 {
     auto blk = std::make_unique<CTAContext>();

@@ -23,8 +23,8 @@ using namespace ptxsim;
 
 namespace {
 
-StatementContext make_void_stmt() {
-    StatementContext stmt;
+ptxemu::ir::StatementContext make_void_stmt() {
+    ptxemu::ir::StatementContext stmt;
     stmt.type = S_RET;
     GenericInstr instr;
     stmt.data = instr;
@@ -37,7 +37,7 @@ void add_thread(WarpContext& warp, int lane) {
     Dim3 threadIdx = {(uint32_t)lane, 0, 0};
     Dim3 gridDim = {1, 1, 1};
     Dim3 blockDim = {32, 1, 1};
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.push_back(make_void_stmt());
     std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
@@ -71,7 +71,7 @@ TEST_CASE("R1: ret on divergent warp marks all lanes exited",
     REQUIRE(warp.is_lane_active(16));
 
     RetHandler handler;
-    StatementContext stmt = make_void_stmt();
+    ptxemu::ir::StatementContext stmt = make_void_stmt();
     handler.processOperation(lane16, stmt);
 
     CHECK(warp.is_finished());
@@ -95,7 +95,7 @@ TEST_CASE("R2: ret on divergent warp with lower half active still finishes",
 
     ThreadContext* lane0 = warp.get_thread(0);
     RetHandler handler;
-    StatementContext stmt = make_void_stmt();
+    ptxemu::ir::StatementContext stmt = make_void_stmt();
     handler.processOperation(lane0, stmt);
 
     CHECK(warp.is_finished());
@@ -117,7 +117,7 @@ TEST_CASE("R3: ret on uniform warp keeps previous behavior",
 
     ThreadContext* lane5 = warp.get_thread(5);
     RetHandler handler;
-    StatementContext stmt = make_void_stmt();
+    ptxemu::ir::StatementContext stmt = make_void_stmt();
     handler.processOperation(lane5, stmt);
 
     CHECK(warp.is_finished());

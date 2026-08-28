@@ -43,67 +43,67 @@ ImmOperand make_imm(const std::string& v) {
     return i;
 }
 
-StatementContext make_generic_add_stmt() {
+ptxemu::ir::StatementContext make_generic_add_stmt() {
     // add.f32 %f1, %f2, %f3
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
     stmt.type = S_ADD;
     GenericInstr instr;
-    instr.operands.push_back(OperandContext(make_reg("f", 1)));
-    instr.operands.push_back(OperandContext(make_reg("f", 2)));
-    instr.operands.push_back(OperandContext(make_reg("f", 3)));
+    instr.operands.push_back(ptxemu::ir::OperandContext(make_reg("f", 1)));
+    instr.operands.push_back(ptxemu::ir::OperandContext(make_reg("f", 2)));
+    instr.operands.push_back(ptxemu::ir::OperandContext(make_reg("f", 3)));
     stmt.data = instr;
     return stmt;
 }
 
-StatementContext make_generic_ld_stmt() {
+ptxemu::ir::StatementContext make_generic_ld_stmt() {
     // ld.global.f32 %f5, [%rd1]
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
     stmt.type = S_LD;
     GenericInstr instr;
-    instr.operands.push_back(OperandContext(make_reg("f", 5)));
-    instr.operands.push_back(OperandContext(make_addr("rd1")));
+    instr.operands.push_back(ptxemu::ir::OperandContext(make_reg("f", 5)));
+    instr.operands.push_back(ptxemu::ir::OperandContext(make_addr("rd1")));
     stmt.data = instr;
     return stmt;
 }
 
-StatementContext make_generic_st_stmt() {
+ptxemu::ir::StatementContext make_generic_st_stmt() {
     // st.global.f32 [%rd1], %f1
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
     stmt.type = S_ST;
     GenericInstr instr;
-    instr.operands.push_back(OperandContext(make_addr("rd1")));
-    instr.operands.push_back(OperandContext(make_reg("f", 1)));
+    instr.operands.push_back(ptxemu::ir::OperandContext(make_addr("rd1")));
+    instr.operands.push_back(ptxemu::ir::OperandContext(make_reg("f", 1)));
     stmt.data = instr;
     return stmt;
 }
 
-StatementContext make_generic_setp_stmt() {
+ptxemu::ir::StatementContext make_generic_setp_stmt() {
     // setp.eq.f32 %p1, %f2, %f3
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
     stmt.type = S_SETP;
     GenericInstr instr;
-    instr.operands.push_back(OperandContext(make_reg("p", 1)));
-    instr.operands.push_back(OperandContext(make_reg("f", 2)));
-    instr.operands.push_back(OperandContext(make_reg("f", 3)));
+    instr.operands.push_back(ptxemu::ir::OperandContext(make_reg("p", 1)));
+    instr.operands.push_back(ptxemu::ir::OperandContext(make_reg("f", 2)));
+    instr.operands.push_back(ptxemu::ir::OperandContext(make_reg("f", 3)));
     stmt.data = instr;
     return stmt;
 }
 
-StatementContext make_atom_stmt() {
+ptxemu::ir::StatementContext make_atom_stmt() {
     // atom.global.add.u32 %r1, [%rd1], %r2
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
     stmt.type = S_ATOM;
     AtomInstr instr;
-    instr.operands.push_back(OperandContext(make_reg("r", 1)));
-    instr.operands.push_back(OperandContext(make_addr("rd1")));
-    instr.operands.push_back(OperandContext(make_reg("r", 2)));
+    instr.operands.push_back(ptxemu::ir::OperandContext(make_reg("r", 1)));
+    instr.operands.push_back(ptxemu::ir::OperandContext(make_addr("rd1")));
+    instr.operands.push_back(ptxemu::ir::OperandContext(make_reg("r", 2)));
     stmt.data = instr;
     return stmt;
 }
 
-StatementContext make_bra_stmt() {
+ptxemu::ir::StatementContext make_bra_stmt() {
     // bra L_target;
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
     stmt.type = S_BRA;
     BranchInstr instr;
     instr.target = "L_target";
@@ -111,9 +111,9 @@ StatementContext make_bra_stmt() {
     return stmt;
 }
 
-StatementContext make_bar_sync_stmt() {
+ptxemu::ir::StatementContext make_bar_sync_stmt() {
     // bar.sync 0;
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
     stmt.type = S_BAR;
     BarrierInstr instr;
     instr.type = "cta";

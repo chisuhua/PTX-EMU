@@ -87,20 +87,20 @@ static void init_factory_once() {
 //   ret
 // ============================================================================
 
-static std::vector<StatementContext> build_divergence_sync_statements() {
-    std::vector<StatementContext> stmts;
+static std::vector<ptxemu::ir::StatementContext> build_divergence_sync_statements() {
+    std::vector<ptxemu::ir::StatementContext> stmts;
 
     // PC=0: mov %r_tid, %tid.x
-    stmts.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B32},
-                                     {OperandContext{RegOperand{"r", 1}},
-                                      OperandContext{RegOperand{"tid.x", -1}}},
+    stmts.push_back(makeGenericInstr(S_MOV, {ptxemu::ir::Qualifier::Q_B32},
+                                     {ptxemu::ir::OperandContext{RegOperand{"r", 1}},
+                                      ptxemu::ir::OperandContext{RegOperand{"tid.x", -1}}},
                                      "mov.u32 %r_tid, %tid.x;"));
 
     // PC=1: setp.lt %p_lt16, %r_tid, 16
     stmts.push_back(makeGenericInstr(
-        S_SETP, {Qualifier::Q_B32, Qualifier::Q_LT},
-        {OperandContext{RegOperand{"p_lt16"}},
-         OperandContext{RegOperand{"r", 1}}, OperandContext{ImmOperand{"16"}}},
+        S_SETP, {ptxemu::ir::Qualifier::Q_B32, ptxemu::ir::Qualifier::Q_LT},
+        {ptxemu::ir::OperandContext{RegOperand{"p_lt16"}},
+         ptxemu::ir::OperandContext{RegOperand{"r", 1}}, ptxemu::ir::OperandContext{ImmOperand{"16"}}},
         "setp.lt.u32 %p_lt16, %r_tid, 16;"));
 
     // PC=2: @%p_lt16 bra L_path_a
@@ -115,9 +115,9 @@ static std::vector<StatementContext> build_divergence_sync_statements() {
     stmts.push_back(makeLabelInstr("L_path_a", "L_path_a:"));
 
     // PC=5: mov %r_val, %r_tid
-    stmts.push_back(makeGenericInstr(S_MOV, {Qualifier::Q_B32},
-                                     {OperandContext{RegOperand{"r", 2}},
-                                      OperandContext{RegOperand{"r", 1}}},
+    stmts.push_back(makeGenericInstr(S_MOV, {ptxemu::ir::Qualifier::Q_B32},
+                                     {ptxemu::ir::OperandContext{RegOperand{"r", 2}},
+                                      ptxemu::ir::OperandContext{RegOperand{"r", 1}}},
                                      "mov.u32 %r_val, %r_tid;"));
 
     // PC=6: bra L_join
@@ -129,8 +129,8 @@ static std::vector<StatementContext> build_divergence_sync_statements() {
 
     // PC=8: mov %r_val, 1
     stmts.push_back(makeGenericInstr(
-        S_MOV, {Qualifier::Q_B32},
-        {OperandContext{RegOperand{"r", 2}}, OperandContext{ImmOperand{"1"}}},
+        S_MOV, {ptxemu::ir::Qualifier::Q_B32},
+        {ptxemu::ir::OperandContext{RegOperand{"r", 2}}, ptxemu::ir::OperandContext{ImmOperand{"1"}}},
         "mov.u32 %r_val, 1;"));
 
     // PC=9: bra L_join
@@ -142,9 +142,9 @@ static std::vector<StatementContext> build_divergence_sync_statements() {
 
     // PC=11: st.shared [%r_tid], %r_val
     stmts.push_back(makeGenericInstr(S_ST,
-                                     {Qualifier::Q_SHARED, Qualifier::Q_B32},
-                                     {OperandContext{RegOperand{"r", 2}},
-                                      OperandContext{RegOperand{"r", 1}}},
+                                     {ptxemu::ir::Qualifier::Q_SHARED, ptxemu::ir::Qualifier::Q_B32},
+                                     {ptxemu::ir::OperandContext{RegOperand{"r", 2}},
+                                      ptxemu::ir::OperandContext{RegOperand{"r", 1}}},
                                      "st.shared.u32 [%r_tid], %r_val;"));
 
     // PC=12: bar.warp.sync (reconvergence at PC=13)
@@ -152,9 +152,9 @@ static std::vector<StatementContext> build_divergence_sync_statements() {
 
     // PC=13: setp.eq %p_t0, %r_tid, 0
     stmts.push_back(makeGenericInstr(
-        S_SETP, {Qualifier::Q_B32, Qualifier::Q_EQ},
-        {OperandContext{RegOperand{"p_t0"}}, OperandContext{RegOperand{"r", 1}},
-         OperandContext{ImmOperand{"0"}}},
+        S_SETP, {ptxemu::ir::Qualifier::Q_B32, ptxemu::ir::Qualifier::Q_EQ},
+        {ptxemu::ir::OperandContext{RegOperand{"p_t0"}}, ptxemu::ir::OperandContext{RegOperand{"r", 1}},
+         ptxemu::ir::OperandContext{ImmOperand{"0"}}},
         "setp.eq.u32 %p_t0, %r_tid, 0;"));
 
     // PC=14: @%p_t0 bra L_reduce
@@ -170,16 +170,16 @@ static std::vector<StatementContext> build_divergence_sync_statements() {
 
     // PC=17: ld.shared %r_tmp, [%r_tid]
     stmts.push_back(makeGenericInstr(S_LD,
-                                     {Qualifier::Q_SHARED, Qualifier::Q_B32},
-                                     {OperandContext{RegOperand{"r", 3}},
-                                      OperandContext{RegOperand{"r", 1}}},
+                                     {ptxemu::ir::Qualifier::Q_SHARED, ptxemu::ir::Qualifier::Q_B32},
+                                     {ptxemu::ir::OperandContext{RegOperand{"r", 3}},
+                                      ptxemu::ir::OperandContext{RegOperand{"r", 1}}},
                                      "ld.shared.u32 %r_tmp, [%r_tid];"));
 
     // PC=18: add %r_sum, %r_sum, %r_tmp
-    stmts.push_back(makeGenericInstr(S_ADD, {Qualifier::Q_B32},
-                                     {OperandContext{RegOperand{"r", 4}},
-                                      OperandContext{RegOperand{"r", 4}},
-                                      OperandContext{RegOperand{"r", 3}}},
+    stmts.push_back(makeGenericInstr(S_ADD, {ptxemu::ir::Qualifier::Q_B32},
+                                     {ptxemu::ir::OperandContext{RegOperand{"r", 4}},
+                                      ptxemu::ir::OperandContext{RegOperand{"r", 4}},
+                                      ptxemu::ir::OperandContext{RegOperand{"r", 3}}},
                                      "add.u32 %r_sum, %r_sum, %r_tmp;"));
 
     // PC=19: bra L_exit
@@ -215,7 +215,7 @@ create_warp_with_threads(SMContext &sm, std::unique_ptr<CTAContext> block,
 
 // 从语句列表中构建 label → PC 的映射表
 static std::map<std::string, int>
-build_label2pc(const std::vector<StatementContext> &stmts) {
+build_label2pc(const std::vector<ptxemu::ir::StatementContext> &stmts) {
     std::map<std::string, int> map;
     for (int i = 0; i < static_cast<int>(stmts.size()); i++) {
         if (stmts[i].type == S_LABEL) {
@@ -227,7 +227,7 @@ build_label2pc(const std::vector<StatementContext> &stmts) {
 }
 
 static std::unique_ptr<CTAContext>
-create_block(std::vector<StatementContext> &statements,
+create_block(std::vector<ptxemu::ir::StatementContext> &statements,
              Dim3 gridDim = {1, 1, 1}, Dim3 blockDim = {32, 1, 1},
              Dim3 blockIdx = {0, 0, 0}) {
     auto block = std::make_unique<CTAContext>();
@@ -433,7 +433,7 @@ TEST_CASE(
     static constexpr int NUM_STMTS = 35;
 
     std::map<std::string, int> l2pc;
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(NUM_STMTS);
     for (int i = 0; i < NUM_STMTS; i++) {
         stmts.push_back(ptxsim::testing::make_nop());

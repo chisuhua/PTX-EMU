@@ -48,7 +48,7 @@ void test_sm_context_block_addition() {
     Dim3 blockDim = {32, 1, 1}; // 一个warp的大小
     Dim3 blockIdx = {0, 0, 0};
 
-    std::vector<StatementContext> statements;
+    std::vector<ptxemu::ir::StatementContext> statements;
     std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
 
@@ -99,7 +99,7 @@ void test_sm_context_resource_limits() {
     Dim3 blockDim = {128, 1, 1}; // 需要128个线程，超过限制
     Dim3 blockIdx = {0, 0, 0};
 
-    std::vector<StatementContext> statements;
+    std::vector<ptxemu::ir::StatementContext> statements;
     std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
 

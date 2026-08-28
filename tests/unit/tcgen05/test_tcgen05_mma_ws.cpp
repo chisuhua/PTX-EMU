@@ -65,17 +65,17 @@ private:
 
 // Build a Tcgen05Instr with the given qualifier set and op_kind.
 // Default op_kind is MMA (the path real PTX takes via the grammar).
-Tcgen05Instr make_instr(Tcgen05OpKind op_kind,
-                        std::vector<Qualifier> qualifiers) {
-    Tcgen05Instr instr;
+ptxemu::ir::Tcgen05Instr make_instr(ptxemu::ir::Tcgen05OpKind op_kind,
+                        std::vector<ptxemu::ir::Qualifier> qualifiers) {
+    ptxemu::ir::Tcgen05Instr instr;
     instr.op_kind = op_kind;
     instr.qualifiers = std::move(qualifiers);
     // 4 operands (MMA / MMA_WS have operand count 4 per ptx_op.def:133-134).
     // Operand content is irrelevant — processTcgen05Mma discards `instr`
     // for the arithmetic call (it only reads `instr.qualifiers` for the
     // ws scope check, then calls the helper which reads from TMEM).
-    instr.operands = std::vector<OperandContext>(
-        4, OperandContext(RegOperand{"r", 0}));
+    instr.operands = std::vector<ptxemu::ir::OperandContext>(
+        4, ptxemu::ir::OperandContext(RegOperand{"r", 0}));
     return instr;
 }
 
@@ -88,9 +88,9 @@ Tcgen05Instr make_instr(Tcgen05OpKind op_kind,
 TEST_CASE("processTcgen05Mma with Q_TCGEN_WS + Q_F16 executes ws path",
           "[unit][tcgen05][mma_ws][scope][happy_path]") {
     TestRig rig;
-    Tcgen05Instr instr = make_instr(
-        Tcgen05OpKind::MMA,
-        {Qualifier::Q_TCGEN_WS, Qualifier::Q_F16});
+    ptxemu::ir::Tcgen05Instr instr = make_instr(
+        ptxemu::ir::Tcgen05OpKind::MMA,
+        {ptxemu::ir::Qualifier::Q_TCGEN_WS, ptxemu::ir::Qualifier::Q_F16});
 
     // TMEM is default-zero; the helper will multiply zeros and write zeros
     // back to slot 64..95. No exception expected.
@@ -103,9 +103,9 @@ TEST_CASE("processTcgen05Mma with op_kind=MMA_WS w/o Q_TCGEN_WS falls through to
     // routes to processTcgen05Mma which scans qualifiers; without
     // Q_TCGEN_WS the regular path executes (helper called).
     TestRig rig;
-    Tcgen05Instr instr = make_instr(
-        Tcgen05OpKind::MMA_WS,
-        {Qualifier::Q_F16});
+    ptxemu::ir::Tcgen05Instr instr = make_instr(
+        ptxemu::ir::Tcgen05OpKind::MMA_WS,
+        {ptxemu::ir::Qualifier::Q_F16});
 
     REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
 }
@@ -115,9 +115,9 @@ TEST_CASE("processTcgen05Mma with op_kind=MMA_WS + Q_TCGEN_WS + Q_F16 executes w
     // Stresses the dispatch path: op_kind=MMA_WS + Q_TCGEN_WS + Q_F16
     // should execute the ws path (Q3-A scope satisfied).
     TestRig rig;
-    Tcgen05Instr instr = make_instr(
-        Tcgen05OpKind::MMA_WS,
-        {Qualifier::Q_TCGEN_WS, Qualifier::Q_F16});
+    ptxemu::ir::Tcgen05Instr instr = make_instr(
+        ptxemu::ir::Tcgen05OpKind::MMA_WS,
+        {ptxemu::ir::Qualifier::Q_TCGEN_WS, ptxemu::ir::Qualifier::Q_F16});
 
     REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
 }
@@ -126,9 +126,9 @@ TEST_CASE("processTcgen05Mma with op_kind=MMA_WS + Q_TCGEN_WS but no Q_F16 throw
           "[unit][tcgen05][mma_ws][scope][op_kind_mma_ws][scope_violation]") {
     // Verifies dispatch path also enforces Q3-A scope check.
     TestRig rig;
-    Tcgen05Instr instr = make_instr(
-        Tcgen05OpKind::MMA_WS,
-        {Qualifier::Q_TCGEN_WS});  // no Q_F16
+    ptxemu::ir::Tcgen05Instr instr = make_instr(
+        ptxemu::ir::Tcgen05OpKind::MMA_WS,
+        {ptxemu::ir::Qualifier::Q_TCGEN_WS});  // no Q_F16
 
     REQUIRE_THROWS_AS(
         ptxsim::processTcgen05Mma(&rig.thread(), instr),
@@ -142,9 +142,9 @@ TEST_CASE("processTcgen05Mma with op_kind=MMA_WS + Q_TCGEN_WS but no Q_F16 throw
 TEST_CASE("processTcgen05Mma with Q_TCGEN_WS + Q_F32 throws (Q3-A scope)",
           "[unit][tcgen05][mma_ws][scope][violation][f32]") {
     TestRig rig;
-    Tcgen05Instr instr = make_instr(
-        Tcgen05OpKind::MMA,
-        {Qualifier::Q_TCGEN_WS, Qualifier::Q_F32});
+    ptxemu::ir::Tcgen05Instr instr = make_instr(
+        ptxemu::ir::Tcgen05OpKind::MMA,
+        {ptxemu::ir::Qualifier::Q_TCGEN_WS, ptxemu::ir::Qualifier::Q_F32});
 
     REQUIRE_THROWS_AS(
         ptxsim::processTcgen05Mma(&rig.thread(), instr),
@@ -154,9 +154,9 @@ TEST_CASE("processTcgen05Mma with Q_TCGEN_WS + Q_F32 throws (Q3-A scope)",
 TEST_CASE("processTcgen05Mma with Q_TCGEN_WS + Q_BF16 throws (Q3-A scope)",
           "[unit][tcgen05][mma_ws][scope][violation][bf16]") {
     TestRig rig;
-    Tcgen05Instr instr = make_instr(
-        Tcgen05OpKind::MMA,
-        {Qualifier::Q_TCGEN_WS, Qualifier::Q_BF16});
+    ptxemu::ir::Tcgen05Instr instr = make_instr(
+        ptxemu::ir::Tcgen05OpKind::MMA,
+        {ptxemu::ir::Qualifier::Q_TCGEN_WS, ptxemu::ir::Qualifier::Q_BF16});
 
     REQUIRE_THROWS_AS(
         ptxsim::processTcgen05Mma(&rig.thread(), instr),
@@ -166,9 +166,9 @@ TEST_CASE("processTcgen05Mma with Q_TCGEN_WS + Q_BF16 throws (Q3-A scope)",
 TEST_CASE("processTcgen05Mma with Q_TCGEN_WS + no kind throws (Q3-A scope)",
           "[unit][tcgen05][mma_ws][scope][violation][no_kind]") {
     TestRig rig;
-    Tcgen05Instr instr = make_instr(
-        Tcgen05OpKind::MMA,
-        {Qualifier::Q_TCGEN_WS});  // no kind qualifier
+    ptxemu::ir::Tcgen05Instr instr = make_instr(
+        ptxemu::ir::Tcgen05OpKind::MMA,
+        {ptxemu::ir::Qualifier::Q_TCGEN_WS});  // no kind qualifier
 
     REQUIRE_THROWS_AS(
         ptxsim::processTcgen05Mma(&rig.thread(), instr),
@@ -182,9 +182,9 @@ TEST_CASE("processTcgen05Mma with Q_TCGEN_WS + no kind throws (Q3-A scope)",
 TEST_CASE("processTcgen05Mma without Q_TCGEN_WS executes regular path",
           "[unit][tcgen05][mma_ws][scope][negative_control]") {
     TestRig rig;
-    Tcgen05Instr instr = make_instr(
-        Tcgen05OpKind::MMA,
-        {Qualifier::Q_F16});  // no Q_TCGEN_WS
+    ptxemu::ir::Tcgen05Instr instr = make_instr(
+        ptxemu::ir::Tcgen05OpKind::MMA,
+        {ptxemu::ir::Qualifier::Q_F16});  // no Q_TCGEN_WS
 
     // Regular mma path: no Q3-A scope check, helper called.
     REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
@@ -193,7 +193,7 @@ TEST_CASE("processTcgen05Mma without Q_TCGEN_WS executes regular path",
 TEST_CASE("processTcgen05Mma with op_kind=MMA and empty qualifiers executes regular path",
           "[unit][tcgen05][mma_ws][scope][empty_quals]") {
     TestRig rig;
-    Tcgen05Instr instr = make_instr(Tcgen05OpKind::MMA, {});
+    ptxemu::ir::Tcgen05Instr instr = make_instr(ptxemu::ir::Tcgen05OpKind::MMA, {});
 
     REQUIRE_NOTHROW(ptxsim::processTcgen05Mma(&rig.thread(), instr));
 }

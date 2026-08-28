@@ -34,7 +34,7 @@
 // fails to link (the RED state).
 // -----------------------------------------------------------------------------
 namespace ptxsim {
-uint32_t extract_smem_offset_placeholder(const Tcgen05Instr &instr);
+uint32_t extract_smem_offset_placeholder(const ptxemu::ir::Tcgen05Instr &instr);
 [[noreturn]] void throw_cta_group_2(const char *instr_name);
 } // namespace ptxsim
 
@@ -66,36 +66,36 @@ private:
     std::unique_ptr<ThreadContext> thread_;
 };
 
-Tcgen05Instr make_cp_instr(uint32_t cta_group = 1) {
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::CP;
+ptxemu::ir::Tcgen05Instr make_cp_instr(uint32_t cta_group = 1) {
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::CP;
     instr.cta_group = cta_group;
     return instr;
 }
 
 // Build an AddrOperand with a textual immediate offset and given space.
-OperandContext make_addr_op(AddrOperand::Space space,
+ptxemu::ir::OperandContext make_addr_op(AddrOperand::Space space,
                             AddrOperand::OffsetType offset_type,
                             const std::string &immediate) {
     AddrOperand addr;
     addr.space = space;
     addr.offsetType = offset_type;
     addr.immediateOffset = immediate;
-    return OperandContext(addr);
+    return ptxemu::ir::OperandContext(addr);
 }
 
 // Build a Tcgen05Instr with a dummy operands[0] and the supplied SMEM
 // address at operands[1] (PTX operand order: dst, src).
-Tcgen05Instr make_cp_instr_with_smem(
+ptxemu::ir::Tcgen05Instr make_cp_instr_with_smem(
     AddrOperand::Space space = AddrOperand::Space::SHARED,
     AddrOperand::OffsetType offset_type = AddrOperand::OffsetType::IMMEDIATE,
     const std::string &immediate = "0") {
-    Tcgen05Instr instr = make_cp_instr();
+    ptxemu::ir::Tcgen05Instr instr = make_cp_instr();
     AddrOperand dst_dummy;
     dst_dummy.space = AddrOperand::Space::SHARED;
     dst_dummy.offsetType = AddrOperand::OffsetType::IMMEDIATE;
     dst_dummy.immediateOffset = "0";
-    instr.operands.push_back(OperandContext(dst_dummy));
+    instr.operands.push_back(ptxemu::ir::OperandContext(dst_dummy));
     instr.operands.push_back(make_addr_op(space, offset_type, immediate));
     return instr;
 }
@@ -108,21 +108,21 @@ Tcgen05Instr make_cp_instr_with_smem(
 
 TEST_CASE("extract_smem_offset_placeholder parses hexadecimal immediate offset",
           "[unit][tcgen05][cp][helper]") {
-    Tcgen05Instr instr = make_cp_instr_with_smem(
+    ptxemu::ir::Tcgen05Instr instr = make_cp_instr_with_smem(
         AddrOperand::Space::SHARED, AddrOperand::OffsetType::IMMEDIATE, "0x10");
     REQUIRE(ptxsim::extract_smem_offset_placeholder(instr) == 16u);
 }
 
 TEST_CASE("extract_smem_offset_placeholder parses decimal immediate offset",
           "[unit][tcgen05][cp][helper]") {
-    Tcgen05Instr instr = make_cp_instr_with_smem(
+    ptxemu::ir::Tcgen05Instr instr = make_cp_instr_with_smem(
         AddrOperand::Space::SHARED, AddrOperand::OffsetType::IMMEDIATE, "32");
     REQUIRE(ptxsim::extract_smem_offset_placeholder(instr) == 32u);
 }
 
 TEST_CASE("extract_smem_offset_placeholder returns 0 for non-shared space",
           "[unit][tcgen05][cp][helper]") {
-    Tcgen05Instr instr = make_cp_instr_with_smem(
+    ptxemu::ir::Tcgen05Instr instr = make_cp_instr_with_smem(
         AddrOperand::Space::GLOBAL, AddrOperand::OffsetType::IMMEDIATE, "64");
     REQUIRE(ptxsim::extract_smem_offset_placeholder(instr) == 0u);
 }
@@ -130,14 +130,14 @@ TEST_CASE("extract_smem_offset_placeholder returns 0 for non-shared space",
 TEST_CASE("extract_smem_offset_placeholder returns 0 for register offset "
           "(placeholder)",
           "[unit][tcgen05][cp][helper]") {
-    Tcgen05Instr instr = make_cp_instr_with_smem(
+    ptxemu::ir::Tcgen05Instr instr = make_cp_instr_with_smem(
         AddrOperand::Space::SHARED, AddrOperand::OffsetType::REGISTER, "");
     REQUIRE(ptxsim::extract_smem_offset_placeholder(instr) == 0u);
 }
 
 TEST_CASE("extract_smem_offset_placeholder returns 0 when operands empty",
           "[unit][tcgen05][cp][helper]") {
-    Tcgen05Instr instr = make_cp_instr();
+    ptxemu::ir::Tcgen05Instr instr = make_cp_instr();
     REQUIRE(ptxsim::extract_smem_offset_placeholder(instr) == 0u);
 }
 

@@ -105,17 +105,17 @@ TEST_CASE("BUG-NAME2SHARE: get_memory_addr adds baseSymbol offset for shared REG
     // PC=8: ld.shared.b32 r4, [buf0 + r0]  (load from buf0[0])
     // PC=9: ret
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(10);
-    stmts.push_back(make_shared_decl("buf0", 32, Qualifier::Q_B32)); // PC=0
-    stmts.push_back(make_shared_decl("buf1", 32, Qualifier::Q_B32)); // PC=1
+    stmts.push_back(make_shared_decl("buf0", 32, ptxemu::ir::Qualifier::Q_B32)); // PC=0
+    stmts.push_back(make_shared_decl("buf1", 32, ptxemu::ir::Qualifier::Q_B32)); // PC=1
     stmts.push_back(make_mov_imm("r0", 0));                         // PC=2: offset=0
     stmts.push_back(make_mov_imm("r1", 0xAAAAAAAA));                // PC=3: value for buf1
-    stmts.push_back(make_st_shared_addr("buf1", "r0", "r1", Qualifier::Q_B32)); // PC=4
+    stmts.push_back(make_st_shared_addr("buf1", "r0", "r1", ptxemu::ir::Qualifier::Q_B32)); // PC=4
     stmts.push_back(make_mov_imm("r2", 0xBBBBBBBB));                // PC=5: value for buf0
-    stmts.push_back(make_st_shared_addr("buf0", "r0", "r2", Qualifier::Q_B32)); // PC=6
-    stmts.push_back(make_ld_shared_addr("r3", "buf1", "r0", Qualifier::Q_B32)); // PC=7
-    stmts.push_back(make_ld_shared_addr("r4", "buf0", "r0", Qualifier::Q_B32)); // PC=8
+    stmts.push_back(make_st_shared_addr("buf0", "r0", "r2", ptxemu::ir::Qualifier::Q_B32)); // PC=6
+    stmts.push_back(make_ld_shared_addr("r3", "buf1", "r0", ptxemu::ir::Qualifier::Q_B32)); // PC=7
+    stmts.push_back(make_ld_shared_addr("r4", "buf0", "r0", ptxemu::ir::Qualifier::Q_B32)); // PC=8
     stmts.push_back(make_ret());                                     // PC=9
 
     SMContext sm(4, 128, 4096, 0);
@@ -172,17 +172,17 @@ TEST_CASE("BUG-NAME2SHARE: get_memory_addr respects baseSymbol for non-zero offs
     // PC=8: ld.shared.b32 r4, [buf0 + r0]  (load from buf0[1])
     // PC=9: ret
 
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     stmts.reserve(10);
-    stmts.push_back(make_shared_decl("buf0", 32, Qualifier::Q_B32)); // PC=0
-    stmts.push_back(make_shared_decl("buf1", 32, Qualifier::Q_B32)); // PC=1
+    stmts.push_back(make_shared_decl("buf0", 32, ptxemu::ir::Qualifier::Q_B32)); // PC=0
+    stmts.push_back(make_shared_decl("buf1", 32, ptxemu::ir::Qualifier::Q_B32)); // PC=1
     stmts.push_back(make_mov_imm("r0", 4));                         // PC=2: offset=4
     stmts.push_back(make_mov_imm("r1", 0xCCCCCCCC));                // PC=3
-    stmts.push_back(make_st_shared_addr("buf1", "r0", "r1", Qualifier::Q_B32)); // PC=4
+    stmts.push_back(make_st_shared_addr("buf1", "r0", "r1", ptxemu::ir::Qualifier::Q_B32)); // PC=4
     stmts.push_back(make_mov_imm("r2", 0xDDDDDDDD));                // PC=5
-    stmts.push_back(make_st_shared_addr("buf0", "r0", "r2", Qualifier::Q_B32)); // PC=6
-    stmts.push_back(make_ld_shared_addr("r3", "buf1", "r0", Qualifier::Q_B32)); // PC=7
-    stmts.push_back(make_ld_shared_addr("r4", "buf0", "r0", Qualifier::Q_B32)); // PC=8
+    stmts.push_back(make_st_shared_addr("buf0", "r0", "r2", ptxemu::ir::Qualifier::Q_B32)); // PC=6
+    stmts.push_back(make_ld_shared_addr("r3", "buf1", "r0", ptxemu::ir::Qualifier::Q_B32)); // PC=7
+    stmts.push_back(make_ld_shared_addr("r4", "buf0", "r0", ptxemu::ir::Qualifier::Q_B32)); // PC=8
     stmts.push_back(make_ret());                                     // PC=9
 
     SMContext sm(4, 128, 4096, 0);

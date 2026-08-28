@@ -62,7 +62,7 @@ void add_thread(WarpContext& warp, int lane) {
     Dim3 threadIdx = {(uint32_t)lane, 0, 0};
     Dim3 gridDim = {1, 1, 1};
     Dim3 blockDim = {32, 1, 1};
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
     std::map<std::string, std::unique_ptr<Symtable>> name2Sym;
     std::map<std::string, int> label2pc;
     thread->init(blockIdx, threadIdx, gridDim, blockDim, stmts, &name2Sym,
@@ -123,7 +123,7 @@ TEST_CASE("U-1: divergent warp broadcast barrier — all 32 lanes released to "
     constexpr int RECONV_PC    = 13;  // broadcast ld.shared (the protected PC)
 
     // Build a minimal statement list that includes the barrier at the right PC
-    std::vector<StatementContext> stmts(BARRIER_PC + 1);
+    std::vector<ptxemu::ir::StatementContext> stmts(BARRIER_PC + 1);
     for (auto& s : stmts) s = ptxir::factory::makeVoidInstr(S_PRAGMA, "nop;");
     stmts[BARRIER_PC] = ptxir::factory::makeBarWarpSyncInstr(
         0xFFFFFFFFu, RECONV_PC,
@@ -216,7 +216,7 @@ TEST_CASE("U-2: divergent warp — lane 0 arrives alone, then 31 arrive in bulk"
     constexpr int BARRIER_PC = 12;
     constexpr int RECONV_PC  = 13;
 
-    std::vector<StatementContext> stmts(BARRIER_PC + 1);
+    std::vector<ptxemu::ir::StatementContext> stmts(BARRIER_PC + 1);
     for (auto& s : stmts) s = ptxir::factory::makeVoidInstr(S_PRAGMA, "nop;");
     stmts[BARRIER_PC] = ptxir::factory::makeBarWarpSyncInstr(
         0xFFFFFFFFu, RECONV_PC,

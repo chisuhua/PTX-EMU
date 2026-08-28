@@ -46,7 +46,7 @@ namespace {
 // tests/integration/barrier/test_barrier_full_lifecycle.cpp).
 std::unique_ptr<CTAContext> make_block(Dim3 blockIdx, int threads,
                                         size_t shared_mem_bytes,
-                                        std::vector<StatementContext> &stmts) {
+                                        std::vector<ptxemu::ir::StatementContext> &stmts) {
     Dim3 gridDim = {1, 1, 1};
     Dim3 blockDim = {static_cast<uint32_t>(threads), 1, 1};
 
@@ -69,7 +69,7 @@ TEST_CASE("SMContext::add_block queues overflow blocks in pending list",
 
     SMContext sm(/*max_warps=*/2, /*max_threads=*/64, /*shared_mem=*/8192,
                  /*sm_id=*/0);
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
 
     constexpr int kTotalBlocks = 4;  // 2 fit, 2 must go to pending
     int admitted_or_pending = 0;
@@ -98,7 +98,7 @@ TEST_CASE("SMContext::add_block preserves pending across cleanup_finished_blocks
 
     SMContext sm(/*max_warps=*/2, /*max_threads=*/64, /*shared_mem=*/8192,
                  /*sm_id=*/0);
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
 
     for (int i = 0; i < 4; i++) {
         Dim3 idx = {static_cast<uint32_t>(i), 0, 0};
@@ -124,7 +124,7 @@ TEST_CASE(
 
     SMContext sm(/*max_warps=*/2, /*max_threads=*/64, /*shared_mem=*/8192,
                  /*sm_id=*/0);
-    std::vector<StatementContext> stmts;
+    std::vector<ptxemu::ir::StatementContext> stmts;
 
     Dim3 idx = {0, 0, 0};
     auto block = make_block(idx, /*threads=*/128, /*shared_mem=*/0, stmts);

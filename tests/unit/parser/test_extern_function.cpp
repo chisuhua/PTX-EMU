@@ -42,20 +42,20 @@ TEST_CASE("ExternFuncDecl params support multiple qualifiers",
   ParamContext p1;
   p1.paramName = "x";
   p1.byteSize = 4;
-  p1.paramTypes.push_back(Qualifier::Q_U32);
+  p1.paramTypes.push_back(ptxemu::ir::Qualifier::Q_U32);
   decl.params.push_back(p1);
 
   ParamContext p2;
   p2.paramName = "y";
   p2.byteSize = 8;
-  p2.paramTypes.push_back(Qualifier::Q_U64);
+  p2.paramTypes.push_back(ptxemu::ir::Qualifier::Q_U64);
   decl.params.push_back(p2);
 
   REQUIRE(decl.params.size() == 2);
   REQUIRE(decl.params[0].byteSize == 4);
   REQUIRE(decl.params[1].byteSize == 8);
-  REQUIRE(decl.params[0].paramTypes[0] == Qualifier::Q_U32);
-  REQUIRE(decl.params[1].paramTypes[0] == Qualifier::Q_U64);
+  REQUIRE(decl.params[0].paramTypes[0] == ptxemu::ir::Qualifier::Q_U32);
+  REQUIRE(decl.params[1].paramTypes[0] == ptxemu::ir::Qualifier::Q_U64);
 }
 
 TEST_CASE("ExternFuncDecl 简单形式 — 行为契约",
@@ -76,13 +76,13 @@ TEST_CASE("ExternFuncDecl 带参数形式 — 行为契约",
   ParamContext p1;
   p1.paramName = "x";
   p1.byteSize = 4;
-  p1.paramTypes.push_back(Qualifier::Q_U32);
+  p1.paramTypes.push_back(ptxemu::ir::Qualifier::Q_U32);
   decl.params.push_back(p1);
 
   ParamContext p2;
   p2.paramName = "y";
   p2.byteSize = 8;
-  p2.paramTypes.push_back(Qualifier::Q_U64);
+  p2.paramTypes.push_back(ptxemu::ir::Qualifier::Q_U64);
   decl.params.push_back(p2);
 
   REQUIRE(decl.name == "param_extern");

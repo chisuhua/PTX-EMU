@@ -26,11 +26,11 @@
 TEST_CASE("Tcgen05PipelineHandler::prepareOperands returns true for zero-operand op_kind",
           "[unit][ptx_ir][tcgen05][pipeline][zero_op]") {
     Tcgen05Handler handler;
-    Tcgen05Instr instr;
-    instr.op_kind = Tcgen05OpKind::COMMIT;
+    ptxemu::ir::Tcgen05Instr instr;
+    instr.op_kind = ptxemu::ir::Tcgen05OpKind::COMMIT;
     instr.operands.clear();  // zero-operand
 
-    StatementContext stmt;
+    ptxemu::ir::StatementContext stmt;
     stmt.type = S_TCGEN05_COMMIT;
     stmt.data = instr;
 
@@ -43,9 +43,9 @@ TEST_CASE("Tcgen05PipelineHandler::prepareOperands returns true for zero-operand
 
 TEST_CASE("Tcgen05Instr zero-operand variants (COMMIT/WAIT/FENCE)",
           "[unit][ptx_ir][tcgen05][pipeline][zero_op_variants]") {
-    for (auto op : {Tcgen05OpKind::COMMIT, Tcgen05OpKind::WAIT,
-                    Tcgen05OpKind::FENCE}) {
-        Tcgen05Instr instr;
+    for (auto op : {ptxemu::ir::Tcgen05OpKind::COMMIT, ptxemu::ir::Tcgen05OpKind::WAIT,
+                    ptxemu::ir::Tcgen05OpKind::FENCE}) {
+        ptxemu::ir::Tcgen05Instr instr;
         instr.op_kind = op;
         instr.operands.clear();
         REQUIRE(instr.operands.empty());
@@ -54,21 +54,21 @@ TEST_CASE("Tcgen05Instr zero-operand variants (COMMIT/WAIT/FENCE)",
 
 TEST_CASE("Tcgen05Instr non-zero-operand variants (MMA=4, LD=2, ST=2)",
           "[unit][ptx_ir][tcgen05][pipeline][multi_op]") {
-    struct Case { Tcgen05OpKind op; size_t expected; };
+    struct Case { ptxemu::ir::Tcgen05OpKind op; size_t expected; };
     const Case cases[] = {
-        {Tcgen05OpKind::MMA,     4},
-        {Tcgen05OpKind::LD,      2},
-        {Tcgen05OpKind::ST,      2},
-        {Tcgen05OpKind::CP,      3},
-        {Tcgen05OpKind::ALLOC,   1},
-        {Tcgen05OpKind::DEALLOC, 1},
-        {Tcgen05OpKind::RELINQUISH, 1},
+        {ptxemu::ir::Tcgen05OpKind::MMA,     4},
+        {ptxemu::ir::Tcgen05OpKind::LD,      2},
+        {ptxemu::ir::Tcgen05OpKind::ST,      2},
+        {ptxemu::ir::Tcgen05OpKind::CP,      3},
+        {ptxemu::ir::Tcgen05OpKind::ALLOC,   1},
+        {ptxemu::ir::Tcgen05OpKind::DEALLOC, 1},
+        {ptxemu::ir::Tcgen05OpKind::RELINQUISH, 1},
     };
     for (const auto& c : cases) {
-        Tcgen05Instr instr;
+        ptxemu::ir::Tcgen05Instr instr;
         instr.op_kind = c.op;
-        instr.operands = std::vector<OperandContext>(
-            c.expected, OperandContext(RegOperand{"r", 0}));
+        instr.operands = std::vector<ptxemu::ir::OperandContext>(
+            c.expected, ptxemu::ir::OperandContext(RegOperand{"r", 0}));
         REQUIRE(instr.operands.size() == c.expected);
     }
 }
@@ -82,8 +82,8 @@ TEST_CASE("Tcgen05Handler::processTcgen05Operation throws for deferred op_kinds"
     //
     // (Full invocation test requires real TMEM/ClusterContext setup; covered
     //  by integration tests.)
-    const Tcgen05OpKind deferred[] = {
-        Tcgen05OpKind::FENCE,
+    const ptxemu::ir::Tcgen05OpKind deferred[] = {
+        ptxemu::ir::Tcgen05OpKind::FENCE,
     };
     REQUIRE(sizeof(deferred) / sizeof(deferred[0]) == 1);
 }
