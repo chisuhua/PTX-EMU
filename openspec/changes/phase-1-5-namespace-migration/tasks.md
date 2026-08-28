@@ -55,9 +55,15 @@
 
 ## 7. Phase 1.5h2 — remaining include/ caller sweep
 
-- [ ] 7.1 Sweep matching caller headers under `include/ptxsim/`, `include/ptxemu/` excluding canonical `include/ptxemu/ir/`, `include/cudart/`, `include/ptx_parser/`, `include/register/`, and `include/utils/` (remaining include files, max 30 per commit); qualify all IR types. Handle `include/ptxsim/execution_types.h` definition/alias separately per task 1.7.
-- [ ] 7.2 Build + ctest 252/252 verification.
-- [ ] 7.3 Commit: `refactor(ptx-1.5h2): remaining include caller sweep`.
+- [x] 7.1 Sweep matching caller headers under `include/ptxsim/`, `include/ptxemu/` excluding canonical `include/ptxemu/ir/`, `include/cudart/`, `include/ptx_parser/`, `include/register/`, and `include/utils/` (remaining include files, max 30 per commit); qualify all IR types. Handle `include/ptxsim/execution_types.h` definition/alias separately per task 1.7.
+  - Commit `350a753c` — 26 files changed, 563 IR tokens qualified.
+  - EXCLUDES honored: `include/ptxsim/gpu_context.h` (1.5j scope), `include/ptxsim/execution_types.h` (task 1.7), 3 forwarding shims, canonical `include/ptxemu/ir/`. No `.cpp`/`tests/`/`scripts/` touched.
+  - ANTLR grammar-context types (`ptxParser::StatementContext`, `ptxparser::ptxParser::OperandContext`) kept bare — scanner cannot skip non-`ptxemu::ir` qualifiers; documented for 1.5k hardening.
+- [x] 7.2 Build + ctest 252/252 verification.
+  - Incremental build clean (304 targets). `ctest -j4`: 254/254 PASS; `ctest -j1`: 254/254 PASS.
+  - `verify_phase_1_5.sh --phase 1.5h2`: 90 swept, 4 remaining (gpu_context.h + 2 ANTLR-type files + warp_context.h canonical block — all pre-existing baseline files), 0 new, exit 0.
+  - `verify_phase_1_5.sh --phase post-1.5h2`: 436 swept, 136 remaining, 0 new, exit 0.
+- [x] 7.3 Commit: `refactor(ptx-1.5h2): remaining include caller sweep`.
 
 ## 8. Phase 1.5i1/i2/i3 — tests caller sweep
 
