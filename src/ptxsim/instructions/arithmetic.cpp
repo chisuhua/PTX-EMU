@@ -392,7 +392,7 @@
 // }
 
 void AddHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                             const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -412,7 +412,7 @@ void AddHandler::processOperation(ThreadContext *context, void **operands,
 }
 
 void SubHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                             const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -432,7 +432,7 @@ void SubHandler::processOperation(ThreadContext *context, void **operands,
 }
 
 void NegHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                             const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);
@@ -450,7 +450,7 @@ void NegHandler::processOperation(ThreadContext *context, void **operands,
 }
 
 void AbsHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                             const std::vector<char> *operand_is_immediate) {
     // 获取数据类型信息
     int bytes = getBytes(qualifiers);

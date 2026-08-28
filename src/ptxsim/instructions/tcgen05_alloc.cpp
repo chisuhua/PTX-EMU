@@ -41,7 +41,7 @@ namespace ptxsim {
 // any post-allocation barrier semantics are not verified against
 // real Blackwell hardware.
 // ---------------------------------------------------------------------------
-void processTcgen05Alloc(ThreadContext *context, const Tcgen05Instr &instr) {
+void processTcgen05Alloc(ThreadContext *context, const ptxemu::ir::Tcgen05Instr &instr) {
     WarpContext *warp = context->get_warp_context();
     if (!warp) {
         PTX_ERROR_EMU("tcgen05.alloc: no WarpContext attached to thread");
@@ -100,7 +100,7 @@ void processTcgen05Alloc(ThreadContext *context, const Tcgen05Instr &instr) {
 // UNVERIFIED-AGAINST-HARDWARE — dealloc ordering with concurrent
 // mma/cp is not verified.
 // ---------------------------------------------------------------------------
-void processTcgen05Dealloc(ThreadContext *context, const Tcgen05Instr &instr) {
+void processTcgen05Dealloc(ThreadContext *context, const ptxemu::ir::Tcgen05Instr &instr) {
     WarpContext *warp = context->get_warp_context();
     if (!warp) {
         PTX_ERROR_EMU("tcgen05.dealloc: no WarpContext attached to thread");
@@ -156,7 +156,7 @@ void processTcgen05Dealloc(ThreadContext *context, const Tcgen05Instr &instr) {
 // (when the warp may re-acquire, if ever) are not verified.
 // ---------------------------------------------------------------------------
 void processTcgen05Relinquish(ThreadContext *context,
-                              const Tcgen05Instr &instr) {
+                              const ptxemu::ir::Tcgen05Instr &instr) {
     (void)instr; // op_kind validated by caller dispatch; no operands
 
     WarpContext *warp = context->get_warp_context();

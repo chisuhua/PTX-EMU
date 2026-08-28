@@ -27,7 +27,7 @@ void process_binary_bitwise(void *dst, void *src1, void *src2, int bytes, OpFunc
 }
 
 void AndHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                             const std::vector<char> *operand_is_immediate) {
     int bytes = getBytes(qualifiers);
     void *dst = operands[0];
@@ -38,7 +38,7 @@ void AndHandler::processOperation(ThreadContext *context, void **operands,
 }
 
 void OrHandler::processOperation(ThreadContext *context, void **operands,
-                           const std::vector<Qualifier> &qualifiers,
+                           const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                            const std::vector<char> *operand_is_immediate) {
     void *dst = operands[0];
     void *src1 = operands[1];
@@ -49,7 +49,7 @@ void OrHandler::processOperation(ThreadContext *context, void **operands,
 }
 
 void XorHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                             const std::vector<char> *operand_is_immediate) {
     void *dst = operands[0];
     void *src1 = operands[1];
@@ -85,7 +85,7 @@ void process_shift_operation(void *dst, void *src1, void *src2, int bytes, OpFun
 }
 
 void ShlHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                             const std::vector<char> *operand_is_immediate) {
     void *dst = operands[0];
     void *src1 = operands[1];
@@ -97,7 +97,7 @@ void ShlHandler::processOperation(ThreadContext *context, void **operands,
 }
 
 void ShrHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                             const std::vector<char> *operand_is_immediate) {
     void *dst = operands[0];
     void *src1 = operands[1];
@@ -120,7 +120,7 @@ void ShrHandler::processOperation(ThreadContext *context, void **operands,
 //   - If b exceeds the width, the result is zero.
 //   - If len is zero, the result is zero.
 void BfeHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                             const std::vector<char> *operand_is_immediate) {
     void *dst = operands[0];
     void *src = operands[1];
@@ -148,7 +148,7 @@ void BfeHandler::processOperation(ThreadContext *context, void **operands,
 
         bool is_signed = false;
         for (auto q : qualifiers) {
-            if (q == Qualifier::Q_S32 || q == Qualifier::Q_S64) {
+            if (q == ptxemu::ir::Qualifier::Q_S32 || q == ptxemu::ir::Qualifier::Q_S64) {
                 is_signed = true;
                 break;
             }
@@ -194,7 +194,7 @@ inline uint32_t popcount_u64(uint64_t x) {
 }
 
 void PopcHandler::processOperation(ThreadContext *context, void **operands,
-                             const std::vector<Qualifier> &qualifiers,
+                             const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                              const std::vector<char> *operand_is_immediate) {
     void *dst = operands[0];
     void *src1 = operands[1];
@@ -250,7 +250,7 @@ inline uint32_t clz_u64(uint64_t x, size_t width) {
 }
 
 void ClzHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                             const std::vector<char> *operand_is_immediate) {
     void *dst = operands[0];
     void *src1 = operands[1];
@@ -293,7 +293,7 @@ void process_unary_bitwise(void *dst, void *src, int bytes, OpFunc op) {
 }
 
 void NotHandler::processOperation(ThreadContext *context, void **operands,
-                            const std::vector<Qualifier> &qualifiers,
+                            const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                             const std::vector<char> *operand_is_immediate) {
     void *dst = operands[0];
     void *src = operands[1];

@@ -130,13 +130,13 @@ void process_comparison(void *dst, void *src1, void *src2, int bytes,
 }
 
 void SetpHandler::processOperation(ThreadContext *context, void *op[3],
-                             const std::vector<Qualifier> &qualifiers,
+                             const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                              const std::vector<char> *operand_is_immediate) {
     void *dst = op[0];
     void *src1 = op[1];
     void *src2 = op[2];
-    Qualifier cmpOp = getCmpOpQualifier(qualifiers);
-    Qualifier dtype = getDataQualifier(qualifiers);
+    ptxemu::ir::Qualifier cmpOp = getCmpOpQualifier(qualifiers);
+    ptxemu::ir::Qualifier dtype = getDataQualifier(qualifiers);
     uint8_t result;
 
     SET_P_COMPARE(cmpOp, dtype, &result, src1, src2);
@@ -145,7 +145,7 @@ void SetpHandler::processOperation(ThreadContext *context, void *op[3],
 }
 
 void SelpHandler::processOperation(ThreadContext *context, void *op[4],
-                             const std::vector<Qualifier> &qualifiers,
+                             const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                              const std::vector<char> *operand_is_immediate) {
     void *dst = op[0];
     void *src1 = op[1];

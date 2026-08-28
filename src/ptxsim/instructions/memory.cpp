@@ -8,7 +8,7 @@
 #include <iostream>
 
 void LdHandler::processOperation(ThreadContext *context, void *op[2],
-                           const std::vector<Qualifier> &qualifier,
+                           const std::vector<ptxemu::ir::Qualifier> &qualifier,
                            const std::vector<char> *operand_is_immediate) {
   void *dst = op[0];
   void *host_ptr = op[1];
@@ -23,8 +23,8 @@ void LdHandler::processOperation(ThreadContext *context, void *op[2],
   MemorySpace space = getAddressSpace(qualifier);
   size_t data_size = getBytes(qualifier);
 
-  if (!QvecHasQ(qualifier, Qualifier::Q_V2) &&
-      !QvecHasQ(qualifier, Qualifier::Q_V4)) {
+  if (!QvecHasQ(qualifier, ptxemu::ir::Qualifier::Q_V2) &&
+      !QvecHasQ(qualifier, ptxemu::ir::Qualifier::Q_V4)) {
     // Block active threads for the post-load latency only on global
     // loads — shared/local/const are 1-cycle on this simulator and
     // must not be marked blocked. See regression commit 2b9d803.
@@ -57,9 +57,9 @@ void LdHandler::processOperation(ThreadContext *context, void *op[2],
   void **vecAddrs = static_cast<void **>(dst);
 
   size_t vec_size = 0;
-  if (QvecHasQ(qualifier, Qualifier::Q_V2)) {
+  if (QvecHasQ(qualifier, ptxemu::ir::Qualifier::Q_V2)) {
     vec_size = 2;
-  } else if (QvecHasQ(qualifier, Qualifier::Q_V4)) {
+  } else if (QvecHasQ(qualifier, ptxemu::ir::Qualifier::Q_V4)) {
     vec_size = 4;
   }
   for (size_t i = 0; i < vec_size; ++i) {
@@ -73,7 +73,7 @@ void LdHandler::processOperation(ThreadContext *context, void *op[2],
 }
 
 void StHandler::processOperation(ThreadContext *context, void *op[2],
-                           const std::vector<Qualifier> &qualifiers,
+                           const std::vector<ptxemu::ir::Qualifier> &qualifiers,
                            const std::vector<char> *operand_is_immediate) {
   void *host_ptr = op[0]; // ← 目标地址：cudaMalloc 返回的主机指针
   void *src = op[1];      // ← 源数据：寄存器或立即数地址
@@ -92,8 +92,8 @@ void StHandler::processOperation(ThreadContext *context, void *op[2],
   // ========================
   // 1. 标量 ST（无向量）
   // ========================
-  if (!QvecHasQ(qualifiers, Qualifier::Q_V2) &&
-      !QvecHasQ(qualifiers, Qualifier::Q_V4)) {
+  if (!QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_V2) &&
+      !QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_V4)) {
     // 对于 PARAM 空间，需要更新符号表条目中的值
     if (space == MemorySpace::PARAM) {
         // For st.param [param0], %rd4:
@@ -119,9 +119,9 @@ void StHandler::processOperation(ThreadContext *context, void *op[2],
   void **vecAddrs = static_cast<void **>(src);
 
   size_t vec_size = 0;
-  if (QvecHasQ(qualifiers, Qualifier::Q_V2)) {
+  if (QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_V2)) {
     vec_size = 2;
-  } else if (QvecHasQ(qualifiers, Qualifier::Q_V4)) {
+  } else if (QvecHasQ(qualifiers, ptxemu::ir::Qualifier::Q_V4)) {
     vec_size = 4;
   }
 

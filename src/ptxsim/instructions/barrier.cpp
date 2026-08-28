@@ -53,7 +53,7 @@ using ptxsim::CTABarrier;
 // =============================================================================
 
 // Override prepareOperands to use BarWarpSyncInstr instead of GenericInstr
-bool BarWarpSyncHandler::prepareOperands(ThreadContext* context, StatementContext& stmt) {
+bool BarWarpSyncHandler::prepareOperands(ThreadContext* context, ptxemu::ir::StatementContext& stmt) {
     BarWarpSyncInstr& instr = std::get<BarWarpSyncInstr>(stmt.data);
     
     // Defensive: ensure we have a data type qualifier
@@ -67,7 +67,7 @@ bool BarWarpSyncHandler::prepareOperands(ThreadContext* context, StatementContex
         }
     }
     if (!hasDataType) {
-        instr.qualifiers = {Qualifier::Q_B32};
+        instr.qualifiers = {ptxemu::ir::Qualifier::Q_B32};
     }
     
     if (!acquireAllOperands(context, instr.operands, instr.qualifiers, 
@@ -79,7 +79,7 @@ bool BarWarpSyncHandler::prepareOperands(ThreadContext* context, StatementContex
 }
 
 // Override executeOperation to use BarWarpSyncInstr
-bool BarWarpSyncHandler::executeOperation(ThreadContext* context, StatementContext& stmt) {
+bool BarWarpSyncHandler::executeOperation(ThreadContext* context, ptxemu::ir::StatementContext& stmt) {
     BarWarpSyncInstr& instr = std::get<BarWarpSyncInstr>(stmt.data);
 
     if (!acquireAllOperands(context, instr.operands, instr.qualifiers,
@@ -100,7 +100,7 @@ bool BarWarpSyncHandler::executeOperation(ThreadContext* context, StatementConte
 }
 
 // Override commitResults to use BarWarpSyncInstr
-bool BarWarpSyncHandler::commitResults(ThreadContext* context, StatementContext& stmt) {
+bool BarWarpSyncHandler::commitResults(ThreadContext* context, ptxemu::ir::StatementContext& stmt) {
     BarWarpSyncInstr& instr = std::get<BarWarpSyncInstr>(stmt.data);
     if (!instr.operands.empty()) {
         context->commit_operand(stmt, instr.operands[0], instr.qualifiers);
@@ -110,7 +110,7 @@ bool BarWarpSyncHandler::commitResults(ThreadContext* context, StatementContext&
 }
 
 void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operands,
-                                          const std::vector<Qualifier>& qualifiers,
+                                          const std::vector<ptxemu::ir::Qualifier>& qualifiers,
                                           const std::vector<char>* operand_is_immediate) {
     if (!operands || !operands[0] || !operands[1]) {
         PTX_ERROR_EMU("bar.warp.sync requires 2 operands");
@@ -255,7 +255,7 @@ void BarWarpSyncHandler::processOperation(ThreadContext* context, void** operand
 // =============================================================================
 
 void ActivemaskHandler::processOperation(ThreadContext* context, void** operands,
-                                         const std::vector<Qualifier>& qualifiers,
+                                         const std::vector<ptxemu::ir::Qualifier>& qualifiers,
                                          const std::vector<char>* operand_is_immediate) {
     // Activemask has 1 operand: destination register
     
