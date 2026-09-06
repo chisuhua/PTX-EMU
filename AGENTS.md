@@ -21,7 +21,7 @@ PTX-EMU 通过 HSK (HandShake) protocol 与 CppTLM / UsrLinuxEmu 协同. 跨仓�
 | HSK-6 | ✅ ACCEPTED | PTX-EMU `25e36f60` + CppTLM `369cf71` | `docs/superpowers/specs/2026-08-18-hsk-6-cpptlm-bridge-deprecation.md` |
 | HSK-7 | 🔵 预留 (未签发) — 仅 ABI 解冻 CPPTLMBRIDGE_VERSION 触发 | — | — |
 | **HSK-8** | ✅ **ACCEPTED** (PR #14 merged `fcdad151` + CppTLM bump `beb3db8`) | PTX-EMU `fcdad151` (squash merge of 12 impl commits) + CppTLM `beb3db8` (submodule pin at `530bd6ca`) | `docs/superpowers/specs/2026-08-22-hsk-8-ptxemu-public-api-ack.md` + `docs/audits/2026-08-13-hsk8-ptxemu-public-api.md` §Postmortem |
-| HSK-9 | 🔵 预留 — 仅 PTXEMU_API_VERSION bump 触发 | — | — |
+| **HSK-9** | 📤 已发布 — 触发条件: **ICOMPUTE_API_VERSION=1 引入 + SM-owns-state 契约** (非 PTXEMU_API_VERSION bump; HSK-9 实际语义是 CppTLM 端新接口 + 镜像头, 不是 PTX-EMU 公共头变更) | TBD (PR 创建后回填 PTX-EMU/CppTLM 端 commit SHA) | `docs/superpowers/specs/2027-02-09-hsk-9-icompute-api-v1-sm-rewrite.md` (镜像) |
 
 HSK-8 实施进度 (per OpenSpec `openspec/changes/ptxemu-public-device-api/`):
 - ✅ Phase 0: 2 污染点净化 (4 commits: 0.6 + 0.8/0.8b + 0.3a-d)
