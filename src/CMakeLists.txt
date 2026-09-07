@@ -194,6 +194,7 @@ set_target_properties(ptxemu_device PROPERTIES
 install(TARGETS ptxemu_device LIBRARY DESTINATION lib)
 
 add_custom_command(TARGET ptxemu_device POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/lib
     COMMAND ${CMAKE_COMMAND} -E create_symlink
         ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libptxemu_device.so
         ${CMAKE_SOURCE_DIR}/lib/libptxemu_device.so
