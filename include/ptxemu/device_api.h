@@ -111,6 +111,12 @@ public:
 
     // HSK-4 vendored interfaces injection (HSK-8 spec §6 HSK-4 复用)
     // — attach_timing() 接收 HSK-4 已 vendored 3 接口, 不重复定义。
+    //
+    // HSK-9 (Phase 2 task 2.2, 2027-02-09): 此方法 deprecated — 改用
+    // IComputeDevice::set_instr_descriptor_buf() 注入 producer 侧已解码指令描述符;
+    // attach_timing body 改 no-op stub (PTX-EMU owner ack 14d 窗口, 截止 2027-02-23).
+    // 公共头属性变更 (非签名变更, HSK-8 12 方法冻结保持).
+    [[deprecated("use IComputeDevice::set_instr_descriptor_buf instead; attach_timing will be removed in HSK-10")]]
     virtual void attach_timing(IScoreboard* sb, IPipelineLatencyProvider* pl, ITensorCoreTiming* tc) = 0;
 
     // Static assert: PTXEMU_API_VERSION frozen at 1.

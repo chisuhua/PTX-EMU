@@ -1,7 +1,11 @@
 /**
- * @file test_attach_timing_consumer_e2e.cpp
- * @brief PTX-EMU-side reverse-direction e2e tests for IPtxEmuDevice::attach_timing
- *        (HSK-8 spec §CppTLM 端接受条件 #1 + Decision 6 namespace bridge)
+ * @file test_attach_timing_consumer_e2e.cpp (LEGACY, RELOCATED — HSK-9 Phase 2 task 2.8)
+ * @brief [[deprecated]] attach_timing is deprecated;
+ *        IComputeDevice::set_instr_descriptor_buf replaces this path.
+ *        Will be removed in HSK-10 (PTX-EMU owner ack 14d 窗口, 截止 2027-02-23).
+ *
+ * PTX-EMU-side reverse-direction e2e tests for IPtxEmuDevice::attach_timing
+ * (HSK-8 spec §CppTLM 端接受条件 #1 + Decision 6 namespace bridge)
  *
  * Purpose
  * -------
@@ -174,17 +178,17 @@ TEST_CASE("attach_timing: scoreboard queried by exe_once step_a/c",
     TrackingScoreboard sb;
     attach_through_device(fix.dev(), &sb, nullptr, nullptr);
 
-    // Verify round-trip identity (namespace bridge sanity)
-    REQUIRE(fix.sm()->get_scoreboard() == &sb);
+    // HSK-9 Phase 2 task 2.3: attach_timing no-op; sb stays unregistered.
+    REQUIRE(fix.sm()->get_scoreboard() == nullptr);
 
     // Drive exe_once via IPtxEmuDevice public API.
     int rc = fix.dev()->sm_exe_once(0);
     REQUIRE((rc == 0 || rc == -1));  // -1 acceptable: SM/scheduler idle skip
 
-    // step_a_scoreboard_check (sm_context.cpp:273) + step_c_release_scoreboard
-    // (sm_context.cpp:316) must call the injected sb.allocate / sb.release.
-    REQUIRE(sb.alloc_calls > 0);
-    REQUIRE(sb.release_calls > 0);
+    // HSK-9 Phase 2 task 2.3: attach_timing body is no-op stub.
+    // step_a/step_c scoreboard paths NOT triggered (vendor never registered).
+    REQUIRE(sb.alloc_calls == 0);
+    REQUIRE(sb.release_calls == 0);
 }
 
 // ============================================================================
@@ -202,14 +206,18 @@ TEST_CASE("attach_timing: pipeline queried by step_b (S_FMA)",
     FixedPipeline pipeline;
     attach_through_device(fix.dev(), nullptr, &pipeline, nullptr);
 
-    REQUIRE(fix.sm()->get_pipeline_latency_provider() == &pipeline);
+    // HSK-9 Phase 2 task 2.3: attach_timing no-op; pipeline stays unregistered.
+    REQUIRE(fix.sm()->get_pipeline_latency_provider() == nullptr);
 
     auto stmt = ptxsim::testing::make_ffma("%f0", "%f1", "%f2", "%f3");
     SMContext::step_b_set_blocked_cycles(
         fix.sm()->get_pipeline_latency_provider(), /*tc=*/nullptr, fix.warp(),
         stmt);
 
-    REQUIRE(pipeline.cycles_calls > 0);
+    // HSK-9 Phase 2 task 2.3: attach_timing body is no-op stub, so
+    // pipeline_provider stays nullptr; step_b takes Branch 1 (both nullptr = no-op).
+    // HSK-9 Phase 2 task 2.3: attach_timing no-op stub.
+    REQUIRE(pipeline.cycles_calls == 0);
 }
 
 // ============================================================================
@@ -229,14 +237,17 @@ TEST_CASE("attach_timing: tensor_core queried by step_b (S_TCGEN05_MMA)",
     CountingTC tc;
     attach_through_device(fix.dev(), nullptr, &pipeline_zero, &tc);
 
-    REQUIRE(fix.sm()->get_tensor_core_timing() == &tc);
+    // HSK-9 Phase 2 task 2.3: attach_timing no-op; tc stays unregistered.
+    REQUIRE(fix.sm()->get_tensor_core_timing() == nullptr);
 
     auto stmt = make_tcgen05_mma_stmt();
     SMContext::step_b_set_blocked_cycles(
         fix.sm()->get_pipeline_latency_provider(), fix.sm()->get_tensor_core_timing(),
         fix.warp(), stmt);
 
-    REQUIRE(tc.latency_calls > 0);
+    // HSK-9 Phase 2 task 2.3: attach_timing no-op; TC timing stays nullptr;
+    // step_b Branch 1 (both nullptr = no-op) — tc never queried.
+    REQUIRE(tc.latency_calls == 0);
 }
 
 // ============================================================================
@@ -261,22 +272,18 @@ TEST_CASE("attach_timing: e2e — exe_once queries all 3 injected interfaces",
     CountingTC tc;
     attach_through_device(fix.dev(), &sb, &pipeline, &tc);
 
-    REQUIRE(fix.sm()->get_scoreboard() == &sb);
-    REQUIRE(fix.sm()->get_pipeline_latency_provider() == &pipeline);
-    REQUIRE(fix.sm()->get_tensor_core_timing() == &tc);
+    // HSK-9 Phase 2 task 2.3: attach_timing no-op; all 3 vendors stay unregistered.
+    REQUIRE(fix.sm()->get_scoreboard() == nullptr);
+    REQUIRE(fix.sm()->get_pipeline_latency_provider() == nullptr);
+    REQUIRE(fix.sm()->get_tensor_core_timing() == nullptr);
 
     int rc = fix.dev()->sm_exe_once(0);
     REQUIRE((rc == 0 || rc == -1));
 
-    // Step a + c queried the scoreboard
-    REQUIRE(sb.alloc_calls > 0);
-    REQUIRE(sb.release_calls > 0);
-
-    // Step b queried the pipeline (S_FMA -> P0_INT_FP32, non-TC path)
-    REQUIRE(pipeline.cycles_calls > 0);
-
-    // Step b did NOT query the TC (pipeline path takes priority for non-TC
-    // instructions; this verifies the priority chain in
-    // sm_context_cpptlm_inject.cpp:21-32)
+    // HSK-9 Phase 2 task 2.3: attach_timing body is no-op stub.
+    // All 3 vendors stay nullptr; exe_once + step_b take fallback paths.
+    REQUIRE(sb.alloc_calls == 0);
+    REQUIRE(sb.release_calls == 0);
+    REQUIRE(pipeline.cycles_calls == 0);
     REQUIRE(tc.latency_calls == 0);
 }

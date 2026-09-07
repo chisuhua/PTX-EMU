@@ -863,11 +863,15 @@ add_catch_test(unit_device_api_delegation
 target_link_libraries(unit_device_api_delegation PRIVATE ptxemu_core)
 set_tests_properties(unit_device_api_delegation PROPERTIES LABELS "unit;ptxemu;delegation")
 
-add_catch_test(unit_device_api_attach_timing
-    ptxemu/test_device_api_attach_timing.cpp
+add_catch_test(unit_attach_timing_legacy_device_api
+    # HSK-9 Phase 2 task 2.8 (2027-02-09): RELOCATED to legacy-attach_timing/
+    # with renamed prefix. attach_timing body 改 no-op stub (task 2.3).
+    # Test binary renamed to attach_timing_legacy_* so `ctest -R attach_timing_legacy`
+    # (task 2.9 verification) reliably matches.
+    ../legacy-attach_timing/attach_timing_legacy_test_device_api_attach_timing.cpp
 )
-target_link_libraries(unit_device_api_attach_timing PRIVATE ptxemu_core)
-set_tests_properties(unit_device_api_attach_timing PROPERTIES LABELS "unit;ptxemu;delegation;attach_timing")
+target_link_libraries(unit_attach_timing_legacy_device_api PRIVATE ptxemu_core)
+set_tests_properties(unit_attach_timing_legacy_device_api PROPERTIES LABELS "unit;ptxemu;delegation;attach_timing;attach_timing_legacy")
 
 # ============================================================================
 # fix-ptx-extraction-race (OpenSpec change 2026-08-28):
