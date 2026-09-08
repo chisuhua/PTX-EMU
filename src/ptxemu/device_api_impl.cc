@@ -9,6 +9,7 @@
 //     per-method delegation table
 
 #include <ptxemu/device_api.h>
+#include <ptxemu/instruction_descriptor.hh>  // HSK-9 Phase 2 task 2.0 (POD mirror)
 #include <ptxsim/gpu_context.h>
 #include <ptxsim/sm_context.h>
 #include <ptxsim/execution_types.h>
@@ -22,6 +23,7 @@
 
 #include <climits>
 #include <cstdint>
+#include <cstdio>     // for one-time warning log (task 2.3)
 #include <memory>
 
 // Forward decl for global GPUContext singleton (declared in src/cudart/
@@ -92,6 +94,45 @@ class PtxEmuDeviceImpl : public IPtxEmuDevice {
 public:
     explicit PtxEmuDeviceImpl() = default;
     ~PtxEmuDeviceImpl() override = default;
+
+    // === HSK-9 Phase 2 task 2.1: set_instr_descriptor_buf (producer 侧) ===
+    // Non-virtual method on PtxEmuDeviceImpl (not on IPtxEmuDevice interface
+    // per HSK-8 12-method freeze). Stores PTX-EMU-decoded InstrDescriptor[]
+    // for later consumption by CppTLM-side IComputeDevice binding (Phase 2
+    // sub-wave 2.5 will add binding to enable SM-owns-state cross-repo flow).
+    //
+    // Signature fidelity: const InstrDescriptor* + uint32_t count matches
+    // cpptlm::gpu::IComputeDevice::set_instr_descriptor_buf (per
+    // include/tlm/gpu/i_compute_device.hh:84, HSK-9 §3).
+    //
+    // Null buffer + count=0 tolerated (no crash, no error); valid buffer
+    // + count>0 stores buf_/count_ fields and emits LOG_TRACE-equivalent
+    // debug print (file-based logging to avoid coupling with ptxsim logger).
+    void set_instr_descriptor_buf(const InstrDescriptor* buf, uint32_t count) {
+        if (buf == nullptr && count == 0) {
+            // Both-null null-tolerance: clear stale buffer
+            buf_ = nullptr;
+            count_ = 0;
+            return;
+        }
+        if (buf == nullptr && count > 0) {
+            // Invalid: non-zero count but null buffer — defensive guard.
+            // Set count to 0 to keep internal state consistent.
+            std::fprintf(stderr,
+                         "[PtxEmuDeviceImpl::set_instr_descriptor_buf] "
+                         "WARN: null buffer with count=%u; clearing count\n",
+                         count);
+            buf_ = nullptr;
+            count_ = 0;
+            return;
+        }
+        buf_ = buf;
+        count_ = count;
+        std::fprintf(stderr,
+                     "[PtxEmuDeviceImpl::set_instr_descriptor_buf] "
+                     "stored %u InstrDescriptor entries at %p\n",
+                     count, static_cast<const void*>(buf));
+    }
 
     bool initialize(const DeviceConfig& config) override {
         config_ = config;
@@ -317,22 +358,37 @@ public:
     // via void* intermediate. Same pattern for the other 2 interfaces.
     // Phase 2.3 prototype hardcodes sm_id=0 (attach_timing is a global
     // setup method, not per-SM).
-    void attach_timing(IScoreboard* sb, IPipelineLatencyProvider* pl,
-                       ITensorCoreTiming* tc) override {
-        if (!g_gpu_context) return;
-        auto* sm = g_gpu_context->get_sm(0);
-        if (!sm) return;
-        sm->set_scoreboard(
-            static_cast<::IScoreboard*>(static_cast<void*>(sb)));
-        sm->set_pipeline_latency_provider(
-            static_cast<::IPipelineLatencyProvider*>(static_cast<void*>(pl)));
-        sm->set_tensor_core_timing(
-            static_cast<::ITensorCoreTiming*>(static_cast<void*>(tc)));
+    //
+    // HSK-9 (Phase 2 task 2.3, 2027-02-09): body 改 no-op stub —
+    // attach_timing 公共头已加 [[deprecated]] 属性 (task 2.2).
+    // 替换路径: IComputeDevice::set_instr_descriptor_buf() (producer 侧).
+    // 保留方法签名 (HSK-8 12 方法冻结) + body no-op 让下游旧代码继续 link 通过.
+    // One-time warning log (去重, 避免每 cycle 噪音).
+    void attach_timing(IScoreboard* /*sb*/, IPipelineLatencyProvider* /*pl*/,
+                       ITensorCoreTiming* /*tc*/) override {
+        static bool warned = false;
+        if (!warned) {
+            std::fprintf(stderr,
+                         "[PtxEmuDeviceImpl::attach_timing] DEPRECATED: "
+                         "use IComputeDevice::set_instr_descriptor_buf() "
+                         "instead (HSK-9 §3, owner ack 14d 截止 2027-02-23); "
+                         "3 vendor interfaces ignored. attach_timing will "
+                         "be removed in HSK-10.\n");
+            warned = true;
+        }
+        // no-op stub: do not register vendor interfaces with SMContext.
+        // (Previously: sm->set_scoreboard/set_pipeline_latency_provider/
+        //  set_tensor_core_timing — removed per HSK-9 spec §3.)
     }
 
 private:
     DeviceConfig config_{};
     bool initialized_ = false;
+    // HSK-9 Phase 2 task 2.1: stored InstrDescriptor buffer + count
+    // (producer 侧 — future consumer: CppTLM IComputeDevice binding in
+    // Phase 2 sub-wave 2.5).
+    const InstrDescriptor* buf_ = nullptr;
+    uint32_t count_ = 0;
 };
 
 // Factory (HSK-8 spec §CppTLM 端接受条件 #1 第 4 项).

@@ -114,3 +114,4 @@ _lib                     # rddf-workflow dev symlink (in case it's a symlink)
 .rddf/state/.plan-handoff.json
 .rddf/state/.design-handoff.json
 .rddf/state/.env-cache.json
+build-standalone/

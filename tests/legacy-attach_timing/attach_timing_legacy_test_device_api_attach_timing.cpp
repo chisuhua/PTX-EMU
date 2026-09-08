@@ -1,5 +1,9 @@
-// test_device_api_attach_timing.cpp
+// test_device_api_attach_timing.cpp (LEGACY, RELOCATED — HSK-9 Phase 2 task 2.8)
 // =============================================================================
+// [[deprecated]] attach_timing is deprecated;
+// IComputeDevice::set_instr_descriptor_buf replaces this path.
+// Will be removed in HSK-10 (PTX-EMU owner ack 14d 窗口, 截止 2027-02-23).
+//
 // Phase 2.3 unit tests for IPtxEmuDevice::attach_timing HSK-4 vendored
 // interface injection.
 //
@@ -93,15 +97,15 @@ TEST_CASE("device_api_attach_timing: null g_gpu_context returns without crash",
     REQUIRE(true);  // reached without crash
 }
 
-TEST_CASE("device_api_attach_timing: valid interfaces inject into SMContext",
-          "[unit][ptxemu][delegation]") {
+TEST_CASE("device_api_attach_timing: valid interfaces are ignored (deprecated stub)",
+          "[unit][ptxemu][delegation][legacy]") {
     GpuContextScope scope;
     auto dev = ptxemu::create_device();
     REQUIRE(dev != nullptr);
 
     auto* sm = scope.gpu()->get_sm(0);
     if (sm == nullptr) {
-        WARN("SM 0 not available; cannot verify attach_timing injection "
+        WARN("SM 0 not available; cannot verify attach_timing no-op "
              "(requires SM setup)");
         return;
     }
@@ -114,9 +118,10 @@ TEST_CASE("device_api_attach_timing: valid interfaces inject into SMContext",
 
     dev->attach_timing(ptxemu_sb, nullptr, nullptr);
 
-    // Verify SMContext has the injected IScoreboard
-    REQUIRE(sm->get_scoreboard() != nullptr);
-    REQUIRE(sm->get_scoreboard() == global_sb);  // round-trip identity
+    // HSK-9 Phase 2 task 2.3: attach_timing body is no-op stub.
+    // Vendors passed in are ignored; SMContext scoreboard stays nullptr.
+    REQUIRE(sm->get_scoreboard() == nullptr);
+    REQUIRE(sm->get_scoreboard() != global_sb);  // stub did NOT round-trip identity
 }
 
 TEST_CASE("device_api_attach_timing: null interface args don't corrupt state",

@@ -596,12 +596,16 @@ set_tests_properties(integration_mock_injection_slow_path PROPERTIES
 # query the injected mocks (closes asymmetric test gap left by CppTLM
 # commit d909407's 7 consumer-side tests).
 # ============================================================================
-add_catch_test(integration_attach_timing_consumer_e2e
-    cpptlm/test_attach_timing_consumer_e2e.cpp
+add_catch_test(integration_attach_timing_legacy_consumer_e2e
+    # HSK-9 Phase 2 task 2.8 (2027-02-09): RELOCATED to legacy-attach_timing/
+    # with renamed prefix. attach_timing body 改 no-op stub (task 2.3).
+    # Test binary renamed to attach_timing_legacy_* so `ctest -R attach_timing_legacy`
+    # (task 2.9 verification) reliably matches.
+    ../legacy-attach_timing/attach_timing_legacy_test_attach_timing_consumer_e2e.cpp
 )
-target_link_libraries(integration_attach_timing_consumer_e2e PRIVATE ptxemu_core)
-set_tests_properties(integration_attach_timing_consumer_e2e PROPERTIES
-    LABELS "integration;cpptlm;attach_timing")
+target_link_libraries(integration_attach_timing_legacy_consumer_e2e PRIVATE ptxemu_core)
+set_tests_properties(integration_attach_timing_legacy_consumer_e2e PROPERTIES
+    LABELS "integration;cpptlm;attach_timing;attach_timing_legacy")
 
 # =============================================================================
 # Phase 0 Step 1 byte-identical fallback gates (per ADR-0029 §D7)
